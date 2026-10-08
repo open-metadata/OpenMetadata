@@ -710,6 +710,9 @@ jobs:
           DOCKER_COMPOSE_CHANGED: ${{ needs.playwright.outputs.check_changes_docker_compose }}
           EXPECTED_MATRIX: ${{ needs.playwright.outputs.plan_playwright_matrix }}
           COMMENT_PAYLOAD_PATH: ${{ runner.temp }}/playwright-pr-comment/summary.json
+          # Read from this job's own checkout: failures of these tests are
+          # reported but do not fail the check (only the schedule runs them).
+          PLAYWRIGHT_QUARANTINE_FILE: .github/playwright/quarantine.json
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

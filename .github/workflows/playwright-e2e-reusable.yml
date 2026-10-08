@@ -259,6 +259,7 @@ jobs:
               - '.github/scripts/import_playwright_json_timings.py'
               - '.github/scripts/merge_playwright_timings.py'
               - '.github/scripts/playwright_flaky_tests.py'
+              - '.github/scripts/playwright_quarantine.py'
               - '.github/scripts/render_playwright_summary.cjs'
               - '.github/scripts/select_playwright_tests.py'
               - '.github/scripts/start_playwright_fast_environment.sh'
@@ -869,10 +870,19 @@ jobs:
             history_args=(--history .github/playwright/timing-baseline.json)
           fi
 
+          # Quarantined tests stay out of PR and merge-queue plans; the
+          # nightly schedule runs them, and the summary reports their failures
+          # there without failing the check.
+          quarantine_args=(--quarantine .github/playwright/quarantine.json)
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+            quarantine_args+=(--run-quarantined)
+          fi
+
           python3 .github/scripts/build_playwright_shards.py \
             --test-list "$RUNNER_TEMP/playwright-test-list.json" \
             --selection "$RUNNER_TEMP/playwright-selection/selection.json" \
             "${history_args[@]}" \
+            "${quarantine_args[@]}" \
             --output-dir "$RUNNER_TEMP/playwright-plans" \
             --github-output "$GITHUB_OUTPUT"
           jq '{shards: (.include | length), lanes: (.include | group_by(.lane) | map({lane: .[0].lane, count: length}))}' \
