@@ -25,6 +25,7 @@ import {
 import { RolesClass } from '../support/access-control/RolesClass';
 import { UserClass } from '../support/user/UserClass';
 import { assertFulfilled, deleteFixtureEntity, okJson } from './apiResponse';
+import { scrollIntoViewAndSettle, selectOptionWithRetry } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForResponseWithStatus } from './waitHelpers';
 
@@ -42,6 +43,22 @@ export type InboxTaskStatus = 'All' | 'Open' | 'Closed';
  */
 const countedTabName = (label: string) =>
   new RegExp(`^${label}(?:\\s*\\d+\\+?)?$`);
+
+/**
+ * Pick a core Dropdown menu item by name. React Aria closes a popover when an
+ * ancestor of its trigger scrolls, so the pick is retried until it lands.
+ */
+export const pickMenuItem = async (
+  page: Page,
+  trigger: Locator,
+  name: string | RegExp
+) => {
+  await scrollIntoViewAndSettle(trigger);
+  await selectOptionWithRetry(
+    trigger,
+    page.getByRole('menuitemradio', { name })
+  );
+};
 
 const openAiHome = async (page: Page) => {
   await enableAiAppMode(page);
@@ -287,12 +304,17 @@ export const createPolicyUser = async (
   const user = new UserClass();
   const policy = new PolicyClass();
   const role = new RolesClass();
+  // Every created entity gets its delete, even after one fails.
   const cleanup = async () => {
+    const results: PromiseSettledResult<unknown>[] = [];
     for (const entity of [user, role, policy]) {
       if (entity.responseData?.id) {
-        await entity.delete(apiContext);
+        results.push(
+          ...(await Promise.allSettled([entity.delete(apiContext)]))
+        );
       }
     }
+    assertFulfilled(results);
   };
 
   try {
@@ -317,8 +339,7 @@ export const createPolicyUser = async (
   return { user, cleanup };
 };
 
-// A workflow transition id, or "close" to cancel the task.
-export type TaskStep = string;
+// A step is a workflow transition id, or "close" to cancel the task.
 
 const STEP_COMMENT = 'Playwright inbox seed';
 
@@ -362,7 +383,7 @@ export const waitForTaskTransitions = async (
 const driveStep = async (
   apiContext: APIRequestContext,
   taskId: string,
-  step: TaskStep
+  step: string
 ) => {
   if (step === 'close') {
     await okJson(
@@ -403,7 +424,7 @@ const driveStep = async (
 export const driveInboxTask = async (
   apiContext: APIRequestContext,
   taskId: string,
-  steps: TaskStep[]
+  steps: string[]
 ) => {
   for (const step of steps) {
     await driveStep(apiContext, taskId, step);

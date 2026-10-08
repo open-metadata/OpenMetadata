@@ -35,7 +35,6 @@ import {
   inSequence,
   openInboxTask,
   switchInboxTaskStatus,
-  TaskStep,
   visitTriage,
 } from '../../../utils/inbox';
 import { waitForSearchIndexed } from '../../../utils/polling';
@@ -53,8 +52,6 @@ import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 const COMMENT = 'Playwright task matrix';
 
-type MatrixTask = InboxTask;
-
 type TypeCase = {
   key: string;
   label: string;
@@ -66,13 +63,13 @@ type TypeCase = {
 };
 
 type MatrixSeed = {
-  cells: Map<string, MatrixTask>;
+  cells: Map<string, InboxTask>;
   act: Record<
     'tag' | 'ownership' | 'tier' | 'domain' | 'tierReplace' | 'incident',
-    MatrixTask
+    InboxTask
   >;
-  reassign: MatrixTask;
-  testCaseIncident: MatrixTask;
+  reassign: InboxTask;
+  testCaseIncident: InboxTask;
   tables: Record<
     'tag' | 'ownership' | 'tier' | 'tierReplace' | 'domain',
     TableClass
@@ -81,14 +78,14 @@ type MatrixSeed = {
   otherUser: UserClass;
 };
 
-const APPROVAL_STATES: Record<string, TaskStep[]> = {
+const APPROVAL_STATES: Record<string, string[]> = {
   Open: [],
   Approved: ['approve'],
   Rejected: ['reject'],
   Cancelled: ['close'],
 };
 
-const INCIDENT_STATES: Record<string, TaskStep[]> = {
+const INCIDENT_STATES: Record<string, string[]> = {
   Open: [],
   'In Progress': ['ack'],
   Completed: ['ack', 'resolve'],
@@ -254,7 +251,7 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
       const apiContext = await getWorkerAdminAPIContext();
       const viewer = isolatedUserSession.user.responseData;
       const run = `pwmx${uuid()}`;
-      const tasks: MatrixTask[] = [];
+      const tasks: InboxTask[] = [];
       const file = async (
         key: string,
         state: string,
@@ -298,8 +295,15 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
       // Removes what was created, also when seeding fails part way: a fixture
       // whose setup throws never reaches the code after `use`.
       const cleanup = async () => {
-        // Tasks before the assets they are about.
-        await deleteInboxTasks(apiContext, tasks);
+        // Tasks before the assets they are about; the assets go even if a
+        // task delete failed.
+        try {
+          await deleteInboxTasks(apiContext, tasks);
+        } finally {
+          await removeAssets();
+        }
+      };
+      const removeAssets = async () => {
         await settleAll(
           allTables
             .filter((table) => table.entityResponseData?.id)
@@ -376,11 +380,11 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
             ? `<#E::glossaryTerm::${glossaryTerm.responseData.fullyQualifiedName}>`
             : tableLink(matrixTable);
 
-        const cells = new Map<string, MatrixTask>();
+        const cells = new Map<string, InboxTask>();
         const seedCell = async (
           key: string,
           state: string,
-          steps: TaskStep[],
+          steps: string[],
           spec: Omit<TaskSpec, 'name'>
         ) => {
           const task = await file(key, state, spec);
@@ -490,6 +494,20 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
           id: incidentStatus.stateId,
           name: testCase.name,
         };
+        // The incident API files its task on its own; it reaches the viewer's
+        // queue once the viewer is its assignee.
+        await expect
+          .poll(async () => {
+            const task = await okJson<{ assignees?: { id: string }[] }>(
+              await apiContext.get(
+                `/api/v1/tasks/${testCaseIncident.id}?fields=assignees`
+              ),
+              'Read the test case incident task'
+            );
+
+            return (task.assignees ?? []).map(({ id }) => id);
+          })
+          .toContain(viewer.id);
 
         // Ownership and reassignment pick this user from the search index.
         await waitForSearchIndexed(
@@ -525,6 +543,9 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
 });
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
+// One worker per shard runs this file, so its tasks are seeded once rather than
+// by every worker that picks up one of its tests.
+test.describe.configure({ mode: 'default' });
 
 test.describe(
   'Inbox task matrix',
@@ -540,7 +561,7 @@ test.describe(
         await test.step('Open: waiting on the viewer, with its own actions', async () => {
           const panel = await openInboxTask(
             page,
-            matrix.cells.get(cellKey(typeCase.key, 'Open')) as MatrixTask
+            matrix.cells.get(cellKey(typeCase.key, 'Open')) as InboxTask
           );
           await expect(panel.getByTestId('task-type-badge')).toHaveText(
             typeCase.typeBadge
@@ -560,7 +581,7 @@ test.describe(
           await test.step(`${state}: reads as ${state}, with nothing left to do`, async () => {
             const panel = await openInboxTask(
               page,
-              matrix.cells.get(cellKey(typeCase.key, state)) as MatrixTask
+              matrix.cells.get(cellKey(typeCase.key, state)) as InboxTask
             );
             await expect(panel.getByTestId('task-status-badge')).toContainText(
               state
@@ -590,7 +611,7 @@ test.describe(
         }`, async () => {
           const panel = await openInboxTask(
             page,
-            matrix.cells.get(cellKey('incident', state)) as MatrixTask
+            matrix.cells.get(cellKey('incident', state)) as InboxTask
           );
           await expect(panel.getByTestId('task-type-badge')).toHaveText(
             'Incident'

@@ -28,6 +28,7 @@ import {
   InboxTask,
   inSequence,
   openInboxTask,
+  pickMenuItem,
   searchInboxTask,
   switchInboxTaskStatus,
   VIEW_ALL_RULE,
@@ -85,6 +86,30 @@ const isCommentPost = (r: Response) =>
 const isCommentChange = (method: 'PATCH' | 'DELETE') => (r: Response) =>
   /\/api\/v1\/tasks\/.+\/comments\/.+/.test(r.url()) &&
   r.request().method() === method;
+
+// The open-task total, read with limit=1 by the sidebar badge and the tabs.
+const isOpenTaskCount = (r: Response) => {
+  const params = new URL(r.url()).searchParams;
+
+  return (
+    r.request().method() === 'GET' &&
+    r.url().includes('/api/v1/tasks/visible') &&
+    params.get('limit') === '1' &&
+    params.get('statusGroup') === 'open' &&
+    !params.has('q')
+  );
+};
+
+const isUnreadMentionsCount = (r: Response) => {
+  const params = new URL(r.url()).searchParams;
+
+  return (
+    r.request().method() === 'GET' &&
+    r.url().includes('/api/v1/conversations?') &&
+    params.get('filterType') === 'MENTIONS' &&
+    params.get('limit') === '1'
+  );
+};
 
 const composerEditor = (panel: Locator) =>
   panel.getByTestId('inbox-comment-composer').locator('.ql-editor');
@@ -279,7 +304,14 @@ const test = isolatedTest.extend<object, { queue: QueueSeed }>({
       // Removes what was created, also when seeding fails part way: a fixture
       // whose setup throws never reaches the code after `use`.
       const cleanup = async () => {
-        await deleteInboxTasks(apiContext, created);
+        // The tables and users go even if a task delete failed.
+        try {
+          await deleteInboxTasks(apiContext, created);
+        } finally {
+          await removeOthers();
+        }
+      };
+      const removeOthers = async () => {
         await settleAll([
           ...Object.values(tables)
             .filter((table) => table.entityResponseData?.id)
@@ -337,11 +369,14 @@ const test = isolatedTest.extend<object, { queue: QueueSeed }>({
         await cleanup();
       }
     },
-    { scope: 'worker', timeout: 180_000 },
+    { scope: 'worker', timeout: 300_000 },
   ],
 });
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
+// One worker per shard runs this file, so its tasks are seeded once rather than
+// by every worker that picks up one of its tests.
+test.describe.configure({ mode: 'default' });
 
 test.describe(
   'Inbox — Triage',
@@ -403,11 +438,16 @@ test.describe(
       queue,
     }) => {
       const task = queue.tasks.reject;
+      // The badge is open tasks plus unread mentions, each its own request.
+      let unread = 0;
+      page.on('response', async (response) => {
+        if (isUnreadMentionsCount(response) && response.ok()) {
+          unread = (await response.json()).paging?.total ?? 0;
+        }
+      });
+      const openCount = waitForResponseWithStatus(page, isOpenTaskCount, 200);
       await visitTriage(page);
-      const badge = page.getByTestId('ai-inbox-badge');
-      // The viewer holds several open tasks, so the badge shows a number.
-      await expect(badge).toHaveText(/^\d+$/);
-      const before = Number(await badge.innerText());
+      const openBefore = (await (await openCount).json()).paging.total;
 
       const row = await searchInboxTask(page, task);
       await row.click();
@@ -419,13 +459,20 @@ test.describe(
       await expect(reject).toBeEnabled();
       await reject.click();
       const resolved = waitForResponseWithStatus(page, isResolve, 200);
+      const recount = waitForResponseWithStatus(page, isOpenTaskCount, 200);
       await confirmRejectComment(page, 'Rejecting this request via e2e.');
       await resolved;
 
       await expect(row).toHaveCount(0);
-      // The badge counts open tasks under its own query, and must re-count now
-      // rather than at the next navigation.
-      await expect(badge).toHaveText(String(before - 1));
+      // The open count re-runs now, not at the next navigation, and the badge
+      // follows it.
+      expect((await (await recount).json()).paging.total).toBe(openBefore - 1);
+      await expect(async () => {
+        await expect(page.getByTestId('ai-inbox-badge')).toHaveText(
+          String(openBefore - 1 + unread),
+          { timeout: 2_000 }
+        );
+      }).toPass();
     });
 
     test('approves an approval task, naming a transition only when it has one', async ({
@@ -486,6 +533,8 @@ test.describe(
       const panel = await openInboxTask(page, queue.tasks.incident);
 
       await expect(panel.getByTestId('task-type-badge')).toHaveText('Incident');
+      // Its own action has rendered, so the missing ones are truly absent.
+      await expect(panel.getByTestId('task-transition-ack')).toBeVisible();
       await expect(panel.getByTestId('task-approve')).toHaveCount(0);
       await expect(panel.getByTestId('task-reject')).toHaveCount(0);
     });
@@ -741,8 +790,7 @@ test.describe(
       });
 
       await test.step('No grouping drops the headers, keeping the tasks', async () => {
-        await groupBy.click();
-        await page.getByRole('menuitemradio', { name: 'None' }).click();
+        await pickMenuItem(page, groupBy, 'None');
         await expect(groupBy).toContainText('Group: None');
         await expect(
           await searchInboxTask(page, queue.tasks.comment)
@@ -753,6 +801,7 @@ test.describe(
 
     test('narrows the queue to the chosen task types', async ({
       isolatedUserPage: page,
+      queue,
     }) => {
       await visitTriage(page);
       const typeFilter = page.getByTestId('inbox-tasks-type-filter');
@@ -767,6 +816,10 @@ test.describe(
 
         await expect(groups).toHaveCount(1);
         await expect(groups).toContainText('Description');
+        // Found in the list as it is, not by a search that would also narrow it.
+        await expect(
+          page.getByTestId(`inbox-task-${queue.tasks.comment.id}`)
+        ).toBeVisible();
       });
 
       await test.step('Clearing the filter brings the other types back', async () => {

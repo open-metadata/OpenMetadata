@@ -30,6 +30,7 @@ import {
   createPolicyUser,
   deleteInboxTasks,
   InboxTask,
+  pickMenuItem,
   searchInboxTask,
   switchActivityFeed,
   switchInboxTab,
@@ -70,11 +71,13 @@ type ActivitySeed = {
 const DEFAULT_ACTIVITY_DAYS = '30';
 const isNarrowedActivityFetch = (r: Response) => {
   const url = new URL(r.url());
+  const days = url.searchParams.get('days');
 
   return (
     r.request().method() === 'GET' &&
     url.pathname === '/api/v1/activity' &&
-    url.searchParams.get('days') !== DEFAULT_ACTIVITY_DAYS
+    days !== null &&
+    days !== DEFAULT_ACTIVITY_DAYS
   );
 };
 
@@ -114,8 +117,7 @@ const feedItem = (page: Page, text: string) =>
 
 const pickActivityDatePreset = async (page: Page, preset: string) => {
   const dateFilter = page.getByTestId('activity-date-filter');
-  await dateFilter.click();
-  await page.getByRole('menuitemradio', { name: preset }).click();
+  await pickMenuItem(page, dateFilter, preset);
   await expect(dateFilter).toContainText(preset);
 };
 
@@ -202,7 +204,14 @@ const test = isolatedTest.extend<object, { activity: ActivitySeed }>({
       // Removes what was created, also when seeding fails part way: a fixture
       // whose setup throws never reaches the code after `use`.
       const cleanup = async () => {
-        await deleteInboxTasks(apiContext, task ? [task] : []);
+        // The tables and users go even if the task delete failed.
+        try {
+          await deleteInboxTasks(apiContext, task ? [task] : []);
+        } finally {
+          await removeOthers();
+        }
+      };
+      const removeOthers = async () => {
         await settleAll([
           ...[table, scopeTable, denyTable]
             .filter((entity) => entity.entityResponseData?.id)
@@ -343,7 +352,7 @@ const test = isolatedTest.extend<object, { activity: ActivitySeed }>({
         await cleanup();
       }
     },
-    { scope: 'worker', timeout: 180_000 },
+    { scope: 'worker', timeout: 300_000 },
   ],
 });
 
@@ -787,7 +796,9 @@ test.describe(
               !r.url().includes('/replies/'),
             200
           );
-          await card.getByTestId('activity-like').click();
+          const like = card.getByTestId('activity-like');
+          await expect(like).toHaveAttribute('aria-pressed', 'false');
+          await like.click();
           await reacted;
           await expect(card.getByTestId('activity-like')).toHaveAttribute(
             'aria-pressed',
