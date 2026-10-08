@@ -106,7 +106,8 @@ class AIContextMarkdownTest {
     assertTrue(markdown.contains("SUM(amount_cents) / 100"));
     assertTrue(markdown.contains("svc.db.schema.orders.amount_cents"));
     assertTrue(markdown.contains("BIGINT"));
-    assertTrue(markdown.contains("1 of 30 bindings"));
+    assertTrue(markdown.contains("1 of 30 counted bindings"));
+    assertTrue(markdown.contains("counting stops after 500 candidate assets"));
     assertTrue(markdown.contains("12 visible assets"));
     assertTrue(markdown.contains("Distinct"));
     assertTrue(markdown.contains("100, 200"));

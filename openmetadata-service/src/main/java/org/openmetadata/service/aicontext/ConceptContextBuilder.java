@@ -54,6 +54,7 @@ final class ConceptContextBuilder {
   static final int CANDIDATE_PAGE_SIZE = 100;
   static final int MAX_ASSETS = 10;
   static final int MAX_BINDINGS_PER_ASSET = 25;
+  static final int MAX_CANDIDATES_SCANNED = 500;
   private static final int MAX_EVIDENCE = 20;
 
   interface Catalog {
@@ -72,7 +73,7 @@ final class ConceptContextBuilder {
     TableData sampleData(Table table);
   }
 
-  record ColumnField(FieldInterface field, String fqn, String name) {}
+  record ColumnField(FieldInterface field, String fqn, List<String> path) {}
 
   private record BoundAsset(EntityReference reference, EntityInterface entity) {}
 
@@ -131,8 +132,9 @@ final class ConceptContextBuilder {
 
   private void bindTerm(ConceptContext context, GlossaryTerm term) {
     BindingTotals totals = new BindingTotals();
-    scanCandidates(term, reference -> addTermBindings(context, term, reference, totals));
-    finishCounts(context, totals.assets, totals.bindings);
+    boolean capped =
+        scanCandidates(term, reference -> addTermBindings(context, term, reference, totals));
+    finishCounts(context, totals.assets, totals.bindings, capped);
   }
 
   private void addTermBindings(
@@ -180,10 +182,13 @@ final class ConceptContextBuilder {
     MetricColumnResolver resolver = MetricColumnResolver.parse(expression(metric));
     List<BoundAsset> retained = new ArrayList<>();
     BindingTotals totals = new BindingTotals();
-    scanCandidates(metric, reference -> collectMetricAsset(reference, retained, resolver, totals));
-    List<String> columns = resolver.resolvedColumns();
+    boolean capped =
+        scanCandidates(
+            metric, reference -> collectMetricAsset(reference, retained, resolver, totals));
+    // Unscanned assets could make a resolved column ambiguous, so a capped scan binds none.
+    List<String> columns = capped ? List.of() : resolver.resolvedColumns();
     retained.forEach(asset -> addMetricBindings(context, asset, columns));
-    finishCounts(context, totals.assets, Math.addExact(totals.bindings, columns.size()));
+    finishCounts(context, totals.assets, Math.addExact(totals.bindings, columns.size()), capped);
   }
 
   private void collectMetricAsset(
@@ -228,7 +233,11 @@ final class ConceptContextBuilder {
     return metric.getMetricExpression() == null ? null : metric.getMetricExpression().getCode();
   }
 
-  private void scanCandidates(EntityInterface concept, Consumer<EntityReference> consumer) {
+  /**
+   * Every candidate is loaded and policy-checked to count visible bindings, so the scan stops after
+   * {@link #MAX_CANDIDATES_SCANNED} candidates. Returns true when it stopped with more remaining.
+   */
+  private boolean scanCandidates(EntityInterface concept, Consumer<EntityReference> consumer) {
     int offset = 0;
     CandidatePage page;
     do {
@@ -238,14 +247,16 @@ final class ConceptContextBuilder {
               reference -> catalog.canView(reference.getType(), reference.getFullyQualifiedName()))
           .forEach(consumer);
       offset = page.nextOffset();
-    } while (page.hasMore());
+    } while (page.hasMore() && offset < MAX_CANDIDATES_SCANNED);
+    return page.hasMore();
   }
 
-  private static void finishCounts(ConceptContext context, int assets, int bindings) {
+  private static void finishCounts(
+      ConceptContext context, int assets, int bindings, boolean capped) {
     context
         .withTotalAssets(assets)
         .withTotalBindings(bindings)
-        .withTruncated(context.getBindings().size() < bindings);
+        .withTruncated(capped || context.getBindings().size() < bindings);
   }
 
   /** Samples default to an empty list; null keeps "not applicable" distinct from "none stored". */
@@ -279,12 +290,12 @@ final class ConceptContextBuilder {
   static Stream<ColumnField> columnFields(String type, EntityInterface asset) {
     return ChildFieldResolver.supports(type)
         ? columnFields(
-            ChildFieldResolver.childrenOf(asset, type), asset.getFullyQualifiedName(), "")
+            ChildFieldResolver.childrenOf(asset, type), asset.getFullyQualifiedName(), List.of())
         : Stream.empty();
   }
 
   private static Stream<ColumnField> columnFields(
-      List<? extends FieldInterface> fields, String parentFqn, String parentName) {
+      List<? extends FieldInterface> fields, String parentFqn, List<String> parentPath) {
     return listOrEmpty(fields).stream()
         .flatMap(
             field -> {
@@ -292,11 +303,11 @@ final class ConceptContextBuilder {
                   nullOrEmpty(field.getFullyQualifiedName())
                       ? FullyQualifiedName.add(parentFqn, field.getName())
                       : field.getFullyQualifiedName();
-              String name =
-                  parentName.isEmpty() ? field.getName() : parentName + "." + field.getName();
+              List<String> path =
+                  Stream.concat(parentPath.stream(), Stream.of(field.getName())).toList();
               return Stream.concat(
-                  Stream.of(new ColumnField(field, fqn, name)),
-                  columnFields(field.getChildren(), fqn, name));
+                  Stream.of(new ColumnField(field, fqn, path)),
+                  columnFields(field.getChildren(), fqn, path));
             });
   }
 

@@ -139,9 +139,11 @@ final class ConceptContextMarkdown {
           .append(concept.getBindings().size())
           .append(" of ")
           .append(concept.getTotalBindings())
-          .append(" bindings across ")
+          .append(" counted bindings across ")
           .append(concept.getTotalAssets())
-          .append(" visible assets; at most 10 assets and 25 bindings per asset._\n");
+          .append(
+              " visible assets; at most 10 assets and 25 bindings per asset are shown, and"
+                  + " counting stops after 500 candidate assets._\n");
     }
   }
 

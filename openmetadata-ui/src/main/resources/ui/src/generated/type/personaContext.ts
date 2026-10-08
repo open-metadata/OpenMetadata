@@ -306,16 +306,18 @@ export interface ConceptContext {
     relatedTerms?: TermRelation[];
     synonyms?:     string[];
     /**
-     * Actual number of caller-visible assets with bindings, before the ten-asset cap.
+     * Number of caller-visible assets with bindings, before the ten-asset cap. Counting stops
+     * after 500 candidate assets, so the value is a lower bound when that scan cap is reached.
      */
     totalAssets?: number;
     /**
-     * Actual number of caller-visible asset and column bindings, before the per-asset and
-     * asset-count caps.
+     * Number of caller-visible asset and column bindings, before the per-asset and asset-count
+     * caps. A lower bound when the 500-candidate scan cap is reached.
      */
     totalBindings?: number;
     /**
-     * True when bindings were omitted by the ten-asset or 25-bindings-per-asset cap.
+     * True when bindings were omitted by the ten-asset or 25-bindings-per-asset cap, or when
+     * the 500-candidate scan cap stopped counting early.
      */
     truncated?: boolean;
 }

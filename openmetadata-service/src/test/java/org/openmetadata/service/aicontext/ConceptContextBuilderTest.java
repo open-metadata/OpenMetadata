@@ -104,6 +104,40 @@ class ConceptContextBuilderTest {
   }
 
   @Test
+  void candidateScanStopsAtTheCapAndReportsLowerBoundTotals() {
+    Catalog catalog = new Catalog();
+    IntStream.range(0, 612)
+        .forEach(index -> catalog.assets.add(table("orders" + index, column("amount", TERM))));
+
+    ConceptContext context = build(catalog, term());
+
+    assertEquals(10, context.getBindings().size());
+    assertEquals(ConceptContextBuilder.MAX_CANDIDATES_SCANNED, context.getTotalAssets());
+    assertEquals(ConceptContextBuilder.MAX_CANDIDATES_SCANNED, context.getTotalBindings());
+    assertTrue(context.getTruncated());
+    assertEquals(
+        ConceptContextBuilder.MAX_CANDIDATES_SCANNED / ConceptContextBuilder.CANDIDATE_PAGE_SIZE,
+        catalog.pagesRequested);
+  }
+
+  @Test
+  void cappedMetricScanDoesNotGuessColumnsAmbiguousWithUnscannedAssets() {
+    Catalog catalog = new Catalog();
+    IntStream.range(0, 612)
+        .forEach(index -> catalog.assets.add(table("orders" + index, column("other", null))));
+    catalog.assets.add(table("late", column("amount_cents", null)));
+    catalog.assets.set(0, table("orders0", column("amount_cents", null)));
+    Metric metric =
+        new Metric().withMetricExpression(new MetricExpression().withCode("SUM(amount_cents)"));
+
+    ConceptContext context = build(catalog, metric);
+
+    assertEquals(ConceptContextBuilder.MAX_CANDIDATES_SCANNED, context.getTotalAssets());
+    assertTrue(context.getTruncated());
+    assertTrue(context.getBindings().stream().allMatch(binding -> binding.getColumn() == null));
+  }
+
+  @Test
   void perAssetCapReportsActualColumnCount() {
     Catalog catalog = new Catalog();
     Column[] columns =
@@ -235,6 +269,50 @@ class ConceptContextBuilderTest {
 
     assertEquals(2, context.getTotalBindings());
     assertEquals("svc.db.schema.orders.amount_cents", context.getBindings().get(1).getColumn());
+  }
+
+  @Test
+  void metricKeepsInputColumnsInWhereThatShadowProjectionAliases() {
+    Catalog catalog = new Catalog();
+    catalog.assets.add(table("orders", column("amount_cents", null), column("status", null)));
+    Metric metric =
+        new Metric()
+            .withMetricExpression(
+                new MetricExpression()
+                    .withCode(
+                        "SELECT SUM(amount_cents) AS status FROM orders WHERE status = 'paid'"));
+
+    assertEquals(
+        List.of("svc.db.schema.orders.amount_cents", "svc.db.schema.orders.status"),
+        boundColumns(build(catalog, metric)));
+
+    metric
+        .getMetricExpression()
+        .withCode("SELECT SUM(amount_cents) AS status FROM orders ORDER BY status DESC");
+
+    assertEquals(
+        List.of("svc.db.schema.orders.amount_cents"), boundColumns(build(catalog, metric)));
+  }
+
+  @Test
+  void metricDistinguishesQuotedDottedColumnFromNestedField() {
+    Catalog catalog = new Catalog();
+    Column nested = column("amount", null).withChildren(List.of(column("cents", null)));
+    catalog.assets.add(table("orders", column("amount.cents", null), nested));
+    Metric metric =
+        new Metric().withMetricExpression(new MetricExpression().withCode("SUM(\"amount.cents\")"));
+
+    assertEquals(
+        List.of("svc.db.schema.orders.\"amount.cents\""), boundColumns(build(catalog, metric)));
+
+    metric.getMetricExpression().withCode("SUM(amount.cents)");
+
+    assertEquals(
+        List.of("svc.db.schema.orders.amount.cents"), boundColumns(build(catalog, metric)));
+
+    metric.getMetricExpression().withCode("SUM(cents)");
+
+    assertEquals(List.of(), boundColumns(build(catalog, metric)));
   }
 
   @Test
@@ -400,6 +478,13 @@ class ConceptContextBuilderTest {
     return new ConceptContextBuilder(catalog).build(entity, List.of(), List.of());
   }
 
+  private static List<String> boundColumns(ConceptContext context) {
+    return context.getBindings().stream()
+        .map(binding -> binding.getColumn())
+        .filter(column -> column != null)
+        .toList();
+  }
+
   private static GlossaryTerm term() {
     return new GlossaryTerm().withFullyQualifiedName(TERM).withDescription("Amount in cents");
   }
@@ -452,9 +537,11 @@ class ConceptContextBuilderTest {
     private Set<String> hidden = Set.of();
     private Observability profile;
     private TableData samples;
+    private int pagesRequested;
 
     @Override
     public ConceptContextBuilder.CandidatePage candidates(EntityInterface concept, int offset) {
+      pagesRequested++;
       List<EntityReference> refs =
           assets.stream()
               .skip(offset)

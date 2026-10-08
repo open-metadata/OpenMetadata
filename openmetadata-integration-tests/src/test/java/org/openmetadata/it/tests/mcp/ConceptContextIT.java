@@ -439,7 +439,7 @@ class ConceptContextIT extends McpTestBase {
     String markdown =
         getResponse("glossaryTerms/name/" + wide.getFullyQualifiedName() + "/context", authToken)
             .body();
-    assertThat(markdown).contains("Bindings capped: showing 25 of 30 bindings across 1");
+    assertThat(markdown).contains("Bindings capped: showing 25 of 30 counted bindings across 1");
   }
 
   @Test

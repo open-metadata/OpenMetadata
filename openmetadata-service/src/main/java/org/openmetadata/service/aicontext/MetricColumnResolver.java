@@ -15,6 +15,8 @@ package org.openmetadata.service.aicontext;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -29,22 +31,26 @@ import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlIdentifier;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.SqlNodeList;
+import org.apache.calcite.sql.SqlOrderBy;
 import org.apache.calcite.sql.SqlSelect;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.aicontext.ConceptContextBuilder.ColumnField;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Resolves SQL identifiers conservatively against applied tables, excluding ambiguous columns. */
 @Slf4j
 final class MetricColumnResolver extends SqlBasicVisitor<Void> {
   private static final int MAX_IDENTIFIERS = 1000;
   private static final int MAX_EXPRESSION_CHARS = 16000;
+  private static final Set<SqlKind> SORT_MODIFIERS =
+      EnumSet.of(SqlKind.DESCENDING, SqlKind.NULLS_FIRST, SqlKind.NULLS_LAST);
   private final Map<List<String>, Resolution> identifiers = new LinkedHashMap<>();
   private final Map<String, List<String>> aliases = new LinkedHashMap<>();
   private final Set<List<String>> projectionAliases = new LinkedHashSet<>();
-  private boolean collectingProjection;
   private int queryScopes;
 
   private record Resolution(String columnFqn, boolean ambiguous) {}
@@ -86,9 +92,7 @@ final class MetricColumnResolver extends SqlBasicVisitor<Void> {
   @Override
   public Void visit(SqlIdentifier identifier) {
     List<String> names = normalize(identifier.names);
-    if (!identifier.isStar()
-        && identifiers.size() < MAX_IDENTIFIERS
-        && (collectingProjection || !projectionAliases.contains(names))) {
+    if (!identifier.isStar() && identifiers.size() < MAX_IDENTIFIERS) {
       identifiers.putIfAbsent(names, new Resolution(null, false));
     }
     return null;
@@ -103,6 +107,10 @@ final class MetricColumnResolver extends SqlBasicVisitor<Void> {
       Stream.of(select.getWhere(), select.getGroup(), select.getHaving())
           .filter(Objects::nonNull)
           .forEach(node -> node.accept(this));
+      visitOrderList(select.getOrderList());
+    } else if (call instanceof SqlOrderBy orderBy) {
+      orderBy.query.accept(this);
+      visitOrderList(orderBy.orderList);
     } else if (call.getKind() == SqlKind.AS) {
       call.operand(0).accept(this);
     } else {
@@ -113,9 +121,30 @@ final class MetricColumnResolver extends SqlBasicVisitor<Void> {
 
   private void collectProjection(SqlSelect select) {
     select.getSelectList().getList().forEach(this::collectProjectionAlias);
-    collectingProjection = true;
     select.getSelectList().accept(this);
-    collectingProjection = false;
+  }
+
+  /**
+   * Only ORDER BY resolves a bare name to an output alias first; WHERE, GROUP BY and HAVING
+   * resolve it to the input column, so a physical column shadowed by an alias still binds there.
+   */
+  private void visitOrderList(SqlNodeList orderList) {
+    if (orderList != null) {
+      orderList.stream()
+          .filter(Objects::nonNull)
+          .filter(item -> !isProjectionAlias(item))
+          .forEach(item -> item.accept(this));
+    }
+  }
+
+  private boolean isProjectionAlias(SqlNode item) {
+    SqlNode key = item;
+    while (key instanceof SqlCall call && SORT_MODIFIERS.contains(call.getKind())) {
+      key = call.operand(0);
+    }
+    return key instanceof SqlIdentifier identifier
+        && identifier.isSimple()
+        && projectionAliases.contains(normalize(identifier.names));
   }
 
   private void collectProjectionAlias(SqlNode node) {
@@ -142,17 +171,22 @@ final class MetricColumnResolver extends SqlBasicVisitor<Void> {
   }
 
   void accept(String type, EntityInterface asset) {
+    List<String> assetPath =
+        normalize(
+            Arrays.stream(FullyQualifiedName.split(asset.getFullyQualifiedName()))
+                .map(FullyQualifiedName::unquoteName)
+                .toList());
     ConceptContextBuilder.columnFields(type, asset)
         .forEach(
             field ->
                 identifiers.replaceAll(
-                    (names, resolution) -> resolve(asset, field, names, resolution)));
+                    (names, resolution) -> resolve(assetPath, field, names, resolution)));
   }
 
   private Resolution resolve(
-      EntityInterface asset, ColumnField field, List<String> names, Resolution current) {
+      List<String> assetPath, ColumnField field, List<String> names, Resolution current) {
     Resolution result = current;
-    if (matches(asset, field, names) && !current.ambiguous()) {
+    if (matches(assetPath, field, names) && !current.ambiguous()) {
       result =
           new Resolution(
               field.fqn(), current.columnFqn() != null && !current.columnFqn().equals(field.fqn()));
@@ -160,13 +194,21 @@ final class MetricColumnResolver extends SqlBasicVisitor<Void> {
     return result;
   }
 
-  private boolean matches(EntityInterface asset, ColumnField field, List<String> names) {
-    List<String> expanded = expandAlias(names);
-    String requested = String.join(".", expanded);
-    String column = field.name().toLowerCase(Locale.ROOT);
-    return requested.equals(column)
-        || requested.equals(asset.getName().toLowerCase(Locale.ROOT) + "." + column)
-        || field.fqn().toLowerCase(Locale.ROOT).endsWith("." + requested);
+  /**
+   * Compares identifier components rather than dot-joined strings, so the quoted {@code
+   * "amount.cents"} column and the nested {@code amount.cents} field stay distinct. Any leading
+   * components beyond the column path must qualify it with a suffix of the asset's FQN.
+   */
+  private boolean matches(List<String> assetPath, ColumnField field, List<String> names) {
+    List<String> requested = expandAlias(names);
+    List<String> column = normalize(field.path());
+    int qualifiers = requested.size() - column.size();
+    return qualifiers >= 0
+        && qualifiers <= assetPath.size()
+        && requested.subList(qualifiers, requested.size()).equals(column)
+        && requested
+            .subList(0, qualifiers)
+            .equals(assetPath.subList(assetPath.size() - qualifiers, assetPath.size()));
   }
 
   private List<String> expandAlias(List<String> names) {

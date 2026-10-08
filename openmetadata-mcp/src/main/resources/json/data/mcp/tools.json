@@ -482,7 +482,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Resolve a glossary term or metric to its definition, typed ontology attributes, exact asset and column bindings, permission-masked profiles and sample values, related metrics and saved-query evidence. Use the concept's fullyQualifiedName from find_context. Returns the same AIContext as GET /v1/glossaryTerms/name/{fqn}/context or /v1/metrics/name/{fqn}/context. Bindings are capped at ten visible assets and 25 bindings per asset; totalAssets, totalBindings and truncated report overflow. Attached articles and memories share the existing knowledge budget.",
+      "description": "Resolve a glossary term or metric to its definition, typed ontology attributes, exact asset and column bindings, permission-masked profiles and sample values, related metrics and saved-query evidence. Use the concept's fullyQualifiedName from find_context. Returns the same AIContext as GET /v1/glossaryTerms/name/{fqn}/context or /v1/metrics/name/{fqn}/context. Bindings are capped at ten visible assets and 25 bindings per asset; totalAssets, totalBindings and truncated report overflow. Counting stops after 500 candidate assets, so totals are lower bounds when that cap sets truncated. Attached articles and memories share the existing knowledge budget.",
       "parameters": {
         "type": "object",
         "properties": {
