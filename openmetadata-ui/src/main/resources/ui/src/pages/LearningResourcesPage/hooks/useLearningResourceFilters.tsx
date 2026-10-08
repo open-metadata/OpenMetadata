@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
-import { Space } from 'antd';
+
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
@@ -164,7 +164,13 @@ export const useLearningResourceFilters = (
 
   const quickFilters = useMemo(
     () => (
-      <Space wrap className="explore-quick-filters-container" size={[8, 0]}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal explore-quick-filters-container"
+        itemClassName="layout-space-item"
+        style={{ columnGap: 'var(--om-space-8)', rowGap: 'var(--om-space-0)' }}
+        wrap="wrap">
         {FILTER_FIELDS.map((field) => (
           <FilterSelectDropdown
             hideCounts
@@ -179,7 +185,7 @@ export const useLearningResourceFilters = (
             onSearch={handleSearch}
           />
         ))}
-      </Space>
+      </Box>
     ),
     [
       filterState,

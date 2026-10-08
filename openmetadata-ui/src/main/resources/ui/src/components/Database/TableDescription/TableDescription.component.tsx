@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -96,11 +97,15 @@ const TableDescription = ({
   }, [columnData, suggestionData]);
 
   return (
-    <Space
-      className="hover-icon-group w-full d-flex"
+    <Box
+      inline
+      align="stretch"
+      className="layout-space hover-icon-group w-full d-flex"
       data-testid="description"
-      direction="vertical"
-      id={`field-description-${index}`}>
+      direction="col"
+      gap={2}
+      id={`field-description-${index}`}
+      itemClassName="layout-space-item">
       {descriptionContent}
       <DescriptionSourceBadge
         changeSummaryEntry={changeSummary?.[changeSummaryKey]}
@@ -129,7 +134,7 @@ const TableDescription = ({
           />
         </div>
       ) : null}
-    </Space>
+    </Box>
   );
 };
 

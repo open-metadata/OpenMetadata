@@ -13,16 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Drawer,
-  Input,
-  InputNumber,
-  Select,
-  Space,
-  TreeSelect,
-} from 'antd';
+import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Drawer, Input, InputNumber, Select, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
@@ -475,7 +467,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const drawerFooter = (
     <div className="drawer-footer-actions">
-      <Space size={16}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={4}
+        itemClassName="layout-space-item">
         <Button type="link" onClick={handleCancel}>
           {t('label.cancel')}
         </Button>
@@ -486,7 +483,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           type="primary">
           {t('label.save')}
         </Button>
-      </Space>
+      </Box>
     </div>
   );
 
@@ -699,7 +696,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             </List>
             <Row gutter={[16, 16]}>
               <Col span={24}>
-                <Space align="center" size={12}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={3}
+                  itemClassName="layout-space-item">
                   <p>{t('label.enable-partition')}</p>
                   <Form.Item className="m-b-0" name="enablePartitioning">
                     <Toggle
@@ -709,7 +711,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       onChange={handleEnablePartition}
                     />
                   </Form.Item>
-                </Space>
+                </Box>
               </Col>
               <Col span={12}>
                 <Form.Item

@@ -16,8 +16,8 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -55,6 +55,7 @@ import {
   updateQueryVote,
 } from '../../../rest/queryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
@@ -536,8 +537,8 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
 
   const queryTabBody = isError.search ? (
-    <Col
-      className="flex-center font-medium mt-24 p-b-md"
+    <Grid.Item
+      className="layout-column flex-center font-medium mt-24 p-b-md"
       data-testid="no-queries"
       span={24}>
       <ErrorPlaceHolder>
@@ -547,10 +548,14 @@ const TableQueries: FC<TableQueriesProp> = ({
           })}
         </Typography>
       </ErrorPlaceHolder>
-    </Col>
+    </Grid.Item>
   ) : (
     tableQueries.map((query) => (
-      <Col data-testid="query-card" key={query.id} span={24}>
+      <Grid.Item
+        className="layout-column"
+        data-testid="query-card"
+        key={query.id}
+        span={24}>
         <QueryCard
           afterDeleteAction={fetchFilteredQueries}
           isExpanded={false}
@@ -561,23 +566,42 @@ const TableQueries: FC<TableQueriesProp> = ({
           onQueryUpdate={handleQueryUpdate}
           onUpdateVote={updateVote}
         />
-      </Col>
+      </Grid.Item>
     ))
   );
 
   return (
-    <Row className="m-b-md" gutter={8} id="tablequeries" wrap={false}>
-      <Col className="tab-content-height-with-resizable-panel" span={24}>
+    <Box
+      className="layout-row m-b-md"
+      id="tablequeries"
+      style={{ ...getLayoutGutter(8) }}
+      wrap="nowrap">
+      <Box
+        className="layout-column tw:block tab-content-height-with-resizable-panel"
+        style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
         <ResizablePanels
           firstPanel={{
             className: 'entity-resizable-panel-container',
             allowScroll: true,
             cardClassName: 'm-x-auto',
             children: (
-              <Row data-testid="queries-container" gutter={[8, 16]}>
-                <Col span={24}>
-                  <Space className="justify-between w-full">
-                    <Space size={16}>
+              <Grid
+                className="layout-row layout-grid"
+                data-testid="queries-container"
+                style={{ ...getLayoutGutter(8, 16) }}>
+                <Grid.Item className="layout-column" span={24}>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal justify-between w-full"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={4}
+                      itemClassName="layout-space-item">
                       <FilterSelectDropdown
                         hideCounts
                         isSuggestionsLoading={isOwnerLoading}
@@ -625,8 +649,13 @@ const TableQueries: FC<TableQueriesProp> = ({
                           />
                         </span>
                       </Button>
-                    </Space>
-                    <Space size={16}>
+                    </Box>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={4}
+                      itemClassName="layout-space-item">
                       <SortingDropDown
                         fieldList={translatedQuerySortOptions}
                         handleFieldDropDown={handleSortFieldChange}
@@ -651,9 +680,9 @@ const TableQueries: FC<TableQueriesProp> = ({
                         )}
                       </Button>
                       {addButton}
-                    </Space>
-                  </Space>
-                </Col>
+                    </Box>
+                  </Box>
+                </Grid.Item>
 
                 {isLoading.query ? (
                   <Loader />
@@ -661,7 +690,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                   <>
                     {queryTabBody}
                     {showPagination && (
-                      <Col span={24}>
+                      <Grid.Item className="layout-column" span={24}>
                         <PaginationComponent
                           hideOnSinglePage
                           showSizeChanger
@@ -672,11 +701,11 @@ const TableQueries: FC<TableQueriesProp> = ({
                           total={paging.total}
                           onChange={pagingHandler}
                         />
-                      </Col>
+                      </Grid.Item>
                     )}
                   </>
                 )}
-              </Row>
+              </Grid>
             ),
             minWidth: 800,
             flex: 0.87,
@@ -697,8 +726,8 @@ const TableQueries: FC<TableQueriesProp> = ({
               'entity-summary-resizable-right-panel-container entity-resizable-panel-container',
           }}
         />
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

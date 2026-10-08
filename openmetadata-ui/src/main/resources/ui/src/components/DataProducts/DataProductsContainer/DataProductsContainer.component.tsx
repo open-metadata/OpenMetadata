@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Space } from 'antd';
+import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -184,7 +189,12 @@ const DataProductsContainer = ({
     }
 
     return (
-      <Space align="center" size="middle">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={4}
+        itemClassName="layout-space-item">
         {hasPermission && isEmpty(dataProducts) && (
           <WidgetPlusButton
             data-testid="add-data-product"
@@ -208,14 +218,14 @@ const DataProductsContainer = ({
             onClick={handleAddClick}
           />
         )}
-      </Space>
+      </Box>
     );
   }, [showHeader, dataProducts, hasPermission, domainMissing, t]);
 
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <Col className="m-t-xss">
+        <Box className="layout-column tw:block m-t-xss">
           <Button
             color="link-color"
             data-testid="add-data-product"
@@ -223,7 +233,7 @@ const DataProductsContainer = ({
             onClick={handleAddClick}>
             {t('label.add-entity', { entity: t('label.data-product') })}
           </Button>
-        </Col>
+        </Box>
       ) : null,
     [showAddTagButton, t]
   );
@@ -238,12 +248,12 @@ const DataProductsContainer = ({
     }
 
     return (
-      <Row data-testid="data-products-list">
-        <Col className="flex flex-wrap gap-2">
+      <Box className="layout-row" data-testid="data-products-list" wrap="wrap">
+        <Box className="layout-column tw:block flex flex-wrap gap-2">
           {!newLook && addTagButton}
           {renderDataProducts}
-        </Col>
-      </Row>
+        </Box>
+      </Box>
     );
   }, [
     newLook,
@@ -271,12 +281,17 @@ const DataProductsContainer = ({
   return (
     <div className="w-full" data-testid="data-products-container">
       {showHeader && (
-        <Space align="center" size="middle">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={4}
+          itemClassName="layout-space-item">
           <Typography size="text-sm" weight="medium">
             {t('label.data-product-plural')}
           </Typography>
           {headerExtra}
-        </Space>
+        </Box>
       )}
       {renderer}
     </div>
