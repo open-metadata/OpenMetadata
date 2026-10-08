@@ -317,7 +317,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         repository.listAllForCSV(
             repository.getFields("owners,reviewers,parent,domains"),
             classification.getFullyQualifiedName());
-    tags.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    tags.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return tags;
   }
 

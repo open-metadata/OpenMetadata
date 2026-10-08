@@ -35,7 +35,7 @@ public class TestNamespace {
    * Register a root entity for post-test cleanup and return it unchanged, so factory call sites can
    * wrap their create fluently: {@code return ns.trackRoot(Entity.DATABASE_SERVICE, svc);}.
    */
-  public <T extends EntityInterface> T trackRoot(String entityType, T entity) {
+  public <T extends EntityInterface<?>> T trackRoot(String entityType, T entity) {
     if (entity != null && entity.getId() != null) {
       roots.add(new EntityRoot(entityType, entity.getId()));
     }

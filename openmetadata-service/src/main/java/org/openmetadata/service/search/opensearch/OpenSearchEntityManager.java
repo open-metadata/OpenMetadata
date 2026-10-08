@@ -1543,7 +1543,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     List<BulkOperation> operations = new ArrayList<>();
 
     for (EntityReference entityRef : entities) {
-      EntityInterface entity = Entity.getEntity(entityRef, "*", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(entityRef, "*", Include.ALL);
       IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityRef.getType());
       String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
 

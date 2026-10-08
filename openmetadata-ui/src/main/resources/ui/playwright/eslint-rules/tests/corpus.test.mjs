@@ -42,13 +42,14 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 10,
     'om-playwright/no-blanket-test-slow': 1,
-    // Two independent reductions landed together. From main: named-element
-    // fixes in replyAnnouncement, DomainFilterQueryFilter, ActivityFeed and
-    // SearchExport, plus one the core Popover/Dropdown migration removed.
-    // From this branch: the landing page's FeedWidget, Data Assets and My Tasks
-    // suites went with the widgets they drove, taking their suppressed
-    // positional locators with them.
-    'om-playwright/no-positional-locator': 599,
+    // Two independent reductions, now both in the baseline. From main:
+    // named-element fixes in replyAnnouncement, DomainFilterQueryFilter,
+    // ActivityFeed and SearchExport, one the core Popover/Dropdown migration
+    // removed, the S3 sample-data storage tests going away, and scoping
+    // ChangeSummaryBadge's button lookup. From this branch: the landing page's
+    // FeedWidget, Data Assets and My Tasks suites went with the widgets they
+    // drove, taking their suppressed positional locators with them.
+    'om-playwright/no-positional-locator': 596,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 18,

@@ -13,8 +13,16 @@
 Module to define overriden dialect methods
 """
 
+import importlib.util
+import platform
+import shutil
 import sys
+import tarfile
+import tempfile
+import urllib.request
+import zipfile
 from enum import Enum
+from pathlib import Path
 from threading import Lock
 from types import SimpleNamespace
 
@@ -22,11 +30,14 @@ from sqlalchemy import and_, join, select, sql, text
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes as sa_types
 
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 BASE_CLIDRIVER_URL = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli"
+# IBM's mirror of the same archives; ibm_db's own installer falls back to it as well.
+GITHUB_CLIDRIVER_URL = "https://github.com/ibmdb/db2drivers/raw/main/clidriver"
 
 _CLIDRIVER_INSTALL_LOCK = Lock()
 _CLIDRIVER_INSTALL_STATE = SimpleNamespace(version=None)
@@ -169,89 +180,97 @@ def install_clidriver(clidriver_version: str) -> None:
             _CLIDRIVER_INSTALL_STATE.version = clidriver_version
 
 
-# pylint: disable=too-many-statements,too-many-branches
 def _install_clidriver(clidriver_version: str) -> bool:
-    """Install the requested DB2 CLI driver version."""
-    # pylint: disable=import-outside-toplevel
-    import os
-    import platform
-    import subprocess
-    from importlib.metadata import (
-        PackageNotFoundError,
-        distribution,
-    )
-    from urllib.request import URLError, urlopen
+    """Swap the CLI driver bundled with ibm_db for the requested version.
 
-    clidriver_version = f"v{clidriver_version}"
-    system = platform.system().lower()
-    is_64bits = platform.architecture()[0] == "64bit"
-    clidriver_url = None
-    default_clidriver_url = None
-
-    def is_valid_url(url: str) -> bool:
-        """Check if the URL is valid and accessible"""
-        try:
-            with urlopen(url) as _:
-                return True
-        except URLError:
-            return False
-
-    if system == "darwin":  # macOS
-        machine = platform.machine().lower()
-        if machine == "arm64":  # Apple Silicon
-            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/macarm64_odbc_cli.tar.gz"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/macarm64_odbc_cli.tar.gz"
-        elif machine == "x86_64":  # Intel
-            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/macos64_odbc_cli.tar.gz"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/macos64_odbc_cli.tar.gz"  # noqa: RUF010
-    elif system == "linux":
-        if is_64bits:
-            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/linuxx64_odbc_cli.tar.gz"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxx64_odbc_cli.tar.gz"  # noqa: RUF010
-        else:
-            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/linuxia32_odbc_cli.tar.gz"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/linuxia32_odbc_cli.tar.gz"  # noqa: RUF010
-    elif system == "windows":
-        if is_64bits:
-            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/ntx64_odbc_cli.zip"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/ntx64_odbc_cli.zip"  # noqa: RUF010
-        else:
-            default_clidriver_url = f"{BASE_CLIDRIVER_URL}/nt32_odbc_cli.zip"
-            clidriver_url = f"{BASE_CLIDRIVER_URL}/{str(clidriver_version)}/nt32_odbc_cli.zip"  # noqa: RUF010
-    else:
-        logger.error("Unsupported operating system for db2 driver installation: %s", system)
+    The prebuilt ibm_db extension loads libdb2 through its RUNPATH
+    ($ORIGIN/clidriver/lib) and only binds the stable CLI API, so replacing the
+    driver files switches the version. Rebuilding ibm_db against the driver would
+    also work, but needs a C compiler that the ingestion images no longer ship.
+    """
+    archive_name = _clidriver_archive_name()
+    if archive_name is None:
+        logger.error("Unsupported operating system for db2 driver installation: %s", platform.system())
         return False
 
-    # set env variables for CLIDRIVER_VERSION and IBM_DB_INSTALLER_URL
-    os.environ["CLIDRIVER_VERSION"] = clidriver_version
-    if is_valid_url(clidriver_url):
-        os.environ["IBM_DB_INSTALLER_URL"] = clidriver_url
-    else:
-        os.environ["IBM_DB_INSTALLER_URL"] = default_clidriver_url
-    logger.info("Set IBM_DB_INSTALLER_URL to %s", os.environ["IBM_DB_INSTALLER_URL"])
-    logger.info("Set CLIDRIVER_VERSION to %s", os.environ["CLIDRIVER_VERSION"])
-    # Uninstall ibm_db if it is already installed
-    try:
-        distribution("ibm_db")
-        # If we get here, ibm_db is installed, so uninstall it first
-        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "ibm_db"])
-    except PackageNotFoundError:
-        # ibm_db is not installed, proceed with installation
-        pass
-    # Install ibm_db with specific flags
-    subprocess.check_call(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "ibm_db~=3.2.6",
-            "--no-binary",
-            ":all:",
-            "--no-cache-dir",
-        ]
-    )
+    spec = importlib.util.find_spec("clidriver")
+    if spec is None or not spec.submodule_search_locations:
+        logger.error("ibm_db is not installed, so DB2 CLI driver %s cannot be installed", clidriver_version)
+        return False
+    driver_dir = Path(next(iter(spec.submodule_search_locations)))
+
+    if "ibm_db" in sys.modules:
+        logger.warning(
+            "ibm_db is already loaded in this process; DB2 CLI driver %s applies from the next run",
+            clidriver_version,
+        )
+
+    # Staged next to the installed driver, which stays in place until the new one is
+    # fully on disk. shutil.move, not a plain rename: in a container the bundled
+    # driver sits in a read-only image layer, and overlayfs refuses to rename such a
+    # directory (EXDEV), so it has to be copied out instead.
+    with tempfile.TemporaryDirectory(
+        prefix=".clidriver-", dir=driver_dir.parent, ignore_cleanup_errors=True
+    ) as staging:
+        archive = Path(staging, archive_name)
+        _download_clidriver(clidriver_version, archive)
+        new_driver = _extract_clidriver(archive, Path(staging, "extracted"))
+        if (driver_dir / "__init__.py").exists():
+            # `import clidriver` locates the directory the license file is staged into.
+            shutil.copy2(driver_dir / "__init__.py", new_driver / "__init__.py")
+        previous = Path(shutil.move(driver_dir, Path(staging, "previous")))
+        try:
+            shutil.move(new_driver, driver_dir)
+        except OSError:
+            shutil.move(previous, driver_dir)
+            raise
+    logger.info("Installed DB2 CLI driver %s in %s", clidriver_version, driver_dir)
     return True
+
+
+def _clidriver_archive_name() -> str | None:
+    system = platform.system().lower()
+    is_64bits = platform.architecture()[0] == "64bit"
+    if system == "linux":
+        return "linuxx64_odbc_cli.tar.gz" if is_64bits else "linuxia32_odbc_cli.tar.gz"
+    if system == "darwin":
+        return "macarm64_odbc_cli.tar.gz" if platform.machine().lower() == "arm64" else "macos64_odbc_cli.tar.gz"
+    if system == "windows":
+        return "ntx64_odbc_cli.zip" if is_64bits else "nt32_odbc_cli.zip"
+    return None
+
+
+def _download_clidriver(clidriver_version: str, archive: Path) -> None:
+    failures: list[str] = []
+    for base_url in (BASE_CLIDRIVER_URL, GITHUB_CLIDRIVER_URL):
+        url = f"{base_url}/v{clidriver_version}/{archive.name}"
+        try:
+            with urllib.request.urlopen(url, timeout=THREE_MIN) as response, archive.open("wb") as file:
+                shutil.copyfileobj(response, file)
+        except OSError as exc:
+            logger.warning("Could not download DB2 CLI driver from %s: %s", url, exc)
+            failures.append(f"{url}: {exc}")
+        else:
+            logger.info("Downloaded DB2 CLI driver %s from %s", clidriver_version, url)
+            return
+    raise RuntimeError(f"Could not download DB2 CLI driver {clidriver_version}: {'; '.join(failures)}")
+
+
+def _extract_clidriver(archive: Path, destination: Path) -> Path:
+    if archive.suffix == ".zip":
+        with zipfile.ZipFile(archive) as zip_file:
+            zip_file.extractall(destination)
+    else:
+        with tarfile.open(archive) as tar:
+            if hasattr(tarfile, "data_filter"):
+                # Rejects members that would land outside destination (Python 3.10.12+).
+                tar.extractall(destination, filter="data")
+            else:
+                tar.extractall(destination)
+    driver = destination / "clidriver"
+    if not driver.is_dir():
+        raise RuntimeError(f"{archive.name} does not contain a clidriver directory")
+    return driver
 
 
 _IBMI_PATCHED = False

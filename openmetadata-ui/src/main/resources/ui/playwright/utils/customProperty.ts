@@ -39,6 +39,7 @@ import {
   selectOptionWithRetry,
   uuid,
 } from './common';
+import { pickDateInCorePicker } from './datePicker';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
   navigateToEntityPanelTab,
@@ -81,50 +82,6 @@ export interface CustomProperty {
     type: string;
   };
 }
-
-/**
- * Picks `isoDate` (yyyy-MM-dd) in the core DatePicker inside `scope`: opens the
- * calendar, pages to the target month, clicks the day, then Apply.
- */
-const pickDateInCorePicker = async (
-  page: Page,
-  scope: Locator,
-  isoDate: string
-) => {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  // Cell labels follow the app locale ("Tuesday, 9 July 2024" or
-  // "Tuesday, July 9, 2024"); only the displayed month's days are rendered, so
-  // the day number alone identifies the cell.
-  const dayLabel = new RegExp(`(^|\\D)${day}(\\D|$)`);
-
-  await scope.getByTestId('date-time-picker').getByRole('button').click();
-  const calendar = page
-    .getByRole('dialog')
-    .filter({ has: page.getByRole('grid') });
-  await expect(calendar).toBeVisible();
-
-  const heading = calendar.getByRole('heading');
-  const targetMonth = year * 12 + (month - 1);
-  const MAX_MONTH_STEPS = 240;
-  for (let step = 0; step < MAX_MONTH_STEPS; step++) {
-    const shown = new Date(`1 ${await heading.textContent()}`);
-    const shownMonth = shown.getFullYear() * 12 + shown.getMonth();
-    if (shownMonth === targetMonth) {
-      break;
-    }
-    await calendar
-      .getByRole('button', {
-        name: shownMonth > targetMonth ? 'Previous' : 'Next',
-      })
-      .click();
-  }
-
-  await calendar
-    .getByRole('gridcell')
-    .getByRole('button', { name: dayLabel })
-    .click();
-  await calendar.getByRole('button', { name: 'Apply' }).click();
-};
 
 /** Types `HH:mm:ss` into the core TimePicker's segments inside `scope`. */
 const typeTimeInCorePicker = async (scope: Locator, time: string) => {
@@ -275,7 +232,11 @@ export const fillCustomPropertyEditModal = async (data: {
     case 'date-cp':
     case 'dateTime-cp': {
       const [datePart, timePart] = value.split(' ');
-      await pickDateInCorePicker(page, editModal, datePart);
+      await pickDateInCorePicker(
+        page,
+        editModal.getByTestId('date-time-picker'),
+        datePart
+      );
       if (timePart) {
         await typeTimeInCorePicker(editModal, timePart);
       }

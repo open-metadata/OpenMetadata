@@ -603,7 +603,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  protected void applyInheritance(DatabaseSchema entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(DatabaseSchema entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
     inheritTags(entity, fields, parent);
@@ -616,7 +616,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public EntityInterface getParentEntity(DatabaseSchema entity, String fields) {
+  public EntityInterface<?> getParentEntity(DatabaseSchema entity, String fields) {
     return Entity.getEntity(entity.getDatabase(), fields, ALL);
   }
 
@@ -674,7 +674,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             schema.getFullyQualifiedName());
     tables.forEach(
         table -> tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags"))));
-    tables.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    tables.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
 
     // Get stored procedures under this schema
     StoredProcedureRepository spRepository =
@@ -683,7 +683,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         spRepository.listAllForCSV(
             spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
             schema.getFullyQualifiedName());
-    storedProcedures.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    storedProcedures.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
 
     // Export all entities using a single CSV
     return new DatabaseSchemaCsv(schema, user, recursive)
@@ -880,7 +880,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     /**
      * Add entity to CSV file with entity type and fully qualified name
      */
-    public <E extends EntityInterface> void addEntityToCSV(
+    public <E extends EntityInterface<?>> void addEntityToCSV(
         CsvFile csvFile, E entity, String entityType) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());

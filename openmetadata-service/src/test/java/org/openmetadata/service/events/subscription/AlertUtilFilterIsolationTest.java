@@ -141,7 +141,7 @@ class AlertUtilFilterIsolationTest {
 
   /** The deliverable event resolves its domain; the poison one fails the way a matcher bug does. */
   private static void stubStore(MockedStatic<Entity> entityMock) {
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
     when(repository.isSupportsDomains()).thenReturn(true);
     entityMock.when(() -> Entity.getEntityClassFromType(Entity.TABLE)).thenReturn(Table.class);
     entityMock.when(() -> Entity.getEntityClassFromType(Entity.DOMAIN)).thenReturn(Domain.class);
@@ -195,7 +195,7 @@ class AlertUtilFilterIsolationTest {
     return batch;
   }
 
-  private static ChangeEvent event(String entityType, UUID entityId, EntityInterface entity) {
+  private static ChangeEvent event(String entityType, UUID entityId, EntityInterface<?> entity) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEventType(EventType.ENTITY_UPDATED)

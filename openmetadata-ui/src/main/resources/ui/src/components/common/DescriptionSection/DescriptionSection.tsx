@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button } from '@openmetadata/ui-core-components';
 import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -64,12 +65,14 @@ const DescriptionDisplay: React.FC<DescriptionDisplayProps> = ({
       />
     </div>
     {(shouldShowButton || isExpanded) && (
-      <button
-        className="show-more-button"
+      <Button
+        className="tw:text-xs"
+        color="link-color"
+        size="sm"
         type="button"
         onClick={onToggleExpanded}>
         {isExpanded ? showLessLabel : showMoreLabel}
-      </button>
+      </Button>
     )}
     {metadataBlock}
     {editorModal}
@@ -120,12 +123,12 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   // Callback to handle the edit button from description
   const handleEditDescription = useCallback(() => {
     setIsEditDescription(true);
-  }, [description]);
+  }, []);
 
   // Callback to handle the cancel button
   const handleCancelEditDescription = useCallback(() => {
     setIsEditDescription(false);
-  }, [description]);
+  }, []);
 
   // Callback to handle the description change from modal
   const handleDescriptionChange = useCallback(

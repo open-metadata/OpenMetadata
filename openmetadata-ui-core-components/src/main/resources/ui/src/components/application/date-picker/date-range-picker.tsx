@@ -163,7 +163,7 @@ export const DateRangePicker = ({
               'tw:duration-100 tw:ease-in tw:animate-out tw:fade-out tw:placement-right:slide-out-to-left-0.5 tw:placement-top:slide-out-to-bottom-0.5 tw:placement-bottom:slide-out-to-top-0.5'
           )
         }
-        offset={8}
+        offset={4}
         placement="bottom right">
         {/* `outline-[3px]` ports the bare `tw:ring` faithfully (3px in Tailwind v4 — likely
             unintended vs ring-1 elsewhere; tracked as a follow-up). `focus:outline-hidden`

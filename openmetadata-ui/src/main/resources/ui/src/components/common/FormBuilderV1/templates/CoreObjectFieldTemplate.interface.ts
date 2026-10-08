@@ -73,9 +73,6 @@ export interface PropertiesContentProps {
 
 export interface NonRootTitledViewProps {
   flatPropertyLayout: boolean;
-  isSampleDataSection: boolean;
-  isSampleDataConfig: boolean;
-  isAwsS3StorageConfig: boolean;
   isGatedCredentialConfig: boolean;
   isGenericNestedConfig: boolean;
   schema: ObjectFieldTemplateProps['schema'];
