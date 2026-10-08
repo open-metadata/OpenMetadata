@@ -1,6 +1,6 @@
 # Reasoning inside the OpenMetadata Fuseki image
 
-Status: proposed design and phased implementation plan; implementation not started. Date:
+Status: proposed design and phased implementation plan; phases 0 and 2 are implemented. Date:
 2026-10-07. Revised the same day after a review that checked each current-state claim against the
 code, and again to package all reasoning in the existing image without a sidecar;
 [Open decisions](#open-decisions) lists what remains.
@@ -381,24 +381,32 @@ OM already serializes live projection. `rdf_live_write_queue` has monotonic IDs,
 across servers, and dead letters. `rdf_projection_health` records failures, and the rebuild
 journal replays writes into a blue/green target. Reuse these instead of a Fuseki commit hook:
 
-- **Source revision** is `(serving generation, live-write watermark)`. OM sends the highest
-  acknowledged queue ID read just before submission. Capture happens afterwards, so the snapshot
-  contains at least those writes, and the label is conservative.
-- **Durable serving generation is new.** Today `rebuildId` is deleted at promotion and
-  `rdf_active_dataset` has no generation. Assign a generation UUID at promotion, send the expected
-  generation with every operation, and publish with compare-and-set against generation and job
-  order, so late jobs cannot become current after physical dataset-name reuse. Extend
+- **Source revision** is `(serving generation, live-write watermark)`. OM sends the acknowledged
+  watermark read just before submission: the highest queue ID below which every write has been
+  applied or dead-lettered (the lowest pending ID minus one, or the enqueued watermark when nothing
+  is pending). Capture happens afterwards, so the snapshot contains at least those writes, and the
+  label is conservative.
+- **Durable serving generation.** `rdf_active_dataset.generation` gets a new UUID at every
+  promotion, even when the physical dataset name repeats, and servers assign one on startup to a
+  pointer written before the column existed. Send the expected generation with every operation,
+  and publish with compare-and-set against generation and job order, so late jobs cannot become
+  current. See
   [RdfDatasetManager](../../openmetadata-service/src/main/java/org/openmetadata/service/rdf/rebuild/RdfDatasetManager.java)
   and [RdfRebuildStore](../../openmetadata-service/src/main/java/org/openmetadata/service/rdf/rebuild/RdfRebuildStore.java).
-- **Writers outside the queue** that touch captured graphs either advance the watermark or make
-  freshness `UNKNOWN` until the next refresh: admin SPARQL Update, synchronous pipeline-status
-  provenance writes, `OntologyLoader`, and the legacy materializer. Direct Fuseki writes that bypass
+- **Writers outside the queue** that touch captured graphs take the next queue ID without leaving a
+  row to deliver (`RdfLiveWriteStore.recordUntrackedWrite`), which makes earlier results `STALE`;
+  a write that cannot be recorded marks the projection degraded, which makes them `UNKNOWN`. The
+  admin SPARQL Update, pipeline-status provenance writes, and in-place reindex runs (before their
+  first write and after their last) record themselves. Derived graphs (rule output and insights)
+  are never captured, `OntologyLoader` reloads identical content and is covered by the ontology
+  digest, and blue/green builds get a new generation at promotion. Direct Fuseki writes that bypass
   OM are unsupported for freshness.
-- **Freshness** is `CURRENT` only when generations match, the snapshot watermark covers the
-  highest *enqueued* queue ID, ontology/rule digests match, and projection health is not degraded.
-  Otherwise it is `STALE`, or `UNKNOWN` after an untracked write or degraded health.
-  The metadata commit and queue insert are separate transactions, so a crash between them is
-  invisible to freshness, exactly as it is to projection; a full rebuild repairs both.
+- **Freshness** is `UNKNOWN` while projection health is degraded, since a refresh cannot repair a
+  graph that is missing writes. Otherwise it is `CURRENT` only when generations match, the snapshot
+  watermark covers the highest *enqueued* queue ID, and ontology/rule digests match, and `STALE`
+  when any of them does not. The metadata commit and queue insert are separate transactions, so a
+  crash between them is invisible to freshness, exactly as it is to projection; a full rebuild
+  repairs both.
 - **Dirty flags** use a captured-revision compare-and-set instead of the unconditional
   `markMaterialized`. Changes during a run stay pending and coalesce into the next refresh.
 
@@ -706,11 +714,11 @@ Measure with concurrent serving traffic before promising latency improvements or
 
 ## Phased implementation plan
 
-All phases below are **planned**, not started. Each phase ends with a working, verified capability;
-split its numbered tasks into focused changes rather than one PR for the whole phase. Phase 0
-corrects existing behavior and can ship on its own. The first complete reasoning release includes
-both governance and full authorable ontology semantics; intermediate governance-only execution is
-a development milestone, not a reduction of that requirement.
+Phases 0 and 2 are implemented; the others are **planned**. Each phase ends with a working, verified
+capability; split its numbered tasks into focused changes rather than one PR for the whole phase.
+Phase 0 corrects existing behavior and can ship on its own. The first complete reasoning release
+includes both governance and full authorable ontology semantics; intermediate governance-only
+execution is a development milestone, not a reduction of that requirement.
 
 | Phase | Deliverable | Depends on | Completion evidence |
 |---|---|---|---|
@@ -828,19 +836,19 @@ fixtures for phase 6 rather than building a separate prototype framework.
    `openmetadata-service/src/test/resources/rdf/reasoning/` pin the wire format for the fork.
    The OM-facing fields move to phase 7, which implements them: a `requireCurrent` flag that the
    server accepted but ignored would let clients believe stale answers were rejected.
-2. Add a durable serving-generation identity and captured job/status fields through
+2. Add a durable serving-generation identity through
    [RdfInfraDAOs.java](../../openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/RdfInfraDAOs.java),
-   `RdfDatasetManager.java`, and `RdfRebuildStore.java`. Add matching, append-only MySQL/Postgres
-   changes under `bootstrap/sql/migrations/native/`; select the unreleased migration version at
-   implementation time. Physical dataset reuse must always receive a new generation UUID.
-3. Expose the live-write watermark from `rdf/RdfLiveWriteStore.java` (highest acknowledged and
-   highest enqueued queue IDs). Make each writer outside the queue that touches captured graphs
-   advance the watermark or mark freshness `UNKNOWN`.
+   `RdfDatasetManager.java`, and `RdfRebuildStore.java`, with append-only MySQL/Postgres changes in
+   the unreleased 2.1.0 migration. Physical dataset reuse always receives a new generation UUID.
+3. Expose the live-write watermark from `rdf/RdfLiveWriteStore.java` (acknowledged and enqueued).
+   Make each writer outside the queue that touches captured graphs record itself, or mark the
+   projection degraded when it cannot. Encode the freshness rule in
+   `rdf/reasoning/ReasoningFreshness.java` for the phase 7 consumers.
 
-**Exit:** the watermark advances only on acknowledged writes; restart preserves identity;
-old-generation jobs cannot become current; a mutation during a job remains pending; untracked
-writes produce `UNKNOWN`. Protocol tests distinguish execution state, entailment outcome, and
-freshness.
+**Exit:** the watermark passes a write only once it is applied or dead-lettered; restart preserves
+identity; old-generation jobs cannot become current; a mutation during a job remains pending;
+untracked writes make earlier results `STALE`, and unrecordable ones `UNKNOWN`. Protocol tests
+distinguish execution state, entailment outcome, and freshness.
 
 **Checks:** Schema, Extension, and both RDF lanes. Add watermark/rebuild cases to
 `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/` with `Rdf*IT` names.

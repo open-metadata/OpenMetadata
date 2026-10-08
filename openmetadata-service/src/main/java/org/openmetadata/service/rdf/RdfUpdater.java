@@ -29,6 +29,7 @@ import org.openmetadata.service.util.PostCommitActionQueue;
 @Slf4j
 public final class RdfUpdater {
   private static volatile Consumer<RdfLiveWrite> writeQueue;
+  private static volatile RdfLiveWriteStore liveWriteStore;
   private static RdfLiveWriter writer;
 
   private RdfUpdater() {}
@@ -56,6 +57,7 @@ public final class RdfUpdater {
               command -> command.apply(repository),
               AsyncService.getInstance().getExecutorService());
       writeQueue = writer::enqueue;
+      liveWriteStore = store;
       writer.start();
       LOG.info("RDF updater initialized with durable, ordered live writes");
     }
@@ -72,6 +74,7 @@ public final class RdfUpdater {
 
   public static synchronized void stop() {
     writeQueue = null;
+    liveWriteStore = null;
     if (writer != null) {
       writer.close();
       writer = null;
@@ -124,6 +127,22 @@ public final class RdfUpdater {
   public static void removeGlossaryTermRelation(
       final UUID fromId, final UUID toId, final String relationType) {
     submit(new RdfLiveWrite.GlossaryRelationChange(fromId, toId, relationType, true));
+  }
+
+  /**
+   * Records a write to the serving graph that bypassed the live-write queue, so reasoning results
+   * computed before it stop passing for current. A write that cannot be recorded marks the
+   * projection degraded instead, which makes their freshness unknown rather than wrongly current.
+   */
+  public static void recordUntrackedWrite() {
+    final RdfLiveWriteStore store = liveWriteStore;
+    if (store != null) {
+      try {
+        store.recordUntrackedWrite();
+      } catch (RuntimeException exception) {
+        RdfProjectionHealth.markDegraded(exception);
+      }
+    }
   }
 
   private static void submit(final RdfLiveWrite command) {

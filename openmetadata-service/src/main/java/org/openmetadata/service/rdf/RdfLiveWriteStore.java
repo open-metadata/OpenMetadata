@@ -27,6 +27,9 @@ public final class RdfLiveWriteStore {
   private static final long MAX_HEALTHY_LAG_MILLIS = Duration.ofSeconds(30).toMillis();
   private static final int MAX_ERROR_LENGTH = 8192;
   private static final int MAX_DELIVERY_ATTEMPTS = 10;
+  private static final String RECORD_ENQUEUED =
+      "UPDATE rdf_projection_health SET enqueuedWatermark = GREATEST(enqueuedWatermark, ?) "
+          + "WHERE id = 'active'";
   private final Jdbi jdbi;
   private final Clock clock;
 
@@ -39,17 +42,76 @@ public final class RdfLiveWriteStore {
     jdbi.useTransaction(
         TransactionIsolationLevel.READ_COMMITTED,
         handle -> {
-          // Serializing these short transactions makes id order also be commit order. This lock
-          // is independent of the consumer fence, so a slow Fuseki write cannot stall producers.
-          handle
-              .createQuery("SELECT id FROM rdf_live_write_guard WHERE id = 'enqueue' FOR UPDATE")
-              .mapTo(String.class)
-              .one();
-          handle.execute(
-              "INSERT INTO rdf_live_write_queue (payload, createdAt) VALUES (?, ?)",
-              payload,
-              clock.millis());
+          lockEnqueue(handle);
+          handle.execute(RECORD_ENQUEUED, insert(handle, payload));
         });
+  }
+
+  /**
+   * Gives a write made to the serving graph outside this queue the next queue ID, leaving nothing
+   * to deliver. Reasoning input captured before the write then no longer passes for current, while
+   * servers that predate this method still drain the queue normally.
+   */
+  public long recordUntrackedWrite() {
+    return jdbi.inTransaction(
+        TransactionIsolationLevel.READ_COMMITTED,
+        handle -> {
+          lockEnqueue(handle);
+          final long id = insert(handle, "");
+          handle.execute("DELETE FROM rdf_live_write_queue WHERE id = ?", id);
+          handle.execute(RECORD_ENQUEUED, id);
+          return id;
+        });
+  }
+
+  private static void lockEnqueue(final Handle handle) {
+    // Serializing these short transactions makes id order also be commit order. This lock is
+    // independent of the consumer fence, so a slow Fuseki write cannot stall producers.
+    handle
+        .createQuery("SELECT id FROM rdf_live_write_guard WHERE id = 'enqueue' FOR UPDATE")
+        .mapTo(String.class)
+        .one();
+  }
+
+  private long insert(final Handle handle, final String payload) {
+    return handle
+        .createUpdate(
+            "INSERT INTO rdf_live_write_queue (payload, createdAt) VALUES (:payload, :createdAt)")
+        .bind("payload", payload)
+        .bind("createdAt", clock.millis())
+        .executeAndReturnGeneratedKeys("id")
+        .mapTo(Long.class)
+        .one();
+  }
+
+  /**
+   * Highest queue ID below which every write has been applied or dead-lettered. Dead letters count
+   * as passed, or no later write could ever count as applied; the degraded health they record is
+   * what marks the graph as missing them.
+   */
+  public long acknowledgedWatermark() {
+    return jdbi.withHandle(
+        handle ->
+            handle
+                .createQuery(
+                    "SELECT COALESCE((SELECT MIN(id) FROM rdf_live_write_queue) - 1, "
+                        + "enqueuedWatermark) FROM rdf_projection_health WHERE id = 'active'")
+                .mapTo(Long.class)
+                .one());
+  }
+
+  /** Highest queue ID handed out so far, including writes recorded from outside the queue. */
+  public long enqueuedWatermark() {
+    // Rows enqueued by servers that predate the column are counted from the queue itself.
+    return jdbi.withHandle(
+        handle ->
+            handle
+                .createQuery(
+                    "SELECT GREATEST(enqueuedWatermark, "
+                        + "COALESCE((SELECT MAX(id) FROM rdf_live_write_queue), 0)) "
+                        + "FROM rdf_projection_health WHERE id = 'active'")
+                .mapTo(Long.class)
+                .one());
   }
 
   public boolean processNext(final Consumer<String> write) {
