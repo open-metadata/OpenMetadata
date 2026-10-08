@@ -26,6 +26,7 @@ import {
   ChevronDown,
   DotsVertical,
   File02,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -55,6 +56,7 @@ import { queryClient } from '../../../../queryClient';
 import { deleteEntity } from '../../../../rest/miscAPI';
 import {
   removeTestCaseFromTestSuite,
+  removeTestCasesFromTestSuiteBulk,
   restoreTestCase,
 } from '../../../../rest/testAPI';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
@@ -177,6 +179,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   >([]);
   const [isTestCaseRemovalLoading, setIsTestCaseRemovalLoading] =
     useState(false);
+  const [isBulkRemoveModalOpen, setIsBulkRemoveModalOpen] = useState(false);
+  const [isBulkRemovalLoading, setIsBulkRemovalLoading] = useState(false);
   const [isDeletingTestCase, setIsDeletingTestCase] = useState(false);
   const [restoringTestCaseAction, setRestoringTestCaseAction] =
     useState<TestCaseAction>();
@@ -241,7 +245,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     return data;
   }, [testCases, sortDescriptor]);
 
-  const selectedTestCasesForBundle = useMemo(() => {
+  const isBulkRemoveAllowed = Boolean(removeFromTestSuite?.isAllowed);
+  const isSelectionEnabled = enableBulkActions || isBulkRemoveAllowed;
+
+  // 'all' is the rows loaded on this page: the bulk remove endpoint takes an
+  // explicit id list and has no server-side "everything matching" mode.
+  const selectedTestCases = useMemo(() => {
     if (selectedKeys === 'all') {
       return sortedData;
     }
@@ -249,6 +258,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     return sortedData.filter((tc) => keySet.has(tc.id ?? ''));
   }, [sortedData, selectedKeys]);
+
+  const selectedTestCaseIds = useMemo(
+    () =>
+      selectedTestCases.flatMap((testCase) =>
+        testCase.id ? [testCase.id] : []
+      ),
+    [selectedTestCases]
+  );
 
   const hasSelection = useMemo(() => {
     if (selectedKeys === 'all') {
@@ -293,6 +310,27 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       showErrorToast(error as AxiosError);
     } finally {
       setIsTestCaseRemovalLoading(false);
+    }
+  };
+
+  const handleBulkRemove = async () => {
+    const testSuiteId = removeFromTestSuite?.testSuite?.id;
+    if (!testSuiteId || selectedTestCaseIds.length === 0) {
+      setIsBulkRemoveModalOpen(false);
+
+      return;
+    }
+    setIsBulkRemovalLoading(true);
+    try {
+      await removeTestCasesFromTestSuiteBulk(testSuiteId, selectedTestCaseIds);
+      showSuccessToast(t('message.test-cases-removed-from-test-suite'));
+      setSelectedKeys(new Set<string>());
+      afterDeleteAction?.();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsBulkRemoveModalOpen(false);
+      setIsBulkRemovalLoading(false);
     }
   };
 
@@ -852,12 +890,119 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     );
   };
 
+  const renderBulkRemoveModal = () => {
+    if (!isBulkRemoveAllowed || !removeFromTestSuite) {
+      return null;
+    }
+
+    return (
+      <ConfirmationModal
+        bodyText={t(
+          'message.are-you-sure-you-want-to-remove-count-test-cases-from-parent',
+          {
+            count: selectedTestCaseIds.length,
+            parent: getEntityName(removeFromTestSuite.testSuite),
+          }
+        )}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.remove')}
+        header={t('label.remove-entity', {
+          entity: t('label.test-case-plural'),
+        })}
+        isLoading={isBulkRemovalLoading}
+        visible={isBulkRemoveModalOpen}
+        onCancel={() => setIsBulkRemoveModalOpen(false)}
+        onConfirm={handleBulkRemove}
+      />
+    );
+  };
+
+  const renderSelectionToolbar = () => {
+    if (!isSelectionEnabled || !hasSelection) {
+      return null;
+    }
+
+    return (
+      <Box
+        align="center"
+        className="tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2"
+        gap={3}
+        wrap="wrap">
+        <Box>
+          <Typography size="text-sm">
+            {t('label.bundle-test-case-selected-count', {
+              count: selectedTestCases.length,
+            })}
+          </Typography>
+          <Button
+            className="tw:ml-2"
+            color="tertiary"
+            data-testid="bulk-clear-test-case-selection"
+            size="sm"
+            onClick={() => setSelectedKeys(new Set<string>())}>
+            {t('label.clear-selection')}
+          </Button>
+        </Box>
+        <Box align="center" className="tw:ml-auto" gap={3}>
+          {isBulkRemoveAllowed && (
+            <Button
+              color="primary-destructive"
+              data-testid="bulk-remove-test-cases"
+              iconLeading={Trash01}
+              size="sm"
+              onClick={() => setIsBulkRemoveModalOpen(true)}>
+              {t('label.remove')}
+            </Button>
+          )}
+          {enableBulkActions && (
+            <Dropdown.Root>
+              <Button
+                color="primary"
+                data-testid="add-selected-to-bundle-suite"
+                iconTrailing={ChevronDown}
+                size="sm">
+                {t('label.add-to-bundle-suite')}
+              </Button>
+              <Dropdown.Popover className="tw:min-w-65">
+                <Dropdown.Menu
+                  items={[
+                    {
+                      id: 'existing',
+                      label: t('label.add-to-existing-bundle-suite'),
+                      onAction: () => setIsAddToBundleSuiteModalOpen(true),
+                      testId: 'add-to-existing-bundle-suite',
+                    },
+                    {
+                      id: 'new',
+                      label: t('label.create-new-bundle-suite'),
+                      onAction: () =>
+                        handleOpenBundleSuiteForm(selectedTestCases),
+                      testId: 'create-new-bundle-suite',
+                    },
+                  ]}>
+                  {(item) => (
+                    <Dropdown.Item
+                      data-testid={item.testId}
+                      id={item.id}
+                      label={item.label}
+                      onAction={item.onAction}
+                    />
+                  )}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
+          )}
+        </Box>
+      </Box>
+    );
+  };
+
   const renderTestCaseModals = () => (
     <>
       {enableBulkActions && (
         <AddToBundleSuiteModal
           open={isAddToBundleSuiteModalOpen}
-          selectedTestCases={selectedTestCasesForBundle}
+          selectedTestCases={selectedTestCases}
           onAddedToExisting={handleAddedToExistingBundleSuite}
           onCancel={() => setIsAddToBundleSuiteModalOpen(false)}
         />
@@ -899,6 +1044,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onConfirm={handleConfirmClick}
         />
       )}
+      {renderBulkRemoveModal()}
       {!removeFromTestSuite &&
         deletionMode === TEST_CASE_DELETION_MODE.SOFT && (
           <DeleteEntityModal
@@ -947,67 +1093,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       {tableHeader && (
         <div className="data-quality-table-header">{tableHeader}</div>
       )}
-      {enableBulkActions && hasSelection && (
-        <Box
-          align="center"
-          className="tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2"
-          gap={3}
-          wrap="wrap">
-          <Box>
-            <Typography size="text-sm">
-              {t('label.bundle-test-case-selected-count', {
-                count: selectedTestCasesForBundle.length,
-              })}
-            </Typography>
-            <Typography
-              as="a"
-              className="tw:ml-2"
-              data-testid="bulk-clear-test-case-selection"
-              size="text-sm"
-              onClick={() => setSelectedKeys(new Set<string>())}>
-              {t('label.clear-selection')}
-            </Typography>
-          </Box>
-          <Box align="center" className="tw:ml-auto" gap={3}>
-            <Dropdown.Root>
-              <Button
-                color="primary"
-                data-testid="add-selected-to-bundle-suite"
-                iconTrailing={ChevronDown}
-                size="sm">
-                {t('label.add-to-bundle-suite')}
-              </Button>
-              <Dropdown.Popover className="tw:min-w-65">
-                <Dropdown.Menu
-                  items={[
-                    {
-                      id: 'existing',
-                      label: t('label.add-to-existing-bundle-suite'),
-                      onAction: () => setIsAddToBundleSuiteModalOpen(true),
-                      testId: 'add-to-existing-bundle-suite',
-                    },
-                    {
-                      id: 'new',
-                      label: t('label.create-new-bundle-suite'),
-                      onAction: () =>
-                        handleOpenBundleSuiteForm(selectedTestCasesForBundle),
-                      testId: 'create-new-bundle-suite',
-                    },
-                  ]}>
-                  {(item) => (
-                    <Dropdown.Item
-                      data-testid={item.testId}
-                      id={item.id}
-                      label={item.label}
-                      onAction={item.onAction}
-                    />
-                  )}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </Box>
-        </Box>
-      )}
+      {renderSelectionToolbar()}
       <div
         className={classNames('tw:overflow-x-auto', {
           'test-case-table-container': true,
@@ -1020,7 +1106,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           aria-label={t('label.test-case-plural')}
           data-testid="test-case-table"
           selectedKeys={selectedKeys}
-          selectionMode={enableBulkActions ? 'multiple' : 'none'}
+          selectionMode={isSelectionEnabled ? 'multiple' : 'none'}
           size="sm"
           sortDescriptor={sortDescriptor}
           onSelectionChange={setSelectedKeys}
