@@ -25,7 +25,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
-  # Integration tests only; the unit-test and coverage jobs run in py-tests.yml.
+  # Integration tests only, so PR runs skip everything (merge queue runs the suite);
+  # the unit-test and coverage jobs run in py-tests.yml.
   python:
     uses: ./.github/workflows/py-tests-shared.yml
     with:

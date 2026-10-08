@@ -19,7 +19,7 @@ import {
 import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +52,7 @@ import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/Tes
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
+import { omitDimensionFailurePolicy } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
@@ -261,6 +262,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       const normalizedValues = normalizeFormValuesForPayload(
         values,
         resolvedDefinition
+      );
+      normalizedValues.params = omitDimensionFailurePolicy(
+        normalizedValues.params,
+        !isEmpty(normalizedValues.dimensionColumns)
       );
       const formValue = normalizedValues as unknown as TestCaseFormType;
       const jsonPatch = createUpdatedTestCasePatch({

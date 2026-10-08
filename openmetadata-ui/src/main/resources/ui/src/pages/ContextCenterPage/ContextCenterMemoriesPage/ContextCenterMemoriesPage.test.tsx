@@ -241,7 +241,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
 
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({ statuses: 'Approved', offset: 0 })
+        expect.objectContaining({ statuses: 'Approved,Unprocessed', offset: 0 })
       );
     });
 
@@ -250,11 +250,14 @@ describe('ContextCenterMemoriesPage — permissions', () => {
 
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
-        expect.objectContaining({ statuses: 'Approved,Rejected', offset: 0 })
+        expect.objectContaining({
+          statuses: 'Approved,Unprocessed,Rejected',
+          offset: 0,
+        })
       );
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Rejected',
+          statuses: 'Approved,Unprocessed,Rejected',
           limit: 0,
           offset: 0,
         })
@@ -265,7 +268,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Rejected',
+          statuses: 'Approved,Unprocessed,Rejected',
           author: 'user-1',
         })
       );
@@ -278,7 +281,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Rejected',
+          statuses: 'Approved,Unprocessed,Rejected',
           q: 'missing glossary fact',
           assets: 'asset-1',
           author: 'user-1',
@@ -291,7 +294,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Rejected',
+          statuses: 'Approved,Unprocessed,Rejected',
           q: 'missing glossary fact',
           assets: 'asset-1',
           author: 'user-1',
@@ -326,7 +329,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Rejected',
+          statuses: 'Approved,Unprocessed,Rejected',
           author: 'other-user',
         })
       );
