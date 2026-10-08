@@ -2357,6 +2357,10 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertFalse(found.contains(noMatch.getId()), "A task on the entity that does not match is not");
     assertFalse(
         found.contains(otherEntity.getId()), "A matching task on another entity is not returned");
+    assertTrue(
+        searchTaskIdsAbout(table.getFullyQualifiedName(), null)
+            .containsAll(List.of(match.getId(), noMatch.getId())),
+        "Without q the entity's tasks are all listed");
   }
 
   private Task createTaskWithDisplayName(
@@ -2366,19 +2370,20 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         .create(createTaskRequestAboutTable(ns, name, table).withDisplayName(displayName));
   }
 
+  private static RequestOptions searchOptions(String aboutEntity, String query) {
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("aboutEntity", aboutEntity).queryParam("limit", "100");
+    if (query != null) {
+      options.queryParam("q", query);
+    }
+    return options.build();
+  }
+
   private List<UUID> searchTaskIdsAbout(String aboutEntity, String query) throws Exception {
     String response =
         SdkClients.adminClient()
             .getHttpClient()
-            .executeForString(
-                HttpMethod.GET,
-                "/v1/tasks",
-                null,
-                RequestOptions.builder()
-                    .queryParam("aboutEntity", aboutEntity)
-                    .queryParam("q", query)
-                    .queryParam("limit", "100")
-                    .build());
+            .executeForString(HttpMethod.GET, "/v1/tasks", null, searchOptions(aboutEntity, query));
     List<UUID> ids = new ArrayList<>();
     JsonUtils.readTree(response)
         .path("data")

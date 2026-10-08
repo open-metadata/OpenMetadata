@@ -431,6 +431,8 @@ public interface ActivityAuditDAOs {
         "AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(domains) AS domain_id "
             + "WHERE domain_id IN (<domainIds>)) ";
     String NEWEST_FIRST = "ORDER BY timestamp DESC, id DESC LIMIT :limit";
+    String ABOUT_ENTITY_MYSQL = "AND aboutFqnHash = :aboutFqnHash ";
+    String ABOUT_ENTITY_POSTGRES = "AND aboutfqnhash = :aboutFqnHash ";
 
     @ConnectionAwareSqlQuery(
         value = MENTIONED_ACTIVITY_MYSQL + NEWEST_FIRST,
@@ -460,10 +462,10 @@ public interface ActivityAuditDAOs {
 
     // The same mentions, about one entity: aboutFqnHash is how /activity/about matches it.
     @ConnectionAwareSqlQuery(
-        value = MENTIONED_ACTIVITY_MYSQL + "AND aboutFqnHash = :aboutFqnHash " + NEWEST_FIRST,
+        value = MENTIONED_ACTIVITY_MYSQL + ABOUT_ENTITY_MYSQL + NEWEST_FIRST,
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-        value = MENTIONED_ACTIVITY_POSTGRES + "AND aboutfqnhash = :aboutFqnHash " + NEWEST_FIRST,
+        value = MENTIONED_ACTIVITY_POSTGRES + ABOUT_ENTITY_POSTGRES + NEWEST_FIRST,
         connectionType = POSTGRES)
     List<String> listByMentionsAbout(
         @Bind("userId") String userId,
@@ -473,16 +475,12 @@ public interface ActivityAuditDAOs {
         @Bind("limit") int limit);
 
     @ConnectionAwareSqlQuery(
-        value =
-            MENTIONED_ACTIVITY_MYSQL
-                + "AND aboutFqnHash = :aboutFqnHash "
-                + IN_DOMAINS_MYSQL
-                + NEWEST_FIRST,
+        value = MENTIONED_ACTIVITY_MYSQL + ABOUT_ENTITY_MYSQL + IN_DOMAINS_MYSQL + NEWEST_FIRST,
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             MENTIONED_ACTIVITY_POSTGRES
-                + "AND aboutfqnhash = :aboutFqnHash "
+                + ABOUT_ENTITY_POSTGRES
                 + IN_DOMAINS_POSTGRES
                 + NEWEST_FIRST,
         connectionType = POSTGRES)

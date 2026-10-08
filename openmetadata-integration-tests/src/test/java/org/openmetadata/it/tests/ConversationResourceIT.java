@@ -27,8 +27,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
@@ -147,9 +149,12 @@ class ConversationResourceIT {
             .map(Conversation::getId)
             .toList(),
         "Without includeFields the link matches exactly");
+    // Both may share a millisecond, so the order is the id's, not the creation's.
     assertEquals(
-        List.of(onColumn.getId(), onTable.getId()),
-        listConversationsWithFields(about).getData().stream().map(Conversation::getId).toList());
+        Set.of(onColumn.getId(), onTable.getId()),
+        listConversationsWithFields(about).getData().stream()
+            .map(Conversation::getId)
+            .collect(Collectors.toSet()));
     assertEquals(
         List.of(onColumn.getId()),
         listConversationsWithFields(columnAbout).getData().stream()

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.activity;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -394,7 +396,7 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    if (entityLink != null) {
+    if (!nullOrEmpty(entityLink)) {
       authorizeEntityLinkView(securityContext, entityLink);
     }
     return activityStreamRepository.getMentionsFeed(

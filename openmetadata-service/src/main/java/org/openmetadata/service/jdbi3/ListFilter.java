@@ -1815,8 +1815,8 @@ public class ListFilter extends Filter<ListFilter> {
 
   /**
    * Free-text search across task fields. Used by the {@code q} query param on the task list
-   * endpoints ({@code /v1/tasks/dataAccessRequests} and the user-scoped {@code /assigned},
-   * {@code /visible}, {@code /owned}, {@code /created} lists). Database-only — tasks are not
+   * endpoints ({@code /v1/tasks}, {@code /v1/tasks/dataAccessRequests} and the user-scoped
+   * {@code /assigned}, {@code /visible}, {@code /owned}, {@code /created} lists). Database-only — tasks are not
    * indexed into Elasticsearch. Matches against task name, displayName, the request reason in the
    * payload, and the about-entity FQN / displayName.
    */
