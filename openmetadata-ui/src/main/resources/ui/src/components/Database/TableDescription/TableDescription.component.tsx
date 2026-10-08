@@ -98,7 +98,6 @@ const TableDescription = ({
 
   return (
     <Box
-      inline
       align="stretch"
       className="layout-space hover-icon-group w-full d-flex"
       data-testid="description"
