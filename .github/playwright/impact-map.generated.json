@@ -4765,6 +4765,16 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/settingsSource.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
+        "playwright/e2e/Pages/EmailConfiguration.spec.ts",
+        "playwright/e2e/Pages/OmdURLConfiguration.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/utils/sidebar.ts"
       ],
       "specs": [
@@ -10633,6 +10643,16 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/SettingsSourceBanner/SettingsSourceBanner.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/SSOConfiguration.spec.ts",
+        "playwright/e2e/Pages/EmailConfiguration.spec.ts",
+        "playwright/e2e/Pages/OmdURLConfiguration.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/enums/DataQuality.enum.ts"
       ],
       "specs": [
@@ -11931,6 +11951,14 @@
       "specs": [
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/Table.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/EmailConfiguration.spec.ts"
       ]
     },
     {
