@@ -12,29 +12,17 @@
 Teradata lineage module
 """
 
-from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
-    TeradataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
-from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.teradata.queries import (
-    TERADATA_QUERY_HISTORY_STATEMENT,
+from metadata.ingestion.source.database.teradata.query_parser import (
+    TeradataQueryParserSource,
 )
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
 
 
-class TeradataLineageSource(LineageSource):
+class TeradataLineageSource(TeradataQueryParserSource, LineageSource):
     """
     Teradata lineage from view definitions and the DBQL query log
     """
 
-    sql_stmt = TERADATA_QUERY_HISTORY_STATEMENT
     # INSERT ... VALUES rows (TPump/BTEQ loads) and plain CREATE TABLE DDL carry no lineage
     # and would flood resultLimit, so those two types must also read from a SELECT
     filters = """
@@ -44,12 +32,3 @@ class TeradataLineageSource(LineageSource):
             OR UPPER(COALESCE(s.SqlTextInfo, q.QueryText)) LIKE '%SEL%'
         )
     """
-
-    @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
-        """Create class instance"""
-        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: TeradataConnection = config.serviceConnection.root.config
-        if not isinstance(connection, TeradataConnection):
-            raise InvalidSourceException(f"Expected TeradataConnection, but got {connection}")
-        return cls(config, metadata)
