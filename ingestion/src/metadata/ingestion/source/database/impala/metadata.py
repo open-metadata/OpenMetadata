@@ -39,6 +39,17 @@ _impala_type_to_sqlalchemy_type.update(
 )
 
 
+def _quote_identifier(identifier: str) -> str:
+    """Quote one untrusted Impala identifier.
+
+    `ImpalaIdentifierPreparer` leaves `escape_quote` at `"`, so the preparer
+    cannot do this. Impala has no in-identifier escape either, so doubling
+    keeps the name inside the backticks and the statement fails to parse
+    rather than naming a different table.
+    """
+    return f"`{identifier.replace('`', '``')}`"
+
+
 def get_impala_table_or_view_names(connection, schema=None, target_type="table"):
     """
     Depending on the targetType returns either the Views or Tables
@@ -53,9 +64,10 @@ def get_impala_table_or_view_names(connection, schema=None, target_type="table")
     tables_and_views = [result[0] for result in results]
 
     retvalue = []
+    schema_prefix = f"{_quote_identifier(schema)}." if schema else ""
 
     for table_view in tables_and_views:
-        query = f"describe formatted `{schema}`.`{table_view}`"
+        query = f"describe formatted {schema_prefix}{_quote_identifier(table_view)}"
         cursor = connection.execute(text(query))
         results = cursor.fetchall()
 
@@ -113,7 +125,7 @@ def get_columns(self, connection, table_name, schema=None, **kwargs):  # pylint:
     """
     full_table_name = f"{schema}.{table_name}" if schema is not None else table_name
     split_name = full_table_name.split(".")
-    query = f"DESCRIBE `{split_name[0]}`.`{split_name[1]}`"
+    query = f"DESCRIBE {_quote_identifier(split_name[0])}.{_quote_identifier(split_name[1])}"
     describe_table_rows = connection.execute(text(query))
     column_info = []
     ordinal_pos = 0
@@ -154,10 +166,9 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     """
     Gets the view definition
     """
-    # Names come from the metastore, so they are untrusted. ImpalaDialect's preparer
-    # leaves escape_quote at '"', so quote_identifier would not escape the backtick.
-    view = view_name.replace("`", "``")
-    full_view_name = f"`{view}`" if not schema else f"`{schema.replace('`', '``')}`.`{view}`"
+    # Names come from the metastore, so they are untrusted.
+    view = _quote_identifier(view_name)
+    full_view_name = view if not schema else f"{_quote_identifier(schema)}.{view}"
     res = connection.execute(text(f"SHOW CREATE VIEW {full_view_name}")).fetchall()
     if res:
         return "\n".join(i[0] for i in res)

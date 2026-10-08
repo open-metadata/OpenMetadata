@@ -21,21 +21,32 @@ unescaped. The escape has to be done here.
 
 from impala.sqlalchemy import ImpalaDialect
 
-from metadata.ingestion.source.database.impala.metadata import get_view_definition
+from metadata.ingestion.source.database.impala.metadata import (
+    get_columns,
+    get_impala_table_or_view_names,
+    get_view_definition,
+)
 
 
 class _FakeResult:
+    def __init__(self, rows=()):
+        self.rows = rows
+
     def fetchall(self):
-        return []
+        return self.rows
+
+    def __iter__(self):
+        return iter(self.rows)
 
 
 class _FakeConnection:
-    def __init__(self, emitted):
+    def __init__(self, emitted, rows=()):
         self.emitted = emitted
+        self.rows = rows
 
     def execute(self, clause):
         self.emitted.append(str(clause))
-        return _FakeResult()
+        return _FakeResult(self.rows)
 
 
 def test_show_create_view_escapes_backticks_in_schema_and_view():
@@ -52,3 +63,21 @@ def test_show_create_view_escapes_backticks_without_a_schema():
     get_view_definition(ImpalaDialect(), _FakeConnection(emitted), "v`y")
 
     assert emitted == ["SHOW CREATE VIEW `v``y`"]
+
+
+def test_describe_formatted_escapes_backticks_in_schema_and_table():
+    emitted = []
+    # Serves the `show tables` listing and then the `describe formatted` rows.
+    connection = _FakeConnection(emitted, [("v`y",)])
+
+    get_impala_table_or_view_names(connection, schema="db`x", target_type="view")
+
+    assert emitted[-1] == "describe formatted `db``x`.`v``y`"
+
+
+def test_describe_columns_escapes_backticks_in_schema_and_table():
+    emitted = []
+
+    get_columns(ImpalaDialect(), _FakeConnection(emitted), "v`y", schema="db`x")
+
+    assert emitted == ["DESCRIBE `db``x`.`v``y`"]

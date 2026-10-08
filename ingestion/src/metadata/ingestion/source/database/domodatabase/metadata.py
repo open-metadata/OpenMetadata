@@ -256,6 +256,8 @@ class DomodatabaseSource(DatabaseServiceSource):
             table_object.schemas = self.get_columns_from_federated_dataset(
                 table_name=table_object.name, dataset_id=table_object.id
             )
+        if not table_object.schemas:
+            return columns
 
         for column in table_object.schemas.columns or []:
             try:
