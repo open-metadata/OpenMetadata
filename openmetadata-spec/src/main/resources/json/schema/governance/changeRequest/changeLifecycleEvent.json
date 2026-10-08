@@ -9,7 +9,7 @@
     "lifecycleEventType": {
       "javaType": "org.openmetadata.schema.governance.changeRequest.LifecycleEventType",
       "type": "string",
-      "enum": ["Submitted", "Revised", "Approved", "Applied", "Rejected", "Conflicted", "Withdrawn", "Cancelled", "Overridden", "PartiallyApplied"]
+      "enum": ["Submitted", "Revised", "Approved", "Applied", "Rejected", "Conflicted", "Withdrawn", "Cancelled", "Overridden", "PartiallyApplied", "Superseded"]
     }
   },
   "properties": {

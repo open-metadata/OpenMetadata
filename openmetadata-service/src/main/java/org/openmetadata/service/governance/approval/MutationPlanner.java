@@ -44,6 +44,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 public final class MutationPlanner {
   private static final String REFERENCE_ID = "id";
   private static final String TAG_FQN = "tagFQN";
+  private static final String RELATED_TERM = "term";
+  private static final String RELATION_TYPE = "relationType";
+  private static final String DEFAULT_RELATION_TYPE = "relatedTo";
+  private static final String ENDPOINT = "endpoint";
+  private static final String REFERENCE_NAME = "name";
   private static final String INHERITED = "inherited";
   private static final Comparator<MutationOp> CANONICAL_ORDER =
       Comparator.comparing(MutationOp::getField)
@@ -223,12 +228,35 @@ public final class MutationPlanner {
     }
   }
 
+  private static boolean holdsOwn(JsonNode array, String key) {
+    boolean held = false;
+    for (JsonNode element : array) {
+      held |= !element.path(INHERITED).asBoolean(false) && key.equals(identityOf(element));
+    }
+    return held;
+  }
+
   private static int indexOf(JsonNode array, String key) {
     int found = -1;
     for (int i = 0; i < array.size() && found < 0; i++) {
       found = key.equals(identityOf(array.get(i))) ? i : -1;
     }
     return found;
+  }
+
+  /**
+   * Whether the asset as published already shows what {@code op} proposes: the field holds the
+   * proposed value, the element is there, or the removed element is gone. An element the asset only
+   * inherits is not one it holds itself, so adding it is still a change.
+   */
+  public static boolean alreadyPublished(JsonNode current, MutationOp op) {
+    JsonNode field = current.get(op.getField());
+    boolean present = field != null && field.isArray() && holdsOwn(field, op.getKey());
+    return switch (op.getOp()) {
+      case SET -> sameValue(field, JsonUtils.readTree(op.getValue()));
+      case ADD -> present;
+      case REMOVE -> !present;
+    };
   }
 
   private static boolean drifted(JsonNode current, MutationOp op) {
@@ -258,12 +286,27 @@ public final class MutationPlanner {
     return byKey;
   }
 
+  /**
+   * The identity of a list element, so a change to a list is a set of element additions and
+   * removals: a string is itself, a tag label its tag FQN, a relation to a glossary term that term
+   * and the relation type, an external reference its endpoint and name, and an entity reference its id.
+   * Elements of any other shape have no identity, and their list is replaced as a whole.
+   */
   static String identityOf(JsonNode element) {
     String identity = null;
     if (element.isTextual()) {
       identity = element.asText();
     } else if (element.hasNonNull(TAG_FQN)) {
       identity = element.get(TAG_FQN).asText();
+    } else if (element.path(RELATED_TERM).hasNonNull(REFERENCE_ID)) {
+      identity =
+          "%s|%s"
+              .formatted(
+                  element.get(RELATED_TERM).get(REFERENCE_ID).asText(),
+                  element.path(RELATION_TYPE).asText(DEFAULT_RELATION_TYPE));
+    } else if (element.hasNonNull(ENDPOINT)) {
+      identity =
+          "%s|%s".formatted(element.get(ENDPOINT).asText(), element.path(REFERENCE_NAME).asText());
     } else if (element.hasNonNull(REFERENCE_ID)) {
       identity = element.get(REFERENCE_ID).asText();
     }

@@ -129,6 +129,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     renderWithWorkflowMode(
       <WorkflowConfigFormV1
+        allowScheduledTrigger
         {...baseHandlers}
         allowStartNodeFilterScheduleAndBatchEdit
         allowFullStartNodeConfiguration={false}
@@ -178,6 +179,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     renderWithWorkflowMode(
       <WorkflowConfigFormV1
+        allowScheduledTrigger
         {...baseHandlers}
         allowFullStartNodeConfiguration={false}
         allowStartNodeFilterScheduleAndBatchEdit={false}
@@ -214,6 +216,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
     renderWithWorkflowMode(
       <WorkflowConfigFormV1
+        allowScheduledTrigger
         {...baseHandlers}
         allowFullStartNodeConfiguration
         allowStartNodeFilterScheduleAndBatchEdit

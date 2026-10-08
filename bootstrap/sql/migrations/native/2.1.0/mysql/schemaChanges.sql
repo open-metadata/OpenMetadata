@@ -498,7 +498,7 @@ EXECUTE announcement_type_index_stmt;
 DEALLOCATE PREPARE announcement_type_index_stmt;
 
 -- Approval-gated change requests: request aggregate, immutable revisions, reviewer decisions and
--- the single publication per request. activeInterceptKey is non-null only while an intercepted
+-- the publications of each request. activeInterceptKey is non-null only while an intercepted
 -- request is Pending, so the unique index allows at most one active request per (entity, requester).
 CREATE TABLE IF NOT EXISTS change_request (
   id varchar(36) NOT NULL,
@@ -544,7 +544,7 @@ CREATE TABLE IF NOT EXISTS approval_decision (
   decidedAt bigint unsigned NOT NULL,
   json json NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY approval_decision_revision_decider_key (revisionId, decidedBy),
+  KEY approval_decision_revision_index (revisionId, decidedBy),
   KEY approval_decision_request_index (changeRequestId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -555,7 +555,8 @@ CREATE TABLE IF NOT EXISTS change_application (
   appliedAt bigint unsigned NOT NULL,
   json json NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY change_application_request_key (changeRequestId)
+  KEY change_application_request_index (changeRequestId),
+  KEY change_application_revision_index (revisionId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Ordered history of every change request step (submitted, revised, approved, applied, ended).

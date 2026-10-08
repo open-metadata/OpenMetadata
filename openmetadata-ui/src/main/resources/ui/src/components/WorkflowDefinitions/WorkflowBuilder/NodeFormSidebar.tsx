@@ -228,6 +228,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
             <Divider orientation="horizontal" />
             <TaskNodeFormRenderer
               entityTypes={entityTypes}
+              hasPendingChangeHook={hasPendingChangeHook}
               node={node}
               onClose={close}
               onDelete={setNodes && setEdges ? handleDeleteNode : undefined}

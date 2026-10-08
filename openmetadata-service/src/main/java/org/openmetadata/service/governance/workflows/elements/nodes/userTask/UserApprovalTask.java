@@ -136,6 +136,14 @@ public class UserApprovalTask implements NodeInterface {
             .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getConfig().getTransitionMetadata()))
             .build();
 
+    FieldExtension partialDecisionsExpr =
+        new FieldExtensionBuilder()
+            .fieldName("partialDecisionsExpr")
+            .fieldValue(
+                String.valueOf(
+                    Boolean.TRUE.equals(nodeDefinition.getConfig().getAllowPartialDecisions())))
+            .build();
+
     // Force sync execution on the approval subprocess so the entry path
     // (SetApprovalAssigneesImpl → user task creation → CreateTask listener)
     // runs on the caller's thread inside the current transaction. Without this
@@ -175,7 +183,8 @@ public class UserApprovalTask implements NodeInterface {
             stageIdExpr,
             stageDisplayNameExpr,
             taskStatusExpr,
-            transitionMetadataExpr);
+            transitionMetadataExpr,
+            partialDecisionsExpr);
 
     ServiceTask autoApproveTask =
         new ServiceTaskBuilder()
@@ -281,7 +290,8 @@ public class UserApprovalTask implements NodeInterface {
       FieldExtension stageIdExpr,
       FieldExtension stageDisplayNameExpr,
       FieldExtension taskStatusExpr,
-      FieldExtension transitionMetadataExpr) {
+      FieldExtension transitionMetadataExpr,
+      FieldExtension partialDecisionsExpr) {
     FlowableListener setCandidateUsersListener =
         new FlowableListenerBuilder()
             .event("create")
@@ -303,6 +313,7 @@ public class UserApprovalTask implements NodeInterface {
             .addFieldExtension(stageDisplayNameExpr)
             .addFieldExtension(taskStatusExpr)
             .addFieldExtension(transitionMetadataExpr)
+            .addFieldExtension(partialDecisionsExpr)
             .build();
 
     FlowableListener completionValidatorListener =

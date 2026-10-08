@@ -29,10 +29,16 @@ export interface MutationOp {
      */
     gated?: boolean;
     /**
-     * Element identity for add/remove: entity reference id, tag FQN, or the string value itself.
+     * Element identity for add/remove: the string value itself, a tag FQN, a related glossary
+     * term with its relation type, an external reference endpoint with its name, or an entity
+     * reference id.
      */
     key?: string;
     op:   MutationOpType;
+    /**
+     * Reported with the active revision of a change request; not stored with the revision.
+     */
+    outcome?: ChangeOutcome;
     /**
      * JSON of the proposed field value (set) or of the element being added/removed.
      */
@@ -47,4 +53,20 @@ export enum MutationOpType {
     Add = "add",
     Remove = "remove",
     Set = "set",
+}
+
+/**
+ * Reported with the active revision of a change request; not stored with the revision.
+ *
+ * Where one change of the active revision stands: published, dropped by its reviewers,
+ * published by another change, not published because its reviewers could not agree,
+ * superseded by a newer published value of its field, or still waiting for a decision.
+ */
+export enum ChangeOutcome {
+    AlreadyPublished = "AlreadyPublished",
+    Applied = "Applied",
+    NotAgreed = "NotAgreed",
+    Pending = "Pending",
+    Rejected = "Rejected",
+    Superseded = "Superseded",
 }

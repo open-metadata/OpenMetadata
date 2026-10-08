@@ -84,7 +84,10 @@ class ChangeRequestApplyIT {
         stageThenApprove(glossary, replace("description", "approved text"), () -> {});
     awaitStatus(request.getId(), ChangeRequestStatus.APPLIED);
     ChangeApplication application =
-        Entity.getCollectionDAO().changeApplicationDAO().findByRequest(request.getId());
+        Entity.getCollectionDAO()
+            .changeApplicationDAO()
+            .listByRevision(ChangeRequestService.get(request.getId()).getActiveRevisionId())
+            .getFirst();
     assertNotNull(application);
     Glossary published =
         SdkClients.adminClient()
@@ -108,35 +111,23 @@ class ChangeRequestApplyIT {
   }
 
   @Test
-  void approvalAfterGatedBaseMovedIsRefusedAndTheRequestContinuesWithANewRevision(
-      TestNamespace ns) {
+  void changeWhoseGatedFieldWasPublishedSinceIsSupersededAndCanBeProposedAgain(TestNamespace ns) {
     Glossary glossary = gatedOn(ns, "\"description\"");
     patchAs(SdkClients.user2Client(), glossary.getId(), replace("description", "stale proposal"));
     Task task = awaitOpenApprovalTask(glossary.getFullyQualifiedName());
     ChangeRequest request = onlyPendingRequest(glossary.getId());
     patchAs(SdkClients.botClient(), glossary.getId(), replace("description", "newer by bot"));
 
-    org.openmetadata.sdk.exceptions.OpenMetadataException refused =
-        org.junit.jupiter.api.Assertions.assertThrows(
-            org.openmetadata.sdk.exceptions.OpenMetadataException.class,
-            () ->
-                resolveAs(
-                    SdkClients.user1Client(), task, "approve", TaskResolutionType.Approved, 1));
-    assertEquals(409, refused.getStatusCode(), refused.getMessage());
-    ChangeRequest flagged = ChangeRequestService.get(request.getId());
-    assertEquals(ChangeRequestStatus.PENDING, flagged.getStatus());
-    assertEquals("description", flagged.getConflicts().get(0).getField());
-    assertNotNull(flagged.getStatusReason());
+    awaitStatus(request.getId(), ChangeRequestStatus.SUPERSEDED);
     assertEquals("newer by bot", descriptionOf(glossary.getId()));
 
-    // The requester resubmits against the current value: the same request continues as revision 2.
+    // The requester proposes the change again against the current value, as a new request.
     patchAs(SdkClients.user2Client(), glossary.getId(), replace("description", "rebased proposal"));
     Task next = awaitNewOpenApprovalTask(glossary.getFullyQualifiedName(), task.getId());
-    ChangeRequest revised = ChangeRequestService.get(request.getId());
-    assertEquals(2, revised.getActiveRevisionNumber());
-    assertTrue(revised.getConflicts() == null || revised.getConflicts().isEmpty());
-    resolveAs(SdkClients.user1Client(), next, "approve", TaskResolutionType.Approved, 2);
-    awaitStatus(request.getId(), ChangeRequestStatus.APPLIED);
+    ChangeRequest again = onlyPendingRequest(glossary.getId());
+    assertTrue(!again.getId().equals(request.getId()));
+    resolveAs(SdkClients.user1Client(), next, "approve", TaskResolutionType.Approved, 1);
+    awaitStatus(again.getId(), ChangeRequestStatus.APPLIED);
     assertEquals("rebased proposal", descriptionOf(glossary.getId()));
   }
 
@@ -159,7 +150,10 @@ class ChangeRequestApplyIT {
     assertEquals("gated part", descriptionOf(glossary.getId()));
     assertEquals("newer dn", displayNameOf(glossary.getId()));
     ChangeApplication application =
-        Entity.getCollectionDAO().changeApplicationDAO().findByRequest(request.getId());
+        Entity.getCollectionDAO()
+            .changeApplicationDAO()
+            .listByRevision(ChangeRequestService.get(request.getId()).getActiveRevisionId())
+            .getFirst();
     assertEquals("displayName", application.getDroppedOps().get(0).getField());
   }
 

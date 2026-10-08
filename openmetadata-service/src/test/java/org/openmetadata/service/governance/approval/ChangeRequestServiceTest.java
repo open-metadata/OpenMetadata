@@ -584,7 +584,7 @@ class ChangeRequestServiceTest {
     void openRequestAtTheReviewedRevisionIsLinked() {
       ChangeRequest request = stored(ChangeRequestStatus.PENDING, 2);
       UUID task = UUID.randomUUID();
-      assertTrue(ChangeRequestService.attachTask(request.getId(), 2, task));
+      assertTrue(ChangeRequestService.attachTask(request.getId(), 2, task, null));
       assertEquals(task, request.getTaskId());
       verify(requests).update(request);
     }
@@ -601,7 +601,8 @@ class ChangeRequestServiceTest {
         ChangeRequest request = stored(ended, 1);
         UUID previous = request.getTaskId();
         assertFalse(
-            ChangeRequestService.attachTask(request.getId(), 1, UUID.randomUUID()), ended.value());
+            ChangeRequestService.attachTask(request.getId(), 1, UUID.randomUUID(), null),
+            ended.value());
         assertEquals(previous, request.getTaskId(), ended.value());
       }
       verify(requests, never()).update(any());
@@ -610,19 +611,19 @@ class ChangeRequestServiceTest {
     @Test
     void supersededRevisionIsNotLinked() {
       ChangeRequest request = stored(ChangeRequestStatus.PENDING, 3);
-      assertFalse(ChangeRequestService.attachTask(request.getId(), 2, UUID.randomUUID()));
+      assertFalse(ChangeRequestService.attachTask(request.getId(), 2, UUID.randomUUID(), null));
       verify(requests, never()).update(any());
     }
 
     @Test
     void approvedButUnappliedRequestIsStillLinked() {
       ChangeRequest request = stored(ChangeRequestStatus.APPROVED, 1);
-      assertTrue(ChangeRequestService.attachTask(request.getId(), 1, UUID.randomUUID()));
+      assertTrue(ChangeRequestService.attachTask(request.getId(), 1, UUID.randomUUID(), null));
     }
 
     @Test
     void unknownRequestIsNotLinked() {
-      assertFalse(ChangeRequestService.attachTask(UUID.randomUUID(), 1, UUID.randomUUID()));
+      assertFalse(ChangeRequestService.attachTask(UUID.randomUUID(), 1, UUID.randomUUID(), null));
     }
   }
 

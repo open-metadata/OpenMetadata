@@ -406,7 +406,13 @@ function DataProductActionButtons(
         </Button>
       )}
 
-      {!isVersionsView && <ChangeRequestsIndicator entityId={dataProduct.id} />}
+      {!isVersionsView && (
+        <ChangeRequestsIndicator
+          entityFqn={dataProduct.fullyQualifiedName}
+          entityId={dataProduct.id}
+          entityType={EntityType.DATA_PRODUCT}
+        />
+      )}
 
       <ButtonGroup className="spaced" size="small">
         {dataContractLatestResultButton}

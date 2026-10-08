@@ -13,12 +13,19 @@
 
 package org.openmetadata.service.governance.approval;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -32,7 +39,6 @@ import org.openmetadata.service.jdbi3.TaskRepository;
 public final class ChangeRequestTasks {
   private ChangeRequestTasks() {}
 
-  /** Adds a governance-bot comment to the review task, so its reviewers and requester see it. */
   /** A task that reviews a change request names the request in its payload. */
   public static boolean reviewsChangeRequest(Task task) {
     return task.getPayload() != null
@@ -40,6 +46,7 @@ public final class ChangeRequestTasks {
             != null;
   }
 
+  /** Adds a governance-bot comment to the review task, so its reviewers and requester see it. */
   static void comment(UUID taskId, String message) {
     if (taskId != null) {
       try {
@@ -58,6 +65,60 @@ public final class ChangeRequestTasks {
         }
       } catch (Exception e) {
         LOG.warn("[ChangeRequest] Could not comment on review task {}: {}", taskId, e.getMessage());
+      }
+    }
+  }
+
+  /**
+   * The users who can decide the review task: its assigned users and the members of its assigned
+   * teams. Empty when the task cannot be read.
+   */
+  static Set<String> reviewersOf(UUID taskId) {
+    Set<String> reviewers = new HashSet<>();
+    if (taskId != null) {
+      try {
+        TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+        Task task = tasks.get(null, taskId, tasks.getFields("assignees"));
+        listOrEmpty(task.getAssignees()).forEach(assignee -> reviewers.addAll(usersOf(assignee)));
+      } catch (Exception e) {
+        LOG.warn("[ChangeRequest] Could not read reviewers of task {}: {}", taskId, e.getMessage());
+      }
+    }
+    return reviewers;
+  }
+
+  private static Set<String> usersOf(EntityReference assignee) {
+    Set<String> users = new HashSet<>();
+    if (Entity.TEAM.equals(assignee.getType())) {
+      Team team = Entity.getEntity(Entity.TEAM, assignee.getId(), "users", Include.NON_DELETED);
+      listOrEmpty(team.getUsers()).forEach(user -> users.add(user.getName()));
+    } else {
+      users.add(assignee.getName());
+    }
+    return users;
+  }
+
+  /** Rewrites the review task's proposed changes to the request's changes still under review. */
+  static void refreshProposedChanges(UUID taskId, UUID changeRequestId) {
+    if (taskId != null) {
+      try {
+        TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+        Task latest = tasks.get(null, taskId, tasks.getFields("*"));
+        ChangeRequest request = ChangeRequestService.get(changeRequestId);
+        EntityInterface entity =
+            Entity.getEntity(request.getEntityType(), request.getEntityId(), "*", Include.ALL);
+        Task desired = JsonUtils.deepCopy(latest, Task.class);
+        desired.setPayload(
+            ChangePreviewUtils.buildProposedChangesPayload(
+                entity,
+                latest.getPayload(),
+                ChangeRequestService.proposedChangeDescription(changeRequestId)));
+        tasks.updateWorkflowStage(latest, desired, GOVERNANCE_BOT);
+      } catch (Exception e) {
+        LOG.warn(
+            "[ChangeRequest] Could not refresh proposed changes of task {}: {}",
+            taskId,
+            e.getMessage());
       }
     }
   }

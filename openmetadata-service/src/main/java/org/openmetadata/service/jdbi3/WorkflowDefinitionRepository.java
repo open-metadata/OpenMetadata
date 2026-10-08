@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
@@ -878,13 +879,15 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         }
 
         if (USER_APPROVAL_TASK.equals(node.getSubType())) {
+          List<EdgeDefinition> decisionEdges =
+              validatePartialDecisionEdges(workflowDefinition, node, outgoingEdges);
           List<String> configuredTransitions = getConfiguredUserApprovalTransitions(node);
           if (!configuredTransitions.isEmpty()) {
             validateUserApprovalTransitions(
-                workflowName, node.getNodeDisplayName(), configuredTransitions, outgoingEdges);
+                workflowName, node.getNodeDisplayName(), configuredTransitions, decisionEdges);
             continue;
           }
-          validateApprovalConditions(workflowName, node.getNodeDisplayName(), outgoingEdges);
+          validateApprovalConditions(workflowName, node.getNodeDisplayName(), decisionEdges);
           continue;
         }
 
@@ -937,6 +940,133 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
                   + "Add sequence flows with conditions for both outcomes to prevent workflow execution errors.",
               workflowName, nodeDisplayName));
     }
+  }
+
+  private static final Set<String> PARTIAL_DECISION_CONDITIONS =
+      Set.of(ReviewOutcome.PARTIAL_APPROVE.transition(), ReviewOutcome.PARTIAL_REJECT.transition());
+
+  /**
+   * An approval step that lets reviewers decide a change request change by change leaves through
+   * a {@code partialApprove} and a {@code partialReject} edge besides approve and reject; only such
+   * a step, in a workflow that holds changes, may have them. Returns the step's other edges.
+   */
+  private List<EdgeDefinition> validatePartialDecisionEdges(
+      WorkflowDefinition workflowDefinition,
+      WorkflowNodeDefinitionInterface node,
+      List<EdgeDefinition> outgoingEdges) {
+    String workflowName = workflowDefinition.getName();
+    Set<String> partialConditions = new java.util.HashSet<>();
+    List<EdgeDefinition> decisionEdges = new ArrayList<>();
+    for (EdgeDefinition edge : outgoingEdges) {
+      String condition = edge.getCondition() == null ? null : edge.getCondition().trim();
+      requireExactPartialCondition(workflowName, node, condition);
+      if (condition != null && PARTIAL_DECISION_CONDITIONS.contains(condition)) {
+        partialConditions.add(condition);
+      } else {
+        decisionEdges.add(edge);
+      }
+    }
+    if (allowsPartialDecisions(node)) {
+      if (!GovernanceApprovalRegistry.hasPendingChangeHook(workflowDefinition)) {
+        throw BadRequestException.of(
+            String.format(
+                "Workflow '%s': User approval task '%s' allows partial decisions, which only a "
+                    + "workflow that holds changes for approval supports",
+                workflowName, node.getNodeDisplayName()));
+      }
+      if (!partialConditions.containsAll(PARTIAL_DECISION_CONDITIONS)) {
+        throw BadRequestException.of(
+            String.format(
+                "Workflow '%s': User approval task '%s' allows partial decisions and must have "
+                    + "outgoing sequence flows for both %s",
+                workflowName, node.getNodeDisplayName(), PARTIAL_DECISION_CONDITIONS));
+      }
+      outgoingEdges.stream()
+          .filter(edge -> PARTIAL_DECISION_CONDITIONS.contains(edge.getCondition().trim()))
+          .forEach(edge -> requireLoopBack(workflowDefinition, node, edge));
+    } else if (!partialConditions.isEmpty()) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': User approval task '%s' has %s sequence flows but does not allow "
+                  + "partial decisions",
+              workflowName, node.getNodeDisplayName(), partialConditions));
+    }
+    return decisionEdges;
+  }
+
+  private static final Map<String, String> PARTIAL_DECISION_ACTIONS =
+      Map.of(
+          ReviewOutcome.PARTIAL_APPROVE.transition(), "commit",
+          ReviewOutcome.PARTIAL_REJECT.transition(), "discard");
+
+  // A partial decision publishes or drops part of the request and returns to the same review: the
+  // edge leads to a resolve-pending-change step with the matching action, whose every outgoing
+  // edge goes back to the approval step. Anything else would end the run while the review task
+  // stays open.
+  @SuppressWarnings("unchecked")
+  private static void requireLoopBack(
+      WorkflowDefinition workflowDefinition,
+      WorkflowNodeDefinitionInterface approval,
+      EdgeDefinition edge) {
+    String condition = edge.getCondition().trim();
+    String action = PARTIAL_DECISION_ACTIONS.get(condition);
+    WorkflowNodeDefinitionInterface step =
+        listOrEmpty(workflowDefinition.getNodes()).stream()
+            .filter(candidate -> candidate.getName().equals(edge.getTo()))
+            .findFirst()
+            .orElse(null);
+    Map<String, Object> config =
+        step == null || step.getConfig() == null
+            ? Map.of()
+            : JsonUtils.readOrConvertValue(step.getConfig(), Map.class);
+    List<EdgeDefinition> exits =
+        listOrEmpty(workflowDefinition.getEdges()).stream()
+            .filter(exit -> exit.getFrom().equals(edge.getTo()))
+            .toList();
+    boolean loopsBack =
+        step != null
+            && NodeSubType.RESOLVE_PENDING_CHANGE_TASK.value().equals(step.getSubType())
+            && action.equals(String.valueOf(config.get("action")))
+            && !exits.isEmpty()
+            && exits.stream().allMatch(exit -> approval.getName().equals(exit.getTo()));
+    if (!loopsBack) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': the %s sequence flow of user approval task '%s' must lead to a "
+                  + "resolve pending change step with action '%s' that returns only to '%s'",
+              workflowDefinition.getName(),
+              condition,
+              approval.getNodeDisplayName(),
+              action,
+              approval.getName()));
+    }
+  }
+
+  // Transitions are matched exactly, so a partialApprove or partialReject edge spelled in another
+  // case would never be taken; it is refused instead of saved.
+  private static void requireExactPartialCondition(
+      String workflowName, WorkflowNodeDefinitionInterface node, String condition) {
+    PARTIAL_DECISION_CONDITIONS.stream()
+        .filter(expected -> expected.equalsIgnoreCase(condition) && !expected.equals(condition))
+        .findFirst()
+        .ifPresent(
+            expected -> {
+              throw BadRequestException.of(
+                  String.format(
+                      "Workflow '%s': User approval task '%s' has a '%s' sequence flow; the "
+                          + "condition is case-sensitive and must be '%s'",
+                      workflowName, node.getNodeDisplayName(), condition, expected));
+            });
+  }
+
+  @SuppressWarnings("unchecked")
+  private static boolean allowsPartialDecisions(WorkflowNodeDefinitionInterface node) {
+    boolean allowed = false;
+    if (node.getConfig() != null) {
+      Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
+      allowed = Boolean.TRUE.equals(config.get("allowPartialDecisions"));
+    }
+    return allowed;
   }
 
   private static final Set<String> APPROVE_CONDITIONS =

@@ -176,6 +176,99 @@ class MutationPlannerTest {
   }
 
   @Test
+  void aChangeIsAlreadyPublishedWhenTheAssetShowsIt() {
+    List<MutationOp> ops =
+        MutationPlanner.plan(
+            json("{'description':'a','tags':[{'tagFQN':'B'}]}"),
+            json("{'description':'b','tags':[{'tagFQN':'A'}]}"),
+            Set.of("description", "tags"),
+            Set.of("description", "tags"));
+    JsonNode othersPublished = json("{'description':'b','tags':[{'tagFQN':'A'}]}");
+    JsonNode unchanged = json("{'description':'a','tags':[{'tagFQN':'B'}]}");
+    assertTrue(ops.stream().allMatch(op -> MutationPlanner.alreadyPublished(othersPublished, op)));
+    assertTrue(ops.stream().noneMatch(op -> MutationPlanner.alreadyPublished(unchanged, op)));
+  }
+
+  @Test
+  void relatedTermsDifferByTermAndRelationNotByEdgeId() {
+    JsonNode base = json("{'relatedTerms':[{'term':{'id':'t1'},'relationType':'synonym'}]}");
+    JsonNode proposed =
+        json(
+            "{'relatedTerms':[{'id':'e9','term':{'id':'t1','name':'x'},'relationType':'synonym'},"
+                + "{'term':{'id':'t1'},'relationType':'broader'}]}");
+    List<MutationOp> ops =
+        MutationPlanner.plan(base, proposed, Set.of("relatedTerms"), Set.of("relatedTerms"));
+    assertEquals(1, ops.size());
+    assertEquals(MutationOpType.ADD, ops.get(0).getOp());
+    assertEquals("t1|broader", ops.get(0).getKey());
+  }
+
+  @Test
+  void relatedTermWithoutRelationTypeIsRelatedTo() {
+    JsonNode base = json("{'relatedTerms':[{'term':{'id':'t1'}}]}");
+    JsonNode proposed = json("{'relatedTerms':[{'term':{'id':'t1'},'relationType':'relatedTo'}]}");
+    assertTrue(
+        MutationPlanner.plan(base, proposed, Set.of("relatedTerms"), Set.of("relatedTerms"))
+            .isEmpty());
+  }
+
+  @Test
+  void referencesDifferByEndpointAndName() {
+    JsonNode base =
+        json(
+            "{'references':[{'name':'docs','endpoint':'https://a'},"
+                + "{'name':'wiki','endpoint':'https://b'}]}");
+    JsonNode proposed =
+        json(
+            "{'references':[{'name':'manual','endpoint':'https://a'},"
+                + "{'name':'wiki','endpoint':'https://b'}]}");
+    List<MutationOp> ops =
+        MutationPlanner.plan(base, proposed, Set.of("references"), Set.of("references"));
+    assertEquals(
+        Set.of("ADD references|https://a|manual", "REMOVE references|https://a|docs"),
+        Set.copyOf(
+            ops.stream()
+                .map(op -> "%s %s".formatted(op.getOp().name(), MutationPlanner.targetOf(op)))
+                .toList()));
+  }
+
+  @Test
+  void onlyTheElementsAnotherChangePublishedAreAlreadyPublished() {
+    List<MutationOp> ops =
+        MutationPlanner.plan(
+            json("{'tags':[],'synonyms':[],'owners':[]}"),
+            json(
+                "{'tags':[{'tagFQN':'PII.Sensitive'},{'tagFQN':'Personal.Email'}],"
+                    + "'synonyms':['a','b'],'owners':[{'id':'1','type':'user'}]}"),
+            Set.of("tags", "synonyms", "owners"),
+            Set.of("tags", "synonyms", "owners"));
+    JsonNode current =
+        json(
+            "{'tags':[{'tagFQN':'PII.Sensitive'}],'synonyms':['a'],"
+                + "'owners':[{'id':'1','type':'user','name':'u'}]}");
+    List<String> published =
+        ops.stream()
+            .filter(op -> MutationPlanner.alreadyPublished(current, op))
+            .map(MutationPlanner::targetOf)
+            .toList();
+    assertEquals(Set.of("tags|PII.Sensitive", "synonyms|a", "owners|1"), Set.copyOf(published));
+  }
+
+  @Test
+  void anElementTheAssetOnlyInheritsIsNotAlreadyPublished() {
+    List<MutationOp> ops =
+        MutationPlanner.plan(
+            json("{'owners':[]}"),
+            json("{'owners':[{'id':'1','type':'user'}]}"),
+            Set.of("owners"),
+            Set.of("owners"));
+    JsonNode inheritedOnly = json("{'owners':[{'id':'1','type':'user','inherited':true}]}");
+    JsonNode ownOwner = json("{'owners':[{'id':'1','type':'user'}]}");
+    assertTrue(!MutationPlanner.alreadyPublished(inheritedOnly, ops.get(0)));
+    assertTrue(MutationPlanner.alreadyPublished(ownOwner, ops.get(0)));
+  }
+
+  @Test
   void mergeIsCumulativeAndNextWins() {
     List<MutationOp> prior =
         MutationPlanner.plan(

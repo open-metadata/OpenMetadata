@@ -84,7 +84,7 @@ const stringOf = (value: unknown): string | undefined =>
 
 // Tags and glossary terms read by their FQN and open their page; an entity reference reads by its
 // fully qualified name and opens the entity when its type has a details page.
-const toValue = (value: unknown): ChangeValue => {
+export const toValue = (value: unknown): ChangeValue => {
   if (!isRecord(value)) {
     return { text: plainText(String(value)) };
   }

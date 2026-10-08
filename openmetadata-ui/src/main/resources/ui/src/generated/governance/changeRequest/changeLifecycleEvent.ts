@@ -39,9 +39,11 @@ export enum LifecycleEventType {
     Cancelled = "Cancelled",
     Conflicted = "Conflicted",
     Overridden = "Overridden",
+    PartiallyApplied = "PartiallyApplied",
     Rejected = "Rejected",
     Revised = "Revised",
     Submitted = "Submitted",
+    Superseded = "Superseded",
     Withdrawn = "Withdrawn",
 }
 
@@ -52,5 +54,6 @@ export enum ChangeRequestStatus {
     Conflicted = "Conflicted",
     Pending = "Pending",
     Rejected = "Rejected",
+    Superseded = "Superseded",
     Withdrawn = "Withdrawn",
 }

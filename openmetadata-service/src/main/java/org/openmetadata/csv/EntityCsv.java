@@ -2216,7 +2216,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
    * Whether writing {@code updated} over {@code original} would be held for approval, for a dry run
    * that saves nothing.
    */
-  protected <E extends EntityInterface> boolean wouldBeHeld(
+  protected <E extends EntityInterface<?>> boolean wouldBeHeld(
       EntityRepository<E> repository, E original, E updated) {
     boolean held = false;
     if (original.getId() != null && isGated(repository.getEntityType())) {

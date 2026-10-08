@@ -379,7 +379,7 @@ ALTER TABLE announcement_entity
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
 
 -- Approval-gated change requests: request aggregate, immutable revisions, reviewer decisions and
--- the single publication per request. activeInterceptKey is non-null only while an intercepted
+-- the publications of each request. activeInterceptKey is non-null only while an intercepted
 -- request is Pending, so the unique index allows at most one active request per (entity, requester).
 CREATE TABLE IF NOT EXISTS change_request (
   id VARCHAR(36) NOT NULL,
@@ -426,7 +426,7 @@ CREATE TABLE IF NOT EXISTS approval_decision (
   json JSONB NOT NULL,
   PRIMARY KEY (id)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS approval_decision_revision_decider_key ON approval_decision (revisionId, decidedBy);
+CREATE INDEX IF NOT EXISTS approval_decision_revision_index ON approval_decision (revisionId, decidedBy);
 CREATE INDEX IF NOT EXISTS approval_decision_request_index ON approval_decision (changeRequestId);
 
 CREATE TABLE IF NOT EXISTS change_application (
@@ -437,7 +437,8 @@ CREATE TABLE IF NOT EXISTS change_application (
   json JSONB NOT NULL,
   PRIMARY KEY (id)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS change_application_request_key ON change_application (changeRequestId);
+CREATE INDEX IF NOT EXISTS change_application_request_index ON change_application (changeRequestId);
+CREATE INDEX IF NOT EXISTS change_application_revision_index ON change_application (revisionId);
 
 -- Ordered history of every change request step (submitted, revised, approved, applied, ended).
 CREATE TABLE IF NOT EXISTS change_lifecycle_event (

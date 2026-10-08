@@ -9,7 +9,7 @@
     "changeRequestStatus": {
       "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus",
       "type": "string",
-      "enum": ["Pending", "Approved", "Applied", "Rejected", "Conflicted", "Withdrawn", "Cancelled"]
+      "enum": ["Pending", "Approved", "Applied", "Rejected", "Conflicted", "Withdrawn", "Cancelled", "Superseded"]
     },
     "deliveryStatus": {
       "javaType": "org.openmetadata.schema.governance.changeRequest.DeliveryStatus",
@@ -21,6 +21,17 @@
       "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeRequestOrigin",
       "type": "string",
       "enum": ["Intercepted", "Explicit"]
+    },
+    "reviewPolicy": {
+      "javaType": "org.openmetadata.schema.governance.changeRequest.ReviewPolicy",
+      "description": "How the reviewing workflow's approval step decides the request: how many reviewers must agree to approve or to reject a change, and whether changes can be decided one by one.",
+      "type": "object",
+      "properties": {
+        "approvalThreshold": { "type": "integer", "minimum": 1, "default": 1 },
+        "rejectionThreshold": { "type": "integer", "minimum": 1, "default": 1 },
+        "partialDecisions": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": false
     },
     "changeConflict": {
       "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeConflict",
@@ -55,6 +66,22 @@
     "taskId": { "$ref": "../../type/basic.json#/definitions/uuid" },
     "deliveryStatus": { "$ref": "#/definitions/deliveryStatus" },
     "deliveryAttempts": { "type": "integer", "default": 0 },
+    "reviewPolicy": { "$ref": "#/definitions/reviewPolicy" },
+    "alreadyPublished": {
+      "description": "Changes of the active revision that the asset already shows because another change published them; they are no longer reviewed.",
+      "type": "array",
+      "items": { "$ref": "approvalDecision.json#/definitions/changeRef" }
+    },
+    "superseded": {
+      "description": "Changes of the active revision whose field was published with another value after the request was submitted. They leave the review and are not published; the requester can propose them again.",
+      "type": "array",
+      "items": { "$ref": "approvalDecision.json#/definitions/changeRef" }
+    },
+    "disagreed": {
+      "description": "Changes of the active revision its reviewers can no longer agree on: the reviewers who have not voted cannot bring either the approvals or the rejections to their threshold. They are not published.",
+      "type": "array",
+      "items": { "$ref": "approvalDecision.json#/definitions/changeRef" }
+    },
     "conflicts": { "type": "array", "items": { "$ref": "#/definitions/changeConflict" } },
     "statusReason": { "type": "string" },
     "createdAt": { "$ref": "../../type/basic.json#/definitions/timestamp" },

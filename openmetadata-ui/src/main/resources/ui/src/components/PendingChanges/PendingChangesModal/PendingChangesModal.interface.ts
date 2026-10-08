@@ -18,6 +18,14 @@ export interface PendingChangesModalProps {
   onClose: () => void;
   /** Called after a request is withdrawn, approved or rejected. */
   onChange: () => Promise<void>;
+  /** The asset the requests are on, for previewing an edit to it. */
+  entityId?: string;
+  entityType?: string;
+  entityFqn?: string;
+  /** Switches to the other view of the same requests; to its preview when {@code preview}. */
+  onSwitchView?: (preview?: boolean) => void;
+  /** Opens on the preview of an edit to the asset rather than on a request. */
+  startWithPreview?: boolean;
 }
 
 export interface RequestDetailProps {

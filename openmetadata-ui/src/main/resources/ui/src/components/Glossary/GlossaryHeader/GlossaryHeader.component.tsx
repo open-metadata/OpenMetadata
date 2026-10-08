@@ -816,7 +816,13 @@ const GlossaryHeader = ({
             isVersionView={isVersionView}
             manageButtonContent={manageButtonContent}
             pendingChangeRequests={
-              <ChangeRequestsIndicator entityId={selectedData?.id ?? ''} />
+              <ChangeRequestsIndicator
+                entityFqn={selectedData?.fullyQualifiedName}
+                entityId={selectedData?.id ?? ''}
+                entityType={
+                  isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
+                }
+              />
             }
             setShowActions={setShowActions}
             showActions={showActions}

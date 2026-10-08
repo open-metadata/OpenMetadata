@@ -1823,7 +1823,10 @@ export const TaskTabNew = ({
             <Typography className="task-proposed-changes-title">
               {t('label.proposed-change-plural')}
             </Typography>
-            <ChangeRequestChangesById changeRequestId={changeRequestId} />
+            <ChangeRequestChangesById
+              changeRequestId={changeRequestId}
+              version={task.updatedAt}
+            />
           </div>
         </Col>
       );

@@ -17,13 +17,24 @@ export interface ChangeRequest {
     /**
      * Populated on read only; never persisted in the request row.
      */
-    activeRevision?:          ChangeRevision;
-    activeRevisionId:         string;
-    activeRevisionNumber:     number;
-    conflicts?:               ChangeConflict[];
-    createdAt:                number;
-    deliveryAttempts?:        number;
-    deliveryStatus?:          DeliveryStatus;
+    activeRevision?:      ChangeRevision;
+    activeRevisionId:     string;
+    activeRevisionNumber: number;
+    /**
+     * Changes of the active revision that the asset already shows because another change
+     * published them; they are no longer reviewed.
+     */
+    alreadyPublished?: ChangeRef[];
+    conflicts?:        ChangeConflict[];
+    createdAt:         number;
+    deliveryAttempts?: number;
+    deliveryStatus?:   DeliveryStatus;
+    /**
+     * Changes of the active revision its reviewers can no longer agree on: the reviewers who
+     * have not voted cannot bring either the approvals or the rejections to their threshold.
+     * They are not published.
+     */
+    disagreed?:               ChangeRef[];
     entityFullyQualifiedName: string;
     entityId:                 string;
     entityType:               string;
@@ -36,9 +47,16 @@ export interface ChangeRequest {
     /**
      * Effective human requester.
      */
-    requestedBy:          string;
-    status:               ChangeRequestStatus;
-    statusReason?:        string;
+    requestedBy:   string;
+    reviewPolicy?: ReviewPolicy;
+    status:        ChangeRequestStatus;
+    statusReason?: string;
+    /**
+     * Changes of the active revision whose field was published with another value after the
+     * request was submitted. They leave the review and are not published; the requester can
+     * propose them again.
+     */
+    superseded?:          ChangeRef[];
     taskId?:              string;
     updatedAt:            number;
     workflowDefinitionId: string;
@@ -86,10 +104,16 @@ export interface MutationOp {
      */
     gated?: boolean;
     /**
-     * Element identity for add/remove: entity reference id, tag FQN, or the string value itself.
+     * Element identity for add/remove: the string value itself, a tag FQN, a related glossary
+     * term with its relation type, an external reference endpoint with its name, or an entity
+     * reference id.
      */
     key?: string;
     op:   MutationOpType;
+    /**
+     * Reported with the active revision of a change request; not stored with the revision.
+     */
+    outcome?: ChangeOutcome;
     /**
      * JSON of the proposed field value (set) or of the element being added/removed.
      */
@@ -106,9 +130,34 @@ export enum MutationOpType {
     Set = "set",
 }
 
+/**
+ * Reported with the active revision of a change request; not stored with the revision.
+ *
+ * Where one change of the active revision stands: published, dropped by its reviewers,
+ * published by another change, not published because its reviewers could not agree,
+ * superseded by a newer published value of its field, or still waiting for a decision.
+ */
+export enum ChangeOutcome {
+    AlreadyPublished = "AlreadyPublished",
+    Applied = "Applied",
+    NotAgreed = "NotAgreed",
+    Pending = "Pending",
+    Rejected = "Rejected",
+    Superseded = "Superseded",
+}
+
 export enum ChangeRevisionStatus {
     Active = "Active",
     Superseded = "Superseded",
+}
+
+/**
+ * One change of a revision, identified like its mutation op: the field and, for an added or
+ * removed element, its key.
+ */
+export interface ChangeRef {
+    field: string;
+    key?:  string;
 }
 
 export interface ChangeConflict {
@@ -135,6 +184,16 @@ export enum ChangeRequestOrigin {
     Intercepted = "Intercepted",
 }
 
+/**
+ * How the reviewing workflow's approval step decides the request: how many reviewers must
+ * agree to approve or to reject a change, and whether changes can be decided one by one.
+ */
+export interface ReviewPolicy {
+    approvalThreshold?:  number;
+    partialDecisions?:   boolean;
+    rejectionThreshold?: number;
+}
+
 export enum ChangeRequestStatus {
     Applied = "Applied",
     Approved = "Approved",
@@ -142,5 +201,6 @@ export enum ChangeRequestStatus {
     Conflicted = "Conflicted",
     Pending = "Pending",
     Rejected = "Rejected",
+    Superseded = "Superseded",
     Withdrawn = "Withdrawn",
 }

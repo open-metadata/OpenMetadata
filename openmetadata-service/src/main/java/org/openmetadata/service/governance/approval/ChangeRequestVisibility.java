@@ -52,7 +52,11 @@ public final class ChangeRequestVisibility {
     }
     Map<UUID, ChangeRevision> revisions = ChangeRequestService.activeRevisions(visible);
     return visible.stream()
-        .map(request -> request.withActiveRevision(revisions.get(request.getActiveRevisionId())))
+        .map(
+            request ->
+                request.withActiveRevision(
+                    ChangeRequestService.reportedRevision(
+                        request, revisions.get(request.getActiveRevisionId()))))
         .toList();
   }
 

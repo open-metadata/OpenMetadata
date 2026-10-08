@@ -31,6 +31,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -49,6 +50,7 @@ import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -127,6 +129,7 @@ public class CreateTask implements TaskListener {
   private Expression stageDisplayNameExpr;
   private Expression taskStatusExpr;
   private Expression transitionMetadataExpr;
+  private Expression partialDecisionsExpr;
 
   @Override
   public void notify(DelegateTask delegateTask) {
@@ -179,21 +182,33 @@ public class CreateTask implements TaskListener {
       // Register with WorkflowHandler for resolution
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
       UUID reviewTaskId = task.getId();
+      if (partialDecisions(delegateTask)) {
+        delegateTask.setVariable(stepTaskVariable(delegateTask), reviewTaskId.toString());
+      }
       // A request can end (withdrawn, overridden, cancelled) or be revised while delivery is
       // still creating its task; that task is closed once this Flowable command commits.
+      ReviewPolicy reviewPolicy =
+          new ReviewPolicy()
+              .withApprovalThreshold(approvalThreshold)
+              .withRejectionThreshold(rejectionThreshold)
+              .withPartialDecisions(partialDecisions(delegateTask));
       ChangeRequestRun.from(varHandler)
           .filter(
               run ->
                   !ChangeRequestService.attachTask(
-                      run.changeRequestId(), run.revisionNumber(), reviewTaskId))
+                      run.changeRequestId(), run.revisionNumber(), reviewTaskId, reviewPolicy))
           .ifPresent(
               run ->
                   registerPostCommitPersist(
                       () -> ChangeRequestService.closeStaleTask(reviewTaskId)));
 
-      // Set the thresholds as task variables for use in WorkflowHandler
-      delegateTask.setVariable("approvalThreshold", approvalThreshold);
-      delegateTask.setVariable("rejectionThreshold", rejectionThreshold);
+      // Set the thresholds as task variables for use in WorkflowHandler. A change request decided
+      // change by change counts its reviewers' agreement in the catalog, so the workflow completes
+      // the task on the first resolution that moves it.
+      boolean catalogCounts =
+          reviewsChangeRequest(delegateTask) && reviewPolicy.getPartialDecisions();
+      delegateTask.setVariable("approvalThreshold", catalogCounts ? 1 : approvalThreshold);
+      delegateTask.setVariable("rejectionThreshold", catalogCounts ? 1 : rejectionThreshold);
       delegateTask.setVariable("approversList", new ArrayList<String>());
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
       delegateTask.setVariable("taskEntityId", task.getId().toString());
@@ -410,7 +425,9 @@ public class CreateTask implements TaskListener {
       Object payload) {
 
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    UUID requestedTaskId = resolveRequestedTaskId(delegateTask);
+    UUID requestedTaskId =
+        reenteredStepTask(delegateTask, workflowInstanceId)
+            .orElseGet(() -> resolveRequestedTaskId(delegateTask));
     String taskName =
         WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_NAME);
     String taskDisplayName =
@@ -981,6 +998,30 @@ public class CreateTask implements TaskListener {
     return existingTask;
   }
 
+  private boolean partialDecisions(DelegateTask delegateTask) {
+    return partialDecisionsExpr != null
+        && Boolean.parseBoolean(String.valueOf(partialDecisionsExpr.getValue(delegateTask)));
+  }
+
+  // The review task an approval step that allows partial decisions opened in this run, recorded per
+  // step so another approval step of the same run never takes it over.
+  private static String stepTaskVariable(DelegateTask delegateTask) {
+    return "%s_changeRequestTaskId".formatted(delegateTask.getTaskDefinitionKey());
+  }
+
+  // A change request decided change by change comes back to the same approval step with the changes
+  // still pending; that step keeps the review task it opened, while it is still the request's open
+  // task in this run.
+  private Optional<UUID> reenteredStepTask(DelegateTask delegateTask, UUID workflowInstanceId) {
+    Object stepTask =
+        partialDecisions(delegateTask)
+            ? delegateTask.getVariable(stepTaskVariable(delegateTask))
+            : null;
+    return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask))
+        .map(run -> ChangeRequestService.openTaskOf(run.changeRequestId(), workflowInstanceId))
+        .filter(open -> open.toString().equals(stepTask));
+  }
+
   private UUID resolveRequestedTaskId(DelegateTask delegateTask) {
     String taskId =
         WorkflowVariableResolver.stringVariable(
@@ -1095,7 +1136,10 @@ public class CreateTask implements TaskListener {
    * description.
    */
   static Object applyProposedChangesIfApproval(
-      TaskEntityType taskType, EntityInterface<?> entity, Object payload, ChangeDescription pending) {
+      TaskEntityType taskType,
+      EntityInterface<?> entity,
+      Object payload,
+      ChangeDescription pending) {
     if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
       return payload;
     }

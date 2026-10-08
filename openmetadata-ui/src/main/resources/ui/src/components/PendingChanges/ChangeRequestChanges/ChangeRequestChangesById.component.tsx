@@ -10,28 +10,103 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Badge, BadgeColors } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { groupBy } from 'lodash';
 import { useEffect, useState } from 'react';
-import { MutationOp } from '../../../generated/governance/changeRequest/changeRequest';
+import { useTranslation } from 'react-i18next';
+import {
+  ChangeOutcome,
+  ChangeRequest,
+  ChangeRequestStatus,
+  MutationOp,
+} from '../../../generated/governance/changeRequest/changeRequest';
 import { getChangeRequest } from '../../../rest/changeRequestsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ChangeRequestChanges from './ChangeRequestChanges.component';
 
-/** The changes a review task's change request proposes, at its active revision. */
+const OUTCOME_COLORS: Record<ChangeOutcome, BadgeColors> = {
+  [ChangeOutcome.Applied]: 'success',
+  [ChangeOutcome.Rejected]: 'error',
+  [ChangeOutcome.AlreadyPublished]: 'gray',
+  [ChangeOutcome.NotAgreed]: 'warning',
+  [ChangeOutcome.Superseded]: 'gray',
+  [ChangeOutcome.Pending]: 'gray',
+};
+
+// A request decided as a whole reports no outcome per change; once it ends, every change shares
+// the request's own result.
+const ENDED_AS: Partial<Record<ChangeRequestStatus, ChangeOutcome>> = {
+  [ChangeRequestStatus.Applied]: ChangeOutcome.Applied,
+  [ChangeRequestStatus.Rejected]: ChangeOutcome.Rejected,
+  [ChangeRequestStatus.Superseded]: ChangeOutcome.Superseded,
+};
+
+const outcomeOf = (request: ChangeRequest, op: MutationOp): ChangeOutcome =>
+  op.outcome ?? ENDED_AS[request.status] ?? ChangeOutcome.Pending;
+
+// Decided changes in a fixed order: what was published first, what was not after.
+const DECIDED_ORDER = [
+  ChangeOutcome.Applied,
+  ChangeOutcome.AlreadyPublished,
+  ChangeOutcome.Rejected,
+  ChangeOutcome.NotAgreed,
+  ChangeOutcome.Superseded,
+];
+
+/**
+ * The changes a review task's change request proposes, at its active revision: the ones still
+ * under review first, then the decided ones grouped by what happened to them, so a closed task
+ * still shows what was proposed and how each change ended. Read again whenever {@code version}
+ * changes, so a decision on the task shows at once.
+ */
 const ChangeRequestChangesById = ({
   changeRequestId,
+  version,
 }: {
   changeRequestId: string;
+  version?: number;
 }) => {
-  const [ops, setOps] = useState<MutationOp[]>();
+  const { t } = useTranslation();
+  const [request, setRequest] = useState<ChangeRequest>();
 
   useEffect(() => {
     getChangeRequest(changeRequestId)
-      .then((request) => setOps(request.activeRevision?.ops ?? []))
+      .then(setRequest)
       .catch((error: AxiosError) => showErrorToast(error));
-  }, [changeRequestId]);
+  }, [changeRequestId, version]);
 
-  return ops ? <ChangeRequestChanges ops={ops} /> : null;
+  if (!request) {
+    return null;
+  }
+
+  const byOutcome = groupBy(request.activeRevision?.ops ?? [], (op) =>
+    outcomeOf(request, op)
+  );
+  const pending = byOutcome[ChangeOutcome.Pending] ?? [];
+
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-3">
+      {pending.length > 0 && <ChangeRequestChanges ops={pending} />}
+      {DECIDED_ORDER.filter((outcome) => byOutcome[outcome]?.length).map(
+        (outcome) => (
+          <div
+            className="tw:flex tw:flex-col tw:gap-2"
+            data-testid={`decided-changes-${outcome}`}
+            key={outcome}>
+            <Badge
+              className="tw:self-start"
+              color={OUTCOME_COLORS[outcome]}
+              size="sm"
+              type="color">
+              {t(`label.change-outcome-${outcome}`)}
+            </Badge>
+            <ChangeRequestChanges ops={byOutcome[outcome]} />
+          </div>
+        )
+      )}
+    </div>
+  );
 };
 
 export default ChangeRequestChangesById;

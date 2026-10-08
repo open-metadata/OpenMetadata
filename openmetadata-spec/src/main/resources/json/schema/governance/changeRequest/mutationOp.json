@@ -11,13 +11,23 @@
       "description": "set replaces a top-level field value; add and remove change one element of a list field identified by key.",
       "type": "string",
       "enum": ["set", "add", "remove"]
+    },
+    "changeOutcome": {
+      "javaType": "org.openmetadata.schema.governance.changeRequest.ChangeOutcome",
+      "description": "Where one change of the active revision stands: published, dropped by its reviewers, published by another change, not published because its reviewers could not agree, superseded by a newer published value of its field, or still waiting for a decision.",
+      "type": "string",
+      "enum": ["Pending", "Applied", "Rejected", "AlreadyPublished", "NotAgreed", "Superseded"]
     }
   },
   "properties": {
     "op": { "$ref": "#/definitions/mutationOpType" },
+    "outcome": {
+      "description": "Reported with the active revision of a change request; not stored with the revision.",
+      "$ref": "#/definitions/changeOutcome"
+    },
     "field": { "description": "Top-level entity field name.", "type": "string" },
     "key": {
-      "description": "Element identity for add/remove: entity reference id, tag FQN, or the string value itself.",
+      "description": "Element identity for add/remove: the string value itself, a tag FQN, a related glossary term with its relation type, an external reference endpoint with its name, or an entity reference id.",
       "type": "string"
     },
     "baseValue": {

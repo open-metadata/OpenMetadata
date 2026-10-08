@@ -92,7 +92,7 @@ public class ChangeRequestResource {
         @ApiResponse(responseCode = "404", description = "Change request not found")
       })
   public ChangeRequest get(@Context SecurityContext securityContext, @PathParam("id") UUID id) {
-    ChangeRequest request = ChangeRequestService.get(id);
+    ChangeRequest request = ChangeRequestService.report(id);
     ChangeRequestVisibility.requireVisible(authorizer, securityContext, request);
     return request;
   }

@@ -59,6 +59,7 @@ public final class ChangeRequestLifecycle {
       case CONFLICTED -> LifecycleEventType.CONFLICTED;
       case WITHDRAWN -> LifecycleEventType.WITHDRAWN;
       case CANCELLED -> LifecycleEventType.CANCELLED;
+      case SUPERSEDED -> LifecycleEventType.SUPERSEDED;
       case APPROVED -> LifecycleEventType.APPROVED;
       case APPLIED -> LifecycleEventType.APPLIED;
       case PENDING -> LifecycleEventType.SUBMITTED;

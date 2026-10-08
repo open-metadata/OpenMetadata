@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
@@ -25,6 +26,7 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRef;
 import org.openmetadata.schema.governance.changeRequest.DecisionType;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.governance.changeRequest.MutationOpType;
+import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.utils.JsonUtils;
 
 class ChangeSelectionTest {
@@ -34,135 +36,205 @@ class ChangeSelectionTest {
   private static final MutationOp TAG =
       new MutationOp().withOp(MutationOpType.ADD).withField("tags").withKey("PII.Sensitive");
   private static final List<MutationOp> OPS = List.of(DESCRIPTION, TAG);
+  private static final ReviewPolicy ONE_REVIEWER =
+      new ReviewPolicy().withApprovalThreshold(1).withRejectionThreshold(1);
+  private static final ReviewPolicy TWO_REVIEWERS =
+      new ReviewPolicy().withApprovalThreshold(2).withRejectionThreshold(2);
 
-  private static ApprovalDecision decision(
-      String by, DecisionType type, List<ChangeRef> approved, List<ChangeRef> rejected) {
-    return new ApprovalDecision()
-        .withId(UUID.randomUUID())
-        .withDecidedBy(by)
-        .withDecision(type)
-        .withApprovedChanges(approved)
-        .withRejectedChanges(rejected);
+  private static ApprovalDecision whole(String by, DecisionType type) {
+    return new ApprovalDecision().withId(UUID.randomUUID()).withDecidedBy(by).withDecision(type);
   }
 
-  private static ChangeRef ref(MutationOp op) {
-    return new ChangeRef().withField(op.getField()).withKey(op.getKey());
+  private static ApprovalDecision changes(
+      String by, List<MutationOp> approved, List<MutationOp> rejected) {
+    return whole(by, approved.isEmpty() ? DecisionType.REJECT : DecisionType.APPROVE)
+        .withApprovedChanges(approved.isEmpty() ? null : refs(approved))
+        .withRejectedChanges(rejected.isEmpty() ? null : refs(rejected));
+  }
+
+  private static List<ChangeRef> refs(List<MutationOp> ops) {
+    return ops.stream()
+        .map(op -> new ChangeRef().withField(op.getField()).withKey(op.getKey()))
+        .toList();
+  }
+
+  private static ChangeSelection select(
+      ReviewPolicy policy, Set<String> published, ApprovalDecision... decisions) {
+    return ChangeSelection.of(
+        OPS, List.of(decisions), REQUESTER, policy, published, Set.of(), Set.of());
   }
 
   @Test
-  void aWholeRevisionApprovalSelectsEveryChange() {
+  void aChangeAnotherChangePublishedLeavesTheReviewAndTheRestStaysOpen() {
     ChangeSelection selection =
         ChangeSelection.of(
-            OPS, List.of(decision("karan", DecisionType.APPROVE, null, null)), REQUESTER);
-    assertEquals(OPS, selection.approved());
-    assertFalse(selection.partial());
+            OPS,
+            List.of(),
+            REQUESTER,
+            ONE_REVIEWER,
+            Set.of(),
+            Set.of(MutationPlanner.targetOf(TAG)),
+            Set.of());
+    assertEquals(List.of(TAG), selection.publishedElsewhere());
+    assertEquals(List.of(DESCRIPTION), selection.open());
+    assertFalse(selection.anyApproved());
   }
 
   @Test
-  void aWholeRevisionRejectionSelectsNothing() {
+  void aChangePublishedElsewhereIsNotRejectedByEarlierVotes() {
     ChangeSelection selection =
         ChangeSelection.of(
-            OPS, List.of(decision("karan", DecisionType.REJECT, null, null)), REQUESTER);
-    assertTrue(selection.approved().isEmpty());
+            OPS,
+            List.of(changes("karan", List.of(), List.of(TAG))),
+            REQUESTER,
+            ONE_REVIEWER,
+            Set.of(),
+            Set.of(MutationPlanner.targetOf(TAG)),
+            Set.of());
+    assertEquals(List.of(TAG), selection.publishedElsewhere());
+    assertTrue(selection.rejected().isEmpty());
+  }
+
+  @Test
+  void aChangeItsReviewersCouldNotAgreeOnIsDroppedLikeARejectedOne() {
+    ChangeSelection selection =
+        ChangeSelection.of(
+            OPS,
+            List.of(),
+            REQUESTER,
+            TWO_REVIEWERS,
+            Set.of(),
+            Set.of(),
+            Set.of(MutationPlanner.targetOf(DESCRIPTION)));
+    assertEquals(List.of(DESCRIPTION), selection.rejected());
+    assertEquals(List.of(TAG), selection.pending());
+  }
+
+  @Test
+  void anOverrideNeverPublishesAChangeItsReviewersRejected() {
+    ChangeSelection selection =
+        select(
+            ONE_REVIEWER,
+            Set.of(),
+            changes("karan", List.of(), List.of(TAG)),
+            whole("admin", DecisionType.OVERRIDE));
+    assertEquals(List.of(DESCRIPTION), selection.toApply());
+    assertEquals(List.of(TAG), selection.rejected());
+  }
+
+  @Test
+  void aClosedReviewDropsTheChangesNobodyDecided() {
+    ChangeSelection closed =
+        select(TWO_REVIEWERS, Set.of(), changes("karan", List.of(TAG), List.of())).closed();
+    assertTrue(closed.settled());
+    assertTrue(closed.toApply().isEmpty());
+    assertEquals(OPS, closed.rejected());
+  }
+
+  @Test
+  void aWholeRevisionApprovalAgreesOnEveryChange() {
+    ChangeSelection selection =
+        select(ONE_REVIEWER, Set.of(), whole("karan", DecisionType.APPROVE));
+    assertEquals(OPS, selection.toApply());
+    assertTrue(selection.settled());
+  }
+
+  @Test
+  void aWholeRevisionRejectionRejectsEveryChange() {
+    ChangeSelection selection = select(ONE_REVIEWER, Set.of(), whole("karan", DecisionType.REJECT));
     assertEquals(OPS, selection.rejected());
+    assertFalse(selection.anyApproved());
   }
 
   @Test
-  void approvingOneChangeAndRejectingAnotherAppliesOnlyTheFirst() {
+  void aChangeLeftUndecidedStaysPending() {
     ChangeSelection selection =
-        ChangeSelection.of(
-            OPS,
-            List.of(
-                decision(
-                    "karan", DecisionType.APPROVE, List.of(ref(TAG)), List.of(ref(DESCRIPTION)))),
-            REQUESTER);
-    assertEquals(List.of(TAG), selection.approved());
-    assertEquals(List.of(DESCRIPTION), selection.rejected());
-    assertTrue(selection.partial());
+        select(ONE_REVIEWER, Set.of(), changes("karan", List.of(TAG), List.of()));
+    assertEquals(List.of(TAG), selection.toApply());
+    assertEquals(List.of(DESCRIPTION), selection.pending());
+    assertFalse(selection.settled());
   }
 
   @Test
-  void aChangeLeftUndecidedIsDiscarded() {
+  void aPublishedChangeIsAppliedAndNoLongerOpen() {
     ChangeSelection selection =
-        ChangeSelection.of(
-            OPS,
-            List.of(decision("karan", DecisionType.APPROVE, List.of(ref(TAG)), null)),
-            REQUESTER);
-    assertEquals(List.of(TAG), selection.approved());
-    assertEquals(List.of(DESCRIPTION), selection.rejected());
+        select(
+            ONE_REVIEWER,
+            ChangeSelection.targets(List.of(TAG)),
+            changes("karan", List.of(TAG), List.of()));
+    assertEquals(List.of(TAG), selection.applied());
+    assertEquals(List.of(DESCRIPTION), selection.open());
   }
 
   @Test
-  void withTwoApproversOnlyChangesBothApprovedApply() {
+  void withTwoReviewersAChangeNeedsBothApprovals() {
+    ChangeSelection oneVote =
+        select(TWO_REVIEWERS, Set.of(), changes("karan", List.of(TAG, DESCRIPTION), List.of()));
+    assertTrue(oneVote.toApply().isEmpty());
+    ChangeSelection bothVotes =
+        select(
+            TWO_REVIEWERS,
+            Set.of(),
+            changes("karan", List.of(TAG, DESCRIPTION), List.of()),
+            changes("admin", List.of(TAG), List.of()));
+    assertEquals(List.of(TAG), bothVotes.toApply());
+    assertEquals(List.of(DESCRIPTION), bothVotes.pending());
+  }
+
+  @Test
+  void reviewersWhoDisagreeLeaveTheChangePendingUntilTheRejectionThreshold() {
+    ChangeSelection disputed =
+        select(
+            TWO_REVIEWERS,
+            Set.of(),
+            changes("karan", List.of(TAG), List.of()),
+            changes("admin", List.of(), List.of(TAG)));
+    assertEquals(List.of(DESCRIPTION, TAG), disputed.pending());
+    ChangeSelection rejected =
+        select(
+            TWO_REVIEWERS,
+            Set.of(),
+            changes("karan", List.of(), List.of(TAG)),
+            changes("admin", List.of(), List.of(TAG)));
+    assertEquals(List.of(TAG), rejected.rejected());
+  }
+
+  @Test
+  void aReviewerDecidingInSeveralStepsCountsOnce() {
     ChangeSelection selection =
-        ChangeSelection.of(
-            OPS,
-            List.of(
-                decision("karan", DecisionType.APPROVE, List.of(ref(TAG)), null),
-                decision("admin", DecisionType.APPROVE, null, null)),
-            REQUESTER);
-    assertEquals(List.of(TAG), selection.approved());
-    assertEquals(List.of(DESCRIPTION), selection.rejected());
+        select(
+            TWO_REVIEWERS,
+            Set.of(),
+            changes("karan", List.of(TAG), List.of()),
+            changes("karan", List.of(DESCRIPTION), List.of()));
+    assertTrue(selection.toApply().isEmpty());
+    assertEquals(OPS, selection.pending());
   }
 
   @Test
-  void aWholeRevisionApprovalSurvivesPersistence() {
-    ApprovalDecision original = decision("karan", DecisionType.APPROVE, null, null);
-    ApprovalDecision restored =
-        JsonUtils.readValue(JsonUtils.pojoToJson(original), ApprovalDecision.class);
-    assertEquals(OPS, ChangeSelection.of(OPS, List.of(restored), REQUESTER).approved());
+  void decisionsReadBackFromStorageKeepTheirMeaning() {
+    ApprovalDecision stored =
+        JsonUtils.readValue(
+            JsonUtils.pojoToJson(changes("karan", List.of(TAG), List.of())),
+            ApprovalDecision.class);
+    ApprovalDecision storedWhole =
+        JsonUtils.readValue(
+            JsonUtils.pojoToJson(whole("admin", DecisionType.APPROVE)), ApprovalDecision.class);
+    assertEquals(List.of(TAG), select(ONE_REVIEWER, Set.of(), stored).toApply());
+    assertEquals(OPS, select(ONE_REVIEWER, Set.of(), storedWhole).toApply());
   }
 
   @Test
-  void aPartialApprovalSurvivesPersistence() {
-    ApprovalDecision original =
-        decision("karan", DecisionType.APPROVE, List.of(ref(TAG)), List.of(ref(DESCRIPTION)));
-    ApprovalDecision restored =
-        JsonUtils.readValue(JsonUtils.pojoToJson(original), ApprovalDecision.class);
-    ChangeSelection selection = ChangeSelection.of(OPS, List.of(restored), REQUESTER);
-    assertEquals(List.of(TAG), selection.approved());
-    assertEquals(List.of(DESCRIPTION), selection.rejected());
-  }
-
-  @Test
-  void disjointReviewerSelectionsDiscardEveryChange() {
-    ChangeSelection selection =
-        ChangeSelection.of(
-            OPS,
-            List.of(
-                decision("karan", DecisionType.APPROVE, List.of(ref(TAG)), null),
-                decision("admin", DecisionType.APPROVE, List.of(ref(DESCRIPTION)), null)),
-            REQUESTER);
-    assertTrue(selection.approved().isEmpty());
-    assertEquals(OPS, selection.rejected());
-  }
-
-  @Test
-  void aRejectionByAnyReviewerDropsTheChange() {
-    ChangeSelection selection =
-        ChangeSelection.of(
-            OPS,
-            List.of(
-                decision("admin", DecisionType.APPROVE, null, null),
-                decision(
-                    "karan", DecisionType.APPROVE, List.of(ref(TAG)), List.of(ref(DESCRIPTION)))),
-            REQUESTER);
-    assertEquals(List.of(TAG), selection.approved());
-    assertEquals(List.of(DESCRIPTION), selection.rejected());
-  }
-
-  @Test
-  void theRequestersOwnApprovalIsIgnoredAndAnOverrideAppliesEverything() {
+  void theRequestersOwnDecisionIsIgnoredAndAnOverrideApprovesEverythingOpen() {
     assertTrue(
-        ChangeSelection.of(
-                OPS, List.of(decision(REQUESTER, DecisionType.APPROVE, null, null)), REQUESTER)
-            .approved()
-            .isEmpty());
+        select(ONE_REVIEWER, Set.of(), whole(REQUESTER, DecisionType.APPROVE)).toApply().isEmpty());
     assertEquals(
-        OPS,
-        ChangeSelection.of(
-                OPS, List.of(decision(REQUESTER, DecisionType.OVERRIDE, null, null)), REQUESTER)
-            .approved());
+        List.of(DESCRIPTION),
+        select(
+                ONE_REVIEWER,
+                ChangeSelection.targets(List.of(TAG)),
+                whole("admin", DecisionType.OVERRIDE))
+            .toApply());
   }
 
   @Test

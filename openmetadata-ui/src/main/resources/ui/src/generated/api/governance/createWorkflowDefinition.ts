@@ -135,6 +135,14 @@ export interface NodeConfiguration {
      */
     fieldValue?: string;
     /**
+     * In an approval workflow that holds changes, let reviewers approve or reject some of a
+     * change request's changes and leave the rest pending. Agreed approvals leave through the
+     * 'partialApprove' edge, agreed rejections through 'partialReject'; both lead back to this
+     * task, which stays open with the remaining changes. A change is agreed once it reaches the
+     * approval or rejection threshold.
+     */
+    allowPartialDecisions?: boolean;
+    /**
      * Number of reviewers that must approve for the task to be completed. Default is 1 (any
      * single reviewer can approve).
      */

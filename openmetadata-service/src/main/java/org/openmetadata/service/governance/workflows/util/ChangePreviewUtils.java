@@ -211,7 +211,8 @@ public final class ChangePreviewUtils {
    * change description; returns a payload with the {@code proposedChanges} key removed when the
    * merged map is empty (e.g. all changes cancelled out across re-edits).
    */
-  public static Object buildProposedChangesPayload(EntityInterface<?> entity, Object existingPayload) {
+  public static Object buildProposedChangesPayload(
+      EntityInterface<?> entity, Object existingPayload) {
     return buildProposedChangesPayload(entity, existingPayload, null);
   }
 

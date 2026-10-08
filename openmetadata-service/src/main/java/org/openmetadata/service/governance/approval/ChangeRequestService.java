@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.governance.approval;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.ClientErrorException;
@@ -20,20 +23,25 @@ import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Response.Status;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.api.governance.OverrideChangeRequest;
 import org.openmetadata.schema.api.governance.WithdrawChangeRequest;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ApprovalDecision;
 import org.openmetadata.schema.governance.changeRequest.ChangeConflict;
 import org.openmetadata.schema.governance.changeRequest.ChangeLifecycleEvent;
+import org.openmetadata.schema.governance.changeRequest.ChangeOutcome;
+import org.openmetadata.schema.governance.changeRequest.ChangeRef;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestOrigin;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestPreview;
@@ -43,6 +51,7 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRevisionStatus;
 import org.openmetadata.schema.governance.changeRequest.DecisionType;
 import org.openmetadata.schema.governance.changeRequest.LifecycleEventType;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
+import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Include;
@@ -51,6 +60,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GovernanceDAOs.ChangeRequestDAO;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
@@ -86,9 +96,79 @@ public final class ChangeRequestService {
     return request.withActiveRevision(activeRevision(request));
   }
 
+  private static ChangeOutcome outcomeOf(
+      String target,
+      Set<String> applied,
+      Set<String> elsewhere,
+      Set<String> superseded,
+      Set<String> disagreed,
+      Set<String> rejected) {
+    ChangeOutcome outcome = ChangeOutcome.PENDING;
+    if (applied.contains(target)) {
+      outcome = ChangeOutcome.APPLIED;
+    } else if (elsewhere.contains(target)) {
+      outcome = ChangeOutcome.ALREADY_PUBLISHED;
+    } else if (superseded.contains(target)) {
+      outcome = ChangeOutcome.SUPERSEDED;
+    } else if (disagreed.contains(target)) {
+      outcome = ChangeOutcome.NOT_AGREED;
+    } else if (rejected.contains(target)) {
+      outcome = ChangeOutcome.REJECTED;
+    }
+    return outcome;
+  }
+
+  /** The request as the API reports it: its active revision says where each change stands. */
+  public static ChangeRequest report(UUID id) {
+    ChangeRequest request = get(id);
+    return request.withActiveRevision(reportedRevision(request, request.getActiveRevision()));
+  }
+
+  /**
+   * The revision with each change's outcome when the request is decided change by change or some
+   * of its changes were published by another change, open or ended; any other request reports its
+   * revision as stored, since all of its changes share the request's status.
+   */
+  public static ChangeRevision reportedRevision(ChangeRequest request, ChangeRevision revision) {
+    boolean changeByChange =
+        ChangeSelection.partialDecisions(request.getReviewPolicy())
+            || !nullOrEmpty(request.getAlreadyPublished())
+            || !nullOrEmpty(request.getSuperseded());
+    return changeByChange ? withOutcomes(request, revision) : revision;
+  }
+
+  /**
+   * A copy of the revision whose changes say where they stand: applied, rejected by its reviewers,
+   * or still pending. The stored revision is not changed.
+   */
+  public static ChangeRevision withOutcomes(ChangeRequest request, ChangeRevision revision) {
+    ChangeRevision reported = revision;
+    if (revision != null) {
+      ChangeSelection selection = ChangeApplyService.selection(request, revision);
+      Set<String> applied = ChangeSelection.targets(selection.applied());
+      Set<String> elsewhere = ChangeSelection.targets(selection.publishedElsewhere());
+      Set<String> disagreed = ChangeSelection.refTargets(request.getDisagreed());
+      Set<String> superseded = ChangeSelection.refTargets(request.getSuperseded());
+      Set<String> rejected = ChangeSelection.targets(selection.rejected());
+      reported = JsonUtils.deepCopy(revision, ChangeRevision.class);
+      reported
+          .getOps()
+          .forEach(
+              op -> {
+                String target = MutationPlanner.targetOf(op);
+                op.setOutcome(
+                    outcomeOf(target, applied, elsewhere, superseded, disagreed, rejected));
+              });
+    }
+    return reported;
+  }
+
+  /** The changes of the active revision still waiting for a decision, as a change description. */
   public static ChangeDescription proposedChangeDescription(UUID changeRequestId) {
-    ChangeRevision revision = activeRevision(get(changeRequestId));
-    return MutationOps.toChangeDescription(revision.getOps(), revision.getBaseEntityVersion());
+    ChangeRequest request = get(changeRequestId);
+    ChangeRevision revision = activeRevision(request);
+    return MutationOps.toChangeDescription(
+        ChangeApplyService.selection(request, revision).open(), revision.getBaseEntityVersion());
   }
 
   public static ChangeRevision activeRevision(ChangeRequest request) {
@@ -144,7 +224,8 @@ public final class ChangeRequestService {
    * moved to a newer revision while the task was being created; that task then has nothing to
    * review and the caller closes it with {@link #closeStaleTask(UUID)}.
    */
-  public static boolean attachTask(UUID changeRequestId, int revisionNumber, UUID taskId) {
+  public static boolean attachTask(
+      UUID changeRequestId, int revisionNumber, UUID taskId, ReviewPolicy reviewPolicy) {
     ChangeRequest snapshot = dao().changeRequestDAO().findById(changeRequestId);
     boolean reviewable = false;
     if (snapshot != null) {
@@ -159,12 +240,32 @@ public final class ChangeRequestService {
                     isOpen(locked)
                         && Objects.equals(locked.getActiveRevisionNumber(), revisionNumber);
                 if (current) {
-                  dao().changeRequestDAO().update(locked.withTaskId(taskId));
+                  dao()
+                      .changeRequestDAO()
+                      .update(locked.withTaskId(taskId).withReviewPolicy(reviewPolicy));
                 }
                 return current;
               });
     }
     return reviewable;
+  }
+
+  /**
+   * The open review task of a pending request in workflow run {@code workflowInstanceId}, if any.
+   */
+  public static UUID openTaskOf(UUID changeRequestId, UUID workflowInstanceId) {
+    ChangeRequest request = dao().changeRequestDAO().findById(changeRequestId);
+    UUID openTask = null;
+    if (request != null && isOpen(request) && request.getTaskId() != null) {
+      TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+      Task task = tasks.findCommittedTask(request.getTaskId());
+      if (task != null
+          && !TaskRepository.isTerminalStatus(task.getStatus())
+          && Objects.equals(task.getWorkflowInstanceId(), workflowInstanceId)) {
+        openTask = task.getId();
+      }
+    }
+    return openTask;
   }
 
   /**
@@ -370,17 +471,126 @@ public final class ChangeRequestService {
     }
   }
 
+  // After the asset changed, changes of a request the asset has overtaken leave its review: ones it
+  // already shows (another request added the same tag, for example) and ones whose field it now
+  // holds another value for. The rest of the request stays under review on the same task; with
+  // nothing left the request ends and its task is closed. A request that no longer passes
+  // validation for another reason is flagged on its task.
   private static void recheckSafely(ChangeRequest request) {
     try {
-      ChangeApplyService.Applicability applicability = ChangeApplyService.applicability(request);
+      ChangeRequest current =
+          ChangeApplyService.moved(request).isEmpty() ? request : recordMoved(request);
+      ChangeApplyService.Applicability applicability =
+          isOpen(current)
+              ? ChangeApplyService.applicability(current)
+              : new ChangeApplyService.Applicability(List.of(), null);
       if (!applicability.applicable()) {
         flagConflicts(request.getId(), applicability);
-      } else if (request.getStatusReason() != null) {
+      } else if (current.getStatusReason() != null && isOpen(current)) {
         clearConflicts(request.getId());
       }
     } catch (RuntimeException e) {
       LOG.warn("[ChangeRequest] Could not re-check change request {}", request.getId(), e);
     }
+  }
+
+  /**
+   * Takes the changes the asset has overtaken out of the request's review: they are recorded as
+   * already published or superseded, and the review task says so and lists what is left. With
+   * nothing left the request ends, Applied when it published part of itself, Superseded when a
+   * change was overtaken by another value and Cancelled otherwise, and its task is closed. The asset
+   * is read again under the locks, so only what it shows now counts.
+   */
+  private static ChangeRequest recordMoved(ChangeRequest request) {
+    EntityRepository<?> repository = Entity.getEntityRepository(request.getEntityType());
+    return repository.executeInTransaction(
+        () -> {
+          ChangeRequest locked = lockForUpdate(repository, request);
+          ChangeRequest result = locked;
+          ChangeApplyService.Moved moved =
+              isOpen(locked)
+                      && Objects.equals(
+                          locked.getActiveRevisionNumber(), request.getActiveRevisionNumber())
+                  ? ChangeApplyService.moved(locked)
+                  : new ChangeApplyService.Moved(List.of(), List.of());
+          if (!moved.isEmpty()) {
+            dao()
+                .changeRequestDAO()
+                .update(
+                    locked
+                        .withAlreadyPublished(
+                            withRefs(locked.getAlreadyPublished(), moved.published()))
+                        .withSuperseded(withRefs(locked.getSuperseded(), moved.superseded())));
+            ChangeSelection selection =
+                ChangeApplyService.selection(locked, activeRevision(locked));
+            result =
+                selection.open().isEmpty()
+                    ? endMoved(repository, locked, moved)
+                    : noteMoved(locked, moved, selection);
+          }
+          return result;
+        });
+  }
+
+  private static List<ChangeRef> withRefs(List<ChangeRef> refs, List<MutationOp> ops) {
+    List<ChangeRef> combined = new ArrayList<>(listOrEmpty(refs));
+    ops.forEach(op -> combined.add(new ChangeRef().withField(op.getField()).withKey(op.getKey())));
+    return combined;
+  }
+
+  // What happened to the overtaken changes, as the review task's comment reads it.
+  private static String movedNote(ChangeApplyService.Moved moved) {
+    List<String> parts = new ArrayList<>();
+    if (!moved.published().isEmpty()) {
+      parts.add(
+          "Another change already published %s."
+              .formatted(ChangeSelection.describe(moved.published())));
+    }
+    if (!moved.superseded().isEmpty()) {
+      parts.add(
+          "%s changed after this request was submitted, so %s superseded."
+              .formatted(
+                  ChangeSelection.describe(moved.superseded()),
+                  moved.superseded().size() == 1 ? "this change is" : "these changes are"));
+    }
+    return String.join(" ", parts);
+  }
+
+  private static ChangeRequest noteMoved(
+      ChangeRequest request, ChangeApplyService.Moved moved, ChangeSelection selection) {
+    UUID taskId = request.getTaskId();
+    UUID requestId = request.getId();
+    String note =
+        "%s Still waiting for review: %s."
+            .formatted(movedNote(moved), ChangeSelection.describe(selection.open()));
+    PostCommitActionQueue.runOrDefer(
+        () -> {
+          ChangeRequestTasks.comment(taskId, note);
+          ChangeRequestTasks.refreshProposedChanges(taskId, requestId);
+        });
+    return request;
+  }
+
+  private static ChangeRequest endMoved(
+      EntityRepository<?> repository, ChangeRequest request, ChangeApplyService.Moved moved) {
+    String reason = "%s Nothing is left to review.".formatted(movedNote(moved));
+    ChangeRequestStatus ending = ChangeRequestStatus.CANCELLED;
+    if (ChangeApplyService.isPublished(request)) {
+      ending = ChangeRequestStatus.APPLIED;
+    } else if (!listOrEmpty(request.getSuperseded()).isEmpty()) {
+      ending = ChangeRequestStatus.SUPERSEDED;
+    }
+    UUID taskId = request.getTaskId();
+    PostCommitActionQueue.runOrDefer(() -> ChangeRequestTasks.comment(taskId, reason));
+    ChangeRequest ended =
+        finishLocked(repository, request, request.getActiveRevisionNumber(), ending, reason, null);
+    if (ending == ChangeRequestStatus.APPLIED) {
+      PostCommitActionQueue.runOrDefer(
+          () ->
+              ChangeRequestTasks.closeTask(
+                  taskId, reason, WorkflowInstance.WorkflowStatus.FINISHED));
+    }
+    return ended;
   }
 
   // The asset no longer conflicts with the revision (for example, the newer value was reverted).
@@ -489,6 +699,11 @@ public final class ChangeRequestService {
           () ->
               ChangeRequestTasks.closeTask(
                   taskId, reason, WorkflowInstance.WorkflowStatus.CANCELLED));
+    } else if (status == ChangeRequestStatus.SUPERSEDED) {
+      PostCommitActionQueue.runOrDefer(
+          () ->
+              ChangeRequestTasks.closeTask(
+                  taskId, reason, WorkflowInstance.WorkflowStatus.SUPERSEDED));
     }
   }
 
@@ -573,9 +788,10 @@ public final class ChangeRequestService {
     ChangeRevision prior = activeRevision(active);
     dao().changeRevisionDAO().updateStatus(prior.withStatus(ChangeRevisionStatus.SUPERSEDED));
     int number = active.getActiveRevisionNumber() + 1;
+    List<MutationOp> carried = ChangeApplyService.selection(active, prior).open();
     List<MutationOp> ops =
         againstPublished(
-            repository, staged.entityId(), MutationPlanner.merge(prior.getOps(), staged.ops()));
+            repository, staged.entityId(), MutationPlanner.merge(carried, staged.ops()));
     ChangeRevision next = newRevision(active.getId(), number, staged, ops);
     dao().changeRevisionDAO().insert(next);
     active
@@ -583,6 +799,9 @@ public final class ChangeRequestService {
         .withActiveRevisionNumber(number)
         .withWorkflowDefinitionId(staged.workflowDefinitionId())
         .withImpersonatedBy(staged.impersonatedBy())
+        .withAlreadyPublished(List.of())
+        .withSuperseded(List.of())
+        .withDisagreed(List.of())
         .withTaskId(null)
         .withConflicts(List.of())
         .withStatusReason(null);

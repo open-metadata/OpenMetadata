@@ -30,7 +30,6 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeAction;
 import org.openmetadata.service.governance.approval.ChangeApplyService;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
-import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 
 /**
@@ -63,21 +62,23 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
     }
   }
 
-  // "applied" when the revision was published, "notApplied" when it could not be (the request stays
-  // open with its conflicts and the node ends the run), and "discarded" when the request was
-  // rejected.
+  // "applied" when this commit published the revision, or the part of it its reviewers agreed on,
+  // or the request already ended applied; "notApplied" when it could not (the request stays open
+  // with its conflicts and the node ends the run); "discarded" when the reviewers' rejections were
+  // dropped. Parts published by earlier commits of the same run do not count as this commit's.
   private String resolve(ResolvePendingChangeAction action, ChangeRequestRun run) {
     String result = DISCARDED;
     if (action == ResolvePendingChangeAction.COMMIT) {
+      int publishedBefore = ChangeApplyService.publishedCount(run.changeRequestId());
       ChangeRequest request =
           ChangeApplyService.approveAndApply(run.changeRequestId(), run.revisionNumber());
-      result = request.getStatus() == ChangeRequestStatus.APPLIED ? APPLIED : NOT_APPLIED;
+      result =
+          request.getStatus() == ChangeRequestStatus.APPLIED
+                  || ChangeApplyService.publishedCount(run.changeRequestId()) > publishedBefore
+              ? APPLIED
+              : NOT_APPLIED;
     } else {
-      ChangeRequestService.finish(
-          run.changeRequestId(),
-          run.revisionNumber(),
-          ChangeRequestStatus.REJECTED,
-          REJECTED_REASON);
+      ChangeApplyService.discard(run.changeRequestId(), run.revisionNumber(), REJECTED_REASON);
     }
     return result;
   }

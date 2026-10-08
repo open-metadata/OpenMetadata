@@ -46,8 +46,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.EntityStatusAdapter;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.RestUtil;
 
@@ -114,14 +116,24 @@ public final class ApprovalGate {
         ChangeRequestService.dao().changeRequestDAO().findById(approval.changeRequestId());
     boolean approved =
         request != null
-            && request.getStatus() == ChangeRequestStatus.APPROVED
             && approval.revisionId().equals(request.getActiveRevisionId())
-            && original.getId().equals(request.getEntityId());
+            && original.getId().equals(request.getEntityId())
+            && (request.getStatus() == ChangeRequestStatus.APPROVED || hasAgreedChanges(request));
     if (!approved) {
       throw new IllegalStateException(
           "Change request %s is not an approved revision of %s"
               .formatted(approval.changeRequestId(), original.getId()));
     }
+  }
+
+  // A request decided change by change stays Pending while its reviewers agree on part of it; the
+  // changes they agreed on and not yet published authorize this write.
+  private static boolean hasAgreedChanges(ChangeRequest request) {
+    return request.getStatus() == ChangeRequestStatus.PENDING
+        && ChangeSelection.partialDecisions(request.getReviewPolicy())
+        && !ChangeApplyService.selection(request, ChangeRequestService.activeRevision(request))
+            .toApply()
+            .isEmpty();
   }
 
   /** One asset's part of a bulk relationship write, e.g. adding a domain or a tag to it. */
@@ -531,8 +543,9 @@ public final class ApprovalGate {
   private static void rejectStageMoveOutsideLifecycle(
       String entityType, EntityInterface original, EntityInterface updated, Set<String> changed) {
     if (changed.contains(Entity.FIELD_ENTITY_STATUS)) {
-      Entity.getEntityRepository(entityType)
-          .validateEntityStatusMove(original.getEntityStatus(), updated.getEntityStatus());
+      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+      EntityStatusAdapter<?> statuses = repository.getEntityLifecycle().adapter();
+      repository.validateEntityStatusMove(statuses.read(original), statuses.read(updated));
     }
   }
 

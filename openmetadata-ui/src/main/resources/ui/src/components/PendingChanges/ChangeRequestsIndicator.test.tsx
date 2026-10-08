@@ -28,6 +28,15 @@ import ChangeRequestsIndicator from './ChangeRequestsIndicator.component';
 jest.mock('../../rest/changeRequestsAPI', () => ({
   getChangeRequestsForEntity: jest.fn(),
   withdrawChangeRequest: jest.fn(),
+  getChangeRequestRevisions: jest.fn().mockResolvedValue([]),
+  getChangeRequestDecisions: jest.fn().mockResolvedValue([]),
+  getChangeRequestEvents: jest.fn().mockResolvedValue([]),
+  getChangeRequestsByRequester: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../../rest/tasksAPI', () => ({
+  getTaskById: jest.fn().mockResolvedValue({ data: { id: 'task-1' } }),
+  resolveTask: jest.fn(),
 }));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
@@ -93,17 +102,45 @@ const openModal = async () => {
   });
 };
 
+const openRequestsView = async () => {
+  await openModal();
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('switch-to-requests'));
+  });
+};
+
 describe('ChangeRequestsIndicator', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('renders nothing when no request is open', async () => {
+  it('shows no count when no request is open', async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
       request({ status: ChangeRequestStatus.Applied }),
     ]);
 
     await renderIndicator();
 
-    expect(screen.queryByTestId('pending-change-requests')).toBeNull();
+    expect(screen.getByTestId('pending-change-requests')).not.toHaveTextContent(
+      '1'
+    );
+  });
+
+  it('opens the review of every pending change, grouped by field', async () => {
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
+      request({}),
+      request({ id: 'cr-2', requestedBy: 'bob' }),
+    ]);
+
+    await openModal();
+
+    expect(
+      screen.getByTestId('review-pending-changes-modal')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('suggestion-cr-1|2|description|')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('suggestion-cr-2|2|description|')
+    ).toBeInTheDocument();
   });
 
   it('shows the request count and lists the open requests in the modal', async () => {
@@ -112,7 +149,7 @@ describe('ChangeRequestsIndicator', () => {
       request({ id: 'cr-2', requestedBy: 'bob' }),
     ]);
 
-    await openModal();
+    await openRequestsView();
 
     expect(screen.getByTestId('pending-change-requests')).toHaveTextContent(
       '2'
@@ -126,7 +163,7 @@ describe('ChangeRequestsIndicator', () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([request({})]);
     (withdrawChangeRequest as jest.Mock).mockResolvedValue({});
 
-    await openModal();
+    await openRequestsView();
 
     const change = screen.getByTestId('change-description-updated');
 
@@ -149,7 +186,12 @@ describe('ChangeRequestsIndicator', () => {
     await openModal();
 
     expect(screen.queryByTestId('withdraw-change-request')).toBeNull();
-    expect(screen.queryByRole('button', { name: /approve/i })).toBeNull();
+    expect(
+      screen.queryByTestId('accept-cr-1|2|description|')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('reject-cr-1|2|description|')
+    ).not.toBeInTheDocument();
   });
 
   it('filters the requests by requester or changed field', async () => {
@@ -158,7 +200,7 @@ describe('ChangeRequestsIndicator', () => {
       request({ id: 'cr-2', requestedBy: 'bob' }),
     ]);
 
-    await openModal();
+    await openRequestsView();
     await act(async () => {
       fireEvent.change(screen.getByTestId('pending-changes-search'), {
         target: { value: 'bob' },

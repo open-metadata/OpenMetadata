@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { OverrideChangeRequest } from '../generated/api/governance/overrideChangeRequest';
 import { WithdrawChangeRequest } from '../generated/api/governance/withdrawChangeRequest';
+import { ApprovalDecision } from '../generated/governance/changeRequest/approvalDecision';
+import { ChangeLifecycleEvent } from '../generated/governance/changeRequest/changeLifecycleEvent';
 import { ChangeRequest } from '../generated/governance/changeRequest/changeRequest';
+import { ChangeRequestPreview } from '../generated/governance/changeRequest/changeRequestPreview';
+import { ChangeRevision } from '../generated/governance/changeRequest/changeRevision';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/changeRequests';
@@ -50,6 +56,93 @@ export const withdrawChangeRequest = async (
     WithdrawChangeRequest,
     AxiosResponse<ChangeRequest>
   >(`${BASE_URL}/${id}/withdraw`, { expectedRevision });
+
+  return response.data;
+};
+
+/** Every change request a user submitted, on any asset the caller may see. Newest first. */
+export const getChangeRequestsByRequester = async (
+  requestedBy: string,
+  limit = 50
+): Promise<ChangeRequest[]> => {
+  const response = await APIClient.get<PagingResponse<ChangeRequest[]>>(
+    BASE_URL,
+    { params: { requestedBy, limit } }
+  );
+
+  return response.data.data;
+};
+
+/** Every revision of a change request, oldest first. */
+export const getChangeRequestRevisions = async (
+  id: string
+): Promise<ChangeRevision[]> => {
+  const response = await APIClient.get<PagingResponse<ChangeRevision[]>>(
+    `${BASE_URL}/${id}/revisions`
+  );
+
+  return response.data.data;
+};
+
+/** Every review decision recorded on a change request. */
+export const getChangeRequestDecisions = async (
+  id: string
+): Promise<ApprovalDecision[]> => {
+  const response = await APIClient.get<PagingResponse<ApprovalDecision[]>>(
+    `${BASE_URL}/${id}/decisions`
+  );
+
+  return response.data.data;
+};
+
+/** The lifecycle history of a change request, in order. */
+export const getChangeRequestEvents = async (
+  id: string
+): Promise<ChangeLifecycleEvent[]> => {
+  const response = await APIClient.get<PagingResponse<ChangeLifecycleEvent[]>>(
+    `${BASE_URL}/${id}/events`
+  );
+
+  return response.data.data;
+};
+
+/** Publish a pending change request without review. Admins only. */
+export const overrideChangeRequest = async (
+  id: string,
+  expectedRevision: number,
+  reason: string
+): Promise<ChangeRequest> => {
+  const response = await APIClient.post<
+    OverrideChangeRequest,
+    AxiosResponse<ChangeRequest>
+  >(`${BASE_URL}/${id}/override`, { expectedRevision, reason });
+
+  return response.data;
+};
+
+/** Cancel a pending change request. Admins only. */
+export const cancelChangeRequest = async (
+  id: string
+): Promise<ChangeRequest> => {
+  const response = await APIClient.post<null, AxiosResponse<ChangeRequest>>(
+    `${BASE_URL}/${id}/cancel`
+  );
+
+  return response.data;
+};
+
+/** Whether saving a JSON patch on an asset would be held for approval, without saving it. */
+export const previewChangeRequest = async (
+  entityType: string,
+  entityId: string,
+  patch: Operation[]
+): Promise<ChangeRequestPreview> => {
+  const response = await APIClient.post<
+    Operation[],
+    AxiosResponse<ChangeRequestPreview>
+  >(`${BASE_URL}/preview/${entityType}/${entityId}`, patch, {
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
 
   return response.data;
 };

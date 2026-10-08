@@ -623,8 +623,11 @@ public interface GovernanceDAOs {
           JsonUtils.pojoToJson(application));
     }
 
-    @SqlQuery("SELECT json FROM change_application WHERE changeRequestId = :id")
+    @SqlQuery("SELECT json FROM change_application WHERE revisionId = :id ORDER BY appliedAt")
     @RegisterRowMapper(ChangeRequestMappers.ChangeApplicationMapper.class)
-    ChangeApplication findByRequest(@BindUUID("id") UUID changeRequestId);
+    List<ChangeApplication> listByRevision(@BindUUID("id") UUID revisionId);
+
+    @SqlQuery("SELECT COUNT(*) FROM change_application WHERE changeRequestId = :id")
+    int countByRequest(@BindUUID("id") UUID changeRequestId);
   }
 }

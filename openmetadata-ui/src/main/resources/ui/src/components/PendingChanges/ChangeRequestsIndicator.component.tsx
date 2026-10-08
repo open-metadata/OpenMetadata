@@ -23,9 +23,18 @@ import { getChangeRequestsForEntity } from '../../rest/changeRequestsAPI';
 import { PENDING_CHANGE_EVENT } from '../../rest/pendingChangeInterceptor';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PendingChangesModal from './PendingChangesModal/PendingChangesModal.component';
+import ReviewPendingChangesModal from './ReviewPendingChanges/ReviewPendingChangesModal.component';
 
 interface ChangeRequestsIndicatorProps {
   entityId: string;
+  entityType?: string;
+  entityFqn?: string;
+}
+
+enum View {
+  Closed,
+  Review,
+  Requests,
 }
 
 const OPEN_STATUSES = new Set([
@@ -39,11 +48,14 @@ const OPEN_STATUSES = new Set([
  */
 const ChangeRequestsIndicator = ({
   entityId,
+  entityType,
+  entityFqn,
 }: ChangeRequestsIndicatorProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [requests, setRequests] = useState<ChangeRequest[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const [view, setView] = useState(View.Closed);
+  const [startWithPreview, setStartWithPreview] = useState(false);
 
   const fetchRequests = useCallback(async () => {
     if (!entityId) {
@@ -65,10 +77,6 @@ const ChangeRequestsIndicator = ({
       window.removeEventListener(PENDING_CHANGE_EVENT, fetchRequests);
   }, [fetchRequests]);
 
-  if (requests.length === 0) {
-    return null;
-  }
-
   const ordered = [...requests].sort(
     (a, b) =>
       Number(b.requestedBy === currentUser?.name) -
@@ -82,19 +90,39 @@ const ChangeRequestsIndicator = ({
         color="secondary"
         data-testid="pending-change-requests"
         iconTrailing={
-          <Badge color="brand" size="sm">
-            {requests.length}
-          </Badge>
+          requests.length > 0 ? (
+            <Badge color="brand" size="sm">
+              {requests.length}
+            </Badge>
+          ) : undefined
         }
         size="sm"
-        onClick={() => setIsOpen(true)}>
+        onClick={() =>
+          setView(requests.length > 0 ? View.Review : View.Requests)
+        }>
         {t('label.pending-changes')}
       </Button>
-      {isOpen && (
-        <PendingChangesModal
+      {view === View.Review && (
+        <ReviewPendingChangesModal
           requests={ordered}
           onChange={fetchRequests}
-          onClose={() => setIsOpen(false)}
+          onClose={() => setView(View.Closed)}
+          onSwitchView={(preview) => {
+            setStartWithPreview(Boolean(preview));
+            setView(View.Requests);
+          }}
+        />
+      )}
+      {view === View.Requests && (
+        <PendingChangesModal
+          entityFqn={entityFqn}
+          entityId={entityId}
+          entityType={entityType}
+          requests={ordered}
+          startWithPreview={startWithPreview}
+          onChange={fetchRequests}
+          onClose={() => setView(View.Closed)}
+          onSwitchView={() => setView(View.Review)}
         />
       )}
     </>

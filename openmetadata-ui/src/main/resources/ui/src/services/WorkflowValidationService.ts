@@ -36,6 +36,7 @@ import {
   getNodeConfiguration,
   getNodeName,
 } from '../utils/WorkflowNodeConfigUtils';
+import { syncPartialDecisionLoops } from '../utils/WorkflowPartialDecisionUtils';
 import { deserializeEventBasedFilters } from '../utils/WorkflowSerializationUtils';
 
 type NodeConfigWithMetadata = NodeConfig & {
@@ -544,6 +545,15 @@ const buildWorkflowNodes = (nodes: Node[], validEdges: Edge[]) => {
   });
 };
 
+// The builder's own conditions are lowercase ("true", "approve"); any other condition, such as an
+// approval step's "partialApprove", is matched exactly by the server and is kept as written.
+const BUILDER_CONDITIONS = new Set(['true', 'false', 'approve', 'reject']);
+
+const normalizedCondition = (condition: string) =>
+  BUILDER_CONDITIONS.has(condition.toLowerCase())
+    ? condition.toLowerCase()
+    : condition;
+
 const buildWorkflowEdges = (edges: Edge[], nodes: Node[]) => {
   const nodesWithMetadata = nodes.map((n) => ({ ...n.data, id: n.id }));
 
@@ -577,8 +587,7 @@ const buildWorkflowEdges = (edges: Edge[], nodes: Node[]) => {
         // For data completeness, preserve the original quality band name (e.g., "Gold", "Silver")
         edgeObj.condition = condition;
       } else {
-        // For other nodes, use lowercase (e.g., "true", "false")
-        edgeObj.condition = condition.toLowerCase();
+        edgeObj.condition = normalizedCondition(condition);
       }
     }
 
@@ -810,10 +819,12 @@ export const buildWorkflowForSave = async (
   const triggerEntityTypes = resolveTriggerEntityTypes(finalTriggerConfig);
   assertTriggerHasEntityTypes(triggerType, triggerEntityTypes);
 
-  let workflowNodes = buildWorkflowNodes(nodes, validEdges);
-  const workflowEdges = buildWorkflowEdges(validEdges as Edge[], nodes);
-
-  workflowNodes = migrateInputNamespaceMap(workflowNodes, workflowEdges);
+  const synced = syncPartialDecisionLoops(
+    buildWorkflowNodes(nodes, validEdges),
+    buildWorkflowEdges(validEdges as Edge[], nodes)
+  );
+  const workflowEdges = synced.edges;
+  const workflowNodes = migrateInputNamespaceMap(synced.nodes, workflowEdges);
 
   const backendReadyJSON = {
     name: workflowName,

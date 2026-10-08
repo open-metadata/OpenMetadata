@@ -109,6 +109,7 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonPatch;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -13925,7 +13926,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     int pendingApproval =
-        stageGatedBulkUpdates(updateEntities, existingByFqn, userName, successRequests);
+        stageGatedBulkUpdates(
+            updateEntities, existingByFqn, userName, successRequests, failedRequests);
 
     // Batch update existing entities
     bulkUpdateEntities(
@@ -13984,13 +13986,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * Bulk updates that change a field gated by an approval workflow are submitted as change requests
    * instead of being written. Each is removed from {@code updateEntities} and reported as a
-   * successful item carrying its change request id. Returns how many were staged.
+   * successful item carrying its change request id. An update that cannot be admitted or submitted
+   * is removed and reported as a failed item, so it never stops the rest of the bulk request.
+   * Returns how many were staged.
    */
   private int stageGatedBulkUpdates(
       List<T> updateEntities,
       Map<String, T> existingByFqn,
       String userName,
-      List<BulkResponse> successRequests) {
+      List<BulkResponse> successRequests,
+      List<BulkResponse> failedRequests) {
     int staged = 0;
     if (ApprovalGate.mayHold(entityType, userName)) {
       Map<String, T> publishedByFqn = publishedWithPutFields(updateEntities, existingByFqn);
@@ -13999,11 +14004,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         T entity = candidates.next();
         T published = publishedByFqn.get(entity.getFullyQualifiedName());
         entity.setId(published.getId());
-        Optional<StagedChange> change = ApprovalGate.admit(published, entity, userName, null);
-        if (change.isPresent()) {
+        try {
+          Optional<StagedChange> change = ApprovalGate.admit(published, entity, userName, null);
+          if (change.isPresent()) {
+            candidates.remove();
+            successRequests.add(pendingApprovalResponse(entity, change.get()));
+            staged++;
+          }
+        } catch (WebApplicationException e) {
           candidates.remove();
-          successRequests.add(pendingApprovalResponse(entity, change.get()));
-          staged++;
+          failedRequests.add(
+              new BulkResponse()
+                  .withRequest(entity.getFullyQualifiedName())
+                  .withStatus(e.getResponse().getStatus())
+                  .withMessage(e.getMessage()));
         }
       }
     }

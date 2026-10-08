@@ -29,6 +29,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -4396,35 +4397,34 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
-  void test_gatedFieldChangedSinceSubmitBlocksApprovalUntilResubmitted(TestNamespace ns)
+  void test_changeWhoseFieldWasPublishedSinceIsSupersededAndItsTaskClosed(TestNamespace ns)
       throws Exception {
     Glossary glossary = reviewedGlossary(ns, "conflict");
     String requestId = submitDescription(glossary, "requested description");
     Task task = awaitRequestTask(requestId, glossary);
     patchAs(SdkClients.ingestionBotClient(), glossary, descriptionPatch("ingested description"));
-    assertEquals("ingested description", descriptionOf(glossary));
 
-    OpenMetadataException refused = assertThrows(OpenMetadataException.class, () -> approve(task));
-    assertEquals(409, refused.getStatusCode(), refused.getMessage());
-    JsonNode flagged = changeRequest(requestId);
-    assertEquals("Pending", flagged.get("status").asText());
-    assertEquals("description", flagged.get("conflicts").get(0).get("field").asText());
+    awaitRequestStatus(requestId, "Superseded");
+    assertEquals("Superseded", outcomeOf(requestId, "description"));
     assertEquals("ingested description", descriptionOf(glossary));
-
-    assertEquals(requestId, submitDescription(glossary, "rebased description"));
-    await("revision 2 of " + requestId)
+    awaitTaskClosed(glossary, task);
+    await("comment on " + task.getId())
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
         .untilAsserted(
-            () -> assertEquals(2, changeRequest(requestId).get("activeRevisionNumber").asInt()));
-    approve(awaitRequestTask(requestId, glossary));
-    awaitRequestStatus(requestId, "Applied");
+            () ->
+                assertTrue(taskCommentContains(task, "changed after this request was submitted")));
+
+    String again = submitDescription(glossary, "rebased description");
+    assertNotEquals(requestId, again);
+    approve(awaitRequestTask(again, glossary));
+    awaitRequestStatus(again, "Applied");
     assertEquals("rebased description", descriptionOf(glossary));
   }
 
   @Test
-  void test_resubmittingAnotherFieldRestatesAMovedChangeSoItCanBeApproved(TestNamespace ns)
+  void test_supersededChangeLeavesTheReviewAndTheOtherChangeIsStillApproved(TestNamespace ns)
       throws Exception {
     Glossary glossary = createReviewedGlossary(ns, "restate");
     deployHookWorkflow(
@@ -4432,59 +4432,261 @@ public class WorkflowDefinitionResourceIT {
         "glossary",
         glossary.getFullyQualifiedName(),
         List.of("description", "displayName"));
-    String requestId = submitDescription(glossary, "requested description");
+    String requestId = submit(glossary, descriptionAndDisplayName("requested text", "new name"));
     Task task = awaitRequestTask(requestId, glossary);
     patchAs(SdkClients.ingestionBotClient(), glossary, descriptionPatch("ingested description"));
-    assertThrows(OpenMetadataException.class, () -> approve(task));
 
-    assertEquals(
-        requestId,
-        submit(
-            glossary, "[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"new name\"}]"));
-    await("revision 2 of " + requestId)
+    await("description of " + requestId + " superseded")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("Superseded", outcomeOf(requestId, "description")));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    assertEquals("Pending", outcomeOf(requestId, "displayName"));
+    await("comment on " + task.getId())
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
         .untilAsserted(
-            () -> assertEquals(2, changeRequest(requestId).get("activeRevisionNumber").asInt()));
-    approve(awaitRequestTask(requestId, glossary));
+            () -> assertTrue(taskCommentContains(task, "Still waiting for review: displayName")));
+    Task same = awaitRequestTask(requestId, glossary);
+    assertEquals(task.getId(), same.getId());
+
+    approve(same);
     awaitRequestStatus(requestId, "Applied");
     Glossary after = glossaryById(glossary);
-    assertEquals("requested description", after.getDescription());
+    assertEquals("ingested description", after.getDescription());
     assertEquals("new name", after.getDisplayName());
   }
 
   @Test
-  void test_partlyApprovedRequestPublishesTagsAndDiscardsDescription(TestNamespace ns)
-      throws Exception {
-    Glossary glossary = createReviewedGlossary(ns, "partial");
-    deployHookWorkflow(
-        SdkClients.adminClient(),
-        "glossary",
-        glossary.getFullyQualifiedName(),
-        List.of("description", "tags"));
+  void test_partlyApprovedRequestPublishesTheTagAndKeepsTheDescriptionOnTheSameTask(
+      TestNamespace ns) throws Exception {
+    Glossary glossary = partialDecisionGlossary(ns, "partial", 1, List.of("description", "tags"));
     String requestId =
         submit(
             glossary,
             """
-        [{"op":"replace","path":"/description","value":"discarded description"},
+        [{"op":"replace","path":"/description","value":"kept description"},
          {"op":"add","path":"/tags","value":[{"tagFQN":"PII.Sensitive","source":"Classification","labelType":"Manual","state":"Confirmed"}]}]
         """);
-    Task first = awaitRequestTask(requestId, glossary);
+    Task task = awaitRequestTask(requestId, glossary);
 
-    resolveChanges(first, TaskResolutionType.Approved, approve("tags").withKey("PII.Sensitive"));
+    resolveChanges(task, TaskResolutionType.Approved, approve("tags").withKey("PII.Sensitive"));
+
+    await("tag of " + requestId + " published")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("Applied", outcomeOf(requestId, "tags")));
+    assertTrue(
+        SdkClients.adminClient()
+            .glossaries()
+            .get(glossary.getId().toString(), "tags")
+            .getTags()
+            .stream()
+            .anyMatch(tag -> "PII.Sensitive".equals(tag.getTagFQN())));
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    JsonNode request = changeRequest(requestId);
+    assertEquals("Pending", request.get("status").asText());
+    assertEquals(1, request.get("activeRevisionNumber").asInt());
+    assertEquals("Pending", outcomeOf(requestId, "description"));
+    assertTrue(eventTypes(requestHistory(requestId, "events")).contains("PartiallyApplied"));
+    Task same = awaitRequestTask(requestId, glossary);
+    assertEquals(task.getId(), same.getId());
+
+    resolveChanges(same, TaskResolutionType.Approved, approve("description"));
 
     awaitRequestStatus(requestId, "Applied");
-    Glossary partly =
-        SdkClients.adminClient().glossaries().get(glossary.getId().toString(), "tags");
-    assertTrue(partly.getTags().stream().anyMatch(tag -> "PII.Sensitive".equals(tag.getTagFQN())));
-    assertEquals(PUBLISHED_DESCRIPTION, partly.getDescription());
-    assertTrue(eventTypes(requestHistory(requestId, "events")).contains("PartiallyApplied"));
+    assertEquals("kept description", descriptionOf(glossary));
     assertEquals(1, requestHistory(requestId, "revisions").size());
-    assertEquals(first.getId().toString(), changeRequest(requestId).get("taskId").asText());
-    JsonNode decisions = requestHistory(requestId, "decisions");
-    assertEquals(
-        "description", decisions.get(0).get("rejectedChanges").get(0).get("field").asText());
+  }
+
+  @Test
+  void test_partialRejectionDropsTheChangeAndKeepsTheRestPending(TestNamespace ns)
+      throws Exception {
+    Glossary glossary =
+        partialDecisionGlossary(ns, "partialRejectLoop", 1, List.of("description", "displayName"));
+    String requestId = submit(glossary, descriptionAndDisplayName("rejected text", "kept name"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(task, TaskResolutionType.Rejected, reject("description"));
+
+    await("description of " + requestId + " rejected")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("Rejected", outcomeOf(requestId, "description")));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
+
+    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
+
+    awaitRequestStatus(requestId, "Applied");
+    Glossary after = glossaryById(glossary);
+    assertEquals("kept name", after.getDisplayName());
+    assertEquals(PUBLISHED_DESCRIPTION, after.getDescription());
+  }
+
+  @Test
+  void test_reviewerCanApproveTheChangesASupersededChangeDoesNotTouch(TestNamespace ns)
+      throws Exception {
+    Glossary glossary =
+        partialDecisionGlossary(ns, "partialConflict", 1, List.of("description", "displayName"));
+    String requestId = submit(glossary, descriptionAndDisplayName("stale text", "approved name"));
+    Task task = awaitRequestTask(requestId, glossary);
+    patchAs(SdkClients.ingestionBotClient(), glossary, descriptionPatch("ingested description"));
+    await("description of " + requestId + " superseded")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("Superseded", outcomeOf(requestId, "description")));
+
+    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals(1, changeRequest(requestId).get("activeRevisionNumber").asInt());
+    assertEquals("approved name", glossaryById(glossary).getDisplayName());
+    assertEquals("ingested description", descriptionOf(glossary));
+    awaitTaskClosed(glossary, task);
+  }
+
+  @Test
+  void test_twoReviewersMustAgreeOnAChangeBeforeItIsPublished(TestNamespace ns) throws Exception {
+    Glossary glossary =
+        partialDecisionGlossary(ns, "partialTwo", 2, List.of("description", "displayName"));
+    String requestId = submit(glossary, descriptionAndDisplayName("dropped text", "agreed name"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(
+        SdkClients.user1Client(), task, TaskResolutionType.Approved, approve("displayName"));
+    assertEquals("Pending", outcomeOf(requestId, "displayName"));
+    assertEquals("published name", glossaryById(glossary).getDisplayName());
+
+    resolveChanges(
+        SdkClients.user3Client(), task, TaskResolutionType.Approved, approve("displayName"));
+    await("display name of " + requestId + " published")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("agreed name", glossaryById(glossary).getDisplayName()));
+    assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
+
+    resolveChanges(
+        SdkClients.user1Client(), task, TaskResolutionType.Rejected, reject("description"));
+    assertEquals("Pending", outcomeOf(requestId, "description"));
+    resolveChanges(
+        SdkClients.user3Client(), task, TaskResolutionType.Rejected, reject("description"));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    assertEquals(4, requestHistory(requestId, "decisions").size());
+  }
+
+  @Test
+  void test_aChangeReviewersCannotAgreeOnIsNotPublishedAndTheRestGoesOn(TestNamespace ns)
+      throws Exception {
+    Glossary glossary =
+        partialDecisionGlossary(ns, "partialDispute", 2, List.of("description", "displayName"));
+    String requestId = submit(glossary, descriptionAndDisplayName("disputed text", "agreed name"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(
+        SdkClients.user1Client(), task, TaskResolutionType.Approved, approve("description"));
+    resolveChanges(
+        SdkClients.user3Client(), task, TaskResolutionType.Rejected, reject("description"));
+
+    await("description of " + requestId + " out of reach of agreement")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("NotAgreed", outcomeOf(requestId, "description")));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    assertEquals("Pending", outcomeOf(requestId, "displayName"));
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
+    await("comment on " + task.getId() + " explaining the disagreement")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    SdkClients.adminClient()
+                        .tasks()
+                        .get(task.getId().toString(), "*")
+                        .getComments()
+                        .stream()
+                        .anyMatch(
+                            comment ->
+                                comment
+                                    .getMessage()
+                                    .contains("Reviewers could not agree on description"))));
+
+    resolveChanges(
+        SdkClients.user1Client(), task, TaskResolutionType.Approved, approve("displayName"));
+    resolveChanges(
+        SdkClients.user3Client(), task, TaskResolutionType.Approved, approve("displayName"));
+
+    awaitRequestStatus(requestId, "Applied");
+    Glossary after = glossaryById(glossary);
+    assertEquals("agreed name", after.getDisplayName());
+    assertEquals(PUBLISHED_DESCRIPTION, after.getDescription());
+    awaitTaskClosed(glossary, task);
+  }
+
+  @Test
+  void test_requestWhoseOnlyChangeReviewersCannotAgreeOnEndsRejected(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = partialDecisionGlossary(ns, "partialDisputeAll", 2, List.of("description"));
+    String requestId = submitDescription(glossary, "disputed text");
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(
+        SdkClients.user1Client(), task, TaskResolutionType.Approved, approve("description"));
+    resolveChanges(
+        SdkClients.user3Client(), task, TaskResolutionType.Rejected, reject("description"));
+
+    awaitRequestStatus(requestId, "Rejected");
+    assertEquals("NotAgreed", outcomeOf(requestId, "description"));
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    awaitTaskClosed(glossary, task);
+  }
+
+  @Test
+  void test_partialDecisionEdgesNeedAnApprovalStepThatAllowsThem(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "partialEdges");
+    ObjectNode withoutFlag = partialDecisionWorkflow(glossary, 1, List.of("description"));
+    ((ObjectNode) withoutFlag.get("nodes").get(1).get("config"))
+        .put("allowPartialDecisions", false);
+    OpenMetadataException notAllowed =
+        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(withoutFlag));
+    assertEquals(400, notAllowed.getStatusCode());
+    assertTrue(
+        notAllowed.getMessage().contains("does not allow partial decisions"),
+        notAllowed.getMessage());
+
+    // Drop the partialReject path entirely (edge and node) so only the new rule can refuse it.
+    ObjectNode missingEdge = partialDecisionWorkflow(glossary, 1, List.of("description"));
+    ArrayNode edges = (ArrayNode) missingEdge.get("edges");
+    for (int i = edges.size() - 1; i >= 0; i--) {
+      JsonNode edge = edges.get(i);
+      if ("PartialDiscard".equals(edge.path("from").asText())
+          || "PartialDiscard".equals(edge.path("to").asText())) {
+        edges.remove(i);
+      }
+    }
+    ArrayNode nodes = (ArrayNode) missingEdge.get("nodes");
+    for (int i = nodes.size() - 1; i >= 0; i--) {
+      if ("PartialDiscard".equals(nodes.get(i).path("name").asText())) {
+        nodes.remove(i);
+      }
+    }
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(missingEdge));
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("partialReject"), refused.getMessage());
   }
 
   @Test
@@ -4540,88 +4742,15 @@ public class WorkflowDefinitionResourceIT {
                 OpenMetadataException.class,
                 () -> resolveChanges(task, TaskResolutionType.Rejected, approve("description")))
             .getStatusCode());
+    // Without partial decisions, an approval step decides every change at once.
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> resolveChanges(task, TaskResolutionType.Approved, approve("displayName")))
+            .getStatusCode());
     assertEquals("Pending", changeRequest(requestId).get("status").asText());
     assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
-  }
-
-  @Test
-  void test_reviewerCanApproveTheChangesAConflictDoesNotTouch(TestNamespace ns) throws Exception {
-    Glossary glossary = twoFieldGatedGlossary(ns, "partialConflict");
-    String requestId = submit(glossary, descriptionAndDisplayName("stale text", "approved name"));
-    Task task = awaitRequestTask(requestId, glossary);
-    patchAs(SdkClients.ingestionBotClient(), glossary, descriptionPatch("ingested description"));
-    assertEquals(
-        409, assertThrows(OpenMetadataException.class, () -> approve(task)).getStatusCode());
-
-    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
-
-    awaitRequestStatus(requestId, "Applied");
-    assertEquals(1, changeRequest(requestId).get("activeRevisionNumber").asInt());
-    Glossary after = glossaryById(glossary);
-    assertEquals("approved name", after.getDisplayName());
-    assertEquals("ingested description", after.getDescription());
-  }
-
-  @Test
-  void test_twoReviewersApplyOnlyTheirCommonSelection(TestNamespace ns) throws Exception {
-    Glossary glossary = twoReviewerGatedGlossary(ns);
-    String requestId =
-        submit(glossary, descriptionAndDisplayName("discarded text", "approved name"));
-    Task task = awaitRequestTask(requestId, glossary);
-    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
-    assertEquals("Pending", changeRequest(requestId).get("status").asText());
-    assertEquals("published name", glossaryById(glossary).getDisplayName());
-    SdkClients.user3Client()
-        .tasks()
-        .resolve(
-            task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
-                .withResolutionType(TaskResolutionType.Approved));
-    awaitRequestStatus(requestId, "Applied");
-    assertEquals("approved name", glossaryById(glossary).getDisplayName());
-    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
-    assertEquals(1, requestHistory(requestId, "revisions").size());
-  }
-
-  @Test
-  void test_secondReviewerIgnoresDriftInDiscardedChanges(TestNamespace ns) throws Exception {
-    Glossary glossary = twoReviewerGatedGlossary(ns);
-    String requestId =
-        submit(glossary, descriptionAndDisplayName("discarded text", "approved name"));
-    Task task = awaitRequestTask(requestId, glossary);
-    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
-    patchAs(
-        SdkClients.ingestionBotClient(), glossary, descriptionPatch("new published description"));
-    SdkClients.user3Client()
-        .tasks()
-        .resolve(
-            task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
-                .withResolutionType(TaskResolutionType.Approved));
-    awaitRequestStatus(requestId, "Applied");
-    assertEquals("approved name", glossaryById(glossary).getDisplayName());
-    assertEquals("new published description", descriptionOf(glossary));
-    assertEquals(1, requestHistory(requestId, "revisions").size());
-  }
-
-  @Test
-  void test_disjointReviewerSelectionsRejectTheRequest(TestNamespace ns) throws Exception {
-    Glossary glossary = twoReviewerGatedGlossary(ns);
-    String requestId =
-        submit(glossary, descriptionAndDisplayName("discarded text", "discarded name"));
-    Task task = awaitRequestTask(requestId, glossary);
-    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
-    SdkClients.user3Client()
-        .tasks()
-        .resolve(
-            task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
-                .withResolutionType(TaskResolutionType.Approved)
-                .withChangeDecisions(List.of(approve("description"))));
-    awaitRequestStatus(requestId, "Rejected");
-    assertEquals("published name", glossaryById(glossary).getDisplayName());
-    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
-    assertEquals(1, requestHistory(requestId, "revisions").size());
   }
 
   @Test
@@ -4656,15 +4785,15 @@ public class WorkflowDefinitionResourceIT {
             SharedEntities.get().USER3.getName());
     assertNotEquals(first, second);
 
+    Task secondTask = awaitRequestTask(second, glossary);
     approve(awaitRequestTask(first, glossary));
     awaitRequestStatus(first, "Applied");
-    Task secondTask = awaitRequestTask(second, glossary);
 
-    // The first publication moved the description the second request was based on.
-    OpenMetadataException refused =
-        assertThrows(OpenMetadataException.class, () -> approve(secondTask));
-    assertEquals(409, refused.getStatusCode(), refused.getMessage());
-    assertEquals("Pending", changeRequest(second).get("status").asText());
+    // The first publication moved the description the second request was based on, so the second
+    // request's only change is superseded and its review task closes.
+    awaitRequestStatus(second, "Superseded");
+    assertEquals("Superseded", outcomeOf(second, "description"));
+    awaitTaskClosed(glossary, secondTask);
     assertEquals("from user2", descriptionOf(glossary));
   }
 
@@ -4685,6 +4814,123 @@ public class WorkflowDefinitionResourceIT {
     assertEquals("Withdrawn", changeRequest(requestId).get("status").asText());
     awaitTaskClosed(glossary, task);
     assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+  }
+
+  @Test
+  void test_tagAnotherChangePublishedLeavesTheRequestAndTheRestStaysUnderReview(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = partialDecisionGlossary(ns, "elsewhereTag", 1, List.of("tags"));
+    String requestId = submit(glossary, tagsPatch("PII.Sensitive", "PersonalData.Personal"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    patchAs(SdkClients.ingestionBotClient(), glossary, tagsPatch("PII.Sensitive"));
+
+    await("tag PII.Sensitive of " + requestId + " published elsewhere")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals("AlreadyPublished", outcomeOf(requestId, "tags", "PII.Sensitive")));
+    assertEquals("Pending", outcomeOf(requestId, "tags", "PersonalData.Personal"));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    await("task " + task.getId() + " shows what is left")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Task refreshed = SdkClients.adminClient().tasks().get(task.getId().toString(), "*");
+              assertTrue(
+                  refreshed.getComments().stream()
+                      .anyMatch(
+                          comment ->
+                              comment
+                                  .getMessage()
+                                  .contains(
+                                      "Still waiting for review: tags PersonalData.Personal")));
+              JsonNode tagsDiff = proposedChanges(refreshed).path("tags");
+              assertEquals(List.of("PersonalData.Personal"), texts(tagsDiff.path("added")));
+            });
+    assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
+
+    resolveChanges(
+        task, TaskResolutionType.Approved, approve("tags").withKey("PersonalData.Personal"));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals(
+        Set.of("PII.Sensitive", "PersonalData.Personal"),
+        SdkClients.adminClient()
+            .glossaries()
+            .get(glossary.getId().toString(), "tags")
+            .getTags()
+            .stream()
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toSet()));
+  }
+
+  @Test
+  void test_ownerAnotherChangePublishedLeavesTheRequest(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Glossary glossary = partialDecisionGlossary(ns, "elsewhereOwner", 1, List.of("owners"));
+    String requestId =
+        submit(glossary, ownersPatch(shared.USER2_REF, shared.USER1_REF, shared.USER3_REF));
+    awaitRequestTask(requestId, glossary);
+
+    patchAs(
+        SdkClients.ingestionBotClient(), glossary, ownersPatch(shared.USER2_REF, shared.USER1_REF));
+
+    String user1 = shared.USER1_REF.getId().toString();
+    String user3 = shared.USER3_REF.getId().toString();
+    await("owner " + user1 + " of " + requestId + " published elsewhere")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals("AlreadyPublished", outcomeOf(requestId, "owners", user1)));
+    assertEquals("Pending", outcomeOf(requestId, "owners", user3));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+  }
+
+  @Test
+  void test_requestEveryChangeOfWhichAnotherChangePublishedIsCancelled(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = partialDecisionGlossary(ns, "elsewhereAll", 1, List.of("tags"));
+    String requestId = submit(glossary, tagsPatch("PII.Sensitive"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    patchAs(SdkClients.ingestionBotClient(), glossary, tagsPatch("PII.Sensitive"));
+
+    awaitRequestStatus(requestId, "Cancelled");
+    assertTrue(
+        changeRequest(requestId)
+            .path("statusReason")
+            .asText()
+            .contains("Nothing is left to review"));
+    awaitTaskClosed(glossary, task);
+  }
+
+  @Test
+  void test_partlyPublishedRequestWhoseRestAnotherChangePublishedIsApplied(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = partialDecisionGlossary(ns, "elsewhereRest", 1, List.of("tags"));
+    String requestId = submit(glossary, tagsPatch("PII.Sensitive", "PersonalData.Personal"));
+    Task task = awaitRequestTask(requestId, glossary);
+    resolveChanges(task, TaskResolutionType.Approved, approve("tags").withKey("PII.Sensitive"));
+    await("tag PII.Sensitive of " + requestId + " published")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals("Applied", outcomeOf(requestId, "tags", "PII.Sensitive")));
+
+    patchAs(
+        SdkClients.ingestionBotClient(),
+        glossary,
+        tagsPatch("PII.Sensitive", "PersonalData.Personal"));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals("AlreadyPublished", outcomeOf(requestId, "tags", "PersonalData.Personal"));
+    awaitTaskClosed(glossary, task);
   }
 
   @Test
@@ -5283,31 +5529,127 @@ public class WorkflowDefinitionResourceIT {
     return glossary;
   }
 
-  private Glossary twoReviewerGatedGlossary(TestNamespace ns) throws Exception {
+  // A hold workflow whose approval step lets reviewers decide change by change: agreed approvals
+  // are committed and agreed rejections discarded, both looping back to the same step.
+  private ObjectNode partialDecisionWorkflow(Glossary glossary, int threshold, List<String> include)
+      throws Exception {
+    String name = "partialGate" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(name, "glossary", glossary.getFullyQualifiedName(), include));
+    ObjectNode approveConfig = (ObjectNode) workflow.get("nodes").get(1).get("config");
+    approveConfig
+        .put("allowPartialDecisions", true)
+        .put("approvalThreshold", threshold)
+        .put("rejectionThreshold", threshold);
+    ArrayNode nodes = (ArrayNode) workflow.get("nodes");
+    nodes.add(resolveNode("PartialCommit", "commit"));
+    nodes.add(resolveNode("PartialDiscard", "discard"));
+    ArrayNode edges = (ArrayNode) workflow.get("edges");
+    addEdge(edges, "Approve", "PartialCommit", "partialApprove");
+    addEdge(edges, "PartialCommit", "Approve", null);
+    addEdge(edges, "Approve", "PartialDiscard", "partialReject");
+    addEdge(edges, "PartialDiscard", "Approve", null);
+    return workflow;
+  }
+
+  private static ObjectNode resolveNode(String name, String action) {
+    ObjectNode node = MAPPER.createObjectNode();
+    node.put("type", "automatedTask").put("subType", "resolvePendingChangeTask").put("name", name);
+    node.putObject("config").put("action", action);
+    node.putObject("inputNamespaceMap").put("relatedEntity", "global");
+    return node;
+  }
+
+  // USER2 requests; USER1 reviews, joined by USER3 when two reviewers must agree.
+  private Glossary partialDecisionGlossary(
+      TestNamespace ns, String tag, int threshold, List<String> include) throws Exception {
     SharedEntities shared = SharedEntities.get();
+    List<EntityReference> reviewers =
+        threshold > 1 ? List.of(shared.USER1_REF, shared.USER3_REF) : List.of(shared.USER1_REF);
     Glossary glossary =
         SdkClients.adminClient()
             .glossaries()
             .create(
                 new CreateGlossary()
-                    .withName(ns.prefix("partialTwoReviewers"))
+                    .withName(ns.prefix(tag))
                     .withDisplayName("published name")
                     .withDescription(PUBLISHED_DESCRIPTION)
                     .withOwners(List.of(shared.USER2_REF))
-                    .withReviewers(List.of(shared.USER1_REF, shared.USER3_REF)));
-    String name = "hookGate" + UUID.randomUUID().toString().substring(0, 8);
-    String json =
-        hookWorkflowJson(
-                name,
-                "glossary",
-                glossary.getFullyQualifiedName(),
-                List.of("description", "displayName"))
-            .replace("\"approvalThreshold\": 1", "\"approvalThreshold\": 2");
-    CreateWorkflowDefinition create = MAPPER.readValue(json, CreateWorkflowDefinition.class);
-    WorkflowDefinition workflow = SdkClients.adminClient().workflowDefinitions().create(create);
-    trackWorkflowFromJson(MAPPER.valueToTree(workflow));
-    waitForWorkflowDeployment(SdkClients.adminClient(), name);
+                    .withReviewers(reviewers));
+    ObjectNode workflow = partialDecisionWorkflow(glossary, threshold, include);
+    createWorkflow(workflow, workflow.get("name").asText());
     return glossary;
+  }
+
+  private void createWorkflowOrFail(ObjectNode workflow) throws Exception {
+    JsonNode created =
+        MAPPER.readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST,
+                    BASE_PATH,
+                    MAPPER.treeToValue(workflow, CreateWorkflowDefinition.class),
+                    RequestOptions.builder().build()));
+    trackWorkflowFromJson(created);
+  }
+
+  // Where one change of the request's active revision stands, as the API reports it.
+  private String outcomeOf(String requestId, String field) throws Exception {
+    String outcome = null;
+    for (JsonNode op : changeRequest(requestId).path("activeRevision").path("ops")) {
+      if (field.equals(op.path("field").asText())) {
+        outcome = op.path("outcome").asText();
+      }
+    }
+    return outcome;
+  }
+
+  // Where one element change of the request's active revision stands, as the API reports it.
+  private String outcomeOf(String requestId, String field, String key) throws Exception {
+    String outcome = null;
+    for (JsonNode op : changeRequest(requestId).path("activeRevision").path("ops")) {
+      if (field.equals(op.path("field").asText()) && key.equals(op.path("key").asText())) {
+        outcome = op.path("outcome").asText();
+      }
+    }
+    return outcome;
+  }
+
+  private static JsonNode proposedChanges(Task task) {
+    return MAPPER.valueToTree(task.getPayload()).path("proposedChanges");
+  }
+
+  private static List<String> texts(JsonNode array) {
+    List<String> values = new ArrayList<>();
+    array.forEach(value -> values.add(value.asText()));
+    return values;
+  }
+
+  private static String tagsPatch(String... tagFqns) {
+    String labels =
+        Arrays.stream(tagFqns)
+            .map(
+                fqn ->
+                    "{\"tagFQN\":\"%s\",\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}"
+                        .formatted(fqn))
+            .collect(Collectors.joining(","));
+    return "[{\"op\":\"add\",\"path\":\"/tags\",\"value\":[%s]}]".formatted(labels);
+  }
+
+  private static String ownersPatch(EntityReference... owners) {
+    String refs =
+        Arrays.stream(owners)
+            .map(owner -> "{\"id\":\"%s\",\"type\":\"user\"}".formatted(owner.getId()))
+            .collect(Collectors.joining(","));
+    return "[{\"op\":\"replace\",\"path\":\"/owners\",\"value\":[%s]}]".formatted(refs);
+  }
+
+  private boolean taskCommentContains(Task task, String text) {
+    return SdkClients.adminClient().tasks().get(task.getId().toString(), "*").getComments().stream()
+        .anyMatch(comment -> comment.getMessage().contains(text));
   }
 
   private static String descriptionAndDisplayName(String description, String displayName) {
@@ -5326,7 +5668,15 @@ public class WorkflowDefinitionResourceIT {
 
   // USER1 reviews the task's revision change by change.
   private void resolveChanges(Task task, TaskResolutionType resolution, ChangeDecision... changes) {
-    SdkClients.user1Client()
+    resolveChanges(SdkClients.user1Client(), task, resolution, changes);
+  }
+
+  private void resolveChanges(
+      OpenMetadataClient client,
+      Task task,
+      TaskResolutionType resolution,
+      ChangeDecision... changes) {
+    client
         .tasks()
         .resolve(
             task.getId().toString(),

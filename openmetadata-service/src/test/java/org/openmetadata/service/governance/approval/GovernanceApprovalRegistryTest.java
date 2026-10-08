@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInte
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.slf4j.LoggerFactory;
@@ -288,7 +290,8 @@ class GovernanceApprovalRegistryTest {
       Glossary updated = edited(original).withEntityStatus(EntityStatus.DRAFT);
       doThrow(new BadRequestException("no move from Approved to Draft"))
           .when(glossaryRepository)
-          .validateEntityStatusMove(EntityStatus.APPROVED, EntityStatus.DRAFT);
+          .validateEntityStatusMove(
+              EntityStatus.APPROVED.toString(), EntityStatus.DRAFT.toString());
       assertThrows(
           BadRequestException.class,
           () -> admitAsHuman(List.of(rule(WORKFLOW_A, List.of(), List.of())), original, updated));
@@ -347,6 +350,7 @@ class GovernanceApprovalRegistryTest {
         entity
             .when(() -> Entity.getEntityRepository(Entity.GLOSSARY))
             .thenReturn(glossaryRepository);
+        when(glossaryRepository.getEntityLifecycle()).thenReturn(EntityLifecycle.GENERAL);
         entity
             .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq(user), any()))
             .thenReturn(new User().withName(user).withIsBot(userIsBot));
