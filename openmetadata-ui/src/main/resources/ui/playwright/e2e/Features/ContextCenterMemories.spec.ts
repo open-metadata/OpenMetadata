@@ -2012,8 +2012,29 @@ test.describe(
 
         const assetName = table.displayName ?? table.name;
 
-        // Retry the search→select cycle until the filter is applied.
+        // Retry the search→select cycle until the filter is applied. Each
+        // attempt must be able to start from a closed popover: the flake this
+        // absorbs is the popover closing before the option click lands, which
+        // detaches the textbox and would make a bare `fill` hang.
         await expect(async () => {
+          if (!(await assetSearch.isVisible())) {
+            const reopenResPromise = waitForResponseWithStatus(
+              page,
+              (res) =>
+                res.request().method() === 'GET' &&
+                new URL(res.url()).pathname === '/api/v1/search/query' &&
+                new URL(res.url()).searchParams.get('q') === '*',
+              200,
+              { timeout: 5000 }
+            );
+            await assetFilterButton.click();
+            await reopenResPromise;
+          }
+
+          // Clearing first guarantees the refill changes the value, so the
+          // search request this attempt waits for is actually fired.
+          await assetSearch.clear();
+
           const searchResPromise = waitForResponseWithStatus(
             page,
             (res) => {
@@ -2025,7 +2046,8 @@ test.describe(
                 url.searchParams.get('q') === `*${table.name}*`
               );
             },
-            200
+            200,
+            { timeout: 5000 }
           );
           await assetSearch.fill(table.name);
           await searchResPromise;
