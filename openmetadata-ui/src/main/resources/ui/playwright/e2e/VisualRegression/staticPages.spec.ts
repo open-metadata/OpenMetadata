@@ -24,8 +24,8 @@ import {
  * Testid corrections vs. the original draft (verified against the running
  * app and the current UI source, see task-5-report.md):
  * - landing-page: `activity-feed-widget` does not exist; the real testid on
- *   the feed widget wrapper is `KnowledgePanel.ActivityFeed`
- *   (src/components/MyData/FeedWidget/FeedWidget.component.tsx).
+ *   the feed widget's grid cell is `KnowledgePanel.ActivityFeed`
+ *   (src/components/MyData/HomeLandingPage/HomeLandingPage.tsx).
  * - explore: `search-summary` does not exist. The volatile regions are the
  *   result-count text (`search-results-count`,
  *   src/components/SearchedData/SearchedData.tsx) and the facet-count tree

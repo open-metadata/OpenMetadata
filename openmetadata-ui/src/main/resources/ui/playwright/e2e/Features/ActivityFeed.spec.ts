@@ -86,7 +86,7 @@ const waitForConversationMaterialization = async ({
 // none of the old widget's header, sort dropdown or `#feedWidgetData` body. The suite
 // that drove those is gone rather than rewritten -- what it covered (sort filters,
 // reactions, the reply drawer) belongs to FeedWidget, which still exists but is not on
-// this page. The new card is covered in Flow/LandingPageTopicWidgets.spec.ts.
+// this page. The new card is covered in Features/LandingPageWidgets/LandingPageTopicWidgets.spec.ts.
 
 test.describe('Mention notifications in Notification Box', () => {
   let adminUser: UserClass;

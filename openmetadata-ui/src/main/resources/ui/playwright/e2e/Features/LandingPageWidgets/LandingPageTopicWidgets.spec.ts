@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { redirectToHomePage } from '../../utils/common';
-import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { test } from '../fixtures/pages';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
+import { expect, test } from '../../../support/fixtures/landingPageUser';
+import { redirectToHomePage } from '../../../utils/common';
+import {
+  LANDING_PAGE_ROOT,
+  waitForLandingPageWidget,
+} from '../../../utils/customizeLandingPage';
 
 // `TopicKey` in src/components/MyData/Widgets/Common/TopicWidget/topics.types.ts.
 // The card's own testid is keyed by topic; the grid cell holding it is keyed by
@@ -35,7 +36,7 @@ test.describe(
   () => {
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
-      await waitForAllLoadersToDisappear(page);
+      await expect(page.getByTestId(LANDING_PAGE_ROOT)).toBeVisible();
     });
 
     test('renders the Topics section and its cards', async ({ page }) => {
@@ -113,11 +114,19 @@ test.describe(
       const activityCell = page.getByTestId(TEAM_ACTIVITY.layoutKey);
       const estateCell = page.getByTestId(DATA_ESTATE.layoutKey);
 
-      // Grid: the two cards share a row, so their left edges differ.
-      const gridActivity = await activityCell.boundingBox();
-      const gridEstate = await estateCell.boundingBox();
+      // Grid: the default layout puts Data Estate in the second column of the
+      // first row (x 1, y 0) and Team Activity in the first column of the
+      // second (x 0, y 1). Different columns, so their left edges differ.
+      await expect
+        .poll(async () => {
+          const gridActivity = await activityCell.boundingBox();
+          const gridEstate = await estateCell.boundingBox();
 
-      expect(gridActivity?.x).not.toBe(gridEstate?.x);
+          return gridActivity && gridEstate
+            ? Math.round(gridActivity.x) !== Math.round(gridEstate.x)
+            : false;
+        })
+        .toBe(true);
 
       await page.getByTestId('topics-list-view').click();
 

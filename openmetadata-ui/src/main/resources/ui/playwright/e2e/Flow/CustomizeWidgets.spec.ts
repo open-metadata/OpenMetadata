@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { Page, Response } from '@playwright/test';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
@@ -37,7 +37,11 @@ import {
 } from '../../utils/dataInsight';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { verifyDataProductsFilters } from '../../utils/widgetFilters';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
+import {
+  selectTopicCardFilterOption,
+  verifyDataProductsFilters,
+} from '../../utils/widgetFilters';
 
 let adminUser: UserClass;
 
@@ -45,12 +49,13 @@ let adminUser: UserClass;
 let testDomain: Domain;
 let testDataProducts: DataProduct[] = [];
 
-// The Activity Feed widget only renders its "View More" link once the feed
-// exceeds PAGE_SIZE_BASE (15), so the footer step seeds one more than that
-// rather than depending on whatever activity the database happens to hold.
+// Seed tables for the Team Activity and Data Quality cards. Each test makes
+// its own per-test user the owner before seeding: Team Activity reads
+// `/activity/my-feed`, which only returns events on assets the viewer (or one
+// of their teams) owns, and the Data Quality card is narrowed to "My data" so
+// its rows are this test's failures rather than the newest ones server-wide.
 let activitySeedTable: TableClass;
-const FEED_WIDGET_PAGE_SIZE = 15;
-const SEEDED_ACTIVITY_COUNT = FEED_WIDGET_PAGE_SIZE + 1;
+let dataQualitySeedTable: TableClass;
 
 type WidgetTestFixtures = {
   page: Page;
@@ -195,31 +200,27 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   }
 
   activitySeedTable = new TableClass();
-  await activitySeedTable.create(apiContext);
-
-  for (let index = 0; index < SEEDED_ACTIVITY_COUNT; index++) {
-    await insertActivityEventForTest(
-      apiContext,
-      activitySeedTable,
-      `Customize widgets activity ${index}`
-    );
-  }
+  dataQualitySeedTable = new TableClass();
+  await settleAll([
+    activitySeedTable.create(apiContext),
+    dataQualitySeedTable.create(apiContext),
+  ]);
 
   await afterAction();
 });
 
-test.afterAll(
-  'Cleanup: delete the activity seed table',
-  async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
+test.afterAll('Cleanup: delete the seed tables', async ({ browser }) => {
+  const { afterAction, apiContext } = await performAdminLogin(browser);
 
-    try {
-      await activitySeedTable.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
+  try {
+    await settleAll([
+      activitySeedTable.delete(apiContext),
+      dataQualitySeedTable.delete(apiContext),
+    ]);
+  } finally {
+    await afterAction();
   }
-);
+});
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
@@ -233,12 +234,35 @@ test.beforeEach(async ({ page }) => {
 // both the grid and the Add Widgets picker, so there is nothing left for them
 // to drive. What a card still offers is a title, a footer link out, and
 // removal/re-adding from the persona editor; that is what the four below check.
-test('Activity Feed Widget', async ({ page, persona, testUser }) => {
+test('Activity Feed Widget', async ({ browser, page, persona, testUser }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.ActivityFeed';
+  const activitySummary = `Customize widgets activity ${uuid()}`;
 
-  await waitForAllLoadersToDisappear(page);
+  await test.step('Seed activity on a table the user owns', async () => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      // Owner first: `my-feed` is scoped to assets the viewer owns, so an
+      // event on an unowned table never reaches the card.
+      await activitySeedTable.setOwner(apiContext, {
+        id: testUser.responseData.id,
+        type: 'user',
+      });
+      await insertActivityEventForTest(
+        apiContext,
+        activitySeedTable,
+        activitySummary
+      );
+    } finally {
+      await afterAction();
+    }
+
+    // The card read the feed when beforeEach landed; load it again so it
+    // reads the seeded event.
+    await redirectToHomePage(page);
+  });
 
   await waitForLandingPageWidget(page, widgetKey);
 
@@ -253,10 +277,16 @@ test('Activity Feed Widget', async ({ page, persona, testUser }) => {
   });
 
   await test.step('Test widget displays activity', async () => {
-    await waitForAllLoadersToDisappear(page);
     const widget = await waitForLandingPageWidget(page, widgetKey);
 
-    await expect(widget.getByTestId('team-activity-rows')).toBeVisible();
+    // Pinned to the seeded table rather than to a non-empty list: the feed
+    // holds whatever else the user's assets saw, so a row count alone would
+    // pass on somebody else's activity.
+    await expect(
+      widget
+        .getByTestId('team-activity-rows')
+        .getByText(activitySeedTable.entityResponseData.name)
+    ).toBeVisible();
   });
 
   await test.step('Test widget customization', async () => {
@@ -356,7 +386,40 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
     const kpiRow = widget.getByTestId(`kpi-${kpi.id}`);
 
     await expect(kpiRow).toBeVisible();
-    await expect(kpiRow).toContainText(kpi.name);
+    // The row names the KPI the way a reader set it up: its display name.
+    await expect(kpiRow).toContainText(kpi.displayName ?? kpi.name);
+  });
+
+  // The range is the window each KPI's results are read over, so switching it
+  // has to re-read them over the new span rather than relabel the old one.
+  await test.step('Test widget range filter re-reads the window', async () => {
+    const widget = await waitForLandingPageWidget(page, widgetKey);
+    const ninetyDayResults = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
+
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname ===
+            `/api/v1/kpi/${encodeURIComponent(
+              kpi.fullyQualifiedName
+            )}/kpiResult` &&
+          Number(url.searchParams.get('endTs')) -
+            Number(url.searchParams.get('startTs')) ===
+            90 * 24 * 60 * 60 * 1000
+        );
+      },
+      200
+    );
+
+    await selectTopicCardFilterOption(page, widget, 'kpi-window-filter', '90');
+    await ninetyDayResults;
+
+    await expect(widget.getByTestId('kpi-window-filter')).toContainText(
+      'Last 90 days'
+    );
+    await expect(widget.getByTestId(`kpi-${kpi.id}`)).toBeVisible();
   });
 
   await test.step('Test widget customization', async () => {
@@ -459,19 +522,142 @@ test('Context Center Widget', async ({ page, persona }) => {
   });
 });
 
-test('Data Quality Widget', async ({ page, persona }) => {
+test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataQuality';
 
-  await waitForAllLoadersToDisappear(page);
-  await waitForLandingPageWidget(page, widgetKey);
+  // The card only lists failing tests, so the test seeds one: a table the
+  // user owns, a test case on it, and a failed result.
+  const testCase =
+    await test.step('Seed a failing test the user owns', async () => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await test.step('Test widget displays test results', async () => {
-    await waitForAllLoadersToDisappear(page);
-    const widget = await waitForLandingPageWidget(page, widgetKey);
+      try {
+        await dataQualitySeedTable.setOwner(apiContext, {
+          id: testUser.responseData.id,
+          type: 'user',
+        });
+        const created = await dataQualitySeedTable.createTestCase(apiContext);
+        await dataQualitySeedTable.addTestCaseResult(
+          apiContext,
+          created.fullyQualifiedName ?? '',
+          {
+            result: 'Failed (landing page widget fixture)',
+            testCaseStatus: 'Failed',
+            timestamp: Date.now(),
+          }
+        );
 
+        // The card reads the search index, which lags the write. Gate on the
+        // exact query "My data" sends so the first UI read is already final.
+        await expect
+          .poll(
+            async () => {
+              const response = await apiContext.get(
+                '/api/v1/dataQuality/testCases/search/list',
+                {
+                  params: {
+                    includeAllTests: true,
+                    limit: 50,
+                    owner: testUser.responseData.name,
+                    q: '*',
+                    testCaseStatus: 'Failed',
+                  },
+                }
+              );
+              const body = await okJson<{ data: { id: string }[] }>(
+                response,
+                'Owned failing tests'
+              );
+
+              return body.data.map((item) => item.id);
+            },
+            { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+          )
+          .toContain(created.id);
+
+        return created as typeof created & { id: string; name: string };
+      } finally {
+        await afterAction();
+      }
+    });
+
+  const isFailedTestsResponse = (response: Response) => {
+    const url = new URL(response.url());
+
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/v1/dataQuality/testCases/search/list' &&
+      url.searchParams.get('testCaseStatus') === 'Failed'
+    );
+  };
+
+  await redirectToHomePage(page);
+  const widget = await waitForLandingPageWidget(page, widgetKey);
+
+  await test.step('Scope to My data lists the seeded failure', async () => {
+    const mineResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        isFailedTestsResponse(response) &&
+        new URL(response.url()).searchParams.get('owner') ===
+          testUser.responseData.name,
+      200
+    );
+
+    await selectTopicCardFilterOption(page, widget, 'dq-scope-filter', 'mine');
+    await mineResponse;
+
+    await expect(widget.getByTestId('dq-scope-filter')).toContainText(
+      'My Data'
+    );
     await expect(widget.getByTestId('data-quality-rows')).toBeVisible();
+    await expect(
+      widget.getByTestId(`failed-test-${testCase.id}`)
+    ).toContainText(testCase.name);
+  });
+
+  await test.step('Widening the range refetches the 30-day window', async () => {
+    const thirtyDayResponse = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
+
+        return (
+          isFailedTestsResponse(response) &&
+          Number(url.searchParams.get('endTimestamp')) -
+            Number(url.searchParams.get('startTimestamp')) ===
+            30 * 24 * 60 * 60 * 1000
+        );
+      },
+      200
+    );
+
+    await selectTopicCardFilterOption(page, widget, 'dq-range-filter', '30');
+    const response = await thirtyDayResponse;
+    const url = new URL(response.url());
+
+    // Scope survives the range change, and the window ends now.
+    expect(url.searchParams.get('owner')).toBe(testUser.responseData.name);
+    expect(
+      Math.abs(Number(url.searchParams.get('endTimestamp')) - Date.now())
+    ).toBeLessThan(5 * 60 * 1000);
+
+    await expect(widget.getByTestId('dq-range-filter')).toContainText(
+      'Last 30 days'
+    );
+    await expect(
+      widget.getByTestId(`failed-test-${testCase.id}`)
+    ).toBeVisible();
+  });
+
+  await test.step('View test opens the test case page', async () => {
+    await widget.getByTestId(`dq-view-test-${testCase.id}`).click();
+
+    await expect
+      .poll(() => decodeURIComponent(new URL(page.url()).pathname))
+      .toContain(`/test-case/${testCase.fullyQualifiedName}`);
   });
 
   await test.step('Test widget customization', async () => {
