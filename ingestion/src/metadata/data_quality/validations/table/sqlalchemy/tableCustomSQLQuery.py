@@ -308,6 +308,16 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             (param.value for param in self.test_case.parameterValues if param.name == "partitionExpression"),
             None,
         )
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
+        if self.get_threshold_unit() is ThresholdUnit.PERCENTAGE:
+            # The verdict divides by the table count, so it cannot come from the catalog or from
+            # rewriting the test query: estimates may be stale, while COUNT queries and joins do
+            # not preserve the table's cardinality.
+            stmt = select(func.count()).select_from(self.runner.table)
+            if partition_expression:
+                stmt = stmt.filter(text(partition_expression))
+            return self.runner.session.execute(stmt).scalar()
+
         if partition_expression:
             custom_sql = self.get_test_case_param_value(
                 self.test_case.parameterValues,  # type: ignore
@@ -334,12 +344,6 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             else:
                 stmt = select(func.count()).select_from(self.runner.table).filter(text(partition_expression))
                 return self.runner.session.execute(stmt).scalar()
-
-        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
-        if self.get_threshold_unit() is ThresholdUnit.PERCENTAGE:
-            # The verdict divides by this count, so it cannot come from the catalog: MySQL's
-            # information_schema TABLE_ROWS is a cached estimate that can read 0 on a full table.
-            return self.runner.session.execute(select(func.count()).select_from(self.runner.table)).scalar()
 
         dialect = self.runner._session.get_bind().dialect.name
         table_metric_computer: TableMetricComputer = TableMetricComputer(

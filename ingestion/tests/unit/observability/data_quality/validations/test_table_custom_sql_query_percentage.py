@@ -129,6 +129,22 @@ def test_percentage_applies_to_a_count_strategy(create_sqlite_table):
     assert result.testResultValue[0].value == "30"
 
 
+def test_count_strategy_uses_the_partitioned_table_as_its_denominator(create_sqlite_table):
+    """30 matching rows out of the 60-row partition is 50%, not 30 rows out of one aggregate row."""
+    _, result = _run(
+        create_sqlite_table,
+        sqlExpression="SELECT COUNT(*) FROM users WHERE age > 30",
+        strategy="COUNT",
+        operator="<=",
+        threshold="50",
+        thresholdUnit="PERCENTAGE",
+        partitionExpression="age > 20",
+    )
+
+    assert result.testCaseStatus == TestCaseStatus.Success, result.result
+    assert result.result.startswith("Found 30 row(s), 50% of the 60 row(s) counted.")
+
+
 def test_percentage_message_states_the_share_and_the_denominator(create_sqlite_table):
     _, result = _run(
         create_sqlite_table, sqlExpression=SIXTY_ROWS, operator="<=", threshold="1", thresholdUnit="PERCENTAGE"
