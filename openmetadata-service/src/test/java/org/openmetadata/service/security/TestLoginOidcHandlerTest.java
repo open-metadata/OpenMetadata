@@ -164,6 +164,22 @@ class TestLoginOidcHandlerTest {
     assertEquals(TestLoginStageStatus.FAILED, statusOf(result, TestLoginStage.TOKEN_REFRESHED));
   }
 
+  /** An outage or a client not allowed the grant is no verdict, and no renewal either. */
+  @Test
+  void aRefreshTheProviderDoesNotAnswerFailsTheRefreshStage() {
+    TestLoginResult result =
+        completeAfter(
+            nonce -> {
+              issuingARefreshToken(nonce);
+              provider.rejectRefreshTokens(400, "unauthorized_client");
+            });
+
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+    assertEquals(TestLoginStageStatus.FAILED, statusOf(result, TestLoginStage.TOKEN_REFRESHED));
+    assertTrue(
+        result.getErrors().getFirst().contains("refresh_token grant"), String.valueOf(result));
+  }
+
   /** The browser needs the renewed ID token; a renewal without one cannot extend its session. */
   @Test
   void aRenewalWithoutAnIdTokenFailsTheRefreshStage() {

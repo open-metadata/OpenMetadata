@@ -1381,6 +1381,36 @@ class AuthenticationCodeFlowHandlerTest {
     assertEquals("https://idp.test/keys", handler.getProviderKeySetUrl().toExternalForm());
   }
 
+  /** JwtFilter fetches signing keys from this URL, so a provider must publish a fetchable one. */
+  @Test
+  void configuredHandler_refusesAProviderWhoseKeySetIsNotAUrl(@TempDir Path directory)
+      throws Exception {
+    Path discoveryDocument =
+        Files.writeString(
+            directory.resolve("openid-configuration-urn-keys"),
+            DISCOVERY_DOCUMENT.replace("https://idp.test/keys", "urn:idp:keys"));
+    OidcClientConfig oidcConfig =
+        fileDiscoveredClient(directory)
+            .withDiscoveryUri("file:" + discoveryDocument.toAbsolutePath());
+
+    TechnicalException failure =
+        assertThrows(TechnicalException.class, () -> configuredHandler(oidcConfig));
+    assertTrue(failure.getMessage().contains("urn"), failure.getMessage());
+  }
+
+  /** An expiry that cannot be read is no expiry: the refresh then treats the token as unusable. */
+  @Test
+  void idTokenExpiresAt_readsTheExpiryAndTreatsAnUnreadableTokenAsExpired() {
+    Instant expiry = Instant.now().plusSeconds(600).truncatedTo(ChronoUnit.SECONDS);
+
+    assertEquals(
+        expiry.toEpochMilli(),
+        AuthenticationCodeFlowHandler.idTokenExpiresAt(providerIdToken(expiry)));
+    assertEquals(0, AuthenticationCodeFlowHandler.idTokenExpiresAt("not-a-jwt"));
+    assertEquals(0, AuthenticationCodeFlowHandler.idTokenExpiresAt(null));
+    assertFalse(AuthenticationCodeFlowHandler.outlivesBrowserRenewal(0));
+  }
+
   @Test
   void servesClient_onlyForTheSameClientAtTheSameProvider(@TempDir Path directory)
       throws Exception {
