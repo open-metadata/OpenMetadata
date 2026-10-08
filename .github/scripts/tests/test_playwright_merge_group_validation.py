@@ -340,3 +340,21 @@ def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
     [warning] = [line for line in result.stdout.splitlines() if line.startswith("::warning")]
     message = warning.split("::", 2)[2].replace("%0A", "\n").replace("%25", "%")
     assert sorted(line.split(" › ")[1] for line in message.splitlines()) == sorted(titles)
+
+
+def test_only_the_safe_to_test_label_reruns_the_pr_pipeline():
+    caller = workflow("playwright-postgresql-e2e.yml")
+    assert "labeled" in caller[True]["pull_request"]["types"]
+    safe = "github.event.label.name == 'safe to test'"
+    playwright = caller["jobs"]["playwright"]
+    summary = caller["jobs"]["playwright-summary"]
+    # Other labels never call the reusable, so they cannot touch its
+    # concurrency group or cancel an in-flight run for the PR.
+    assert "github.event.action != 'labeled'" in playwright["if"] and safe in playwright["if"]
+    assert "github.event.action != 'labeled'" in summary["if"] and safe in summary["if"]
+    # ...and their skipped summary must not report under the required name.
+    assert "'playwright-summary (ignored label event)'" in summary["name"]
+    reusable = workflow("playwright-e2e-reusable.yml")
+    assert "github.event.action != 'labeled'" in reusable["concurrency"]["cancel-in-progress"]
+    gate = reusable["jobs"]["gate"]["steps"][0]["run"]
+    assert '"$ACTION" != "labeled" || "$LABEL" == "safe to test"' in gate

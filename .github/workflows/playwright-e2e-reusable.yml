@@ -187,6 +187,8 @@ jobs:
         id: gate
         env:
           EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
           IS_DRAFT: ${{ github.event.pull_request.draft }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
@@ -195,7 +197,11 @@ jobs:
           case "$EVENT" in
             merge_group|schedule|workflow_dispatch|push) should_run=true ;;
             pull_request)
-              if [[ "$IS_DRAFT" != "true" && "$HEAD_REPO" == "$BASE_REPO" ]]; then
+              # A label event re-runs only for `safe to test` (the caller
+              # already skips other labels; this keeps the reusable safe on
+              # its own).
+              if [[ "$IS_DRAFT" != "true" && "$HEAD_REPO" == "$BASE_REPO" ]] &&
+                [[ "$ACTION" != "labeled" || "$LABEL" == "safe to test" ]]; then
                 should_run=true
               fi
               ;;
