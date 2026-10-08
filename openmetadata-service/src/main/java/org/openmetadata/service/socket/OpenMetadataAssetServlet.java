@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -176,7 +177,8 @@ public class OpenMetadataAssetServlet extends AssetServlet {
    */
   protected void writeIndexHtml(HttpServletRequest req, HttpServletResponse resp, String cspNonce)
       throws IOException {
-    String variant = etagVariant(req);
+    // Normalise null → "" once so a subclass returning null doesn't NPE on `.isEmpty()` below.
+    String variant = Objects.requireNonNullElse(etagVariant(req), "");
     String etag = withVariant(IndexResource.getIndexEtag(this.basePath), variant);
     if (!variant.isEmpty()) {
       // Per-client discriminator in the ETag means an intermediate cache that keyed on URL alone

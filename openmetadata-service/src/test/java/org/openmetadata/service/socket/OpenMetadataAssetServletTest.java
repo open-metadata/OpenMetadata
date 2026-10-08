@@ -575,6 +575,34 @@ public class OpenMetadataAssetServletTest {
   }
 
   @Test
+  public void testEtagVariantNullDegradesToBaseEtagWithoutNpe() throws Exception {
+    // A subclass that returns null from etagVariant (e.g. "no state so no variant") should degrade
+    // to the base ETag, not throw. Documents the hook contract.
+    OpenMetadataAssetServlet subclass =
+        new OpenMetadataAssetServlet("/", "/assets", "/", "index.html", webConfiguration) {
+          @Override
+          protected String etagVariant(HttpServletRequest req) {
+            return null;
+          }
+        };
+
+    when(request.getRequestURI()).thenReturn("/");
+    when(request.getContextPath()).thenReturn("");
+    when(request.getAttribute("cspNonce")).thenReturn(null);
+    when(request.getHeader("If-None-Match")).thenReturn("\"base\"");
+
+    try (MockedStatic<IndexResource> indexResource =
+        org.mockito.Mockito.mockStatic(IndexResource.class)) {
+      indexResource.when(() -> IndexResource.getIndexEtag("/")).thenReturn("\"base\"");
+      subclass.doGet(request, response);
+    }
+
+    verify(response).setHeader("ETag", "\"base\"");
+    verify(response, never()).setHeader(eq("Vary"), anyString());
+    verify(response).setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+  }
+
+  @Test
   public void testStaticAssetsAreNotSpaRoutes() {
     assertFalse(servlet.isSpaRoute("/assets/index.js"));
     assertFalse(servlet.isSpaRoute("/images/logo.png"));
