@@ -39,6 +39,7 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevisionStatus;
 import org.openmetadata.schema.governance.changeRequest.DeliveryStatus;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
@@ -53,7 +54,20 @@ class ChangeRequestSubmitIT {
     return ns.trackRoot(Entity.GLOSSARY, SdkClients.adminClient().glossaries().create(create));
   }
 
+  // A deployed workflow without a review hook: delivery reaches it but no run starts, so the
+  // request stays pending and delivery is rescheduled.
+  private static UUID workflowWithoutHook() {
+    return Entity.getEntityReferenceByName(
+            Entity.WORKFLOW_DEFINITION, "GlossaryTermApprovalWorkflow", Include.ALL)
+        .getId();
+  }
+
   private StagedChange staged(Glossary glossary, String user, String field, String value) {
+    return staged(glossary, user, field, value, workflowWithoutHook());
+  }
+
+  private StagedChange staged(
+      Glossary glossary, String user, String field, String value, UUID workflowDefinitionId) {
     String base = JsonUtils.pojoToJson(glossary);
     var proposed = JsonUtils.readTree(base).deepCopy();
     ((com.fasterxml.jackson.databind.node.ObjectNode) proposed).put(field, value);
@@ -64,7 +78,7 @@ class ChangeRequestSubmitIT {
         glossary.getVersion(),
         user,
         null,
-        UUID.randomUUID(),
+        workflowDefinitionId,
         MutationPlanner.plan(JsonUtils.readTree(base), proposed, Set.of(field), Set.of(field)));
   }
 
@@ -85,7 +99,7 @@ class ChangeRequestSubmitIT {
     Glossary after = SdkClients.adminClient().glossaries().get(glossary.getId().toString(), "");
     assertEquals("published", after.getDescription());
     assertEquals(glossary.getVersion(), after.getVersion());
-    // The staged workflow id is synthetic, so the post-commit delivery fails and is rescheduled.
+    // The staged workflow has no review hook, so the post-commit delivery fails and is rescheduled.
     Awaitility.await("first delivery attempt of " + request.getId())
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(200))
@@ -95,6 +109,29 @@ class ChangeRequestSubmitIT {
               assertEquals(1, reread.getDeliveryAttempts());
               assertEquals(DeliveryStatus.PENDING, reread.getDeliveryStatus());
             });
+  }
+
+  @Test
+  void requestForAWorkflowThatNoLongerExistsIsCancelledOnDelivery(TestNamespace ns) {
+    Glossary glossary = glossary(ns);
+    ChangeRequest request =
+        ChangeRequestService.submit(
+            staged(glossary, "erin", "description", "orphaned", UUID.randomUUID()));
+    Awaitility.await("cancellation of " + request.getId())
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(200))
+        .untilAsserted(
+            () -> {
+              ChangeRequest reread = ChangeRequestService.get(request.getId());
+              assertEquals(ChangeRequestStatus.CANCELLED, reread.getStatus());
+              assertEquals(DeliveryStatus.DELIVERED, reread.getDeliveryStatus());
+            });
+    assertEquals(
+        "published",
+        SdkClients.adminClient()
+            .glossaries()
+            .get(glossary.getId().toString(), "")
+            .getDescription());
   }
 
   @Test

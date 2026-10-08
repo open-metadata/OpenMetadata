@@ -71,8 +71,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
-import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
-import org.openmetadata.service.governance.approval.ReviewPhase;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
@@ -487,14 +485,13 @@ public class CreateTask implements TaskListener {
     String updatedBy =
         requestedUpdatedBy != null && !requestedUpdatedBy.isBlank()
             ? requestedUpdatedBy
-            : resolveRequester(delegateTask, resolvedWorkflowDefinitionId, entity, createdByRef);
+            : resolveRequester(delegateTask, entity, createdByRef);
     // The requester (updatedBy) is the editor who caused this run. For a pending-change task the
     // gate's revert leaves the entity's updatedBy on the previous editor, so createdBy resolved
     // from
     // it names the wrong user; align it with the requester when the workflow supplied no explicit
     // creator (createdBy already reflects it for every other task type).
-    if (requestedCreatedBy == null
-        && GovernanceApprovalRegistry.isPendingChangeWorkflow(resolvedWorkflowDefinitionId)) {
+    if (requestedCreatedBy == null && reviewsChangeRequest(delegateTask)) {
       createdByRef = resolveUserReferenceOrDefault(updatedBy, createdByRef);
     }
 
@@ -751,13 +748,11 @@ public class CreateTask implements TaskListener {
         // A change request's review keeps one live approval per (entity, workflow, requester): a
         // new held edit supersedes only the same requester's prior review, so other requesters'
         // reviews survive. Every other run keeps the entity-level supersede (requesterToMatch =
-        // null), and the two kinds of review never supersede each other.
-        boolean reviewsChangeRequest = reviewsChangeRequest(delegateTask);
-        String requesterToMatch = reviewsChangeRequest ? updatedBy : null;
+        // null).
+        String requesterToMatch = reviewsChangeRequest(delegateTask) ? updatedBy : null;
         taskRepository
             .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
             .stream()
-            .filter(prior -> ReviewPhase.reviewsChangeRequest(prior) == reviewsChangeRequest)
             .filter(
                 prior ->
                     isSupersedablePriorApprovalTask(
@@ -1116,6 +1111,7 @@ public class CreateTask implements TaskListener {
         .orElse(payload);
   }
 
+  // Whether this run reviews a change request: such a run carries the request in its variables.
   private static boolean reviewsChangeRequest(DelegateTask delegateTask) {
     return ChangeRequestRun.from(new WorkflowVariableHandler(delegateTask)).isPresent();
   }
@@ -1271,12 +1267,9 @@ public class CreateTask implements TaskListener {
   }
 
   String resolveRequester(
-      DelegateTask delegateTask,
-      UUID workflowDefinitionId,
-      EntityInterface entity,
-      EntityReference createdByRef) {
+      DelegateTask delegateTask, EntityInterface entity, EntityReference createdByRef) {
     String requester = null;
-    if (GovernanceApprovalRegistry.isPendingChangeWorkflow(workflowDefinitionId)) {
+    if (reviewsChangeRequest(delegateTask)) {
       // Flowable stores process variables as untyped Object; the trigger sets the global updatedBy
       // as a String (the editor who caused this run).
       Object globalUpdatedBy =

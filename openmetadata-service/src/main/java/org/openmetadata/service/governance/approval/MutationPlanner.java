@@ -94,6 +94,29 @@ public final class MutationPlanner {
     return List.copyOf(byTarget.values());
   }
 
+  /**
+   * {@code ops} restated against the asset as published now: a field change whose base no longer
+   * matches the published value takes that value as its base, and one the asset already shows is
+   * left out.
+   */
+  public static List<MutationOp> rebase(JsonNode current, List<MutationOp> ops) {
+    List<MutationOp> rebased = new ArrayList<>();
+    for (MutationOp op : ops) {
+      JsonNode published = current.get(op.getField());
+      if (!drifted(current, op)) {
+        rebased.add(op);
+      } else if (!sameValue(published, JsonUtils.readTree(op.getValue()))) {
+        rebased.add(
+            JsonUtils.deepCopy(op, MutationOp.class).withBaseValue(orNull(published).toString()));
+      }
+    }
+    return rebased;
+  }
+
+  public static boolean hasFieldChange(List<MutationOp> ops) {
+    return ops.stream().anyMatch(op -> op.getOp() == MutationOpType.SET);
+  }
+
   public static String digest(List<MutationOp> ops) {
     List<MutationOp> canonical = ops.stream().sorted(CANONICAL_ORDER).toList();
     byte[] bytes = JsonUtils.pojoToJson(canonical).getBytes(StandardCharsets.UTF_8);

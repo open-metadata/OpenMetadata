@@ -58,9 +58,7 @@ public final class ApprovalDecisionService {
       String user) {
     DecisionType decision = resolution == null ? null : DECISIONS.get(resolution);
     ChangeRequest request =
-        decision != null
-                && GovernanceApprovalRegistry.isPendingChangeWorkflow(
-                    task.getWorkflowDefinitionId())
+        decision != null && ChangeRequestTasks.reviewsChangeRequest(task)
             ? ChangeRequestService.dao().changeRequestDAO().findByTaskId(task.getId())
             : null;
     if (request != null) {

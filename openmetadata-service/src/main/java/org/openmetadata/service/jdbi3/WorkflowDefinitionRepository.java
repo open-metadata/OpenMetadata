@@ -23,7 +23,6 @@ import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -42,7 +41,6 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
 
   private static final String USER_APPROVAL_TASK = "userApprovalTask";
-  private static final Set<String> STATUS_FIELDS = Set.of(Entity.FIELD_ENTITY_STATUS, "status");
 
   public WorkflowDefinitionRepository() {
     super(
@@ -248,7 +246,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     if (!hooks.isEmpty()) {
       validateHookTrigger(workflowDefinition);
       validateJsonLogicFilter(workflowDefinition);
-      validateApprovesAsset(workflowDefinition);
     }
     if (!hooks.isEmpty()
         && start != null
@@ -272,33 +269,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     if (!"eventBasedEntity".equals(trigger.path("type").asText(null)) || !updated) {
       throw BadRequestException.of(
           "Workflow '%s' reviews change requests, so it must use an eventBasedEntity trigger on the Updated event"
-              .formatted(workflowDefinition.getName()));
-    }
-  }
-
-  // A hold workflow that reviews assets from their creation holds their edits once they are
-  // Approved, so on an entity type with a status it needs a step that approves the asset; without
-  // one the asset never reaches the stage where its edits wait for approval.
-  private void validateApprovesAsset(WorkflowDefinition workflowDefinition) {
-    JsonNode config = JsonUtils.valueToTree(workflowDefinition.getTrigger()).path("config");
-    boolean needsApprovalStep =
-        GovernanceApprovalRegistry.reviewsFromCreation(config)
-            && GovernanceApprovalRegistry.targetEntityTypes(config).stream()
-                .anyMatch(type -> Entity.getEntityRepository(type).isSupportsEntityStatus());
-    boolean approves = false;
-    for (JsonNode node : JsonUtils.valueToTree(listOrEmpty(workflowDefinition.getNodes()))) {
-      JsonNode nodeConfig = node.path("config");
-      approves =
-          approves
-              || (NodeSubType.SET_ENTITY_ATTRIBUTE_TASK
-                      .value()
-                      .equals(node.path("subType").asText())
-                  && STATUS_FIELDS.contains(nodeConfig.path("fieldName").asText())
-                  && EntityStatus.APPROVED.value().equals(nodeConfig.path("fieldValue").asText()));
-    }
-    if (needsApprovalStep && !approves) {
-      throw BadRequestException.of(
-          "Workflow '%s' reviews assets from their creation, so it needs a step that sets the status to Approved"
               .formatted(workflowDefinition.getName()));
     }
   }

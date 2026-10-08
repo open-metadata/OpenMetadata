@@ -26,7 +26,6 @@ import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
 import java.io.IOException;
 import java.net.URLEncoder;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -145,7 +144,6 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.slf4j.Logger;
@@ -4205,169 +4203,6 @@ public class WorkflowDefinitionResourceIT {
     awaitOpenApprovalTask(client, glossary.getFullyQualifiedName());
   }
 
-  // A hold workflow whose trigger fires on Created reviews an asset from its creation: until the
-  // asset is Approved its edits publish and join one review task; once Approved, edits are held.
-  @Test
-  void test_creationReviewKeepsOneTaskUntilApprovalThenHoldsEdits(TestNamespace ns)
-      throws Exception {
-    String name = ns.shortPrefix("crcreate");
-    ChangeRequestITSupport.deployCreationReviewWorkflow(ns, name);
-    UUID id = createCreationReviewGlossary(ns, name).getId();
-
-    ChangeRequestITSupport.awaitStatus(id, EntityStatus.IN_REVIEW, "a new glossary goes to review");
-    Task review = ChangeRequestITSupport.awaitOpenApprovalTask(name);
-
-    HttpResponse<String> adminEdit =
-        ChangeRequestITSupport.rawPatch(id, creationReviewDescription("edited before approval"));
-    assertEquals(200, adminEdit.statusCode(), adminEdit.body());
-    assertEquals(
-        "edited before approval",
-        ChangeRequestITSupport.descriptionOf(id),
-        "an edit before approval publishes");
-    ChangeRequestITSupport.patchAs(
-        SdkClients.user2Client(),
-        id,
-        "[{\"op\":\"add\",\"path\":\"/displayName\",\"value\":\"Named by user2\"}]");
-
-    ChangeRequestITSupport.assertNoSecondTaskFor(name);
-    assertEquals(
-        review.getId(),
-        ChangeRequestITSupport.awaitOpenApprovalTask(name).getId(),
-        "every edit joins the same review task");
-    assertEquals(EntityStatus.IN_REVIEW, ChangeRequestITSupport.statusOf(id));
-    await("the review task lists both edits")
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () -> {
-              String payload = ChangeRequestITSupport.taskPayloadJson(review.getId());
-              return payload.contains("edited before approval")
-                  && payload.contains("Named by user2");
-            });
-    assertTrue(ChangeRequestITSupport.requestsFor(id).isEmpty(), "nothing is held before approval");
-
-    ChangeRequestITSupport.resolve(review.getId(), "approve", TaskResolutionType.Approved);
-    ChangeRequestITSupport.awaitStatus(
-        id, EntityStatus.APPROVED, "approving the review approves the glossary");
-    awaitNoOpenReview(name);
-
-    HttpResponse<String> held =
-        ChangeRequestITSupport.rawPatch(id, creationReviewDescription("held after approval"));
-    assertEquals(202, held.statusCode(), held.body());
-    assertEquals(
-        "edited before approval",
-        ChangeRequestITSupport.descriptionOf(id),
-        "an approved glossary keeps serving its published description");
-    ChangeRequestITSupport.onlyPendingRequest(id);
-    Task heldReview = ChangeRequestITSupport.awaitNewOpenApprovalTask(name, review.getId());
-    ChangeRequestITSupport.resolve(heldReview.getId(), "approve", TaskResolutionType.Approved);
-    ChangeRequestITSupport.awaitDescription(
-        id, "held after approval", "approving the held edit publishes it");
-    assertEquals(
-        EntityStatus.APPROVED, ChangeRequestITSupport.statusOf(id), "the glossary stays Approved");
-    // Publishing the held edit is itself an edit of an Approved glossary: it starts no review.
-    awaitNoOpenReview(name);
-  }
-
-  @Test
-  void test_creationReviewRejectedAssetIsReviewedAgainOnItsNextEdit(TestNamespace ns)
-      throws Exception {
-    String name = ns.shortPrefix("crreject");
-    ChangeRequestITSupport.deployCreationReviewWorkflow(ns, name);
-    UUID id = createCreationReviewGlossary(ns, name).getId();
-    Task first = ChangeRequestITSupport.awaitOpenApprovalTask(name);
-
-    ChangeRequestITSupport.resolve(first.getId(), "reject", TaskResolutionType.Rejected);
-    ChangeRequestITSupport.awaitStatus(id, EntityStatus.REJECTED, "rejecting marks it Rejected");
-
-    HttpResponse<String> fix =
-        ChangeRequestITSupport.rawPatch(id, creationReviewDescription("fixed after rejection"));
-    assertEquals(200, fix.statusCode(), fix.body());
-    ChangeRequestITSupport.awaitStatus(
-        id, EntityStatus.IN_REVIEW, "an edit of a Rejected glossary resubmits it");
-    Task second = ChangeRequestITSupport.awaitNewOpenApprovalTask(name, first.getId());
-    assertNotEquals(first.getId(), second.getId());
-  }
-
-  @Test
-  void test_creationReviewSkipsAssetsABotCreates(TestNamespace ns) {
-    String name = ns.shortPrefix("crbot");
-    ChangeRequestITSupport.deployCreationReviewWorkflow(ns, name);
-    Glossary glossary =
-        ns.trackRoot(
-            Entity.GLOSSARY,
-            SdkClients.ingestionBotClient()
-                .glossaries()
-                .create(new CreateGlossary().withName(name).withDescription("ingested")));
-
-    ChangeRequestITSupport.assertNoOpenApprovalTask(name);
-    assertEquals(EntityStatus.UNPROCESSED, ChangeRequestITSupport.statusOf(glossary.getId()));
-  }
-
-  @Test
-  void test_creationReviewWorkflowNeedsAnApprovedStep(TestNamespace ns) {
-    String json =
-        """
-        {
-          "name": "%s",
-          "displayName": "No approval step",
-          "description": "Reviews from creation but never approves the asset.",
-          "trigger": {
-            "type": "eventBasedEntity",
-            "config": {"entityTypes": ["glossary"], "events": ["Created", "Updated"],
-                       "exclude": [], "include": [], "filter": {}},
-            "output": ["relatedEntity", "updatedBy"]
-          },
-          "nodes": [
-            {"type": "startEvent", "subType": "startEvent", "name": "Start"},
-            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "Commit",
-             "config": {"action": "commit"}, "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "endEvent", "subType": "endEvent", "name": "End"}
-          ],
-          "edges": [{"from": "Start", "to": "Commit"}, {"from": "Commit", "to": "End"}]
-        }
-        """
-            .formatted("noApprove" + UUID.randomUUID().toString().substring(0, 8));
-    CreateWorkflowDefinition request = JsonUtils.readValue(json, CreateWorkflowDefinition.class);
-
-    OpenMetadataException error =
-        assertThrows(
-            OpenMetadataException.class,
-            () -> SdkClients.adminClient().workflowDefinitions().create(request));
-    assertTrue(
-        error.getMessage().contains("needs a step that sets the status to Approved"),
-        error.getMessage());
-  }
-
-  private static Glossary createCreationReviewGlossary(TestNamespace ns, String name) {
-    return ns.trackRoot(
-        Entity.GLOSSARY,
-        SdkClients.adminClient()
-            .glossaries()
-            .create(
-                new CreateGlossary()
-                    .withName(name)
-                    .withDescription("created")
-                    .withReviewers(List.of(SharedEntities.get().USER1.getEntityReference()))
-                    .withOwners(List.of(SharedEntities.get().USER2_REF))));
-  }
-
-  private static String creationReviewDescription(String value) {
-    return "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"}]".formatted(value);
-  }
-
-  // Waits for the review task to close, then checks no other review opens.
-  private static void awaitNoOpenReview(String fqn) {
-    await("review of " + fqn + " closed")
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () ->
-                ChangeRequestITSupport.listTasks(ChangeRequestITSupport.openTaskFilters(fqn))
-                    .isEmpty());
-    ChangeRequestITSupport.assertNoOpenApprovalTask(fqn);
-  }
-
   @Test
   void test_upsertOfGatedFieldIsHeldForApproval(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -4584,6 +4419,37 @@ public class WorkflowDefinitionResourceIT {
     approve(awaitRequestTask(requestId, glossary));
     awaitRequestStatus(requestId, "Applied");
     assertEquals("rebased description", descriptionOf(glossary));
+  }
+
+  @Test
+  void test_resubmittingAnotherFieldRestatesAMovedChangeSoItCanBeApproved(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "restate");
+    deployHookWorkflow(
+        SdkClients.adminClient(),
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description", "displayName"));
+    String requestId = submitDescription(glossary, "requested description");
+    Task task = awaitRequestTask(requestId, glossary);
+    patchAs(SdkClients.ingestionBotClient(), glossary, descriptionPatch("ingested description"));
+    assertThrows(OpenMetadataException.class, () -> approve(task));
+
+    assertEquals(
+        requestId,
+        submit(
+            glossary, "[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"new name\"}]"));
+    await("revision 2 of " + requestId)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals(2, changeRequest(requestId).get("activeRevisionNumber").asInt()));
+    approve(awaitRequestTask(requestId, glossary));
+    awaitRequestStatus(requestId, "Applied");
+    Glossary after = glossaryById(glossary);
+    assertEquals("requested description", after.getDescription());
+    assertEquals("new name", after.getDisplayName());
   }
 
   @Test
@@ -4816,6 +4682,42 @@ public class WorkflowDefinitionResourceIT {
             .stream()
             .map(EntityReference::getId)
             .toList());
+  }
+
+  // Changing the stage of a held asset is a request like any other edit: it waits for approval and
+  // the review applies it, even though the workflow owns the stage.
+  @Test
+  void test_stageChangeOfHeldAssetWaitsForApproval(TestNamespace ns) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "stageRequest");
+    String workflowName = "stageRequest" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName, "glossary", glossary.getFullyQualifiedName(), List.of()));
+    // Setting the stage when a request is rejected makes the workflow own the glossary stage.
+    ((ArrayNode) workflow.get("nodes")).add(statusNode("SetDraft", "Draft", "global"));
+    ArrayNode edges = workflow.putArray("edges");
+    addEdge(edges, "Start", "Approve", null);
+    addEdge(edges, "Approve", "CommitChange", "approve");
+    addEdge(edges, "CommitChange", "ApprovedEnd", null);
+    addEdge(edges, "Approve", "SetDraft", "reject");
+    addEdge(edges, "SetDraft", "DiscardChange", null);
+    addEdge(edges, "DiscardChange", "RejectedEnd", null);
+    createWorkflow(workflow, workflowName);
+    EntityStatus published = glossaryById(glossary).getEntityStatus();
+
+    String requestId =
+        submit(
+            glossary, "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Deprecated\"}]");
+
+    assertEquals(
+        published,
+        glossaryById(glossary).getEntityStatus(),
+        "The stage stays until the request is approved");
+    approve(awaitRequestTask(requestId, glossary));
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals(EntityStatus.DEPRECATED, glossaryById(glossary).getEntityStatus());
   }
 
   // Start -> In Review -> Approve -> commit -> Approved (as the approver); reject -> discard.

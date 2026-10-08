@@ -52,7 +52,6 @@ import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -204,115 +203,6 @@ final class ChangeRequestITSupport {
     CreateWorkflowDefinition request = JsonUtils.readValue(json, CreateWorkflowDefinition.class);
     return ns.trackRoot(
         Entity.WORKFLOW_DEFINITION, SdkClients.adminClient().workflowDefinitions().create(request));
-  }
-
-  /**
-   * Deploys a hold workflow that reviews glossaries from their creation (Created and Updated):
-   * until a glossary is Approved its edits publish and one review task follows them (In Review ->
-   * Approved, or Rejected); once it is Approved, edits are held and reviewed without touching its
-   * status.
-   */
-  static WorkflowDefinition deployCreationReviewWorkflow(TestNamespace ns, String glossaryFqn) {
-    String review =
-        """
-        {"type": "userTask", "subType": "userApprovalTask", "name": "%s",
-         "config": {"assignees": {"addReviewers": true, "addOwners": false, "candidates": []},
-                    "approvalThreshold": 1, "rejectionThreshold": 1, "stageId": "review",
-                    "stageDisplayName": "Review", "taskStatus": "Open",
-                    "assigneeStrategy": "reviewers-and-assignees",
-                    "transitionMetadata": [
-                      {"id": "approve", "label": "Approve", "targetStageId": "approved",
-                       "targetTaskStatus": "Approved", "resolutionType": "Approved",
-                       "formRef": "approve", "requiresComment": false},
-                      {"id": "reject", "label": "Reject", "targetStageId": "rejected",
-                       "targetTaskStatus": "Rejected", "resolutionType": "Rejected",
-                       "formRef": "reject", "requiresComment": true}]},
-         "inputNamespaceMap": {"relatedEntity": "global"}}
-        """;
-    String json =
-        """
-        {
-          "name": "Wf%s",
-          "displayName": "Creation Review Test Workflow",
-          "description": "Reviews glossaries from creation, then holds edits once approved.",
-          "config": {"storeStageStatus": true},
-          "trigger": {
-            "type": "eventBasedEntity",
-            "config": {
-              "entityTypes": ["glossary"],
-              "events": ["Created", "Updated"],
-              "exclude": [],
-              "include": [],
-              "filter": %s
-            },
-            "output": ["relatedEntity", "updatedBy"]
-          },
-          "nodes": [
-            {"type": "startEvent", "subType": "startEvent", "name": "Start"},
-            {"type": "automatedTask", "subType": "checkEntityAttributesTask", "name": "IsApproved",
-             "config": {"rules": "{\\"and\\":[{\\"==\\":[{\\"var\\":\\"entityStatus\\"},\\"Approved\\"]}]}"},
-             "inputNamespaceMap": {"relatedEntity": "global"}},
-            %s,
-            %s,
-            {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "SetInReview",
-             "config": {"fieldName": "entityStatus", "fieldValue": "In Review"},
-             "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "SetApproved",
-             "config": {"fieldName": "entityStatus", "fieldValue": "Approved"},
-             "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "SetRejected",
-             "config": {"fieldName": "entityStatus", "fieldValue": "Rejected"},
-             "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "Commit",
-             "config": {"action": "commit"}, "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "Discard",
-             "config": {"action": "discard"}, "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "CommitHeld",
-             "config": {"action": "commit"}, "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "DiscardHeld",
-             "config": {"action": "discard"}, "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "endEvent", "subType": "endEvent", "name": "ApprovedEnd"},
-            {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"},
-            {"type": "endEvent", "subType": "endEvent", "name": "PublishedEnd"},
-            {"type": "endEvent", "subType": "endEvent", "name": "DiscardedEnd"}
-          ],
-          "edges": [
-            {"from": "Start", "to": "IsApproved"},
-            {"from": "IsApproved", "to": "SetInReview", "condition": "false"},
-            {"from": "SetInReview", "to": "Review"},
-            {"from": "Review", "to": "Commit", "condition": "approve"},
-            {"from": "Commit", "to": "SetApproved"},
-            {"from": "SetApproved", "to": "ApprovedEnd"},
-            {"from": "Review", "to": "SetRejected", "condition": "reject"},
-            {"from": "SetRejected", "to": "Discard"},
-            {"from": "Discard", "to": "RejectedEnd"},
-            {"from": "IsApproved", "to": "ReviewHeld", "condition": "true"},
-            {"from": "ReviewHeld", "to": "CommitHeld", "condition": "approve"},
-            {"from": "CommitHeld", "to": "PublishedEnd"},
-            {"from": "ReviewHeld", "to": "DiscardHeld", "condition": "reject"},
-            {"from": "DiscardHeld", "to": "DiscardedEnd"}
-          ]
-        }
-        """
-            .formatted(
-                ns.shortPrefix("creationreview" + SEQUENCE.incrementAndGet()),
-                filterScopedTo(glossaryFqn),
-                review.formatted("Review"),
-                review.formatted("ReviewHeld"));
-    CreateWorkflowDefinition request = JsonUtils.readValue(json, CreateWorkflowDefinition.class);
-    return ns.trackRoot(
-        Entity.WORKFLOW_DEFINITION, SdkClients.adminClient().workflowDefinitions().create(request));
-  }
-
-  static EntityStatus statusOf(UUID glossaryId) {
-    return fetch(glossaryId).getEntityStatus();
-  }
-
-  static void awaitStatus(UUID glossaryId, EntityStatus expected, String reason) {
-    Awaitility.await(reason)
-        .atMost(Duration.ofSeconds(120))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(() -> expected == statusOf(glossaryId));
   }
 
   static void suspendWorkflow(WorkflowDefinition workflow) {

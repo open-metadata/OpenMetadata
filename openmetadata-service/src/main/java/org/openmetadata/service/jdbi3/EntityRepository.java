@@ -244,7 +244,6 @@ import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.governance.approval.ApprovedApplication;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
-import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
@@ -1567,6 +1566,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   // An entity saved before it had a stage can take any stage of its lifecycle
+  /** Rejects (400) a stage change the type's lifecycle has no move for. */
+  public final void validateEntityStatusMove(EntityStatus from, EntityStatus to) {
+    if (supportsEntityStatus && from != to) {
+      requireMoveInLifecycle(from, to);
+    }
+  }
+
   private void requireMoveInLifecycle(EntityStatus from, EntityStatus to) {
     if (from == null) {
       requireStageInLifecycle(to);
@@ -4746,7 +4752,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                     patchedFieldNames,
                     uriInfo,
                     changeSource,
-                    useOptimisticLocking));
+                    useOptimisticLocking,
+                    approval != null));
   }
 
   /**
@@ -4851,17 +4858,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Set<String> patchedFieldNames,
       UriInfo uriInfo,
       ChangeSource changeSource,
-      boolean useOptimisticLocking) {
+      boolean useOptimisticLocking,
+      boolean approvedChange) {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;
     try (var ignored = phase("patchEntityUpdate")) {
       if (useOptimisticLocking) {
         entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
         entityUpdater.setPatchedFields(patchedFieldNames);
+        entityUpdater.setApprovedChange(approvedChange);
         entityUpdater.updateWithOptimisticLocking();
       } else {
         entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
         entityUpdater.setPatchedFields(patchedFieldNames);
+        entityUpdater.setApprovedChange(approvedChange);
         entityUpdater.update();
       }
     }
@@ -9434,6 +9444,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Setter private boolean useOptimisticLocking;
     @Setter private Set<String> patchedFields;
 
+    // Set when the update applies a change request a reviewer approved: its stage change was
+    // decided by the review, so only the lifecycle's moves still apply to it.
+    @Setter private boolean approvedChange;
+
     // When set (bulk path with overrideMetadata=true), bot updates are allowed to overwrite
     // user-curated metadata that PUT-as-bot would otherwise preserve (description, displayName).
     // Protected so ColumnEntityUpdater can honour it for column-level description/displayName too.
@@ -10164,7 +10178,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void validateEntityStatusChange(EntityStatus from, EntityStatus to) {
-      EntityRepository.this.validateEntityStatusChange(original, updated, from, to);
+      if (approvedChange) {
+        requireMoveInLifecycle(from, to);
+      } else {
+        EntityRepository.this.validateEntityStatusChange(original, updated, from, to);
+      }
     }
 
     private void updateOwners() {
@@ -13956,12 +13974,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String userName,
       List<BulkResponse> successRequests) {
     int staged = 0;
-    if (!GovernanceApprovalRegistry.gatingRules(entityType).isEmpty()) {
+    if (ApprovalGate.mayHold(entityType, userName)) {
+      Map<String, T> publishedByFqn = publishedWithPutFields(updateEntities, existingByFqn);
       Iterator<T> candidates = updateEntities.iterator();
       while (candidates.hasNext()) {
         T entity = candidates.next();
-        Optional<StagedChange> change =
-            admitBulkUpdate(existingByFqn.get(entity.getFullyQualifiedName()), entity, userName);
+        T published = publishedByFqn.get(entity.getFullyQualifiedName());
+        entity.setId(published.getId());
+        Optional<StagedChange> change = ApprovalGate.admit(published, entity, userName, null);
         if (change.isPresent()) {
           candidates.remove();
           successRequests.add(pendingApprovalResponse(entity, change.get()));
@@ -13972,12 +13992,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return staged;
   }
 
-  // The pre-fetched original carries no relationship fields; re-read it with the fields a PUT
-  // compares so the change request records the published values it is based on.
-  private Optional<StagedChange> admitBulkUpdate(T original, T updated, String userName) {
-    T hydrated = get(null, original.getId(), getPutFields(), ALL, false);
-    updated.setId(original.getId());
-    return ApprovalGate.admit(hydrated, updated, userName, null);
+  // The pre-fetched originals carry no relationship fields and are hydrated later by the bulk
+  // update itself; copies are hydrated in one batch with the fields a PUT compares, so each change
+  // request records the published values it is based on.
+  private Map<String, T> publishedWithPutFields(
+      List<T> updateEntities, Map<String, T> existingByFqn) {
+    Map<String, T> publishedByFqn = new LinkedHashMap<>();
+    for (T entity : updateEntities) {
+      publishedByFqn.computeIfAbsent(
+          entity.getFullyQualifiedName(),
+          fqn -> JsonUtils.deepCopy(existingByFqn.get(fqn), entityClass));
+    }
+    setFieldsInBulk(getPutFields(), new ArrayList<>(publishedByFqn.values()));
+    return publishedByFqn;
   }
 
   private BulkResponse pendingApprovalResponse(T entity, StagedChange change) {

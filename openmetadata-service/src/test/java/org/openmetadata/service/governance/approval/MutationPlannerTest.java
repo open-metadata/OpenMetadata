@@ -142,6 +142,40 @@ class MutationPlannerTest {
   }
 
   @Test
+  void rebaseRestatesAMovedFieldAgainstThePublishedValue() {
+    List<MutationOp> carried =
+        MutationPlanner.plan(
+            json("{'description':'a','displayName':'x'}"),
+            json("{'description':'b','displayName':'y'}"),
+            Set.of("description", "displayName"),
+            Set.of("description", "displayName"));
+    JsonNode current = json("{'displayName':'x'}");
+
+    List<MutationOp> rebased = MutationPlanner.rebase(current, carried);
+
+    MutationOp description =
+        rebased.stream().filter(o -> "description".equals(o.getField())).findFirst().orElseThrow();
+    assertEquals("null", description.getBaseValue());
+    assertEquals("\"b\"", description.getValue());
+    assertTrue(MutationPlanner.splitConflicts(current, rebased).gatedConflicts().isEmpty());
+    assertEquals(
+        carried.stream().filter(o -> "displayName".equals(o.getField())).findFirst().orElseThrow(),
+        rebased.stream().filter(o -> "displayName".equals(o.getField())).findFirst().orElseThrow());
+  }
+
+  @Test
+  void rebaseLeavesOutAChangeThePublishedAssetAlreadyShows() {
+    List<MutationOp> carried =
+        MutationPlanner.plan(
+            json("{'description':'a'}"),
+            json("{'description':'b'}"),
+            Set.of("description"),
+            Set.of("description"));
+
+    assertTrue(MutationPlanner.rebase(json("{'description':'b'}"), carried).isEmpty());
+  }
+
+  @Test
   void mergeIsCumulativeAndNextWins() {
     List<MutationOp> prior =
         MutationPlanner.plan(

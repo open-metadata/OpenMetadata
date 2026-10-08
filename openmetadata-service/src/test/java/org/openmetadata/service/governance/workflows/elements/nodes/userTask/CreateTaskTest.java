@@ -49,7 +49,6 @@ import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 
@@ -970,69 +969,51 @@ class CreateTaskTest {
   // ---- resolveRequester ----
 
   @Test
-  void testResolveRequesterUsesGlobalEditorForPendingChangeWorkflow() {
-    UUID workflowDefinitionId = UUID.randomUUID();
-    DelegateTask delegateTask = Mockito.mock(DelegateTask.class);
+  void testResolveRequesterUsesGlobalEditorForChangeRequestRun() {
+    DelegateTask delegateTask = changeRequestRun();
     when(delegateTask.getVariable("global_updatedBy")).thenReturn("karan");
-    // The gate reverts the held edit, so the persisted entity carries the previous editor.
+    // The gate leaves the held edit unpublished, so the persisted entity carries the previous
+    // editor.
     Glossary entity = new Glossary().withUpdatedBy("admin");
 
-    try (MockedStatic<GovernanceApprovalRegistry> registry =
-        mockStatic(GovernanceApprovalRegistry.class)) {
-      registry
-          .when(() -> GovernanceApprovalRegistry.isPendingChangeWorkflow(workflowDefinitionId))
-          .thenReturn(true);
+    String requester = new CreateTask().resolveRequester(delegateTask, entity, null);
 
-      String requester =
-          new CreateTask().resolveRequester(delegateTask, workflowDefinitionId, entity, null);
-
-      assertEquals(
-          "karan",
-          requester,
-          "Pending-change task must key to the editor who caused this run, not the reverted entity");
-    }
+    assertEquals(
+        "karan",
+        requester,
+        "A change request's task must key to the editor who caused this run, not the entity");
   }
 
   @Test
-  void testResolveRequesterFallsBackToEntityForNonPendingChangeWorkflow() {
-    UUID workflowDefinitionId = UUID.randomUUID();
+  void testResolveRequesterFallsBackToEntityForOtherRuns() {
     DelegateTask delegateTask = Mockito.mock(DelegateTask.class);
     Glossary entity = new Glossary().withUpdatedBy("admin");
 
-    try (MockedStatic<GovernanceApprovalRegistry> registry =
-        mockStatic(GovernanceApprovalRegistry.class)) {
-      registry
-          .when(() -> GovernanceApprovalRegistry.isPendingChangeWorkflow(workflowDefinitionId))
-          .thenReturn(false);
+    String requester = new CreateTask().resolveRequester(delegateTask, entity, null);
 
-      String requester =
-          new CreateTask().resolveRequester(delegateTask, workflowDefinitionId, entity, null);
-
-      assertEquals(
-          "admin", requester, "Non-pending-change task keeps the entity-derived requester");
-      Mockito.verifyNoInteractions(delegateTask);
-    }
+    assertEquals("admin", requester, "Other tasks keep the entity-derived requester");
   }
 
   @Test
   void testResolveRequesterFallsBackWhenGlobalEditorBlank() {
-    UUID workflowDefinitionId = UUID.randomUUID();
-    DelegateTask delegateTask = Mockito.mock(DelegateTask.class);
+    DelegateTask delegateTask = changeRequestRun();
     when(delegateTask.getVariable("global_updatedBy")).thenReturn(null);
     Glossary entity = new Glossary().withUpdatedBy("admin");
 
-    try (MockedStatic<GovernanceApprovalRegistry> registry =
-        mockStatic(GovernanceApprovalRegistry.class)) {
-      registry
-          .when(() -> GovernanceApprovalRegistry.isPendingChangeWorkflow(workflowDefinitionId))
-          .thenReturn(true);
+    String requester = new CreateTask().resolveRequester(delegateTask, entity, null);
 
-      String requester =
-          new CreateTask().resolveRequester(delegateTask, workflowDefinitionId, entity, null);
+    assertEquals(
+        "admin", requester, "A missing global editor must fall back, never null the requester");
+  }
 
-      assertEquals(
-          "admin", requester, "A missing global editor must fall back, never null the requester");
-    }
+  // A run that reviews a change request carries the request in its global variables.
+  private static DelegateTask changeRequestRun() {
+    DelegateTask delegateTask = Mockito.mock(DelegateTask.class);
+    when(delegateTask.getVariable("global_changeRequestId"))
+        .thenReturn(UUID.randomUUID().toString());
+    when(delegateTask.getVariable("global_changeRequestRevision")).thenReturn(1);
+    when(delegateTask.getVariable("global_changeRequestWorkflow")).thenReturn("HookWorkflow");
+    return delegateTask;
   }
 
   // ---- resolveUserReferenceOrDefault (createdBy alignment) ----

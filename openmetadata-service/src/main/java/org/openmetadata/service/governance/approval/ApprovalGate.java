@@ -44,6 +44,8 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -53,18 +55,13 @@ import org.openmetadata.service.util.RestUtil;
  * Admission for approval-gated edits. A human request that changes a gated field is diverted, whole,
  * into a change request and nothing is published; a request touching only ungated fields, or made by
  * a bot on its own behalf, proceeds as a normal write. Impersonated requests are gated as the human.
- * A workflow that reviews assets from their creation holds an asset's edits only once it is
- * Approved.
  */
 @Slf4j
 public final class ApprovalGate {
-  // Identity and lifecycle fields are carried with a held request but never gate one.
+  // Identity fields are carried with a held request but never gate one. A stage change gates like
+  // any other field, so moving a held asset to another stage waits for approval.
   private static final Set<String> STRUCTURAL_FIELDS =
-      Set.of(
-          Entity.FIELD_NAME,
-          Entity.FIELD_FULLY_QUALIFIED_NAME,
-          Entity.FIELD_DELETED,
-          Entity.FIELD_ENTITY_STATUS);
+      Set.of(Entity.FIELD_NAME, Entity.FIELD_FULLY_QUALIFIED_NAME, Entity.FIELD_DELETED);
   private static final Set<String> BOOKKEEPING_FIELDS =
       Set.of(
           "version",
@@ -87,6 +84,12 @@ public final class ApprovalGate {
     return evaluate(original, updated, user, impersonatedBy, true);
   }
 
+  /** Whether an edit of {@code entityType} by {@code user} can be held at all. */
+  public static boolean mayHold(String entityType, String user) {
+    return !GovernanceApprovalRegistry.gatingRules(entityType).isEmpty()
+        && !isBotChange(user, null);
+  }
+
   /** What {@link #admit} would decide for this edit, without recording metrics or shadow holds. */
   public static Optional<StagedChange> preview(
       EntityInterface original, EntityInterface updated, String user) {
@@ -100,7 +103,7 @@ public final class ApprovalGate {
       String impersonatedBy,
       boolean record) {
     Optional<StagedChange> staged = Optional.empty();
-    if (original != null && original.getId() != null && !isBotChange(user, impersonatedBy)) {
+    if (original != null && original.getId() != null) {
       staged = stageIfGated(original, updated, user, impersonatedBy, record);
     }
     return staged;
@@ -138,13 +141,14 @@ public final class ApprovalGate {
   public static List<BulkResponse> holdGatedAssets(
       List<EntityReference> assets, String field, String user, boolean dryRun, AssetEdit edit) {
     List<BulkResponse> held = new ArrayList<>();
-    if (assets != null && !isBotChange(user, null)) {
-      Set<UUID> gated = gatedAssetIds(assets, field);
+    if (assets != null && !assets.isEmpty()) {
+      Map<UUID, EntityInterface> gated = gatedAssets(assets, field, user);
       Iterator<EntityReference> candidates = assets.iterator();
       while (candidates.hasNext()) {
         EntityReference asset = candidates.next();
-        if (gated.contains(asset.getId())) {
-          Optional<BulkResponse> item = hold(asset, field, user, dryRun, edit);
+        EntityInterface original = gated.get(asset.getId());
+        if (original != null) {
+          Optional<BulkResponse> item = hold(asset, original, user, dryRun, edit);
           if (item.isPresent()) {
             candidates.remove();
             held.add(item.get());
@@ -156,12 +160,18 @@ public final class ApprovalGate {
   }
 
   private static Optional<BulkResponse> hold(
-      EntityReference asset, String field, String user, boolean dryRun, AssetEdit edit) {
+      EntityReference asset,
+      EntityInterface original,
+      String user,
+      boolean dryRun,
+      AssetEdit edit) {
     Optional<BulkResponse> item;
     try {
-      EntityInterface original = Entity.getEntity(asset, field, Include.NON_DELETED);
-      EntityInterface updated =
-          JsonUtils.readValue(JsonUtils.pojoToJson(original), original.getClass());
+      if (Boolean.TRUE.equals(original.getDeleted())) {
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(asset.getType(), asset.getId()));
+      }
+      EntityInterface updated = JsonUtils.deepCopy(original, original.getClass());
       edit.apply(updated);
       Optional<StagedChange> staged =
           dryRun ? preview(original, updated, user) : admit(original, updated, user, null);
@@ -288,9 +298,11 @@ public final class ApprovalGate {
     return status;
   }
 
-  // Assets are read once per entity type, and only for the types a workflow gates for this field.
-  private static Set<UUID> gatedAssetIds(List<EntityReference> assets, String field) {
-    Set<UUID> gated = new HashSet<>();
+  // Assets are read once per entity type, with the edited field, and only for the types a workflow
+  // gates for this field; the gated ones are returned by id for the hold to reuse.
+  private static Map<UUID, EntityInterface> gatedAssets(
+      List<EntityReference> assets, String field, String user) {
+    Map<UUID, EntityInterface> gated = new HashMap<>();
     Map<String, List<EntityReference>> byType =
         assets.stream().collect(Collectors.groupingBy(EntityReference::getType));
     byType.forEach(
@@ -303,16 +315,16 @@ public final class ApprovalGate {
                           WorkflowTriggerFilters.fieldTriggers(
                               type, field, rule.includedFields(), rule.excludedFields()))
                   .toList();
-          if (!rules.isEmpty()) {
-            List<EntityInterface> entities = Entity.getEntities(refs, "", Include.ALL);
+          // The bot check reads the acting user, so it runs only once a workflow gates the field.
+          if (!rules.isEmpty() && !isBotChange(user, null)) {
+            List<EntityInterface> entities = Entity.getEntities(refs, field, Include.ALL);
             for (EntityInterface entity : entities) {
               if (rules.stream()
                   .anyMatch(
                       rule ->
-                          rule.holdsEditOf(entity)
-                              && !WorkflowTriggerFilters.matchesExclusionFilter(
-                                  rule.filterLogic(), entity))) {
-                gated.add(entity.getId());
+                          !WorkflowTriggerFilters.matchesExclusionFilter(
+                              rule.filterLogic(), entity))) {
+                gated.put(entity.getId(), entity);
               }
             }
           }
@@ -333,7 +345,8 @@ public final class ApprovalGate {
     String entityType = Entity.getEntityTypeFromObject(updated);
     List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
     Optional<StagedChange> staged = Optional.empty();
-    if (!rules.isEmpty()) {
+    // The bot check reads the acting user, so it runs only for an entity type a workflow gates.
+    if (!rules.isEmpty() && !isBotChange(user, impersonatedBy)) {
       Timer.Sample sample = ChangeRequestMetrics.startAdmission();
       staged = planStage(rules, entityType, original, updated, user, impersonatedBy, record);
       if (record) {
@@ -353,12 +366,12 @@ public final class ApprovalGate {
       String user,
       String impersonatedBy,
       boolean record) {
+    keepStoredStatusWhenOmitted(original, updated);
     JsonNode base = JsonUtils.valueToTree(original);
     JsonNode proposed = JsonUtils.valueToTree(updated);
     Set<String> changed = changedFields(entityType, base, proposed);
     List<GatedBy> matched =
-        gatingWorkflows(
-            rules, entityType, original, updated, triggerNames(base, proposed, changed));
+        gatingWorkflows(rules, entityType, updated, triggerNames(base, proposed, changed));
     // Shadow-mode workflows only record that they would have held the edit; the write publishes.
     List<GatedBy> gating = matched.stream().filter(g -> !g.rule().shadow()).toList();
     if (record) {
@@ -370,6 +383,7 @@ public final class ApprovalGate {
     if (!gating.isEmpty()) {
       rejectAmbiguousReview(gating);
       rejectMutuallyExclusiveTags(updated, changed);
+      rejectStageMoveOutsideLifecycle(entityType, original, updated, changed);
       GatedBy review = gating.get(0);
       staged =
           Optional.of(
@@ -398,19 +412,15 @@ public final class ApprovalGate {
         user);
   }
 
-  // A workflow that reviews assets from their creation lets edits of an asset not yet approved
-  // publish; its review task follows them instead (see ReviewPhase).
   private static List<GatedBy> gatingWorkflows(
       List<GatingRule> rules,
       String entityType,
-      EntityInterface original,
       EntityInterface updated,
       Map<String, List<String>> changed) {
     List<GatedBy> gating = new ArrayList<>();
     for (GatingRule rule : rules) {
       Set<String> fields =
-          !rule.holdsEditOf(original)
-                  || WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
+          WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
               ? Set.of()
               : gatedFields(rule, entityType, changed);
       if (!fields.isEmpty()) {
@@ -506,6 +516,24 @@ public final class ApprovalGate {
           }
         });
     return gated;
+  }
+
+  // A PUT, bulk or import update built from a create request carries no stage; like the entity
+  // updater, it keeps the stage the entity is in rather than clearing it.
+  private static void keepStoredStatusWhenOmitted(
+      EntityInterface original, EntityInterface updated) {
+    if (updated.getEntityStatus() == null) {
+      updated.setEntityStatus(original.getEntityStatus());
+    }
+  }
+
+  // A stage change the lifecycle cannot make is refused now, not after a reviewer approves it.
+  private static void rejectStageMoveOutsideLifecycle(
+      String entityType, EntityInterface original, EntityInterface updated, Set<String> changed) {
+    if (changed.contains(Entity.FIELD_ENTITY_STATUS)) {
+      Entity.getEntityRepository(entityType)
+          .validateEntityStatusMove(original.getEntityStatus(), updated.getEntityStatus());
+    }
   }
 
   private static void rejectMutuallyExclusiveTags(EntityInterface updated, Set<String> changed) {

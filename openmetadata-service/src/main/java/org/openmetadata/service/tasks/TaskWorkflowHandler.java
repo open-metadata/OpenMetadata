@@ -53,6 +53,7 @@ import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService;
+import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -598,6 +599,15 @@ public class TaskWorkflowHandler {
 
     if (aboutRef == null) {
       LOG.warn("[TaskWorkflowHandler] aboutRef is null, skipping entity changes");
+      return;
+    }
+
+    // A change request's task publishes through its workflow's commit step, which applies exactly
+    // the reviewed change, so the task form's own entity actions do not run.
+    if (ChangeRequestTasks.reviewsChangeRequest(task)) {
+      LOG.debug(
+          "[TaskWorkflowHandler] Task '{}' reviews a change request, skipping entity changes",
+          task.getId());
       return;
     }
 

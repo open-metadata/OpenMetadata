@@ -211,7 +211,7 @@ public final class ChangeApplyService {
         : markConflicted(request, currentTree, split.gatedConflicts());
   }
 
-  private static EntityInterface readCurrent(
+  static EntityInterface readCurrent(
       EntityRepository<?> repository, UUID entityId, List<MutationOp> ops) {
     Set<String> relationFields = new TreeSet<>(MutationPlanner.fieldsOf(ops));
     relationFields.retainAll(repository.getAllowedFields());

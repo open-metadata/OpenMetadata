@@ -21,16 +21,25 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskComment;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.TaskRepository;
 
 /** Post-commit updates to the review task of a change request: closing it, or explaining a hold. */
 @Slf4j
-final class ChangeRequestTasks {
+public final class ChangeRequestTasks {
   private ChangeRequestTasks() {}
 
   /** Adds a governance-bot comment to the review task, so its reviewers and requester see it. */
+  /** A task that reviews a change request names the request in its payload. */
+  public static boolean reviewsChangeRequest(Task task) {
+    return task.getPayload() != null
+        && JsonUtils.getMap(task.getPayload()).get(ChangePreviewUtils.CHANGE_REQUEST_ID_KEY)
+            != null;
+  }
+
   static void comment(UUID taskId, String message) {
     if (taskId != null) {
       try {

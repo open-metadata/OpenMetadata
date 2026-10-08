@@ -14,6 +14,8 @@
 
 package org.openmetadata.service.governance.approval;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.ArrayList;
@@ -24,7 +26,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -41,18 +42,23 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  * {@code include} fields (opt-in), the {@code exclude} fields (used when {@code include} is empty),
  * and the workflow's entity {@code filter}.
  *
- * <p>Rules are held in one snapshot validated against the workflow-definition epoch (row count and
- * latest update) on every call, so a workflow created or changed on another node gates here on the
- * next write. Resolution failures refuse the write rather than letting it publish ungated.
+ * <p>Rules are held in one snapshot. A workflow change made on this server replaces it at once; each
+ * server also re-validates it against the workflow-definition epoch (row count and latest update)
+ * at most every few seconds, so a workflow created or changed on another server gates here within
+ * that interval. Resolution failures refuse the write rather than letting it publish ungated.
  */
 @Slf4j
 public final class GovernanceApprovalRegistry {
   private static final String EVENT_BASED_ENTITY = "eventBasedEntity";
   private static final String RESOLVE_PENDING_CHANGE_SUBTYPE = "resolvePendingChangeTask";
   private static final String SHADOW_MODE = "Shadow";
-  private static final String CREATED_EVENT = "Created";
 
-  private record Snapshot(String epoch, Map<String, List<GatingRule>> rulesByEntityType) {}
+  // Each server re-reads the stored workflow definitions at most this often, so an ordinary write
+  // does not query them. A workflow change made on this server applies at once (invalidate()).
+  private static final long RECHECK_MILLIS = 5_000L;
+
+  private record Snapshot(
+      String epoch, long checkedAt, Map<String, List<GatingRule>> rulesByEntityType) {}
 
   private static final AtomicReference<Snapshot> SNAPSHOT = new AtomicReference<>();
 
@@ -62,9 +68,6 @@ public final class GovernanceApprovalRegistry {
    * A workflow's field-gating rule for one entity type, mirroring the {@code eventBasedEntity}
    * trigger's own field logic (see {@link WorkflowTriggerFilters}). {@code filterLogic} is the
    * entity-specific JsonLogic resolved for this entity type; when it matches, the entity is excluded.
-   * {@code reviewsFromCreation} is set when the trigger also fires on Created: the workflow then
-   * reviews an asset from its creation and holds its edits only once it is Approved (see {@link
-   * ReviewPhase}); otherwise it holds every gated edit.
    */
   public record GatingRule(
       UUID workflowDefinitionId,
@@ -72,8 +75,7 @@ public final class GovernanceApprovalRegistry {
       List<String> includedFields,
       List<String> excludedFields,
       String filterLogic,
-      boolean shadow,
-      boolean reviewsFromCreation) {
+      boolean shadow) {
     /** An enforcing rule: gated edits are held for review. */
     public GatingRule(
         UUID workflowDefinitionId,
@@ -81,19 +83,7 @@ public final class GovernanceApprovalRegistry {
         List<String> includedFields,
         List<String> excludedFields,
         String filterLogic) {
-      this(
-          workflowDefinitionId,
-          workflowName,
-          includedFields,
-          excludedFields,
-          filterLogic,
-          false,
-          false);
-    }
-
-    /** Whether this rule holds an edit of {@code original}, given where the asset's review is. */
-    public boolean holdsEditOf(EntityInterface original) {
-      return !reviewsFromCreation || ReviewPhase.holdsEdits(original);
+      this(workflowDefinitionId, workflowName, includedFields, excludedFields, filterLogic, false);
     }
   }
 
@@ -126,47 +116,11 @@ public final class GovernanceApprovalRegistry {
     SNAPSHOT.set(null);
   }
 
-  /**
-   * True when the workflow carries a resolvePendingChangeTask hook. Lets per-requester behavior such
-   * as task supersede apply only to hook workflows, leaving reactive workflows unchanged.
-   */
-  public static boolean isPendingChangeWorkflow(UUID workflowDefinitionId) {
-    boolean result = false;
-    if (workflowDefinitionId != null) {
-      try {
-        WorkflowDefinition definition =
-            Entity.getEntity(
-                Entity.WORKFLOW_DEFINITION, workflowDefinitionId, "", Include.NON_DELETED);
-        result = hasPendingChangeHook(definition);
-      } catch (Exception e) {
-        LOG.debug(
-            "Could not resolve workflow definition {} for pending-change check: {}",
-            workflowDefinitionId,
-            e.getMessage());
-      }
-    }
-    return result;
-  }
-
-  /** Name overload of {@link #isPendingChangeWorkflow(UUID)}; false for an unknown name. */
-  public static boolean isPendingChangeWorkflow(String workflowName) {
-    boolean result = false;
-    if (workflowName != null && !workflowName.isBlank()) {
-      WorkflowDefinition definition =
-          Entity.findByNameOrNull(Entity.WORKFLOW_DEFINITION, workflowName, Include.NON_DELETED);
-      result = definition != null && hasPendingChangeHook(definition);
-    }
-    return result;
-  }
-
   // A workflow only gates a change if it opts in by placing a resolvePendingChange hook node.
   // Reactive workflows - auto-tag, notify, run pipelines - never gate.
   public static boolean hasPendingChangeHook(WorkflowDefinition definition) {
-    boolean hasHook = false;
-    for (JsonNode node : JsonUtils.valueToTree(definition.getNodes())) {
-      hasHook = hasHook || RESOLVE_PENDING_CHANGE_SUBTYPE.equals(node.path("subType").asText(null));
-    }
-    return hasHook;
+    return listOrEmpty(definition.getNodes()).stream()
+        .anyMatch(node -> RESOLVE_PENDING_CHANGE_SUBTYPE.equals(node.getSubType()));
   }
 
   public static List<String> targetEntityTypes(JsonNode config) {
@@ -179,10 +133,14 @@ public final class GovernanceApprovalRegistry {
   }
 
   private static Snapshot currentSnapshot() {
-    String epoch = Entity.getCollectionDAO().changeRequestDAO().workflowDefinitionEpoch();
     Snapshot snapshot = SNAPSHOT.get();
-    if (snapshot == null || !snapshot.epoch().equals(epoch)) {
-      snapshot = new Snapshot(epoch, compute());
+    long now = System.currentTimeMillis();
+    if (snapshot == null || now - snapshot.checkedAt() >= RECHECK_MILLIS) {
+      String epoch = Entity.getCollectionDAO().changeRequestDAO().workflowDefinitionEpoch();
+      snapshot =
+          snapshot != null && snapshot.epoch().equals(epoch)
+              ? new Snapshot(epoch, now, snapshot.rulesByEntityType())
+              : new Snapshot(epoch, now, compute());
       SNAPSHOT.set(snapshot);
     }
     return snapshot;
@@ -223,15 +181,9 @@ public final class GovernanceApprovalRegistry {
                     stringList(config.path("include")),
                     stringList(config.path("exclude")),
                     resolveFilter(config, entityType),
-                    SHADOW_MODE.equals(config.path("approvalMode").asText(null)),
-                    reviewsFromCreation(config)));
+                    SHADOW_MODE.equals(config.path("approvalMode").asText(null))));
       }
     }
-  }
-
-  /** A hold workflow whose trigger fires on Created reviews assets from their creation. */
-  public static boolean reviewsFromCreation(JsonNode triggerConfig) {
-    return stringList(triggerConfig.path("events")).contains(CREATED_EVENT);
   }
 
   private static List<String> stringList(JsonNode array) {

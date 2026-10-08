@@ -64,7 +64,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.approval.ReviewPhase;
+import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -1092,7 +1092,7 @@ public class TaskRepository extends EntityRepository<Task> {
     // reviewers (including the admin fallback) are decided by the review workflow.
     if (task.getAbout() == null
         || !isApprovalTask(task)
-        || ReviewPhase.reviewsChangeRequest(task)) {
+        || ChangeRequestTasks.reviewsChangeRequest(task)) {
       return;
     }
     // Entity types with no reviewers field (e.g. a table) can never be reviewer-gated, so skip them

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.governance.approval;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.ForbiddenException;
@@ -500,14 +501,26 @@ public final class ChangeRequestService {
     lockEntityAtBase(repository, staged);
     String key = ChangeRequestKeys.activeInterceptKey(staged.entityId(), staged.requestedBy());
     ChangeRequest active = dao().changeRequestDAO().findByActiveInterceptKeyForUpdate(key);
-    ChangeRequest request = active == null ? create(staged) : supersede(active, staged);
+    UUID supersededTask = active == null ? null : active.getTaskId();
+    ChangeRequest request = active == null ? create(staged) : supersede(repository, active, staged);
     UUID id = request.getId();
+    int revision = request.getActiveRevisionNumber();
     PostCommitActionQueue.runOrDefer(
         () -> ChangeRequestMetrics.admission(staged.entityType(), false));
-    // Delivery starts the review workflow up to its task; it runs off the request thread, and the
-    // recovery scheduler retries any attempt that does not complete.
+    // Off the request thread, the review task of a superseded revision is closed and then delivery
+    // starts the review workflow up to its new task; the recovery scheduler retries any delivery
+    // that does not complete.
     PostCommitActionQueue.runOrDefer(
-        () -> AsyncService.getInstance().execute(() -> ChangeRequestDelivery.deliver(id)));
+        () ->
+            AsyncService.getInstance()
+                .execute(
+                    () -> {
+                      ChangeRequestTasks.closeTask(
+                          supersededTask,
+                          "Superseded by revision %d".formatted(revision),
+                          WorkflowInstance.WorkflowStatus.SUPERSEDED);
+                      ChangeRequestDelivery.deliver(id);
+                    }));
     return request;
   }
 
@@ -555,14 +568,16 @@ public final class ChangeRequestService {
         .withUpdatedAt(now);
   }
 
-  private static ChangeRequest supersede(ChangeRequest active, StagedChange staged) {
+  private static ChangeRequest supersede(
+      EntityRepository<?> repository, ChangeRequest active, StagedChange staged) {
     ChangeRevision prior = activeRevision(active);
     dao().changeRevisionDAO().updateStatus(prior.withStatus(ChangeRevisionStatus.SUPERSEDED));
     int number = active.getActiveRevisionNumber() + 1;
-    List<MutationOp> ops = MutationPlanner.merge(prior.getOps(), staged.ops());
+    List<MutationOp> ops =
+        againstPublished(
+            repository, staged.entityId(), MutationPlanner.merge(prior.getOps(), staged.ops()));
     ChangeRevision next = newRevision(active.getId(), number, staged, ops);
     dao().changeRevisionDAO().insert(next);
-    UUID supersededTask = active.getTaskId();
     active
         .withActiveRevisionId(next.getId())
         .withActiveRevisionNumber(number)
@@ -579,13 +594,20 @@ public final class ChangeRequestService {
         staged.requestedBy(),
         "Revision %d supersedes revision %d".formatted(number, number - 1));
     dao().changeRequestDAO().markDeliveryDue(active.getId(), System.currentTimeMillis());
-    PostCommitActionQueue.runOrDefer(
-        () ->
-            ChangeRequestTasks.closeTask(
-                supersededTask,
-                "Superseded by revision %d".formatted(number),
-                WorkflowInstance.WorkflowStatus.SUPERSEDED));
     return active;
+  }
+
+  // Changes carried over from the superseded revision are restated against the asset as published
+  // now, so the new revision is reviewed and applied against the current values.
+  private static List<MutationOp> againstPublished(
+      EntityRepository<?> repository, UUID entityId, List<MutationOp> ops) {
+    List<MutationOp> restated = ops;
+    if (MutationPlanner.hasFieldChange(ops)) {
+      JsonNode current =
+          JsonUtils.valueToTree(ChangeApplyService.readCurrent(repository, entityId, ops));
+      restated = MutationPlanner.rebase(current, ops);
+    }
+    return restated;
   }
 
   private static ChangeRevision newRevision(

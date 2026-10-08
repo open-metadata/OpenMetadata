@@ -144,26 +144,18 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     }
   }
 
-  // A reactive workflow starts from its trigger's change events. A hook workflow starts from the
-  // change requests held for it, and, when its trigger fires on Created, also from change events,
-  // which review an asset until its first approval (see ReviewPhase).
+  // A hook workflow reviews change requests only; it never starts from persisted change events,
+  // and reactive workflows never start from a change request.
   private List<String> signalIdsFor(
       String mainWorkflowName,
       String entityType,
       EventBasedEntityTriggerDefinition triggerDefinition,
       boolean changeRequestHook) {
-    List<String> signals = new ArrayList<>();
-    if (changeRequestHook) {
-      signals.add(ChangeRequestKeys.submittedSignalId(mainWorkflowName, entityType));
-    }
-    if (!changeRequestHook
-        || GovernanceApprovalRegistry.reviewsFromCreation(
-            JsonUtils.valueToTree(triggerDefinition.getConfig()))) {
-      triggerDefinition.getConfig().getEvents().stream()
-          .map(event -> getEntitySignalId(entityType, event.toString()))
-          .forEach(signals::add);
-    }
-    return signals;
+    return changeRequestHook
+        ? List.of(ChangeRequestKeys.submittedSignalId(mainWorkflowName, entityType))
+        : triggerDefinition.getConfig().getEvents().stream()
+            .map(event -> getEntitySignalId(entityType, event.toString()))
+            .toList();
   }
 
   private void addStartEvent(String workflowTriggerId, String entityType, String signalId) {
@@ -179,8 +171,7 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     this.signals.add(signal);
   }
 
-  // Read the same way the approval gate reads them, including the deprecated single entityType, so
-  // a
+  // Read the way the approval gate reads them, including the deprecated single entityType, so a
   // change request the gate holds for this workflow always has a start event to deliver to.
   private List<String> getEntityTypesFromConfig(Object configObj) {
     List<String> entityTypes =

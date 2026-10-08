@@ -28,6 +28,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.DeliveryStatus;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -56,11 +57,26 @@ public final class ChangeRequestDelivery {
   }
 
   private static void deliverClaimed(ChangeRequest request, String token) {
+    WorkflowDefinition workflow =
+        Entity.getEntityOrNull(
+            Entity.WORKFLOW_DEFINITION, request.getWorkflowDefinitionId(), "", Include.ALL);
+    if (workflow == null) {
+      // No run can ever review a request whose workflow is gone, so it ends here.
+      ChangeRequestService.cancelAllForWorkflow(
+          request.getWorkflowDefinitionId(), "Approval workflow was deleted");
+      dao().completeDelivery(request.getId(), token);
+      ChangeRequestMetrics.delivery("cancelled");
+    } else {
+      signal(request, workflow.getName(), token);
+    }
+  }
+
+  private static void signal(ChangeRequest request, String workflowName, String token) {
     try {
       WorkflowHandler.getInstance()
           .triggerWithRequiredSignal(
-              ChangeRequestKeys.submittedSignalId(workflowName(request), request.getEntityType()),
-              variables(request));
+              ChangeRequestKeys.submittedSignalId(workflowName, request.getEntityType()),
+              variables(request, workflowName));
       dao().completeDelivery(request.getId(), token);
       ChangeRequestMetrics.delivery("delivered");
     } catch (Exception e) {
@@ -77,7 +93,7 @@ public final class ChangeRequestDelivery {
   }
 
   // Flowable's signal API takes an untyped variable map; this is the only place one is built.
-  private static Map<String, Object> variables(ChangeRequest request) {
+  private static Map<String, Object> variables(ChangeRequest request, String workflowName) {
     Map<String, Object> variables = new LinkedHashMap<>();
     variables.put(
         global(RELATED_ENTITY_VARIABLE),
@@ -87,14 +103,8 @@ public final class ChangeRequestDelivery {
     variables.put(global(UPDATED_BY_VARIABLE), request.getRequestedBy());
     variables.put(global(CHANGE_REQUEST_ID_VARIABLE), request.getId().toString());
     variables.put(global(CHANGE_REQUEST_REVISION_VARIABLE), request.getActiveRevisionNumber());
-    variables.put(global(CHANGE_REQUEST_WORKFLOW_VARIABLE), workflowName(request));
+    variables.put(global(CHANGE_REQUEST_WORKFLOW_VARIABLE), workflowName);
     return variables;
-  }
-
-  private static String workflowName(ChangeRequest request) {
-    return Entity.getEntityReferenceById(
-            Entity.WORKFLOW_DEFINITION, request.getWorkflowDefinitionId(), Include.ALL)
-        .getName();
   }
 
   private static String global(String name) {

@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 
 import ch.qos.logback.classic.Level;
@@ -52,6 +54,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -263,8 +266,42 @@ class GovernanceApprovalRegistryTest {
           .withFullyQualifiedName("g")
           .withDisplayName("published name")
           .withDescription("published")
-          .withEntityStatus(EntityStatus.APPROVED)
           .withVersion(0.1);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private final EntityRepository glossaryRepository = mock(EntityRepository.class);
+
+    @Test
+    void stageChangeIsHeldLikeAnyField() {
+      Glossary original = published().withEntityStatus(EntityStatus.APPROVED);
+      Glossary updated = edited(original).withEntityStatus(EntityStatus.DEPRECATED);
+      StagedChange change =
+          admitAsHuman(List.of(rule(WORKFLOW_A, List.of(), List.of())), original, updated)
+              .orElseThrow();
+      assertEquals(Set.of("entityStatus"), gatedFields(change));
+    }
+
+    @Test
+    void stageMoveTheLifecycleCannotMakeIsRefusedBeforeHolding() {
+      Glossary original = published().withEntityStatus(EntityStatus.APPROVED);
+      Glossary updated = edited(original).withEntityStatus(EntityStatus.DRAFT);
+      doThrow(new BadRequestException("no move from Approved to Draft"))
+          .when(glossaryRepository)
+          .validateEntityStatusMove(EntityStatus.APPROVED, EntityStatus.DRAFT);
+      assertThrows(
+          BadRequestException.class,
+          () -> admitAsHuman(List.of(rule(WORKFLOW_A, List.of(), List.of())), original, updated));
+    }
+
+    @Test
+    void editWithoutAStageKeepsTheStageItIsIn() {
+      Glossary original = published().withEntityStatus(EntityStatus.APPROVED);
+      Glossary updated = edited(original).withEntityStatus(null).withDescription("new");
+      StagedChange change =
+          admitAsHuman(List.of(rule(WORKFLOW_A, List.of(), List.of())), original, updated)
+              .orElseThrow();
+      assertEquals(Set.of("description"), gatedFields(change));
     }
 
     private Glossary edited(Glossary original) {
@@ -308,6 +345,9 @@ class GovernanceApprovalRegistryTest {
             .thenReturn(rules);
         entity.when(() -> Entity.getEntityTypeFromObject(any())).thenReturn(Entity.GLOSSARY);
         entity
+            .when(() -> Entity.getEntityRepository(Entity.GLOSSARY))
+            .thenReturn(glossaryRepository);
+        entity
             .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq(user), any()))
             .thenReturn(new User().withName(user).withIsBot(userIsBot));
         return gate.get();
@@ -315,7 +355,7 @@ class GovernanceApprovalRegistryTest {
     }
 
     private GatingRule shadowRule(UUID workflowId, List<String> include) {
-      return new GatingRule(workflowId, "wf-" + workflowId, include, List.of(), null, true, false);
+      return new GatingRule(workflowId, "wf-" + workflowId, include, List.of(), null, true);
     }
 
     private Optional<StagedChange> admitAsHuman(
@@ -518,52 +558,6 @@ class GovernanceApprovalRegistryTest {
               .orElseThrow();
       assertEquals("alice", change.requestedBy());
       assertEquals("mcp-bot", change.impersonatedBy());
-    }
-
-    private GatingRule reviewsFromCreation(UUID workflowId, List<String> include) {
-      return new GatingRule(workflowId, "wf-" + workflowId, include, List.of(), null, false, true);
-    }
-
-    @Test
-    void creationReviewingWorkflowPublishesEditsBeforeTheFirstApproval() {
-      for (EntityStatus status :
-          List.of(
-              EntityStatus.UNPROCESSED,
-              EntityStatus.DRAFT,
-              EntityStatus.IN_REVIEW,
-              EntityStatus.REJECTED)) {
-        Glossary original = published().withEntityStatus(status);
-        Glossary updated = edited(original).withDescription("proposed");
-        assertTrue(
-            admitAsHuman(
-                    List.of(reviewsFromCreation(WORKFLOW_A, List.of("description"))),
-                    original,
-                    updated)
-                .isEmpty(),
-            "an edit of a %s glossary publishes".formatted(status));
-      }
-    }
-
-    @Test
-    void creationReviewingWorkflowHoldsEditsOfAnApprovedAsset() {
-      Glossary original = published();
-      Glossary updated = edited(original).withDescription("proposed");
-      assertTrue(
-          admitAsHuman(
-                  List.of(reviewsFromCreation(WORKFLOW_A, List.of("description"))),
-                  original,
-                  updated)
-              .isPresent());
-    }
-
-    @Test
-    void editOnlyWorkflowHoldsEditsWhateverTheStatus() {
-      Glossary original = published().withEntityStatus(EntityStatus.UNPROCESSED);
-      Glossary updated = edited(original).withDescription("proposed");
-      assertTrue(
-          admitAsHuman(
-                  List.of(rule(WORKFLOW_A, List.of("description"), List.of())), original, updated)
-              .isPresent());
     }
 
     @Test
