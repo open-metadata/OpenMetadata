@@ -68,29 +68,32 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Globe01: () => <div data-testid="domain-icon" />,
 }));
 
+type MockPress = (e: { pointerType: string }) => void;
+
+// The menu row's press handler, so a test can press it as a given pointer type.
+let mockItemPress: MockPress | undefined;
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Dropdown: {
     Item: ({
       children,
       isDisabled,
-      onAction,
+      onPress,
       'data-testid': testId,
     }: {
       children: React.ReactNode;
       isDisabled?: boolean;
-      onAction?: () => void;
+      onPress?: MockPress;
       'data-testid'?: string;
-    }) => (
-      <div
-        aria-disabled={isDisabled}
-        data-testid={testId}
-        role="menuitem"
-        tabIndex={-1}
-        onClick={onAction}
-        onKeyDown={onAction}>
-        {children}
-      </div>
-    ),
+    }) => {
+      mockItemPress = onPress;
+
+      return (
+        <div aria-disabled={isDisabled} data-testid={testId} role="menuitem">
+          {children}
+        </div>
+      );
+    },
   },
   Tooltip: ({
     children,
@@ -157,15 +160,30 @@ describe('DomainScopeControl', () => {
     );
   });
 
-  it('opens the picker when the menu item is activated', async () => {
-    await renderControl();
+  it.each(['keyboard', 'virtual'])(
+    'opens the picker on a %s press of the menu item',
+    async (pointerType) => {
+      await renderControl();
 
-    expect(lastMenuProps().popoverProps?.open).toBe(false);
+      expect(lastMenuProps().popoverProps?.open).toBe(false);
 
-    fireEvent.click(screen.getByTestId('ask-domain-scope'));
+      act(() => mockItemPress?.({ pointerType }));
 
-    expect(lastMenuProps().popoverProps?.open).toBe(true);
-  });
+      expect(lastMenuProps().popoverProps?.open).toBe(true);
+    }
+  );
+
+  // The picker's own trigger toggles on these; opening here too would undo it.
+  it.each(['mouse', 'touch'])(
+    'leaves a %s press to the picker trigger',
+    async (pointerType) => {
+      await renderControl();
+
+      act(() => mockItemPress?.({ pointerType }));
+
+      expect(lastMenuProps().popoverProps?.open).toBe(false);
+    }
+  );
 
   it('updates the global domain scope and reloads on selection', async () => {
     await renderControl();

@@ -32,24 +32,31 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
 }) => (
   <Card
     className={classNames(
-      'tw:w-full tw:has-[[aria-expanded=true]]:border-brand-subtle',
-      compact ? 'tw:p-2' : 'tw:py-2 tw:pr-2 tw:pl-3'
+      'tw:rounded-2xl tw:shadow-xs',
+      compact
+        ? 'tw:mx-auto tw:w-14 tw:p-1.5'
+        : 'tw:w-full tw:py-2.5 tw:pr-2.5 tw:pl-3 tw:has-[[aria-expanded=true]]:border-brand-subtle tw:has-[[aria-expanded=true]]:bg-brand-primary'
     )}
     data-testid="ask-user-card">
     <Box
       align="center"
       direction={compact ? 'col' : 'row'}
-      gap={compact ? 3 : 2}>
+      gap={compact ? 1 : 2}>
       {compact ? (
         <>
-          <InboxIconButton />
-          <Divider />
+          <Box align="center" className="tw:size-11" justify="center">
+            <InboxIconButton />
+          </Box>
+          <Divider className="tw:w-7" />
           <AIUserMenu collapsed />
         </>
       ) : (
         <>
           <AIUserMenu />
-          <Box className="tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-1 tw:shadow-xs">
+          <Box
+            align="center"
+            className="tw:size-10 tw:shrink-0 tw:rounded-[11px] tw:border tw:border-secondary tw:bg-primary"
+            justify="center">
             <InboxIconButton />
           </Box>
         </>

@@ -68,6 +68,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
   fullWidthTrigger,
   placement,
   offset: dropdownOffset,
+  popoverClassName,
   bordered,
   commitMode,
   renderTrigger,
@@ -407,6 +408,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
         t('label.select-field', { field: t('label.domain-plural') })
       }
       placement={placement}
+      popoverClassName={popoverClassName}
       renderSelectedItem={renderSelectedItem}
       renderTrigger={renderTrigger}
       searchPlaceholder={t('label.search-entity', {

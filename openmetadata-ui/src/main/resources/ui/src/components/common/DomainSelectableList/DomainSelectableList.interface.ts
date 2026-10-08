@@ -51,5 +51,7 @@ export interface DomainSelectableListProps {
   placement?: DomainSelectProps['placement'];
   /** Gap between trigger and picker, in px. */
   offset?: DomainSelectProps['offset'];
+  /** Extra picker classes, e.g. a width. */
+  popoverClassName?: DomainSelectProps['popoverClassName'];
   'data-testid'?: string;
 }

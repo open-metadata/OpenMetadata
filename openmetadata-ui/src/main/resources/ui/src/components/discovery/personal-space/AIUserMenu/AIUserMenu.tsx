@@ -40,6 +40,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuthProvider } from '../../../../components/Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
+import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import {
   HELP_ITEMS_ENUM,
   SupportItem,
@@ -64,9 +65,23 @@ import { getLanguageName, getUserPersonas } from './AIUserMenu.utils';
 
 const SUBMENU_LIST_CLASS = 'tw:max-h-72 tw:overflow-y-auto';
 
+// Collate account-menu metrics; the core popover is 248px wide with 8px corners.
+const POPOVER_CLASS = 'tw:rounded-2xl tw:outline-secondary';
+
+// The core item paints its row on its first child, so `*:` reshapes that row.
+const ROW_CLASS = 'tw:*:rounded-[9px]';
+
 const ICON_CLASS = 'tw:size-4 tw:shrink-0';
 
 const MUTED_ICON_CLASS = `${ICON_CLASS} tw:text-fg-quaternary`;
+
+const ROW_ICON_CLASS = 'tw:size-4.5 tw:shrink-0';
+
+const CHEVRON_CLASS = 'tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary';
+
+// Light ring in the avatar's own hue, set off from it by a 2px gap.
+const AVATAR_RING_CLASS =
+  'tw:outline-1 tw:outline-offset-2 tw:outline-current/20 tw:*:font-medium';
 
 type IconComponent = FC<{ className?: string }>;
 
@@ -86,24 +101,27 @@ const MenuRow = ({
   hasSubmenu,
   isDanger,
 }: MenuRowProps) => (
-  <Box align="center" gap={3}>
+  <Box align="center" className="tw:min-h-6" gap={3}>
     <Icon
       aria-hidden
-      className={
-        isDanger
-          ? classNames(ICON_CLASS, 'tw:text-fg-error-primary')
-          : MUTED_ICON_CLASS
-      }
+      className={classNames(
+        ROW_ICON_CLASS,
+        isDanger ? 'tw:text-utility-error-700' : 'tw:text-fg-tertiary'
+      )}
     />
     <span
       className={classNames(
         'tw:flex-1 tw:truncate',
-        isDanger ? 'tw:text-error-primary' : 'tw:text-secondary'
+        isDanger ? 'tw:text-utility-error-700' : 'tw:text-primary'
       )}>
       {label}
     </span>
-    {value && <span className="tw:shrink-0 tw:text-tertiary">{value}</span>}
-    {hasSubmenu && <ChevronRight aria-hidden className={MUTED_ICON_CLASS} />}
+    {value && (
+      <span className="tw:shrink-0 tw:text-[13px] tw:text-tertiary">
+        {value}
+      </span>
+    )}
+    {hasSubmenu && <ChevronRight aria-hidden className={CHEVRON_CLASS} />}
   </Box>
 );
 
@@ -119,16 +137,23 @@ const ContextRow = ({
 }) => (
   // Full width: the domain row sits inside the picker's flex trigger wrapper.
   <Box align="center" className="tw:w-full" gap={3}>
-    <FeaturedIcon color="brand" icon={icon} shape="square" size="sm" />
+    <FeaturedIcon
+      className="tw:*:data-icon:size-[17px]"
+      color="brand"
+      icon={icon}
+      radius="lg"
+      shape="square"
+      size="sm"
+    />
     <Box className="tw:min-w-0 tw:flex-1" direction="col">
-      <Typography className="tw:text-tertiary" size="text-xs">
+      <Typography className="tw:leading-4 tw:text-tertiary" size="text-xs">
         {caption}
       </Typography>
-      <Typography className="tw:truncate tw:text-primary" weight="semibold">
+      <Typography className="tw:truncate tw:text-primary" weight="medium">
         {value}
       </Typography>
     </Box>
-    <ChevronRight aria-hidden className={MUTED_ICON_CLASS} />
+    <ChevronRight aria-hidden className={CHEVRON_CLASS} />
   </Box>
 );
 
@@ -141,9 +166,15 @@ const OptionRow = ({
   isSelected: boolean;
   leading?: ReactNode;
 }) => (
-  <Box align="center" gap={2}>
+  <Box align="center" className="tw:min-h-6 tw:gap-2.5">
     {leading}
-    <span className="tw:flex-1 tw:truncate">{label}</span>
+    <span
+      className={classNames(
+        'tw:flex-1 tw:truncate tw:font-medium',
+        !isSelected && 'tw:text-primary'
+      )}>
+      {label}
+    </span>
     {isSelected && (
       <Check
         aria-hidden
@@ -151,6 +182,75 @@ const OptionRow = ({
       />
     )}
   </Box>
+);
+
+interface TriggerContentProps {
+  collapsed: boolean;
+  name: string;
+  email: string;
+  domainName?: string;
+  isDomainScoped: boolean;
+}
+
+/** The avatar, then the name over the domain when expanded, or a scope badge in the rail. */
+const TriggerContent = ({
+  collapsed,
+  name,
+  email,
+  domainName,
+  isDomainScoped,
+}: TriggerContentProps) => (
+  <>
+    <ProfilePicture
+      className={classNames(
+        AVATAR_RING_CLASS,
+        collapsed ? 'tw:size-[34px]' : 'tw:size-9 tw:*:text-[15px]'
+      )}
+      displayName={name}
+      name={email}
+      size="sm"
+    />
+    {collapsed ? (
+      isDomainScoped && (
+        <span
+          aria-hidden
+          className="tw:absolute tw:right-px tw:bottom-px tw:flex tw:size-4.5 tw:items-center tw:justify-center tw:rounded-full tw:border-2 tw:border-bg-surface tw:bg-brand-solid"
+          data-testid="ask-ai-user-menu-scope-badge">
+          <Globe01 className="tw:size-2.5 tw:text-fg-white" />
+        </span>
+      )
+    ) : (
+      <>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <Typography className="tw:truncate tw:text-primary" weight="medium">
+            {name}
+          </Typography>
+          <Box align="center" className="tw:min-w-0" gap={1}>
+            <Globe01
+              aria-hidden
+              className={classNames(
+                'tw:size-3 tw:shrink-0',
+                isDomainScoped
+                  ? 'tw:text-fg-brand-secondary'
+                  : 'tw:text-fg-quaternary'
+              )}
+            />
+            <Typography
+              className={classNames(
+                'tw:truncate',
+                isDomainScoped ? 'tw:text-brand-secondary' : 'tw:text-tertiary'
+              )}
+              data-testid="ask-ai-user-menu-domain"
+              size="text-xs"
+              weight="medium">
+              {domainName}
+            </Typography>
+          </Box>
+        </Box>
+        <ChevronSelectorVertical aria-hidden className={MUTED_ICON_CLASS} />
+      </>
+    )}
+  </>
 );
 
 const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
@@ -185,6 +285,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
     activeDomainEntityRef,
     activeDomain
   );
+  const isDomainScoped = activeDomain !== DEFAULT_DOMAIN_VALUE;
   const selectedPersonaName = selectedPersona
     ? getEntityName(selectedPersona)
     : t('label.default');
@@ -227,51 +328,43 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
     <Dropdown.Root>
       <Tooltip
         arrow
-        description={domainDisplayName}
         isDisabled={!collapsed}
         placement="right"
-        title={displayName}>
+        title={
+          <span className="tw:flex tw:items-center tw:gap-2 tw:leading-5">
+            <span className="tw:truncate tw:text-[13px] tw:font-medium">
+              {displayName}
+            </span>
+            <span className="tw:truncate tw:font-normal tw:text-tooltip-supporting-text">
+              {domainDisplayName}
+            </span>
+          </span>
+        }>
         <Button
           aria-label={displayName}
           className={classNames(
-            'tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
-            collapsed ? 'tw:rounded-full' : 'tw:min-w-0 tw:flex-1 tw:rounded-md'
+            'tw:relative tw:flex tw:cursor-pointer tw:items-center tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+            collapsed
+              ? 'tw:size-11 tw:justify-center tw:rounded-[11px] tw:aria-expanded:bg-brand-secondary'
+              : 'tw:min-h-11 tw:min-w-0 tw:flex-1 tw:gap-2.5 tw:rounded-md'
           )}
           data-testid="ask-ai-user-menu-trigger">
-          <ProfilePicture displayName={displayName} name={email} size="sm" />
-          {!collapsed && (
-            <>
-              <Box className="tw:min-w-0 tw:flex-1" direction="col">
-                <Typography
-                  className="tw:truncate tw:text-primary"
-                  weight="semibold">
-                  {displayName}
-                </Typography>
-                <Box align="center" className="tw:min-w-0" gap={1}>
-                  <Globe01
-                    aria-hidden
-                    className="tw:size-3 tw:shrink-0 tw:text-fg-quaternary"
-                  />
-                  <Typography
-                    className="tw:truncate tw:text-tertiary"
-                    data-testid="ask-ai-user-menu-domain"
-                    size="text-xs">
-                    {domainDisplayName}
-                  </Typography>
-                </Box>
-              </Box>
-              <ChevronSelectorVertical
-                aria-hidden
-                className={MUTED_ICON_CLASS}
-              />
-            </>
-          )}
+          <TriggerContent
+            collapsed={collapsed}
+            domainName={domainDisplayName}
+            email={email}
+            isDomainScoped={isDomainScoped}
+            name={displayName}
+          />
         </Button>
       </Tooltip>
 
-      <Dropdown.Popover className="tw:w-72" placement="right bottom">
+      <Dropdown.Popover
+        className={classNames(POPOVER_CLASS, 'tw:w-75')}
+        placement="right bottom">
         <Dropdown.Menu selectionMode="none">
           <Dropdown.Item
+            className="tw:*:px-2 tw:*:py-[11px]"
             data-testid="ai-user-menu-profile"
             id="profile"
             textValue={displayName}
@@ -285,18 +378,21 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             }>
             <Box align="center" gap={3}>
               <ProfilePicture
+                className="tw:*:font-medium"
                 displayName={displayName}
                 name={email}
                 width="40"
               />
-              <Box className="tw:min-w-0 tw:flex-1" direction="col">
+              <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
                 <Typography
-                  className="tw:truncate tw:text-primary"
-                  weight="semibold">
+                  className="tw:line-clamp-2 tw:text-[15px] tw:leading-5 tw:whitespace-normal tw:break-words tw:text-primary"
+                  weight="medium">
                   {displayName}
                 </Typography>
                 {userRole && (
-                  <Typography className="tw:truncate tw:text-tertiary">
+                  <Typography
+                    className="tw:truncate tw:text-tertiary"
+                    size="text-xs">
                     {userRole}
                   </Typography>
                 )}
@@ -317,6 +413,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
 
           <SubmenuTrigger>
             <Dropdown.Item
+              className="tw:*:rounded-[10px]"
               data-testid="ai-user-menu-persona"
               id="persona"
               textValue={t('label.active-persona')}>
@@ -326,13 +423,15 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
                 value={selectedPersonaName}
               />
             </Dropdown.Item>
-            <Dropdown.Popover placement="right top">
+            <Dropdown.Popover
+              className={classNames(POPOVER_CLASS, 'tw:w-70')}
+              placement="right top">
               <Dropdown.Menu
                 className={SUBMENU_LIST_CLASS}
                 selectedKeys={selectedPersona ? [selectedPersona.id] : []}>
                 <Dropdown.Section>
-                  <Dropdown.SectionHeader className="tw:flex tw:flex-col tw:px-4 tw:pt-2 tw:pb-1">
-                    <Typography className="tw:text-primary" weight="semibold">
+                  <Dropdown.SectionHeader className="tw:flex tw:flex-col tw:gap-0.5 tw:px-3.5 tw:pt-2.5 tw:pb-2">
+                    <Typography className="tw:text-primary" weight="medium">
                       {t('label.switch-persona')}
                     </Typography>
                     <Typography className="tw:text-tertiary" size="text-xs">
@@ -344,6 +443,8 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
 
                     return (
                       <Dropdown.Item
+                        // 7px around the 26px tile keeps the row at 40px.
+                        className={classNames(ROW_CLASS, 'tw:*:py-[7px]')}
                         data-testid={`ai-user-menu-persona-${persona.name}`}
                         id={persona.id}
                         key={persona.id}
@@ -355,7 +456,14 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
                             label={personaName}
                             leading={
                               <Avatar
-                                colorVariant={isSelected ? 'solid' : 'neutral'}
+                                className={classNames(
+                                  'tw:size-6.5 tw:rounded-lg tw:*:text-xs tw:*:font-medium',
+                                  isSelected
+                                    ? 'tw:bg-brand-solid tw:text-primary_on-brand'
+                                    : 'tw:text-tertiary'
+                                )}
+                                colorVariant="neutral"
+                                contrastBorder={false}
                                 initials={personaName.charAt(0).toUpperCase()}
                                 size="xs"
                               />
@@ -373,6 +481,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           <Dropdown.Separator />
 
           <Dropdown.Item
+            className={ROW_CLASS}
             data-testid="ai-user-menu-my-data"
             id="my-data"
             textValue={t('label.my-data')}
@@ -381,10 +490,13 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           </Dropdown.Item>
 
           <SubmenuTrigger>
-            <Dropdown.Item id="help" textValue={t('label.help')}>
+            <Dropdown.Item
+              className={ROW_CLASS}
+              id="help"
+              textValue={t('label.help')}>
               <MenuRow hasSubmenu icon={HelpCircle} label={t('label.help')} />
             </Dropdown.Item>
-            <Dropdown.Popover placement="right top">
+            <Dropdown.Popover className={POPOVER_CLASS} placement="right top">
               <Dropdown.Menu
                 className={SUBMENU_LIST_CLASS}
                 selectionMode="none">
@@ -406,7 +518,10 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           </SubmenuTrigger>
 
           <SubmenuTrigger>
-            <Dropdown.Item id="language" textValue={t('label.language')}>
+            <Dropdown.Item
+              className={ROW_CLASS}
+              id="language"
+              textValue={t('label.language')}>
               <MenuRow
                 hasSubmenu
                 icon={Language}
@@ -414,12 +529,13 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
                 value={getLanguageName(currentLocale)}
               />
             </Dropdown.Item>
-            <Dropdown.Popover placement="right top">
+            <Dropdown.Popover className={POPOVER_CLASS} placement="right top">
               <Dropdown.Menu
                 className={SUBMENU_LIST_CLASS}
                 selectedKeys={[currentLocale]}>
                 {languageSelectOptions.map((option) => (
                   <Dropdown.Item
+                    className={ROW_CLASS}
                     id={option.key}
                     key={option.key}
                     textValue={option.label}
@@ -434,6 +550,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           </SubmenuTrigger>
 
           <Dropdown.Item
+            className={ROW_CLASS}
             data-testid="ask-user-menu-settings"
             id="settings"
             textValue={t('label.setting-plural')}
@@ -443,6 +560,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
 
           <SubmenuTrigger>
             <Dropdown.Item
+              className={ROW_CLASS}
               data-testid="ai-user-menu-appearance"
               id="appearance"
               textValue={t('label.appearance')}>
@@ -453,9 +571,12 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
                 value={theme === 'dark' ? t('label.dark') : t('label.light')}
               />
             </Dropdown.Item>
-            <Dropdown.Popover placement="right top">
+            <Dropdown.Popover
+              className={classNames(POPOVER_CLASS, 'tw:w-55 tw:rounded-[14px]')}
+              placement="right top">
               <Dropdown.Menu selectedKeys={[theme]}>
                 <Dropdown.Item
+                  className={ROW_CLASS}
                   data-testid="ai-user-menu-theme-light"
                   id="light"
                   textValue={t('label.light')}
@@ -468,6 +589,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
                   )}
                 </Dropdown.Item>
                 <Dropdown.Item
+                  className={ROW_CLASS}
                   data-testid="ai-user-menu-theme-dark"
                   id="dark"
                   textValue={t('label.dark')}
@@ -484,6 +606,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
           </SubmenuTrigger>
 
           <Dropdown.Item
+            className={ROW_CLASS}
             data-testid="ai-user-menu-logout"
             id="logout"
             textValue={t('label.logout')}

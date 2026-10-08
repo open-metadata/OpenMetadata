@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import AIUserMenu from './AIUserMenu';
 
@@ -40,10 +41,12 @@ jest.mock('../../../../hooks/usePersonalSpaceStore', () => ({
     selector({ open: mockOpenPanel }),
 }));
 
+let mockActiveDomain = 'Banking';
+
 jest.mock('../../../../hooks/useDomainStore', () => ({
   useDomainStore: () => ({
-    activeDomain: 'Banking',
-    activeDomainEntityRef: { id: 'domain-1', name: 'Banking' },
+    activeDomain: mockActiveDomain,
+    activeDomainEntityRef: { id: 'domain-1', name: mockActiveDomain },
   }),
 }));
 
@@ -182,16 +185,14 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   FeaturedIcon: () => <span />,
   Tooltip: ({
     children,
-    description,
     isDisabled,
     title,
   }: React.PropsWithChildren<{
-    description?: string;
     isDisabled?: boolean;
-    title?: string;
+    title?: React.ReactNode;
   }>) => (
     <div data-testid={isDisabled ? undefined : 'trigger-tooltip'}>
-      {!isDisabled && `${title} ${description}`}
+      {!isDisabled && title}
       {children}
     </div>
   ),
@@ -219,6 +220,7 @@ describe('AIUserMenu', () => {
     localStorage.clear();
     document.documentElement.classList.remove('dark-mode');
     mockAppVersion = '1.0.0';
+    mockActiveDomain = 'Banking';
     mockGetHelpItems.mockReturnValue([]);
   });
 
@@ -237,9 +239,35 @@ describe('AIUserMenu', () => {
     expect(
       screen.getByTestId('ask-ai-user-menu-trigger')
     ).not.toHaveTextContent('Banking');
-    expect(screen.getByTestId('trigger-tooltip')).toHaveTextContent(
-      'Test User Banking'
-    );
+
+    const tooltip = screen.getByTestId('trigger-tooltip');
+
+    expect(tooltip).toHaveTextContent('Test User');
+    expect(tooltip).toHaveTextContent('Banking');
+  });
+
+  it('badges the rail avatar only while a domain is scoped', () => {
+    const { unmount } = renderMenu(true);
+
+    expect(
+      screen.getByTestId('ask-ai-user-menu-scope-badge')
+    ).toBeInTheDocument();
+
+    unmount();
+    mockActiveDomain = DEFAULT_DOMAIN_VALUE;
+    renderMenu(true);
+
+    expect(
+      screen.queryByTestId('ask-ai-user-menu-scope-badge')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no scope badge on the expanded trigger', () => {
+    renderMenu();
+
+    expect(
+      screen.queryByTestId('ask-ai-user-menu-scope-badge')
+    ).not.toBeInTheDocument();
   });
 
   it('routes to #profile/<username> when the profile item is clicked', () => {

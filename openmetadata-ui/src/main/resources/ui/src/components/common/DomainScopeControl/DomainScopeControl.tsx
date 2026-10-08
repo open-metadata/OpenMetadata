@@ -157,6 +157,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     return (
       <Dropdown.Item
         isDisabled
+        className="tw:*:rounded-[10px]"
         data-testid="ask-domain-scope"
         textValue={t('label.domain-scope')}>
         <Tooltip
@@ -172,13 +173,19 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
 
   return (
     <Dropdown.Item
+      className="tw:*:rounded-[10px]"
       data-testid="ask-domain-scope"
       // The picker anchors to this row, so the profile menu must stay open.
       shouldCloseOnSelect={false}
       textValue={t('label.domain-scope')}
-      // A pointer press opens the picker through its own trigger; keyboard
-      // activation lands on the menu item and never reaches that trigger.
-      onAction={() => setIsOpen(true)}>
+      onPress={(e) => {
+        // Mouse and touch reach the picker through its own trigger; opening
+        // here as well would undo that toggle. Keyboard and assistive-tech
+        // presses land on the menu item alone.
+        if (e.pointerType === 'keyboard' || e.pointerType === 'virtual') {
+          setIsOpen(true);
+        }
+      }}>
       <Suspense fallback={children}>
         <DomainSelectableList
           fullWidthTrigger
@@ -189,6 +196,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
           // submenus' 4px gap.
           offset={MENU_PICKER_OFFSET}
           placement="right top"
+          popoverClassName="tw:w-75 tw:rounded-2xl tw:outline-secondary"
           popoverProps={{ open: isOpen, onOpenChange: setIsOpen }}
           restrictedDomains={restrictedDomains}
           selectedDomain={activeDomainEntityRef}

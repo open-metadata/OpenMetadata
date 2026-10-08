@@ -45,6 +45,7 @@ const DomainSelectableList = ({
   fullWidthTrigger,
   placement,
   offset,
+  popoverClassName,
   'data-testid': dataTestId = 'domain-selectable-tree',
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
@@ -106,6 +107,7 @@ const DomainSelectableList = ({
       multiple={multiple}
       offset={offset}
       placement={placement}
+      popoverClassName={popoverClassName}
       renderTrigger={renderTrigger}
       restrictedDomains={restrictedDomains}
       selectedDomain={selectedDomain}

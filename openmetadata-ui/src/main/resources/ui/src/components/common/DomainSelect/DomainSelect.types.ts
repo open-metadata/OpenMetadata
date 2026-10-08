@@ -57,6 +57,8 @@ export interface DomainSelectProps {
   placement?: TreeSelectProps['placement'];
   /** Gap between trigger and dropdown, in px. @see TreeSelectProps */
   offset?: TreeSelectProps['offset'];
+  /** Extra dropdown classes, e.g. a width. @see TreeSelectProps */
+  popoverClassName?: TreeSelectProps['popoverClassName'];
   bordered?: boolean;
   /**
    * Buffer selection until Apply (`staged`) or report every toggle
