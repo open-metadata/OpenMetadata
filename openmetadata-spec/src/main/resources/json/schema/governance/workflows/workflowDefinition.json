@@ -3,7 +3,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "WorkflowDefinition",
   "description": "Defines a workflow, having all the different pieces and attributes.",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "javaType": "org.openmetadata.schema.governance.workflows.WorkflowDefinition",
   "type": "object",
   "definitions": {
