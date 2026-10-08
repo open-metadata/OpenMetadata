@@ -388,7 +388,7 @@ SET json = jsonb_set(
     '{rules}',
     (json->'rules') || jsonb_build_object(
         'name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule',
-        'description', 'Allow authenticated users and bots to run read-only SPARQL queries through the agent SPARQL endpoint and the MCP knowledge-graph tools (sparql_query, entity_neighborhood, find_by_tag, and ontology_describe with a resource). Results are not filtered by asset or domain policies, so remove this rule if viewing is restricted through custom policies.',
+        'description', 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.',
         'resources', jsonb_build_array('all'),
         'operations', jsonb_build_array('ExecuteSparqlQuery'),
         'effect', 'allow'
@@ -498,3 +498,35 @@ ALTER TABLE storage_container_entity
 -- invalid entry, then re-run the migration.
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_storage_container_entity_parent_children
   ON storage_container_entity (parentFqnHash, deleted, name, id);
+
+-- Name the MCP knowledge-graph tools in the description of the DataConsumerPolicy-ExecuteSparqlQuery-Rule that the statement
+-- above adds (#34270). That INSERT must stay exactly as it was first shipped, because the runner
+-- tracks statements by a hash of their text: an edited INSERT would run again where 2.1.0 is already
+-- recorded, and its only guard is "the rule does not exist", so it would add back a rule an
+-- administrator deleted on purpose. This is a separate, appended statement that changes only the
+-- description, and only where it still reads exactly as the old shipped text: a deleted rule, a
+-- customised description and a fresh install (seeded with the new text) are left alone.
+UPDATE policy_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{rules}',
+    (
+        SELECT jsonb_agg(
+            CASE
+                WHEN existing.rule->>'name' = 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'
+                     AND existing.rule->>'description' = 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.'
+                THEN jsonb_set(existing.rule, '{description}', to_jsonb('Allow authenticated users and bots to run read-only SPARQL queries through the agent SPARQL endpoint and the MCP knowledge-graph tools (sparql_query, entity_neighborhood, find_by_tag, and ontology_describe with a resource). Results are not filtered by asset or domain policies, so remove this rule if viewing is restricted through custom policies.'::text))
+                ELSE existing.rule
+            END
+            ORDER BY existing.position
+        )
+        FROM jsonb_array_elements(json->'rules') WITH ORDINALITY AS existing(rule, position)
+    )
+)
+WHERE json->>'name' = 'DataConsumerPolicy'
+  AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(json->'rules') AS current_rule(rule)
+        WHERE current_rule.rule->>'name' = 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'
+          AND current_rule.rule->>'description' = 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.'
+      );

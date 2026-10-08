@@ -538,7 +538,12 @@ to the issue's question whether bot tokens are allowed is yes, by default; a bot
 when that rule is removed or a policy denies the operation. `RdfMcpKnowledgeGraphIT.
 aBotWithoutTheGrantIsForbidden` strips the default rule first for that reason. The rule's
 description names the MCP tools next to the agent endpoint, since that text is what an
-administrator reads when deciding whether to keep it.
+administrator reads when deciding whether to keep it. New installations take the text from the
+seeded `DataConsumerPolicy.json`. Existing ones get it from a statement appended to the 2.1.0
+migration that changes only that description, and only where it still reads as first shipped. The
+original INSERT is left exactly as shipped: the runner tracks statements by a hash of their text,
+so an edited INSERT would run again where 2.1.0 is already recorded, and its only guard (the rule
+does not exist) would add back a rule an administrator deleted to opt out.
 
 ### A5. Non-guarantees apply to MCP
 
