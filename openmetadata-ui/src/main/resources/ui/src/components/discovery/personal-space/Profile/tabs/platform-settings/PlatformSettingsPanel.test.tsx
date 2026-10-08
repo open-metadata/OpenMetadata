@@ -92,6 +92,15 @@ jest.mock('./DimensionSettingsForm', () =>
     <div data-item-id={itemId ?? ''} data-testid="dimension-form" />
   ))
 );
+jest.mock('./search/SearchSettingsView', () => () => (
+  <div data-testid="search-view" />
+));
+jest.mock(
+  './search/EntitySearchSettings',
+  () =>
+    ({ itemId }: { itemId: string }) =>
+      <div data-testid="entity-search-view">{itemId}</div>
+);
 jest.mock('./AppModeSettingsForm', () => () => (
   <div data-testid="app-mode-form" />
 ));
@@ -129,6 +138,7 @@ describe('PlatformSettingsPanel', () => {
       'brand-url',
       'data-asset-rules',
       'learning-resources',
+      'search',
       'app-mode',
     ].forEach((id) =>
       expect(
@@ -191,6 +201,32 @@ describe('PlatformSettingsPanel', () => {
       'platform-settings',
       'email',
     ]);
+  });
+
+  it("renders the search settings, and one entity's settings as a sub-page", () => {
+    mockSubPath = 'search';
+    const { unmount } = renderPanel();
+
+    expect(screen.getByTestId('search-view')).toBeInTheDocument();
+
+    unmount();
+    mockSubPath = 'search/tables';
+    renderPanel();
+
+    expect(screen.getByTestId('entity-search-view')).toHaveTextContent(
+      'tables'
+    );
+    expect(lastHeader().title).toBe('Table');
+    expect(lastHeader().breadcrumbs.map((b: { id: string }) => b.id)).toEqual([
+      'settings',
+      'platform-settings',
+      'search',
+      'item',
+    ]);
+
+    lastHeader().onBreadcrumbAction('search');
+
+    expect(mockSetHash).toHaveBeenCalledWith('platform-settings', 'search');
   });
 
   it('renders the edit form with the show-hint toggle in the header', () => {

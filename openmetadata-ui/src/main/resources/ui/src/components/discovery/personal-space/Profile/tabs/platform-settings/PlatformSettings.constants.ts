@@ -22,8 +22,11 @@ import {
   Lock01,
   Mail01,
   RunProfiler,
+  Search,
   SwitchHorizontal01,
 } from '@openmetadata/ui-core-components/icons';
+import { startCase } from 'lodash';
+import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { isLoginConfigurationApplicable } from '../../../../../../utils/AuthProvider.util';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
 
@@ -83,6 +86,15 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     titleKey: 'label.lineage',
     descriptionKey: 'message.page-sub-header-for-lineage-config-setting',
     hasEditView: true,
+  },
+  {
+    id: 'search',
+    icon: Search,
+    titleKey: 'label.search',
+    descriptionKey: 'message.page-sub-header-for-search-setting',
+    hasItemViews: true,
+    getItemTitle: (_t, itemId) =>
+      startCase(ENTITY_PATH[itemId as keyof typeof ENTITY_PATH] ?? itemId),
   },
   {
     id: 'brand-url',
