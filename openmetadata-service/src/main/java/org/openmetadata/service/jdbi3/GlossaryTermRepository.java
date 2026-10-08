@@ -816,7 +816,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   protected void applyInheritance(
-      GlossaryTerm glossaryTerm, Fields fields, EntityInterface parent) {
+      GlossaryTerm glossaryTerm, Fields fields, EntityInterface<?> parent) {
     inheritOwners(glossaryTerm, fields, parent);
     inheritDomains(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
@@ -828,7 +828,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
    * parent chain. A root term's parent is its glossary, which declares no attributes, so its
    * effective set is exactly what it declares itself.
    */
-  private void inheritAttributes(GlossaryTerm term, Fields fields, EntityInterface parent) {
+  private void inheritAttributes(GlossaryTerm term, Fields fields, EntityInterface<?> parent) {
     if (!fields.contains(FIELD_EFFECTIVE_ATTRIBUTES)) {
       return;
     }
@@ -1867,7 +1867,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
     EntityRepository<?> glossaryRepository = Entity.getEntityRepository(Entity.GLOSSARY);
-    EntityInterface glossary =
+    EntityInterface<?> glossary =
         glossaryRepository.getByName(
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
@@ -1910,7 +1910,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
 
       try {
@@ -2203,7 +2203,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
       // Skip the destructive tag_usage delete + ES update on dryRun so the preview
@@ -2322,14 +2322,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public EntityInterface getParentEntity(GlossaryTerm entity, String fields) {
+  public EntityInterface<?> getParentEntity(GlossaryTerm entity, String fields) {
     return entity.getParent() != null
         ? Entity.getEntity(entity.getParent(), fields, Include.ALL)
         : Entity.getEntity(entity.getGlossary(), fields, Include.ALL);
   }
 
-  public List<EntityInterface> getParentEntities(List<GlossaryTerm> entities, String fields) {
-    List<EntityInterface> result = new ArrayList<>();
+  public List<EntityInterface<?>> getParentEntities(List<GlossaryTerm> entities, String fields) {
+    List<EntityInterface<?>> result = new ArrayList<>();
     if (CollectionUtils.isEmpty(entities)) {
       return result;
     }
@@ -3558,7 +3558,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     List<GlossaryTerm> terms = listAllForCSV(fields, glossaryTerm.getFullyQualifiedName());
 
-    terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    terms.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }
 

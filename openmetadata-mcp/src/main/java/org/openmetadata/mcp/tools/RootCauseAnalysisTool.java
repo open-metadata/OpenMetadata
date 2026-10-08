@@ -465,7 +465,7 @@ public class RootCauseAnalysisTool implements McpTool {
   @VisibleForTesting
   static Map<String, Object> enforceSizeBudget(Map<String, Object> result) {
     Map<String, Object> output = result;
-    if (McpResponseTrim.serializedLength(result) > McpResponseTrim.MAX_RESPONSE_CHARS) {
+    if (McpResponseTrim.serializedLength(result) > McpResponseTrim.maxResponseChars()) {
       output = fitAnalysisToBudget(result);
     }
     return output;

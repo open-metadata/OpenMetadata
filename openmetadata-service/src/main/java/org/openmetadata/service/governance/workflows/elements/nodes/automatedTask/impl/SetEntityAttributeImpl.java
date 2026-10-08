@@ -38,7 +38,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(relatedEntityValue);
 
       String entityType = entityLink.getEntityType();
-      EntityInterface entity = varHandler.getRelatedEntity(entityLink, "*", Include.ALL);
+      EntityInterface<?> entity = varHandler.getRelatedEntity(entityLink, "*", Include.ALL);
 
       String fieldName = fieldNameExpr != null ? (String) fieldNameExpr.getValue(execution) : "";
 

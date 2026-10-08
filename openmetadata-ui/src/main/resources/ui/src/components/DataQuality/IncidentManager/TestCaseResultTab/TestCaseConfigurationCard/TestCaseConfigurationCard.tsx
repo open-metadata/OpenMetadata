@@ -26,8 +26,9 @@ import {
   toSqlLines,
 } from './TestCaseConfigurationCard.utils';
 
+// No ligatures: Geist Mono draws `>=` as `≥`, so the query would read as something it is not.
 const SQL_BLOCK_CLASS_NAME =
-  'tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5 tw:focus-visible:outline-focus-ring';
+  'tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5 tw:focus-visible:outline-focus-ring tw:[font-variant-ligatures:none]';
 
 /**
  * The prototype's read-only, line-numbered SQL block. Deliberately not
@@ -113,10 +114,10 @@ function ParameterRows({
           className={`tw:px-3 tw:py-2.5 ${
             index < rows.length - 1 ? 'tw:border-b tw:border-secondary' : ''
           }`}
-          data-testid={`configuration-parameter-${row.label}`}
+          data-testid={`configuration-parameter-${row.name ?? row.label}`}
           gap={2}
           justify="between"
-          key={row.label}>
+          key={row.name ?? row.label}>
           {/* The label gives way, so a narrow rail wraps it, not the value. */}
           <Typography
             as="span"
@@ -177,7 +178,14 @@ const TestCaseConfigurationCard = ({
   const { t } = useTranslation();
 
   const category = getCategoryTranslation(testCaseData?.entityLink);
-  const categoryLine = t(category.key, category.options);
+  const dimension =
+    testCaseData?.dataQualityDimension?.displayName ??
+    testCaseData?.dataQualityDimension?.name;
+  // The dimension describes the test, so it sits with the test's category, not
+  // in a row: every shape would then have a row, and the empty state none.
+  const categoryLine = [t(category.key, category.options), dimension]
+    .filter(Boolean)
+    .join(' · ');
   const definitionName = getDefinitionDisplayName(testDefinition);
 
   const {
@@ -204,9 +212,13 @@ const TestCaseConfigurationCard = ({
         align="center"
         className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
         gap={2}>
+        {/* The rail's widget cards' title style, so the rail reads as one. */}
         <Typography
           as="span"
-          className="tw:text-sm tw:font-bold tw:text-primary">
+          className="tw:whitespace-nowrap tw:text-quaternary"
+          data-testid="configuration-title"
+          size="text-sm"
+          weight="semibold">
           {t('label.configuration')}
         </Typography>
         {showEditButton && (
@@ -241,8 +253,9 @@ const TestCaseConfigurationCard = ({
         </div>
 
         <div className="tw:flex tw:flex-col tw:gap-2.5">
-          {hasParameterRows && <ParameterRows rows={parameterRows} />}
+          {/* The callout says how the test is checked; the rows below it are settings. */}
           {isDynamicAssertion && <DynamicAssertionCallout />}
+          {hasParameterRows && <ParameterRows rows={parameterRows} />}
           {hasVersionDiff && (
             <div data-testid="configuration-version-diff">
               {versionParameterDiff}
