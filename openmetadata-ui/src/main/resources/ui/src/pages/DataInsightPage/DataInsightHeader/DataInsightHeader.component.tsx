@@ -76,8 +76,8 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
       <Grid.Item className="layout-column" span={24}>
         <Box
           inline
-          align="center"
-          className="layout-space layout-space-horizontal w-full justify-between items-start"
+          align="start"
+          className="layout-space layout-space-horizontal w-full justify-between"
           gap={2}
           itemClassName="layout-space-item">
           <div data-testid="data-insight-header">

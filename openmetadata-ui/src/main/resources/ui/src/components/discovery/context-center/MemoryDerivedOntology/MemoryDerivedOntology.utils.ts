@@ -20,8 +20,8 @@ import {
 } from '../../../../generated/api/data/ontologyMemoryProposalStatus';
 import {
   ContextMemory,
+  ContextMemoryStatus,
   EntityReference,
-  EntityStatus,
   ShareVisibility,
 } from '../../../../generated/entity/context/contextMemory';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -47,7 +47,8 @@ const hasOpenWork = (status: OntologyMemoryProposalStatus): boolean =>
 
 const isProposable = (memory: ContextMemory): boolean =>
   getDerivedTerms(memory).length === 0 &&
-  (!memory.entityStatus || memory.entityStatus === EntityStatus.Approved);
+  (!memory.entityStatus ||
+    memory.entityStatus === ContextMemoryStatus.Approved);
 
 const isIdle = (status: OntologyMemoryProposalStatus | undefined): boolean =>
   status !== undefined && status.enabled && !hasOpenWork(status);
