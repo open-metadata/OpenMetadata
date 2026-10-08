@@ -150,8 +150,13 @@ public class SemanticSearchTool implements McpTool {
     try {
       VectorSearchResponse response =
           search(vectorService, searchParameters, personaScope.isPresent());
-      Map<String, Object> result = buildResponse(query, response, size, from);
-      hideUnviewable(result, hit -> hitVisibility.isViewable(authorizer, securityContext, hit));
+      Map<String, Object> result =
+          buildResponse(
+              query,
+              response,
+              size,
+              from,
+              hit -> hitVisibility.isViewable(authorizer, securityContext, hit));
       personaScope.ifPresent(scope -> scope.annotate(result));
       return result;
     } catch (Exception e) {
@@ -242,8 +247,18 @@ public class SemanticSearchTool implements McpTool {
         "SemanticSearchTool does not support limits enforcement.");
   }
 
+  /**
+   * Vector search indexes every entity and applies no access policy of its own, so results the
+   * caller may not view are dropped before anything is counted: {@code returnedCount}, {@code
+   * totalFound} and every message describe only what the caller sees. The cursor alone counts the
+   * dropped hits, so the next page starts after them instead of handing them back.
+   */
   private Map<String, Object> buildResponse(
-      String query, VectorSearchResponse response, int requestedSize, int from) {
+      String query,
+      VectorSearchResponse response,
+      int requestedSize,
+      int from,
+      Predicate<Map<String, Object>> isViewable) {
     Map<String, Object> result = new HashMap<>();
     result.put("query", query);
     result.put("tookMillis", response.getTookMillis());
@@ -256,7 +271,9 @@ public class SemanticSearchTool implements McpTool {
       return result;
     }
 
-    List<Map<String, Object>> cleanedResults = collapseByParent(response.getHits());
+    List<Map<String, Object>> ranked = collapseByParent(response.getHits());
+    List<ViewableHit> viewable = viewableHits(ranked, isViewable);
+    List<Map<String, Object>> cleanedResults = viewable.stream().map(ViewableHit::hit).toList();
 
     result.put("results", cleanedResults);
     result.put("returnedCount", cleanedResults.size());
@@ -264,13 +281,11 @@ public class SemanticSearchTool implements McpTool {
         "usage",
         "To get full details for any result, call get_entity_details with the result's exact 'entityType' and 'fullyQualifiedName' values.");
 
-    int rawCount = cleanedResults.size();
     fitResultsToBudget(result, cleanedResults);
+    int consumed = consumedThrough(ranked.size(), viewable, returnedCount(result));
     VectorPagingContract.attach(
         result,
-        from,
-        rawCount,
-        requestedSize,
+        new VectorPagingContract.Window(from, ranked.size(), consumed, requestedSize),
         response,
         "Showing %d results. Pass 'nextCursor' to fetch the next page, or refine your query. "
             + "Adjust 'threshold' to filter by similarity score.");
@@ -278,36 +293,37 @@ public class SemanticSearchTool implements McpTool {
     return result;
   }
 
-  /**
-   * Publishes {@code totalFound} in the same unit as everything else here: entities.
-   *
-   * <p>{@code VectorSearchResponse.totalHits} counts chunks, not entities - the vector service
-   * indexes several chunks per entity - while {@code results}, {@code returnedCount}, {@code size},
-   * {@code from} and {@code nextCursor} all count parents. Reporting it made eight matching tables
-   * read as {@code totalFound: 96}.
-   *
-   * <p>So report what is known: once paging stops, {@code from + returnedCount} is exact. While it
-   * continues, the same figure is a lower bound and is labelled as one.
-   */
+  /** A hit the caller may view, with its position among every hit the page ranked. */
   @VisibleForTesting
-  /**
-   * Drops results the caller may not view: vector search indexes every entity and applies no access
-   * policy of its own. It runs after paging, so a hidden result still counts as consumed and the
-   * next cursor moves past it instead of handing it to the next page.
-   */
-  @SuppressWarnings("unchecked")
-  static void hideUnviewable(
-      Map<String, Object> result, Predicate<Map<String, Object>> isViewable) {
-    if (result.get("results") instanceof List<?> results && !results.isEmpty()) {
-      List<Map<String, Object>> visible =
-          ((List<Map<String, Object>>) results).stream().filter(isViewable).toList();
-      int hidden = results.size() - visible.size();
-      if (hidden > 0) {
-        result.put("results", visible);
-        result.put("returnedCount", visible.size());
-        result.put("hiddenCount", hidden);
+  record ViewableHit(Map<String, Object> hit, int rank) {}
+
+  private static List<ViewableHit> viewableHits(
+      List<Map<String, Object>> ranked, Predicate<Map<String, Object>> isViewable) {
+    List<ViewableHit> viewable = new ArrayList<>();
+    for (int rank = 0; rank < ranked.size(); rank++) {
+      if (isViewable.test(ranked.get(rank))) {
+        viewable.add(new ViewableHit(ranked.get(rank), rank));
       }
     }
+    return viewable;
+  }
+
+  /**
+   * Ranked hits this page used up: all of them, unless the response budget kept fewer viewable hits
+   * than there were - then the ones up to the last viewable hit kept, the dropped hits before it
+   * included.
+   */
+  @VisibleForTesting
+  static int consumedThrough(int rankedCount, List<ViewableHit> viewable, int kept) {
+    int consumed = rankedCount;
+    if (kept < viewable.size()) {
+      consumed = kept == 0 ? 0 : viewable.get(kept - 1).rank() + 1;
+    }
+    return consumed;
+  }
+
+  private static int returnedCount(Map<String, Object> result) {
+    return result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
   }
 
   private static boolean isViewable(
@@ -332,8 +348,22 @@ public class SemanticSearchTool implements McpTool {
     return id;
   }
 
+  /**
+   * Publishes {@code totalFound} in the same unit as everything else here: entities.
+   *
+   * <p>{@code VectorSearchResponse.totalHits} counts chunks, not entities - the vector service
+   * indexes several chunks per entity - while {@code results}, {@code returnedCount}, {@code size},
+   * {@code from} and {@code nextCursor} all count parents. Reporting it made eight matching tables
+   * read as {@code totalFound: 96}.
+   *
+   * <p>So report what is known: once paging stops, {@code from + returnedCount} is exact. While it
+   * continues, the same figure is a lower bound and is labelled as one. {@code from} is the cursor
+   * position, so for a caller who cannot view every hit it still holds the ones dropped on earlier
+   * pages - which the cursor already reveals - but never those dropped from this one.
+   */
+  @VisibleForTesting
   static void addParentTotal(Map<String, Object> result, int from) {
-    int returned = result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
+    int returned = returnedCount(result);
     result.put("totalFound", from + returned);
     if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY))) {
       result.put("totalFoundIsLowerBound", Boolean.TRUE);

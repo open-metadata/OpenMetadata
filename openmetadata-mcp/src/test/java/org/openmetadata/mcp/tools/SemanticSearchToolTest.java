@@ -796,7 +796,9 @@ class SemanticSearchToolTest {
 
   /**
    * Vector search applies no access policy, so a hit on an entity the caller cannot view must be
-   * dropped. The cursor still moves past it, or the next page would hand the same hit back.
+   * dropped - and dropped before anything is counted, or the totals and the page message would say
+   * how many matches the caller is not allowed to see. Only the cursor moves past it, or the next
+   * page would hand the same hit back.
    */
   @Test
   void hitsTheCallerCannotViewAreDroppedButStillAdvanceTheCursor() throws Exception {
@@ -824,10 +826,31 @@ class SemanticSearchToolTest {
         results.stream()
             .noneMatch(
                 r -> "db.schema.restricted".equals(((Map<?, ?>) r).get("fullyQualifiedName"))));
-    assertEquals(1, result.get("hiddenCount"));
+    assertFalse(result.containsKey("hiddenCount"));
+    assertEquals(2, result.get("returnedCount"));
+    assertEquals(2, result.get("totalFound"));
+    assertTrue(((String) result.get("message")).startsWith("Showing 2 results"));
     Optional<PageCursor.Cursor> decoded = PageCursor.decode((String) result.get("nextCursor"));
     assertTrue(decoded.isPresent());
     assertEquals(3, decoded.get().offset());
+  }
+
+  /**
+   * When the response budget keeps fewer viewable hits than there were, the next page must start
+   * right after the last one kept: dropped hits before it are behind the cursor, those after it are
+   * not.
+   */
+  @Test
+  void budgetCutResumesRightAfterTheLastViewableHitKept() {
+    List<SemanticSearchTool.ViewableHit> viewable =
+        List.of(
+            new SemanticSearchTool.ViewableHit(Map.of(), 0),
+            new SemanticSearchTool.ViewableHit(Map.of(), 2),
+            new SemanticSearchTool.ViewableHit(Map.of(), 3));
+
+    assertEquals(3, SemanticSearchTool.consumedThrough(5, viewable, 2));
+    assertEquals(5, SemanticSearchTool.consumedThrough(5, viewable, 3));
+    assertEquals(5, SemanticSearchTool.consumedThrough(5, List.of(), 0));
   }
 
   private Map<String, Object> createHit(String entityType, String fqn, String name, double score) {
