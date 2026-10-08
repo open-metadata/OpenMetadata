@@ -450,10 +450,12 @@
 .is-format-active {
   .ant-typography,
   .format-label {
-    color: @primary-color;
+    color: var(--om-color-link);
   }
   svg {
-    fill: @primary-color;
+    // Toolbar paths use currentColor, so the active state must set the foreground.
+    color: var(--om-color-link);
+    fill: currentColor;
   }
 }
 
