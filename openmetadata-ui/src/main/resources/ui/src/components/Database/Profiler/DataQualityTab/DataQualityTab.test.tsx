@@ -1604,6 +1604,29 @@ describe('DataQualityTab test', () => {
       ).toHaveLength(MOCK_TEST_CASE.length);
     });
 
+    it('does not transfer select-all to rows loaded on another page', () => {
+      const { rerender } = renderBundleSuiteTab({
+        testCases: [firstCase, secondCase],
+      });
+      fireEvent.click(screen.getByLabelText('select-all'));
+
+      const nextPageCase = (MOCK_TEST_CASE as TestCase[])[2];
+      rerender(
+        <DataQualityTab
+          {...mockProps}
+          removeFromTestSuite={{ testSuite, isAllowed: true }}
+          testCases={[nextPageCase]}
+        />
+      );
+
+      expect(
+        screen.getByLabelText(`select-${nextPageCase.id}`)
+      ).not.toBeChecked();
+      expect(
+        screen.queryByTestId('bulk-remove-test-cases')
+      ).not.toBeInTheDocument();
+    });
+
     it('never sends a row that has no id', async () => {
       const { id: _id, ...caseWithoutId } = firstCase;
       renderBundleSuiteTab({

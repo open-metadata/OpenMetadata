@@ -31,7 +31,7 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, sortBy, toLower } from 'lodash';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -248,15 +248,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const isBulkRemoveAllowed = Boolean(removeFromTestSuite?.isAllowed);
   const isSelectionEnabled = enableBulkActions || isBulkRemoveAllowed;
 
-  // 'all' is the rows loaded on this page: the bulk remove endpoint takes an
-  // explicit id list and has no server-side "everything matching" mode.
   const selectedTestCases = useMemo(() => {
     if (selectedKeys === 'all') {
       return sortedData;
     }
     const keySet = selectedKeys as Set<string>;
 
-    return sortedData.filter((tc) => keySet.has(tc.id ?? ''));
+    return sortedData.filter((tc) => keySet.has(tc.id ?? tc.name ?? ''));
   }, [sortedData, selectedKeys]);
 
   const selectedTestCaseIds = useMemo(
@@ -267,13 +265,26 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     [selectedTestCases]
   );
 
-  const hasSelection = useMemo(() => {
-    if (selectedKeys === 'all') {
-      return true;
-    }
+  const hasSelection = selectedTestCases.length > 0;
 
-    return (selectedKeys as Set<string>).size > 0;
-  }, [selectedKeys]);
+  const handleSelectionChange = useCallback(
+    (selection: Selection) => {
+      // Materialize react-aria's `all` sentinel so paging cannot silently
+      // transfer a destructive selection to a different set of rows.
+      setSelectedKeys(
+        selection === 'all'
+          ? new Set(
+              sortedData.flatMap((testCase) => {
+                const key = testCase.id ?? testCase.name;
+
+                return key ? [key] : [];
+              })
+            )
+          : selection
+      );
+    },
+    [sortedData]
+  );
 
   const handleCancel = () => {
     setSelectedTestCase(undefined);
@@ -782,6 +793,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   const renderRow = (record: TestCase) => {
     const entityLink = record.entityLink ?? '';
+    const rowId = record.id ?? record.name ?? '';
     const tableFqn = getEntityFQN(entityLink);
     const isColumn = entityLink.includes('::columns::');
     const columnName = isColumn
@@ -789,10 +801,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       : null;
 
     return (
-      <Table.Row
-        className="tw:group"
-        id={record.id ?? record.name ?? ''}
-        key={record.id}>
+      <Table.Row className="tw:group" id={rowId} key={rowId}>
         <Table.Cell
           className="tw:whitespace-nowrap"
           style={getColumnLayoutStyle('status', 1)}>
@@ -1109,7 +1118,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           selectionMode={isSelectionEnabled ? 'multiple' : 'none'}
           size="sm"
           sortDescriptor={sortDescriptor}
-          onSelectionChange={setSelectedKeys}
+          onSelectionChange={handleSelectionChange}
           onSortChange={handleSortChange}>
           <Table.Header columns={columnList}>
             {(col) => (
