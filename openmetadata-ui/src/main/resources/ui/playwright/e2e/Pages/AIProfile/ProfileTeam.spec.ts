@@ -486,27 +486,9 @@ test.describe('AI Profile Team Detail', () => {
   });
 
   // The Custom Properties tab is native to MembersTeamDetail (it renders the
-  // shared CustomPropertyTable). These cover that it is reachable and that a
-  // property defined for the `team` entity actually shows up there.
-  test('Should show the Custom Properties tab on a team', async ({
-    browser,
-    page,
-  }) => {
-    const { apiContext } = await performAdminLogin(browser);
-    const team = await makeTeam(apiContext);
-
-    await openCreatedTeam(page, team);
-
-    const tab = page.getByRole('tab', { name: /Custom Properties/ });
-
-    await expect(tab).toBeVisible();
-
-    await openTeamTab(page, /Custom Properties/);
-
-    await expect(tab).toHaveAttribute('aria-selected', 'true');
-  });
-
-  test('Should render a team custom property in the tab', async ({
+  // shared CustomPropertyTable): one pass covers that the tab is reachable and
+  // that a property defined for the `team` entity actually shows up in it.
+  test('Should show the Custom Properties tab and render a team property', async ({
     browser,
     page,
   }) => {
@@ -515,16 +497,14 @@ test.describe('AI Profile Team Detail', () => {
 
     // Defined through the metadata type API rather than the settings UI: this
     // test is about the tab rendering the property, not about creating one.
-    const typeResponse = await apiContext.get(
-      '/api/v1/metadata/types/name/team'
-    );
-    const teamType = await typeResponse.json();
-    const stringTypeResponse = await apiContext.get(
-      '/api/v1/metadata/types?category=field&limit=50'
-    );
-    const stringType = (await stringTypeResponse.json()).data.find(
-      (item: { name: string }) => item.name === 'string'
-    );
+    const teamType = await (
+      await apiContext.get('/api/v1/metadata/types/name/team')
+    ).json();
+    const stringType = (
+      await (
+        await apiContext.get('/api/v1/metadata/types?category=field&limit=50')
+      ).json()
+    ).data.find((item: { name: string }) => item.name === 'string');
 
     await apiContext.put(`/api/v1/metadata/types/${teamType.id}`, {
       data: {
@@ -537,8 +517,14 @@ test.describe('AI Profile Team Detail', () => {
     try {
       const team = await makeTeam(apiContext);
       await openCreatedTeam(page, team);
+
+      const tab = page.getByRole('tab', { name: /Custom Properties/ });
+
+      await expect(tab).toBeVisible();
+
       await openTeamTab(page, /Custom Properties/);
 
+      await expect(tab).toHaveAttribute('aria-selected', 'true');
       await expect(page.getByTestId('custom-properties-card')).toBeVisible();
       await expect(
         page.getByTestId(`custom-property-${propertyName}-card`)
