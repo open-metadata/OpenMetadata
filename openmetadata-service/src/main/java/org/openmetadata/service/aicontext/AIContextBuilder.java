@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -829,24 +830,33 @@ public class AIContextBuilder {
   }
 
   private KnowledgeItem toGlossaryKnowledgeItem(String termFqn) {
-    KnowledgeItem item = null;
+    GlossaryTerm term = loadVisibleGlossaryTerm(termFqn);
+    return term == null ? null : glossaryKnowledgeItem(term);
+  }
+
+  /** Approved terms the caller may view; null for any other term or a failed lookup. */
+  private GlossaryTerm loadVisibleGlossaryTerm(String termFqn) {
+    GlossaryTerm visible = null;
     try {
       GlossaryTerm term =
           Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "", Include.NON_DELETED);
       if (isApproved(term) && canViewKnowledge(Entity.GLOSSARY_TERM, termFqn)) {
-        item =
-            new KnowledgeItem()
-                .withId(term.getId())
-                .withType(KnowledgeItem.Type.GLOSSARY_TERM)
-                .withName(term.getName())
-                .withDisplayName(term.getDisplayName())
-                .withFullyQualifiedName(term.getFullyQualifiedName())
-                .withContent(unescapeRichText(term.getDescription()));
+        visible = term;
       }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to resolve glossary term {}: {}", termFqn, e.getMessage());
     }
-    return item;
+    return visible;
+  }
+
+  private static KnowledgeItem glossaryKnowledgeItem(GlossaryTerm term) {
+    return new KnowledgeItem()
+        .withId(term.getId())
+        .withType(KnowledgeItem.Type.GLOSSARY_TERM)
+        .withName(term.getName())
+        .withDisplayName(term.getDisplayName())
+        .withFullyQualifiedName(term.getFullyQualifiedName())
+        .withContent(unescapeRichText(term.getDescription()));
   }
 
   private static boolean isApproved(GlossaryTerm term) {
@@ -1078,7 +1088,7 @@ public class AIContextBuilder {
     AssetContext context = new AssetContext();
     if (entity instanceof Table table) {
       TableContext tableContext = buildTableContext(table).withSampleData(resolveSampleData(table));
-      tableContext.getColumns().forEach(this::resolveFieldGlossary);
+      resolveColumnGlossary(tableContext.getColumns(), this::loadVisibleGlossaryTerm);
       context.withTable(tableContext);
     }
     if (entity instanceof GlossaryTerm || entity instanceof Metric) {
@@ -1098,15 +1108,27 @@ public class AIContextBuilder {
     return context;
   }
 
-  private void resolveFieldGlossary(FieldContext field) {
-    List<KnowledgeItem> terms = new ArrayList<>();
-    for (KnowledgeItem reference : listOrEmpty(field.getGlossaryTerms())) {
-      KnowledgeItem term = toGlossaryKnowledgeItem(reference.getFullyQualifiedName());
-      if (term != null) {
-        terms.add(term);
-      }
-    }
-    field.withGlossaryTerms(terms);
+  /**
+   * Wide tables repeat the same term across many columns, so each distinct term is loaded and
+   * authorized once. Every column still gets its own item because the knowledge budget trims items
+   * in place.
+   */
+  static void resolveColumnGlossary(
+      List<FieldContext> fields, Function<String, GlossaryTerm> loadVisibleTerm) {
+    Map<String, GlossaryTerm> visibleTerms = new HashMap<>();
+    fields.stream()
+        .flatMap(field -> listOrEmpty(field.getGlossaryTerms()).stream())
+        .map(KnowledgeItem::getFullyQualifiedName)
+        .distinct()
+        .forEach(termFqn -> visibleTerms.put(termFqn, loadVisibleTerm.apply(termFqn)));
+    fields.forEach(
+        field ->
+            field.withGlossaryTerms(
+                listOrEmpty(field.getGlossaryTerms()).stream()
+                    .map(reference -> visibleTerms.get(reference.getFullyQualifiedName()))
+                    .filter(Objects::nonNull)
+                    .map(AIContextBuilder::glossaryKnowledgeItem)
+                    .toList()));
   }
 
   private TableData resolveSampleData(Table table) {
