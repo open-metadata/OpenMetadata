@@ -3717,6 +3717,7 @@
     "assigned-you-a-new-task-lowercase": "तुम्हाला एक नवीन कार्य नियुक्त केले गेले आहे",
     "assigning-team-entity-description": "{{name}} मध्ये {{entity}} जोडा. हे {{entity}} टीम {{name}} मधील सर्व वापरकर्त्यांना तसेच {{name}} अंतर्गत सर्व टीम्सना वारसाहक्काने मिळेल",
     "at-least-one-policy": "किमान एक धोरण प्रविष्ट करा",
+    "at-least-one-widget-in-panel": "या पॅनेलमध्ये किमान एक विजेट राहणे आवश्यक आहे.",
     "atomic-facts-ai-should-remember": "Atomic facts the AI should remember.",
     "attribute-name-already-exists": "या नावाची प्रॉपर्टी या संकल्पनेत आधीपासून अस्तित्वात आहे.",
     "audio-playback-not-supported": "तुमचा ब्राउझर आवश्यकता पूर्ण करत नाही.",

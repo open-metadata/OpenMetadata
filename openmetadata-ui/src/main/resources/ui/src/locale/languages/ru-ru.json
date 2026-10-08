@@ -3717,6 +3717,7 @@
     "assigned-you-a-new-task-lowercase": "вам поставлена новая задача.",
     "assigning-team-entity-description": "Добавьте объект «{{entity}}» в {{name}}. Этот объект будет унаследован всеми пользователями в команде {{name}}, а также всеми командами под {{name}}.",
     "at-least-one-policy": "Введите хотя бы одну политику",
+    "at-least-one-widget-in-panel": "В этой панели должен остаться хотя бы один виджет.",
     "atomic-facts-ai-should-remember": "Атомарные факты, которые ИИ должен запомнить.",
     "attribute-name-already-exists": "Свойство с таким именем уже существует у этого понятия.",
     "audio-playback-not-supported": "Ваш браузер не поддерживает воспроизведение аудио.",

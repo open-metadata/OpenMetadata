@@ -3717,6 +3717,7 @@
     "assigned-you-a-new-task-lowercase": "新しいタスクが割り当てられました",
     "assigning-team-entity-description": "{{entity}} を {{name}} に追加します。この {{entity}} はチーム {{name}} のすべてのユーザーとサブチームに継承されます。",
     "at-least-one-policy": "最低でも 1 つのポリシーを入力してください",
+    "at-least-one-widget-in-panel": "このパネルには少なくとも 1 つのウィジェットを残す必要があります。",
     "atomic-facts-ai-should-remember": "Atomic facts the AI should remember.",
     "attribute-name-already-exists": "この名前のプロパティはこの概念に既に存在します。",
     "audio-playback-not-supported": "このブラウザは音声再生をサポートしていません。",

@@ -3717,6 +3717,7 @@
     "assigned-you-a-new-task-lowercase": "uma nova tarefa foi atribuída a você",
     "assigning-team-entity-description": "Adicione uma {{entity}} à {{name}}. Esta {{entity}} será herdada por todos os Utilizadores na Equipa {{name}}, bem como por todas as Equipas sob {{name}}",
     "at-least-one-policy": "Insira pelo menos uma política",
+    "at-least-one-widget-in-panel": "Pelo menos um widget tem de permanecer neste painel.",
     "atomic-facts-ai-should-remember": "Atomic facts the AI should remember.",
     "attribute-name-already-exists": "Já existe uma propriedade com este nome neste conceito.",
     "audio-playback-not-supported": "O seu navegador não suporta a reprodução de áudio.",
