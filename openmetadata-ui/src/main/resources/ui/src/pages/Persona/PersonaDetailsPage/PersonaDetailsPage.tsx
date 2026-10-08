@@ -42,7 +42,6 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useAppRoutesRegistry } from '../../../hooks/useAppRoutesRegistry';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
@@ -86,9 +85,6 @@ export const PersonaDetailsPage = () => {
   }, [location.hash]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const hasNonDefaultMode = useAppRoutesRegistry(
-    (state) => Object.keys(state.routes).length > 0
-  );
 
   const breadcrumb = useMemo(() => {
     const breadcrumbList = [
@@ -103,9 +99,9 @@ export const PersonaDetailsPage = () => {
     ];
 
     if (activeCategory) {
-      const category = getCustomizePageCategories()
-        .filter((item) => item.key !== 'app-mode' || hasNonDefaultMode)
-        .find((category) => category.key === activeCategory);
+      const category = getCustomizePageCategories().find(
+        (category) => category.key === activeCategory
+      );
 
       if (category) {
         breadcrumbList.push({
@@ -116,7 +112,7 @@ export const PersonaDetailsPage = () => {
     }
 
     return breadcrumbList;
-  }, [personaDetails, activeCategory, fqn, hasNonDefaultMode]);
+  }, [personaDetails, activeCategory, fqn]);
 
   useEffect(() => {
     getEntityPermissionByFqn(ResourceEntity.PERSONA, fqn).then(

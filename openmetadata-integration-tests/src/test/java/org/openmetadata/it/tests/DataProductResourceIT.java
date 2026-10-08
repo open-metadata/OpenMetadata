@@ -42,6 +42,10 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.domains.odps.Details;
+import org.openmetadata.schema.entity.domains.odps.ODPSDataProduct;
+import org.openmetadata.schema.entity.domains.odps.ODPSProduct;
+import org.openmetadata.schema.entity.domains.odps.ODPSProductDetails;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -3765,5 +3769,132 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
                       + "' on table search doc but found "
                       + dpFqns);
             });
+  }
+
+  @Test
+  void importFromODPS_resolvesGlossaryAndClassificationTags(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = getOrCreateDomain(ns);
+    String glossaryTermFqn = shared.GLOSSARY1_TERM1.getFullyQualifiedName();
+    String classificationTagFqn = shared.PERSONAL_DATA_TAG.getFullyQualifiedName();
+
+    String productId = ns.prefix("odps_dp");
+    String odpsBody =
+        JsonUtils.pojoToJson(
+            buildOdpsDoc(productId, "[DEV] " + productId, glossaryTermFqn, classificationTagFqn));
+
+    DataProduct imported =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/dataProducts/odps?domain=" + domain.getFullyQualifiedName(),
+                odpsBody,
+                DataProduct.class,
+                RequestOptions.builder().header("Content-Type", "application/json").build());
+
+    DataProduct fetched = getEntityWithFields(imported.getId().toString(), "tags");
+    assertNotNull(fetched.getTags(), "ODPS tags should be attached");
+    assertEquals(2, fetched.getTags().size(), "both ODPS tags should be attached");
+    assertEquals(
+        TagLabel.TagSource.GLOSSARY,
+        sourceOf(fetched, glossaryTermFqn),
+        "a glossary-term FQN must attach as a GLOSSARY label, not fail as a missing classification tag");
+    assertEquals(
+        TagLabel.TagSource.CLASSIFICATION,
+        sourceOf(fetched, classificationTagFqn),
+        "a classification-tag FQN must stay a CLASSIFICATION label");
+  }
+
+  @Test
+  void importFromODPS_matchesExistingProductByProductId(TestNamespace ns) {
+    Domain domain = getOrCreateDomain(ns);
+    String domainFqn = domain.getFullyQualifiedName();
+    // Dotted productID (reverse-domain style, as our own export writes the FQN into
+    // productID) — its entity name is stored as a quoted FQN, so re-import must quote
+    // the lookup to match it instead of creating a duplicate.
+    String productId = "odps.pid." + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+
+    DataProduct first = putOdps(domainFqn, buildOdpsDoc(productId, "[DEV] " + productId));
+    assertEquals(productId, first.getName(), "entity name should come from productID");
+    assertEquals(
+        "[DEV] " + productId, first.getDisplayName(), "displayName should come from ODPS name");
+
+    DataProduct second = putOdps(domainFqn, buildOdpsDoc(productId, "[PROD] " + productId));
+    assertEquals(
+        first.getId(),
+        second.getId(),
+        "re-import with the same productID must update the existing product, not create a duplicate");
+    assertEquals(productId, second.getName(), "entity name stays keyed to productID on re-import");
+    assertEquals(
+        "[PROD] " + productId,
+        second.getDisplayName(),
+        "displayName should be refreshed from the re-imported ODPS name");
+  }
+
+  @Test
+  void importFromODPS_matchesExistingNonSlugProductByProductId(TestNamespace ns) {
+    Domain domain = getOrCreateDomain(ns);
+    String domainFqn = domain.getFullyQualifiedName();
+    // A valid entityName that is NOT a slug (contains spaces), as a product created
+    // via UI/API can be. Export writes this verbatim into productID, so re-import must
+    // match it by the raw productID rather than the sanitized slug.
+    String nonSlugId = "Customer 360 " + UUID.randomUUID().toString().substring(0, 8);
+
+    DataProduct created =
+        SdkClients.adminClient()
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(nonSlugId)
+                    .withDescription("non-slug data product")
+                    .withDomains(List.of(domainFqn)));
+
+    DataProduct reimported = putOdps(domainFqn, buildOdpsDoc(nonSlugId, "[DEV] " + nonSlugId));
+
+    assertEquals(
+        created.getId(),
+        reimported.getId(),
+        "re-import of a non-slug productID must update the existing product, not create a duplicate");
+  }
+
+  private TagLabel.TagSource sourceOf(DataProduct dataProduct, String tagFqn) {
+    return dataProduct.getTags().stream()
+        .filter(tag -> tagFqn.equals(tag.getTagFQN()))
+        .map(TagLabel::getSource)
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Tag not found on data product: " + tagFqn));
+  }
+
+  private DataProduct putOdps(String domainFqn, ODPSDataProduct odps) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/dataProducts/odps?domain=" + domainFqn,
+            JsonUtils.pojoToJson(odps),
+            DataProduct.class,
+            RequestOptions.builder().header("Content-Type", "application/json").build());
+  }
+
+  private ODPSDataProduct buildOdpsDoc(String productId, String name, String... tagFqns) {
+    ODPSProductDetails details = new ODPSProductDetails();
+    details.setName(name);
+    details.setProductID(productId);
+    details.setDescription("Imported from ODPS");
+    if (tagFqns.length > 0) {
+      details.setTags(List.of(tagFqns));
+    }
+
+    Details detailsByLang = new Details();
+    detailsByLang.setAdditionalProperty("en", details);
+
+    ODPSProduct product = new ODPSProduct();
+    product.setDetails(detailsByLang);
+
+    ODPSDataProduct odps = new ODPSDataProduct();
+    odps.setVersion(ODPSDataProduct.OdpsApiVersion._4_1);
+    odps.setProduct(product);
+    return odps;
   }
 }

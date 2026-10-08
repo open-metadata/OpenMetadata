@@ -795,7 +795,33 @@ public class SearchRepository {
     if (!(vectorIndexService instanceof OpenSearchVectorService)) {
       return;
     }
+    double[] weights = resolveHybridWeights();
+    updateHybridSearchPipeline(weights[0], weights[1]);
+  }
 
+  /**
+   * The RRF pipeline body for the effective hybrid weights, ready to inline into a search
+   * request's {@code search_pipeline} field. Empty unless semantic search is on and the backend is
+   * OpenSearch.
+   *
+   * <p>Resolved per call rather than baked into a stored pipeline: the weights live in search
+   * settings, so inlining is what makes an admin's weight change take effect on the next query
+   * instead of waiting for a reindex to re-PUT a cluster-global object that a prefix-scoped search
+   * role is not allowed to write anyway.
+   */
+  public Optional<String> getHybridRrfPipelineDefinition() {
+    if (!isVectorEmbeddingEnabled()
+        || !vectorServiceInitialized
+        || !(vectorIndexService instanceof OpenSearchVectorService)) {
+      return Optional.empty();
+    }
+    double[] weights = resolveHybridWeights();
+    return Optional.of(
+        OpenSearchVectorService.buildHybridRrfPipelineDefinition(weights[0], weights[1]));
+  }
+
+  /** Effective {keyword, semantic} weights: search settings when present, else config defaults. */
+  private double[] resolveHybridWeights() {
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
     double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
@@ -816,8 +842,7 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
     }
-
-    updateHybridSearchPipeline(keywordWeight, semanticWeight);
+    return new double[] {keywordWeight, semanticWeight};
   }
 
   public void updateHybridSearchPipeline(double keywordWeight, double semanticWeight) {
@@ -974,62 +999,15 @@ public class SearchRepository {
     return false;
   }
 
-  /**
-   * Resolve the supplied index alias into the actual Elasticsearch / OpenSearch index name to
-   * query. Handles four shapes:
-   *
-   * <ul>
-   *   <li><b>Entity-specific alias</b> (e.g. {@code "table"}): looked up in
-   *       {@code entityIndexMap} and resolved to the canonical {@code *_search_index} name.
-   *       This is the bug fix — without resolving, ES would treat {@code "table"} as an alias
-   *       and expand it to every index that has that alias attached, including
-   *       {@code column_search_index} (because {@code tableColumn} declares {@code "table"} as
-   *       a {@code parentAlias}). Resolving here bypasses ES's alias expansion entirely so a
-   *       query for tables only hits the table index.
-   *   <li><b>Compound alias</b> (e.g. {@code "all"}, {@code "dataAsset"}): no entry in
-   *       {@code entityIndexMap}, no canonical index, so the alias passes through and ES
-   *       resolves it natively across the entities that have registered the alias. This is the
-   *       intended behavior — searching {@code dataAsset} should surface every data-asset
-   *       entity.
-   *   <li><b>Canonical / legacy index name</b> (e.g. {@code "table_search_index"}): not a key
-   *       in {@code entityIndexMap}, falls through to the prefix-and-pass branch, identical to
-   *       the legacy behavior.
-   *   <li><b>Already cluster-prefixed token</b>: idempotent — returned unchanged so that
-   *       internal code paths that hand back a resolved value don't double-prefix.
-   * </ul>
-   *
-   * Comma-separated tokens are resolved independently. Empty tokens (from {@code "table,"} or
-   * {@code ","}) are dropped instead of materializing as a bare cluster prefix; if every token
-   * is empty the original input is returned unchanged so downstream ES surfaces a normal
-   * "unknown index" error instead of an empty-target failure.
-   */
+  /** @see SearchIndexUtils#getIndexOrAliasName(String, Map, Map, String) */
   public String getIndexOrAliasName(String name) {
-    if (nullOrEmpty(name)) {
-      return name;
-    }
-    String prefix =
-        clusterAlias == null || clusterAlias.isEmpty() ? null : clusterAlias + INDEX_NAME_SEPARATOR;
-    String resolved =
-        Arrays.stream(name.split(","))
-            .map(String::trim)
-            .filter(t -> !t.isEmpty())
-            .map(t -> resolveSingleAliasToken(t, prefix))
-            .collect(Collectors.joining(","));
-    return resolved.isEmpty() ? name : resolved;
+    return SearchIndexUtils.getIndexOrAliasName(name, entityIndexMap, aliasIndexMap, clusterAlias);
   }
 
-  private String resolveSingleAliasToken(String token, String clusterPrefix) {
-    if (clusterPrefix != null && token.startsWith(clusterPrefix)) {
-      return token;
-    }
-    IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
-    if (mapping == null && aliasIndexMap != null) {
-      mapping = aliasIndexMap.get(token);
-    }
-    if (mapping != null) {
-      return mapping.getIndexName(clusterAlias);
-    }
-    return clusterPrefix == null ? token : clusterPrefix + token;
+  /** @see SearchIndexUtils#getEntityTypesForIndex(String, Map, Map, String) */
+  public List<String> getEntityTypesForIndex(String index) {
+    return SearchIndexUtils.getEntityTypesForIndex(
+        index, entityIndexMap, aliasIndexMap, clusterAlias);
   }
 
   private static final Map<String, Set<String>> RBAC_CHILD_TYPES =

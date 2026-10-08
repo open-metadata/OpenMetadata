@@ -106,7 +106,7 @@ test.describe(
       });
 
       await test.step('Verify search bar is present', async () => {
-        const searchInput = page.getByTestId('marketplace-search-input');
+        const searchInput = page.getByTestId('explore-search-input');
         await expect(searchInput).toBeVisible();
         await expect(searchInput).toBeEnabled();
       });

@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableConstraint.RelationshipType;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -787,14 +788,7 @@ public interface SearchIndex {
           "docId", relatedEntity.getId().toString() + "-" + entity.getId().toString());
 
       List<Map<String, Object>> columnsList = new ArrayList<>();
-      String columnFQN =
-          FullyQualifiedName.add(entity.getFullyQualifiedName(), columns.get(columnIndex));
-
-      Map<String, Object> columnMap = new HashMap<>();
-      columnMap.put("columnFQN", referredColumn); // Upstream column
-      columnMap.put("relatedColumnFQN", columnFQN); // Downstream column
-      columnMap.put("relationshipType", tableConstraint.getRelationshipType());
-      columnsList.add(columnMap);
+      columnsList.add(buildUpstreamColumnMap(entity, tableConstraint, referredColumn, columnIndex));
 
       relationshipMap.put("columns", columnsList);
       return relationshipMap;
@@ -809,6 +803,36 @@ public interface SearchIndex {
           ex.getMessage());
       return null;
     }
+  }
+
+  private static Map<String, Object> buildUpstreamColumnMap(
+      EntityInterface entity,
+      TableConstraint tableConstraint,
+      String referredColumn,
+      int columnIndex) {
+    String columnFQN =
+        FullyQualifiedName.add(
+            entity.getFullyQualifiedName(), tableConstraint.getColumns().get(columnIndex));
+
+    Map<String, Object> columnMap = new HashMap<>();
+    columnMap.put("columnFQN", referredColumn); // Upstream column
+    columnMap.put("relatedColumnFQN", columnFQN); // Downstream column
+    columnMap.put(
+        "relationshipType", toUpstreamRelationshipType(tableConstraint.getRelationshipType()));
+    return columnMap;
+  }
+
+  // A foreign key states its relationshipType from the constrained (downstream) column's side,
+  // while the edge runs from the referenced (upstream) column, so the one-to-many direction is
+  // read the other way round.
+  private static RelationshipType toUpstreamRelationshipType(
+      RelationshipType foreignKeyRelationshipType) {
+    return switch (foreignKeyRelationshipType) {
+      case null -> null;
+      case ONE_TO_MANY -> RelationshipType.MANY_TO_ONE;
+      case MANY_TO_ONE -> RelationshipType.ONE_TO_MANY;
+      case ONE_TO_ONE, MANY_TO_MANY -> foreignKeyRelationshipType;
+    };
   }
 
   static Map<String, Object> checkUpstreamRelationship(
@@ -861,17 +885,10 @@ public interface SearchIndex {
     }
 
     try {
-      String columnFQN =
-          FullyQualifiedName.add(entity.getFullyQualifiedName(), columns.get(columnIndex));
-
-      Map<String, Object> columnMap = new HashMap<>();
-      columnMap.put("columnFQN", referredColumn); // Upstream column
-      columnMap.put("relatedColumnFQN", columnFQN); // Downstream column
-      columnMap.put("relationshipType", tableConstraint.getRelationshipType());
-
       List<Map<String, Object>> existingColumns =
           (List<Map<String, Object>>) existingRelationship.get("columns");
-      existingColumns.add(columnMap);
+      existingColumns.add(
+          buildUpstreamColumnMap(entity, tableConstraint, referredColumn, columnIndex));
 
     } catch (Exception ex) {
       LOG.error(

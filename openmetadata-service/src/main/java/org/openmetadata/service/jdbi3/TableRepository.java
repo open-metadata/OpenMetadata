@@ -147,7 +147,8 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  public static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  public static final String PATCH_FIELDS =
+      "tableConstraints,tablePartition,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
       "tableConstraints,tablePartition,dataModel,sourceUrl,columns,schemaDefinition";
@@ -2418,13 +2419,25 @@ public class TableRepository extends EntityRepository<Table> {
           TABLE_CONSTRAINTS_FIELD,
           () -> updateTableConstraints(origTable, updatedTable, operation));
       compareAndUpdate(
+          "tablePartition",
+          () -> {
+            DatabaseUtil.validateTablePartition(
+                updatedTable.getColumns(), updatedTable.getTablePartition());
+            recordChange(
+                "tablePartition", origTable.getTablePartition(), updatedTable.getTablePartition());
+          });
+      compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
+      compareAndUpdate("aliases", () -> updateAliases(origTable, updatedTable));
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "compressionEnabled",
           () ->
@@ -2478,7 +2491,26 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
+    private void updateAliases(Table origTable, Table updatedTable) {
+      List<String> origAliases = listOrEmpty(origTable.getAliases());
+      List<String> updatedAliases = listOrEmpty(updatedTable.getAliases());
+
+      List<String> added = new ArrayList<>();
+      List<String> deleted = new ArrayList<>();
+      recordListChange(
+          "aliases", origAliases, updatedAliases, added, deleted, EntityUtil.stringMatch);
+    }
+
     private void updateTableConstraints(Table origTable, Table updatedTable, Operation operation) {
+      // Many sources (e.g. Trino) never report constraints, so a bot PUT without any must not
+      // read that absence as "delete them" and wipe user-curated ones. Constraints on columns the
+      // source dropped are still cleaned up below.
+      if (operation.isPut()
+          && updatedByBot()
+          && nullOrEmpty(updatedTable.getTableConstraints())
+          && !nullOrEmpty(origTable.getTableConstraints())) {
+        updatedTable.setTableConstraints(new ArrayList<>(origTable.getTableConstraints()));
+      }
       // Detect columns that were removed (exist in original but not in updated).
       // This also handles null column entries produced by JSON patch operations.
       Set<String> removedColumns = detectRemovedColumns(origTable, updatedTable);
