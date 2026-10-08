@@ -40,10 +40,18 @@ const COMPLETED_STATUSES = new Set<TestCaseStatus | undefined>([
 
 const TIMEOUT_ERROR = /time(d)?[\s_-]?out/i;
 
-// A timeout as a message words it, the words standing alone: "runtime out of
-// memory" is not one, nor is PostgreSQL's "time out of range".
+// A timeout as a message words it, the words standing alone: not a piece of a
+// name ("statement_timeout", "TIMEOUT_MS") or a quoted identifier (column
+// "timeout"), nor "runtime out of memory" or PostgreSQL's "time out of range".
 const TIMEOUT_MESSAGE =
-  /(?<![a-z])(?:timed[\s_-]?out|time[_-]?out|time\s+out(?!\s+of\b))/i;
+  /(?<![\w'"`])(?:timed[\s_-]?out|time[_-]?out|time\s+out(?!\s+of\b))(?![\w'"`])/i;
+
+/**
+ * A driver's catch-all types, raised for a timeout among much else (MySQL's
+ * `OperationalError` for a lock wait, Snowflake's `ProgrammingError` for a
+ * statement timeout): only their message tells which it was.
+ */
+const CATCH_ALL_ERROR_TYPES = new Set(['OperationalError', 'ProgrammingError']);
 
 /**
  * errorType is the driver's exception when a query failed (ingestion follows
@@ -224,12 +232,8 @@ export const formatRunDuration = (milliseconds: number) => {
       );
 };
 
-/**
- * A driver can raise a timeout under a type that does not name it (SQLAlchemy's
- * `OperationalError`, or Snowflake's `ProgrammingError` for a statement
- * timeout), so the message counts too.
- */
 export const isTimeoutError = (errorType?: string, message?: string) =>
   TIMEOUT_ERROR_TYPES.has(errorType ?? '') ||
   TIMEOUT_ERROR.test(errorType ?? '') ||
-  TIMEOUT_MESSAGE.test(message ?? '');
+  (CATCH_ALL_ERROR_TYPES.has(errorType ?? '') &&
+    TIMEOUT_MESSAGE.test(message ?? ''));

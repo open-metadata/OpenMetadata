@@ -282,10 +282,30 @@ describe('RunDetailsCard utils', () => {
       'Statement reached its statement or warehouse timeout of 3600 second(s)',
       true,
     ],
-    // Other errors whose words only look like a timeout.
-    ['DataError', 'time out of range', false],
+    // A catch-all whose words only look like a timeout: a range, a piece of
+    // a name, a quoted identifier.
+    ['OperationalError', 'time out of range', false],
     ['OperationalError', 'runtime out of memory', false],
-    ['DataError', 'datetime out of range', false],
+    ['OperationalError', 'datetime out of range', false],
+    [
+      'OperationalError',
+      'could not connect: connect_timeout=10 invalid',
+      false,
+    ],
+    [
+      'OperationalError',
+      'invalid value for parameter "statement_timeout": "abc"',
+      false,
+    ],
+    [
+      'ProgrammingError',
+      'SQL compilation error: invalid identifier TIMEOUT_MS',
+      false,
+    ],
+    ['ProgrammingError', 'column "timeout" does not exist', false],
+    ['OperationalError', "Unknown column 'timeout' in 'field list'", false],
+    // Any other type's message is not read.
+    ['UndefinedFunction', 'function timeout(integer) does not exist', false],
     [undefined, undefined, false],
   ])('treats %s (%s) as a timeout: %s', (errorType, message, expected) => {
     expect(isTimeoutError(errorType, message)).toBe(expected);
