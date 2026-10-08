@@ -31,12 +31,12 @@
   min-height: 6rem;
 }
 
-// :where() keeps specificity at zero so padding utilities on columns still apply.
-:where(.layout-row) {
+.layout-row {
   --layout-gutter: var(--om-space-0);
 }
 
-:where(.layout-row > .layout-column) {
+// One-class specificity beats the `*` reset; padding utilities (imported later) still win.
+:where(.layout-row) > .layout-column {
   position: relative;
   min-width: 0;
   min-height: 1px;

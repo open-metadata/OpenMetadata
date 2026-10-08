@@ -32,7 +32,7 @@ const LabelCountSkeleton = ({
           className="layout-column tw:block"
           style={{
             maxWidth: `${(firstColSize / 24) * 100}%`,
-            flex: `0 0 ${`${(firstColSize / 24) * 100}%`}`,
+            flex: `0 0 ${(firstColSize / 24) * 100}%`,
           }}>
           <div className="w-48 flex">
             {isSelect ? (
@@ -52,7 +52,7 @@ const LabelCountSkeleton = ({
         className="layout-column tw:block"
         style={{
           maxWidth: `${(secondColSize / 24) * 100}%`,
-          flex: `0 0 ${`${(secondColSize / 24) * 100}%`}`,
+          flex: `0 0 ${(secondColSize / 24) * 100}%`,
         }}>
         {isCount ? (
           <Skeleton height={16} width={40} {...props} {...countProps} />
