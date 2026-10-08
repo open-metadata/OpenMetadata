@@ -19,8 +19,8 @@ import {
 import { DotsGrid, Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Layout } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
 import { WidgetConfig } from '../../../../../pages/CustomizablePage/CustomizablePage.interface';
 import WidgetMoreOptions from '../WidgetMoreOptions/WidgetMoreOptions';
 import WidgetSortFilter from '../WidgetSortFilter/WidgetSortFilter';

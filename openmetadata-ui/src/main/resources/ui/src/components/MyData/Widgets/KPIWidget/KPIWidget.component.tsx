@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { Grid, GridItem } from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   chartColor,
   ChartSeries,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Grid, GridItem } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
