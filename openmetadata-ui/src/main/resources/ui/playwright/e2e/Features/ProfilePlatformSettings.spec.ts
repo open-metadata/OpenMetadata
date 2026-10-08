@@ -15,8 +15,10 @@ import { expect, Page } from '@playwright/test';
 import { test } from '../../support/fixtures/base';
 import {
   chooseSelectOption,
+  getApiContext,
   redirectToHomePage,
   toastNotification,
+  uuid,
 } from '../../utils/common';
 import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { enableAiAppMode } from '../Utils/appMode';
@@ -85,7 +87,8 @@ const stubSettingRoundTrip = async (
 
 const openPlatformSettings = async (page: Page) => {
   await enableAiAppMode(page);
-  await redirectToHomePage(page);
+  // Only the user menu is needed; home-page widget loaders are irrelevant here.
+  await redirectToHomePage(page, false);
   await page.getByTestId('ask-ai-user-menu-trigger').click();
   await page.getByTestId('ai-user-menu-profile').click();
   await expect(page.getByTestId('ai-profile-page')).toBeVisible();
@@ -132,11 +135,16 @@ test.describe(
       await openPlatformSettings(page);
 
       const pages: [string, string][] = [
+        ['theme', 'theme-settings'],
         ['email', 'email-settings'],
         ['login-configuration', 'login-settings'],
         ['health-check', 'health-check-settings'],
+        ['profiler-configuration', 'profiler-settings'],
+        ['data-quality', 'data-quality-settings'],
         ['lineage', 'lineage-settings'],
         ['brand-url', 'brand-url-settings'],
+        ['learning-resources', 'learning-resources-settings'],
+        ['search', 'search-settings'],
         ['app-mode', 'default-app-mode-page'],
       ];
 
@@ -147,7 +155,11 @@ test.describe(
           } else {
             await openCard(page, cardId);
           }
-          await expect(page.getByTestId(contentTestId)).toBeVisible();
+          // Each page loads its own settings; on a shared backend that can
+          // queue behind sibling workers (e.g. a real /system/status probe).
+          await expect(page.getByTestId(contentTestId)).toBeVisible({
+            timeout: 30_000,
+          });
           await header(page)
             .getByLabel('Breadcrumb')
             .getByText('Platform Settings', { exact: true })
@@ -402,6 +414,457 @@ test.describe(
       await expect(page.getByTestId('default-app-mode-value')).toHaveText(
         'Classic'
       );
+    });
+    test('theme: saves colours and logo, and Reset clears them', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(
+        page,
+        'customUiThemePreference'
+      );
+      await openPlatformSettings(page);
+      await openCard(page, 'theme');
+      await expect(page.getByTestId('theme-settings')).toBeVisible();
+
+      await header(page).getByTestId('edit-button').click();
+      await page.getByTestId('infoColor-color-input').fill('#123456');
+      await fillField(page, 'customFaviconUrlPath', 'favicon.ico');
+      await page.getByTestId('save-button').click();
+      await expect(
+        page.getByText('Favicon URL is not valid url')
+      ).toBeVisible();
+      expect(settings.puts).toHaveLength(0);
+
+      await fillField(
+        page,
+        'customFaviconUrlPath',
+        'https://cdn.example.org/favicon.ico'
+      );
+      await saveSettings(page);
+
+      expect(settings.puts[0].config_value).toMatchObject({
+        customLogoConfig: {
+          customFaviconUrlPath: 'https://cdn.example.org/favicon.ico',
+        },
+        customTheme: { infoColor: '#123456' },
+      });
+      await expect(page.getByTestId('infoColor-value')).toHaveText('#123456');
+
+      await clickAndWaitFor(
+        page,
+        header(page).getByTestId('reset-button'),
+        SETTINGS_PUT
+      );
+      expect(settings.puts[1].config_value).toMatchObject({
+        customTheme: { infoColor: '', primaryColor: '' },
+        customLogoConfig: { customFaviconUrlPath: '' },
+      });
+    });
+
+    test('profiler configuration: edits metric rows and sample data', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(
+        page,
+        'profilerConfiguration',
+        {
+          initial: {
+            metricConfiguration: [
+              { dataType: 'INT', metrics: ['max', 'min'], disabled: false },
+              { dataType: 'ARRAY', disabled: true },
+            ],
+            sampleDataConfig: { storeSampleData: false, readSampleData: true },
+          },
+        }
+      );
+      await openPlatformSettings(page);
+      await openCard(page, 'profiler-configuration');
+
+      await expect(page.getByTestId('metric-row-INT')).toContainText('Max');
+      await expect(page.getByTestId('metric-row-ARRAY')).toContainText(
+        'Disabled'
+      );
+
+      await header(page).getByTestId('edit-button').click();
+      await page.getByTestId('remove-filter-1').click();
+      await page.getByTestId('add-fields').click();
+      await chooseSelectOption(
+        page.getByTestId('metric-row-1').getByTestId('data-type-select'),
+        page.getByRole('option', { name: 'STRING', exact: true })
+      );
+      await page.getByTestId('store-sample-data-switch').click();
+      await saveSettings(page);
+
+      expect(settings.puts[0].config_value).toEqual({
+        metricConfiguration: [
+          { dataType: 'INT', metrics: ['max', 'min'], disabled: false },
+          { dataType: 'STRING', disabled: false },
+        ],
+        sampleDataConfig: { storeSampleData: true, readSampleData: true },
+      });
+      await expect(page.getByTestId('metric-row-STRING')).toBeVisible();
+      await expect(page.getByTestId('store-sample-data-value')).toHaveText(
+        'Enabled'
+      );
+    });
+
+    test('data quality: adds, edits and deletes a custom dimension', async ({
+      page,
+    }) => {
+      // Create, edit and delete against the real API, behind a list load.
+      test.slow();
+      // Dimensions are entities with unique names, so this runs against the
+      // real API and cleans up after itself.
+      const name = `pw_dimension_${uuid()}`;
+      await openPlatformSettings(page);
+
+      try {
+        await openCard(page, 'data-quality');
+        await expect(page.getByTestId('dimensions-table')).toBeVisible({
+          timeout: 30_000,
+        });
+
+        await header(page).getByTestId('add-dimension').click();
+        await fillField(page, 'dimension-name', name);
+        await fillField(page, 'dimension-display-name', 'PW Dimension');
+        await page.getByTestId('dimension-color-2').click();
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('save-button'),
+          '**/api/v1/dataQuality/dimensions',
+          201
+        );
+
+        const row = page.getByTestId(`dimension-${name}`);
+        await expect(row).toContainText('PW Dimension');
+        await expect(row).toContainText('Custom');
+
+        await clickAndWaitFor(
+          page,
+          page.getByTestId(`edit-${name}`),
+          /\/api\/v1\/dataQuality\/dimensions\?/
+        );
+        await expect(
+          page.getByTestId('dimension-name').locator('input')
+        ).toBeDisabled();
+        await fillField(page, 'dimension-display-name', 'PW Renamed');
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('save-button'),
+          '**/api/v1/dataQuality/dimensions/*'
+        );
+        await expect(row).toContainText('PW Renamed');
+
+        await page.getByTestId(`delete-${name}`).click();
+        await expect(page.getByTestId('delete-dimension-dialog')).toBeVisible();
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('confirm-delete-dimension'),
+          '**/api/v1/dataQuality/dimensions/*'
+        );
+        await expect(row).toHaveCount(0);
+      } finally {
+        const { apiContext, afterAction } = await getApiContext(page);
+        const list = await apiContext.get(
+          '/api/v1/dataQuality/dimensions?limit=1000'
+        );
+        const leftover = ((await list.json()).data ?? []).find(
+          (dimension: { name: string }) => dimension.name === name
+        );
+        if (leftover) {
+          await apiContext.delete(
+            `/api/v1/dataQuality/dimensions/${leftover.id}?hardDelete=true`
+          );
+        }
+        await afterAction();
+      }
+    });
+    test('data asset rules: toggling a rule saves it', async ({ page }) => {
+      const rule = {
+        name: 'Single Domain',
+        description: 'One domain per asset.',
+        enabled: false,
+        rule: '{"==":[1,1]}',
+      };
+      const settings = await stubSettingRoundTrip(page, 'entityRulesSettings', {
+        initial: { entitySemantics: [rule] },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'data-asset-rules');
+
+      await expect(
+        page.getByTestId('data-asset-rule-Single Domain')
+      ).toContainText('One domain per asset.');
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('toggle-Single Domain'),
+        SETTINGS_PUT
+      );
+
+      expect(settings.puts[0].config_value).toEqual({
+        entitySemantics: [{ ...rule, enabled: true }],
+      });
+    });
+
+    test('data asset rules: empty state offers no Add, as adding is unsupported', async ({
+      page,
+    }) => {
+      await stubSettingRoundTrip(page, 'entityRulesSettings', {
+        initial: { entitySemantics: [] },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'data-asset-rules');
+
+      const emptyState = page.getByTestId('data-asset-rules-empty');
+      await expect(emptyState).toBeVisible();
+      await expect(emptyState.getByRole('button')).toHaveCount(0);
+    });
+
+    test('learning resources: adds, edits and deletes a resource', async ({
+      page,
+    }) => {
+      // Create, edit and delete against the real API, behind a list load.
+      test.slow();
+      // Learning resources are entities with unique names, so this runs
+      // against the real API and cleans up after itself.
+      const name = `pw-resource-${uuid()}`;
+      await openPlatformSettings(page);
+
+      try {
+        await openCard(page, 'learning-resources');
+        await expect(page.getByTestId('learning-resources-table')).toBeVisible({
+          timeout: 30_000,
+        });
+
+        await header(page).getByTestId('create-resource').click();
+        await fillField(page, 'name-input', name);
+        await page
+          .getByTestId('description-input')
+          .locator('textarea')
+          .fill('Created by Playwright.');
+        await chooseSelectOption(
+          page.getByTestId('resource-type-select'),
+          page.getByRole('option', { name: 'Video', exact: true })
+        );
+        for (const [testId, option] of [
+          ['categories-select', 'Discovery'],
+          ['contexts-select', 'Glossary'],
+        ]) {
+          await page.getByTestId(testId).locator('input').fill(option);
+          await page.getByRole('option', { name: option, exact: true }).click();
+        }
+        await fillField(
+          page,
+          'source-url-input',
+          'https://www.youtube.com/watch?v=pw-test'
+        );
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('save-button'),
+          '**/api/v1/learning/resources',
+          201
+        );
+
+        await page.getByTestId('search-resources').locator('input').fill(name);
+        const row = page.getByTestId(name);
+        await expect(row).toBeVisible();
+
+        await clickAndWaitFor(
+          page,
+          page.getByTestId(`edit-${name}`),
+          '**/api/v1/learning/resources/*'
+        );
+        await expect(
+          page.getByTestId('name-input').locator('input')
+        ).toBeDisabled();
+        await page
+          .getByTestId('description-input')
+          .locator('textarea')
+          .fill('Edited by Playwright.');
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('save-button'),
+          '**/api/v1/learning/resources'
+        );
+
+        await page.getByTestId('search-resources').locator('input').fill(name);
+        await page.getByTestId(`delete-${name}`).click();
+        await clickAndWaitFor(
+          page,
+          page.getByTestId('confirm-button'),
+          '**/api/v1/learning/resources/*'
+        );
+        await expect(row).toHaveCount(0);
+      } finally {
+        const { apiContext, afterAction } = await getApiContext(page);
+        const existing = await apiContext.get(
+          `/api/v1/learning/resources/name/${encodeURIComponent(
+            name
+          )}?include=all`
+        );
+        if (existing.ok()) {
+          const { id } = await existing.json();
+          await apiContext.delete(
+            `/api/v1/learning/resources/${id}?hardDelete=true`
+          );
+        }
+        await afterAction();
+      }
+    });
+
+    test('search: global settings save the full config on each change', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(page, 'searchSettings');
+      await openPlatformSettings(page);
+      await openCard(page, 'search');
+      await expect(page.getByTestId('search-settings')).toBeVisible({
+        timeout: 30_000,
+      });
+
+      const accessControl = page
+        .getByTestId('enable-roles-polices-in-search-switch')
+        .locator('input');
+      const wasEnabled = await accessControl.isChecked();
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('enable-roles-polices-in-search-switch'),
+        SETTINGS_PUT
+      );
+
+      const saved = settings.puts[0].config_value as {
+        globalSettings: { enableAccessControl: boolean };
+        assetTypeConfigurations: unknown[];
+      };
+
+      expect(saved.globalSettings.enableAccessControl).toBe(!wasEnabled);
+      // The whole document is saved, not just the changed flag.
+      expect(saved.assetTypeConfigurations.length).toBeGreaterThan(0);
+
+      await page.getByTestId('global-setting-edit-maxResultHits').click();
+      const input = page.getByTestId('global-setting-input-maxResultHits');
+      await input.fill('50');
+      await expect(
+        page.getByTestId('global-setting-save-maxResultHits')
+      ).toBeDisabled();
+      await input.fill('500');
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('global-setting-save-maxResultHits'),
+        SETTINGS_PUT
+      );
+
+      expect(
+        (settings.puts[1].config_value as { globalSettings: object })
+          .globalSettings
+      ).toEqual(expect.objectContaining({ maxResultHits: 500 }));
+      await expect(
+        page.getByTestId('global-setting-value-maxResultHits')
+      ).toHaveText('500');
+    });
+
+    test('search: reset restores the defaults only after confirmation', async ({
+      page,
+    }) => {
+      // Never reset the shared tenant's settings.
+      let resets = 0;
+      await page.route(
+        '**/api/v1/system/settings/reset/searchSettings',
+        (route) => {
+          resets += 1;
+
+          return route.fulfill({ json: {} });
+        }
+      );
+      await openPlatformSettings(page);
+      await openCard(page, 'search');
+      await expect(page.getByTestId('search-settings')).toBeVisible({
+        timeout: 30_000,
+      });
+
+      await header(page).getByTestId('reset-search-settings-btn').click();
+      await page.getByTestId('reset-search-settings-dialog-cancel').click();
+      expect(resets).toBe(0);
+
+      await header(page).getByTestId('reset-search-settings-btn').click();
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('reset-search-settings-dialog-confirm'),
+        '**/api/v1/system/settings/reset/searchSettings'
+      );
+      expect(resets).toBe(1);
+      await toastNotification(page, /updated successfully/);
+    });
+
+    test('search: an entity page previews the draft and saves it', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(page, 'searchSettings');
+      await openPlatformSettings(page);
+      await openCard(page, 'search');
+      await page.getByTestId('search-entity-card-tables').click();
+
+      await expect(page.getByTestId('entity-search-settings')).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(header(page)).toContainText('Table');
+      await expect(page.getByTestId('ranking-settings')).toBeVisible();
+      await expect(page.getByTestId('search-preview')).toBeVisible();
+      await expect(header(page).getByTestId('save-btn')).toBeDisabled();
+
+      // A field the default table configuration always matches on.
+      const fieldName = 'displayName.keyword';
+      const field = page.getByTestId(`field-configuration-panel-${fieldName}`);
+
+      // Removing a field re-runs the preview with the unsaved draft.
+      const previewWithoutField = page.waitForRequest((request) => {
+        if (!request.url().includes('/api/v1/search/preview')) {
+          return false;
+        }
+        const table = (
+          request.postDataJSON() as {
+            searchSettings: {
+              assetTypeConfigurations: {
+                assetType: string;
+                searchFields?: { field: string }[];
+              }[];
+            };
+          }
+        ).searchSettings.assetTypeConfigurations.find(
+          (config) => config.assetType === 'table'
+        );
+
+        return !table?.searchFields?.some((field) => field.field === fieldName);
+      });
+      await field.getByTestId('delete-search-field').click();
+      await previewWithoutField;
+      await expect(field).toHaveCount(0);
+
+      await clickAndWaitFor(
+        page,
+        header(page).getByTestId('save-btn'),
+        SETTINGS_PUT
+      );
+
+      const table = (
+        settings.puts[0].config_value as {
+          assetTypeConfigurations: {
+            assetType: string;
+            searchFields: { field: string }[];
+          }[];
+        }
+      ).assetTypeConfigurations.find((config) => config.assetType === 'table');
+
+      expect(table?.searchFields.map((field) => field.field)).not.toContain(
+        fieldName
+      );
+      await expect(header(page).getByTestId('save-btn')).toBeDisabled();
+
+      await header(page)
+        .getByLabel('Breadcrumb')
+        .getByText('Search', { exact: true })
+        .click();
+      await expect(page.getByTestId('search-settings')).toBeVisible();
     });
   }
 );

@@ -56,6 +56,51 @@ jest.mock('./BrandUrlSettingsForm', () => () => (
   <div data-testid="brand-url-form" />
 ));
 jest.mock('./AppModeSettings', () => () => <div data-testid="app-mode-view" />);
+jest.mock('./ThemeSettings', () => () => <div data-testid="theme-view" />);
+jest.mock('./ThemeSettingsForm', () => () => <div data-testid="theme-form" />);
+jest.mock('./ProfilerSettings', () => () => (
+  <div data-testid="profiler-view" />
+));
+jest.mock('./ProfilerSettingsForm', () => () => (
+  <div data-testid="profiler-form" />
+));
+jest.mock('./DataAssetRulesSettings', () => () => (
+  <div data-testid="data-asset-rules-view" />
+));
+jest.mock('./LearningResourcesSettings', () => () => (
+  <div data-testid="learning-resources-view" />
+));
+const mockFormMounts = jest.fn();
+
+jest.mock('./LearningResourceSettingsForm', () => {
+  const { useState } = jest.requireActual('react');
+
+  return ({ itemId }: { itemId?: string }) => {
+    // A lazy initializer runs once per mount, never on re-render.
+    useState(() => mockFormMounts(itemId));
+
+    return (
+      <div data-item-id={itemId ?? ''} data-testid="learning-resource-form" />
+    );
+  };
+});
+jest.mock('./DataQualitySettings', () => () => (
+  <div data-testid="data-quality-view" />
+));
+jest.mock('./DimensionSettingsForm', () =>
+  jest.fn(({ itemId }: { itemId?: string }) => (
+    <div data-item-id={itemId ?? ''} data-testid="dimension-form" />
+  ))
+);
+jest.mock('./search/SearchSettingsView', () => () => (
+  <div data-testid="search-view" />
+));
+jest.mock(
+  './search/EntitySearchSettings',
+  () =>
+    ({ itemId }: { itemId: string }) =>
+      <div data-testid="entity-search-view">{itemId}</div>
+);
 jest.mock('./AppModeSettingsForm', () => () => (
   <div data-testid="app-mode-form" />
 ));
@@ -83,11 +128,17 @@ describe('PlatformSettingsPanel', () => {
     renderPanel();
 
     [
+      'theme',
       'email',
       'login-configuration',
+      'profiler-configuration',
+      'data-quality',
       'health-check',
       'lineage',
       'brand-url',
+      'data-asset-rules',
+      'learning-resources',
+      'search',
       'app-mode',
     ].forEach((id) =>
       expect(
@@ -96,6 +147,17 @@ describe('PlatformSettingsPanel', () => {
     );
 
     expect(lastHeader().title).toBe('label.platform-setting-plural');
+  });
+
+  it('marks Data Asset Rules as beta, as the classic menu does', () => {
+    renderPanel();
+
+    expect(
+      screen.getByTestId('platform-settings-card-data-asset-rules')
+    ).toHaveTextContent('label.beta');
+    expect(
+      screen.getByTestId('platform-settings-card-email')
+    ).not.toHaveTextContent('label.beta');
   });
 
   it('hides login configuration for SSO providers', () => {
@@ -141,6 +203,32 @@ describe('PlatformSettingsPanel', () => {
     ]);
   });
 
+  it("renders the search settings, and one entity's settings as a sub-page", () => {
+    mockSubPath = 'search';
+    const { unmount } = renderPanel();
+
+    expect(screen.getByTestId('search-view')).toBeInTheDocument();
+
+    unmount();
+    mockSubPath = 'search/tables';
+    renderPanel();
+
+    expect(screen.getByTestId('entity-search-view')).toHaveTextContent(
+      'tables'
+    );
+    expect(lastHeader().title).toBe('Table');
+    expect(lastHeader().breadcrumbs.map((b: { id: string }) => b.id)).toEqual([
+      'settings',
+      'platform-settings',
+      'search',
+      'item',
+    ]);
+
+    lastHeader().onBreadcrumbAction('search');
+
+    expect(mockSetHash).toHaveBeenCalledWith('platform-settings', 'search');
+  });
+
   it('renders the edit form with the show-hint toggle in the header', () => {
     mockSubPath = 'email/edit';
     renderPanel();
@@ -159,12 +247,58 @@ describe('PlatformSettingsPanel', () => {
     ['lineage/edit', 'lineage-form'],
     ['app-mode', 'app-mode-view'],
     ['app-mode/edit', 'app-mode-form'],
+    ['theme', 'theme-view'],
+    ['theme/edit', 'theme-form'],
+    ['profiler-configuration', 'profiler-view'],
+    ['profiler-configuration/edit', 'profiler-form'],
+    ['data-quality', 'data-quality-view'],
+    ['data-asset-rules', 'data-asset-rules-view'],
+    ['learning-resources', 'learning-resources-view'],
+    ['learning-resources/edit/res-1', 'learning-resource-form'],
   ])('routes "%s" to its view or edit form', (subPath, testId) => {
     mockSubPath = subPath;
     renderPanel();
 
     expect(screen.getByTestId(testId)).toBeInTheDocument();
   });
+
+  it('remounts the page when the route moves to another item, so it reloads', () => {
+    mockSubPath = 'learning-resources/edit';
+    const { rerender } = renderPanel();
+
+    mockSubPath = 'learning-resources/edit/res-1';
+    rerender(
+      <MemoryRouter>
+        <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
+      </MemoryRouter>
+    );
+
+    expect(mockFormMounts.mock.calls).toEqual([[undefined], ['res-1']]);
+  });
+
+  it('has no add/edit route for data asset rules', () => {
+    mockSubPath = 'data-asset-rules/edit';
+    renderPanel();
+
+    expect(screen.getByTestId('data-asset-rules-view')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['data-quality/edit', '', 'label.add-entity'],
+    ['data-quality/edit/freshness', 'freshness', 'label.edit-entity'],
+  ])(
+    'routes "%s" to the dimension form with its own title',
+    (subPath, itemId, title) => {
+      mockSubPath = subPath;
+      renderPanel();
+
+      expect(screen.getByTestId('dimension-form')).toHaveAttribute(
+        'data-item-id',
+        itemId
+      );
+      expect(lastHeader().title).toBe(title);
+    }
+  );
 
   it('omits the show-hint toggle on forms without field docs', () => {
     mockSubPath = 'app-mode/edit';

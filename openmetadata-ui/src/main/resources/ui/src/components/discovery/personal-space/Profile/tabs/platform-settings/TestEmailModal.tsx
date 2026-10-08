@@ -84,16 +84,21 @@ const TestEmailModal = ({ onClose }: TestEmailModalProps) => {
     }
   };
 
+  const close = () => !isSending && onClose();
+
   return (
-    <ModalOverlay isOpen onOpenChange={(open) => !open && onClose()}>
+    <ModalOverlay
+      isOpen
+      isKeyboardDismissDisabled={isSending}
+      onOpenChange={(open) => !open && close()}>
       <Modal>
         <Dialog
-          showCloseButton
           data-testid="test-email-modal"
           dividers="scroll"
+          showCloseButton={!isSending}
           title={t('label.test-email-connection')}
           width={480}
-          onClose={onClose}>
+          onClose={close}>
           <HookForm
             data-testid="test-email-form"
             form={form}

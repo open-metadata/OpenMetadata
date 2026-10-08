@@ -11,20 +11,33 @@
  *  limitations under the License.
  */
 
+import type { TFunction } from 'i18next';
 import type { FC } from 'react';
 import type { AuthProvider } from '../../../../../../generated/settings/settings';
 
 export type PlatformSettingsPageId =
+  | 'theme'
   | 'email'
   | 'login-configuration'
   | 'health-check'
+  | 'profiler-configuration'
+  | 'data-quality'
   | 'lineage'
   | 'brand-url'
+  | 'data-asset-rules'
+  | 'learning-resources'
+  | 'search'
   | 'app-mode';
 
 export type PlatformSettingsView =
   | { type: 'landing' }
-  | { type: 'page'; page: PlatformSettingsPageId; isEditing: boolean };
+  | {
+      type: 'page';
+      page: PlatformSettingsPageId;
+      isEditing: boolean;
+      /** List pages: the item being edited; absent on `edit` means "add". */
+      itemId?: string;
+    };
 
 export interface PlatformSettingsPage {
   id: PlatformSettingsPageId;
@@ -33,18 +46,28 @@ export interface PlatformSettingsPage {
   descriptionKey: string;
   /** Read-only view first, with an Edit action that opens `<page>/edit`. */
   hasEditView?: boolean;
+  /** Shows a "Beta" badge on the landing card, as the classic menu did. */
+  isBeta?: boolean;
   /** False when the edit form has no per-field docs to offer as hints. */
   hasFieldHints?: boolean;
   isVisible?: (authProvider?: AuthProvider) => boolean;
+  /** Read-only sub-pages at `<page>/<itemId>`, e.g. one entity's search settings. */
+  hasItemViews?: boolean;
+  /** Header title for a read-only sub-page. */
+  getItemTitle?: (t: TFunction, itemId: string) => string;
+  /** Overrides the default "Edit {title}" header, e.g. "Add Dimension" on a list page. */
+  getEditTitle?: (t: TFunction, itemId?: string) => string;
 }
 
 /** Shared by every platform-settings page: report back to the panel. */
 export interface PlatformSettingsPageProps {
+  itemId?: string;
   onNavigate: (view: PlatformSettingsView) => void;
   onSetHeaderActions: (actions: React.ReactNode) => void;
 }
 
 export interface PlatformSettingsFormProps {
   showHint: boolean;
+  itemId?: string;
   onNavigate: (view: PlatformSettingsView) => void;
 }

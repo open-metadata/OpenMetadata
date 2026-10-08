@@ -37,17 +37,26 @@ export const hashSubPathToView = (
   subPath: string,
   pages: PlatformSettingsPage[]
 ): PlatformSettingsView => {
-  const [pageId, mode] = subPath.split('/');
+  const [pageId, mode, ...rest] = subPath.split('/');
   const page = pages.find((item) => item.id === pageId);
 
   if (!page) {
     return LANDING_VIEW;
   }
 
+  const isEditing = Boolean(page.hasEditView) && mode === EDIT_SEGMENT;
+  let itemId: string | undefined;
+  if (isEditing) {
+    itemId = rest.length ? rest.join('/') : undefined;
+  } else if (page.hasItemViews && mode && mode !== EDIT_SEGMENT) {
+    itemId = [mode, ...rest].join('/');
+  }
+
   return {
     type: 'page',
     page: page.id,
-    isEditing: Boolean(page.hasEditView) && mode === EDIT_SEGMENT,
+    isEditing,
+    ...(itemId ? { itemId } : {}),
   };
 };
 
@@ -58,7 +67,13 @@ export const viewToSubPath = (
     return undefined;
   }
 
-  return view.isEditing ? `${view.page}/${EDIT_SEGMENT}` : view.page;
+  if (!view.isEditing) {
+    return view.itemId ? `${view.page}/${view.itemId}` : view.page;
+  }
+
+  return view.itemId
+    ? `${view.page}/${EDIT_SEGMENT}/${view.itemId}`
+    : `${view.page}/${EDIT_SEGMENT}`;
 };
 
 /** Number inputs hold strings; an empty input means "unset", not zero. */
@@ -78,3 +93,38 @@ export const nonNegativeNumberRules = (
     Number(value) >= 0 ||
     `${t('label.greater-than-or-equal-to')} 0`,
 });
+
+/** The page's header title and the breadcrumbs below the Platform Settings root. */
+export const getPageHeader = (
+  page: PlatformSettingsPage,
+  view: PlatformSettingsView,
+  t: TFunction
+): { title: string; breadcrumbs: { id: string; label: string }[] } => {
+  const pageTitle = t(page.titleKey);
+  const breadcrumbs = [{ id: page.id, label: pageTitle }];
+  if (view.type !== 'page') {
+    return { title: pageTitle, breadcrumbs };
+  }
+
+  if (view.isEditing) {
+    const title =
+      page.getEditTitle?.(t, view.itemId) ??
+      String(t('label.edit-entity', { entity: pageTitle }));
+
+    return {
+      title,
+      breadcrumbs: [...breadcrumbs, { id: 'edit', label: title }],
+    };
+  }
+
+  if (view.itemId) {
+    const title = page.getItemTitle?.(t, view.itemId) ?? view.itemId;
+
+    return {
+      title,
+      breadcrumbs: [...breadcrumbs, { id: 'item', label: title }],
+    };
+  }
+
+  return { title: pageTitle, breadcrumbs };
+};
