@@ -170,6 +170,12 @@ describe('QueryBuilder', () => {
       ).not.toBeInTheDocument();
     });
 
+    it('should show the delete button on a single rule when the caller allows removing the last rule', () => {
+      renderBuilder({ groupMode: 'flat', allowRemoveLastRule: true });
+
+      expect(screen.getByTestId('delete-condition-button')).toBeInTheDocument();
+    });
+
     it('should show delete buttons once a second rule is added', async () => {
       renderBuilder({ groupMode: 'flat' });
 

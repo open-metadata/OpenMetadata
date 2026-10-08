@@ -36,6 +36,7 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
   preset,
   readonly,
   showConjunction,
+  allowRemoveLastRule = false,
 }) => {
   const root = useMemo(
     () =>
@@ -54,7 +55,7 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
       preset,
       readonly,
       showConjunction,
-      canRemoveRule: countRules(root) > 1,
+      canRemoveRule: allowRemoveLastRule || countRules(root) > 1,
       ruleIndexById: buildRuleIndex(root),
     }),
     [
@@ -65,6 +66,7 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
       preset,
       readonly,
       showConjunction,
+      allowRemoveLastRule,
       root,
     ]
   );
