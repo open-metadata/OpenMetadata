@@ -55,7 +55,7 @@ const openAiHome = async (page: Page) => {
  * Open the Inbox from the sidebar launcher. A direct `goto('/inbox')` races
  * the AI-mode route registration and can land on a 404.
  */
-const openInboxFromSidebar = async (page: Page) => {
+export const openInboxFromSidebar = async (page: Page) => {
   await openAiHome(page);
   const launcher = page.getByTestId('ai-inbox-icon-btn');
   await expect(launcher).toBeEnabled({ timeout: AI_SHELL_TIMEOUT });
