@@ -244,6 +244,18 @@ class InferenceRuleValidatorTest {
 
       assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
     }
+
+    @Test
+    @DisplayName("Graph-name variables and three-argument functions are accepted")
+    void graphNameVariablesAndThreeArgumentFunctionsAreAccepted() {
+      final String body =
+          "CONSTRUCT { ?s <urn:p> ?g } WHERE { GRAPH ?g { ?s <urn:q> ?o } "
+              + "FILTER(IF(STRSTARTS(STR(?o), \"a\"), true, false)) }";
+
+      final List<String> errors = validate(rule("graph-rule", body));
+
+      assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
+    }
   }
 
   static Stream<Arguments> unsafeRuleBodies() {
@@ -274,7 +286,8 @@ class InferenceRuleValidatorTest {
             "nondeterministic"),
         Arguments.of("BNODE", head + "BIND(BNODE() AS ?b) }", "nondeterministic"),
         Arguments.of("UUID", head + "BIND(UUID() AS ?u) }", "nondeterministic"),
-        Arguments.of("STRUUID", head + "BIND(STRUUID() AS ?u) }", "nondeterministic"));
+        Arguments.of("STRUUID", head + "BIND(STRUUID() AS ?u) }", "nondeterministic"),
+        Arguments.of("LET", head + "LET (?x := RAND()) }", "nondeterministic"));
   }
 
   @Nested
