@@ -270,8 +270,10 @@ class TestData360PipelineSourceMetadata:
     def test_yield_tag_collects_status_based_tags(self):
         source = _build_source()
         details = DataTransformDetails(name="dt1", label="DT1", status="ACTIVE", creationType="Standard")
-        results = list(source.yield_tag(details))
-        assert len(results) >= 1
+        results = list(source.yield_tag_details(details))
+        assert [
+            (record.right.tag_request.classification.root, record.right.tag_request.name.root) for record in results
+        ] == [("Data360", "ACTIVE"), ("Data360", "Standard")]
 
     def test_get_source_url_handles_my_domain(self):
         source = _build_source()
