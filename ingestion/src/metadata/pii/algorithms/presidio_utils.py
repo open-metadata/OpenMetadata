@@ -365,7 +365,14 @@ class IpRecognizer(PresidioIpRecognizer):
             # Hex-only prefixes can be malformed IPv6; never salvage their IPv4 tail.
             if separator and re.fullmatch(r"[a-zA-Z_]\w*", key) and re.search(r"[^0-9a-fA-F]", key):
                 start += len(key) + 1
-            in_url_authority = bool(re.search(r"[a-zA-Z][a-zA-Z0-9+.-]*://\[?$", text[max(0, start - 64) : start]))
+            # A scheme inside a malformed identifier must not turn a CIDR into a URI path.
+            in_url_authority = bool(
+                re.search(
+                    r"(?<![\w.+-])[a-zA-Z][a-zA-Z0-9+.-]*://"
+                    r"(?:(?:[a-zA-Z0-9._~!$&'()*+,;=:-]|%[0-9a-fA-F]{2})+@)?\[?$",
+                    text[max(0, start - 5000) : start],
+                )
+            )
             while end > start and text[end - 1] == ".":
                 end -= 1
             candidate = text[start:end]
