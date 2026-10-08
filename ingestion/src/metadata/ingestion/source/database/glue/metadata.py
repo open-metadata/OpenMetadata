@@ -329,7 +329,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
                         # iceberg tables need to pass a key/value pair in the DDL `'table_type'='ICEBERG'`
                         # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
                         table_type = TableType.Iceberg
-                    elif self._is_delta_table(parameters):
+                    elif table.TableType != "VIRTUAL_VIEW" and self._is_delta_table(parameters):
                         # Kept after the Iceberg check so a UniForm table carrying both markers
                         # stays Iceberg. Athena DDL writes table_type=DELTA, Spark and the crawler
                         # write spark.sql.sources.provider=delta; producers disagree on case.

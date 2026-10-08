@@ -1696,6 +1696,16 @@ class TestGlueDeltaDetection:
 
         assert self._detect(glue_source, table) is TableType.Iceberg
 
+    def test_delta_marked_view_stays_view(self, glue_source):
+        """A VIRTUAL_VIEW is never typed DeltaLake, even if a producer stamps a Delta marker on it."""
+        table = self._table(
+            {"spark.sql.sources.provider": "delta"},
+            table_type="VIRTUAL_VIEW",
+            ViewOriginalText="SELECT id FROM events",
+        )
+
+        assert self._detect(glue_source, table) is TableType.View
+
     def test_iceberg_wins_when_both_markers_present(self, glue_source):
         """(i) A UniForm table can carry table_type=ICEBERG and spark.sql.sources.provider=delta.
         The Iceberg check runs first, so precedence stays with Iceberg."""
