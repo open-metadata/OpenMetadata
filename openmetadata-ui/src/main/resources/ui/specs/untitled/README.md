@@ -24,6 +24,7 @@ hardcode a value — `yarn tw-audit` enforces it.
 | Input | [input.md](input.md) |
 | Textarea | [textarea.md](textarea.md) |
 | Select | [select.md](select.md) |
+| Dropdown | [dropdown.md](dropdown.md) |
 | Checkbox | [checkbox.md](checkbox.md) |
 | Radio | [radio.md](radio.md) |
 | Toggle | [toggle.md](toggle.md) |

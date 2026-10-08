@@ -1,7 +1,7 @@
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { DotsVertical } from '../../../icons';
+import { ChevronRight, DotsVertical } from '../../../icons';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
@@ -19,6 +19,7 @@ import {
   MenuTrigger as AriaMenuTrigger,
   Popover as AriaPopover,
   Separator as AriaSeparator,
+  SubmenuTrigger as AriaSubmenuTrigger,
 } from 'react-aria-components';
 
 interface DropdownItemProps extends AriaMenuItemProps {
@@ -35,6 +36,34 @@ interface DropdownItemProps extends AriaMenuItemProps {
   /** Size of that checkbox. */
   checkboxSize?: 'xs' | 'sm';
 }
+
+const addonTone = (isDisabled: boolean, isSelected: boolean) => {
+  if (isDisabled) {
+    return 'tw:text-disabled tw:outline-secondary';
+  }
+
+  return isSelected
+    ? 'tw:text-brand-secondary tw:outline-utility-brand-200'
+    : 'tw:text-quaternary tw:outline-secondary';
+};
+
+const DropdownItemAddon = ({
+  isDisabled,
+  isSelected,
+  children,
+}: {
+  isDisabled: boolean;
+  isSelected: boolean;
+  children: string;
+}) => (
+  <span
+    className={cx(
+      'tw:ml-auto tw:shrink-0 tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:outline-1 tw:-outline-offset-1',
+      addonTone(isDisabled, isSelected)
+    )}>
+    {children}
+  </span>
+);
 
 const DropdownItem = ({
   label,
@@ -119,13 +148,18 @@ const DropdownItem = ({
           </span>
 
           {addon && (
-            <span
-              className={cx(
-                'tw:ml-auto tw:shrink-0 tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',
-                state.isDisabled ? 'tw:text-disabled' : 'tw:text-quaternary'
-              )}>
+            <DropdownItemAddon
+              isDisabled={state.isDisabled}
+              isSelected={state.isSelected}>
               {addon}
-            </span>
+            </DropdownItemAddon>
+          )}
+
+          {state.hasSubmenu && (
+            <ChevronRight
+              aria-hidden="true"
+              className="tw:ml-auto tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+            />
           )}
         </div>
       )}
@@ -227,6 +261,7 @@ export const Dropdown = {
   Section: AriaMenuSection,
   SectionHeader: AriaHeader as FC<DropdownSectionHeaderProps>,
   Item: DropdownItem,
+  SubmenuTrigger: AriaSubmenuTrigger,
   Separator: DropdownSeparator,
   DotsButton: DropdownDotsButton,
 };

@@ -8,7 +8,7 @@
 | **Category** | Navigation |
 | **Status** | Legacy |
 | **Styles** | [`src/styles/components/menu.less`](../../src/styles/components/menu.less) |
-| **Component** | Ant Design `Menu` (legacy — `.custom-menu`, `.custom-menu-v1`, `.ant-dropdown-menu`). No `ui-core-components` equivalent yet. |
+| **Component** | Ant Design `Menu` (legacy — `.custom-menu`, `.custom-menu-v1`, `.ant-dropdown-menu`). For new work use the core [`Dropdown`](../untitled/dropdown.md). |
 
 ## Overview
 
@@ -52,7 +52,7 @@ Parts: **group title**, **item** (icon + label, gap `--om-space-8`),
 
 Ant Design `Menu` — legacy. Configure via AntD props (`items`, `mode="inline"`,
 `selectedKeys`, `onClick`); style hooks are the `.custom-menu*` class names
-above. Do not build new menus on this; prefer composing `ui-core-components`.
+above. Do not build new menus on this; use the core [`Dropdown`](../untitled/dropdown.md).
 
 ## States
 
