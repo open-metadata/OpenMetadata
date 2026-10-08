@@ -4039,6 +4039,7 @@
     "dimension-delete-test-definition-fallback": "The dimension is cleared from them, so new test cases created from them start with no dimension.",
     "dimension-description-placeholder": "Describe what this dimension measures and when to use it",
     "dimension-display-name-help": "Shown in the test library, dashboards and the dimension picker.",
+    "dimension-failure-policy-helper": "How group results decide the test status. With \"any breaching group\", the test fails when the overall result or any group breaches the threshold. Groups beyond the top dimensions are merged into \"Others\" and only checked together, so one bad small group can be hidden by the healthy ones around it.",
     "dimension-impact-unknown": "We could not check what references this dimension, so its impact is unknown.",
     "dimension-in-use-count": "{{count}} test cases currently use it",
     "dimension-in-use-test-definition-count": "{{count}} test definitions are classified under it",

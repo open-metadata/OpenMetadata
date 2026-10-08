@@ -4039,6 +4039,7 @@
     "dimension-delete-test-definition-fallback": "維度會從它們之中清除，因此由它們建立的新測試案例將沒有維度。",
     "dimension-description-placeholder": "描述此維度衡量什麼以及何時使用",
     "dimension-display-name-help": "顯示於測試庫、儀表板與維度選擇器中。",
+    "dimension-failure-policy-helper": "群組結果如何決定測試狀態。選擇「任一超限群組即判定測試失敗」時，整體結果或任一群組超出閾值都會使測試失敗。排在前幾個維度值之外的群組會合併為「Others」，只作為整體檢查，因此一個有問題的小群組可能被周圍正常的群組掩蓋。",
     "dimension-impact-unknown": "無法檢查有哪些項目引用此維度，因此影響範圍未知。",
     "dimension-in-use-count": "目前有 {{count}} 個測試案例正在使用它",
     "dimension-in-use-test-definition-count": "有 {{count}} 個測試定義歸類於此維度之下",

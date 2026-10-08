@@ -4039,6 +4039,7 @@
     "dimension-delete-test-definition-fallback": "Dimensionen rensas från dem, så nya testfall som skapas utifrån dem börjar utan dimension.",
     "dimension-description-placeholder": "Beskriv vad den här dimensionen mäter och när den ska användas",
     "dimension-display-name-help": "Visas i testbiblioteket, i dashboards och i dimensionsväljaren.",
+    "dimension-failure-policy-helper": "Hur gruppresultaten avgör teststatusen. Med \"varje grupp som bryter mot gränsen underkänner testet\" misslyckas testet när det totala resultatet eller någon grupp överskrider tröskeln. Grupper utanför de främsta dimensionerna slås ihop till \"Others\" och kontrolleras bara tillsammans, så en dålig liten grupp kan döljas av de friska grupperna runt den.",
     "dimension-impact-unknown": "Vi kunde inte kontrollera vad som refererar till den här dimensionen, så påverkan är okänd.",
     "dimension-in-use-count": "{{count}} testfall använder den just nu",
     "dimension-in-use-test-definition-count": "{{count}} testdefinitioner är klassificerade under den",

@@ -25,7 +25,6 @@ export const DATAPRODUCT_DEFAULT_QUICK_FILTERS = [
   EntityFields.CERTIFICATION,
   EntityFields.CLASSIFICATION_TAGS,
   EntityFields.GLOSSARY_TERMS,
-  EntityFields.ENTITY_STATUS,
 ];
 
 export const DATAPRODUCT_FILTERS = [
@@ -60,10 +59,6 @@ export const DATAPRODUCT_FILTERS = [
   {
     label: 'label.glossary-term-plural',
     key: EntityFields.GLOSSARY_TERMS,
-  },
-  {
-    label: 'label.status',
-    key: EntityFields.ENTITY_STATUS,
   },
 ];
 
