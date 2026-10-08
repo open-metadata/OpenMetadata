@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.sql.SQLException;
 import java.sql.SQLTransactionRollbackException;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashSet;
@@ -53,9 +54,10 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
  * other trigger none is recorded, and a process that cannot be deleted because a job of it is
  * executing is left as it is and the termination refused. A lock held by another server cannot be
  * told apart from a dead server's lock, so such a process is deleted. If its job is in fact still
- * executing, a periodic-batch trigger's request stops it at its next batch boundary; should the
- * delete instead have to wait for rows that job holds, the process is left running once the
- * database gives up the wait.
+ * executing, a periodic-batch trigger's request stops it at its next batch boundary, and any other
+ * workflow's job keeps applying its side effects. Each statement of the delete waits at most
+ * {@link #DELETE_LOCK_WAIT_SECONDS} seconds for rows that job holds; a timeout leaves the process
+ * running.
  *
  * <p>The OpenMetadata tasks still open for the process tree's user tasks are looked up before the
  * delete, which removes the Flowable tasks that link to them, and cancelled once the delete
@@ -68,6 +70,9 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
  */
 @Slf4j
 public class WorkflowInstanceTerminator {
+
+  /** Maximum row-lock wait per statement while deleting a process. */
+  public static final int DELETE_LOCK_WAIT_SECONDS = 5;
 
   /** Postgres {@code lock_not_available}, raised when a lock_timeout expires. */
   static final String POSTGRES_LOCK_NOT_AVAILABLE = "55P03";
@@ -295,7 +300,12 @@ public class WorkflowInstanceTerminator {
   private boolean deleteRootProcessInstance(String rootProcessInstanceId) {
     boolean isDeleted = true;
     try {
-      runtimeService.deleteProcessInstance(rootProcessInstanceId, Workflow.TERMINATED_BY_ADMIN);
+      managementService.executeCommand(
+          new BoundedLockWaitCommand(
+              Duration.ofSeconds(DELETE_LOCK_WAIT_SECONDS),
+              () ->
+                  runtimeService.deleteProcessInstance(
+                      rootProcessInstanceId, Workflow.TERMINATED_BY_ADMIN)));
     } catch (FlowableObjectNotFoundException e) {
       LOG.debug(
           "[WorkflowTerminate] Process instance {} ended before it could be deleted",

@@ -1441,6 +1441,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * Rejects {@code updated}, the result of applying {@code patch} to {@code original}, when the
+   * patch breaks a rule that depends on the patch operations themselves. Runs on every PATCH before
+   * the entity is prepared; does nothing unless a repository overrides it.
+   */
+  protected void validatePatch(T original, T updated, JsonPatch patch) {}
+
+  /**
    * This function updates the Elasticsearch indexes wherever the specific entity is present.
    * It is typically invoked when there are changes in the entity that might affect its indexing in Elasticsearch.
    * The function ensures that the indexes are kept up-to-date with the latest state of the entity across all relevant Elasticsearch indexes.
@@ -4700,6 +4707,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("patchRestoreSecrets")) {
       updated = restorePatchSecrets(original, updated);
     }
+    validatePatch(original, updated, patch);
 
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());

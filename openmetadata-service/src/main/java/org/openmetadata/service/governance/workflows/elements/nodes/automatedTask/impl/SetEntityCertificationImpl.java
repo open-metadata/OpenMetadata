@@ -7,7 +7,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RU
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import jakarta.json.JsonPatch;
-import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -48,22 +47,22 @@ public class SetEntityCertificationImpl implements JavaDelegate {
                       varHandler.getNamespacedVariable(
                           inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
               .orElse("governance-bot");
-      Optional<List<String>> batch =
-          BatchEntities.read(batchExecutionExpr, execution, varHandler, inputNamespaces);
-      if (batch.isPresent()) {
-        BatchEntities.apply(
-                execution.getCurrentActivityId(),
-                batch.get(),
-                entityLink -> certify(entityLink, user, certification))
-            .record(varHandler, inputNamespaces, batch.get());
-      } else {
-        certify(
-            (String)
-                varHandler.getNamespacedVariable(
-                    inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE),
-            user,
-            certification);
-      }
+      BatchEntities.applyAction(
+          new BatchEntities.NodeExecution(
+              batchExecutionExpr, execution, varHandler, inputNamespaces),
+          entityLink -> certify(entityLink, user, certification),
+          () ->
+              certify(
+                  (String)
+                      varHandler.getNamespacedVariable(
+                          inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                          RELATED_ENTITY_VARIABLE),
+                  user,
+                  certification));
+    } catch (BpmnError batchFailure) {
+      // Raised by a batch the action failed on entirely, after it recorded the per-entity summary
+      // and the first cause in global_exception.
+      throw batchFailure;
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);

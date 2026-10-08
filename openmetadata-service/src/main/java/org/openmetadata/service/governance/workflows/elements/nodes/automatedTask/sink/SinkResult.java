@@ -35,6 +35,12 @@ public class SinkResult {
   /** Number of entities that failed to sync. */
   private int failedCount;
 
+  /**
+   * Number of entities the provider left out on purpose, such as an entity type it does not write;
+   * they are neither synced nor failed.
+   */
+  private int skippedCount;
+
   /** List of fully qualified names of successfully synced entities. */
   @Builder.Default private List<String> syncedEntities = new ArrayList<>();
 

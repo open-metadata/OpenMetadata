@@ -159,47 +159,40 @@ const buildSinkConfig = (
   };
 };
 
-const countEdgeMaskChars = (value: string, edge: RegExp, limit: number) =>
-  Math.min(value.length - value.replace(edge, '').length, limit);
+type SinkSecretField = 'token' | 'signingPrivateKey' | 'signingPassphrase';
 
-// A masked secret is a placeholder, not secret text: the first edit replaces it
-// rather than adding to it. The edit keeps the mask characters on either side of
-// the cursor, so the text between them is what the user typed or pasted, '*'
-// included. Deleting a mask character leaves only mask, so the field clears.
-const replaceMask = (prevValue: string, value: string): string => {
-  let result = value;
-  if (prevValue === MASKED_PASSWORD_VALUE) {
-    const maskLength = MASKED_PASSWORD_VALUE.length;
-    const before = countEdgeMaskChars(value, /^\*+/, maskLength);
-    const rest = value.slice(before);
-    const after = countEdgeMaskChars(rest, /\*+$/, maskLength - before);
-    result = rest.slice(0, rest.length - after);
-  }
+const CLEARING_KEYS = ['Backspace', 'Delete'];
 
-  return result;
-};
+// A masked secret stands for the stored value. Focusing it empties the field, so
+// what the user types or pastes is taken as is; until the field changes, it
+// still stands for the stored value and is sent back as the mask.
+const withPendingMasks = (
+  formData: SinkFormData,
+  pendingMasks: SinkSecretField[]
+): SinkFormData =>
+  pendingMasks.reduce<SinkFormData>(
+    (data, field) => ({ ...data, [field]: MASKED_PASSWORD_VALUE }),
+    formData
+  );
 
-// A masked passphrase belongs to the replaced key, so it is reset too.
-const applyPrivateKeyChange = (
+// A masked passphrase belongs to the stored key, so replacing that key resets it.
+const applySecretChange = (
   prev: SinkFormData,
-  value: string
+  field: SinkSecretField,
+  value: string,
+  replacesStoredSecret: boolean
 ): SinkFormData => {
   const resetsPassphrase =
-    prev.signingPrivateKey === MASKED_PASSWORD_VALUE &&
+    replacesStoredSecret &&
+    field === 'signingPrivateKey' &&
     prev.signingPassphrase === MASKED_PASSWORD_VALUE;
 
   return {
     ...prev,
-    signingPrivateKey: replaceMask(prev.signingPrivateKey, value),
-    signingPassphrase: resetsPassphrase ? '' : prev.signingPassphrase,
+    [field]: value,
+    ...(resetsPassphrase && { signingPassphrase: '' }),
   };
 };
-
-const applySecretChange = (
-  prev: SinkFormData,
-  field: 'token' | 'signingPassphrase',
-  value: string
-): SinkFormData => ({ ...prev, [field]: replaceMask(prev[field], value) });
 
 export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
   node,
@@ -249,24 +242,58 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
     []
   );
 
-  const handlePrivateKeyChange = useCallback((value: string) => {
-    setFormData((prev) => applyPrivateKeyChange(prev, value));
-  }, []);
+  const [pendingMasks, setPendingMasks] = useState<SinkSecretField[]>([]);
 
-  const handleTokenChange = useCallback((value: string) => {
-    setFormData((prev) => applySecretChange(prev, 'token', value));
-  }, []);
+  const handleSecretFocus = useCallback(
+    (field: SinkSecretField) => {
+      if (formData[field] === MASKED_PASSWORD_VALUE) {
+        setPendingMasks((prev) => [...prev, field]);
+        setFormData((prev) => ({ ...prev, [field]: '' }));
+      }
+    },
+    [formData]
+  );
 
-  const handlePassphraseChange = useCallback((value: string) => {
-    setFormData((prev) => applySecretChange(prev, 'signingPassphrase', value));
-  }, []);
+  const handleSecretBlur = useCallback(
+    (field: SinkSecretField) => {
+      if (pendingMasks.includes(field)) {
+        setPendingMasks((prev) => prev.filter((item) => item !== field));
+        setFormData((prev) => ({ ...prev, [field]: MASKED_PASSWORD_VALUE }));
+      }
+    },
+    [pendingMasks]
+  );
+
+  const handleSecretChange = useCallback(
+    (field: SinkSecretField, value: string) => {
+      const replacesStoredSecret = pendingMasks.includes(field);
+      setPendingMasks((prev) => prev.filter((item) => item !== field));
+      setFormData((prev) =>
+        applySecretChange(prev, field, value, replacesStoredSecret)
+      );
+    },
+    [pendingMasks]
+  );
+
+  // Deleting in a field that still stands for the stored secret clears that
+  // secret: the field is already empty, so no change event would report it.
+  const handleSecretKeyDown = useCallback(
+    (field: SinkSecretField, key: string) => {
+      if (CLEARING_KEYS.includes(key) && pendingMasks.includes(field)) {
+        handleSecretChange(field, '');
+      }
+    },
+    [pendingMasks, handleSecretChange]
+  );
 
   const handleAllowUnsignedFastPushChange = useCallback((value: boolean) => {
     setFormData((prev) => ({ ...prev, allowUnsignedFastPush: value }));
   }, []);
 
+  const submittedData = withPendingMasks(formData, pendingMasks);
+
   const isSigningKeyConfigured =
-    formData.signingPrivateKey === MASKED_PASSWORD_VALUE;
+    submittedData.signingPrivateKey === MASKED_PASSWORD_VALUE;
 
   useEffect(() => {
     if (node?.data) {
@@ -277,6 +304,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
         ...buildSinkMetaValues(data, sinkConfig, t),
         ...buildSinkConnectionValues(sinkConfig),
       });
+      setPendingMasks([]);
     }
   }, [node]);
 
@@ -301,7 +329,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
         ...storedConfig,
         sinkType: SinkType.Git,
         outputFormat: storedConfig.outputFormat ?? 'yaml',
-        sinkConfig: buildSinkConfig(storedGitSinkConfig, formData),
+        sinkConfig: buildSinkConfig(storedGitSinkConfig, submittedData),
       },
     });
 
@@ -325,7 +353,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
       return false;
     }
 
-    return isValidString(formData.token);
+    return isValidString(submittedData.token);
   };
 
   return (
@@ -382,7 +410,10 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
             placeholder="ghp_xxxxxxxxxxxx"
             type="password"
             value={formData.token}
-            onChange={handleTokenChange}
+            onBlur={() => handleSecretBlur('token')}
+            onChange={(value) => handleSecretChange('token', value)}
+            onFocus={() => handleSecretFocus('token')}
+            onKeyDown={(event) => handleSecretKeyDown('token', event.key)}
           />
         </div>
 
@@ -432,18 +463,28 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
             label={t('label.signing-private-key')}
             rows={4}
             value={formData.signingPrivateKey}
-            onChange={handlePrivateKeyChange}
+            onBlur={() => handleSecretBlur('signingPrivateKey')}
+            onChange={(value) => handleSecretChange('signingPrivateKey', value)}
+            onFocus={() => handleSecretFocus('signingPrivateKey')}
+            onKeyDown={(event) =>
+              handleSecretKeyDown('signingPrivateKey', event.key)
+            }
           />
         </div>
 
         <div className="tw:mt-5">
           <Input
             data-testid="signing-passphrase-input"
-            isDisabled={isFormDisabled || !formData.signingPrivateKey}
+            isDisabled={isFormDisabled || !submittedData.signingPrivateKey}
             label={t('label.passphrase')}
             type="password"
             value={formData.signingPassphrase}
-            onChange={handlePassphraseChange}
+            onBlur={() => handleSecretBlur('signingPassphrase')}
+            onChange={(value) => handleSecretChange('signingPassphrase', value)}
+            onFocus={() => handleSecretFocus('signingPassphrase')}
+            onKeyDown={(event) =>
+              handleSecretKeyDown('signingPassphrase', event.key)
+            }
           />
         </div>
 

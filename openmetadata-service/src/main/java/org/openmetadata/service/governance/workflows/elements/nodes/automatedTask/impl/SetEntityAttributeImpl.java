@@ -4,9 +4,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
-import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -35,17 +35,15 @@ public class SetEntityAttributeImpl implements JavaDelegate {
     try {
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       FieldUpdate update = fieldUpdate(execution, varHandler, inputNamespaces);
-      Optional<List<String>> batch =
-          BatchEntities.read(batchExecutionExpr, execution, varHandler, inputNamespaces);
-      if (batch.isPresent()) {
-        BatchEntities.apply(
-                execution.getCurrentActivityId(),
-                batch.get(),
-                entityLink -> setEntityField(entityOf(entityLink), entityLink, update))
-            .record(varHandler, inputNamespaces, batch.get());
-      } else {
-        setRelatedEntityField(varHandler, inputNamespaces, update);
-      }
+      BatchEntities.applyAction(
+          new BatchEntities.NodeExecution(
+              batchExecutionExpr, execution, varHandler, inputNamespaces),
+          entityLink -> setEntityField(entityOf(entityLink), entityLink, update),
+          () -> setRelatedEntityField(varHandler, inputNamespaces, update));
+    } catch (BpmnError batchFailure) {
+      // Raised by a batch the action failed on entirely, after it recorded the per-entity summary
+      // and the first cause in global_exception.
+      throw batchFailure;
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -104,16 +102,10 @@ public class SetEntityAttributeImpl implements JavaDelegate {
           update.fieldName(),
           update.fieldValue(),
           true,
-          "governance-bot");
+          GOVERNANCE_BOT);
     } else {
       EntityFieldUtils.setEntityField(
-          entity,
-          entityType,
-          "governance-bot",
-          update.fieldName(),
-          update.fieldValue(),
-          true,
-          null);
+          entity, entityType, GOVERNANCE_BOT, update.fieldName(), update.fieldValue(), true, null);
     }
   }
 

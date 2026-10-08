@@ -21,10 +21,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARI
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -54,7 +51,8 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
  * <ul>
  *   <li><b>Single entity mode:</b> Processes one entity at a time (event-based workflows)
  *   <li><b>Batch mode:</b> Processes all entities in the batch at once (periodic batch workflows
- *       with batchMode=true in sink config)
+ *       with batchMode=true in sink config). A provider without batch support writes them one by
+ *       one, sub-batch by sub-batch.
  * </ul>
  *
  * <p>When batchMode is enabled in the sink config, the trigger automatically configures single
@@ -151,7 +149,7 @@ public class SinkTaskDelegate implements JavaDelegate {
       SinkRun run;
 
       // Determine execution mode: batch or single entity
-      if (batchMode && entityList != null && sinkProvider.supportsBatch()) {
+      if (batchMode && entityList != null) {
         // Batch mode: process all entities at once (single workflow instance)
         String businessKey = execution.getProcessInstanceBusinessKey();
         run =
@@ -170,6 +168,7 @@ public class SinkTaskDelegate implements JavaDelegate {
           "syncResult", JsonUtils.pojoToJson(SinkResultSummary.from(result)));
       varHandler.setNodeVariable("syncedCount", result.getSyncedCount());
       varHandler.setNodeVariable("failedCount", result.getFailedCount());
+      varHandler.setNodeVariable("skippedCount", result.getSkippedCount());
       // A stopped run reports failure as well: an edge leaves on the result value it names, and
       // Flowable fails a node whose conditional edges match none.
       varHandler.setNodeVariable(RESULT_VARIABLE, result.isSuccess() ? "success" : "failure");
@@ -183,10 +182,11 @@ public class SinkTaskDelegate implements JavaDelegate {
       }
 
       LOG.info(
-          "[{}] Sink operation completed: syncedCount={}, failedCount={}, success={}, batchMode={}",
+          "[{}] Sink completed: synced={}, failed={}, skipped={}, success={}, batchMode={}",
           getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()),
           result.getSyncedCount(),
           result.getFailedCount(),
+          result.getSkippedCount(),
           result.isSuccess(),
           batchMode && entityList != null);
 
@@ -227,7 +227,8 @@ public class SinkTaskDelegate implements JavaDelegate {
    * #MAX_CONSECUTIVE_FAILED_SUB_BATCHES} sub-batches in a row failed every entity; the entities
    * left, fetched or not, are reported as failed. The same happens, checked before each sub-batch,
    * once an administrator asked the workflow instance to stop. {@link SinkProvider#finishBatch}
-   * runs last, whatever was skipped, so a provider can write what it held back.
+   * runs last, whatever was skipped, so a provider can write what it held back. A provider without
+   * batch support writes each entity of a sub-batch through {@link SinkProvider#write}.
    */
   private SinkRun executeBatchMode(
       SinkContext context,
@@ -281,13 +282,53 @@ public class SinkTaskDelegate implements JavaDelegate {
     SinkResult written =
         entities.isEmpty()
             ? SinkResult.builder().success(true).build()
-            : sinkProvider.writeBatch(context, entities);
+            : writeEntities(context, sinkProvider, entities);
     // A sub-batch whose every entity failed to load reached no provider, yet failed as a whole.
     boolean writeFailed =
         entities.isEmpty()
             ? !subBatch.fetchErrors().isEmpty()
             : madeNoProgress(written, entities.size());
     return new SubBatchOutcome(written, subBatch.fetchErrors(), writeFailed);
+  }
+
+  private static SinkResult writeEntities(
+      SinkContext context, SinkProvider sinkProvider, List<EntityInterface> entities) {
+    return sinkProvider.supportsBatch()
+        ? sinkProvider.writeBatch(context, entities)
+        : writeEachEntity(context, sinkProvider, entities);
+  }
+
+  /**
+   * One sub-batch's result, adding up the provider's single-entity writes. A write that throws fails
+   * its entity only, as a failed entity of a batch write does, and the sub-batch goes on.
+   */
+  private static SinkResult writeEachEntity(
+      SinkContext context, SinkProvider sinkProvider, List<EntityInterface> entities) {
+    SinkResultTotals totals = new SinkResultTotals();
+    entities.forEach(entity -> writeEntity(context, sinkProvider, entity, totals));
+    return totals.toResult();
+  }
+
+  private static void writeEntity(
+      SinkContext context,
+      SinkProvider sinkProvider,
+      EntityInterface entity,
+      SinkResultTotals totals) {
+    try {
+      totals.add(sinkProvider.write(context, entity));
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "[{}] Sink write failed for {}: {}",
+          context.getWorkflowName(),
+          entity.getFullyQualifiedName(),
+          e.getMessage());
+      totals.addFailures(
+          List.of(
+              SinkResult.SinkError.builder()
+                  .entityFqn(entity.getFullyQualifiedName())
+                  .errorMessage(e.getMessage())
+                  .build()));
+    }
   }
 
   /**
@@ -344,19 +385,14 @@ public class SinkTaskDelegate implements JavaDelegate {
       SinkResult written, List<SinkResult.SinkError> fetchErrors, boolean writeFailed) {}
 
   /**
-   * Running totals for a batch execution. Keeps counts, at most {@link
-   * SinkResultSummary#MAX_ERRORS} errors and {@link SinkResultSummary#MAX_COMMIT_IDS} commit ids,
-   * so memory stays flat however many entities the batch holds.
+   * Running totals for a batch execution, see {@link SinkResultTotals}, and whether it should stop
+   * writing sub-batches.
    */
   private static final class BatchProgress {
     private final String workflowName;
     private final BooleanSupplier isStopRequested;
-    private final List<SinkResult.SinkError> errors = new ArrayList<>();
-    private final List<String> commitIds = new ArrayList<>();
-    private int syncedCount;
-    private int failedCount;
+    private final SinkResultTotals totals = new SinkResultTotals();
     private int consecutiveFailedSubBatches;
-    private boolean success = true;
     private String stopReason;
 
     BatchProgress(String workflowName, BooleanSupplier isStopRequested) {
@@ -365,13 +401,8 @@ public class SinkTaskDelegate implements JavaDelegate {
     }
 
     void record(SubBatchOutcome outcome) {
-      SinkResult written = outcome.written();
-      syncedCount += written.getSyncedCount();
-      failedCount += written.getFailedCount() + outcome.fetchErrors().size();
-      success = success && written.isSuccess() && outcome.fetchErrors().isEmpty();
-      addErrors(Optional.ofNullable(written.getErrors()).orElse(List.of()));
-      addErrors(outcome.fetchErrors());
-      SinkResultSummary.commitIdsOf(written).forEach(this::addCommitId);
+      totals.add(outcome.written());
+      totals.addFailures(outcome.fetchErrors());
       consecutiveFailedSubBatches = outcome.writeFailed() ? consecutiveFailedSubBatches + 1 : 0;
     }
 
@@ -400,46 +431,20 @@ public class SinkTaskDelegate implements JavaDelegate {
     }
 
     void skip(List<String> subBatch) {
-      failedCount += subBatch.size();
-      success = false;
       String message = "Not synced: %s".formatted(stopReason);
-      subBatch.forEach(
-          entityLink ->
-              addErrors(
-                  List.of(
+      totals.addFailures(
+          subBatch.stream()
+              .map(
+                  entityLink ->
                       SinkResult.SinkError.builder()
                           .entityFqn(entityLink)
                           .errorMessage(message)
-                          .build())));
-    }
-
-    private void addErrors(List<SinkResult.SinkError> newErrors) {
-      for (SinkResult.SinkError error : newErrors) {
-        if (errors.size() < SinkResultSummary.MAX_ERRORS) {
-          errors.add(
-              SinkResult.SinkError.builder()
-                  .entityFqn(error.getEntityFqn())
-                  .errorMessage(error.getErrorMessage())
-                  .errorCode(error.getErrorCode())
-                  .build());
-        }
-      }
-    }
-
-    private void addCommitId(String commitId) {
-      if (commitIds.size() < SinkResultSummary.MAX_COMMIT_IDS) {
-        commitIds.add(commitId);
-      }
+                          .build())
+              .toList());
     }
 
     SinkResult toResult() {
-      return SinkResult.builder()
-          .success(success)
-          .syncedCount(syncedCount)
-          .failedCount(failedCount)
-          .errors(errors.isEmpty() ? null : errors)
-          .metadata(Map.of(SinkResultSummary.COMMIT_IDS_KEY, List.copyOf(commitIds)))
-          .build();
+      return totals.toResult();
     }
   }
 

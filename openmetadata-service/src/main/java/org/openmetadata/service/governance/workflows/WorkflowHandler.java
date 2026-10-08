@@ -18,7 +18,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -548,6 +547,18 @@ public class WorkflowHandler {
             bpmnTriggerWorkflowBytes)
         .name(workflow.getTriggerWorkflow().getWorkflowName())
         .deploy();
+
+    keepSuspended(workflow.getWorkflowDefinition());
+  }
+
+  /**
+   * Flowable deploys every new process-definition version active. A workflow stored as suspended
+   * has its new trigger versions suspended too, so neither their timers nor a trigger start it.
+   */
+  private void keepSuspended(WorkflowDefinition workflowDefinition) {
+    if (Boolean.TRUE.equals(workflowDefinition.getSuspended())) {
+      suspendWorkflow(workflowDefinition.getName());
+    }
   }
 
   public boolean isDeployed(WorkflowDefinition wf) {
@@ -1768,47 +1779,47 @@ public class WorkflowHandler {
     return false;
   }
 
+  /**
+   * Starts the workflow's trigger processes, as its stored definition configures them. A failure
+   * to read the definition propagates before any process is started, so no trigger process an
+   * older deployment left for an entity type the trigger is now deployed without is started.
+   */
   public boolean triggerWorkflow(String workflowName) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
-    RepositoryService repositoryService = processEngine.getRepositoryService();
-
     String baseProcessKey = getTriggerWorkflowId(workflowName);
+    WorkflowDefinition workflowDefinition = getStoredWorkflowDefinition(workflowName);
 
     // Prefer the current workflow definition config to avoid triggering stale process keys left
     // behind by older deployments.
-    List<String> configuredTriggerKeys =
-        getConfiguredPeriodicTriggerProcessKeys(workflowName, baseProcessKey);
-    if (!configuredTriggerKeys.isEmpty()) {
-      return triggerProcessDefinitions(runtimeService, configuredTriggerKeys);
+    List<String> triggerKeys =
+        getConfiguredPeriodicTriggerProcessKeys(workflowDefinition, baseProcessKey);
+    if (triggerKeys.isEmpty()) {
+      triggerKeys = getDeployedTriggerProcessKeys(workflowDefinition, baseProcessKey);
     }
+    return triggerKeys.isEmpty()
+        ? startTriggerProcess(runtimeService, baseProcessKey)
+        : triggerProcessDefinitions(runtimeService, triggerKeys);
+  }
 
-    // Legacy fallback: trigger all latest process definitions matching the workflow prefix, except
-    // one an older deployment left for an entity type the trigger is now deployed without.
-    Set<String> excludedTriggerKeys = getExcludedTriggerProcessKeys(workflowName, baseProcessKey);
-    List<String> legacyTriggerKeys =
-        repositoryService
-            .createProcessDefinitionQuery()
-            .processDefinitionKeyLike(baseProcessKey + "-%")
-            .latestVersion()
-            .list()
-            .stream()
-            .map(ProcessDefinition::getKey)
-            .filter(processKey -> !excludedTriggerKeys.contains(processKey))
-            .toList();
-    if (!legacyTriggerKeys.isEmpty()) {
-      return triggerProcessDefinitions(runtimeService, legacyTriggerKeys);
-    }
+  private static WorkflowDefinition getStoredWorkflowDefinition(String workflowName) {
+    WorkflowDefinitionRepository repository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    return repository.getByName(
+        null, workflowName, repository.getFields("trigger"), Include.NON_DELETED, true);
+  }
 
-    // Fallback to original behavior for non-periodic trigger types.
+  /** Fallback for non-periodic trigger types, which deploy one process under the base key. */
+  private static boolean startTriggerProcess(RuntimeService runtimeService, String baseProcessKey) {
+    boolean isStarted = true;
     try {
       // Trigger BPMN's CallActivity has inheritBusinessKey=true; passing a businessKey
       // here ensures the spawned MainWorkflow inherits a non-null WorkflowInstance UUID.
       runtimeService.startProcessInstanceByKey(baseProcessKey, UUID.randomUUID().toString());
-      return true;
     } catch (FlowableObjectNotFoundException ex) {
       LOG.error("No process definition found for key: {}", baseProcessKey);
-      return false;
+      isStarted = false;
     }
+    return isStarted;
   }
 
   private boolean triggerProcessDefinitions(
@@ -1826,80 +1837,63 @@ public class WorkflowHandler {
     return anyStarted;
   }
 
+  /**
+   * The deployed trigger process of each entity type a periodic trigger lists, except the types the
+   * trigger is deployed without: a process an older deployment left for one is not started.
+   */
   private List<String> getConfiguredPeriodicTriggerProcessKeys(
-      String workflowName, String baseProcessKey) {
-    try {
-      WorkflowDefinitionRepository repository =
-          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-      WorkflowDefinition workflowDefinition =
-          repository.getByName(
-              null, workflowName, repository.getFields("trigger"), Include.NON_DELETED, true);
-      WorkflowTriggerInterface trigger = workflowDefinition.getTrigger();
-      if (trigger == null || !"periodicBatchEntity".equals(trigger.getType())) {
-        return List.of();
-      }
-
-      // A Git-sink workflow's trigger is deployed without query; a process left from an older
-      // deployment for it is not started.
+      WorkflowDefinition workflowDefinition, String baseProcessKey) {
+    WorkflowTriggerInterface trigger = workflowDefinition.getTrigger();
+    List<String> processKeys = List.of();
+    if (trigger != null && "periodicBatchEntity".equals(trigger.getType())) {
       Set<String> excludedEntityTypes =
-          GitSinkEntityTypeRule.excludedTriggerEntityTypes(workflowDefinition);
-      List<String> configuredEntityTypes =
+          SinkEntityTypeRule.excludedTriggerEntityTypes(workflowDefinition);
+      processKeys =
           getConfiguredEntityTypes(trigger).stream()
               .filter(entityType -> !excludedEntityTypes.contains(entityType))
-              .toList();
-      if (configuredEntityTypes.isEmpty()) {
-        return List.of();
-      }
-
-      Set<String> processKeys = new LinkedHashSet<>();
-      for (String entityType : configuredEntityTypes) {
-        String processKey = String.format("%s-%s", baseProcessKey, entityType);
-        ProcessDefinition processDefinition =
-            processEngine
-                .getRepositoryService()
-                .createProcessDefinitionQuery()
-                .processDefinitionKey(processKey)
-                .latestVersion()
-                .singleResult();
-        if (processDefinition != null) {
-          processKeys.add(processKey);
-        }
-      }
-      return List.copyOf(processKeys);
-    } catch (Exception e) {
-      LOG.warn(
-          "Unable to resolve configured trigger process keys for workflow '{}': {}",
-          workflowName,
-          e.getMessage());
-      return List.of();
-    }
-  }
-
-  /**
-   * Periodic trigger process keys of the entity types the workflow's trigger is deployed without,
-   * see {@link GitSinkEntityTypeRule#excludedTriggerEntityTypes}.
-   */
-  private Set<String> getExcludedTriggerProcessKeys(String workflowName, String baseProcessKey) {
-    Set<String> excludedKeys = Set.of();
-    try {
-      WorkflowDefinitionRepository repository =
-          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-      WorkflowDefinition workflowDefinition =
-          repository.getByName(
-              null, workflowName, repository.getFields("trigger"), Include.NON_DELETED, true);
-      excludedKeys =
-          GitSinkEntityTypeRule.excludedTriggerEntityTypes(workflowDefinition).stream()
               .map(
                   entityType ->
                       PeriodicBatchEntityTrigger.getTriggerProcessKey(baseProcessKey, entityType))
-              .collect(Collectors.toUnmodifiableSet());
-    } catch (Exception e) {
-      LOG.warn(
-          "Unable to resolve excluded trigger process keys for workflow '{}': {}",
-          workflowName,
-          e.getMessage());
+              .distinct()
+              .filter(this::hasProcessDefinition)
+              .toList();
     }
-    return excludedKeys;
+    return processKeys;
+  }
+
+  private boolean hasProcessDefinition(String processKey) {
+    return processEngine
+            .getRepositoryService()
+            .createProcessDefinitionQuery()
+            .processDefinitionKey(processKey)
+            .latestVersion()
+            .singleResult()
+        != null;
+  }
+
+  /**
+   * Every trigger process deployed under the workflow's prefix, except one an older deployment
+   * left for an entity type the trigger is now deployed without, see {@link
+   * SinkEntityTypeRule#excludedTriggerEntityTypes}.
+   */
+  private List<String> getDeployedTriggerProcessKeys(
+      WorkflowDefinition workflowDefinition, String baseProcessKey) {
+    Set<String> excludedKeys =
+        SinkEntityTypeRule.excludedTriggerEntityTypes(workflowDefinition).stream()
+            .map(
+                entityType ->
+                    PeriodicBatchEntityTrigger.getTriggerProcessKey(baseProcessKey, entityType))
+            .collect(Collectors.toUnmodifiableSet());
+    return processEngine
+        .getRepositoryService()
+        .createProcessDefinitionQuery()
+        .processDefinitionKeyLike(baseProcessKey + "-%")
+        .latestVersion()
+        .list()
+        .stream()
+        .map(ProcessDefinition::getKey)
+        .filter(processKey -> !excludedKeys.contains(processKey))
+        .toList();
   }
 
   @SuppressWarnings("unchecked")

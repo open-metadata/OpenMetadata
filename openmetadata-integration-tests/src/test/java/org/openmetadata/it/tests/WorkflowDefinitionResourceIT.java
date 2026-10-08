@@ -15,6 +15,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
@@ -42,6 +43,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
@@ -57,6 +61,7 @@ import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.job.api.Job;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -71,7 +76,11 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.GlossaryTermTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.MlModelServiceTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -142,6 +151,7 @@ import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.TagLabel;
@@ -159,15 +169,17 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.governance.workflows.GitSinkEntityTypeRule;
+import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SinkTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkContext;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProvider;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProviderRegistry;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkResult;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository.StopRequest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -251,6 +263,22 @@ public class WorkflowDefinitionResourceIT {
   void resetWorkflowTracking() {
     // Clear the tracking map for each test
     createdWorkflows.clear();
+    // OSS has no Git provider; advertise its capability without constructing a destination client.
+    SinkProviderRegistry.getInstance()
+        .register(
+            "git",
+            new SinkProviderRegistry.SinkProviderFactory() {
+              @Override
+              public Set<String> excludedEntityTypes() {
+                return Set.of(Entity.QUERY);
+              }
+
+              @Override
+              public SinkProvider create(Object config) {
+                throw new UnsupportedOperationException(
+                    "These tests never execute the Git provider");
+              }
+            });
     LOG.debug("Workflow tracking reset for new test");
   }
 
@@ -292,6 +320,7 @@ public class WorkflowDefinitionResourceIT {
       // Clear the map after cleanup
       createdWorkflows.clear();
     }
+    SinkProviderRegistry.getInstance().unregister("git");
   }
 
   @Test
@@ -608,6 +637,193 @@ public class WorkflowDefinitionResourceIT {
     storedValueSentBack.put("description", "Stored ciphertext sent back");
     executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, storedValueSentBack);
     assertDecryptsTo(targetToken, storedGitToken(target.get("id").asText()));
+  }
+
+  /**
+   * Fernet ciphertext is randomized, so encrypting a re-sent secret again would change the stored
+   * definition on every PUT. A PUT carrying the secrets the definition already holds, as an SDK or
+   * IaC client sends them, keeps the stored ciphertext: no new version, no redeploy.
+   */
+  @Test
+  void test_sinkSecretSentAgainInPlaintextChangesNothing(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String workflowName = ns.prefix("gitSinkSameSecret");
+    Map<String, Object> request =
+        buildGitSinkWorkflowRequest(
+            workflowName,
+            "ghp_itSameToken_%s".formatted(UUID.randomUUID()),
+            "itSameKey_%s".formatted(UUID.randomUUID()),
+            "itSamePassphrase_%s".formatted(UUID.randomUUID()));
+    JsonNode created =
+        MAPPER.readTree(executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, request));
+    trackWorkflowFromJson(created);
+    String workflowId = created.get("id").asText();
+    JsonNode storedSinkConfig = storedGitSinkConfig(workflowId);
+    String deployedProcessDefinition = latestProcessDefinitionId(workflowName);
+
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      JsonNode sentAgain =
+          MAPPER.readTree(executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, request));
+
+      assertEquals(
+          created.get("version"), sentAgain.get("version"), "attempt %d".formatted(attempt));
+      assertEquals(storedSinkConfig, storedGitSinkConfig(workflowId));
+      assertEquals(deployedProcessDefinition, latestProcessDefinitionId(workflowName));
+    }
+  }
+
+  /**
+   * A stored secret that is still plaintext, as one stored without a Fernet key is, can be a short
+   * word that also names the user editing the definition. Only a copy or move patch can read a
+   * stored secret into another field, so only such a patch is checked for one.
+   */
+  @Test
+  void test_sinkSecretShortPlaintextDoesNotBlockUnrelatedEdits(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    JsonNode created =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                buildGitSinkWorkflowRequest(
+                    ns.prefix("gitSinkShortSecret"), "ghp_itShortSecret", "itKey", "itPass")));
+    trackWorkflowFromJson(created);
+    String editor = created.get("updatedBy").asText();
+    String workflowPath = "%s/%s".formatted(BASE_PATH, created.get("id").asText());
+    storeGitTokenUnencrypted(created, editor);
+
+    OpenMetadataException copied =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                executeWorkflowRequest(
+                    client,
+                    HttpMethod.PATCH,
+                    workflowPath,
+                    MAPPER.readTree(
+                        """
+                        [{"op": "copy", "from": "%s", "path": "/description"}]
+                        """
+                            .formatted(
+                                "/nodes/%d/config/sinkConfig/credentials/token"
+                                    .formatted(gitSinkIndex(created))))));
+    assertEquals(400, copied.getStatusCode());
+    assertTrue(
+        copied.getMessage().contains("cannot be copied or moved out of its field"),
+        copied.getMessage());
+    assertTrue(copied.getMessage().contains("'/description'"), copied.getMessage());
+
+    JsonNode described =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.PATCH,
+                workflowPath,
+                MAPPER.readTree(
+                    """
+                    [{"op": "replace", "path": "/description", "value": "edited again"}]
+                    """)));
+    assertEquals("edited again", described.get("description").asText());
+  }
+
+  /**
+   * The Git-sink query rule applies to new definitions and to updates of the graph or trigger. A
+   * stored definition that breaks it, as one saved before the rule existed does, still takes an
+   * edit of anything else, and keeps being refused an edit of its nodes until it is fixed.
+   */
+  @Test
+  void test_gitSinkStoredOverQueriesTakesEditsOutsideItsGraph(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    JsonNode created =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                MAPPER.readValue(
+                    GIT_SINK_WORKFLOW.formatted(ns.prefix("gitSinkStoredQueries"), Entity.TABLE),
+                    CreateWorkflowDefinition.class)));
+    trackWorkflowFromJson(created);
+    String workflowPath = "%s/%s".formatted(BASE_PATH, created.get("id").asText());
+    storeTriggerEntityTypes(created, Entity.QUERY);
+
+    JsonNode described =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.PATCH,
+                workflowPath,
+                MAPPER.readTree(
+                    """
+                    [{"op": "replace", "path": "/description", "value": "still runs over queries"}]
+                    """)));
+    assertEquals("still runs over queries", described.get("description").asText());
+
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                executeWorkflowRequest(
+                    client,
+                    HttpMethod.PATCH,
+                    workflowPath,
+                    MAPPER.readTree(
+                        """
+                        [{"op": "replace", "path": "/nodes/%d/displayName", "value": "Renamed"}]
+                        """
+                            .formatted(gitSinkIndex(created)))));
+    assertEquals(400, rejected.getStatusCode());
+    assertTrue(
+        rejected.getMessage().contains(SinkEntityTypeRule.rejectionMessage(Set.of(Entity.QUERY))),
+        rejected.getMessage());
+  }
+
+  private JsonNode storedGitSinkConfig(String workflowId) {
+    return gitSinkNode(JsonUtils.readTree(storedDefinitionJson(workflowId)))
+        .at("/config/sinkConfig");
+  }
+
+  private static String latestProcessDefinitionId(String workflowName) {
+    return WorkflowHandler.getInstance()
+        .getRepositoryService()
+        .createProcessDefinitionQuery()
+        .processDefinitionKey(workflowName)
+        .latestVersion()
+        .singleResult()
+        .getId();
+  }
+
+  /** Rewrites the stored Git token as plaintext, as a definition stored without a Fernet key. */
+  private void storeGitTokenUnencrypted(JsonNode workflow, String token) {
+    JsonNode stored = JsonUtils.readTree(storedDefinitionJson(workflow.get("id").asText()));
+    // The credentials of a sink config are a JSON object.
+    if (gitSinkNode(stored).at("/config/sinkConfig/credentials")
+        instanceof ObjectNode credentials) {
+      credentials.put("token", token);
+    }
+    storeDefinitionJson(workflow, stored);
+  }
+
+  /** Rewrites the stored trigger's entity types, bypassing the rules a write would apply. */
+  private void storeTriggerEntityTypes(JsonNode workflow, String entityType) {
+    JsonNode stored = JsonUtils.readTree(storedDefinitionJson(workflow.get("id").asText()));
+    // The trigger config of a periodic batch workflow is a JSON object.
+    if (stored.at("/trigger/config") instanceof ObjectNode triggerConfig) {
+      triggerConfig.putArray("entityTypes").add(entityType);
+    }
+    storeDefinitionJson(workflow, stored);
+  }
+
+  /**
+   * Writes a definition row directly. The tests run in-process with the server, and dropping the
+   * cached entry makes the next request read the row as written.
+   */
+  private static void storeDefinitionJson(JsonNode workflow, JsonNode definition) {
+    UUID id = UUID.fromString(workflow.get("id").asText());
+    String fqn = workflow.get("fullyQualifiedName").asText();
+    Entity.getCollectionDAO().workflowDefinitionDAO().update(id, fqn, definition.toString());
+    EntityRepository.invalidateCacheForEntity(Entity.WORKFLOW_DEFINITION, id, fqn);
   }
 
   private static void assertEncryptedValueRejected(Executable request) {
@@ -1021,7 +1237,7 @@ public class WorkflowDefinitionResourceIT {
 
     assertEquals(400, rejected.getStatusCode());
     assertTrue(
-        rejected.getMessage().contains(GitSinkEntityTypeRule.QUERY_IN_GIT_SINK_MESSAGE),
+        rejected.getMessage().contains(SinkEntityTypeRule.rejectionMessage(Set.of(Entity.QUERY))),
         rejected.getMessage());
 
     CreateWorkflowDefinition overTables =
@@ -1032,6 +1248,297 @@ public class WorkflowDefinitionResourceIT {
         MAPPER.readTree(executeWorkflowRequest(client, HttpMethod.POST, BASE_PATH, overTables));
     trackWorkflowFromJson(created);
     assertEquals(overTables.getName(), created.get("name").asText());
+  }
+
+  /**
+   * A batch sink that reports failure, in a workflow with no failure branch, ends the
+   * periodic-batch instance as FAILURE. The workflow stores no stage status and the main workflow
+   * runs as a multi-instance call activity of the trigger, so the sink's failure reaches the
+   * instance only through that call activity's output mapping.
+   */
+  @Test
+  void test_sinkFailureEndsThePeriodicBatchInstanceAsFailure() throws Exception {
+    withSink(
+        new FailingSink(),
+        sink -> {
+          OpenMetadataClient client = SdkClients.adminClient();
+          List<Tag> tags = createClassificationWithTags(client, "failTag", 3);
+          String workflowName = periodicWorkflowName("tFail");
+          createPeriodicWorkflow(
+              client,
+              workflowName,
+              new BatchScope(
+                  Entity.TAG, "classification.id", tags.getFirst().getClassification().getId()),
+              BLOCKING_SINK_NODES);
+          client.workflowDefinitions().trigger(workflowName);
+
+          JsonNode instance = awaitOnlyInstanceEnded(client, workflowName);
+          assertEquals(
+              WorkflowInstance.WorkflowStatus.FAILURE.value(),
+              instance.path("status").asText(),
+              instance.toString());
+          assertEquals(fullyQualifiedNames(tags), Set.copyOf(sink.attemptedFqns()));
+        });
+  }
+
+  /**
+   * A sink that reports failure, in an event-based workflow with no failure branch, ends the
+   * instance the entity's update started as FAILURE. The workflow stores no stage status, so the
+   * failure reaches the instance only through the trigger's call-activity output mapping. It is
+   * deleted before its sink
+   * provider is unregistered, so it never runs without one.
+   */
+  @Test
+  void test_sinkFailureEndsTheEventBasedInstanceAsFailure() throws Exception {
+    withSink(
+        new FailingSink(),
+        sink -> {
+          OpenMetadataClient client = SdkClients.adminClient();
+          Tag tag = createClassificationWithTags(client, "evtFailTag", 1).getFirst();
+          String workflowName = periodicWorkflowName("tEvtFail");
+          // The trigger filter excludes the entities it is true for, so every tag but this one is
+          // excluded and no tag update of another test starts this workflow.
+          String onlyThisTag =
+              MAPPER.writeValueAsString(
+                  MAPPER.writeValueAsString(
+                      Map.of(
+                          "!=",
+                          List.of(
+                              Map.of("var", "fullyQualifiedName"), tag.getFullyQualifiedName()))));
+          JsonNode created =
+              MAPPER.readTree(
+                  executeWorkflowRequest(
+                      client,
+                      HttpMethod.POST,
+                      BASE_PATH,
+                      MAPPER.readValue(
+                          EVENT_TAG_SINK_WORKFLOW.formatted(
+                              workflowName, onlyThisTag, BLOCKING_SINK_TYPE),
+                          CreateWorkflowDefinition.class)));
+          trackWorkflowFromJson(created);
+          try {
+            waitForWorkflowDeployment(client, workflowName);
+            client
+                .tags()
+                .patch(
+                    tag.getId(),
+                    MAPPER.readTree(
+                        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"updated to start the workflow\"}]"));
+
+            JsonNode instance = awaitOnlyInstanceEnded(client, workflowName);
+            assertEquals(
+                WorkflowInstance.WorkflowStatus.FAILURE.value(),
+                instance.path("status").asText(),
+                instance.toString());
+            assertEquals(List.of(tag.getFullyQualifiedName()), sink.attemptedFqns());
+          } finally {
+            hardDeleteWorkflow(client, created.get("id").asText());
+          }
+        });
+  }
+
+  /**
+   * A batch sink makes a periodic batch run its main workflow once per batch, so every action node
+   * acts on each entity of the batch: the set-attribute node sets the description of every table
+   * and the certification node certifies every table.
+   */
+  @Test
+  void test_batchSetAttributeAndCertificationUpdateEveryEntityOfTheBatch(TestNamespace ns)
+      throws Exception {
+    withSink(
+        new CapturingSink(),
+        sink -> {
+          OpenMetadataClient client = SdkClients.adminClient();
+          DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+          List<Table> tables =
+              IntStream.range(0, 3)
+                  .mapToObj(
+                      i ->
+                          TableTestFactory.createWithName(
+                              ns, schema.getFullyQualifiedName(), "batchTable%d".formatted(i)))
+                  .toList();
+          tables.forEach(
+              table ->
+                  waitForEntityIndexedInSearch(
+                      client, "table_search_index", table.getFullyQualifiedName()));
+          String workflowName = periodicWorkflowName("tSetCert");
+          createPeriodicWorkflow(
+              client,
+              workflowName,
+              new BatchScope(Entity.TABLE, "databaseSchema.id", schema.getId()),
+              SET_DESCRIPTION_AND_CERTIFY_NODES);
+          client.workflowDefinitions().trigger(workflowName);
+
+          JsonNode instance = awaitOnlyInstanceEnded(client, workflowName);
+          assertEquals(
+              WorkflowInstance.WorkflowStatus.FINISHED.value(),
+              instance.path("status").asText(),
+              instance.toString());
+          for (Table table : tables) {
+            Table updated = client.tables().get(table.getId().toString(), "certification");
+            assertEquals(BATCH_DESCRIPTION, updated.getDescription(), table.getName());
+            assertNotNull(updated.getCertification(), table.getName());
+            assertEquals(GOLD_CERTIFICATION, updated.getCertification().getTagLabel().getTagFQN());
+          }
+          assertEquals(fullyQualifiedNames(tables), Set.copyOf(sink.writtenFqns()));
+        });
+  }
+
+  /**
+   * In a periodic batch run once per batch, the rollback node restores every glossary term of the
+   * batch to its last approved version, and the glossary-status node then sets the status of every
+   * term. The terms have no reviewers, so each is approved at creation; the description edited
+   * afterwards is the change the rollback undoes.
+   */
+  @Test
+  void test_batchRollbackAndGlossaryStatusActOnEveryTermOfTheBatch(TestNamespace ns)
+      throws Exception {
+    withSink(
+        new CapturingSink(),
+        sink -> {
+          OpenMetadataClient client = SdkClients.adminClient();
+          Glossary glossary = GlossaryTestFactory.createSimple(ns);
+          List<GlossaryTerm> terms =
+              IntStream.range(0, 3)
+                  .mapToObj(
+                      i ->
+                          GlossaryTermTestFactory.createWithName(
+                              ns, glossary, "batchTerm%d".formatted(i)))
+                  .toList();
+          terms.forEach(
+              term -> assertEquals(EntityStatus.APPROVED, term.getEntityStatus(), term.getName()));
+          for (GlossaryTerm term : terms) {
+            client
+                .glossaryTerms()
+                .patch(
+                    term.getId(),
+                    MAPPER.readTree(
+                        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"edited after approval\"}]"));
+            waitForEntityIndexedInSearch(
+                client, "glossary_term_search_index", term.getFullyQualifiedName());
+          }
+          String workflowName = periodicWorkflowName("tRollback");
+          createPeriodicWorkflow(
+              client,
+              workflowName,
+              new BatchScope(Entity.GLOSSARY_TERM, "glossary.id", glossary.getId()),
+              ROLLBACK_AND_DEPRECATE_NODES);
+          client.workflowDefinitions().trigger(workflowName);
+
+          JsonNode instance = awaitOnlyInstanceEnded(client, workflowName);
+          assertEquals(
+              WorkflowInstance.WorkflowStatus.FINISHED.value(),
+              instance.path("status").asText(),
+              instance.toString());
+          for (GlossaryTerm term : terms) {
+            GlossaryTerm updated = client.glossaryTerms().get(term.getId().toString());
+            assertEquals(term.getDescription(), updated.getDescription(), term.getName());
+            assertEquals(EntityStatus.DEPRECATED, updated.getEntityStatus(), term.getName());
+          }
+          assertEquals(fullyQualifiedNames(terms), Set.copyOf(sink.writtenFqns()));
+        });
+  }
+
+  /**
+   * Deploying a new version of a suspended workflow keeps it suspended: the update creates new
+   * process-definition versions of its trigger, and they are suspended too, so the daily timer they
+   * carry does not start it.
+   */
+  @Test
+  void test_suspendedWorkflowStaysSuspendedWhenAnUpdateRedeploysIt() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String workflowName = periodicWorkflowName("tSusp");
+    JsonNode created =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                MAPPER.readValue(
+                    DAILY_TAG_WORKFLOW.formatted(workflowName), CreateWorkflowDefinition.class)));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(client, workflowName);
+    executeWorkflowRequest(
+        client, HttpMethod.PUT, "%s/name/%s/suspend".formatted(BASE_PATH, workflowName), Map.of());
+    assertTrue(WorkflowHandler.getInstance().isWorkflowSuspended(workflowName));
+    Set<String> suspendedTriggerIds = latestTriggerDefinitionIds(workflowName);
+
+    executeWorkflowRequest(
+        client,
+        HttpMethod.PATCH,
+        "%s/%s".formatted(BASE_PATH, created.get("id").asText()),
+        MAPPER.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"redeployed while suspended\"}]"));
+
+    Set<String> redeployedTriggerIds =
+        await("the update to deploy new trigger versions")
+            .atMost(Duration.ofSeconds(30))
+            .pollInterval(Duration.ofMillis(500))
+            .until(
+                () -> latestTriggerDefinitionIds(workflowName),
+                ids -> !ids.isEmpty() && ids.stream().noneMatch(suspendedTriggerIds::contains));
+    assertTrue(WorkflowHandler.getInstance().isWorkflowSuspended(workflowName));
+    assertTrue(
+        Boolean.TRUE.equals(client.workflowDefinitions().getByName(workflowName).getSuspended()));
+    List<String> timerDefinitionIds =
+        WorkflowHandler.getInstance().getManagementService().createTimerJobQuery().list().stream()
+            .map(Job::getProcessDefinitionId)
+            .filter(redeployedTriggerIds::contains)
+            .toList();
+    assertFalse(timerDefinitionIds.isEmpty(), "the daily trigger keeps its timer");
+
+    CreateWorkflowDefinition putRequest =
+        MAPPER
+            .readValue(DAILY_TAG_WORKFLOW.formatted(workflowName), CreateWorkflowDefinition.class)
+            .withDescription("redeployed by a PUT while suspended");
+    executeWorkflowRequest(client, HttpMethod.PUT, BASE_PATH, putRequest);
+
+    await("the PUT to deploy new trigger versions")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .until(
+            () -> latestTriggerDefinitionIds(workflowName),
+            ids -> !ids.isEmpty() && ids.stream().noneMatch(redeployedTriggerIds::contains));
+    assertTrue(WorkflowHandler.getInstance().isWorkflowSuspended(workflowName));
+    assertTrue(
+        Boolean.TRUE.equals(client.workflowDefinitions().getByName(workflowName).getSuspended()));
+  }
+
+  /**
+   * Terminate gives up waiting for database rows a job holds after a bounded wait: with the main
+   * workflow's execution rows locked by another transaction, as a job executing on another server
+   * locks them, the delete is refused within seconds, the periodic-batch instance keeps running
+   * with a stop request (202), and once the rows are free a second terminate deletes it.
+   */
+  @Test
+  void test_terminateGivesUpWaitingForRowsAnotherTransactionHolds() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createClassificationWithTags(client, "heldTag", 1).getFirst();
+    String workflowName = periodicWorkflowName("tHeld");
+    createPeriodicTagWorkflow(
+        client,
+        workflowName,
+        tag.getClassification().getId(),
+        TAG_APPROVAL_NODES_AND_EDGES.formatted("ApproveTag"));
+    client.workflowDefinitions().trigger(workflowName);
+    awaitOpenApprovalTaskForEntity(tag.getFullyQualifiedName());
+    String workflowInstanceId = triggerRootInstance(workflowName).getBusinessKey();
+    List<String> processInstanceIds = processInstanceIdsForBusinessKey(workflowInstanceId);
+    awaitNoAsyncJobs(processInstanceIds);
+
+    try (ExecutionRowLock ignored = ExecutionRowLock.hold(processInstanceIds)) {
+      Instant started = Instant.now();
+      HttpResponse<String> refused = terminate(workflowInstanceId, "rows held");
+      Duration waited = Duration.between(started, Instant.now());
+      assertEquals(202, refused.statusCode(), refused.body());
+      assertTrue(
+          waited.compareTo(MAX_TERMINATE_WAIT) < 0,
+          "terminate waited %s for the held rows".formatted(waited));
+    }
+
+    HttpResponse<String> terminated = terminate(workflowInstanceId, "rows free");
+    assertEquals(200, terminated.statusCode(), terminated.body());
+    assertTrue(processInstanceIdsForBusinessKey(workflowInstanceId).isEmpty());
   }
 
   private JsonNode onlyWorkflowInstance(OpenMetadataClient client, String workflowName)
@@ -3440,6 +3947,382 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
+  private static final String BATCH_DESCRIPTION = "Set by a batch workflow";
+
+  private static final String GOLD_CERTIFICATION = "Certification.Gold";
+
+  /** Well past the terminate delete's bound, well short of MySQL's default 50 s lock wait. */
+  private static final Duration MAX_TERMINATE_WAIT = Duration.ofSeconds(25);
+
+  /** The entity type a periodic batch runs over, narrowed to the children of one parent entity. */
+  private record BatchScope(String entityType, String parentIdField, UUID parentId) {}
+
+  /**
+   * A periodic batch over the children of one parent; takes name, scope, nodes and edges. It
+   * stores no stage status, so no stage row records a node's failure for the instance.
+   */
+  private static final String PERIODIC_BATCH_WORKFLOW =
+      """
+      {
+        "name": "%1$s",
+        "displayName": "Batch Action Nodes",
+        "description": "Periodic batch over the children of one parent entity",
+        "trigger": {
+          "type": "periodicBatchEntity",
+          "config": {
+            "entityTypes": ["%2$s"],
+            "schedule": {"scheduleTimeline": "None"},
+            "batchSize": 10,
+            "filters": {
+              "%2$s": "{\\"query\\":{\\"bool\\":{\\"filter\\":[{\\"term\\":{\\"%3$s\\":\\"%4$s\\"}}]}}}"
+            }
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        %5$s,
+        "config": {"storeStageStatus": false}
+      }
+      """;
+
+  /** Sets the description of every entity of the batch, certifies it, and sends it to a sink. */
+  private static final String SET_DESCRIPTION_AND_CERTIFY_NODES =
+      """
+      "nodes": [
+        {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+        {
+          "name": "setDescription",
+          "displayName": "Set Description",
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "config": {"fieldName": "description", "fieldValue": "%1$s"},
+          "inputNamespaceMap": {"relatedEntity": "global"}
+        },
+        {
+          "name": "certify",
+          "displayName": "Certify",
+          "type": "automatedTask",
+          "subType": "setEntityCertificationTask",
+          "config": {"certification": "%2$s"},
+          "inputNamespaceMap": {"relatedEntity": "global"}
+        },
+        {
+          "name": "batchSink",
+          "displayName": "Batch Sink",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "%3$s",
+            "sinkConfig": {"endpoint": "http://127.0.0.1:9/unused"},
+            "batchMode": true
+          }
+        },
+        {"name": "end", "displayName": "End", "type": "endEvent", "subType": "endEvent"}
+      ],
+      "edges": [
+        {"from": "start", "to": "setDescription"},
+        {"from": "setDescription", "to": "certify"},
+        {"from": "certify", "to": "batchSink"},
+        {"from": "batchSink", "to": "end"}
+      ]"""
+          .formatted(BATCH_DESCRIPTION, GOLD_CERTIFICATION, BLOCKING_SINK_TYPE);
+
+  /** Rolls every glossary term of the batch back, deprecates it, and sends it to a sink. */
+  private static final String ROLLBACK_AND_DEPRECATE_NODES =
+      """
+      "nodes": [
+        {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+        {
+          "name": "rollback",
+          "displayName": "Rollback",
+          "type": "automatedTask",
+          "subType": "rollbackEntityTask",
+          "config": {},
+          "inputNamespaceMap": {"relatedEntity": "global"}
+        },
+        {
+          "name": "deprecate",
+          "displayName": "Deprecate",
+          "type": "automatedTask",
+          "subType": "setGlossaryTermStatusTask",
+          "config": {"glossaryTermStatus": "Deprecated"},
+          "inputNamespaceMap": {"relatedEntity": "global"}
+        },
+        {
+          "name": "batchSink",
+          "displayName": "Batch Sink",
+          "type": "automatedTask",
+          "subType": "sinkTask",
+          "config": {
+            "sinkType": "%s",
+            "sinkConfig": {"endpoint": "http://127.0.0.1:9/unused"},
+            "batchMode": true
+          }
+        },
+        {"name": "end", "displayName": "End", "type": "endEvent", "subType": "endEvent"}
+      ],
+      "edges": [
+        {"from": "start", "to": "rollback"},
+        {"from": "rollback", "to": "deprecate"},
+        {"from": "deprecate", "to": "batchSink"},
+        {"from": "batchSink", "to": "end"}
+      ]"""
+          .formatted(BLOCKING_SINK_TYPE);
+
+  /** Sends every updated tag to a per-entity sink, with no failure branch; takes name and type. */
+  private static final String EVENT_TAG_SINK_WORKFLOW =
+      """
+      {
+        "name": "%s",
+        "displayName": "Event Sink",
+        "description": "Writes the updated tag to a sink",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {"entityTypes": ["tag"], "events": ["Updated"], "filter": {"tag": %s}},
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+          {
+            "name": "eventSink",
+            "displayName": "Event Sink",
+            "type": "automatedTask",
+            "subType": "sinkTask",
+            "config": {
+              "sinkType": "%s",
+              "sinkConfig": {"endpoint": "http://127.0.0.1:9/unused"},
+              "batchMode": false
+            },
+            "inputNamespaceMap": {"relatedEntity": "global"}
+          },
+          {"name": "end", "displayName": "End", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [{"from": "start", "to": "eventSink"}, {"from": "eventSink", "to": "end"}],
+        "config": {"storeStageStatus": false}
+      }
+      """;
+
+  /** A daily periodic batch over tags that does nothing; takes the name. */
+  private static final String DAILY_TAG_WORKFLOW =
+      """
+      {
+        "name": "%s",
+        "displayName": "Daily Workflow",
+        "description": "A daily periodic batch",
+        "trigger": {
+          "type": "periodicBatchEntity",
+          "config": {
+            "entityTypes": ["tag"],
+            "schedule": {"scheduleTimeline": "Daily"},
+            "batchSize": 10,
+            "filters": "{}"
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "end", "displayName": "End", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [{"from": "start", "to": "end"}],
+        "config": {"storeStageStatus": false}
+      }
+      """;
+
+  @FunctionalInterface
+  private interface SinkScenario<S extends SinkProvider> {
+    void run(S sink) throws Exception;
+  }
+
+  /**
+   * Runs the scenario with {@code sink} registered under the {@link #BLOCKING_SINK_TYPE} type,
+   * which OSS registers no provider for, and unregisters it afterwards.
+   */
+  private static <S extends SinkProvider> void withSink(S sink, SinkScenario<S> scenario)
+      throws Exception {
+    SinkProviderRegistry registry = SinkProviderRegistry.getInstance();
+    assertFalse(
+        registry.isRegistered(BLOCKING_SINK_TYPE),
+        "the test replaces the %s sink provider and could not restore it"
+            .formatted(BLOCKING_SINK_TYPE));
+    registry.register(BLOCKING_SINK_TYPE, config -> sink);
+    try {
+      scenario.run(sink);
+    } finally {
+      registry.unregister(BLOCKING_SINK_TYPE);
+    }
+  }
+
+  private void createPeriodicWorkflow(
+      OpenMetadataClient client, String workflowName, BatchScope scope, String nodesAndEdges)
+      throws IOException {
+    String workflowJson =
+        PERIODIC_BATCH_WORKFLOW.formatted(
+            workflowName,
+            scope.entityType(),
+            scope.parentIdField(),
+            scope.parentId(),
+            nodesAndEdges);
+    JsonNode created =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class)));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(client, workflowName);
+  }
+
+  private JsonNode workflowInstances(OpenMetadataClient client, String workflowName)
+      throws IOException {
+    String instancesPath =
+        "/v1/governance/workflowInstances?workflowDefinitionName=%s&startTs=0&endTs=%d&limit=100"
+            .formatted(workflowName, System.currentTimeMillis());
+    return MAPPER
+        .readTree(executeWorkflowRequest(client, HttpMethod.GET, instancesPath, null))
+        .path("data");
+  }
+
+  /** Waits for the workflow's one instance to leave RUNNING and returns it. */
+  private JsonNode awaitOnlyInstanceEnded(OpenMetadataClient client, String workflowName) {
+    return await("the only instance of %s to end".formatted(workflowName))
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> workflowInstances(client, workflowName),
+            instances ->
+                instances.size() == 1
+                    && !WorkflowInstance.WorkflowStatus.RUNNING
+                        .value()
+                        .equals(instances.get(0).path("status").asText()))
+        .get(0);
+  }
+
+  private void hardDeleteWorkflow(OpenMetadataClient client, String workflowId) {
+    executeWorkflowRequest(
+        client,
+        HttpMethod.DELETE,
+        "%s/%s?hardDelete=true&recursive=true".formatted(BASE_PATH, workflowId),
+        null);
+    createdWorkflows.values().remove(workflowId);
+  }
+
+  private static Set<String> fullyQualifiedNames(List<? extends EntityInterface> entities) {
+    return entities.stream()
+        .map(EntityInterface::getFullyQualifiedName)
+        .collect(Collectors.toSet());
+  }
+
+  private static Set<String> latestTriggerDefinitionIds(String workflowName) {
+    return WorkflowHandler.getInstance()
+        .getRepositoryService()
+        .createProcessDefinitionQuery()
+        .processDefinitionKeyLike(TriggerFactory.getTriggerWorkflowId(workflowName) + "%")
+        .latestVersion()
+        .list()
+        .stream()
+        .map(ProcessDefinition::getId)
+        .collect(Collectors.toSet());
+  }
+
+  /** Reports every write as failed, as a sink whose destination refuses the entities does. */
+  private static final class FailingSink implements SinkProvider {
+    private final Queue<String> attempted = new ConcurrentLinkedQueue<>();
+
+    List<String> attemptedFqns() {
+      return List.copyOf(attempted);
+    }
+
+    @Override
+    public String getSinkType() {
+      return BLOCKING_SINK_TYPE;
+    }
+
+    @Override
+    public SinkResult write(SinkContext context, EntityInterface entity) {
+      return writeBatch(context, List.of(entity));
+    }
+
+    @Override
+    public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+      List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+      attempted.addAll(fqns);
+      return SinkResult.builder()
+          .success(false)
+          .failedCount(entities.size())
+          .errors(
+              fqns.stream()
+                  .map(
+                      fqn ->
+                          SinkResult.SinkError.builder()
+                              .entityFqn(fqn)
+                              .errorMessage("the destination refused the entity")
+                              .build())
+                  .toList())
+          .build();
+    }
+
+    @Override
+    public boolean supportsBatch() {
+      return true;
+    }
+
+    @Override
+    public void close() {
+      // Shared across the test's runs; nothing to release.
+    }
+  }
+
+  /**
+   * Holds row locks on the execution rows of the given process instances in an open transaction,
+   * as a job executing on another server holds them, until closed. The hold is bounded so a failed
+   * test never keeps the rows locked.
+   */
+  private static final class ExecutionRowLock implements AutoCloseable {
+    private static final String LOCK_EXECUTIONS_SQL =
+        "SELECT ID_ FROM ACT_RU_EXECUTION WHERE PROC_INST_ID_ IN (<ids>) FOR UPDATE";
+    private static final Duration MAX_HOLD = Duration.ofMinutes(2);
+    private final CountDownLatch locked = new CountDownLatch(1);
+    private final CountDownLatch released = new CountDownLatch(1);
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Future<Void> holder;
+
+    private ExecutionRowLock(List<String> processInstanceIds) {
+      holder =
+          executor.submit(
+              () -> {
+                Entity.getJdbi()
+                    .useTransaction(
+                        handle -> {
+                          handle
+                              .createQuery(LOCK_EXECUTIONS_SQL)
+                              .bindList("ids", processInstanceIds)
+                              .mapTo(String.class)
+                              .list();
+                          locked.countDown();
+                          released.await(MAX_HOLD.toMillis(), TimeUnit.MILLISECONDS);
+                        });
+                return null;
+              });
+    }
+
+    static ExecutionRowLock hold(List<String> processInstanceIds) throws InterruptedException {
+      ExecutionRowLock lock = new ExecutionRowLock(processInstanceIds);
+      assertTrue(lock.locked.await(30, TimeUnit.SECONDS), "the execution rows are locked");
+      return lock;
+    }
+
+    @Override
+    public void close() throws Exception {
+      released.countDown();
+      try {
+        holder.get(1, TimeUnit.MINUTES);
+      } finally {
+        executor.shutdownNow();
+      }
+    }
+  }
+
   private static String terminatePath(String workflowInstanceId) {
     return "/v1/governance/workflowInstances/%s/terminate".formatted(workflowInstanceId);
   }
@@ -3607,9 +4490,10 @@ public class WorkflowDefinitionResourceIT {
         (ServiceTask)
             repositoryService
                 .getBpmnModel(processDefinition.getId())
-                .getFlowElement(Workflow.getFlowableElementId("gitSink", "executeSink"));
+                .getFlowElement(
+                    Workflow.getFlowableElementId("gitSink", SinkTask.EXECUTE_SINK_ELEMENT));
     return executeSink.getFieldExtensions().stream()
-        .filter(field -> "sinkConfigExpr".equals(field.getFieldName()))
+        .filter(field -> SinkTask.SINK_CONFIG_FIELD.equals(field.getFieldName()))
         .map(FieldExtension::getStringValue)
         .findFirst()
         .orElseThrow();

@@ -51,6 +51,12 @@ import org.openmetadata.service.governance.workflows.flowable.builders.SubProces
 public class SinkTask implements NodeInterface {
   public static final String FAILURE_HANDLED_BY_BRANCH_FIELD = "failureHandledByBranchExpr";
 
+  /** Suffix of the id of the service task that runs the sink, inside the node's subprocess. */
+  public static final String EXECUTE_SINK_ELEMENT = "executeSink";
+
+  /** Field extension of the sink service task that holds the sink config as JSON. */
+  public static final String SINK_CONFIG_FIELD = "sinkConfigExpr";
+
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
@@ -125,7 +131,7 @@ public class SinkTask implements NodeInterface {
 
     FieldExtension sinkConfigExpr =
         new FieldExtensionBuilder()
-            .fieldName("sinkConfigExpr")
+            .fieldName(SINK_CONFIG_FIELD)
             .fieldValue(
                 taskConfig.getSinkConfig() != null
                     ? JsonUtils.pojoToJson(taskConfig.getSinkConfig())
@@ -202,7 +208,7 @@ public class SinkTask implements NodeInterface {
             .build();
 
     return new ServiceTaskBuilder()
-        .id(getFlowableElementId(subProcessId, "executeSink"))
+        .id(getFlowableElementId(subProcessId, EXECUTE_SINK_ELEMENT))
         .implementation(SinkTaskDelegate.class.getName())
         .addFieldExtension(sinkTypeExpr)
         .addFieldExtension(sinkConfigExpr)

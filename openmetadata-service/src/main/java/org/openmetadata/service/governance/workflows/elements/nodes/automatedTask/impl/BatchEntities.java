@@ -4,11 +4,13 @@ import static org.openmetadata.service.governance.workflows.Workflow.ENTITY_LIST
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
@@ -44,20 +46,79 @@ final class BatchEntities {
   private BatchEntities() {}
 
   /**
+   * The execution a node runs in, the variables and namespaces it reads its entities from, and the
+   * field that tells whether it handles the whole batch.
+   */
+  record NodeExecution(
+      Expression batchExecutionExpr,
+      DelegateExecution execution,
+      WorkflowVariableHandler varHandler,
+      InputNamespaces namespaces) {
+    String nodeName() {
+      return execution.getCurrentActivityId();
+    }
+  }
+
+  /**
+   * Runs an action node: applies {@code action} to every entity of the batch and records the
+   * outcome, see {@link ActionOutcome#record}, or runs {@code relatedEntityAction} when the node
+   * handles {@code relatedEntity} alone.
+   */
+  static void applyAction(
+      NodeExecution node, Consumer<String> action, Runnable relatedEntityAction) {
+    Optional<List<String>> batch = read(node);
+    if (batch.isPresent()) {
+      apply(node.nodeName(), batch.get(), action)
+          .record(node.varHandler(), node.namespaces(), batch.get());
+    } else {
+      relatedEntityAction.run();
+    }
+  }
+
+  /**
+   * Runs a condition node: evaluates {@code condition} for every entity of the batch and records
+   * the outcome, see {@link #evaluate}, or evaluates {@code relatedEntityCondition} when the node
+   * handles {@code relatedEntity} alone. Either result becomes the node's {@code result} variable.
+   */
+  static void evaluateCondition(
+      NodeExecution node,
+      Expression continuingOutcomeExpr,
+      Predicate<String> condition,
+      BooleanSupplier relatedEntityCondition) {
+    boolean result =
+        read(node)
+            .map(entityLinks -> evaluateBatch(node, continuingOutcomeExpr, entityLinks, condition))
+            .orElseGet(relatedEntityCondition::getAsBoolean);
+    node.varHandler().setNodeVariable(RESULT_VARIABLE, result);
+  }
+
+  private static boolean evaluateBatch(
+      NodeExecution node,
+      Expression continuingOutcomeExpr,
+      List<String> entityLinks,
+      Predicate<String> condition) {
+    ConditionOutcome outcome =
+        evaluate(
+            node.nodeName(),
+            entityLinks,
+            continuingOutcome(continuingOutcomeExpr, node.execution()),
+            condition);
+    outcome.record(node.varHandler(), node.namespaces(), entityLinks);
+    return outcome.result();
+  }
+
+  /**
    * The batch's entity links when the node handles the whole batch; empty when it handles {@code
    * relatedEntity} alone, as a node deployed per entity or before batch fields existed does. A batch
    * that earlier nodes emptied is still the batch, so no node falls back to {@code relatedEntity},
    * which names an entity those nodes dropped.
    */
-  static Optional<List<String>> read(
-      Expression batchExecutionExpr,
-      DelegateExecution execution,
-      WorkflowVariableHandler varHandler,
-      InputNamespaces namespaces) {
+  static Optional<List<String>> read(NodeExecution node) {
     Optional<List<String>> entityLinks = Optional.empty();
-    if (isBatchExecution(batchExecutionExpr, execution)) {
+    if (isBatchExecution(node.batchExecutionExpr(), node.execution())) {
       Object value =
-          varHandler.getNamespacedVariable(namespaceOf(namespaces), ENTITY_LIST_VARIABLE);
+          node.varHandler()
+              .getNamespacedVariable(namespaceOf(node.namespaces()), ENTITY_LIST_VARIABLE);
       // Flowable returns process variables as untyped Object; the periodic trigger stores the
       // batch as a List of entity-link strings.
       if (value instanceof List<?> list) {
@@ -68,7 +129,8 @@ final class BatchEntities {
   }
 
   /** The outcome a batch condition continues on; null when its continuing edge has no condition. */
-  static String continuingOutcome(Expression continuingOutcomeExpr, DelegateExecution execution) {
+  private static String continuingOutcome(
+      Expression continuingOutcomeExpr, DelegateExecution execution) {
     return continuingOutcomeExpr != null
         ? (String) continuingOutcomeExpr.getValue(execution)
         : null;

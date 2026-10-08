@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.utils.JsonUtils;
 
 class SinkResultTest {
 
@@ -158,13 +159,28 @@ class SinkResultTest {
     assertTrue(result.getSyncedEntities().isEmpty());
     assertTrue(result.getErrors().isEmpty());
     assertTrue(result.getMetadata().isEmpty());
+    assertEquals(0, result.getSkippedCount());
+  }
+
+  @Test
+  void summaryCarriesTheSkippedCount() {
+    SinkResult result =
+        SinkResult.builder().success(true).syncedCount(4).failedCount(1).skippedCount(3).build();
+
+    SinkResultSummary summary = SinkResultSummary.from(result);
+
+    assertEquals(4, summary.syncedCount());
+    assertEquals(1, summary.failedCount());
+    assertEquals(3, summary.skippedCount());
+    assertEquals(1, summary.unlistedFailures());
+    assertEquals(3, JsonUtils.readTree(JsonUtils.pojoToJson(summary)).path("skippedCount").asInt());
   }
 
   @Test
   void serializedErrorNeverCarriesTheCause() {
     SinkResult result = SinkResult.failure("svc.db.sch.t", new IllegalStateException("boom"));
 
-    String json = org.openmetadata.schema.utils.JsonUtils.pojoToJson(result);
+    String json = JsonUtils.pojoToJson(result);
 
     assertTrue(json.contains("boom"), json);
     assertFalse(json.contains("cause"), json);

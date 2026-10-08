@@ -63,18 +63,11 @@ public class RollbackEntityImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler variableHandler = new WorkflowVariableHandler(execution);
     InputNamespaces namespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
-    Optional<List<String>> batch =
-        BatchEntities.read(batchExecutionExpr, execution, variableHandler, namespaces);
-    if (batch.isPresent()) {
-      String updatedBy = updatedBy(variableHandler, namespaces);
-      BatchEntities.apply(
-              execution.getCurrentActivityId(),
-              batch.get(),
-              entityLink -> rejectEntity(entityLink, updatedBy))
-          .record(variableHandler, namespaces, batch.get());
-    } else {
-      rejectRelatedEntity(execution);
-    }
+    String updatedBy = updatedBy(variableHandler, namespaces);
+    BatchEntities.applyAction(
+        new BatchEntities.NodeExecution(batchExecutionExpr, execution, variableHandler, namespaces),
+        entityLink -> rejectEntity(entityLink, updatedBy),
+        () -> rejectRelatedEntity(execution));
   }
 
   private void rejectEntity(String entityLinkValue, String updatedBy) {

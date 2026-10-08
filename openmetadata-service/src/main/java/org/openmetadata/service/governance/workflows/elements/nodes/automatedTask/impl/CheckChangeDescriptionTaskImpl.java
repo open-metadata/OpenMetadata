@@ -2,14 +2,12 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -40,13 +38,13 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
-      Optional<List<String>> batch =
-          BatchEntities.read(batchExecutionExpr, execution, varHandler, inputNamespaces);
-      if (batch.isPresent()) {
-        checkBatch(execution, varHandler, inputNamespaces, batch.get());
-      } else {
-        checkRelatedEntity(execution, varHandler, inputNamespaces);
-      }
+      ChangeRules changeRules = changeRules(execution);
+      BatchEntities.evaluateCondition(
+          new BatchEntities.NodeExecution(
+              batchExecutionExpr, execution, varHandler, inputNamespaces),
+          batchContinuingOutcomeExpr,
+          entityLink -> checkChangeDescription(changeRules, entityLink),
+          () -> checkRelatedEntity(varHandler, inputNamespaces, changeRules));
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -55,33 +53,15 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
     }
   }
 
-  private void checkRelatedEntity(
-      DelegateExecution execution,
+  private boolean checkRelatedEntity(
       WorkflowVariableHandler varHandler,
-      InputNamespaces inputNamespaces) {
+      InputNamespaces inputNamespaces,
+      ChangeRules changeRules) {
     String entityLinkStr =
         (String)
             varHandler.getNamespacedVariable(
                 inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
-
-    boolean result = checkChangeDescription(changeRules(execution), entityLinkStr);
-    varHandler.setNodeVariable(RESULT_VARIABLE, result);
-  }
-
-  private void checkBatch(
-      DelegateExecution execution,
-      WorkflowVariableHandler varHandler,
-      InputNamespaces inputNamespaces,
-      List<String> entityLinks) {
-    ChangeRules changeRules = changeRules(execution);
-    BatchEntities.ConditionOutcome outcome =
-        BatchEntities.evaluate(
-            execution.getCurrentActivityId(),
-            entityLinks,
-            BatchEntities.continuingOutcome(batchContinuingOutcomeExpr, execution),
-            entityLink -> checkChangeDescription(changeRules, entityLink));
-    outcome.record(varHandler, inputNamespaces, entityLinks);
-    varHandler.setNodeVariable(RESULT_VARIABLE, outcome.result());
+    return checkChangeDescription(changeRules, entityLinkStr);
   }
 
   /** The node's condition and rules, read from the execution on the job thread. */

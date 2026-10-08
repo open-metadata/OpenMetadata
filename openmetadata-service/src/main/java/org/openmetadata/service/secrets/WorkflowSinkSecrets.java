@@ -16,6 +16,8 @@ package org.openmetadata.service.secrets;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.macasaet.fernet.TokenValidationException;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
@@ -30,6 +32,7 @@ import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
  * encrypting twice changes nothing. Without a Fernet key ({@code no_encryption_at_rest}) secrets
  * are stored as sent.
  */
+@Slf4j
 public final class WorkflowSinkSecrets {
   private WorkflowSinkSecrets() {}
 
@@ -41,8 +44,23 @@ public final class WorkflowSinkSecrets {
   }
 
   /**
+   * Encrypts, in place, every plaintext sink secret of {@code updated}, an update of {@code
+   * original}. A plaintext value that the stored ciphertext at the same field of the sink node of
+   * the same name decrypts to is replaced by that ciphertext, so sending a secret again leaves the
+   * definition unchanged; Fernet ciphertext is randomized, so encrypting it again never would.
+   */
+  public static void encrypt(WorkflowDefinition original, WorkflowDefinition updated) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      WorkflowDefinitionMasker.restoreStoredSecrets(
+          original, updated, WorkflowSinkSecrets::isCiphertextOf);
+      encrypt(updated);
+    }
+  }
+
+  /**
    * Encrypts, in place, every plaintext sink secret of a stored workflow definition JSON, including
-   * the nodes recorded in its change descriptions. Returns whether any value was encrypted.
+   * the nodes recorded in its change descriptions. Returns whether any value was encrypted. Used by
+   * the Collate 2.1.0 sink workflow migration; OpenMetadata itself has no caller.
    */
   public static boolean encrypt(JsonNode definition) {
     return Fernet.getInstance().isKeyDefined()
@@ -57,6 +75,27 @@ public final class WorkflowSinkSecrets {
   public static Object decrypt(Object sinkConfig) {
     return WorkflowDefinitionMasker.transformSinkConfigSecrets(
         sinkConfig, Fernet.getInstance()::decryptIfApplies);
+  }
+
+  /**
+   * Whether {@code stored} is ciphertext of the plaintext {@code incoming} under the primary Fernet
+   * key. Ciphertext the primary key cannot decrypt, one made with an older key of a rotation list
+   * included, matches nothing, so sending the secret again encrypts it with the primary key.
+   */
+  static boolean isCiphertextOf(String incoming, String stored) {
+    return !Fernet.isTokenized(incoming)
+        && Fernet.isTokenized(stored)
+        && incoming.equals(decryptOrNull(stored));
+  }
+
+  private static String decryptOrNull(String ciphertext) {
+    String plaintext = null;
+    try {
+      plaintext = Fernet.getInstance().decryptWithPrimaryKey(ciphertext);
+    } catch (TokenValidationException | IllegalArgumentException e) {
+      LOG.debug("A stored sink secret does not decrypt with the primary Fernet key", e);
+    }
+    return plaintext;
   }
 
   static String encryptSecret(String secret) {

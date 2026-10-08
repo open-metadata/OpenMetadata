@@ -244,31 +244,166 @@ class SinkTaskDelegateTest {
     assertThrows(Exception.class, () -> delegate.execute(execution));
   }
 
+  /**
+   * A provider without batch support still gets every entity of the batch, through its
+   * single-entity write, and never {@code global_relatedEntity}, which names an entity a condition
+   * upstream may have dropped.
+   */
   @Test
-  void testSingleEntityMode_FallsBackWhenProviderDoesNotSupportBatch() {
-    // Register a provider that doesn't support batch
-    SinkProviderRegistry.getInstance().unregister(TEST_SINK_TYPE);
-    TestSinkProvider noBatchProvider =
+  void batchWithoutProviderBatchSupportWritesEveryEntityOneByOne() {
+    TestSinkProvider single = singleEntityProvider(entity -> SinkResult.success("written"));
+    when(execution.getVariable("global_relatedEntity")).thenReturn("<#E::table::dropped.fqn>");
+    delegate.entityLoader = SinkTaskDelegateTest::namedEntity;
+
+    runBatchWithLoader(single, 250);
+
+    assertEquals(
+        IntStream.range(0, 250).mapToObj("<#E::table::svc.db.sch.t%d>"::formatted).toList(),
+        single.getWrittenEntities().stream().map(EntityInterface::getFullyQualifiedName).toList());
+    assertEquals(0, single.getBatchWriteCallCount());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(250));
+    verify(execution).setVariable(eq("process_failedCount"), eq(0));
+    verify(execution).setVariable(eq("process_result"), eq("success"));
+  }
+
+  @Test
+  void anEmptiedBatchWritesNoEntityWithoutProviderBatchSupport() {
+    TestSinkProvider single = singleEntityProvider(entity -> SinkResult.success("written"));
+    SinkProviderRegistry.getInstance().register(TEST_SINK_TYPE, config -> single);
+    setupCommonExpressions(true);
+    when(inputNamespaceMapExpr.getValue(execution))
+        .thenReturn(
+            JsonUtils.pojoToJson(
+                Map.of(
+                    ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE,
+                    RELATED_ENTITY_VARIABLE, GLOBAL_NAMESPACE)));
+    setupVariableAccess(List.of(), false);
+    when(execution.getVariable("global_relatedEntity")).thenReturn("<#E::table::dropped.fqn>");
+
+    delegate.execute(execution);
+
+    assertEquals(0, single.getWriteCallCount());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(0));
+    verify(execution).setVariable(eq("process_result"), eq("success"));
+  }
+
+  @Test
+  void aStopRequestEndsAWriteOfSingleEntitiesAtTheNextSubBatch() {
+    when(execution.getProcessInstanceBusinessKey()).thenReturn(UUID.randomUUID().toString());
+    TestSinkProvider single = singleEntityProvider(entity -> SinkResult.success("written"));
+    delegate.isStopRequested = businessKey -> single.getWriteCallCount() > 0;
+    delegate.entityLoader = SinkTaskDelegateTest::namedEntity;
+
+    runBatchWithLoader(single, 250);
+
+    assertEquals(SinkProvider.DEFAULT_BATCH_SIZE, single.getWriteCallCount());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(100));
+    verify(execution).setVariable(eq("process_failedCount"), eq(150));
+    verify(execution).setVariable(eq("process_result"), eq("failure"));
+  }
+
+  /** Single-entity writes count per sub-batch, as a batch write does, not per entity. */
+  @Test
+  void consecutiveSubBatchesOfFailedSingleEntityWritesStopTheBatch() {
+    TestSinkProvider single =
+        singleEntityProvider(
+            entity -> SinkResult.failure(entity.getFullyQualifiedName(), "endpoint down"));
+    delegate.entityLoader = SinkTaskDelegateTest::namedEntity;
+
+    runBatchWithLoader(single, 1000);
+
+    assertEquals(
+        SinkTaskDelegate.MAX_CONSECUTIVE_FAILED_SUB_BATCHES * SinkProvider.DEFAULT_BATCH_SIZE,
+        single.getWriteCallCount());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(0));
+    verify(execution).setVariable(eq("process_failedCount"), eq(1000));
+    verify(execution).setVariable(eq("process_result"), eq("failure"));
+  }
+
+  @Test
+  void skippedEntitiesAreCountedApartFromSyncedAndFailedOnes() {
+    SinkProvider skippingOne =
         new TestSinkProvider() {
           @Override
-          public boolean supportsBatch() {
-            return false;
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+            return SinkResult.builder()
+                .success(true)
+                .syncedCount(entities.size() - 1)
+                .skippedCount(1)
+                .build();
+          }
+
+          @Override
+          public SinkResult finishBatch(SinkContext context) {
+            return SinkResult.builder().success(true).skippedCount(2).build();
           }
         };
-    SinkProviderRegistry.getInstance().register(TEST_SINK_TYPE, config -> noBatchProvider);
 
-    setupCommonExpressions(true); // batchMode=true but provider doesn't support it
-    Map<String, String> namespaceMap = new HashMap<>();
-    namespaceMap.put(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE);
-    namespaceMap.put(RELATED_ENTITY_VARIABLE, GLOBAL_NAMESPACE);
-    when(inputNamespaceMapExpr.getValue(execution)).thenReturn(JsonUtils.pojoToJson(namespaceMap));
+    runBatch(skippingOne, 250, "300");
 
-    List<String> entityList = List.of("<#E::table::test.fqn>");
-    setupVariableAccess(entityList, false);
-    when(execution.getVariable("global_relatedEntity")).thenReturn("<#E::table::test.fqn>");
+    verify(execution).setVariable(eq("process_syncedCount"), eq(247));
+    verify(execution).setVariable(eq("process_failedCount"), eq(0));
+    verify(execution).setVariable(eq("process_skippedCount"), eq(5));
+    verify(execution).setVariable(eq("process_result"), eq("success"));
+    ArgumentCaptor<Object> syncResult = ArgumentCaptor.forClass(Object.class);
+    verify(execution).setVariable(eq("process_syncResult"), syncResult.capture());
+    assertEquals(
+        5, JsonUtils.readTree((String) syncResult.getValue()).path("skippedCount").asInt());
+  }
 
-    // Will throw due to Entity.getEntity, but verifies the code path selection
-    assertThrows(Exception.class, () -> delegate.execute(execution));
+  @Test
+  void aSingleEntityWriteThatThrowsFailsOnlyItsEntity() {
+    String failingFqn = "<#E::table::svc.db.sch.t7>";
+    TestSinkProvider single =
+        singleEntityProvider(
+            entity -> {
+              if (failingFqn.equals(entity.getFullyQualifiedName())) {
+                throw new IllegalStateException("endpoint rejected the entity");
+              }
+              return SinkResult.success("written");
+            });
+    delegate.entityLoader = SinkTaskDelegateTest::namedEntity;
+
+    runBatchWithLoader(single, 20);
+
+    assertEquals(20, single.getWriteCallCount());
+    verify(execution).setVariable(eq("process_syncedCount"), eq(19));
+    verify(execution).setVariable(eq("process_failedCount"), eq(1));
+    verify(execution).setVariable(eq("process_result"), eq("failure"));
+    ArgumentCaptor<Object> syncResult = ArgumentCaptor.forClass(Object.class);
+    verify(execution).setVariable(eq("process_syncResult"), syncResult.capture());
+    assertTrue(
+        ((String) syncResult.getValue()).contains("endpoint rejected the entity"),
+        (String) syncResult.getValue());
+  }
+
+  @Test
+  void entitiesSkippedBySingleEntityWritesAreCounted() {
+    TestSinkProvider single =
+        singleEntityProvider(entity -> SinkResult.builder().success(true).skippedCount(1).build());
+    delegate.entityLoader = SinkTaskDelegateTest::namedEntity;
+
+    runBatchWithLoader(single, 120);
+
+    verify(execution).setVariable(eq("process_syncedCount"), eq(0));
+    verify(execution).setVariable(eq("process_skippedCount"), eq(120));
+    verify(execution).setVariable(eq("process_result"), eq("success"));
+  }
+
+  private static TestSinkProvider singleEntityProvider(
+      Function<EntityInterface, SinkResult> behavior) {
+    return new TestSinkProvider() {
+      @Override
+      public SinkResult write(SinkContext context, EntityInterface entity) {
+        super.write(context, entity);
+        return behavior.apply(entity);
+      }
+
+      @Override
+      public boolean supportsBatch() {
+        return false;
+      }
+    };
   }
 
   @Test

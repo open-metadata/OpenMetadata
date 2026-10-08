@@ -136,19 +136,34 @@ public class WorkflowInstanceResource
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }
 
+  private static final String TERMINATE_DESCRIPTION =
+      """
+      Delete every running process of a Workflow Instance, including one left locked by a server \
+      that stopped mid-job, and record the instance as FAILURE. When a job of a periodic-batch \
+      trigger instance is executing on this server, a stop request is recorded instead: a batch \
+      sink stops before its next sub-batch and the trigger before its next batch, after which the \
+      instance is recorded as FAILURE. When a job of any other instance is executing on this \
+      server, the termination is refused; retry after it finishes.
+
+      A lock held by another server that is still running cannot be told apart from the lock of a \
+      server that stopped, so a process whose job another server is executing now is deleted too. \
+      For a periodic-batch trigger, the recorded stop request ends that job at its next batch \
+      boundary. For any other workflow, that job keeps applying its side effects, such as entity \
+      updates, after this call has answered 200.
+
+      Each database row-lock wait during the delete is limited to\s"""
+          + WorkflowInstanceTerminator.DELETE_LOCK_WAIT_SECONDS
+          + """
+      \sseconds. When a wait runs out, the process \
+      is left running and the call answers as for a job executing on this server: 202 with a stop \
+      request for a periodic-batch trigger, 409 otherwise. Admin only.""";
+
   @POST
   @Path("/{id}/terminate")
   @Operation(
       operationId = "terminateWorkflowInstance",
       summary = "Terminate a Workflow Instance",
-      description =
-          "Delete every running process of a Workflow Instance, including one left locked by a "
-              + "server that stopped mid-job, and record the instance as FAILURE. When a job of "
-              + "a periodic-batch trigger instance is executing now, a stop request is recorded "
-              + "instead: a batch sink stops before its next sub-batch and the trigger before its "
-              + "next batch, after which the instance is recorded as FAILURE. When a job of any "
-              + "other instance is executing now, the termination is refused; retry after it "
-              + "finishes. Admin only.",
+      description = TERMINATE_DESCRIPTION,
       responses = {
         @ApiResponse(
             responseCode = "200",

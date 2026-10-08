@@ -4,8 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +17,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProviderRegistry;
 
 /** Git-sink entity-type check of {@link WorkflowDefinitionRepository#validateWorkflow}. */
 class WorkflowDefinitionGitSinkValidationTest {
@@ -38,14 +42,22 @@ class WorkflowDefinitionGitSinkValidationTest {
   private MockedStatic<Entity> entityStatics;
   private WorkflowDefinitionRepository repository;
 
+  private MockedStatic<SinkProviderRegistry> registryStatic;
+
   @BeforeEach
   void setUp() {
+    SinkProviderRegistry registry = mock(SinkProviderRegistry.class);
+    registryStatic = mockStatic(SinkProviderRegistry.class);
+    registryStatic.when(SinkProviderRegistry::getInstance).thenReturn(registry);
+    when(registry.excludedEntityTypes("git")).thenReturn(Set.of("query"));
+
     entityStatics = mockStatic(Entity.class, RETURNS_DEEP_STUBS);
     repository = new WorkflowDefinitionRepository();
   }
 
   @AfterEach
   void tearDown() {
+    registryStatic.close();
     entityStatics.close();
   }
 
@@ -57,7 +69,7 @@ class WorkflowDefinitionGitSinkValidationTest {
         assertThrows(BadRequestException.class, () -> repository.validateWorkflow(workflow));
 
     assertEquals(
-        "Query entities cannot be synced to a Git sink. Remove 'query' from the trigger's entity types.",
+        "The workflow's sinks cannot sync entity types [query]. Remove them from the trigger's entity types.",
         rejected.getMessage());
   }
 

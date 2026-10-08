@@ -1,5 +1,6 @@
 package org.openmetadata.mcp.tools;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -20,6 +22,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 /**
  * Unit tests for McpChangeEventUtil.publishChangeEvent().
@@ -139,5 +142,28 @@ class McpChangeEventUtilTest {
 
       verify(changeEvent).setUserName("alice");
     }
+  }
+
+  /** The stored change event carries the entity as the REST resource answers it: masked. */
+  @Test
+  void publishChangeEvent_masksWorkflowSinkSecrets() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    ArgumentCaptor<String> inserted = ArgumentCaptor.forClass(String.class);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      McpChangeEventUtil.publishChangeEvent(
+          GetEntityToolTest.gitSinkWorkflow("gitExport"), EventType.ENTITY_UPDATED, "admin");
+    }
+
+    verify(changeEventDAO).insert(inserted.capture());
+    assertThat(inserted.getValue())
+        .contains(PasswordEntityMasker.PASSWORD_MASK)
+        .doesNotContain(GetEntityToolTest.GIT_TOKEN)
+        .doesNotContain(GetEntityToolTest.SIGNING_KEY)
+        .doesNotContain(GetEntityToolTest.SIGNING_PASSPHRASE);
   }
 }

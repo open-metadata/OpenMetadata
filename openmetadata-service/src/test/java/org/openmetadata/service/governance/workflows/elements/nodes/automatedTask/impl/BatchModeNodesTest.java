@@ -32,6 +32,8 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -275,6 +277,58 @@ class BatchModeNodesTest {
 
     assertTrue(error.getMessage().contains("failed for 2 of 2 entities"), error.getMessage());
     assertEquals(Boolean.TRUE, variables.get("global_failure"));
+  }
+
+  /**
+   * The summary and the first entity's cause that a batch failing on every entity records stay in
+   * {@code global_exception}; the node raises the batch's runtime error as it is.
+   */
+  @ParameterizedTest
+  @EnumSource(BatchAction.class)
+  void actionFailingOnEveryEntityKeepsTheSummaryAndTheFirstCause(BatchAction batchAction) {
+    givenTables("a", "b");
+    missing.addAll(List.of(fqnOf(0), fqnOf(1)));
+    JavaDelegate action = batchAction.create();
+    injectBatchFields(action, true, null);
+
+    BpmnError error = assertThrows(BpmnError.class, () -> action.execute(execution));
+
+    String exception = (String) variables.get("global_exception");
+    String summary = "Node 'node.task' failed for 2 of 2 entities of the batch";
+    assertTrue(error.getMessage().startsWith(summary), error.getMessage());
+    assertTrue(exception.startsWith(summary), exception);
+    assertTrue(exception.contains(EntityNotFoundException.class.getName()), exception);
+    assertTrue(exception.contains(fqnOf(0)), exception);
+  }
+
+  /** The action nodes that wrap their work in a catch of their own. */
+  enum BatchAction {
+    SET_ATTRIBUTE {
+      @Override
+      JavaDelegate create() {
+        SetEntityAttributeImpl setAttribute = new SetEntityAttributeImpl();
+        inject(setAttribute, "fieldNameExpr", expression("description"));
+        return setAttribute;
+      }
+    },
+    SET_CERTIFICATION {
+      @Override
+      JavaDelegate create() {
+        SetEntityCertificationImpl certify = new SetEntityCertificationImpl();
+        inject(certify, "certificationExpr", expression("Certification.Gold"));
+        return certify;
+      }
+    },
+    SET_GLOSSARY_TERM_STATUS {
+      @Override
+      JavaDelegate create() {
+        SetGlossaryTermStatusImpl setStatus = new SetGlossaryTermStatusImpl();
+        inject(setStatus, "statusExpr", expression(EntityStatus.APPROVED.value()));
+        return setStatus;
+      }
+    };
+
+    abstract JavaDelegate create();
   }
 
   @Test

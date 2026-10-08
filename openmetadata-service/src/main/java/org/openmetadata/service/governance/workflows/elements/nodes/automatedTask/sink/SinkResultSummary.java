@@ -30,6 +30,7 @@ public record SinkResultSummary(
     boolean success,
     int syncedCount,
     int failedCount,
+    int skippedCount,
     List<String> commitIds,
     List<ErrorEntry> errors,
     int unlistedFailures) {
@@ -65,6 +66,7 @@ public record SinkResultSummary(
         result.isSuccess(),
         result.getSyncedCount(),
         result.getFailedCount(),
+        result.getSkippedCount(),
         commitIds.subList(0, Math.min(commitIds.size(), MAX_COMMIT_IDS)),
         errors,
         Math.max(0, result.getFailedCount() - errors.size()));

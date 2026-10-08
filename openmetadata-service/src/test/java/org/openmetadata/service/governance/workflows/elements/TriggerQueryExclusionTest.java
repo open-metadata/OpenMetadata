@@ -1,6 +1,9 @@
 package org.openmetadata.service.governance.workflows.elements;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Set;
@@ -9,12 +12,31 @@ import org.flowable.bpmn.model.BaseElement;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.validation.ProcessValidatorFactory;
 import org.flowable.validation.ValidationError;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProviderRegistry;
 
 /** A Git-sink workflow's trigger is deployed without the query entity type. */
 class TriggerQueryExclusionTest {
+
+  private MockedStatic<SinkProviderRegistry> registryStatic;
+
+  @BeforeEach
+  void setUp() {
+    SinkProviderRegistry registry = mock(SinkProviderRegistry.class);
+    registryStatic = mockStatic(SinkProviderRegistry.class);
+    registryStatic.when(SinkProviderRegistry::getInstance).thenReturn(registry);
+    when(registry.excludedEntityTypes("git")).thenReturn(Set.of("query"));
+  }
+
+  @AfterEach
+  void tearDown() {
+    registryStatic.close();
+  }
 
   private static final String WORKFLOW =
       """

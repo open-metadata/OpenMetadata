@@ -91,15 +91,18 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
       Map<String, Object> variables,
       Runnable beforeReadBack) {
     WorkflowInstance beforeEnd = readInstance(workflowInstanceId);
+    appliedStopRequestOf(beforeEnd)
+        .ifPresent(stopRequest -> markRunningStagesFailed(workflowInstanceId, stopRequest));
     recordEnd(workflowInstanceId, endStateOf(beforeEnd, variables), endedAt);
     beforeReadBack.run();
     Optional<StopRequest> missedStopRequest =
         stopRequestOf(readInstance(workflowInstanceId))
             .filter(stopRequest -> isStopRequestMissed(beforeEnd));
     missedStopRequest.ifPresent(
-        stopRequest ->
-            recordEnd(
-                workflowInstanceId, stoppedEndState(workflowInstanceId, stopRequest), endedAt));
+        stopRequest -> {
+          markRunningStagesFailed(workflowInstanceId, stopRequest);
+          recordEnd(workflowInstanceId, stoppedEndState(stopRequest), endedAt);
+        });
   }
 
   private static boolean isStopRequestMissed(WorkflowInstance beforeEnd) {
@@ -124,16 +127,27 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
     if (workflowInstance.getStatus() != WorkflowInstance.WorkflowStatus.SUPERSEDED) {
       endState =
           stopRequestOf(workflowInstance)
-              .map(stopRequest -> stoppedEndState(workflowInstance.getId(), stopRequest))
+              .map(WorkflowInstanceRepository::stoppedEndState)
               .orElseGet(() -> finalEndState(workflowInstance.getId(), variables));
     }
     return endState;
   }
 
-  private EndState stoppedEndState(UUID workflowInstanceId, StopRequest stopRequest) {
+  /** The stop request the end of an instance stands for; a SUPERSEDED instance keeps its status. */
+  private static Optional<StopRequest> appliedStopRequestOf(WorkflowInstance workflowInstance) {
+    return stopRequestOf(workflowInstance)
+        .filter(
+            stopRequest ->
+                workflowInstance.getStatus() != WorkflowInstance.WorkflowStatus.SUPERSEDED);
+  }
+
+  private static EndState stoppedEndState(StopRequest stopRequest) {
+    return new EndState(WorkflowInstance.WorkflowStatus.FAILURE, stopRequest.reason());
+  }
+
+  private static void markRunningStagesFailed(UUID workflowInstanceId, StopRequest stopRequest) {
     workflowInstanceStateRepository()
         .markRunningStatesAsFailed(workflowInstanceId, stopRequest.reason());
-    return new EndState(WorkflowInstance.WorkflowStatus.FAILURE, stopRequest.reason());
   }
 
   private EndState finalEndState(UUID workflowInstanceId, Map<String, Object> variables) {

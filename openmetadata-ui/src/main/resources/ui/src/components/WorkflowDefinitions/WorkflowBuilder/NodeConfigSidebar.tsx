@@ -41,6 +41,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   buildEntityFieldGroups,
+  getGitSinkTriggerNodeConfig,
   getTriggerDataAssets,
   validateWorkflowConfig,
   withExtensionPrefix,
@@ -144,7 +145,15 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       : getInitialNodeConfig({} as Node, workflowDefinition, null);
   }, [node, workflowDefinition, workflowMetadata, localName, localDescription]);
 
-  const effectiveConfig = localConfig || config;
+  // A Git sink workflow's trigger keeps only the entity types the sink syncs, whichever order the
+  // trigger and the sink were configured in.
+  const effectiveConfig = useMemo(() => {
+    const currentConfig = localConfig || config;
+
+    return hasGitSinkNode && isStartNode(node)
+      ? getGitSinkTriggerNodeConfig(currentConfig)
+      : currentConfig;
+  }, [localConfig, config, hasGitSinkNode, node]);
 
   const [customPropertyFields, setCustomPropertyFields] = useState<string[]>(
     []

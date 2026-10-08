@@ -22,12 +22,14 @@ import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 
 class WorkflowSinkSecretsTest {
   private static final String FERNET_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
+  private static final String ROTATED_FERNET_KEY = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
   private static final String GIT_TOKEN = "ghp_rawGitToken123";
   private static final String PRIVATE_KEY = "rawPrivateKeyMaterial";
   private static final String PASSPHRASE = "rawSigningPassphrase";
   private static final String WEBHOOK_PASSWORD = "rawBasicPassword789";
   private static final String SECRET_REFERENCE = "secret:/workflows/git/token";
   private static final String GIT_NODE = "gitSink";
+  private static final String WEBHOOK_NODE = "webhookSink";
   private static final String GIT_TOKEN_POINTER = "/config/sinkConfig/credentials/token";
 
   @BeforeEach
@@ -156,6 +158,75 @@ class WorkflowSinkSecretsTest {
     WorkflowDefinitionMasker.restoreMaskedSecrets(stored, rotated);
     WorkflowSinkSecrets.encrypt(rotated);
     assertCiphertextOf("ghp_rotatedToken", node(rotated, GIT_NODE).at(GIT_TOKEN_POINTER).asText());
+  }
+
+  @Test
+  void theSamePlaintextSentAgainKeepsTheStoredCiphertext() {
+    WorkflowDefinition stored = definitionWithSinks(GIT_TOKEN);
+    WorkflowSinkSecrets.encrypt(stored);
+    WorkflowDefinition sentAgain = definitionWithSinks(GIT_TOKEN);
+
+    WorkflowSinkSecrets.encrypt(stored, sentAgain);
+
+    assertEquals(stored.getNodes(), sentAgain.getNodes());
+  }
+
+  @Test
+  void aChangedPlaintextIsEncryptedAndTheUnchangedOnesKeepTheirCiphertext() {
+    WorkflowDefinition stored = definitionWithSinks(GIT_TOKEN);
+    WorkflowSinkSecrets.encrypt(stored);
+    WorkflowDefinition rotated = definitionWithSinks("ghp_rotatedToken");
+
+    WorkflowSinkSecrets.encrypt(stored, rotated);
+
+    JsonNode storedGit = node(stored, GIT_NODE);
+    JsonNode rotatedGit = node(rotated, GIT_NODE);
+    assertCiphertextOf("ghp_rotatedToken", rotatedGit.at(GIT_TOKEN_POINTER).asText());
+    assertEquals(
+        storedGit.at("/config/sinkConfig/signingKey"),
+        rotatedGit.at("/config/sinkConfig/signingKey"));
+    assertEquals(node(stored, WEBHOOK_NODE), node(rotated, WEBHOOK_NODE));
+  }
+
+  @Test
+  void ciphertextOfAnOlderRotationKeyIsReplacedByOneOfThePrimaryKey() {
+    WorkflowDefinition stored = definitionWithSinks(GIT_TOKEN);
+    WorkflowSinkSecrets.encrypt(stored);
+    String oldKeyCiphertext = node(stored, GIT_NODE).at(GIT_TOKEN_POINTER).asText();
+    Fernet.getInstance().setFernetKey("%s,%s".formatted(ROTATED_FERNET_KEY, FERNET_KEY));
+    WorkflowDefinition sentAgain = definitionWithSinks(GIT_TOKEN);
+
+    WorkflowSinkSecrets.encrypt(stored, sentAgain);
+
+    String reencrypted = node(sentAgain, GIT_NODE).at(GIT_TOKEN_POINTER).asText();
+    assertNotEquals(oldKeyCiphertext, reencrypted);
+    assertEquals(GIT_TOKEN, Fernet.getInstance().decryptWithPrimaryKey(reencrypted));
+  }
+
+  @Test
+  void ciphertextTheCurrentKeyCannotDecryptIsReplacedByANewOne() {
+    WorkflowDefinition stored = definitionWithSinks(GIT_TOKEN);
+    WorkflowSinkSecrets.encrypt(stored);
+    String oldCiphertext = node(stored, GIT_NODE).at(GIT_TOKEN_POINTER).asText();
+    Fernet.getInstance().setFernetKey(ROTATED_FERNET_KEY);
+    WorkflowDefinition sentAgain = definitionWithSinks(GIT_TOKEN);
+
+    WorkflowSinkSecrets.encrypt(stored, sentAgain);
+
+    String newCiphertext = node(sentAgain, GIT_NODE).at(GIT_TOKEN_POINTER).asText();
+    assertNotEquals(oldCiphertext, newCiphertext);
+    assertCiphertextOf(GIT_TOKEN, newCiphertext);
+  }
+
+  @Test
+  void withoutAFernetKeyAnUpdateIsStoredAsSent() {
+    WorkflowDefinition stored = definitionWithSinks(GIT_TOKEN);
+    Fernet.getInstance().setFernetKey((String) null);
+    WorkflowDefinition sentAgain = definitionWithSinks(GIT_TOKEN);
+
+    WorkflowSinkSecrets.encrypt(stored, sentAgain);
+
+    assertEquals(GIT_TOKEN, node(sentAgain, GIT_NODE).at(GIT_TOKEN_POINTER).asText());
   }
 
   @Test

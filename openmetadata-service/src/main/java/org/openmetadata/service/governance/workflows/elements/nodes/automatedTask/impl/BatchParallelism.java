@@ -30,11 +30,13 @@ import org.openmetadata.service.util.PerRequestContextCleaner;
  * the same entity; a link listed twice shares the outcome of its single run.
  *
  * <p>Concurrency is bounded twice. A run uses at most {@link Budget#threads} threads, and every
- * run in the server shares {@link Budget#permits}, so all batch nodes together never hold more
- * than that many OpenMetadata database connections, whatever number of workflow jobs Flowable
- * runs at once. The budget is a quarter of the database pool, at most {@link #MAX_THREADS}, which
- * leaves the rest of the pool to API traffic. Outside a running server, where there is no pool to
- * size against, work runs on the calling thread.
+ * entity's work, on a pool thread or on the calling thread, holds one of {@link Budget#permits},
+ * which every run in the server shares. All batch nodes together therefore never run more entities
+ * at once, nor hold more OpenMetadata database connections for them, than there are permits,
+ * whatever number of workflow jobs Flowable runs at once. Each run starts its own pool, whose
+ * threads wait for those permits. The budget is a quarter of the database pool, at most {@link
+ * #MAX_THREADS}, which leaves the rest of the pool to API traffic. Outside a running server, where
+ * there is no pool to size against, work runs on the calling thread.
  */
 @Slf4j
 final class BatchParallelism {
@@ -74,7 +76,7 @@ final class BatchParallelism {
     int threads = Math.min(budget.threads(), distinct.size());
     Map<String, Outcome<T>> outcomes =
         threads <= 1
-            ? runInline(distinct, work)
+            ? runInline(distinct, work, budget.permits())
             : runOnPool(nodeName, distinct, work, threads, budget.permits());
     return entityLinks.stream().map(outcomes::get).toList();
   }
@@ -113,9 +115,16 @@ final class BatchParallelism {
   }
 
   private static <T> Map<String, Outcome<T>> runInline(
-      List<String> entityLinks, Function<String, T> work) {
+      List<String> entityLinks, Function<String, T> work, Semaphore permits) {
     Map<String, Outcome<T>> outcomes = new ConcurrentHashMap<>();
-    entityLinks.forEach(entityLink -> outcomes.put(entityLink, attempt(entityLink, work)));
+    try {
+      for (String entityLink : entityLinks) {
+        outcomes.put(entityLink, attemptWithPermit(entityLink, work, permits));
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while running a batch node", e);
+    }
     return outcomes;
   }
 
@@ -181,6 +190,16 @@ final class BatchParallelism {
     }
   }
 
+  private static <T> Outcome<T> attemptWithPermit(
+      String entityLink, Function<String, T> work, Semaphore permits) throws InterruptedException {
+    permits.acquire();
+    try {
+      return attempt(entityLink, work);
+    } finally {
+      permits.release();
+    }
+  }
+
   private static <T> Outcome<T> attempt(String entityLink, Function<String, T> work) {
     Outcome<T> outcome;
     try {
@@ -214,7 +233,7 @@ final class BatchParallelism {
             i < entityLinks.size() && !aborted.get();
             i = next.getAndIncrement()) {
           String entityLink = entityLinks.get(i);
-          outcomes.put(entityLink, attemptWithPermit(entityLink));
+          outcomes.put(entityLink, attemptOnPoolThread(entityLink));
         }
       } catch (InterruptedException | Error e) {
         aborted.set(true);
@@ -223,12 +242,10 @@ final class BatchParallelism {
       return null;
     }
 
-    private Outcome<T> attemptWithPermit(String entityLink) throws InterruptedException {
-      permits.acquire();
+    private Outcome<T> attemptOnPoolThread(String entityLink) throws InterruptedException {
       try {
-        return attempt(entityLink, work);
+        return attemptWithPermit(entityLink, work, permits);
       } finally {
-        permits.release();
         // Pool threads carry no request scope; drop what one entity's work cached on the thread.
         PerRequestContextCleaner.clear();
       }

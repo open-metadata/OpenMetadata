@@ -11,48 +11,42 @@ import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInte
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SinkTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
-import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProviderRegistry;
 
 /**
- * Query entities are not synced to a Git sink. A workflow is refused when it holds a Git sink and
- * its trigger lists {@code query} among its entity types, in {@code entityTypes} or in the
- * deprecated {@code entityType}. Triggers match their entity types exactly, with no wildcard, so
- * the listed types are the only ones a trigger delivers. A stored workflow that still lists {@code
- * query} is deployed without a trigger for it, see {@link #excludedTriggerEntityTypes}.
+ * Provider-owned entity type restrictions shared by workflow validation and trigger deployment.
+ * Capabilities are read from factories without constructing providers or resolving credentials.
  */
-public final class GitSinkEntityTypeRule {
+public final class SinkEntityTypeRule {
 
-  public static final String QUERY_IN_GIT_SINK_MESSAGE =
-      "Query entities cannot be synced to a Git sink. Remove 'query' from the trigger's entity types.";
+  private SinkEntityTypeRule() {}
 
-  private GitSinkEntityTypeRule() {}
-
-  /** Whether the workflow writes with a Git sink and its trigger can deliver query entities. */
-  public static boolean syncsQueriesToGit(WorkflowDefinition workflow) {
-    return hasGitSink(workflow) && triggerEntityTypes(workflow.getTrigger()).contains(Entity.QUERY);
+  /** Configured trigger types that at least one sink in this workflow cannot sync. */
+  public static Set<String> unsupportedTriggerEntityTypes(WorkflowDefinition workflow) {
+    Set<String> unsupported = triggerEntityTypes(workflow.getTrigger());
+    unsupported.retainAll(excludedTriggerEntityTypes(workflow));
+    return Set.copyOf(unsupported);
   }
 
-  /**
-   * Entity types the workflow's trigger is deployed without: {@code query} when the workflow writes
-   * with a Git sink, none otherwise.
-   */
+  /** Entity types excluded from deployed triggers, including legacy stored definitions. */
   public static Set<String> excludedTriggerEntityTypes(WorkflowDefinition workflow) {
-    return hasGitSink(workflow) ? Set.of(Entity.QUERY) : Set.of();
+    Set<String> excluded = new HashSet<>();
+    for (WorkflowNodeDefinitionInterface node : listOrEmpty(workflow.getNodes())) {
+      // The node interface has an untyped config; sink definitions carry the generated schema.
+      if (node instanceof SinkTaskDefinition sink
+          && sink.getConfig() != null
+          && sink.getConfig().getSinkType() != null) {
+        excluded.addAll(
+            SinkProviderRegistry.getInstance()
+                .excludedEntityTypes(sink.getConfig().getSinkType().value()));
+      }
+    }
+    return Set.copyOf(excluded);
   }
 
-  public static boolean hasGitSink(WorkflowDefinition workflow) {
-    return listOrEmpty(workflow.getNodes()).stream().anyMatch(GitSinkEntityTypeRule::isGitSink);
-  }
-
-  private static boolean isGitSink(WorkflowNodeDefinitionInterface node) {
-    // Nodes are held as WorkflowNodeDefinitionInterface; only the sink subtype carries a sink type.
-    return node instanceof SinkTaskDefinition sinkTask
-        && sinkTask.getConfig() != null
-        && sinkTask.getConfig().getSinkType() != null
-        && switch (sinkTask.getConfig().getSinkType()) {
-          case GIT -> true;
-          case WEBHOOK, HTTP_ENDPOINT -> false;
-        };
+  public static String rejectionMessage(Set<String> unsupportedEntityTypes) {
+    return "The workflow's sinks cannot sync entity types %s. Remove them from the trigger's entity types."
+        .formatted(unsupportedEntityTypes.stream().sorted().toList());
   }
 
   private static Set<String> triggerEntityTypes(WorkflowTriggerInterface trigger) {

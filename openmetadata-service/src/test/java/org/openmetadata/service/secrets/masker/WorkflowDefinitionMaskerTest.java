@@ -3,12 +3,10 @@ package org.openmetadata.service.secrets.masker;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.core.JsonPointer;
-import jakarta.json.Json;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,21 +25,17 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.exception.BadRequestException;
 
 class WorkflowDefinitionMaskerTest {
-  private static final String GIT_TOKEN = "ghp_rawGitToken123";
+  static final String GIT_TOKEN = "ghp_rawGitToken123";
   private static final String SIGNING_KEY =
       "-----BEGIN PGP PRIVATE KEY BLOCK-----\nrawKeyMaterial\n-----END PGP PRIVATE KEY BLOCK-----";
-  private static final String SIGNING_PASSPHRASE = "rawSigningPassphrase";
+  static final String SIGNING_PASSPHRASE = "rawSigningPassphrase";
   private static final String WEBHOOK_TOKEN = "rawBearerToken456";
   private static final String WEBHOOK_PASSWORD = "rawBasicPassword789";
-  private static final String GIT_NODE = "gitSink";
+  static final String GIT_NODE = "gitSink";
   private static final String WEBHOOK_NODE = "webhookSink";
-  private static final String STORED_CIPHERTEXT = "fernet:storedForThisNode";
-  private static final String PASTED_CIPHERTEXT = "fernet:copiedFromAnotherWorkflow";
-  private static final String ENCRYPTED_REJECTION = "encrypted values cannot be supplied";
-  private static final String GIT_TOKEN_PATH = "/nodes/1/config/sinkConfig/credentials/token";
+  static final String STORED_CIPHERTEXT = "fernet:storedForThisNode";
   private static final String EDGES_JSON = "[{\"from\":\"start\",\"to\":\"gitSink\"}]";
 
   @Test
@@ -52,6 +46,30 @@ class WorkflowDefinitionMaskerTest {
     assertEquals(
         pointers("/authentication/token", "/authentication/password", "/authentication/apiKey"),
         Set.copyOf(WorkflowDefinitionMasker.WEBHOOK_SECRET_POINTERS));
+  }
+
+  @Test
+  void hasSinkSecretsReportsANonEmptySecretAtTheSecretFieldsOfTheNodesSinkType() {
+    WorkflowDefinition emptyToken = gitSinkOnly("");
+    sinkNode(emptyToken, GIT_NODE)
+        .getConfig()
+        .getSinkConfig()
+        .setAdditionalProperty("authentication", Map.of("token", WEBHOOK_TOKEN));
+
+    assertTrue(WorkflowDefinitionMasker.hasSinkSecrets(gitSinkOnly(GIT_TOKEN)));
+    assertTrue(WorkflowDefinitionMasker.hasSinkSecrets(definitionWithSinks("")));
+    assertFalse(WorkflowDefinitionMasker.hasSinkSecrets(gitSinkOnly("")));
+    assertFalse(
+        WorkflowDefinitionMasker.hasSinkSecrets(emptyToken),
+        "a value at another sink type's secret field is not a secret of this node");
+    assertFalse(WorkflowDefinitionMasker.hasSinkSecrets(new WorkflowDefinition()));
+  }
+
+  /** The definition with its webhook sink left without a config, so only the Git sink holds one. */
+  private static WorkflowDefinition gitSinkOnly(String gitToken) {
+    WorkflowDefinition definition = definitionWithSinks(gitToken);
+    sinkNode(definition, WEBHOOK_NODE).getConfig().setSinkConfig(null);
+    return definition;
   }
 
   @Test
@@ -139,46 +157,6 @@ class WorkflowDefinitionMaskerTest {
   }
 
   @Test
-  void aNewDefinitionSentWithTheMaskIsRejected() {
-    WorkflowDefinition created = definitionWithSinks(PASSWORD_MASK);
-
-    BadRequestException rejected =
-        assertThrows(
-            BadRequestException.class,
-            () -> WorkflowDefinitionMasker.requireNoMaskedSecrets(created));
-
-    assertEquals(400, rejected.getResponse().getStatus());
-    assertTrue(rejected.getMessage().contains("'%s'".formatted(GIT_NODE)), rejected.getMessage());
-    assertTrue(rejected.getMessage().contains("/credentials/token"), rejected.getMessage());
-  }
-
-  @Test
-  void aMaskOnARenamedNodeCannotBeRestoredAndIsRejected() {
-    WorkflowDefinition stored = definitionWithSinks(GIT_TOKEN);
-    WorkflowDefinition incoming = WorkflowDefinitionMasker.mask(stored);
-    sinkNode(incoming, GIT_NODE).setName("renamedGitSink");
-
-    WorkflowDefinitionMasker.restoreMaskedSecrets(stored, incoming);
-
-    BadRequestException rejected =
-        assertThrows(
-            BadRequestException.class,
-            () -> WorkflowDefinitionMasker.requireNoMaskedSecrets(incoming));
-    assertTrue(rejected.getMessage().contains("'renamedGitSink'"), rejected.getMessage());
-  }
-
-  @Test
-  void aMaskRestoredFromTheStoredNodeIsAccepted() {
-    WorkflowDefinition stored = definitionWithSinks(GIT_TOKEN);
-    WorkflowDefinition incoming = WorkflowDefinitionMasker.mask(stored);
-
-    WorkflowDefinitionMasker.restoreMaskedSecrets(stored, incoming);
-
-    assertDoesNotThrow(() -> WorkflowDefinitionMasker.requireNoMaskedSecrets(incoming));
-    assertEquals(GIT_TOKEN, gitToken(incoming));
-  }
-
-  @Test
   void signingKeyAndPassphraseAreMaskedAndTheStoredOnesKeptWhenTheMaskIsSentBack() {
     WorkflowDefinition stored = definitionWithSigningKey(SIGNING_KEY, SIGNING_PASSPHRASE);
 
@@ -193,188 +171,10 @@ class WorkflowDefinitionMaskerTest {
 
     WorkflowDefinitionMasker.restoreMaskedSecrets(stored, masked);
 
-    assertDoesNotThrow(() -> WorkflowDefinitionMasker.requireNoMaskedSecrets(masked));
+    assertDoesNotThrow(() -> WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(masked));
     assertEquals(SIGNING_KEY, gitConfig(masked).getSigningKey().getPrivateKey());
     assertEquals(SIGNING_PASSPHRASE, gitConfig(masked).getSigningKey().getPassphrase());
     assertEquals(GIT_TOKEN, gitToken(masked));
-  }
-
-  @Test
-  void aSigningKeySentWithTheMaskForANewNodeIsRejected() {
-    WorkflowDefinition created = definitionWithSigningKey(PASSWORD_MASK, SIGNING_PASSPHRASE);
-
-    BadRequestException rejected =
-        assertThrows(
-            BadRequestException.class,
-            () -> WorkflowDefinitionMasker.requireNoMaskedSecrets(created));
-
-    assertTrue(rejected.getMessage().contains("/signingKey/privateKey"), rejected.getMessage());
-  }
-
-  @Test
-  void aNewDefinitionWithAnEncryptedSecretIsRejected() {
-    WorkflowDefinition created = definitionWithSinks(PASTED_CIPHERTEXT);
-
-    BadRequestException rejected =
-        assertThrows(
-            BadRequestException.class,
-            () -> WorkflowDefinitionMasker.requireNoEncryptedSecrets(created));
-
-    assertEquals(400, rejected.getResponse().getStatus());
-    assertTrue(rejected.getMessage().contains(ENCRYPTED_REJECTION), rejected.getMessage());
-    assertTrue(rejected.getMessage().contains("'%s'".formatted(GIT_NODE)), rejected.getMessage());
-    assertTrue(rejected.getMessage().contains("/credentials/token"), rejected.getMessage());
-  }
-
-  @Test
-  void aNewDefinitionWithPlaintextSecretsAndSecretReferencesIsAccepted() {
-    assertDoesNotThrow(
-        () -> WorkflowDefinitionMasker.requireNoEncryptedSecrets(definitionWithSinks(GIT_TOKEN)));
-    assertDoesNotThrow(
-        () ->
-            WorkflowDefinitionMasker.requireNoEncryptedSecrets(
-                definitionWithSinks("secret:/workflows/git/token")));
-  }
-
-  @Test
-  void theStoredCiphertextOfTheSameNodeIsAccepted() {
-    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
-    WorkflowDefinition maskedUpdate = WorkflowDefinitionMasker.mask(stored);
-    WorkflowDefinitionMasker.restoreMaskedSecrets(stored, maskedUpdate);
-    WorkflowDefinition unchangedCopy = definitionWithSinks(STORED_CIPHERTEXT);
-
-    assertDoesNotThrow(
-        () -> WorkflowDefinitionMasker.requireStoredEncryptedSecrets(stored, maskedUpdate));
-    assertDoesNotThrow(
-        () -> WorkflowDefinitionMasker.requireStoredEncryptedSecrets(stored, unchangedCopy));
-  }
-
-  @Test
-  void ciphertextCopiedFromAnotherWorkflowIsRejected() {
-    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
-    WorkflowDefinition incoming = definitionWithSinks(PASTED_CIPHERTEXT);
-
-    BadRequestException rejected =
-        assertThrows(
-            BadRequestException.class,
-            () -> WorkflowDefinitionMasker.requireStoredEncryptedSecrets(stored, incoming));
-
-    assertTrue(rejected.getMessage().contains(ENCRYPTED_REJECTION), rejected.getMessage());
-  }
-
-  @Test
-  void theStoredCiphertextUnderARenamedNodeIsRejected() {
-    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
-    WorkflowDefinition incoming = definitionWithSinks(STORED_CIPHERTEXT);
-    sinkNode(incoming, GIT_NODE).setName("renamedGitSink");
-
-    BadRequestException rejected =
-        assertThrows(
-            BadRequestException.class,
-            () -> WorkflowDefinitionMasker.requireStoredEncryptedSecrets(stored, incoming));
-
-    assertTrue(rejected.getMessage().contains("'renamedGitSink'"), rejected.getMessage());
-  }
-
-  @Test
-  void ciphertextAtTheSecretFieldOfAnotherSinkTypeIsRejected() {
-    WorkflowDefinition stored = definitionWithSinks(GIT_TOKEN);
-    WorkflowDefinition incoming = definitionWithSinks(GIT_TOKEN);
-    sinkNode(incoming, GIT_NODE)
-        .getConfig()
-        .getSinkConfig()
-        .setAdditionalProperty("authentication", Map.of("token", PASTED_CIPHERTEXT));
-
-    BadRequestException rejected =
-        assertThrows(
-            BadRequestException.class,
-            () -> WorkflowDefinitionMasker.requireStoredEncryptedSecrets(stored, incoming));
-
-    assertTrue(rejected.getMessage().contains("/authentication/token"), rejected.getMessage());
-  }
-
-  @Test
-  void aPatchCopyingTheTokenToTheDescriptionIsRejected() {
-    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
-    WorkflowDefinition patched =
-        JsonUtils.applyPatch(
-            stored,
-            Json.createPatchBuilder().copy("/description", GIT_TOKEN_PATH).build(),
-            WorkflowDefinition.class);
-
-    assertSecretOutsideItsFieldRejected(stored, patched, "'/description'");
-  }
-
-  @Test
-  void aPatchMovingTheTokenToTheDescriptionIsRejected() {
-    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
-    WorkflowDefinition patched =
-        JsonUtils.applyPatch(
-            stored,
-            Json.createPatchBuilder().move("/description", GIT_TOKEN_PATH).build(),
-            WorkflowDefinition.class);
-
-    assertSecretOutsideItsFieldRejected(stored, patched, "'/description'");
-  }
-
-  @Test
-  void aPatchCopyingTheCredentialsObjectIntoTheSinkConfigIsRejected() {
-    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
-    WorkflowDefinition patched =
-        JsonUtils.applyPatch(
-            stored,
-            Json.createPatchBuilder()
-                .copy("/nodes/1/config/sinkConfig/backup", "/nodes/1/config/sinkConfig/credentials")
-                .build(),
-            WorkflowDefinition.class);
-
-    assertSecretOutsideItsFieldRejected(
-        stored, patched, "'/nodes/1/config/sinkConfig/backup/token'");
-  }
-
-  @Test
-  void aPatchCopyingANonSecretFieldOrAWholeSinkNodeIsAccepted() {
-    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
-    WorkflowDefinition patched =
-        JsonUtils.applyPatch(
-            stored,
-            Json.createPatchBuilder()
-                .copy("/description", "/nodes/1/config/sinkConfig/repositoryUrl")
-                .copy("/nodes/-", "/nodes/1")
-                .build(),
-            WorkflowDefinition.class);
-
-    assertDoesNotThrow(
-        () -> WorkflowDefinitionMasker.requireSecretsOnlyInSecretFields(stored, patched));
-    assertEquals("https://github.com/org/repo.git", patched.getDescription());
-  }
-
-  @Test
-  void aSecretRecordedInAnEarlierChangeDescriptionDoesNotBlockUpdates() {
-    WorkflowDefinition stored = definitionWithSinks(STORED_CIPHERTEXT);
-    stored.setChangeDescription(
-        new ChangeDescription()
-            .withFieldsAdded(List.of())
-            .withFieldsUpdated(
-                List.of(new FieldChange().withName("description").withNewValue(STORED_CIPHERTEXT)))
-            .withFieldsDeleted(List.of()));
-    WorkflowDefinition patched =
-        JsonUtils.applyPatch(
-            stored,
-            Json.createPatchBuilder().add("/description", "cleaned up").build(),
-            WorkflowDefinition.class);
-
-    assertDoesNotThrow(
-        () -> WorkflowDefinitionMasker.requireSecretsOnlyInSecretFields(stored, patched));
-  }
-
-  private static void assertSecretOutsideItsFieldRejected(
-      WorkflowDefinition stored, WorkflowDefinition patched, String location) {
-    BadRequestException rejected =
-        assertThrows(
-            BadRequestException.class,
-            () -> WorkflowDefinitionMasker.requireSecretsOnlyInSecretFields(stored, patched));
-    assertTrue(rejected.getMessage().contains(location), rejected.getMessage());
   }
 
   @Test
@@ -429,7 +229,7 @@ class WorkflowDefinitionMaskerTest {
     return nodeName -> Optional.ofNullable(configs.get(nodeName));
   }
 
-  private static WorkflowDefinition definitionWithSigningKey(String privateKey, String passphrase) {
+  static WorkflowDefinition definitionWithSigningKey(String privateKey, String passphrase) {
     WorkflowDefinition definition = definitionWithSinks(GIT_TOKEN);
     GitSinkConfig config =
         gitConfig(definition)
@@ -441,7 +241,7 @@ class WorkflowDefinitionMaskerTest {
     return definition;
   }
 
-  private static WorkflowDefinition definitionWithSinks(String gitToken) {
+  static WorkflowDefinition definitionWithSinks(String gitToken) {
     String json =
         """
         {
@@ -498,7 +298,7 @@ class WorkflowDefinitionMaskerTest {
         .withFieldsDeleted(List.of(new FieldChange().withName("nodes").withOldValue(nodesJson)));
   }
 
-  private static SinkTaskDefinition sinkNode(WorkflowDefinition definition, String name) {
+  static SinkTaskDefinition sinkNode(WorkflowDefinition definition, String name) {
     return definition.getNodes().stream()
         .filter(node -> name.equals(node.getName()))
         .map(SinkTaskDefinition.class::cast)
@@ -516,7 +316,7 @@ class WorkflowDefinitionMaskerTest {
         sinkNode(definition, WEBHOOK_NODE).getConfig().getSinkConfig(), WebhookSinkConfig.class);
   }
 
-  private static String gitToken(WorkflowDefinition definition) {
+  static String gitToken(WorkflowDefinition definition) {
     return gitConfig(definition).getCredentials().getToken();
   }
 

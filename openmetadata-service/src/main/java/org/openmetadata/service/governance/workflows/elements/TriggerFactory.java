@@ -12,8 +12,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.EventBased
 import org.openmetadata.schema.governance.workflows.elements.triggers.NoOpTriggerDefinition;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.workflows.GitSinkEntityTypeRule;
+import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.NoOpTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
@@ -41,18 +40,16 @@ public class TriggerFactory {
     };
   }
 
-  /**
-   * Entity types the trigger is deployed without. A stored workflow written before Git sinks
-   * refused query entities may still list them; its trigger then never fetches or receives them.
-   */
+  /** Excludes unsupported types from legacy definitions that predate a provider restriction. */
   private static Set<String> excludedEntityTypes(WorkflowDefinition workflow) {
-    if (GitSinkEntityTypeRule.syncsQueriesToGit(workflow)) {
+    Set<String> unsupported = SinkEntityTypeRule.unsupportedTriggerEntityTypes(workflow);
+    if (!unsupported.isEmpty()) {
       LOG.warn(
-          "Workflow '{}' writes to a Git sink, which does not sync query entities; its trigger is deployed without the '{}' entity type",
+          "Workflow '{}' has sinks that cannot sync entity types {}; its trigger excludes them",
           workflow.getName(),
-          Entity.QUERY);
+          unsupported);
     }
-    return GitSinkEntityTypeRule.excludedTriggerEntityTypes(workflow);
+    return SinkEntityTypeRule.excludedTriggerEntityTypes(workflow);
   }
 
   /**

@@ -33,6 +33,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
     isRequired?: boolean;
     type?: string;
     isDisabled?: boolean;
+    onFocus?: () => void;
+    onBlur?: () => void;
+    onKeyDown?: (event: React.KeyboardEvent) => void;
   }) => {
     const {
       value = '',
@@ -42,6 +45,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
       isRequired,
       type = 'text',
       isDisabled,
+      onFocus,
+      onBlur,
+      onKeyDown,
     } = props;
 
     return (
@@ -58,7 +64,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
           disabled={isDisabled}
           type={type}
           value={value}
+          onBlur={onBlur}
           onChange={(e) => onChange?.(e.target.value)}
+          onFocus={onFocus}
+          onKeyDown={onKeyDown}
         />
       </div>
     );
@@ -108,6 +117,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
     hint?: React.ReactNode;
     'data-testid'?: string;
     isDisabled?: boolean;
+    onFocus?: () => void;
+    onBlur?: () => void;
+    onKeyDown?: (event: React.KeyboardEvent) => void;
   }) => {
     const {
       value = '',
@@ -116,6 +128,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
       hint,
       'data-testid': dataTestId,
       isDisabled,
+      onFocus,
+      onBlur,
+      onKeyDown,
     } = props;
 
     return (
@@ -124,7 +139,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
           aria-label={label}
           disabled={isDisabled}
           value={value}
+          onBlur={onBlur}
           onChange={(e) => onChange?.(e.target.value)}
+          onFocus={onFocus}
+          onKeyDown={onKeyDown}
         />
         <div>{hint}</div>
       </div>
@@ -331,6 +349,15 @@ const getPassphraseInput = (): HTMLInputElement =>
 
 const getTokenInput = (): HTMLInputElement =>
   screen.getByTestId('token-input').querySelector('input') as HTMLInputElement;
+
+const enterSecret = (
+  input: HTMLInputElement | HTMLTextAreaElement,
+  value: string
+) => {
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value } });
+  fireEvent.blur(input);
+};
 
 const mockOnSave = jest.fn();
 const mockOnClose = jest.fn();
@@ -682,15 +709,24 @@ describe('SinkTaskForm', () => {
       expect(tokenInput).toHaveAttribute('type', 'password');
     });
 
+    it('should empty a masked token on focus', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      fireEvent.focus(getTokenInput());
+
+      expect(getTokenInput()).toHaveValue('');
+    });
+
     it('should replace a masked token with the typed value', () => {
       renderWithProvider({
         ...defaultProps,
         node: createMockNodeWithSigningConfig(),
       });
 
-      fireEvent.change(getTokenInput(), {
-        target: { value: `${MASKED_PASSWORD_VALUE}ghp_new` },
-      });
+      enterSecret(getTokenInput(), 'ghp_new');
 
       expect(getTokenInput()).toHaveValue('ghp_new');
 
@@ -699,6 +735,58 @@ describe('SinkTaskForm', () => {
       expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
         type: 'token',
         token: 'ghp_new',
+      });
+    });
+
+    it('should save a token pasted over the mask verbatim, edge "*" included', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      enterSecret(getTokenInput(), '*hunter2*');
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
+        type: 'token',
+        token: '*hunter2*',
+      });
+    });
+
+    it('should keep the masked token when focused and left without typing', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      fireEvent.focus(getTokenInput());
+      fireEvent.blur(getTokenInput());
+
+      expect(getTokenInput()).toHaveValue(MASKED_PASSWORD_VALUE);
+
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
+        type: 'token',
+        token: MASKED_PASSWORD_VALUE,
+      });
+    });
+
+    it('should send the masked token when saved while its emptied field still has focus', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      fireEvent.focus(getTokenInput());
+
+      expect(screen.getByTestId('save-button')).toBeEnabled();
+
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.credentials).toEqual({
+        type: 'token',
+        token: MASKED_PASSWORD_VALUE,
       });
     });
 
@@ -890,9 +978,7 @@ describe('SinkTaskForm', () => {
         node: createMockNodeWithSigningConfig(),
       });
 
-      fireEvent.change(getPrivateKeyInput(), {
-        target: { value: `${MASKED_PASSWORD_VALUE}${ARMORED_KEY}` },
-      });
+      enterSecret(getPrivateKeyInput(), ARMORED_KEY);
 
       expect(getPrivateKeyInput()).toHaveValue(ARMORED_KEY);
       expect(getPassphraseInput()).toHaveValue('');
@@ -904,13 +990,102 @@ describe('SinkTaskForm', () => {
       });
     });
 
-    it('should remove signingKey when the key is cleared', () => {
+    it('should keep the masked key and passphrase when the key is focused and left without typing', () => {
       renderWithProvider({
         ...defaultProps,
         node: createMockNodeWithSigningConfig(),
       });
 
-      fireEvent.change(getPrivateKeyInput(), { target: { value: '' } });
+      fireEvent.focus(getPrivateKeyInput());
+
+      expect(getPrivateKeyInput()).toHaveValue('');
+      expect(getPassphraseInput()).toBeEnabled();
+      expect(
+        screen.getByText('message.git-sink-signing-key-configured')
+      ).toBeInTheDocument();
+
+      fireEvent.blur(getPrivateKeyInput());
+
+      expect(getPrivateKeyInput()).toHaveValue(MASKED_PASSWORD_VALUE);
+      expect(getPassphraseInput()).toHaveValue(MASKED_PASSWORD_VALUE);
+
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.signingKey).toEqual({
+        privateKey: MASKED_PASSWORD_VALUE,
+        passphrase: MASKED_PASSWORD_VALUE,
+      });
+    });
+
+    it.each(['Backspace', 'Delete'])(
+      'should remove signingKey when %s is pressed in the emptied key field',
+      (key) => {
+        renderWithProvider({
+          ...defaultProps,
+          node: createMockNodeWithSigningConfig(),
+        });
+
+        const privateKeyInput = getPrivateKeyInput();
+        fireEvent.focus(privateKeyInput);
+        fireEvent.keyDown(privateKeyInput, { key });
+        fireEvent.blur(privateKeyInput);
+
+        expect(privateKeyInput).toHaveValue('');
+
+        fireEvent.click(screen.getByTestId('save-button'));
+
+        expect(getSavedConfig().config.sinkConfig).not.toHaveProperty(
+          'signingKey'
+        );
+      }
+    );
+
+    it('should remove only the passphrase when Backspace is pressed in its emptied field', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      const passphraseInput = getPassphraseInput();
+      fireEvent.focus(passphraseInput);
+      fireEvent.keyDown(passphraseInput, { key: 'Backspace' });
+      fireEvent.blur(passphraseInput);
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.signingKey).toEqual({
+        privateKey: MASKED_PASSWORD_VALUE,
+      });
+    });
+
+    it('should keep signingKey when another key is pressed in the emptied key field', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      const privateKeyInput = getPrivateKeyInput();
+      fireEvent.focus(privateKeyInput);
+      fireEvent.keyDown(privateKeyInput, { key: 'Tab' });
+      fireEvent.blur(privateKeyInput);
+      fireEvent.click(screen.getByTestId('save-button'));
+
+      expect(getSavedConfig().config.sinkConfig.signingKey).toEqual({
+        privateKey: MASKED_PASSWORD_VALUE,
+        passphrase: MASKED_PASSWORD_VALUE,
+      });
+    });
+
+    it('should remove signingKey when a typed key is cleared', () => {
+      renderWithProvider({
+        ...defaultProps,
+        node: createMockNodeWithSigningConfig(),
+      });
+
+      const privateKeyInput = getPrivateKeyInput();
+      fireEvent.focus(privateKeyInput);
+      fireEvent.change(privateKeyInput, { target: { value: 'x' } });
+      fireEvent.change(privateKeyInput, { target: { value: '' } });
+      fireEvent.blur(privateKeyInput);
       fireEvent.click(screen.getByTestId('save-button'));
 
       expect(getSavedConfig().config.sinkConfig).not.toHaveProperty(
@@ -924,9 +1099,7 @@ describe('SinkTaskForm', () => {
         node: createMockNodeWithSigningConfig(),
       });
 
-      fireEvent.change(getPassphraseInput(), {
-        target: { value: `${MASKED_PASSWORD_VALUE}new*phrase` },
-      });
+      enterSecret(getPassphraseInput(), 'new*phrase');
 
       expect(getPassphraseInput()).toHaveValue('new*phrase');
 
@@ -938,30 +1111,33 @@ describe('SinkTaskForm', () => {
       });
     });
 
-    it('should keep text inserted inside a masked passphrase', () => {
+    it('should save a single "*" typed over a masked passphrase', () => {
       renderWithProvider({
         ...defaultProps,
         node: createMockNodeWithSigningConfig(),
       });
 
-      fireEvent.change(getPassphraseInput(), {
-        target: { value: '****a*b*****' },
-      });
+      enterSecret(getPassphraseInput(), '*');
+      fireEvent.click(screen.getByTestId('save-button'));
 
-      expect(getPassphraseInput()).toHaveValue('a*b');
+      expect(getSavedConfig().config.sinkConfig.signingKey).toEqual({
+        privateKey: MASKED_PASSWORD_VALUE,
+        passphrase: '*',
+      });
     });
 
-    it('should clear a masked key when one mask character is deleted', () => {
+    it('should save a key pasted over the mask verbatim, edge "*" included', () => {
       renderWithProvider({
         ...defaultProps,
         node: createMockNodeWithSigningConfig(),
       });
 
-      fireEvent.change(getPrivateKeyInput(), {
-        target: { value: MASKED_PASSWORD_VALUE.slice(1) },
-      });
+      enterSecret(getPrivateKeyInput(), `*${ARMORED_KEY}*`);
+      fireEvent.click(screen.getByTestId('save-button'));
 
-      expect(getPrivateKeyInput()).toHaveValue('');
+      expect(getSavedConfig().config.sinkConfig.signingKey).toEqual({
+        privateKey: `*${ARMORED_KEY}*`,
+      });
     });
   });
 

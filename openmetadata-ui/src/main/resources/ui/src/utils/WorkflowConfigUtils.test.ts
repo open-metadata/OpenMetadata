@@ -19,6 +19,8 @@ import {
   buildEntityFieldGroups,
   buildFieldOptions,
   getFieldDisplayLabel,
+  getGitSinkTriggerConfig,
+  getGitSinkTriggerNodeConfig,
   getTriggerDataAssets,
   isGitSinkNode,
 } from './WorkflowConfigUtils';
@@ -202,5 +204,59 @@ describe('WorkflowConfigUtils.getTriggerDataAssets', () => {
 
   it('keeps every entity type for a workflow without a git sink', () => {
     expect(getTriggerDataAssets(entityTypes, false)).toEqual(entityTypes);
+  });
+});
+
+describe('WorkflowConfigUtils.getGitSinkTriggerNodeConfig', () => {
+  it('drops query from the selected data assets and their filters', () => {
+    const config = {
+      name: 'Trigger',
+      description: '',
+      triggerType: 'Periodic Batch',
+      eventType: [],
+      dataAssets: [EntityType.TABLE, EntityType.QUERY, EntityType.TOPIC],
+      dataAssetFilters: [
+        { id: 1, dataAsset: EntityType.TABLE, filters: 'table-filter' },
+        { id: 2, dataAsset: EntityType.QUERY, filters: 'query-filter' },
+      ],
+    };
+
+    expect(getGitSinkTriggerNodeConfig(config)).toEqual({
+      ...config,
+      dataAssets: [EntityType.TABLE, EntityType.TOPIC],
+      dataAssetFilters: [
+        { id: 1, dataAsset: EntityType.TABLE, filters: 'table-filter' },
+      ],
+    });
+  });
+});
+
+describe('WorkflowConfigUtils.getGitSinkTriggerConfig', () => {
+  it('drops query from entity types and from per-entity-type filters', () => {
+    expect(
+      getGitSinkTriggerConfig({
+        entityTypes: [EntityType.TABLE, EntityType.QUERY],
+        filter: { [EntityType.TABLE]: 'a', [EntityType.QUERY]: 'b' },
+        filters: {
+          [EntityType.QUERY]: 'c',
+          default: 'd',
+        },
+        batchSize: 100,
+      })
+    ).toEqual({
+      entityTypes: [EntityType.TABLE],
+      filter: { [EntityType.TABLE]: 'a' },
+      filters: { default: 'd' },
+      batchSize: 100,
+    });
+  });
+
+  it('keeps a filter applied to every entity type and adds no absent field', () => {
+    expect(
+      getGitSinkTriggerConfig({
+        entityTypes: [EntityType.TABLE],
+        filters: 'shared-filter',
+      })
+    ).toEqual({ entityTypes: [EntityType.TABLE], filters: 'shared-filter' });
   });
 });

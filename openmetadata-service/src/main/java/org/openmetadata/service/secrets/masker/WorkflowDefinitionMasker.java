@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,16 +21,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -44,7 +42,6 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.WebhookSinkConfig;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.SecretsManager;
 
@@ -77,22 +74,12 @@ public final class WorkflowDefinitionMasker {
   private static final String OLD_VALUE_FIELD = "oldValue";
   private static final String NEW_VALUE_FIELD = "newValue";
   private static final String FIELD_CHANGE_NAME = "name";
-  private static final List<String> CHANGE_DESCRIPTION_FIELDS =
+  static final List<String> CHANGE_DESCRIPTION_FIELDS =
       List.of("changeDescription", "incrementalChangeDescription");
   private static final List<String> FIELD_CHANGE_LISTS =
       List.of("fieldsAdded", "fieldsUpdated", "fieldsDeleted");
   private static final String OPENMETADATA_PACKAGE = "org.openmetadata";
   private static final JsonPointer SINK_CONFIG_POINTER = JsonPointer.compile("/config/sinkConfig");
-  private static final String MASKED_SECRET_MESSAGE =
-      "Workflow node '%s' still has a masked secret ('%s'); provide the actual value";
-  private static final String ENCRYPTED_SECRET_MESSAGE =
-      """
-      Workflow node '%s' has an encrypted secret ('%s'); encrypted values cannot be supplied, \
-      provide the actual value\
-      """;
-
-  private static final String COPIED_SECRET_MESSAGE =
-      "A sink secret cannot be copied or moved out of its field; it was found at '%s'";
 
   private WorkflowDefinitionMasker() {}
 
@@ -119,7 +106,10 @@ public final class WorkflowDefinitionMasker {
         .forEach(sinkTask -> transformSinkTask(sinkTask, transform));
   }
 
-  /** Whether a sink task of {@code definition} holds a non-empty secret value. */
+  /**
+   * Whether a sink task of {@code definition} holds a non-empty secret value. Used by the Collate
+   * 2.1.0 sink workflow migration; OpenMetadata itself has no caller.
+   */
   public static boolean hasSinkSecrets(WorkflowDefinition definition) {
     return sinkTasks(definition)
         .filter(WorkflowDefinitionMasker::hasSinkConfig)
@@ -164,156 +154,31 @@ public final class WorkflowDefinitionMasker {
    * the same name in {@code original}. A value other than the mask is kept as sent.
    */
   public static void restoreMaskedSecrets(WorkflowDefinition original, WorkflowDefinition updated) {
+    restoreStoredSecrets(original, updated, (incoming, stored) -> PASSWORD_MASK.equals(incoming));
+  }
+
+  /**
+   * Replaces each sink secret in {@code updated} with the stored value at the same field of the
+   * sink node of the same name in {@code original}, where {@code keepStored} accepts the incoming
+   * and the stored value. Every other value is kept as sent.
+   */
+  public static void restoreStoredSecrets(
+      WorkflowDefinition original,
+      WorkflowDefinition updated,
+      BiPredicate<String, String> keepStored) {
     Map<String, SinkTaskDefinition> originalSinkTasks = sinkTasksByName(original);
     sinkTasks(updated)
         .filter(sinkTask -> originalSinkTasks.containsKey(sinkTask.getName()))
-        .forEach(sinkTask -> restoreSinkTask(sinkTask, originalSinkTasks.get(sinkTask.getName())));
-  }
-
-  /**
-   * Rejects a definition whose sink secret is still the mask, which is what remains when no stored
-   * secret could be restored for it: a new definition, a new or renamed node, or a node that had no
-   * secret.
-   */
-  public static void requireNoMaskedSecrets(WorkflowDefinition definition) {
-    sinkTasks(definition)
-        .filter(WorkflowDefinitionMasker::hasSinkConfig)
-        .forEach(WorkflowDefinitionMasker::requireNoMaskedSecret);
-  }
-
-  private static void requireNoMaskedSecret(SinkTaskDefinition sinkTask) {
-    JsonNode sinkConfig = JsonUtils.valueToTree(sinkTask.getConfig().getSinkConfig());
-    secretPointers(sinkTask).stream()
-        .filter(pointer -> PASSWORD_MASK.equals(sinkConfig.at(pointer).textValue()))
-        .findFirst()
-        .ifPresent(
-            pointer -> {
-              throw new BadRequestException(
-                  MASKED_SECRET_MESSAGE.formatted(sinkTask.getName(), pointer));
-            });
-  }
-
-  /**
-   * Rejects an encrypted sink secret in a new definition: only the server encrypts secrets, and a
-   * new definition has no stored value one could match.
-   */
-  public static void requireNoEncryptedSecrets(WorkflowDefinition definition) {
-    requireStoredEncryptedSecrets(Map.of(), definition);
-  }
-
-  /**
-   * Rejects an encrypted sink secret in {@code updated} that is not the value stored for the same
-   * field of the sink node of the same name in {@code original}. Every secret location of every
-   * sink type is checked, as the runtime decrypts all of them whatever the sink type.
-   */
-  public static void requireStoredEncryptedSecrets(
-      WorkflowDefinition original, WorkflowDefinition updated) {
-    requireStoredEncryptedSecrets(sinkTasksByName(original), updated);
-  }
-
-  private static void requireStoredEncryptedSecrets(
-      Map<String, SinkTaskDefinition> storedSinkTasks, WorkflowDefinition updated) {
-    sinkTasks(updated)
-        .filter(WorkflowDefinitionMasker::hasSinkConfig)
         .forEach(
             sinkTask ->
-                requireStoredEncryptedSecret(
-                    sinkTask, storedSinkConfig(storedSinkTasks.get(sinkTask.getName()))));
-  }
-
-  private static void requireStoredEncryptedSecret(
-      SinkTaskDefinition sinkTask, JsonNode storedConfig) {
-    JsonNode sinkConfig = JsonUtils.valueToTree(sinkTask.getConfig().getSinkConfig());
-    ALL_SECRET_POINTERS.stream()
-        .filter(pointer -> Fernet.isTokenized(sinkConfig.at(pointer).textValue()))
-        .filter(
-            pointer ->
-                !sinkConfig.at(pointer).textValue().equals(storedConfig.at(pointer).textValue()))
-        .findFirst()
-        .ifPresent(
-            pointer -> {
-              throw new BadRequestException(
-                  ENCRYPTED_SECRET_MESSAGE.formatted(sinkTask.getName(), pointer));
-            });
-  }
-
-  /**
-   * Rejects {@code updated} when a sink secret stored in {@code original} appears anywhere but a
-   * sink secret field, as a JSON Patch {@code copy} or {@code move} from a secret location leaves
-   * it. Masking covers only the secret fields, so a secret anywhere else would be served as stored.
-   */
-  public static void requireSecretsOnlyInSecretFields(
-      WorkflowDefinition original, WorkflowDefinition updated) {
-    Set<String> storedSecrets = storedSecrets(original);
-    if (!storedSecrets.isEmpty()) {
-      JsonNode withoutSecretFields = callerSetFields(updated);
-      transformSecrets(withoutSecretFields, secret -> "");
-      findText(withoutSecretFields, JsonPointer.empty(), storedSecrets)
-          .ifPresent(
-              pointer -> {
-                throw new BadRequestException(COPIED_SECRET_MESSAGE.formatted(pointer));
-              });
-    }
-  }
-
-  /**
-   * The JSON of {@code definition} without its change descriptions: the server writes those and
-   * replaces them on every update, and an earlier one may still record a secret.
-   */
-  private static JsonNode callerSetFields(WorkflowDefinition definition) {
-    JsonNode json = JsonUtils.valueToTree(definition);
-    // A WorkflowDefinition always serializes to a JSON object.
-    if (json instanceof ObjectNode definitionJson) {
-      definitionJson.remove(CHANGE_DESCRIPTION_FIELDS);
-    }
-    return json;
-  }
-
-  private static Set<String> storedSecrets(WorkflowDefinition original) {
-    Set<String> secrets = new HashSet<>();
-    transformSecrets(
-        JsonUtils.valueToTree(original),
-        secret -> {
-          secrets.add(secret);
-          return secret;
-        });
-    secrets.removeIf(secret -> secret.isBlank() || PASSWORD_MASK.equals(secret));
-    return secrets;
-  }
-
-  /** The location of the first text value under {@code node} that contains one of {@code values}. */
-  private static Optional<JsonPointer> findText(
-      JsonNode node, JsonPointer pointer, Set<String> values) {
-    Optional<JsonPointer> found = Optional.empty();
-    if (node.isTextual()) {
-      String text = node.textValue();
-      found = values.stream().anyMatch(text::contains) ? Optional.of(pointer) : found;
-    } else if (node.isArray()) {
-      for (int i = 0; i < node.size() && found.isEmpty(); i++) {
-        found = findText(node.get(i), pointer.appendIndex(i), values);
-      }
-    } else {
-      for (var fields = node.properties().iterator(); fields.hasNext() && found.isEmpty(); ) {
-        var field = fields.next();
-        found = findText(field.getValue(), pointer.appendProperty(field.getKey()), values);
-      }
-    }
-    return found;
-  }
-
-  /** The stored sink config of {@code stored}, or a missing node when there is none. */
-  private static JsonNode storedSinkConfig(SinkTaskDefinition stored) {
-    JsonNode storedConfig = MissingNode.getInstance();
-    if (stored != null && hasSinkConfig(stored)) {
-      storedConfig = JsonUtils.valueToTree(stored.getConfig().getSinkConfig());
-    }
-    return storedConfig;
+                restoreSinkTask(sinkTask, originalSinkTasks.get(sinkTask.getName()), keepStored));
   }
 
   /**
    * Whether the sink config deployed for a sink task of {@code definition}, which {@code
    * deployedSinkConfig} returns as JSON for the task's name, holds a plaintext secret: a non-empty
-   * value that is neither Fernet ciphertext nor a secret reference.
+   * value that is neither Fernet ciphertext nor a secret reference. Used by the Collate 2.1.0 sink
+   * workflow migration; OpenMetadata itself has no caller.
    */
   public static boolean hasPlaintextDeployedSecret(
       WorkflowDefinition definition, Function<String, Optional<String>> deployedSinkConfig) {
@@ -367,7 +232,7 @@ public final class WorkflowDefinitionMasker {
     return pointers;
   }
 
-  private static List<JsonPointer> secretPointers(SinkTaskDefinition sinkTask) {
+  static List<JsonPointer> secretPointers(SinkTaskDefinition sinkTask) {
     var config = sinkTask.getConfig();
     List<JsonPointer> pointers = List.of();
     if (config != null && config.getSinkType() != null) {
@@ -455,20 +320,28 @@ public final class WorkflowDefinitionMasker {
     return masked;
   }
 
-  private static void restoreSinkTask(SinkTaskDefinition updated, SinkTaskDefinition original) {
+  private static void restoreSinkTask(
+      SinkTaskDefinition updated,
+      SinkTaskDefinition original,
+      BiPredicate<String, String> keepStored) {
     if (!hasSinkConfig(updated) || !hasSinkConfig(original)) {
       return;
     }
     JsonNode updatedConfig = JsonUtils.valueToTree(updated.getConfig().getSinkConfig());
     JsonNode originalConfig = JsonUtils.valueToTree(original.getConfig().getSinkConfig());
-    List<JsonPointer> maskedPointers =
+    List<JsonPointer> restoredPointers =
         secretPointers(updated).stream()
-            .filter(pointer -> PASSWORD_MASK.equals(updatedConfig.at(pointer).textValue()))
+            .filter(pointer -> updatedConfig.at(pointer).isTextual())
             .filter(pointer -> originalConfig.at(pointer).isTextual())
+            .filter(
+                pointer ->
+                    keepStored.test(
+                        updatedConfig.at(pointer).textValue(),
+                        originalConfig.at(pointer).textValue()))
             .toList();
-    maskedPointers.forEach(
+    restoredPointers.forEach(
         pointer -> replaceText(updatedConfig, pointer, originalConfig.at(pointer).textValue()));
-    if (!maskedPointers.isEmpty()) {
+    if (!restoredPointers.isEmpty()) {
       updated.getConfig().setSinkConfig(JsonUtils.treeToValue(updatedConfig, SinkConfig.class));
     }
   }
@@ -494,18 +367,18 @@ public final class WorkflowDefinitionMasker {
     }
   }
 
-  private static boolean hasSinkConfig(SinkTaskDefinition sinkTask) {
+  static boolean hasSinkConfig(SinkTaskDefinition sinkTask) {
     return sinkTask.getConfig() != null && sinkTask.getConfig().getSinkConfig() != null;
   }
 
-  private static Map<String, SinkTaskDefinition> sinkTasksByName(WorkflowDefinition definition) {
+  static Map<String, SinkTaskDefinition> sinkTasksByName(WorkflowDefinition definition) {
     return sinkTasks(definition)
         .collect(
             Collectors.toMap(
                 SinkTaskDefinition::getName, Function.identity(), (first, second) -> first));
   }
 
-  private static Stream<SinkTaskDefinition> sinkTasks(WorkflowDefinition definition) {
+  static Stream<SinkTaskDefinition> sinkTasks(WorkflowDefinition definition) {
     // Workflow nodes are polymorphic by subType; only sink tasks carry credentials.
     return listOrEmpty(definition.getNodes()).stream()
         .filter(SinkTaskDefinition.class::isInstance)

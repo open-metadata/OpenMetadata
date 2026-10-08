@@ -1,15 +1,19 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,26 +24,23 @@ import org.junit.jupiter.api.Test;
 class BatchParallelismTest {
   private static final String NODE = "checkNode";
   private static final int BOUND = 4;
+  private static final long WAIT_SECONDS = 10;
   private static final List<String> LINKS =
       IntStream.range(0, 300).mapToObj("<#E::table::svc.db.schema.t%03d>"::formatted).toList();
 
-  /** Keeps every third entity, waiting a moment on some so the pool finishes out of order. */
-  private static final Predicate<String> EVERY_THIRD =
-      entityLink -> {
-        int index = indexOf(entityLink);
-        if (index % 7 == 0) {
-          awaitQuietly(new CountDownLatch(1), 2);
-        }
-        return index % 3 == 0;
-      };
+  private static final Predicate<String> EVERY_THIRD = entityLink -> indexOf(entityLink) % 3 == 0;
 
   @Test
   void parallelEvaluationKeepsTheSerialResultAndOrder() {
+    ReversedGroups reversed = new ReversedGroups(LINKS.size(), BOUND);
+
     BatchEntities.ConditionOutcome serial =
         BatchEntities.evaluate(NODE, LINKS, "true", EVERY_THIRD, BatchParallelism.Budget.of(1));
     BatchEntities.ConditionOutcome parallel =
-        BatchEntities.evaluate(NODE, LINKS, "true", EVERY_THIRD, BatchParallelism.Budget.of(BOUND));
+        BatchEntities.evaluate(
+            NODE, LINKS, "true", reversed.gate(EVERY_THIRD), BatchParallelism.Budget.of(BOUND));
 
+    assertEquals(reversed.expectedCompletionOrder(), reversed.completionOrder());
     assertEquals(100, parallel.continuing().size());
     assertEquals(serial.continuing(), parallel.continuing());
     assertEquals(serial.result(), parallel.result());
@@ -92,7 +93,7 @@ class BatchParallelismTest {
         entityLink -> {
           maxInFlight.accumulateAndGet(inFlight.incrementAndGet(), Math::max);
           allWorkersBusy.countDown();
-          awaitQuietly(allWorkersBusy, 5_000);
+          awaitOrFail(allWorkersBusy);
           inFlight.decrementAndGet();
           return true;
         },
@@ -106,22 +107,60 @@ class BatchParallelismTest {
     BatchParallelism.Budget shared = BatchParallelism.Budget.of(BOUND);
     AtomicInteger inFlight = new AtomicInteger();
     AtomicInteger maxInFlight = new AtomicInteger();
+    CountDownLatch boundReached = new CountDownLatch(BOUND);
+    CountDownLatch release = new CountDownLatch(1);
     Predicate<String> tracked =
         entityLink -> {
           maxInFlight.accumulateAndGet(inFlight.incrementAndGet(), Math::max);
-          awaitQuietly(new CountDownLatch(1), 1);
+          boundReached.countDown();
+          awaitOrFail(release);
           inFlight.decrementAndGet();
           return true;
         };
 
-    Thread other =
+    Thread first =
         Thread.ofPlatform()
             .start(() -> BatchEntities.evaluate(NODE, LINKS, "true", tracked, shared));
-    BatchEntities.evaluate(NODE, LINKS, "true", tracked, shared);
-    other.join();
+    Thread second =
+        Thread.ofPlatform()
+            .start(() -> BatchEntities.evaluate(NODE, LINKS, "true", tracked, shared));
+    awaitOrFail(boundReached);
+    // Each run starts BOUND workers; those of both runs that hold no permit queue for one.
+    await()
+        .atMost(WAIT_SECONDS, TimeUnit.SECONDS)
+        .until(() -> shared.permits().getQueueLength() == BOUND);
+    int inFlightWhileTheOthersWait = inFlight.get();
+    release.countDown();
+    first.join(TimeUnit.SECONDS.toMillis(WAIT_SECONDS));
+    second.join(TimeUnit.SECONDS.toMillis(WAIT_SECONDS));
 
-    assertTrue(maxInFlight.get() <= BOUND, "max in flight " + maxInFlight.get());
+    assertEquals(BOUND, inFlightWhileTheOthersWait);
+    assertEquals(BOUND, maxInFlight.get());
     assertEquals(BOUND, shared.permits().availablePermits());
+  }
+
+  @Test
+  void workOnTheCallingThreadHoldsAPermitOfTheBudget() {
+    BatchParallelism.Budget budget = BatchParallelism.Budget.of(BOUND);
+    BatchParallelism.Budget single = BatchParallelism.Budget.of(1);
+    List<Integer> availableWithOneEntity = new ArrayList<>();
+    List<Integer> availableWithOneThread = new ArrayList<>();
+
+    BatchParallelism.run(
+        NODE,
+        List.of(LINKS.getFirst()),
+        entityLink -> availableWithOneEntity.add(budget.permits().availablePermits()),
+        budget);
+    BatchParallelism.run(
+        NODE,
+        LINKS.subList(0, 3),
+        entityLink -> availableWithOneThread.add(single.permits().availablePermits()),
+        single);
+
+    assertEquals(List.of(BOUND - 1), availableWithOneEntity);
+    assertEquals(List.of(0, 0, 0), availableWithOneThread);
+    assertEquals(BOUND, budget.permits().availablePermits());
+    assertEquals(1, single.permits().availablePermits());
   }
 
   @Test
@@ -219,11 +258,73 @@ class BatchParallelismTest {
         entityLink.substring(entityLink.lastIndexOf('t') + 1, entityLink.length() - 1));
   }
 
-  private static void awaitQuietly(CountDownLatch latch, long millis) {
+  private static void awaitOrFail(CountDownLatch latch) {
+    boolean released;
     try {
-      latch.await(millis, TimeUnit.MILLISECONDS);
+      released = latch.await(WAIT_SECONDS, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      released = false;
+    }
+    if (!released) {
+      throw new AssertionError("latch not released within %d s".formatted(WAIT_SECONDS));
+    }
+  }
+
+  /**
+   * Makes a pool of {@code groupSize} threads finish the entities of each consecutive group in
+   * reverse order. The pool claims entities in batch order, so a whole group is in flight at once;
+   * its last entity waits until every member arrived, and each entity, once done, lets the one
+   * before it finish.
+   */
+  private static final class ReversedGroups {
+    private final int groupSize;
+    private final List<CountDownLatch> arrivals;
+    private final List<CountDownLatch> turns;
+    private final Queue<Integer> completionOrder = new ConcurrentLinkedQueue<>();
+
+    ReversedGroups(int entityCount, int groupSize) {
+      this.groupSize = groupSize;
+      this.arrivals =
+          IntStream.range(0, Math.ceilDiv(entityCount, groupSize))
+              .mapToObj(group -> new CountDownLatch(groupSize(entityCount, group)))
+              .toList();
+      this.turns = IntStream.range(0, entityCount).mapToObj(i -> new CountDownLatch(1)).toList();
+    }
+
+    private int groupSize(int entityCount, int group) {
+      return Math.min(groupSize, entityCount - group * groupSize);
+    }
+
+    Predicate<String> gate(Predicate<String> condition) {
+      return entityLink -> {
+        int index = indexOf(entityLink);
+        arrivals.get(index / groupSize).countDown();
+        awaitOrFail(isLastOfGroup(index) ? arrivals.get(index / groupSize) : turns.get(index));
+        completionOrder.add(index);
+        if (index % groupSize > 0) {
+          turns.get(index - 1).countDown();
+        }
+        return condition.test(entityLink);
+      };
+    }
+
+    private boolean isLastOfGroup(int index) {
+      return index % groupSize == groupSize - 1 || index == turns.size() - 1;
+    }
+
+    List<Integer> expectedCompletionOrder() {
+      List<Integer> expected = new ArrayList<>();
+      for (int start = 0; start < turns.size(); start += groupSize) {
+        for (int index = Math.min(start + groupSize, turns.size()) - 1; index >= start; index--) {
+          expected.add(index);
+        }
+      }
+      return expected;
+    }
+
+    List<Integer> completionOrder() {
+      return List.copyOf(completionOrder);
     }
   }
 }

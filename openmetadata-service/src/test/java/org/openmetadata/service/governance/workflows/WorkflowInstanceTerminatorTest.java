@@ -89,6 +89,13 @@ class WorkflowInstanceTerminatorTest {
             stateRepository);
     when(runtimeService.createProcessInstanceQuery()).thenAnswer(invocation -> processQuery());
     when(managementService.createJobQuery()).thenAnswer(invocation -> jobQuery());
+    // The lock-wait bound is session SQL on a real connection; here the command runs its work only.
+    when(managementService.executeCommand(any(BoundedLockWaitCommand.class)))
+        .thenAnswer(
+            invocation -> {
+              invocation.<BoundedLockWaitCommand>getArgument(0).work().run();
+              return null;
+            });
     when(repositoryService.getBpmnModel(ROOT_DEFINITION_ID))
         .thenAnswer(
             invocation ->
