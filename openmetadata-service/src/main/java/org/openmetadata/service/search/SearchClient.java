@@ -142,6 +142,56 @@ public interface SearchClient
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn);" + TAG_RESEPARATION_SCRIPT;
 
+  /**
+   * Drops references to {@code params.ids} (lowercase UUIDs) from custom-property values: {@code
+   * extension} entries (a single reference or a list), {@code customPropertiesTyped}, and the same
+   * fields on every column and nested child column. A property left without references is removed.
+   * Ids are compared in lower case, since documents written before 2.1 may hold them as sent. The
+   * ids are held in a set, so each element of a reference list costs one hash lookup.
+   */
+  String REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT =
+      """
+      boolean isDead(def id, Set dead) {
+        return id != null && dead.contains(id.toString().toLowerCase());
+      }
+      boolean dropRefs(Map holder, Set dead) {
+        boolean changed = false;
+        def ext = holder.get('extension');
+        if (ext instanceof Map) {
+          List emptied = new ArrayList();
+          for (def key : ext.keySet()) {
+            def value = ext.get(key);
+            if (value instanceof List) {
+              if (value.removeIf(r -> r instanceof Map && isDead(r.get('id'), dead))) {
+                changed = true;
+                if (value.isEmpty()) { emptied.add(key); }
+              }
+            } else if (value instanceof Map && isDead(value.get('id'), dead)) {
+              emptied.add(key);
+              changed = true;
+            }
+          }
+          for (def key : emptied) { ext.remove(key); }
+        }
+        def typed = holder.get('customPropertiesTyped');
+        if (typed instanceof List
+            && typed.removeIf(e -> e instanceof Map && isDead(e.get('refId'), dead))) {
+          changed = true;
+        }
+        for (def nestedKey : ['columns', 'children']) {
+          def nested = holder.get(nestedKey);
+          if (nested instanceof List) {
+            for (def child : nested) {
+              if (child instanceof Map && dropRefs(child, dead)) { changed = true; }
+            }
+          }
+        }
+        return changed;
+      }
+      Set dead = new HashSet(params.ids);
+      if (!dropRefs(ctx._source, dead)) { ctx.op = 'noop'; }
+      """;
+
   String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
       "ctx._source.dataProducts.removeIf(product -> product.fullyQualifiedName == params.fqn)";
 

@@ -52,6 +52,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
@@ -712,6 +713,28 @@ class SearchRepositoryTest {
 
     verify(mockBulkSink).close();
     verify(realSearchRepository, never()).updateEntityIndex(any());
+  }
+
+  @Test
+  void customPropertyCleanupAddsIndexesOutsideTheGlobalAlias() {
+    Map<String, IndexMapping> indexes = new HashMap<>();
+    indexes.put("table", mapping("table_search_index", List.of("all", "dataAsset")));
+    indexes.put("user", mapping("user_search_index", List.of()));
+    indexes.put("team", mapping("team_search_index", null));
+    indexes.put("pipelineStatus", mapping("pipeline_status_index", List.of()));
+
+    List<String> selected =
+        SearchRepository.indexesOutsideGlobalAlias(indexes, type -> !type.equals("pipelineStatus"))
+            .stream()
+            .map(IndexMapping::getIndexName)
+            .sorted()
+            .toList();
+
+    assertEquals(List.of("team_search_index", "user_search_index"), selected);
+  }
+
+  private static IndexMapping mapping(String indexName, List<String> parentAliases) {
+    return IndexMapping.builder().indexName(indexName).parentAliases(parentAliases).build();
   }
 
   /** Mock entity that allows setting a specific entity type for testing */

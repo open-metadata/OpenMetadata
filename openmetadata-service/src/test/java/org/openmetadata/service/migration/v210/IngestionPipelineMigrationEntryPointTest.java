@@ -30,11 +30,13 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
@@ -65,6 +67,8 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<OntologyMigration> ontologyMigration = mockStatic(OntologyMigration.class);
         MockedStatic<DataContractEntityReferenceMigration> dataContractMigration =
             mockStatic(DataContractEntityReferenceMigration.class);
+        MockedStatic<CustomPropertyReferenceMigration> referenceMigration =
+            mockStatic(CustomPropertyReferenceMigration.class);
         MockedStatic<IngestionPipelineMigrationUtil> ingestionPipelineMigration =
             mockStatic(IngestionPipelineMigrationUtil.class);
         MockedStatic<MlFeatureTagBackfill> mlFeatureTagBackfill =
@@ -78,6 +82,10 @@ class IngestionPipelineMigrationEntryPointTest {
       ingestionPipelineMigration.verify(
           () -> IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO));
       searchTermBoostRepair.verify(SearchTermBoostRepair::repairTermBoostSettings);
+      ConnectionType connectionType =
+          "MySQL".equals(database) ? ConnectionType.MYSQL : ConnectionType.POSTGRES;
+      referenceMigration.verify(
+          () -> CustomPropertyReferenceMigration.migrate(handle, collectionDAO, connectionType));
     }
   }
 

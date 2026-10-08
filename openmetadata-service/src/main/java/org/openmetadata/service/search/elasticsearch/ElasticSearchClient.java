@@ -789,6 +789,19 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> docIds,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildrenByNestedField(
+        indexNames, docIds, nestedPaths, field, values, updates);
+  }
+
+  @Override
   public void updateEntityRelationship(
       String indexName,
       Pair<String, String> fieldAndValue,
