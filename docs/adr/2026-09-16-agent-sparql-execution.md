@@ -489,6 +489,13 @@ configuration.
   The check is `AgentSparqlService.requireReadyProjection`, the one `sparql_query` runs, and it
   raises the same errors (below). Administrators are not gated, as with administrator
   `sparql_query`; `ontology_describe` without a `resource` serves a static file and is not gated.
+
+  These three tools check readiness before the read only. A rebuild that starts while such a read
+  is in flight can return one partial or empty result as a success; reads that start after the
+  rebuild has recorded its run are refused. That is accepted: they run fixed, short reads, and a
+  second state lookup per call buys little. `sparql_query` keeps the before-and-after check
+  because it runs caller-authored queries for up to the 30 s guard timeout. Neither is a
+  snapshot-consistency guarantee (§4a).
 - Agent-profile errors keep their stable code in the MCP error message and are mapped onto the
   statuses the MCP dispatcher already uses (it has no 503 and no "unavailable" telemetry category):
 
