@@ -62,6 +62,18 @@ export const clickSidebarLink = async (page: Page, testId: string) => {
 };
 
 export const sidebarClick = async (page: Page, id: string) => {
+  // Settings moved to the profile menu in the new shell; the legacy sidebar
+  // remains on routes that have not migrated yet.
+  if (
+    id === SidebarItem.SETTINGS &&
+    (await page.getByTestId('ask-sidebar').count()) > 0
+  ) {
+    await page.getByTestId('ask-ai-user-menu-trigger').click();
+    await page.getByTestId('ask-user-menu-settings').click();
+    await page.waitForURL('**/settings');
+
+    return;
+  }
   const items = SIDEBAR_LIST_ITEMS[id as keyof typeof SIDEBAR_LIST_ITEMS];
   if (items) {
     await page.mouse.move(0, 0); // Dismiss any open tooltips before interacting with sidebar
