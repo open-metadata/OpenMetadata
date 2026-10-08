@@ -488,6 +488,93 @@ public class OpenMetadataAssetServletTest {
   }
 
   @Test
+  public void testRenderIndexHookRewritesBodyBeforeWrite() throws Exception {
+    // Subclasses that override renderIndex should see their replacement reach the response body.
+    StringWriter bodyCapture = new StringWriter();
+    OpenMetadataAssetServlet subclass =
+        new OpenMetadataAssetServlet("/", "/assets", "/", "index.html", webConfiguration) {
+          @Override
+          protected String renderIndex(HttpServletRequest req, String html) {
+            return html.replace("__TOKEN__", "replaced");
+          }
+        };
+
+    when(request.getRequestURI()).thenReturn("/");
+    when(request.getContextPath()).thenReturn("");
+    when(request.getAttribute("cspNonce")).thenReturn(null);
+    when(request.getHeader("If-None-Match")).thenReturn(null);
+    when(response.getWriter()).thenReturn(new PrintWriter(bodyCapture));
+
+    try (MockedStatic<IndexResource> indexResource =
+        org.mockito.Mockito.mockStatic(IndexResource.class)) {
+      indexResource.when(() -> IndexResource.getIndexEtag("/")).thenReturn("\"base\"");
+      indexResource
+          .when(() -> IndexResource.getIndexFile("/", null))
+          .thenReturn("<html>__TOKEN__</html>");
+      subclass.doGet(request, response);
+    }
+
+    assertTrue(bodyCapture.toString().contains("<html>replaced</html>"));
+  }
+
+  @Test
+  public void testEtagVariantIsFoldedIntoEtagAndEmitsVaryCookie() throws Exception {
+    // Non-empty etagVariant must change the ETag the client sees AND set Vary: Cookie so
+    // intermediate caches don't serve a cookie-less copy to a cookie-set request.
+    OpenMetadataAssetServlet subclass =
+        new OpenMetadataAssetServlet("/", "/assets", "/", "index.html", webConfiguration) {
+          @Override
+          protected String etagVariant(HttpServletRequest req) {
+            return "v2";
+          }
+        };
+
+    when(request.getRequestURI()).thenReturn("/");
+    when(request.getContextPath()).thenReturn("");
+    when(request.getAttribute("cspNonce")).thenReturn(null);
+    when(request.getHeader("If-None-Match")).thenReturn(null);
+    when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+    try (MockedStatic<IndexResource> indexResource =
+        org.mockito.Mockito.mockStatic(IndexResource.class)) {
+      indexResource.when(() -> IndexResource.getIndexEtag("/")).thenReturn("\"base\"");
+      indexResource.when(() -> IndexResource.getIndexFile("/", null)).thenReturn("<html></html>");
+      subclass.doGet(request, response);
+    }
+
+    verify(response).setHeader("ETag", "\"base-v2\"");
+    verify(response).setHeader("Vary", "Cookie");
+  }
+
+  @Test
+  public void testEtagVariantHonoursConditionalGet() throws Exception {
+    // A client that already saw the variant ETag and sends it back as If-None-Match should get a
+    // 304 — same as the base case, but with variant mixed in.
+    OpenMetadataAssetServlet subclass =
+        new OpenMetadataAssetServlet("/", "/assets", "/", "index.html", webConfiguration) {
+          @Override
+          protected String etagVariant(HttpServletRequest req) {
+            return "v2";
+          }
+        };
+
+    when(request.getRequestURI()).thenReturn("/");
+    when(request.getContextPath()).thenReturn("");
+    when(request.getAttribute("cspNonce")).thenReturn(null);
+    when(request.getHeader("If-None-Match")).thenReturn("\"base-v2\"");
+
+    try (MockedStatic<IndexResource> indexResource =
+        org.mockito.Mockito.mockStatic(IndexResource.class)) {
+      indexResource.when(() -> IndexResource.getIndexEtag("/")).thenReturn("\"base\"");
+      subclass.doGet(request, response);
+    }
+
+    verify(response).setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+    verify(response).setHeader("ETag", "\"base-v2\"");
+    verify(response, never()).getWriter();
+  }
+
+  @Test
   public void testStaticAssetsAreNotSpaRoutes() {
     assertFalse(servlet.isSpaRoute("/assets/index.js"));
     assertFalse(servlet.isSpaRoute("/images/logo.png"));
