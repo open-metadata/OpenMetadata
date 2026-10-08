@@ -285,8 +285,8 @@ const KPIChart: FC<Props> = ({
       ) : (
         <Box
           inline
-          align="stretch"
-          className="layout-space w-full justify-center items-center"
+          align="center"
+          className="layout-space w-full justify-center"
           direction="col"
           gap={2}
           itemClassName="layout-space-item">

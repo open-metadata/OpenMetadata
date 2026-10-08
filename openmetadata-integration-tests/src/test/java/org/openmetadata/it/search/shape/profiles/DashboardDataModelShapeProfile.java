@@ -33,7 +33,7 @@ public final class DashboardDataModelShapeProfile implements EntityShapeProfile 
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new DashboardDataModel()
         .withId(ctx.id())
         .withName("dataModel")
@@ -50,7 +50,7 @@ public final class DashboardDataModelShapeProfile implements EntityShapeProfile 
         .build();
   }
 
-  private EntityInterface columns(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> columns(final EntityInterface<?> entity, final Rung rung) {
     final DashboardDataModel model = (DashboardDataModel) entity;
     final List<Column> columns = new ArrayList<>(rung.magnitude());
     for (int i = 0; i < rung.magnitude(); i++) {

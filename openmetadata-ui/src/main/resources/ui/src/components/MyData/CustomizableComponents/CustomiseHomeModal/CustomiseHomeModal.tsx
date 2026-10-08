@@ -327,7 +327,7 @@ const CustomiseHomeModal = ({
       <Box
         className="layout-row customise-home-modal-footer p-box d-flex justify-end gap-3 bg-white sticky bottom-0"
         wrap="wrap">
-        <Box className="layout-column tw:block d-flex items-center gap-4">
+        <Box className="layout-column d-flex items-center gap-4">
           <Button
             className="cancel-btn border-radius-xs font-medium text-md bg-white"
             data-testid="cancel-btn"

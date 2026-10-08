@@ -140,7 +140,7 @@ const DataInsightPage = () => {
         wrap="wrap">
         <Box
           className="layout-column tw:block"
-          style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
           <ErrorPlaceHolder
             className="border-none"
             permissionValue={t('label.view-entity', {

@@ -29,7 +29,7 @@ const SummaryPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
         wrap="wrap">
         <Box
           className="layout-column tw:block m-t-md"
-          style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
           {getSkeletonMockData(5).map(() => (
             <LabelCountSkeleton
               isCount
@@ -44,7 +44,7 @@ const SummaryPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
 
         <Box
           className="layout-column tw:block m-l-xss"
-          style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
           {getSkeletonMockData(10).map(() => (
             <ButtonSkeleton key={uniqueId()} size="large" />
           ))}

@@ -107,10 +107,10 @@ const WhatsNewAlert = () => {
             data-testid="whats-new-alert-card">
             <Box className="layout-row" wrap="nowrap">
               <Box
-                className={`layout-column tw:block ${`whats-new-alert-left${
+                className={`layout-column tw:block whats-new-alert-left${
                   releaseDate ? '' : ' whats-new-alert-left--centered'
-                }`}`}
-                style={{ flex: `0 0 ${'220px'}` }}>
+                }`}
+                style={{ flex: '0 0 220px' }}>
                 <div className="whats-new-alert-version-block">
                   <div className="whats-new-alert-meta">
                     <Typography className="whats-new-alert-meta-label">
@@ -170,7 +170,7 @@ const WhatsNewAlert = () => {
               </Box>
               <Box
                 className="layout-column tw:block"
-                style={{ flex: `0 0 ${'48px'}` }}>
+                style={{ flex: '0 0 48px' }}>
                 <Icon
                   className="whats-new-alert-close"
                   component={CloseIcon}

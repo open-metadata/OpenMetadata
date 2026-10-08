@@ -25,15 +25,14 @@ import {
   FIELD_OPTIONS_DROPDOWN,
 } from '../../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
-import { EntityType } from '../../../../enums/entity.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
-import { EntityStatus } from '../../../../generated/entity/data/glossaryTerm';
 import {
   LabelType,
   State,
   TagLabel,
 } from '../../../../generated/type/tagLabel';
 import { getTags } from '../../../../rest/tagAPI';
+import { fetchLifecycleStatuses } from '../../../../utils/governance/lifecycle/LifecycleStatus.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   createNodeConfig,
@@ -50,7 +49,7 @@ interface SetActionFormProps {
   onSave: (nodeId: string, config: Record<string, unknown>) => void;
   onClose: () => void;
   onDelete?: (nodeId: string) => void;
-  entityTypes?: EntityType[];
+  entityTypes?: readonly string[];
 }
 
 export const SetActionForm: React.FC<SetActionFormProps> = ({
@@ -58,6 +57,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   onSave,
   onClose,
   onDelete,
+  entityTypes,
 }) => {
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();
@@ -71,9 +71,42 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   const [fieldOptions, setFieldOptions] = useState<Record<string, string[]>>({
     certification: [],
     tier: [],
-    status: Object.values(EntityStatus),
+    status: [],
   });
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+  const entityTypesKey = entityTypes?.join(',') ?? '';
+
+  useEffect(() => {
+    if (formData.fieldName !== FieldOptions.STATUS) {
+      return;
+    }
+    let active = true;
+    setIsLoadingOptions(true);
+    setFieldOptions((previous) => ({ ...previous, status: [] }));
+    fetchLifecycleStatuses(
+      entityTypesKey.split(',').filter(Boolean),
+      'intersection'
+    )
+      .then((status) => {
+        if (active) {
+          setFieldOptions((previous) => ({ ...previous, status }));
+        }
+      })
+      .catch((error: AxiosError) => {
+        if (active) {
+          showErrorToast(error);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoadingOptions(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [formData.fieldName, entityTypesKey]);
 
   const updateFormData = useCallback(
     (field: keyof typeof formData, value: string) => {
@@ -298,7 +331,12 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
 
       <FormActionButtons
         showDelete
-        isDisabled={!isValidString(formData.displayName) || !formData.fieldName}
+        isDisabled={
+          !isValidString(formData.displayName) ||
+          !formData.fieldName ||
+          (formData.fieldName === FieldOptions.STATUS &&
+            !getSelectOptions('status').includes(formData.fieldValue))
+        }
         onCancel={onClose}
         onDelete={handleDeleteNode}
         onSave={handleSave}
