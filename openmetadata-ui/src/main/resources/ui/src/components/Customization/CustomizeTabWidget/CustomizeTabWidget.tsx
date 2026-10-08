@@ -39,12 +39,13 @@ import { EntityTabs } from '../../../enums/entity.enum';
 import { Page, Tab } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { useLeftPanelCrossDrop } from '../../../hooks/platform/useLeftPanelCrossDrop';
-import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../interface/customization.interface';
+import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
+import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import {
   getLayoutWithEmptyWidgetPlaceholder,
   getUniqueFilteredLayout,
@@ -64,7 +65,6 @@ import {
   placeWidgetBesideLeftPanel,
   placeWidgetInLeftPanel,
 } from '../../../utils/CustomizePage/GridLayoutDragUtils';
-import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showInfoToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';

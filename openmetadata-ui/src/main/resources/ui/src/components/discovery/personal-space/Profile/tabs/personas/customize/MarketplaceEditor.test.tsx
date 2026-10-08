@@ -23,8 +23,8 @@ import {
   Page,
   PageType,
 } from '../../../../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { WidgetConfig } from '../../../../../../../interface/customization.interface';
+import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import {
   createDocument,
   updateDocument,

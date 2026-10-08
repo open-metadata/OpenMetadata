@@ -25,13 +25,13 @@ import { OperationPermission } from '../../context/PermissionProvider/Permission
 import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { Page, PageType } from '../../generated/system/ui/page';
-import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { asyncNoop } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
-import { PageTypeToEntityTypeMap } from './CustomizeDetailPage.interface';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './customize-details-page.less';
+import { PageTypeToEntityTypeMap } from './CustomizeDetailPage.interface';
 
 export const CustomizeDetailsPage = ({
   personaDetails,

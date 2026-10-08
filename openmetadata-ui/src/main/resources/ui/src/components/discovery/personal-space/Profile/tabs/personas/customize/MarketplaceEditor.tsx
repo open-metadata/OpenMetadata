@@ -31,9 +31,9 @@ import { useTranslation } from 'react-i18next';
 import { TAB_GRID_MAX_COLUMNS } from '../../../../../../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../../../../../../enums/entity.enum';
 import { Page, PageType } from '../../../../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { useGridLayoutDirection } from '../../../../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../../../../interface/customization.interface';
+import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import {
   normalizePersonaDocument,
   updatePersonaDocumentPage,
