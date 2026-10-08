@@ -14,29 +14,8 @@
 import {
   buildEntityFieldGroups,
   buildFieldOptions,
-  getCustomPropertyFieldNames,
   getFieldDisplayLabel,
 } from './WorkflowConfigUtils';
-
-describe('WorkflowConfigUtils.getCustomPropertyFieldNames', () => {
-  const propertiesByType = {
-    table: [{ name: 'owner_team' }, { name: 'sla' }],
-    topic: [{ name: 'sla' }, { name: 'retention' }],
-    dashboard: [{ name: 'refresh_rate' }],
-  };
-
-  it('returns only the selected entity types, prefixed, without duplicates', () => {
-    expect(
-      getCustomPropertyFieldNames(propertiesByType, ['table', 'topic'])
-    ).toEqual(['extension.owner_team', 'extension.sla', 'extension.retention']);
-  });
-
-  it('skips a selected entity type that has no custom properties', () => {
-    expect(getCustomPropertyFieldNames(propertiesByType, ['glossary'])).toEqual(
-      []
-    );
-  });
-});
 
 describe('WorkflowConfigUtils.getFieldDisplayLabel', () => {
   it('shows a standard field by its bare name', () => {

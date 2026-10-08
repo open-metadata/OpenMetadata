@@ -174,20 +174,6 @@ export const EXTENSION_FIELD_PREFIX = 'extension.';
 export const withExtensionPrefix = (name: string): string =>
   `${EXTENSION_FIELD_PREFIX}${name}`;
 
-// The custom property fields of the given entity types, from the all-types custom property map.
-export const getCustomPropertyFieldNames = (
-  propertiesByType: Record<string, Array<{ name: string }>>,
-  entityTypes: string[]
-): string[] => [
-  ...new Set(
-    entityTypes.flatMap((entityType) =>
-      (propertiesByType[entityType] ?? []).map(({ name }) =>
-        withExtensionPrefix(name)
-      )
-    )
-  ),
-];
-
 // Inverse of withExtensionPrefix: the bare name shown to the user.
 export const getFieldLabel = (value: string): string =>
   value.startsWith(EXTENSION_FIELD_PREFIX)

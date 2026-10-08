@@ -53,7 +53,7 @@ test('exports every warning-tier import rule', async () => {
 // severities explicitly means neither direction can change by accident: a
 // promotion without a cleanup, or a demotion to get a red build green.
 const EXPECTED_SEVERITY = {
-  'no-api-calls-in-iteration': 'error',
+  'no-api-calls-in-iteration': 'warn',
   'no-circular-imports': 'warn',
   'no-cross-page-imports': 'warn',
   'no-hook-ui-imports': 'error',

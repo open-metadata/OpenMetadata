@@ -43,7 +43,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 }));
 
 jest.mock('../../../rest/metadataTypeAPI', () => ({
-  getAllCustomProperties: jest.fn().mockResolvedValue({}),
+  getCustomPropertiesByEntityType: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock(
