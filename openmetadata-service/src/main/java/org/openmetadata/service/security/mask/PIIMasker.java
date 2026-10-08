@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -69,18 +70,24 @@ public class PIIMasker {
 
     List<Integer> columnsPositionToBeMasked;
 
-    // Positions index the sample's own columns, which may be a subset of the entity's columns
-    // (and in any order), so an entity-level PII tag masks every sampled column, and a PII column
-    // the sample does not include has nothing to mask.
+    // Positions index the sample's own columns, which may be a subset of the entity's columns, in
+    // any order, and (for failed-row samples, validated case-insensitively) in a different case.
+    // An entity-level PII tag masks every sampled column; otherwise a sampled column is masked when
+    // its name matches a PII column ignoring case.
+    List<String> sampledColumns = sampleData.getColumns();
     if (entityHasPiiTag) {
       columnsPositionToBeMasked =
-          IntStream.range(0, sampleData.getColumns().size()).boxed().collect(Collectors.toList());
+          IntStream.range(0, sampledColumns.size()).boxed().collect(Collectors.toList());
     } else {
-      columnsPositionToBeMasked =
+      Set<String> piiColumnNames =
           columns.stream()
               .filter(column -> hasPiiSensitiveTag(column))
-              .map(column -> sampleData.getColumns().indexOf(column.getName()))
-              .filter(position -> position >= 0)
+              .map(column -> column.getName().toLowerCase(Locale.ROOT))
+              .collect(Collectors.toSet());
+      columnsPositionToBeMasked =
+          IntStream.range(0, sampledColumns.size())
+              .filter(position -> isPiiColumnName(sampledColumns.get(position), piiColumnNames))
+              .boxed()
               .collect(Collectors.toList());
     }
 
@@ -90,14 +97,15 @@ public class PIIMasker {
             .map(r -> maskSampleDataRow(r, columnsPositionToBeMasked))
             .collect(Collectors.toList()));
 
-    List<String> sampleDataColumns = sampleData.getColumns();
-
     // Flag column names as masked
     columnsPositionToBeMasked.forEach(
-        position ->
-            sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position))));
+        position -> sampledColumns.set(position, flagMaskedName(sampledColumns.get(position))));
 
     return sampleData;
+  }
+
+  private static boolean isPiiColumnName(String sampledColumn, Set<String> piiColumnNames) {
+    return sampledColumn != null && piiColumnNames.contains(sampledColumn.toLowerCase(Locale.ROOT));
   }
 
   public static Table getSampleData(Table table) {

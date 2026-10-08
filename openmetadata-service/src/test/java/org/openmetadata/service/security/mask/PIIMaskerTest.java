@@ -108,6 +108,24 @@ class PIIMaskerTest {
   }
 
   @Test
+  void maskSampleDataMatchesSensitiveColumnsIgnoringCase() {
+    String tableFqn = "service.db.schema.orders";
+    List<Column> columns =
+        List.of(column(tableFqn, "email", true), column(tableFqn, "city", false));
+    TableData sampleData =
+        new TableData()
+            .withColumns(new ArrayList<>(List.of("EMAIL", "city")))
+            .withRows(
+                new ArrayList<>(List.of(new ArrayList<>(List.of("alice@example.com", "Paris")))));
+
+    TableData masked =
+        PIIMasker.maskSampleData(sampleData, table(tableFqn, columns, false, List.of()), columns);
+
+    assertEquals(List.of("EMAIL [MASKED]", "city"), masked.getColumns());
+    assertEquals(List.of(PIIMasker.MASKED_VALUE, "Paris"), masked.getRows().getFirst());
+  }
+
+  @Test
   void maskSampleDataMasksEverySampledColumnOfASensitiveTable() {
     String tableFqn = "service.db.schema.orders";
     List<Column> columns = List.of(column(tableFqn, "email", false));
