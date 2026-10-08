@@ -8,9 +8,9 @@ In this section, we provide guides and references to use the Teradata connector.
 
 Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
-### Lineage
+### Lineage & Usage
 
-Query lineage is read from the Database Query Log (DBQL). Query logging must be enabled with the full SQL text (e.g. `BEGIN QUERY LOGGING WITH SQL ON ALL;`) and the user needs `SELECT` on `DBC.QryLogV` and `DBC.QryLogSQLV`. Without `WITH SQL`, only the first characters of each query are logged and most queries cannot be parsed. You can find more information on the lineage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/lineage" target="_blank">here</a>.
+Query lineage and usage are read from the Database Query Log (DBQL). Query logging must be enabled with the full SQL text (e.g. `BEGIN QUERY LOGGING WITH SQL ON ALL;`) and the user needs `SELECT` on `DBC.QryLogV` and `DBC.QryLogSQLV`. Without `WITH SQL`, only the first characters of each query are logged and most queries cannot be parsed. You can find more information on the lineage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/lineage" target="_blank">here</a> and the usage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">here</a>.
 
 You can find further information on the Teradata connector in the <a href="https://docs.open-metadata.org/connectors/database/teradata" target="_blank">docs</a>.
 

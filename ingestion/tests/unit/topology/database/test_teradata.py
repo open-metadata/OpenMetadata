@@ -28,6 +28,7 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.source.database.teradata.lineage import TeradataLineageSource
 from metadata.ingestion.source.database.teradata.metadata import TeradataSource
+from metadata.ingestion.source.database.teradata.usage import TeradataUsageSource
 
 mock_teradata_config = {
     "source": {
@@ -245,3 +246,42 @@ class TestTeradataQueryLineage:
 
     def test_query_lineage_is_no_longer_skipped(self, lineage_source):
         assert hasattr(lineage_source.service_connection, "supportsLineageExtraction")
+
+
+class TestTeradataQueryUsage:
+    @pytest.fixture
+    def usage_source(self):
+        config = deepcopy(mock_teradata_config)
+        config["source"]["type"] = "teradata-usage"
+        config["source"]["sourceConfig"]["config"] = {"type": "DatabaseUsage", "resultLimit": 500}
+        with patch("metadata.ingestion.source.database.query_parser_source.QueryParserSource.test_connection"):
+            return TeradataUsageSource.create(config["source"], MagicMock())
+
+    def test_usage_statement_reads_selects_but_not_load_rows(self, usage_source):
+        sql = usage_source.get_sql_statement(start_time=datetime(2026, 10, 5), end_time=datetime(2026, 10, 7))
+
+        sqlglot.parse_one(sql, read="teradata")
+        assert "LIKE ANY ('SELECT%', 'UPDATE%', 'MERGE%', 'DELETE%')" in sql
+        assert "LIKE ANY ('INSERT%', 'CREATE TABLE%')" in sql
+        assert "LIKE '%SEL%'" in sql
+
+    def test_dbql_select_becomes_usage_table_query(self, usage_source):
+        row = MagicMock()
+        row._asdict.return_value = {
+            "user_name": "ANALYST",
+            "schema_name": "edw",
+            "query_text": "SEL id, amt FROM edw.sales_fact",
+            "start_time": datetime(2026, 10, 6),
+            "end_time": datetime(2026, 10, 6),
+        }
+        conn = MagicMock()
+        conn.execute.return_value = [row]
+        usage_source.engine = MagicMock()
+        usage_source.engine.connect.return_value.__enter__.return_value = conn
+
+        query = next(usage_source.yield_table_queries()).queries[0]
+
+        assert query.query == "SEL id, amt FROM edw.sales_fact"
+        assert query.userName == "ANALYST"
+        assert query.databaseSchema == "edw"
+        assert query.dialect == Dialect.TERADATA.value

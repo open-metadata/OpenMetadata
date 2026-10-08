@@ -9,26 +9,28 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Teradata lineage module
+Teradata usage module
 """
 
-from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.teradata.query_parser import (
     TeradataQueryParserSource,
 )
+from metadata.ingestion.source.database.usage_source import UsageSource
 
 
-class TeradataLineageSource(TeradataQueryParserSource, LineageSource):
+class TeradataUsageSource(TeradataQueryParserSource, UsageSource):
     """
-    Teradata lineage from view definitions and the DBQL query log
+    Teradata usage from the DBQL query log
     """
 
-    # INSERT ... VALUES rows (TPump/BTEQ loads) and plain CREATE TABLE DDL carry no lineage
-    # and would flood resultLimit, so those two types must also read from a SELECT
+    # Same load-row/DDL exclusion as lineage: INSERT ... VALUES and plain CREATE TABLE
+    # touch no source table and would flood resultLimit
     filters = """
-        AND UPPER(q.StatementType) LIKE ANY ('INSERT%', 'UPDATE%', 'MERGE%', 'CREATE TABLE%')
         AND (
-            UPPER(q.StatementType) NOT LIKE ALL ('INSERT%', 'CREATE TABLE%')
-            OR UPPER(COALESCE(s.SqlTextInfo, q.QueryText)) LIKE '%SEL%'
+            UPPER(q.StatementType) LIKE ANY ('SELECT%', 'UPDATE%', 'MERGE%', 'DELETE%')
+            OR (
+                UPPER(q.StatementType) LIKE ANY ('INSERT%', 'CREATE TABLE%')
+                AND UPPER(COALESCE(s.SqlTextInfo, q.QueryText)) LIKE '%SEL%'
+            )
         )
     """
