@@ -37,6 +37,11 @@ interface DatePickerProps extends AriaDatePickerProps<DateValue> {
   triggerVariant?: 'button' | 'input';
   /** What the `input` trigger reads before a day is picked. */
   placeholder?: string;
+  /**
+   * Stretch the trigger to the width of its container. Only meaningful for the
+   * `button` variant — `input` is full-width by construction.
+   */
+  fullWidth?: boolean;
 }
 
 export const DatePicker = ({
@@ -47,6 +52,7 @@ export const DatePicker = ({
   onCancel,
   placeholder,
   triggerVariant = 'button',
+  fullWidth,
   ...props
 }: DatePickerProps) => {
   const { t } = useCoreTranslation();
@@ -108,7 +114,11 @@ export const DatePicker = ({
             </span>
           </AriaButton>
         ) : (
-          <Button color="secondary" iconLeading={CalendarIcon} size="md">
+          <Button
+            className={fullWidth ? 'tw:w-full tw:justify-start' : undefined}
+            color="secondary"
+            iconLeading={CalendarIcon}
+            size="md">
             {formattedDate}
           </Button>
         )}
@@ -116,14 +126,15 @@ export const DatePicker = ({
       <AriaPopover
         className={({ isEntering, isExiting }) =>
           cx(
-            'tw:origin-(--trigger-anchor-point) tw:will-change-transform',
+            // React Aria limits the popover height, but its calendar can exceed that limit in a modal.
+            'tw:origin-(--trigger-anchor-point) tw:will-change-transform tw:overflow-y-auto',
             isEntering &&
               'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
             isExiting &&
               'tw:duration-100 tw:ease-in tw:animate-out tw:fade-out tw:placement-right:slide-out-to-left-0.5 tw:placement-top:slide-out-to-bottom-0.5 tw:placement-bottom:slide-out-to-top-0.5'
           )
         }
-        offset={8}
+        offset={4}
         placement="bottom right">
         {/* outline-[3px] ports the bare `tw:ring` faithfully (3px in Tailwind v4, almost
             certainly unintended vs the ring-1 used elsewhere — tracked as a follow-up). */}
