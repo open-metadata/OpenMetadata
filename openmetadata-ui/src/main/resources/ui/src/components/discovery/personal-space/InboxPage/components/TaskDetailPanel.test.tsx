@@ -435,14 +435,16 @@ jest.mock('react-i18next', () => ({
 jest.mock('react-router-dom', () => ({
   Link: ({
     children,
+    className,
     to,
     'data-testid': testId,
   }: {
     children?: ReactNode;
+    className?: string;
     to?: string;
     'data-testid'?: string;
   }) => (
-    <a data-testid={testId} href={to}>
+    <a className={className} data-testid={testId} href={to}>
       {children}
     </a>
   ),
