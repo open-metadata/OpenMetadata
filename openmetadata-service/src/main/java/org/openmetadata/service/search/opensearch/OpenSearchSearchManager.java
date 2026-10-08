@@ -1797,15 +1797,17 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
   private List<EntityHierarchy> fetchTermsByFqn(String indexName, List<FieldValue> fqns)
       throws IOException {
+    Query byFqn =
+        Query.of(q -> q.terms(t -> t.field("fullyQualifiedName").terms(tv -> tv.value(fqns))));
+    // Same status gate as buildHierarchyQuery
+    Query approved =
+        Query.of(q -> q.match(m -> m.field("entityStatus").query(FieldValue.of("Approved"))));
     SearchResponse<JsonData> response =
         client.search(
             s ->
                 s.index(indexName)
                     .size(fqns.size())
-                    .query(
-                        q ->
-                            q.terms(
-                                t -> t.field("fullyQualifiedName").terms(tv -> tv.value(fqns)))),
+                    .query(q -> q.bool(b -> b.filter(List.of(byFqn, approved)))),
             JsonData.class);
     return response.hits().hits().stream()
         .filter(hit -> hit.source() != null)
