@@ -47,8 +47,9 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // Popover/Dropdown migration also removed a positional locator.
     // Removing the S3 sample-data storage tests and scoping
     // ChangeSummaryBadge's button lookup remove three more positional locators,
-    // and the profile-menu helper no longer hovers the first avatar.
-    'om-playwright/no-positional-locator': 601,
+    // the profile-menu helper no longer hovers the first avatar, and the
+    // Glossary language switch targets the core language selector by test id.
+    'om-playwright/no-positional-locator': 599,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 18,
