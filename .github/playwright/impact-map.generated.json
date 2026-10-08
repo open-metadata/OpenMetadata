@@ -123,6 +123,9 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
@@ -978,6 +981,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
@@ -1135,7 +1139,8 @@
         "playwright/e2e/Features/DataQuality/BundleSuiteBulkOperations.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
     },
     {
@@ -1622,6 +1627,9 @@
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
@@ -2360,6 +2368,16 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/isolatedUser.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/serverLoad.ts"
       ],
       "specs": [
@@ -2402,6 +2420,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/glossary/Glossary.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
@@ -2478,6 +2497,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/glossary/GlossaryTerm.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
@@ -2727,6 +2747,9 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
@@ -2930,6 +2953,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/activityAPI.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
@@ -2944,6 +2968,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/activityFeed.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts"
       ]
@@ -3206,6 +3231,9 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
@@ -3299,6 +3327,9 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
@@ -4331,6 +4362,16 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/inbox.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/utils/incidentGroups.ts"
       ],
       "specs": [
@@ -4531,6 +4572,9 @@
       "specs": [
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
@@ -5031,6 +5075,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/user.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
@@ -5064,6 +5110,9 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
         "playwright/e2e/Features/BlockEditorMathEquations.spec.ts",
@@ -5173,6 +5222,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedCardNew/CommentCard.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
@@ -5202,6 +5252,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedEditor/SendButton.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
@@ -5311,6 +5362,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/Reactions/Emoji.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts"
@@ -5321,6 +5373,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/Reactions/Reactions.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts"
@@ -5331,6 +5384,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/Shared/ActivityFeedActions.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
@@ -5367,6 +5421,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Alerts/AlertFormSourceItem/AlertFormSourceItem.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
@@ -6500,7 +6555,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/BundleSuiteBulkOperations.spec.ts",
-        "playwright/e2e/Features/Table.spec.ts"
+        "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
     },
     {
@@ -9613,6 +9669,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/SelectableList/SelectableList.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityFilters.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
@@ -9713,7 +9770,8 @@
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts"
+        "playwright/e2e/Pages/Domains.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
     },
     {
@@ -9889,9 +9947,27 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxIconButton/InboxIconButton.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/ActivityFeedItem.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/ActivityThread.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
@@ -9902,15 +9978,117 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/ActivityToolbar.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/ClampedText.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/InboxCommentComposer.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/Tasks/TaskComments.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/InboxTaskListToolbar.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskActionCommentModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskActivityTimeline.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskAssetCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskCommentRow.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskDetailHeader.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskDetailPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/tabs/TasksTab.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/MyData/MyData.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/MyData/components/MyDataAssetsList.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts"
       ]
     },
     {
@@ -11021,6 +11199,9 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/AIMode/IncidentGroups.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityClickPaths.spec.ts",
@@ -11430,6 +11611,7 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/data/topic.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
@@ -11697,7 +11879,8 @@
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
     },
     {
