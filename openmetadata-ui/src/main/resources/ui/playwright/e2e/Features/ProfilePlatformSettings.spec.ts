@@ -144,6 +144,7 @@ test.describe(
         ['lineage', 'lineage-settings'],
         ['brand-url', 'brand-url-settings'],
         ['learning-resources', 'learning-resources-settings'],
+        ['search', 'search-settings'],
         ['app-mode', 'default-app-mode-page'],
       ];
 
@@ -709,6 +710,161 @@ test.describe(
         }
         await afterAction();
       }
+    });
+
+    test('search: global settings save the full config on each change', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(page, 'searchSettings');
+      await openPlatformSettings(page);
+      await openCard(page, 'search');
+      await expect(page.getByTestId('search-settings')).toBeVisible({
+        timeout: 30_000,
+      });
+
+      const accessControl = page
+        .getByTestId('enable-roles-polices-in-search-switch')
+        .locator('input');
+      const wasEnabled = await accessControl.isChecked();
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('enable-roles-polices-in-search-switch'),
+        SETTINGS_PUT
+      );
+
+      const saved = settings.puts[0].config_value as {
+        globalSettings: { enableAccessControl: boolean };
+        assetTypeConfigurations: unknown[];
+      };
+
+      expect(saved.globalSettings.enableAccessControl).toBe(!wasEnabled);
+      // The whole document is saved, not just the changed flag.
+      expect(saved.assetTypeConfigurations.length).toBeGreaterThan(0);
+
+      await page.getByTestId('global-setting-edit-maxResultHits').click();
+      const input = page.getByTestId('global-setting-input-maxResultHits');
+      await input.fill('50');
+      await expect(
+        page.getByTestId('global-setting-save-maxResultHits')
+      ).toBeDisabled();
+      await input.fill('500');
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('global-setting-save-maxResultHits'),
+        SETTINGS_PUT
+      );
+
+      expect(
+        (settings.puts[1].config_value as { globalSettings: object })
+          .globalSettings
+      ).toEqual(expect.objectContaining({ maxResultHits: 500 }));
+      await expect(
+        page.getByTestId('global-setting-value-maxResultHits')
+      ).toHaveText('500');
+    });
+
+    test('search: reset restores the defaults only after confirmation', async ({
+      page,
+    }) => {
+      // Never reset the shared tenant's settings.
+      let resets = 0;
+      await page.route(
+        '**/api/v1/system/settings/reset/searchSettings',
+        (route) => {
+          resets += 1;
+
+          return route.fulfill({ json: {} });
+        }
+      );
+      await openPlatformSettings(page);
+      await openCard(page, 'search');
+      await expect(page.getByTestId('search-settings')).toBeVisible({
+        timeout: 30_000,
+      });
+
+      await header(page).getByTestId('reset-search-settings-btn').click();
+      await page.getByTestId('reset-search-settings-dialog-cancel').click();
+      expect(resets).toBe(0);
+
+      await header(page).getByTestId('reset-search-settings-btn').click();
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('reset-search-settings-dialog-confirm'),
+        '**/api/v1/system/settings/reset/searchSettings'
+      );
+      expect(resets).toBe(1);
+      await toastNotification(page, /updated successfully/);
+    });
+
+    test('search: an entity page previews the draft and saves it', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(page, 'searchSettings');
+      await openPlatformSettings(page);
+      await openCard(page, 'search');
+      await page.getByTestId('search-entity-card-tables').click();
+
+      await expect(page.getByTestId('entity-search-settings')).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(header(page)).toContainText('Table');
+      await expect(page.getByTestId('ranking-settings')).toBeVisible();
+      await expect(page.getByTestId('search-preview')).toBeVisible();
+      await expect(header(page).getByTestId('save-btn')).toBeDisabled();
+
+      // A field the default table configuration always matches on.
+      const fieldName = 'displayName.keyword';
+      const field = page.getByTestId(`field-configuration-panel-${fieldName}`);
+
+      // Removing a field re-runs the preview with the unsaved draft.
+      const previewWithoutField = page.waitForRequest((request) => {
+        if (!request.url().includes('/api/v1/search/preview')) {
+          return false;
+        }
+        const table = (
+          request.postDataJSON() as {
+            searchSettings: {
+              assetTypeConfigurations: {
+                assetType: string;
+                searchFields?: { field: string }[];
+              }[];
+            };
+          }
+        ).searchSettings.assetTypeConfigurations.find(
+          (config) => config.assetType === 'table'
+        );
+
+        return !table?.searchFields?.some((field) => field.field === fieldName);
+      });
+      await field.getByTestId('delete-search-field').click();
+      await previewWithoutField;
+      await expect(field).toHaveCount(0);
+
+      await clickAndWaitFor(
+        page,
+        header(page).getByTestId('save-btn'),
+        SETTINGS_PUT
+      );
+
+      const table = (
+        settings.puts[0].config_value as {
+          assetTypeConfigurations: {
+            assetType: string;
+            searchFields: { field: string }[];
+          }[];
+        }
+      ).assetTypeConfigurations.find((config) => config.assetType === 'table');
+
+      expect(table?.searchFields.map((field) => field.field)).not.toContain(
+        fieldName
+      );
+      await expect(header(page).getByTestId('save-btn')).toBeDisabled();
+
+      await header(page)
+        .getByLabel('Breadcrumb')
+        .getByText('Search', { exact: true })
+        .click();
+      await expect(page.getByTestId('search-settings')).toBeVisible();
     });
   }
 );

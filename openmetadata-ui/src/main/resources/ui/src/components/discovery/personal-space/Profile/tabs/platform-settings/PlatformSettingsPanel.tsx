@@ -43,6 +43,7 @@ import type {
   PlatformSettingsView,
 } from './PlatformSettings.types';
 import {
+  getPageHeader,
   getVisiblePlatformSettingsPages,
   hashSubPathToView,
   viewToSubPath,
@@ -50,6 +51,8 @@ import {
 import PlatformSettingsLanding from './PlatformSettingsLanding';
 import ProfilerSettings from './ProfilerSettings';
 import ProfilerSettingsForm from './ProfilerSettingsForm';
+import EntitySearchSettings from './search/EntitySearchSettings';
+import SearchSettingsView from './search/SearchSettingsView';
 import ThemeSettings from './ThemeSettings';
 import ThemeSettingsForm from './ThemeSettingsForm';
 
@@ -74,6 +77,12 @@ const VIEW_PAGES: Partial<
   'data-asset-rules': () => <DataAssetRulesSettings />,
   'learning-resources': (props) => <LearningResourcesSettings {...props} />,
   'app-mode': (props) => <AppModeSettings {...props} />,
+  search: (props) =>
+    props.itemId ? (
+      <EntitySearchSettings {...props} />
+    ) : (
+      <SearchSettingsView {...props} />
+    ),
 };
 
 /** The `/edit` view of each page that has one. */
@@ -145,16 +154,9 @@ const PlatformSettingsPanel = ({
     let title = rootLabel;
 
     if (activePage) {
-      const pageTitle = t(activePage.titleKey);
-      breadcrumbs.push({ id: activePage.id, label: pageTitle });
-      title = pageTitle;
-
-      if (view.type === 'page' && view.isEditing) {
-        title =
-          activePage.getEditTitle?.(t, view.itemId) ??
-          t('label.edit-entity', { entity: pageTitle });
-        breadcrumbs.push({ id: 'edit', label: title });
-      }
+      const header = getPageHeader(activePage, view, t);
+      breadcrumbs.push(...header.breadcrumbs);
+      title = header.title;
     }
 
     const hintToggle = (
@@ -216,6 +218,7 @@ const PlatformSettingsPanel = ({
     }
 
     return VIEW_PAGES[view.page]?.({
+      itemId: view.itemId,
       onNavigate,
       onSetHeaderActions: setPageActions,
     });
