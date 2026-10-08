@@ -20,17 +20,20 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Api,
+  Appearance,
   ArrowUpRight,
+  Assets,
   Check,
   ChevronRight,
   ChevronSelectorVertical,
-  Database01,
+  Docs,
   Globe01,
-  HelpCircle,
+  Help,
   Language,
-  Lightbulb01,
-  LogOut01,
-  Settings01,
+  LogOut,
+  Settings,
+  Tour,
   User01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -84,6 +87,13 @@ const AVATAR_RING_CLASS =
   'tw:outline-1 tw:outline-offset-2 tw:outline-current/20 tw:*:font-medium';
 
 type IconComponent = FC<{ className?: string }>;
+
+// The AI menu's own icons for the shared help items; the classic navbar keeps its set.
+const HELP_ITEM_ICONS: Partial<Record<HELP_ITEMS_ENUM, IconComponent>> = {
+  [HELP_ITEMS_ENUM.TOUR]: Tour,
+  [HELP_ITEMS_ENUM.DOC]: Docs,
+  [HELP_ITEMS_ENUM.API]: Api,
+};
 
 interface MenuRowProps {
   icon: IconComponent;
@@ -482,7 +492,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             id="my-data"
             textValue={t('label.my-data')}
             onAction={() => openPanel('my-data')}>
-            <MenuRow icon={Database01} label={t('label.my-data')} />
+            <MenuRow icon={Assets} label={t('label.my-data')} />
           </Dropdown.Item>
 
           <SubmenuTrigger>
@@ -490,7 +500,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
               className={ROW_CLASS}
               id="help"
               textValue={t('label.help')}>
-              <MenuRow hasSubmenu icon={HelpCircle} label={t('label.help')} />
+              <MenuRow hasSubmenu icon={Help} label={t('label.help')} />
             </Dropdown.Item>
             <Dropdown.Popover className={POPOVER_CLASS} placement="right top">
               <Dropdown.Menu
@@ -509,7 +519,10 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
                       key={item.key}
                       textValue={label}
                       onAction={() => handleHelpItemAction(item)}>
-                      <MenuRow icon={item.icon} label={label} />
+                      <MenuRow
+                        icon={HELP_ITEM_ICONS[item.key] ?? item.icon}
+                        label={label}
+                      />
                     </Dropdown.Item>
                   );
                 })}
@@ -555,7 +568,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             id="settings"
             textValue={t('label.setting-plural')}
             onAction={() => navigate('/settings')}>
-            <MenuRow icon={Settings01} label={t('label.setting-plural')} />
+            <MenuRow icon={Settings} label={t('label.setting-plural')} />
           </Dropdown.Item>
 
           <SubmenuTrigger>
@@ -566,7 +579,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
               textValue={t('label.appearance')}>
               <MenuRow
                 hasSubmenu
-                icon={Lightbulb01}
+                icon={Appearance}
                 label={t('label.appearance')}
                 value={theme === 'dark' ? t('label.dark') : t('label.light')}
               />
@@ -611,7 +624,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             id="logout"
             textValue={t('label.logout')}
             onAction={onLogoutHandler}>
-            <MenuRow isDanger icon={LogOut01} label={t('label.logout')} />
+            <MenuRow isDanger icon={LogOut} label={t('label.logout')} />
           </Dropdown.Item>
         </Dropdown.Menu>
       </Dropdown.Popover>
