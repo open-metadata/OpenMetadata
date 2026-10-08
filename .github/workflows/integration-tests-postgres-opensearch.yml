@@ -208,12 +208,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # parallel-1/parallel-2 split the parallel suite by class name (see the
+        # integration-lane-parallel-* profiles in the IT pom); alone it set the wall clock at
+        # ~40 min while every other lane finished in half that. multi-node and retry-queue
+        # run ~4 min of tests each, so they share a runner, one Maven invocation per lane.
         lane:
-          - name: parallel
+          - name: parallel-1
+          - name: parallel-2
           - name: global-state
-          - name: multi-node
-          - name: retry-queue
           - name: rdf
+          - name: multi-node+retry-queue
+            lanes: multi-node retry-queue
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -301,14 +306,14 @@ jobs:
         id: integration-tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IT_LANE: ${{ matrix.lane.name }}
+          IT_LANES: ${{ matrix.lane.lanes || matrix.lane.name }}
           IT_PARALLELISM: '4'
           IT_MAX_POOL_SIZE: '16'
         run: |
           {
             echo "### Java integration configuration"
             echo "- Profile: postgres-opensearch"
-            echo "- Lane: ${IT_LANE}"
+            echo "- Lanes: ${IT_LANES}"
             echo "- Parallel workers: ${IT_PARALLELISM}"
             echo "- Compensation-thread ceiling: ${IT_MAX_POOL_SIZE}"
             echo "- Runner processors: $(nproc)"
@@ -317,19 +322,30 @@ jobs:
           diagnostics="openmetadata-integration-tests/target/ci-diagnostics"
           mkdir -p "$diagnostics"
           maven_log="$diagnostics/maven.log"
+          : > "$maven_log"
+          read -r -a lanes <<< "$IT_LANES"
+          # Each lane is its own Maven invocation (own JVM, server and containers), as when
+          # it had a runner to itself. A failing lane does not stop the next; the step
+          # reports the first non-zero exit code.
+          exit_code=0
           set +e
-          timeout --signal=TERM --kill-after=60s 65m \
-            mvn --no-snapshot-updates verify -pl :openmetadata-integration-tests -Ppostgres-opensearch \
-              -DintegrationTests.lane="${IT_LANE}" \
-              -DintegrationTests.parallelStrategy=fixed \
-              -DintegrationTests.parallelism="${IT_PARALLELISM}" \
-              -DintegrationTests.maxPoolSize="${IT_MAX_POOL_SIZE}" \
-            2>&1 | tee "$maven_log"
-          pipeline_status=("${PIPESTATUS[@]}")
-          exit_code="${pipeline_status[0]}"
-          if (( exit_code == 0 && pipeline_status[1] != 0 )); then
-            exit_code="${pipeline_status[1]}"
-          fi
+          for lane in "${lanes[@]}"; do
+            timeout --signal=TERM --kill-after=60s 65m \
+              mvn --no-snapshot-updates verify -pl :openmetadata-integration-tests -Ppostgres-opensearch \
+                -DintegrationTests.lane="$lane" \
+                -DintegrationTests.parallelStrategy=fixed \
+                -DintegrationTests.parallelism="${IT_PARALLELISM}" \
+                -DintegrationTests.maxPoolSize="${IT_MAX_POOL_SIZE}" \
+              2>&1 | tee -a "$maven_log"
+            pipeline_status=("${PIPESTATUS[@]}")
+            lane_exit_code="${pipeline_status[0]}"
+            if (( lane_exit_code == 0 && pipeline_status[1] != 0 )); then
+              lane_exit_code="${pipeline_status[1]}"
+            fi
+            if (( exit_code == 0 )); then
+              exit_code="$lane_exit_code"
+            fi
+          done
           set -e
 
           max_log_bytes=20971520
