@@ -15,8 +15,12 @@ import { act, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../../../../../enums/entity.enum';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
-import { Page, PageType } from '../../../../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
+import {
+  EntityType as PageEntityType,
+  Page,
+  PageType,
+} from '../../../../../../../generated/system/ui/page';
+import { useCustomizeStore } from '../../../../../../../hooks/useCustomizeStore';
 import {
   createDocument,
   updateDocument,
@@ -29,7 +33,9 @@ import { CustomizeEditorActions } from './customizeEditor.types';
 import LandingPageEditor from './LandingPageEditor';
 
 interface MockCustomizeMyDataProps {
+  backgroundColor?: string;
   initialPageData: Page | null;
+  onBackgroundColorUpdate?: (color?: string) => Promise<void>;
   onSaveLayout: (page?: Page) => Promise<void>;
 }
 
@@ -61,6 +67,8 @@ jest.mock(
 const mockPersona = { id: 'persona-id', name: 'dataSteward' } as Persona;
 
 const landingPage = {
+  entityType: PageEntityType.Page,
+  knowledgePanels: [],
   pageType: PageType.LandingPage,
   layout: [{ i: 'widget-1', x: 0, y: 0, w: 1, h: 1 }],
 } as Page;
@@ -207,5 +215,55 @@ describe('LandingPageEditor', () => {
 
     expect(useCustomizeStore.getState().currentPage).toEqual(landingPage);
     expect(latestActions().canSave).toBe(false);
+  });
+
+  it('passes the persona header colour saved in the document', () => {
+    renderEditor({
+      ...existingDocument,
+      data: {
+        ...existingDocument.data,
+        personPreferences: [
+          {
+            personaId: mockPersona.id,
+            personaName: mockPersona.name,
+            landingPageSettings: { headerColor: '#123456' },
+          },
+        ],
+      },
+    } as Document);
+
+    expect(mockCustomizeMyDataProps?.backgroundColor).toBe('#123456');
+  });
+
+  it('saves a new header colour into the persona preferences', async () => {
+    const { onDocumentSaved } = renderEditor();
+    (updateDocument as jest.Mock).mockImplementation(
+      async (_id: string, patch: Array<{ op: string; path: string }>) => ({
+        ...existingDocument,
+        patch,
+      })
+    );
+
+    await act(async () => {
+      await mockCustomizeMyDataProps?.onBackgroundColorUpdate?.('#654321');
+    });
+
+    const patch = (updateDocument as jest.Mock).mock.calls[0][1];
+
+    expect(JSON.stringify(patch)).toContain('#654321');
+    expect(JSON.stringify(patch)).toContain(mockPersona.id);
+    expect(onDocumentSaved).toHaveBeenCalled();
+    expect(showSuccessToast).toHaveBeenCalled();
+  });
+
+  it('shows an error toast when saving the header colour fails', async () => {
+    renderEditor();
+    (updateDocument as jest.Mock).mockRejectedValue(new Error('boom'));
+
+    await act(async () => {
+      await mockCustomizeMyDataProps?.onBackgroundColorUpdate?.('#654321');
+    });
+
+    expect(showErrorToast).toHaveBeenCalled();
   });
 });

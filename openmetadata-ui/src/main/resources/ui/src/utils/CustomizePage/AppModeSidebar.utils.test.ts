@@ -24,9 +24,9 @@ import {
   moveSidebarNode,
   moveSidebarNodeToRoot,
   SidebarTreeNode,
-} from './CustomizeAppModeSidebarPage.utils';
+} from './AppModeSidebar.utils';
 
-jest.mock('../../utils/i18next/LocalUtil', () => ({
+jest.mock('../i18next/LocalUtil', () => ({
   __esModule: true,
   default: { t: (key: string) => key },
 }));

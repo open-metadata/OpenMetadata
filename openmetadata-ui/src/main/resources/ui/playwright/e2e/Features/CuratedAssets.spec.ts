@@ -255,7 +255,9 @@ test.describe('Curated Assets Widget', () => {
 
     await curatedAssetsWidget.getByText('Create').click();
 
-    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+    await expect(
+      page.getByTestId('curated-assets-modal-container')
+    ).toBeVisible();
 
     // Configure widget with ALL entity types
     // Fill widget name

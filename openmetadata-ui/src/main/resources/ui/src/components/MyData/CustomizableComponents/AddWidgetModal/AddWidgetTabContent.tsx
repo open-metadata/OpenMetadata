@@ -23,7 +23,7 @@ import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageType } from '../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
+import { useCustomizeStore } from '../../../../hooks/useCustomizeStore';
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { AddWidgetTabContentProps } from './AddWidgetModal.interface';
@@ -79,9 +79,11 @@ function AddWidgetTabContent({
           value={String(selectedWidgetSize)}
           onChange={handleSizeChange}>
           {widgetSizeOptions.map((opt) => (
-            <RadioButton key={opt.value} value={String(opt.value)}>
-              {opt.label}
-            </RadioButton>
+            <RadioButton
+              key={opt.value}
+              label={opt.label}
+              value={String(opt.value)}
+            />
           ))}
         </RadioGroup>
       </Box>

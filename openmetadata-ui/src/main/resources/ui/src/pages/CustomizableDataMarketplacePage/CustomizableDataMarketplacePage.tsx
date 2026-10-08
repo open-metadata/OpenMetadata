@@ -31,12 +31,12 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { TAB_GRID_MAX_COLUMNS } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Page, PageType } from '../../generated/system/ui/page';
+import { useCustomizeStore } from '../../hooks/useCustomizeStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { getDataMarketplaceWidgetsFromKey } from '../../utils/DataMarketplace/DataMarketplaceUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
-import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import '../DataMarketplacePage/data-marketplace-page.less';
 import './customizable-data-marketplace-page.less';
 

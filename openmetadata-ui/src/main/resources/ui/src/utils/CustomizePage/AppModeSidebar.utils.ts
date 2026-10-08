@@ -19,7 +19,7 @@ import {
   MORE_NAV_LABEL_KEY,
 } from '../../components/platform/ai-shell/Sidebar/navConfig';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
-import i18n from '../../utils/i18next/LocalUtil';
+import i18n from '../i18next/LocalUtil';
 
 /**
  * Editor tree node for the app-mode sidebar. A flat model: top-level items,

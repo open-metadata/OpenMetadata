@@ -13,8 +13,8 @@
 
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
-import { PageTypeToEntityTypeMap } from '../../../../../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { getEntityIconWithBg } from '../../../../../../../utils/Assets/AssetsUtils';
+import { PageTypeToEntityTypeMap } from '../../../../../../../utils/CustomizePage/PageTypeEntityType.utils';
 import { getCustomizePageOptions } from '../../../../../../../utils/Persona/PersonaUtils';
 
 interface SubCategoryGridProps {

@@ -15,8 +15,12 @@ import { act, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../../../../../enums/entity.enum';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
-import { Page, PageType } from '../../../../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
+import {
+  EntityType as PageEntityType,
+  Page,
+  PageType,
+} from '../../../../../../../generated/system/ui/page';
+import { useCustomizeStore } from '../../../../../../../hooks/useCustomizeStore';
 import {
   createDocument,
   updateDocument,
@@ -33,6 +37,8 @@ interface MockPageProps {
 }
 
 let mockPageProps: MockPageProps | undefined;
+// Page type in the shared store each time the details page renders.
+const mockRenderedPageTypes: Array<string | null> = [];
 
 jest.mock('../../../../../../../rest/DocStoreAPI', () => ({
   createDocument: jest.fn(),
@@ -49,6 +55,11 @@ jest.mock(
   () => ({
     CustomizeDetailsPage: (props: MockPageProps) => {
       mockPageProps = props;
+      mockRenderedPageTypes.push(
+        jest
+          .requireActual('../../../../../../../hooks/useCustomizeStore')
+          .useCustomizeStore.getState().currentPageType
+      );
 
       return <div data-testid="customize-details-page" />;
     },
@@ -77,7 +88,13 @@ const baseDocument: Document = {
   data: { pages: [], navigation: null },
 } as Document;
 
-const tablePage = { pageType: PageType.Table, tabs: [] } as Page;
+const tablePage = {
+  entityType: PageEntityType.Page,
+  knowledgePanels: [],
+  layout: [],
+  pageType: PageType.Table,
+  tabs: [],
+} as Page;
 
 const renderOverlay = (entityType: string, document = baseDocument) => {
   const onDocumentSaved = jest.fn();
@@ -98,11 +115,28 @@ describe('EntityCustomizeOverlay', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPageProps = undefined;
+    mockRenderedPageTypes.length = 0;
     useCustomizeStore.setState({
       currentPage: null,
       currentPageType: null,
       document: null,
     });
+  });
+
+  it('waits for the shared store to switch page type before mounting the page', async () => {
+    // Left over from customizing another entity in the same session.
+    useCustomizeStore.setState({
+      currentPage: tablePage,
+      currentPageType: PageType.Table,
+    });
+
+    renderOverlay(PageType.APIEndpoint);
+
+    expect(
+      await screen.findByTestId('customize-details-page')
+    ).toBeInTheDocument();
+    expect(mockRenderedPageTypes).not.toContain(PageType.Table);
+    expect(mockRenderedPageTypes).toContain(PageType.APIEndpoint);
   });
 
   it('renders the details page for non-glossary entities', async () => {

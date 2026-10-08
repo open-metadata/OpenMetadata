@@ -16,7 +16,6 @@ import React, { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
-import '../../../../pages/CustomizeDetailsPage/customize-details-page.less';
 import {
   getCustomizePageCategories,
   getCustomizePageOptions,
@@ -27,6 +26,7 @@ import {
   CustomizePageChromeContext,
   CUSTOMIZE_CHROME_BACK_ID,
 } from '../../../MyData/CustomizableComponents/CustomizablePageHeader/CustomizePageChrome.context';
+import '../PersonalSpaceModal/personal-space-modal.less';
 import {
   hashSubPathToView,
   isFullscreenPersonaHash,
@@ -128,7 +128,7 @@ const PersonaFullscreenPortal: React.FC = () => {
   return (
     <CustomizePageChromeContext.Provider value={chrome}>
       <div
-        className="persona-settings-overlay tw:h-dvh tw:overflow-y-auto"
+        className="persona-settings-overlay tw:h-dvh tw:overflow-y-auto tw:bg-utility-blue-light-50"
         data-testid="persona-fullscreen-view">
         <PersonaCustomizeView
           category={category}

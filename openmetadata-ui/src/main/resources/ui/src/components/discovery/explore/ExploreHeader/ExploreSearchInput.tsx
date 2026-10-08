@@ -81,10 +81,10 @@ const INPUT_CONTAINER_CLASS = classNames(
 );
 
 const NLP_TOGGLE_BASE_CLASS =
-  'tw:flex tw:size-6 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-brand-600 tw:transition-none';
+  'tw:flex tw:size-6 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-utility-brand-600 tw:transition-none';
 
 const NLP_TOGGLE_INACTIVE_CLASS =
-  'tw:border-[0.5px] tw:border-utility-blue-light-200 tw:bg-utility-brand-50 tw:p-1 tw:hover:bg-[rgba(21,112,239,0.06)] tw:hover:text-brand-600';
+  'tw:border-[0.5px] tw:border-utility-blue-light-200 tw:bg-utility-brand-50 tw:p-1 tw:hover:bg-[rgba(21,112,239,0.06)] tw:hover:text-utility-brand-600';
 
 const NLP_TOGGLE_ACTIVE_CLASS = 'tw:border-0 tw:bg-transparent tw:p-0';
 
@@ -247,7 +247,7 @@ export const ExploreSearchInput = ({
             data-testid="explore-search-input"
             fontSize="xs"
             icon={Search}
-            iconClassName="tw:size-4 tw:text-brand-600"
+            iconClassName="tw:size-4 tw:text-utility-brand-600"
             inputClassName={INPUT_CLASS}
             isDisabled={isDisabled}
             placeholder={placeholderText}

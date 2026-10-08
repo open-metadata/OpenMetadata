@@ -37,13 +37,12 @@ import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Page, Tab } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
+import { useCustomizeStore } from '../../../hooks/useCustomizeStore';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import {
   WidgetCommonProps,
   WidgetConfig,
-} from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
+} from '../../../interface/customization.interface';
 import {
   getLayoutWithEmptyWidgetPlaceholder,
   getUniqueFilteredLayout,
@@ -59,6 +58,7 @@ import {
   mergeGridLayout,
 } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getColumnLockedDragHandlers } from '../../../utils/CustomizePage/GridLayoutDragUtils';
+import { getEntityTypeFromPageType } from '../../../utils/CustomizePage/PageTypeEntityType.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { CustomPropertiesTabLayoutSection } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesTabLayoutSection';
@@ -477,7 +477,9 @@ export const CustomizeTabWidget = () => {
 
   return (
     <>
-      <Card data-testid="customize-tab-card">
+      {/* w-full: legacy pages place this inside an antd Row, where the old
+          Col span={24} wrappers made each card a full-width row. */}
+      <Card className="tw:w-full" data-testid="customize-tab-card">
         <Card.Header
           className="tw:items-center tw:border-b-0 tw:pt-5"
           extra={
@@ -539,7 +541,7 @@ export const CustomizeTabWidget = () => {
           </Box>
         </Card.Content>
       </Card>
-      <Card>
+      <Card className="tw:w-full">
         <Card.Header
           className="tw:items-center tw:border-b-0 tw:pt-5"
           extra={

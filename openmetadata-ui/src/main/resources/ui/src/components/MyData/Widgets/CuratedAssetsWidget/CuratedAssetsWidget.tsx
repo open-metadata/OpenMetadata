@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, GridItem, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -402,13 +401,13 @@ const CuratedAssetsWidgetContent = ({
 
   const entityListData = useMemo(() => {
     return isFullSize ? (
-      <Row className="curated-assets-grid">
+      <Grid className="tw:w-full">
         {data.map((item) => (
-          <Col key={item.id} span={12}>
+          <GridItem key={item.id} span={12}>
             {entityListLinkItem(item)}
-          </Col>
+          </GridItem>
         ))}
-      </Row>
+      </Grid>
     ) : (
       data.map((item) => entityListLinkItem(item))
     );

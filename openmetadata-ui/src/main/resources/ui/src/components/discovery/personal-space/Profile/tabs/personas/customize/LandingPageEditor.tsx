@@ -15,7 +15,8 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Page, PageType } from '../../../../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
+import { PersonaPreferences } from '../../../../../../../generated/type/personaPreferences';
+import { useCustomizeStore } from '../../../../../../../hooks/useCustomizeStore';
 import {
   normalizePersonaDocument,
   updatePersonaDocumentPage,
@@ -94,6 +95,64 @@ const LandingPageEditor = ({
     [currentPage, document, setDocument, onDocumentSaved, t]
   );
 
+  const backgroundColor = useMemo(
+    () =>
+      (
+        document.data.personPreferences as PersonaPreferences[] | undefined
+      )?.find((pref) => pref.personaId === persona.id)?.landingPageSettings
+        ?.headerColor,
+    [document, persona.id]
+  );
+
+  // The header colour lives in the persona's preferences, not in the page
+  // layout, and (as on the legacy page) is saved as soon as it is applied.
+  const handleBackgroundColorUpdate = useCallback(
+    async (headerColor?: string) => {
+      try {
+        const saved = await savePersonaDocument(document, (draft) => {
+          const preferences = (draft.data.personPreferences ??
+            []) as PersonaPreferences[];
+          const existing = preferences.find(
+            (pref) => pref.personaId === persona.id
+          );
+          draft.data.personPreferences = existing
+            ? preferences.map((pref) =>
+                pref === existing
+                  ? {
+                      ...pref,
+                      landingPageSettings: {
+                        ...pref.landingPageSettings,
+                        headerColor,
+                      },
+                    }
+                  : pref
+              )
+            : [
+                ...preferences,
+                {
+                  personaId: persona.id,
+                  personaName: persona.name,
+                  landingPageSettings: { headerColor },
+                },
+              ];
+        });
+        const normalized = normalizePersonaDocument(saved);
+        setDocument(normalized);
+        onDocumentSaved(normalized);
+        showSuccessToast(
+          t('server.page-layout-operation-success', {
+            operation: document.id
+              ? t('label.updated-lowercase')
+              : t('label.created-lowercase'),
+          })
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [document, persona.id, persona.name, setDocument, onDocumentSaved, t]
+  );
+
   const handleReset = useCallback(() => {
     // Re-seed store from document to reset widget state.
     setDocument(document);
@@ -112,8 +171,10 @@ const LandingPageEditor = ({
   return (
     <div data-testid="landing-page-editor-overlay">
       <CustomizeMyData
+        backgroundColor={backgroundColor}
         initialPageData={initialPage}
         personaDetails={persona}
+        onBackgroundColorUpdate={handleBackgroundColorUpdate}
         onSaveLayout={(p) => {
           setIsDirty(true);
 

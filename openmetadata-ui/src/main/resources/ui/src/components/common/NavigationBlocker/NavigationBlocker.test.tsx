@@ -78,12 +78,9 @@ describe('NavigationBlocker component', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('should show custom modal content when props are provided', () => {
-    const customTitle = 'Custom Title';
-    const customMessage = 'Custom message';
-
+  it('should show the default unsaved-changes content in the modal', () => {
     render(
-      <NavigationBlocker enabled message={customMessage} title={customTitle}>
+      <NavigationBlocker enabled>
         <div>
           <a data-testid="test-link" href="/new-page">
             Navigate Away

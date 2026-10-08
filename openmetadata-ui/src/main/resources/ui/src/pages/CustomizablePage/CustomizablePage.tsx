@@ -36,6 +36,7 @@ import { Page, PageType } from '../../generated/system/ui/page';
 import { UICustomization } from '../../generated/system/ui/uiCustomization';
 import { PersonaPreferences } from '../../generated/type/personaPreferences';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCustomizeStore } from '../../hooks/useCustomizeStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createDocument,
@@ -60,7 +61,6 @@ import CustomizableDataProductPage from '../CustomizableDataProductPage/Customiz
 import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomainPage';
 import { CustomizeDetailsPage } from '../CustomizeDetailsPage/CustomizeDetailsPage';
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
-import { useCustomizeStore } from './CustomizeStore';
 
 const CustomizeGlossaryTermDetailPage = withSuspenseFallback(
   lazy(

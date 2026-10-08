@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { lazy, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Page, PageType } from '../../../../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
+import { useCustomizeStore } from '../../../../../../../hooks/useCustomizeStore';
 import { updatePersonaDocumentPage } from '../../../../../../../utils/CustomizePage/PersonaPage.utils';
 import {
   showErrorToast,
@@ -62,7 +62,7 @@ const EntityCustomizeOverlay = ({
   onDocumentSaved,
 }: EntityCustomizeOverlayProps) => {
   const { t } = useTranslation();
-  const { setCurrentPageType } = useCustomizeStore();
+  const { currentPageType, setCurrentPageType } = useCustomizeStore();
 
   useEffect(() => {
     setCurrentPageType(entityType as PageType);
@@ -89,6 +89,13 @@ const EntityCustomizeOverlay = ({
   };
 
   const isGlossary = GLOSSARY_TYPES.has(entityType);
+
+  // The customize store is shared across pages and still holds the previous
+  // page until the effect above runs; the tab widget seeds its active tab on
+  // first render, so mounting early would show the wrong (empty) layout.
+  if (currentPageType !== entityType) {
+    return null;
+  }
 
   return (
     <div data-testid="entity-customize-overlay">

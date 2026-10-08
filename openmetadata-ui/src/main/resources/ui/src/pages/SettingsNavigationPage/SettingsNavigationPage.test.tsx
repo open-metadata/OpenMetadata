@@ -81,7 +81,7 @@ jest.mock(
   })
 );
 
-jest.mock('../CustomizablePage/CustomizeStore', () => ({
+jest.mock('../../hooks/useCustomizeStore', () => ({
   useCustomizeStore: jest.fn().mockReturnValue({
     getNavigation: jest.fn().mockImplementation(() => mockNavigationItems),
   }),

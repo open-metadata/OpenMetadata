@@ -11,14 +11,21 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+import {
+  Box,
+  Button,
+  Dialog,
+  HookForm,
+  Input,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PlusSquare } from '../../../../../assets/svg/plus-square.svg';
-import { VALIDATION_MESSAGES } from '../../../../../constants/constants';
 import { isValidElasticsearchQuery } from '../../../../../utils/CuratedAssetsPureUtils';
 import {
   CuratedAssetsFormSelectedAssetsInfo,
@@ -26,61 +33,55 @@ import {
 } from '../../../../../utils/CuratedAssetsUtils';
 import { AdvancedAssetsFilterField } from '../AdvancedAssetsFilterField/AdvancedAssetsFilterField.component';
 import { SelectAssetTypeField } from '../SelectAssetTypeField/SelectAssetTypeField.component';
-import './curated-assets-modal.less';
 import {
   CuratedAssetsConfig,
   CuratedAssetsModalProps,
 } from './CuratedAssetsModal.interface';
 
-const CuratedAssetsModal = ({
+type CuratedAssetsFormProps = Omit<CuratedAssetsModalProps, 'isOpen'> & {
+  title: string;
+};
+
+// Mounted only while the modal is open, so each open starts from fresh defaults.
+const CuratedAssetsForm = ({
   curatedAssetsConfig,
   onCancel,
   onSave,
-  isOpen,
-}: CuratedAssetsModalProps) => {
+  title,
+}: CuratedAssetsFormProps) => {
   const { t } = useTranslation();
-  const [form] = useForm<CuratedAssetsConfig>();
+  const form = useForm<CuratedAssetsConfig>({
+    defaultValues: {
+      title: curatedAssetsConfig?.title ?? '',
+      resources: curatedAssetsConfig?.resources ?? [],
+      // Undefined on create so the filter field resets the shared query-builder tree.
+      queryFilter: curatedAssetsConfig
+        ? curatedAssetsConfig.queryFilter ?? '{}'
+        : undefined,
+    },
+  });
   const [selectedAssetsInfo, setSelectedAssetsInfo] =
     useState<CuratedAssetsFormSelectedAssetsInfo>({
       resourceCount: 0,
       resourcesWithNonZeroCount: [],
     });
 
-  const selectedResource = Form.useWatch('resources', form);
+  const [widgetTitle, selectedResource, queryFilter] = useWatch({
+    control: form.control,
+    name: ['title', 'resources', 'queryFilter'],
+  });
 
-  const queryFilter = Form.useWatch('queryFilter', form);
-  const title = Form.useWatch('title', form);
-
-  useEffect(() => {
-    if (isOpen && curatedAssetsConfig) {
-      form.setFieldsValue({
-        title: curatedAssetsConfig.title ?? '',
-        resources: curatedAssetsConfig.resources ?? [],
-        queryFilter: curatedAssetsConfig.queryFilter ?? '{}',
-      });
-    }
-  }, [isOpen, curatedAssetsConfig, form]);
-
-  const disableSave = useMemo(() => {
-    return (
-      isEmpty(title) ||
-      isEmpty(selectedResource) ||
-      !isValidElasticsearchQuery(queryFilter || '{}')
-    );
-  }, [title, selectedResource, queryFilter]);
-
-  const handleCancel = useCallback(() => {
-    form.resetFields();
-    onCancel();
-  }, [form, onCancel]);
+  const disableSave =
+    isEmpty(widgetTitle) ||
+    isEmpty(selectedResource) ||
+    !isValidElasticsearchQuery(queryFilter || '{}');
 
   const handleSave = useCallback(
     (value: CuratedAssetsConfig) => {
       onSave({ ...value });
-      form.resetFields();
       onCancel();
     },
-    [onSave, form, onCancel]
+    [onSave, onCancel]
   );
 
   const fetchEntityCount = useCallback(
@@ -117,78 +118,112 @@ const CuratedAssetsModal = ({
     []
   );
 
-  const modalTitle = useMemo(
-    () => (
-      <div className="flex items-center">
-        <PlusSquare className="text-xl" />
-        <Typography className="m-l-xs text-white" weight="semibold">
-          {!isEmpty(curatedAssetsConfig)
-            ? t('label.edit-widget')
-            : t('label.create-widget')}
-        </Typography>
-      </div>
-    ),
-    [curatedAssetsConfig, t]
-  );
-
-  const modalFooter = useMemo(
-    () => [
-      <Button
-        data-testid="cancelButton"
-        key="cancelButton"
-        type="ghost"
-        onClick={handleCancel}>
-        {t('label.cancel')}
-      </Button>,
-      <Button
-        data-testid="saveButton"
-        disabled={disableSave}
-        key="saveButton"
-        type="primary"
-        onClick={() => form.submit()}>
-        {t('label.save')}
-      </Button>,
-    ],
-    [handleCancel, disableSave, form, t]
-  );
-
   return (
-    <Modal
-      centered
-      closable
-      destroyOnClose
-      className="curated-assets-modal"
-      data-testid="curated-assets-modal-container"
-      footer={modalFooter}
-      open={isOpen}
-      title={modalTitle}
-      width={700}
-      onCancel={handleCancel}>
-      <Form<CuratedAssetsConfig>
+    <>
+      <Box
+        align="center"
+        className="tw:bg-brand-solid tw:px-6 tw:py-4 tw:text-primary_on-brand"
+        gap={2}>
+        <Box
+          align="center"
+          className="tw:size-5 tw:rounded-md tw:border-2 tw:border-current"
+          justify="center">
+          <Plus aria-hidden className="tw:size-3.5" />
+        </Box>
+        <Typography
+          className="tw:text-primary_on-brand"
+          data-testid="curated-assets-modal-title"
+          weight="semibold">
+          {title}
+        </Typography>
+      </Box>
+      <HookForm
+        className="tw:flex tw:max-h-[70vh] tw:flex-col tw:gap-4 tw:overflow-y-auto tw:px-6 tw:pt-5"
         data-testid="curated-assets-form"
         form={form}
         id="curated-assets-form"
-        layout="vertical"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSave}>
-        <Form.Item label="Widget's Title" name="title">
-          <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the title input when the modal opens
-            autoFocus
-            data-testid="title-input"
-            placeholder={t('message.curated-assets-widget-title-placeholder')}
+        onSubmit={form.handleSubmit(handleSave)}>
+        <Controller
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <Input
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the title input when the modal opens
+              autoFocus
+              inputDataTestId="title-input"
+              label={t('label.title')}
+              name={field.name}
+              placeholder={t('message.curated-assets-widget-title-placeholder')}
+              value={field.value ?? ''}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        {/* The fields read the form through useFormContext. The core HookForm
+            provider comes from the core package's own react-hook-form copy at
+            runtime, so provide the app's copy explicitly. */}
+        <FormProvider {...form}>
+          <SelectAssetTypeField
+            fetchEntityCount={fetchEntityCount}
+            selectedAssetsInfo={selectedAssetsInfo}
           />
-        </Form.Item>
-        <SelectAssetTypeField
-          fetchEntityCount={fetchEntityCount}
-          selectedAssetsInfo={selectedAssetsInfo}
-        />
-        <AdvancedAssetsFilterField
-          fetchEntityCount={fetchEntityCount}
-          selectedAssetsInfo={selectedAssetsInfo}
-        />
-      </Form>
-    </Modal>
+          <AdvancedAssetsFilterField
+            fetchEntityCount={fetchEntityCount}
+            selectedAssetsInfo={selectedAssetsInfo}
+          />
+        </FormProvider>
+      </HookForm>
+      <Dialog.Footer>
+        <Button color="secondary" data-testid="cancelButton" onPress={onCancel}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid="saveButton"
+          form="curated-assets-form"
+          isDisabled={disableSave}
+          type="submit">
+          {t('label.save')}
+        </Button>
+      </Dialog.Footer>
+    </>
+  );
+};
+
+const CuratedAssetsModal = ({
+  curatedAssetsConfig,
+  onCancel,
+  onSave,
+  isOpen,
+}: CuratedAssetsModalProps) => {
+  const { t } = useTranslation();
+  const title = isEmpty(curatedAssetsConfig)
+    ? t('label.create-widget')
+    : t('label.edit-widget');
+
+  return (
+    <ModalOverlay
+      isDismissable
+      isOpen={isOpen}
+      onOpenChange={(open) => !open && onCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          aria-label={title}
+          data-testid="curated-assets-modal-container"
+          panelClassName="tw:[&>button]:text-primary_on-brand"
+          width={700}
+          onClose={onCancel}>
+          <CuratedAssetsForm
+            curatedAssetsConfig={curatedAssetsConfig}
+            title={title}
+            onCancel={onCancel}
+            onSave={onSave}
+          />
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

@@ -105,20 +105,15 @@ const CustomiseHeaderButton = ({
 interface LandingPageRecentlyViewedProps {
   isPreviewHeader: boolean;
   onHomePage: boolean;
-  showAnnouncements: boolean;
 }
 
 const LandingPageRecentlyViewed = ({
   isPreviewHeader,
   onHomePage,
-  showAnnouncements,
 }: LandingPageRecentlyViewedProps) =>
   isPreviewHeader ? null : (
     <Suspense fallback={null}>
-      <RecentlyViewedCarousel
-        disabled={!onHomePage}
-        showAnnouncements={showAnnouncements}
-      />
+      <RecentlyViewedCarousel disabled={!onHomePage} />
     </Suspense>
   );
 
@@ -306,7 +301,6 @@ const CustomiseLandingPageHeader = ({
             </div>
             <LandingPageRecentlyViewed
               isPreviewHeader={isPreviewHeader}
-              showAnnouncements={showAnnouncements}
               onHomePage={onHomePage}
             />
           </div>

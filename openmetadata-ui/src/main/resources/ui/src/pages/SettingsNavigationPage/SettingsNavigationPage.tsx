@@ -24,13 +24,13 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
+import { useCustomizeStore } from '../../hooks/useCustomizeStore';
 import {
   getHiddenKeysFromNavigationItems,
   getTreeDataForNavigationItems,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getNavigationItems } from '../../utils/SettingsNavigationPageUtils';
-import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './settings-navigation-page.less';
 
 interface Props {

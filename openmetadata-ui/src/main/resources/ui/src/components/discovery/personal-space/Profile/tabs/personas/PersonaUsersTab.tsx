@@ -24,16 +24,19 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import { uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
-import { TabSpecificField } from '../../../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../../../enums/search.enum';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
-import { getUserById } from '../../../../../../rest/userAPI';
+import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import {
   getPersonaUserRefs,
   PersonaUserOption,
@@ -114,23 +117,31 @@ const PersonaUsersTab = ({
     const fetchDetails = async () => {
       setIsLoading(true);
       try {
-        const results = await Promise.allSettled(
-          users.map((user) =>
-            getUserById(user.id, {
-              fields: [TabSpecificField.TEAMS, TabSpecificField.ROLES],
+        // One search request for every user; their documents carry teams and roles.
+        const response = users.length
+          ? await searchQuery({
+              pageNumber: 1,
+              pageSize: users.length,
+              query: '',
+              queryFilter: getTermQuery(
+                { _id: users.map((user) => user.id) },
+                'should',
+                1
+              ),
+              searchIndex: SearchIndex.USER,
             })
-          )
-        );
+          : undefined;
 
-        if (!active) {
-          return;
+        if (active) {
+          setUserDetails(
+            response?.hits.hits.map((hit) => hit._source as User) ?? []
+          );
         }
-
-        setUserDetails(
-          results
-            .filter((r) => r.status === 'fulfilled')
-            .map((r) => (r as PromiseFulfilledResult<User>).value)
-        );
+      } catch (error) {
+        if (active) {
+          setUserDetails([]);
+          showErrorToast(error as AxiosError);
+        }
       } finally {
         if (active) {
           setIsLoading(false);

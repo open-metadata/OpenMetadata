@@ -262,10 +262,20 @@ test.describe('Explore Assets Discovery', () => {
 
     await redirectToHomePage(page);
 
+    const suggestionsRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('exclude_source_fields=dataModel')
+    );
+
     await page.getByTestId('searchBox').click();
     await page.getByTestId('searchBox').fill(table1.entityResponseData.name);
+    await suggestionsRes;
 
-    await expect(page.locator('.ant-popover-inner-content')).not.toContainText(
+    const suggestionsPopover = page.getByTestId('customise-search-popover');
+
+    await expect(suggestionsPopover).toBeVisible();
+    await expect(suggestionsPopover).not.toContainText(
       table1.entityResponseData.name
     );
   });

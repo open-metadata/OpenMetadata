@@ -31,11 +31,9 @@ import { useTranslation } from 'react-i18next';
 import { TAB_GRID_MAX_COLUMNS } from '../../../../../../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../../../../../../enums/entity.enum';
 import { Page, PageType } from '../../../../../../../generated/system/ui/page';
+import { useCustomizeStore } from '../../../../../../../hooks/useCustomizeStore';
 import { useGridLayoutDirection } from '../../../../../../../hooks/useGridLayoutDirection';
-import '../../../../../../../pages/CustomizableDataMarketplacePage/customizable-data-marketplace-page.less';
-import { WidgetConfig } from '../../../../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
-import '../../../../../../../pages/DataMarketplacePage/data-marketplace-page.less';
+import { WidgetConfig } from '../../../../../../../interface/customization.interface';
 import {
   normalizePersonaDocument,
   updatePersonaDocumentPage,
@@ -59,8 +57,15 @@ const ROW_HEIGHT = 170;
 const WIDGET_MARGIN: [number, number] = [16, 18];
 const PAGE_TYPE = PageType.DataMarketplace;
 
+// `marketplace-drag-handle` is the react-grid-layout drag selector.
+const DRAG_HANDLE_CLASS = [
+  'marketplace-drag-handle tw:flex tw:size-10 tw:cursor-move tw:items-center',
+  'tw:justify-center tw:rounded-md tw:border tw:border-secondary',
+  'tw:text-fg-secondary tw:hover:bg-primary_hover',
+].join(' ');
+
 const dragHandle = (
-  <div className="marketplace-drag-handle">
+  <div className={DRAG_HANDLE_CLASS}>
     <DotsGrid className="tw:size-4" />
   </div>
 );
@@ -223,15 +228,12 @@ const MarketplaceEditor = ({
       <div className="tw:px-2 tw:pt-2">
         <MarketplaceOverviewHeader isCustomizeView />
       </div>
-      {/* w-full: the wrapper's auto margins would otherwise shrink it to the
-          grid's (absolutely positioned) content inside this flex column. */}
-      <div
-        className="marketplace-grid-wrapper tw:w-full tw:!max-w-none"
-        dir="ltr">
+      <div dir="ltr">
+        {/* grid-container: shared drop-placeholder colour (customize-my-data.less). */}
         <ReactGridLayout
           useCSSTransforms
           verticalCompact
-          className="marketplace-customize-widgets"
+          className="grid-container tw:mt-6 tw:select-none"
           cols={TAB_GRID_MAX_COLUMNS}
           compactType="vertical"
           draggableHandle=".marketplace-drag-handle"

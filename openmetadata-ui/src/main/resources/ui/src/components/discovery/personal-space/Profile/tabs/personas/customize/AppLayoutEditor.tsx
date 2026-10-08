@@ -122,8 +122,10 @@ const AppLayoutEditor = ({
     [document, persona.id]
   );
   const persistedAppMode = persisted?.appMode ?? NO_DEFAULT_VALUE;
-  const persistedViewModes: DefaultViewModes =
-    persisted?.defaultViewModes ?? {};
+  const persistedViewModes = useMemo<DefaultViewModes>(
+    () => persisted?.defaultViewModes ?? {},
+    [persisted]
+  );
   const persistedLandingPage = useMemo(
     () => resolvePersonaLandingPage(document, persona.id),
     [document, persona.id]

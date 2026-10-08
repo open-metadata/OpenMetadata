@@ -17,7 +17,7 @@ import type { ReactGridLayoutProps } from 'react-grid-layout';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
-import type { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import type { WidgetConfig } from '../../../interface/customization.interface';
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './generic-tab.less';

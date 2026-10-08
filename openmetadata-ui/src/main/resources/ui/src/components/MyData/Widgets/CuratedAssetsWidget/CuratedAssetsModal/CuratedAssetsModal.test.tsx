@@ -11,34 +11,86 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { Form, FormInstance } from 'antd';
-import { useTranslation } from 'react-i18next';
+import { FormEvent, ReactNode } from 'react';
+import { FormProvider, useFormContext } from 'react-hook-form';
+import { EntityType } from '../../../../../enums/entity.enum';
 import CuratedAssetsModal from './CuratedAssetsModal';
+import { CuratedAssetsConfig } from './CuratedAssetsModal.interface';
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn(),
+const VALID_QUERY = JSON.stringify({
+  query: {
+    bool: { must: [{ bool: { must: [{ term: { deleted: false } }] } }] },
+  },
+});
+
+// The app and the linked core package each resolve their own react-hook-form
+// under jest (Vite dedupes them in the real build), so the form provider comes
+// from the app copy here.
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  HookForm: ({
+    children,
+    form,
+    onSubmit,
+    ...props
+  }: {
+    children: ReactNode;
+    form: ReturnType<typeof import('react-hook-form').useForm>;
+    onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
+    [key: string]: unknown;
+  }) => (
+    <FormProvider {...form}>
+      <form
+        {...props}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit?.(event);
+        }}>
+        {children}
+      </form>
+    </FormProvider>
+  ),
 }));
 
 jest.mock(
-  '../AdvancedAssetsFilterField/AdvancedAssetsFilterField.component',
+  '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
   () => ({
-    AdvancedAssetsFilterField: jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="advanced-assets-filter-field">
-          Advanced Assets Filter Field
-        </div>
-      )),
+    useAdvanceSearch: jest.fn().mockReturnValue({
+      config: {},
+      onChangeSearchIndex: jest.fn(),
+    }),
   })
 );
 
-jest.mock('../SelectAssetTypeField/SelectAssetTypeField.component', () => ({
-  SelectAssetTypeField: jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="select-asset-type-field">Select Asset Type Field</div>
-    )),
+jest.mock('../../../../../utils/SearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityTypeSearchIndexMapping: jest.fn().mockReturnValue({}),
+    getEntityIconWithBg: jest.fn().mockReturnValue(null),
+  },
 }));
+
+// The query builder has its own suite; this stand-in writes the query filter
+// the way the real field does.
+jest.mock(
+  '../AdvancedAssetsFilterField/AdvancedAssetsFilterField.component',
+  () => ({
+    AdvancedAssetsFilterField: () => {
+      const { setValue } = useFormContext<CuratedAssetsConfig>();
+
+      return (
+        <div data-testid="advanced-assets-filter-field">
+          <button onClick={() => setValue('queryFilter', VALID_QUERY)}>
+            set-valid-query
+          </button>
+          <button onClick={() => setValue('queryFilter', '{}')}>
+            set-empty-query
+          </button>
+        </div>
+      );
+    },
+  })
+);
 
 jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
   getSelectedResourceCount: jest.fn().mockResolvedValue({
@@ -47,168 +99,146 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
   }),
 }));
 
-jest.mock('../../../../../utils/CuratedAssetsPureUtils', () => ({
-  isValidElasticsearchQuery: jest.fn().mockReturnValue(true),
-}));
-
 const mockOnCancel = jest.fn();
 const mockOnSave = jest.fn();
 
-const defaultProps = {
-  curatedAssetsConfig: null,
-  onCancel: mockOnCancel,
-  onSave: mockOnSave,
-  isOpen: true,
+const renderModal = (
+  curatedAssetsConfig: CuratedAssetsConfig | null = null,
+  isOpen = true
+) =>
+  render(
+    <CuratedAssetsModal
+      curatedAssetsConfig={curatedAssetsConfig}
+      isOpen={isOpen}
+      onCancel={mockOnCancel}
+      onSave={mockOnSave}
+    />
+  );
+
+const pickAssetType = async (id: string) => {
+  fireEvent.click(screen.getByTestId('asset-type-select'));
+  const node = await screen.findByTestId(`tree-node-${id}`);
+  await act(async () => {
+    fireEvent.click(node);
+  });
 };
 
 describe('CuratedAssetsModal', () => {
-  beforeEach(() => {
-    (useTranslation as jest.Mock).mockReturnValue({
-      t: (key: string) => key,
-    });
+  beforeAll(() => {
+    global.ResizeObserver = class {
+      observe() {
+        return;
+      }
+
+      unobserve() {
+        return;
+      }
+
+      disconnect() {
+        return;
+      }
+    };
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders modal with create widget title when no data provided', () => {
-    render(<CuratedAssetsModal {...defaultProps} />);
+  it('renders the create title and an empty form with Save disabled', () => {
+    renderModal();
 
-    expect(screen.getByText('label.create-widget')).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'label.create-widget' })
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('curated-assets-form')).toBeInTheDocument();
+    expect(screen.getByTestId('title-input')).toHaveValue('');
+    expect(screen.getByTestId('saveButton')).toBeDisabled();
   });
 
-  it('renders modal with edit widget title when data is provided', () => {
-    const propsWithData = {
-      ...defaultProps,
-      curatedAssetsConfig: { title: 'Test Widget' },
-    };
+  it('saves the title, asset type and query filter the user entered', async () => {
+    renderModal();
 
-    render(<CuratedAssetsModal {...propsWithData} />);
-
-    expect(screen.getByText('label.edit-widget')).toBeInTheDocument();
-  });
-
-  it('calls onCancel when cancel button is clicked', () => {
-    render(<CuratedAssetsModal {...defaultProps} />);
-
-    const cancelButton = screen.getByTestId('cancelButton');
-    fireEvent.click(cancelButton);
-
-    expect(mockOnCancel).toHaveBeenCalled();
-  });
-
-  it('disables save button when required fields are empty', () => {
-    const setFieldValue = jest.fn();
-    const getFieldValue = jest.fn();
-    jest.spyOn(Form, 'useFormInstance').mockImplementation(
-      () =>
-        ({
-          setFieldValue,
-          getFieldValue,
-        } as unknown as FormInstance)
-    );
-
-    const useWatchMock = jest.spyOn(Form, 'useWatch');
-    useWatchMock.mockImplementation(() => []);
-    render(<CuratedAssetsModal {...defaultProps} />);
-
-    const saveButton = screen.getByTestId('saveButton');
-
-    expect(saveButton).toBeDisabled();
-  });
-
-  it('calls onSave when save button is clicked', async () => {
-    const setFieldValue = jest.fn();
-    const getFieldValue = jest.fn();
-    jest.spyOn(Form, 'useFormInstance').mockImplementation(
-      () =>
-        ({
-          setFieldValue,
-          getFieldValue,
-        } as unknown as FormInstance)
-    );
-
-    const useWatchMock = jest.spyOn(Form, 'useWatch');
-    useWatchMock.mockImplementation(() => ['table']);
-    render(
-      <CuratedAssetsModal
-        {...defaultProps}
-        curatedAssetsConfig={{
-          title: 'Test Widget',
-          resources: ['table'],
-          queryFilter: '{"query":{"bool":{"must":[]}}}',
-        }}
-      />
-    );
-
-    const saveButton = screen.getByTestId('saveButton');
-    await act(async () => {
-      fireEvent.click(saveButton);
+    fireEvent.change(screen.getByTestId('title-input'), {
+      target: { value: 'My Tables' },
     });
-
-    expect(mockOnSave).toHaveBeenCalled();
-  });
-
-  it('enables save button when all required fields are filled', async () => {
-    const setFieldValue = jest.fn();
-    const getFieldValue = jest.fn();
-    jest.spyOn(Form, 'useFormInstance').mockImplementation(
-      () =>
-        ({
-          setFieldValue,
-          getFieldValue,
-        } as unknown as FormInstance)
-    );
-
-    const useWatchMock = jest.spyOn(Form, 'useWatch');
-    useWatchMock.mockImplementation(() => ['table']);
-
-    render(
-      <CuratedAssetsModal
-        {...defaultProps}
-        curatedAssetsConfig={{
-          title: 'Test Widget',
-          resources: ['table'],
-          queryFilter: '{"query":{"bool":{"must":[]}}}',
-        }}
-      />
-    );
+    await pickAssetType(EntityType.TABLE);
+    fireEvent.click(screen.getByText('set-valid-query'));
 
     const saveButton = screen.getByTestId('saveButton');
 
     expect(saveButton).toBeEnabled();
+
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    expect(mockOnSave).toHaveBeenCalledWith({
+      title: 'My Tables',
+      resources: [EntityType.TABLE],
+      queryFilter: VALID_QUERY,
+    });
+    expect(mockOnCancel).toHaveBeenCalled();
   });
 
-  it('renders title input field', () => {
-    render(<CuratedAssetsModal {...defaultProps} />);
-
-    const titleInput = screen.getByTestId('title-input');
-
-    expect(titleInput).toBeInTheDocument();
-  });
-
-  it('renders SelectAssetTypeField component', () => {
-    render(<CuratedAssetsModal {...defaultProps} />);
-
-    expect(screen.getByTestId('select-asset-type-field')).toBeInTheDocument();
-  });
-
-  it('renders AdvancedAssetsFilterField component', () => {
-    render(<CuratedAssetsModal {...defaultProps} />);
+  it('prefills the form in edit mode and saves it unchanged', async () => {
+    const config = {
+      title: 'Existing Widget',
+      resources: [EntityType.DASHBOARD],
+      queryFilter: VALID_QUERY,
+    };
+    renderModal(config);
 
     expect(
-      screen.getByTestId('advanced-assets-filter-field')
+      screen.getByRole('dialog', { name: 'label.edit-widget' })
     ).toBeInTheDocument();
+    expect(screen.getByTestId('title-input')).toHaveValue('Existing Widget');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('saveButton'));
+    });
+
+    expect(mockOnSave).toHaveBeenCalledWith(config);
   });
 
-  it('does not render modal when isOpen is false', () => {
-    const propsWithClosedModal = {
-      ...defaultProps,
-      isOpen: false,
-    };
+  it.each([
+    ['the title is empty', { title: '' }],
+    ['no asset type is selected', { resources: [] }],
+  ])('keeps Save disabled when %s', (_, override) => {
+    renderModal({
+      title: 'Widget',
+      resources: [EntityType.TABLE],
+      queryFilter: VALID_QUERY,
+      ...override,
+    });
 
-    render(<CuratedAssetsModal {...propsWithClosedModal} />);
+    expect(screen.getByTestId('saveButton')).toBeDisabled();
+  });
+
+  it('disables Save when the query filter is not a valid query', () => {
+    renderModal({
+      title: 'Widget',
+      resources: [EntityType.TABLE],
+      queryFilter: VALID_QUERY,
+    });
+
+    expect(screen.getByTestId('saveButton')).toBeEnabled();
+
+    fireEvent.click(screen.getByText('set-empty-query'));
+
+    expect(screen.getByTestId('saveButton')).toBeDisabled();
+  });
+
+  it('calls onCancel without saving when Cancel is clicked', () => {
+    renderModal();
+
+    fireEvent.click(screen.getByTestId('cancelButton'));
+
+    expect(mockOnCancel).toHaveBeenCalled();
+    expect(mockOnSave).not.toHaveBeenCalled();
+  });
+
+  it('does not render the modal when closed', () => {
+    renderModal(null, false);
 
     expect(
       screen.queryByTestId('curated-assets-modal-container')

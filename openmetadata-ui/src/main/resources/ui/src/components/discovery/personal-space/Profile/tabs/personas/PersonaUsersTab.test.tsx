@@ -14,7 +14,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { EntityReference } from '../../../../../../generated/entity/type';
-import { getUserById } from '../../../../../../rest/userAPI';
+import { searchQuery } from '../../../../../../rest/searchAPI';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import PersonaUsersTab from './PersonaUsersTab';
 
 jest.mock('react-i18next', () => {
@@ -23,12 +24,12 @@ jest.mock('react-i18next', () => {
   return { useTranslation: () => ({ t }) };
 });
 
-jest.mock('../../../../../../rest/userAPI', () => ({
-  getUserById: jest.fn(),
+jest.mock('../../../../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
 }));
 
-jest.mock('../../../../../../rest/searchAPI', () => ({
-  searchQuery: jest.fn().mockResolvedValue({ hits: { hits: [] } }),
+jest.mock('../../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
@@ -216,6 +217,18 @@ const USER_DETAILS = {
 
 const mockOnUsersChange = jest.fn();
 
+// Only the bulk details lookup filters by `_id`; the user picker's search does not.
+const mockSearchUsers = (indexedIds: string[]) =>
+  (searchQuery as jest.Mock).mockImplementation(
+    async ({ queryFilter }: { queryFilter?: unknown }) => ({
+      hits: {
+        hits: queryFilter
+          ? indexedIds.map((id) => ({ _source: USER_DETAILS[id] }))
+          : [],
+      },
+    })
+  );
+
 const renderTab = (
   props: Partial<React.ComponentProps<typeof PersonaUsersTab>> = {}
 ) =>
@@ -231,12 +244,10 @@ const renderTab = (
 describe('PersonaUsersTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getUserById as jest.Mock).mockImplementation(
-      async (id: string) => USER_DETAILS[id]
-    );
+    mockSearchUsers(Object.keys(USER_DETAILS));
   });
 
-  it('fetches each user with teams and roles and renders a row per user', async () => {
+  it('fetches all users in one search and renders a row per user with teams and roles', async () => {
     renderTab();
 
     expect(screen.getAllByTestId('skeleton')).toHaveLength(2);
@@ -244,25 +255,17 @@ describe('PersonaUsersTab', () => {
     const names = await screen.findAllByTestId('persona-user-name');
 
     expect(names.map((n) => n.textContent)).toEqual(['Alice', 'bob']);
-    expect(getUserById).toHaveBeenCalledWith('u1', {
-      fields: ['teams', 'roles'],
-    });
-    expect(getUserById).toHaveBeenCalledWith('u2', {
-      fields: ['teams', 'roles'],
-    });
+    expect(searchQuery).toHaveBeenCalledTimes(1);
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ pageSize: 2, searchIndex: 'user' })
+    );
     expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('DataSteward, DataConsumer')).toBeInTheDocument();
     expect(screen.getAllByText('--')).toHaveLength(2);
   });
 
-  it('skips users whose details fail to load', async () => {
-    (getUserById as jest.Mock).mockImplementation(async (id: string) => {
-      if (id === 'u2') {
-        throw new Error('gone');
-      }
-
-      return USER_DETAILS[id];
-    });
+  it('skips users missing from the search index', async () => {
+    mockSearchUsers(['u1']);
     renderTab();
 
     await waitFor(() =>
@@ -273,13 +276,22 @@ describe('PersonaUsersTab', () => {
     expect(screen.queryByText('bob')).not.toBeInTheDocument();
   });
 
+  it('shows an error toast and no rows when the search fails', async () => {
+    (searchQuery as jest.Mock).mockRejectedValue(new Error('search down'));
+    renderTab();
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+    expect(await screen.findByTestId('empty-placeholder')).toBeInTheDocument();
+  });
+
   it('shows an empty state when the persona has no users', async () => {
     renderTab({ users: [] });
 
     expect(await screen.findByTestId('empty-placeholder')).toHaveTextContent(
       'label.no-entity-found'
     );
-    expect(getUserById).not.toHaveBeenCalled();
+    expect(searchQuery).not.toHaveBeenCalled();
   });
 
   it('removes a user from the persona', async () => {

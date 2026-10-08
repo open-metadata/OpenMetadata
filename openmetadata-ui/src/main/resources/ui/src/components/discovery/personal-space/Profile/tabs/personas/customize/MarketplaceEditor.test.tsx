@@ -18,9 +18,13 @@ import { DetailPageWidgetKeys } from '../../../../../../../enums/CustomizeDetail
 import { EntityType } from '../../../../../../../enums/entity.enum';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
-import { Page, PageType } from '../../../../../../../generated/system/ui/page';
-import { WidgetConfig } from '../../../../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
+import {
+  EntityType as PageEntityType,
+  Page,
+  PageType,
+} from '../../../../../../../generated/system/ui/page';
+import { useCustomizeStore } from '../../../../../../../hooks/useCustomizeStore';
+import { WidgetConfig } from '../../../../../../../interface/customization.interface';
 import {
   createDocument,
   updateDocument,
@@ -123,6 +127,9 @@ const baseDocument: Document = {
 } as Document;
 
 const savedMarketplacePage = {
+  entityType: PageEntityType.Page,
+  knowledgePanels: [],
+  layout: [],
   pageType: PageType.DataMarketplace,
   tabs: [
     {
