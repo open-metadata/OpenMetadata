@@ -8245,6 +8245,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/CustomProperty/CustomPropertyEditForm/CustomPropertyEditForm.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts"
       ]
     },
@@ -8338,9 +8340,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
-        "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
-        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts"
       ]
