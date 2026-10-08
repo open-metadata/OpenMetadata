@@ -170,7 +170,7 @@ function AlertConfigDetails({
         <Box className="layout-row" justify="center" wrap="wrap">
           <Box
             className="layout-column tw:block"
-            style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
             <AlertFormSourceItem isViewMode />
           </Box>
           {!isEmpty(modifiedAlertData.input?.filters) && (
@@ -184,7 +184,7 @@ function AlertConfigDetails({
               </Box>
               <Box
                 className="layout-column tw:block"
-                style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+                style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                 <ObservabilityFormFiltersItem isViewMode />
               </Box>
             </>
@@ -200,7 +200,7 @@ function AlertConfigDetails({
               </Box>
               <Box
                 className="layout-column tw:block"
-                style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+                style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                 <ObservabilityFormTriggerItem isViewMode />
               </Box>
             </>
@@ -214,7 +214,7 @@ function AlertConfigDetails({
           </Box>
           <Box
             className="layout-column tw:block"
-            style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
             <DestinationFormItemFormBridge
               isViewMode
               renderValidationField={(validate) => (
@@ -248,7 +248,7 @@ function AlertConfigDetails({
                   </Box>
                   <Box
                     className="layout-column tw:block"
-                    style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+                    style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                     <Widget
                       isViewMode
                       alertDetails={modifiedAlertData}

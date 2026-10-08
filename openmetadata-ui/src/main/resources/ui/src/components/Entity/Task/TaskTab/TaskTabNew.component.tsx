@@ -1272,8 +1272,8 @@ export const TaskTabNew = ({
       return (
         <Box
           inline
-          align="center"
-          className="layout-space layout-space-horizontal items-end justify-end"
+          align="end"
+          className="layout-space layout-space-horizontal justify-end"
           data-testid="task-cta-buttons"
           gap={2}
           itemClassName="layout-space-item">
@@ -1295,8 +1295,8 @@ export const TaskTabNew = ({
     return (
       <Box
         inline
-        align="center"
-        className="layout-space layout-space-horizontal items-end justify-end"
+        align="end"
+        className="layout-space layout-space-horizontal justify-end"
         data-testid="task-cta-buttons"
         gap={2}
         itemClassName="layout-space-item">
@@ -1336,8 +1336,8 @@ export const TaskTabNew = ({
     return (
       <Box
         inline
-        align="center"
-        className="layout-space layout-space-horizontal items-end  justify-end"
+        align="end"
+        className="layout-space layout-space-horizontal justify-end"
         data-testid="task-cta-buttons"
         gap={2}
         itemClassName="layout-space-item">
@@ -1424,8 +1424,8 @@ export const TaskTabNew = ({
     return (
       <Box
         inline
-        align="center"
-        className="layout-space layout-space-horizontal items-end  justify-end"
+        align="end"
+        className="layout-space layout-space-horizontal justify-end"
         data-testid="task-cta-buttons"
         gap={2}
         itemClassName="layout-space-item">

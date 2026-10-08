@@ -64,6 +64,10 @@ const ActivityFeedEditorNew = withSuspenseFallback(
 
 const POST_SKELETON_KEYS = ['first', 'second', 'third'];
 
+// Container threads top-align the avatar with the multi-line header.
+const getHeaderAlign = (showThread?: boolean, entityType?: string) =>
+  showThread && entityType === EntityType.CONTAINER ? 'start' : 'center';
+
 interface ActivityFeedCardNewProps {
   feed?: Conversation;
   activity?: ActivityEvent;
@@ -596,7 +600,6 @@ const ActivityFeedCardNew = ({
         gap={2}
         itemClassName="layout-space-item">
         <Box
-          inline
           align="stretch"
           className="layout-space d-flex"
           direction="col"
@@ -604,15 +607,8 @@ const ActivityFeedCardNew = ({
           itemClassName="layout-space-item">
           <Box
             inline
-            align="center"
-            className={`layout-space layout-space-horizontal ${classNames(
-              'd-inline-flex justify-start',
-              {
-                'items-center': !showThread,
-                'items-start':
-                  showThread && entityRef?.type === EntityType.CONTAINER,
-              }
-            )}`}
+            align={getHeaderAlign(showThread, entityRef?.type)}
+            className="layout-space layout-space-horizontal d-inline-flex justify-start"
             gap={2}
             itemClassName="layout-space-item">
             <UserPopOverCard userName={createdBy}>
@@ -625,16 +621,14 @@ const ActivityFeedCardNew = ({
               </div>
             </UserPopOverCard>
             <Box
-              inline
-              align="center"
-              className="layout-space layout-space-horizontal d-flex flex-col align-start gap-2"
+              align="start"
+              className="layout-space layout-space-horizontal d-flex flex-col"
               gap={0}
               itemClassName="layout-space-item">
               <Box
-                inline
                 align="center"
                 className={`layout-space layout-space-horizontal ${classNames(
-                  'd-flex align-center gap-2',
+                  'd-flex',
                   {
                     'header-container-card': !showThread,
                     'header-container-right-panel': showThread,

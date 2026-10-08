@@ -74,7 +74,7 @@ function ObservabilityAlertFormFields({
         <Box className="layout-row" justify="center" wrap="wrap">
           <Box
             className="layout-column tw:block"
-            style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
             <AlertFormSourceItem filterResources={filterResources} />
           </Box>
           {shouldShowFiltersSection && (
@@ -88,7 +88,7 @@ function ObservabilityAlertFormFields({
               </Box>
               <Box
                 className="layout-column tw:block"
-                style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+                style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                 <ObservabilityFormFiltersItem />
               </Box>
             </>
@@ -104,7 +104,7 @@ function ObservabilityAlertFormFields({
               </Box>
               <Box
                 className="layout-column tw:block"
-                style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+                style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                 <ObservabilityFormTriggerItem />
               </Box>
             </>
@@ -118,7 +118,7 @@ function ObservabilityAlertFormFields({
           </Box>
           <Box
             className="layout-column tw:block"
-            style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
             <DestinationFormItemFormBridge
               renderValidationField={(validate) => (
                 <Form.Item
@@ -153,7 +153,7 @@ function ObservabilityAlertFormFields({
                   </Box>
                   <Box
                     className="layout-column tw:block"
-                    style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+                    style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                     <Widget
                       alertDetails={alert}
                       formRef={form}

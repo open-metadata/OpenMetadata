@@ -389,7 +389,7 @@ const AddNotificationPage = () => {
                               className="layout-column tw:block"
                               style={{
                                 maxWidth: '100%',
-                                flex: `0 0 ${'100%'}`,
+                                flex: '0 0 100%',
                               }}>
                               <AlertFormSourceItem
                                 filterResources={entityFunctions}
@@ -408,7 +408,7 @@ const AddNotificationPage = () => {
                                   className="layout-column tw:block"
                                   style={{
                                     maxWidth: '100%',
-                                    flex: `0 0 ${'100%'}`,
+                                    flex: '0 0 100%',
                                   }}>
                                   <ObservabilityFormFiltersItem />
                                 </Box>
@@ -425,7 +425,7 @@ const AddNotificationPage = () => {
                               className="layout-column tw:block"
                               style={{
                                 maxWidth: '100%',
-                                flex: `0 0 ${'100%'}`,
+                                flex: '0 0 100%',
                               }}>
                               <DestinationFormItemFormBridge
                                 renderValidationField={(validate) => (
@@ -469,7 +469,7 @@ const AddNotificationPage = () => {
                                         className="layout-column tw:block"
                                         style={{
                                           maxWidth: '100%',
-                                          flex: `0 0 ${'100%'}`,
+                                          flex: '0 0 100%',
                                         }}>
                                         <Widget
                                           alertDetails={alert}

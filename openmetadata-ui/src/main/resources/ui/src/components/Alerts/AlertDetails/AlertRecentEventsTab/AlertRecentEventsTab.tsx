@@ -296,7 +296,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                       <>
                         <Box
                           className="layout-column tw:block"
-                          style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+                          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                           <Typography className="font-medium">
                             {`${t('label.change-entity', {
                               entity: t('label.description'),
@@ -305,7 +305,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                         </Box>
                         <Box
                           className="layout-column tw:block"
-                          style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+                          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                           <SchemaEditor
                             className="border"
                             mode={{ name: CSMode.JAVASCRIPT }}
