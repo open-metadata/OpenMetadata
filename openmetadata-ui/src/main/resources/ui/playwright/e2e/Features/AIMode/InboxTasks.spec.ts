@@ -18,16 +18,14 @@ import {
   test as isolatedTest,
 } from '../../../support/fixtures/isolatedUser';
 import { UserClass } from '../../../support/user/UserClass';
-import {
-  deleteFixtureEntity,
-  okJson,
-  settleAll,
-} from '../../../utils/apiResponse';
+import { okJson, settleAll } from '../../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
 import {
   createInboxTask,
   createPolicyUser,
+  deleteInboxTasks,
   driveInboxTask,
+  inSequence,
   InboxTask,
   openInboxTask,
   searchInboxTask,
@@ -208,29 +206,31 @@ const seedQueue = async (
     incident,
     longTitleTask,
     scoped,
-  ] = await Promise.all([
-    file('approve', {
-      about: tableLink(tables.description),
-      payload: {
-        fieldPath: 'description',
-        newDescription: suggestedDescription,
-      },
-    }),
-    file('reject'),
-    file('cancel'),
-    file('comment', { about: tableLink(tables.asset) }),
-    file('search'),
-    file('closed'),
-    file('outcome'),
-    file('approval-approve', approval),
-    file('approval-reject', approval),
-    file('incident', {
-      category: 'Incident',
-      type: 'IncidentResolution',
-      payload: { incidentType: 'Freshness', severity: 'High' },
-    }),
-    file('long-title', { ...approval, displayName: longTitle }),
-    file('scoped', { assignee: scopeUser.responseData.name }),
+  ] = await inSequence([
+    () =>
+      file('approve', {
+        about: tableLink(tables.description),
+        payload: {
+          fieldPath: 'description',
+          newDescription: suggestedDescription,
+        },
+      }),
+    () => file('reject'),
+    () => file('cancel'),
+    () => file('comment', { about: tableLink(tables.asset) }),
+    () => file('search'),
+    () => file('closed'),
+    () => file('outcome'),
+    () => file('approval-approve', approval),
+    () => file('approval-reject', approval),
+    () =>
+      file('incident', {
+        category: 'Incident',
+        type: 'IncidentResolution',
+        payload: { incidentType: 'Freshness', severity: 'High' },
+      }),
+    () => file('long-title', { ...approval, displayName: longTitle }),
+    () => file('scoped', { assignee: scopeUser.responseData.name }),
   ]);
   await driveInboxTask(apiContext, closed.id, ['approve']);
   await driveInboxTask(apiContext, outcome.id, ['reject']);
@@ -279,14 +279,7 @@ const test = isolatedTest.extend<object, { queue: QueueSeed }>({
       // Removes what was created, also when seeding fails part way: a fixture
       // whose setup throws never reaches the code after `use`.
       const cleanup = async () => {
-        await settleAll(
-          created.map((task) =>
-            deleteFixtureEntity(
-              apiContext,
-              `/api/v1/tasks/${task.id}?hardDelete=true`
-            )
-          )
-        );
+        await deleteInboxTasks(apiContext, created);
         await settleAll([
           ...Object.values(tables)
             .filter((table) => table.entityResponseData?.id)

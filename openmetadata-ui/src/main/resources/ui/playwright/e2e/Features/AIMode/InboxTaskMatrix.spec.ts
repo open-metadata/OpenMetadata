@@ -21,11 +21,7 @@ import {
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
-import {
-  deleteFixtureEntity,
-  okJson,
-  settleAll,
-} from '../../../utils/apiResponse';
+import { okJson, settleAll } from '../../../utils/apiResponse';
 import {
   getWorkerAdminAPIContext,
   selectOptionWithRetry,
@@ -33,7 +29,9 @@ import {
 } from '../../../utils/common';
 import {
   createInboxTask,
+  deleteInboxTasks,
   driveInboxTask,
+  inSequence,
   InboxTask,
   openInboxTask,
   switchInboxTaskStatus,
@@ -96,6 +94,9 @@ const INCIDENT_STATES: Record<string, TaskStep[]> = {
   Completed: ['ack', 'resolve'],
 };
 
+// RecognizerFeedbackApproval is left out: its workflow reads the feedback the
+// recognizer flow submits, so a task filed directly starts a workflow that
+// fails on every run.
 const TYPE_CASES: TypeCase[] = [
   {
     key: 'tag',
@@ -184,15 +185,6 @@ const TYPE_CASES: TypeCase[] = [
     category: 'Review',
     type: 'PipelineReview',
     typeBadge: 'Pipeline review',
-    approveLabel: 'Approve',
-    rejectLabel: 'Reject',
-  },
-  {
-    key: 'recognizer',
-    label: 'Recognizer feedback',
-    category: 'Approval',
-    type: 'RecognizerFeedbackApproval',
-    typeBadge: 'Recognizer feedback',
     approveLabel: 'Approve',
     rejectLabel: 'Reject',
   },
@@ -307,14 +299,7 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
       // whose setup throws never reaches the code after `use`.
       const cleanup = async () => {
         // Tasks before the assets they are about.
-        await settleAll(
-          tasks.map(({ id }) =>
-            deleteFixtureEntity(
-              apiContext,
-              `/api/v1/tasks/${id}?hardDelete=true`
-            )
-          )
-        );
+        await deleteInboxTasks(apiContext, tasks);
         await settleAll(
           allTables
             .filter((table) => table.entityResponseData?.id)
@@ -403,30 +388,25 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
           cells.set(cellKey(key, state), task);
         };
 
-        // One type at a time, its states together: every task starts a workflow,
-        // and dozens at once outrun the workflow engine on a small server.
+        // One task at a time: see inSequence.
         for (const { key, category, type } of TYPE_CASES) {
-          await settleAll(
-            Object.entries(APPROVAL_STATES).map(([state, steps]) =>
-              seedCell(key, state, steps, {
-                category,
-                type,
-                about: aboutOf(key),
-                payload: payloads[key]?.() ?? {},
-              })
-            )
-          );
+          for (const [state, steps] of Object.entries(APPROVAL_STATES)) {
+            await seedCell(key, state, steps, {
+              category,
+              type,
+              about: aboutOf(key),
+              payload: payloads[key]?.() ?? {},
+            });
+          }
         }
-        await settleAll(
-          Object.entries(INCIDENT_STATES).map(([state, steps]) =>
-            seedCell('incident', state, steps, {
-              category: 'Incident',
-              type: 'IncidentResolution',
-              about: tableLink(incidentTable),
-              payload: { incidentType: 'Freshness', severity: 'High' },
-            })
-          )
-        );
+        for (const [state, steps] of Object.entries(INCIDENT_STATES)) {
+          await seedCell('incident', state, steps, {
+            category: 'Incident',
+            type: 'IncidentResolution',
+            about: tableLink(incidentTable),
+            payload: { incidentType: 'Freshness', severity: 'High' },
+          });
+        }
 
         // Open tasks the transition tests act on through the UI.
         const actSpec = (key: string, table: TableClass) => {
@@ -447,32 +427,35 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
           tierReplace,
           incident,
           reassign,
-        ] = await Promise.all([
-          actSpec('tag', tables.tag),
-          actSpec('ownership', tables.ownership),
-          actSpec('tier', tables.tier),
-          actSpec('domain', tables.domain),
-          file('act-tier-replace', 'Open', {
-            category: 'MetadataUpdate',
-            type: 'TierUpdate',
-            about: tableLink(tables.tierReplace),
-            payload: {
-              currentTier: tagLabel('Tier.Tier3'),
-              newTier: tagLabel('Tier.Tier1'),
-            },
-          }),
-          file('act-incident', 'Open', {
-            category: 'Incident',
-            type: 'IncidentResolution',
-            about: tableLink(incidentTable),
-            payload: { incidentType: 'Volume', severity: 'Medium' },
-          }),
-          file('act-reassign', 'Open', {
-            category: 'Incident',
-            type: 'IncidentResolution',
-            about: tableLink(incidentTable),
-            payload: { incidentType: 'Schema', severity: 'Low' },
-          }),
+        ] = await inSequence([
+          () => actSpec('tag', tables.tag),
+          () => actSpec('ownership', tables.ownership),
+          () => actSpec('tier', tables.tier),
+          () => actSpec('domain', tables.domain),
+          () =>
+            file('act-tier-replace', 'Open', {
+              category: 'MetadataUpdate',
+              type: 'TierUpdate',
+              about: tableLink(tables.tierReplace),
+              payload: {
+                currentTier: tagLabel('Tier.Tier3'),
+                newTier: tagLabel('Tier.Tier1'),
+              },
+            }),
+          () =>
+            file('act-incident', 'Open', {
+              category: 'Incident',
+              type: 'IncidentResolution',
+              about: tableLink(incidentTable),
+              payload: { incidentType: 'Volume', severity: 'Medium' },
+            }),
+          () =>
+            file('act-reassign', 'Open', {
+              category: 'Incident',
+              type: 'IncidentResolution',
+              about: tableLink(incidentTable),
+              payload: { incidentType: 'Schema', severity: 'Low' },
+            }),
         ]);
 
         // A test-case incident: its task is raised by the incident status API,

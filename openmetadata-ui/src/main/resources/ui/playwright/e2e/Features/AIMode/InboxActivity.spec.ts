@@ -23,15 +23,12 @@ import {
   insertActivityEventForTest,
 } from '../../../utils/activityAPI';
 import { clickFeedReaction } from '../../../utils/activityFeed';
-import {
-  deleteFixtureEntity,
-  okJson,
-  settleAll,
-} from '../../../utils/apiResponse';
+import { okJson, settleAll } from '../../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
 import {
   createInboxTask,
   createPolicyUser,
+  deleteInboxTasks,
   InboxTask,
   searchInboxTask,
   switchActivityFeed,
@@ -205,12 +202,7 @@ const test = isolatedTest.extend<object, { activity: ActivitySeed }>({
       // Removes what was created, also when seeding fails part way: a fixture
       // whose setup throws never reaches the code after `use`.
       const cleanup = async () => {
-        if (task) {
-          await deleteFixtureEntity(
-            apiContext,
-            `/api/v1/tasks/${task.id}?hardDelete=true`
-          );
-        }
+        await deleteInboxTasks(apiContext, task ? [task] : []);
         await settleAll([
           ...[table, scopeTable, denyTable]
             .filter((entity) => entity.entityResponseData?.id)

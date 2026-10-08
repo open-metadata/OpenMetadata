@@ -24,7 +24,7 @@ import {
 } from '../support/access-control/PoliciesClass';
 import { RolesClass } from '../support/access-control/RolesClass';
 import { UserClass } from '../support/user/UserClass';
-import { okJson } from './apiResponse';
+import { deleteFixtureEntity, okJson } from './apiResponse';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForResponseWithStatus } from './waitHelpers';
 
@@ -199,6 +199,35 @@ export const openInboxTask = async (
 };
 
 export type InboxTask = { id: string; name: string };
+
+/**
+ * Run task operations one after another. Creating, resolving or deleting a task
+ * starts or stops its workflow, and a burst of them exhausts the workflow
+ * engine's connection pool on the server, hanging every task call after it.
+ */
+export const inSequence = async <T>(
+  operations: (() => Promise<T>)[]
+): Promise<T[]> => {
+  const results: T[] = [];
+  for (const operation of operations) {
+    results.push(await operation());
+  }
+
+  return results;
+};
+
+/** Hard-delete seeded tasks, one at a time (see {@link inSequence}). */
+export const deleteInboxTasks = (
+  apiContext: APIRequestContext,
+  tasks: { id: string }[]
+) =>
+  inSequence(
+    tasks.map(
+      ({ id }) =>
+        () =>
+          deleteFixtureEntity(apiContext, `/api/v1/tasks/${id}?hardDelete=true`)
+    )
+  );
 
 /**
  * File a task assigned to one user. Its unique `name` is what the Triage
