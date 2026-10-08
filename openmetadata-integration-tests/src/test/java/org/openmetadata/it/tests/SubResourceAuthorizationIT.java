@@ -449,6 +449,10 @@ public class SubResourceAuthorizationIT {
             .executeForString(HttpMethod.PUT, path, upVote));
   }
 
+  /**
+   * Both directions answer with the entity, so a user who follows it from before losing access must
+   * not be able to read it back by unfollowing either.
+   */
   @Test
   void following_requiresViewOnTheEntity(TestNamespace ns) {
     Table table = createTable(ns);
@@ -456,13 +460,13 @@ public class SubResourceAuthorizationIT {
     OpenMetadataClient denied =
         DenyPolicyPrincipals.clientDenied(prefix, "table", MetadataOperation.VIEW_BASIC);
     User deniedUser = SdkClients.adminClient().users().getByName(prefix + "_user");
+    String followers = "/v1/tables/" + table.getId() + "/followers";
 
-    assertHttpStatusFor(
-        denied,
-        403,
-        HttpMethod.PUT,
-        "/v1/tables/" + table.getId() + "/followers",
-        deniedUser.getId());
+    assertHttpStatusFor(denied, 403, HttpMethod.PUT, followers, deniedUser.getId());
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PUT, followers, deniedUser.getId());
+    assertHttpStatusFor(denied, 403, HttpMethod.DELETE, followers + "/" + deniedUser.getId(), null);
   }
 
   @Test
@@ -525,6 +529,42 @@ public class SubResourceAuthorizationIT {
     String deniedGraph = denied.getHttpClient().executeForString(HttpMethod.GET, openGraph, null);
     assertFalse(deniedGraph.contains(sensitive.getId().toString()), deniedGraph);
     assertTrue(adminGet(openGraph).contains(sensitive.getId().toString()));
+  }
+
+  /**
+   * Search lineage finds its root by FQN alone; {@code type} only shapes the traversal. The root
+   * check must hold whatever type is sent: none, a wrong one, or none on the other search endpoints.
+   */
+  @Test
+  void lineageSearch_checksTheIndexedRootWhateverTypeIsSent(TestNamespace ns) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table open = createTable(ns, schema, "root_open", List.of());
+    Table sensitive = createTable(ns, schema, "root_sensitive", List.of(piiSensitiveTag()));
+    addLineage(open, sensitive);
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("root"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + PII_SENSITIVE + "')");
+    String fqn = encodeURIComponent(sensitive.getFullyQualifiedName());
+    String untyped = "/v1/lineage/getLineage?upstreamDepth=1&downstreamDepth=1&fqn=" + fqn;
+    // Without a usable type only the indexed root can be checked, so wait until search has it.
+    Awaitility.await("root table searchable for lineage")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(() -> adminGet(untyped).contains(sensitive.getId().toString()));
+
+    for (String path :
+        List.of(
+            untyped,
+            "/v1/lineage/getLineage?type=dashboard&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn,
+            "/v1/lineage/getLineage/Downstream?fqn=" + fqn,
+            "/v1/lineage/getPaginationInfo?fqn=" + fqn,
+            "/v1/lineage/export?upstreamDepth=1&downstreamDepth=1&fqn=" + fqn)) {
+      assertHttpStatusFor(denied, 403, HttpMethod.GET, path, null);
+    }
   }
 
   /** Column search walks every table, so it must leave out the tables the caller cannot view. */

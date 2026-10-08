@@ -189,6 +189,8 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   protected Response deleteFollowerInternal(
       SecurityContext securityContext, UUID entityId, UUID userId) {
     authorizeFollowerMutation(securityContext, userId);
+    // The response carries the entity, so a follower who has since lost access must not read it.
+    authorizeView(securityContext, entityId);
     return repository
         .deleteFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
         .toResponse();

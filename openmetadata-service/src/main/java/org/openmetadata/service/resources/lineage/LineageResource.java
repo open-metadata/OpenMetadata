@@ -53,6 +53,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
@@ -167,19 +168,34 @@ public class LineageResource {
   }
 
   /**
-   * Search lineage names its root by FQN, with the entity type optional, so the root is checked
-   * whenever the type is known. A root that does not resolve keeps answering as before: the search
-   * finds nothing for it.
+   * Search lineage roots its graph on the indexed entity with {@code fqn}; {@code type} is optional
+   * and the search never uses it to find the root. So the check covers that indexed entity, looked
+   * up the same way, whatever type the caller sent or left out. A root the index does not have yet
+   * falls back to the type and FQN the caller named, as before.
    */
-  private void authorizeLineageRoot(
-      SecurityContext securityContext, String entityType, String fqn, boolean includeDeleted) {
-    if (!nullOrEmpty(entityType) && !nullOrEmpty(fqn) && Entity.hasEntityRepository(entityType)) {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
-          new ResourceContext<>(
-              entityType, null, fqn, includeDeleted ? Include.ALL : Include.NON_DELETED));
+  private void authorizeLineageRoot(SecurityContext securityContext, String entityType, String fqn)
+      throws IOException {
+    if (!nullOrEmpty(fqn) && !getSubjectContext(securityContext).isAdmin()) {
+      Entity.getSearchRepository()
+          .getLineageRoot(fqn)
+          .or(() -> namedLineageRoot(entityType, fqn))
+          .ifPresent(root -> authorizeLineageRootView(securityContext, root));
     }
+  }
+
+  private static Optional<EntityReference> namedLineageRoot(String entityType, String fqn) {
+    return !nullOrEmpty(entityType) && Entity.hasEntityRepository(entityType)
+        ? Optional.of(new EntityReference().withType(entityType).withFullyQualifiedName(fqn))
+        : Optional.empty();
+  }
+
+  private void authorizeLineageRootView(SecurityContext securityContext, EntityReference root) {
+    // Include.ALL: a soft-deleted root still has its policies evaluated, not skipped as missing.
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(root.getType(), MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(
+            root.getType(), root.getId(), root.getFullyQualifiedName(), Include.ALL));
   }
 
   @GET
@@ -432,7 +448,7 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn, deleted);
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .searchLineage(
@@ -556,7 +572,7 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn, deleted);
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .searchLineageWithDirection(
@@ -606,7 +622,7 @@ public class LineageResource {
           @QueryParam("includeDeleted")
           boolean deleted)
       throws IOException {
-    authorizeLineageRoot(securityContext, Entity.TABLE, fqn, deleted);
+    authorizeLineageRoot(securityContext, Entity.TABLE, fqn);
 
     return Entity.getSearchRepository()
         .searchDataQualityLineage(
@@ -645,7 +661,7 @@ public class LineageResource {
           boolean deleted,
       @Parameter(description = "entity type") @QueryParam("type") String entityType)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn, deleted);
+    authorizeLineageRoot(securityContext, entityType, fqn);
     return dao.exportCsv(
         fqn,
         upstreamDepth,
@@ -696,8 +712,9 @@ public class LineageResource {
               description =
                   "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
           @QueryParam("endTime")
-          Long endTime) {
-    authorizeLineageRoot(securityContext, entityType, fqn, deleted);
+          Long endTime)
+      throws IOException {
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
     CsvAsyncJobArgs.LineageExportArgs args =
         new CsvAsyncJobArgs.LineageExportArgs()
@@ -773,7 +790,7 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn, deleted);
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .getLineagePaginationInfo(
@@ -857,8 +874,9 @@ public class LineageResource {
               description =
                   "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
           @QueryParam("endTime")
-          Long endTime) {
-    authorizeLineageRoot(securityContext, entityType, fqn, deleted);
+          Long endTime)
+      throws IOException {
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
     CsvAsyncJobArgs.LineageExportArgs args =
         new CsvAsyncJobArgs.LineageExportArgs()
@@ -970,7 +988,7 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn, deleted);
+    authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
     if (nullOrEmpty(direction)) {
       throw new IllegalArgumentException("Lineage Direction is required.");

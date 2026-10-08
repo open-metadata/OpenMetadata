@@ -4372,6 +4372,10 @@ public class SearchRepository {
     return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return searchClient.getLineageRoot(fqn);
+  }
+
   public LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
       int upstreamDepth,

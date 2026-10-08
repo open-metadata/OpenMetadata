@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -456,6 +457,11 @@ public class ElasticSearchClient implements SearchClient {
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     return ensureLineageBuilder().searchLineageWithDirection(lineageRequest);
+  }
+
+  @Override
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return ensureLineageBuilder().getLineageRoot(fqn);
   }
 
   @Override

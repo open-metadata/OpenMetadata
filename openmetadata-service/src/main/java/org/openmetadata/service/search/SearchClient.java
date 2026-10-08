@@ -4,6 +4,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -794,6 +795,12 @@ public interface SearchClient
 
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
+
+  /**
+   * The entity search lineage roots a graph on for {@code fqn}: the indexed document with that FQN,
+   * found the way {@link #searchLineage} finds it. Empty when nothing is indexed under the FQN.
+   */
+  Optional<EntityReference> getLineageRoot(String fqn) throws IOException;
 
   default LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
