@@ -16,8 +16,8 @@ import { CSSProperties } from 'react';
 export const getLayoutGutter = (
   horizontal: number,
   vertical = 0
-): CSSProperties & { '--om-layout-gutter': string } => ({
-  '--om-layout-gutter': `var(--om-space-${horizontal})`,
+): CSSProperties & { '--layout-gutter': string } => ({
+  '--layout-gutter': `var(--om-space-${horizontal})`,
   marginInline: horizontal
     ? `calc(var(--om-space-${horizontal}) / -2)`
     : undefined,
