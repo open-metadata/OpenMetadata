@@ -196,10 +196,6 @@ class TestClickhouseTableTypeByEngine:
         types = _types_by_name([("delta_tbl", "DeltaLakeS3")])
         assert types["delta_tbl"] == TableType.DeltaLake
 
-    def test_partitioned_deltalake_s3_engine_maps_to_deltalake(self):
-        types = _types_by_name([("delta_part", "DeltaLakeS3")])
-        assert types["delta_part"] == TableType.DeltaLake
-
     def test_s3_engine_stays_regular(self):
         types = _types_by_name([("s3_tbl", "S3")])
         assert types["s3_tbl"] == TableType.Regular
