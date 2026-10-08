@@ -1521,3 +1521,64 @@ describe('tag-like field autocomplete casing (#31999)', () => {
     );
   });
 });
+
+describe('getQueryBuilderFields for data contracts', () => {
+  const advancedSearchClassBase = new AdvancedSearchClassBase();
+  const fieldsUnpopulatedOnContracts = [
+    EntityFields.SERVICE,
+    EntityFields.DOMAINS,
+    EntityFields.DATA_PRODUCT,
+    EntityFields.TAG,
+    EntityFields.GLOSSARY_TERMS,
+    EntityFields.TIER,
+    EntityFields.CERTIFICATION,
+  ];
+
+  it('should offer the contract own fields and none it never populates', () => {
+    const fields = Object.keys(
+      advancedSearchClassBase.getQueryBuilderFields({
+        entitySearchIndex: [SearchIndex.DATA_CONTRACT],
+      })
+    );
+
+    expect(fields).toEqual(
+      expect.arrayContaining([
+        EntityFields.OWNERS,
+        EntityFields.NAME_KEYWORD,
+        EntityFields.DATA_CONTRACT_ENTITY_FQN,
+        EntityFields.DATA_CONTRACT_LATEST_RESULT_STATUS,
+        EntityFields.REVIEWERS,
+      ])
+    );
+
+    fieldsUnpopulatedOnContracts.forEach((field) =>
+      expect(fields).not.toContain(field)
+    );
+  });
+
+  it('should drop those fields when contracts are selected alongside tables', () => {
+    const fields = Object.keys(
+      advancedSearchClassBase.getQueryBuilderFields({
+        entitySearchIndex: [SearchIndex.TABLE, SearchIndex.DATA_CONTRACT],
+      })
+    );
+
+    fieldsUnpopulatedOnContracts.forEach((field) =>
+      expect(fields).not.toContain(field)
+    );
+
+    expect(fields).toContain(EntityFields.OWNERS);
+  });
+
+  it('should keep domains and tags for tables alone', () => {
+    const fields = Object.keys(
+      advancedSearchClassBase.getQueryBuilderFields({
+        entitySearchIndex: [SearchIndex.TABLE],
+      })
+    );
+
+    expect(fields).toEqual(
+      expect.arrayContaining([EntityFields.DOMAINS, EntityFields.TAG])
+    );
+  });
+});

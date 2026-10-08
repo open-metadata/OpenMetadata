@@ -20,7 +20,7 @@ import {
   type ListValues,
   type SelectFieldSettings,
 } from '@react-awesome-query-builder/ui';
-import { debounce, isEmpty, sortBy } from 'lodash';
+import { debounce, isEmpty, omit, sortBy } from 'lodash';
 import {
   SearchOutputType,
   type CustomPropertyEnumConfig,
@@ -470,6 +470,24 @@ class AdvancedSearchClassBase {
         useAsyncSearch: true,
       },
     },
+  };
+
+  // Common fields a search index never populates. A condition on one of them matches nothing in that index, so it is
+  // not offered while the index is selected — the same rule that keeps entity-specific fields to the common ones.
+  unsupportedCommonFields: Partial<Record<SearchIndex, string[]>> = {
+    // A contract has no tags, tier, domains, data products, certification or service of its own.
+    [SearchIndex.DATA_CONTRACT]: [
+      EntityFields.SERVICE,
+      EntityFields.SERVICE_TYPE,
+      EntityFields.DOMAINS,
+      EntityFields.DATA_PRODUCT,
+      EntityFields.TAG,
+      EntityFields.TAGS_LABEL_TYPE,
+      EntityFields.GLOSSARY_TERMS,
+      EntityFields.CERTIFICATION,
+      EntityFields.TIER,
+      EntityFields.TIER_LABEL_TYPE,
+    ],
   };
 
   // Fields specific to data contracts
@@ -1300,13 +1318,19 @@ class AdvancedSearchClassBase {
       },
     };
 
-    const fieldsConfig = {
-      ...this.getCommonConfig({ entitySearchIndex }),
-      ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
-      ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
-      ...this.getColumnConfig(entitySearchIndex),
-      ...this.getColumnTagConfig(entitySearchIndex),
-    };
+    const unsupportedFields = entitySearchIndex.flatMap(
+      (index) => this.unsupportedCommonFields[index] ?? []
+    );
+    const fieldsConfig = omit(
+      {
+        ...this.getCommonConfig({ entitySearchIndex }),
+        ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
+        ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
+        ...this.getColumnConfig(entitySearchIndex),
+        ...this.getColumnTagConfig(entitySearchIndex),
+      },
+      unsupportedFields
+    );
 
     // Sort the fields according to the label
     const sortedFieldsConfig = sortBy(Object.entries(fieldsConfig), '1.label');
