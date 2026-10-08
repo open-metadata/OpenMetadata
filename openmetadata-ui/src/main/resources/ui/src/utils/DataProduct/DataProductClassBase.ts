@@ -12,6 +12,7 @@
  */
 
 import { ReactNode } from 'react';
+import { ListingExtraColumn } from '../../components/common/atoms/shared/types';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -19,6 +20,10 @@ import {
   GridSizes,
   KNOWLEDGE_ARTICLE_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
+import {
+  DATAPRODUCT_DEFAULT_QUICK_FILTERS,
+  DATAPRODUCT_FILTERS,
+} from '../../constants/DataProduct.constants';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
@@ -43,6 +48,8 @@ type DataProductWidgetKeys =
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
   | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
   | DetailPageWidgetKeys.EXPERTS;
+
+const NO_EXTRA_COLUMNS: ListingExtraColumn<DataProduct>[] = [];
 
 class DataProductClassBase {
   defaultWidgetHeight: Record<DataProductWidgetKeys, number>;
@@ -265,6 +272,19 @@ class DataProductClassBase {
       domains: [],
       href: '',
     } as DataProduct;
+  }
+
+  // Identity-stable: callers feed the result straight into a useMemo dep list.
+  public getListingExtraColumns(): ListingExtraColumn<DataProduct>[] {
+    return NO_EXTRA_COLUMNS;
+  }
+
+  public getListingFilters() {
+    return DATAPRODUCT_FILTERS;
+  }
+
+  public getListingQuickFilterKeys() {
+    return DATAPRODUCT_DEFAULT_QUICK_FILTERS;
   }
 }
 

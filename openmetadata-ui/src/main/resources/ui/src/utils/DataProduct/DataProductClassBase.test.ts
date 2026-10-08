@@ -10,12 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
-import dataProductClassBase from './DataProductClassBase';
+import dataProductClassBase, {
+  DataProductClassBase,
+} from './DataProductClassBase';
+
+jest.mock('../../constants/DataProduct.constants', () => ({
+  DATAPRODUCT_FILTERS: [
+    { label: 'label.owner-plural', key: 'owners.displayName' },
+  ],
+  DATAPRODUCT_DEFAULT_QUICK_FILTERS: ['owners.displayName'],
+}));
 
 jest.mock('../DataProductUtils', () => ({
   getDataProductDetailTabs: jest.fn().mockReturnValue([]),
-  getDataProductWidgetsFromKey: jest.fn(),
+  getDataProductWidgetsFromKey: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../i18next/LocalUtil', () => ({
@@ -24,13 +35,63 @@ jest.mock('../i18next/LocalUtil', () => ({
 }));
 
 describe('DataProductClassBase', () => {
+  let instance: DataProductClassBase;
+
+  beforeEach(() => {
+    instance = new DataProductClassBase();
+  });
+
+  describe('listing filters', () => {
+    it('returns the data product filter set', () => {
+      expect(instance.getListingFilters()).toEqual([
+        { label: 'label.owner-plural', key: 'owners.displayName' },
+      ]);
+    });
+
+    it('omits the Collate-only status filter', () => {
+      expect(instance.getListingFilters().map((f) => f.key)).not.toContain(
+        EntityFields.ENTITY_STATUS
+      );
+    });
+
+    it('returns the matching quick-filter keys', () => {
+      expect(instance.getListingQuickFilterKeys()).toEqual([
+        'owners.displayName',
+      ]);
+    });
+
+    it('omits the Collate-only status key', () => {
+      expect(instance.getListingQuickFilterKeys()).not.toContain(
+        EntityFields.ENTITY_STATUS
+      );
+    });
+  });
+
+  describe('getListingExtraColumns', () => {
+    it('contributes no extra listing column in OSS', () => {
+      expect(instance.getListingExtraColumns()).toEqual([]);
+    });
+
+    // Callers feed the result straight into a useMemo dep list, so a fresh
+    // array per call would recompute the columns on every render.
+    it('returns the same array identity on every call', () => {
+      expect(instance.getListingExtraColumns()).toBe(
+        instance.getListingExtraColumns()
+      );
+    });
+  });
+
   describe('getCommonWidgetList', () => {
     it('lets the Custom Properties widget be added back to the layout', () => {
       expect(
-        dataProductClassBase
-          .getCommonWidgetList()
-          .map((w) => w.fullyQualifiedName)
+        instance.getCommonWidgetList().map((w) => w.fullyQualifiedName)
       ).toContain(DetailPageWidgetKeys.CUSTOM_PROPERTIES);
+    });
+  });
+
+  describe('singleton export', () => {
+    it('default export is an instance of DataProductClassBase', () => {
+      expect(dataProductClassBase).toBeInstanceOf(DataProductClassBase);
     });
   });
 });
