@@ -157,6 +157,10 @@ TRACE_REPORT_STEPS = {
     "Restore yarn package cache",
     "Install report dependencies",
     "Merge HTML report",
+    # Reporting only: lists retry passes from the merged report the step above
+    # already writes, so the queue keeps a per-run flaky record.
+    "List flaky tests",
+    "Upload flaky tests",
     "Upload merged Playwright report",
 }
 

@@ -258,6 +258,7 @@ jobs:
               - '.github/scripts/evaluate_playwright_performance.py'
               - '.github/scripts/import_playwright_json_timings.py'
               - '.github/scripts/merge_playwright_timings.py'
+              - '.github/scripts/playwright_flaky_tests.py'
               - '.github/scripts/render_playwright_summary.cjs'
               - '.github/scripts/select_playwright_tests.py'
               - '.github/scripts/start_playwright_fast_environment.sh'
