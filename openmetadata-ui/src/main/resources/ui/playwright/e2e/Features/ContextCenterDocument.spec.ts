@@ -1507,21 +1507,20 @@ test.describe('Context Center - Documents Page', () => {
     await modal.getByRole('button', { name: /cancel/i }).click();
     await expect(modal).not.toBeVisible();
 
-    let uploadedDocId: string;
-    {
-      const { apiContext: api2 } = documentSession;
-      const uploadedDoc = await uploadDocument(
-        api2,
-        sharedFileName,
-        Buffer.from('same filename in folder B'),
-        folderB.fullyQualifiedName
-      );
-      uploadedDocId = uploadedDoc.id;
-    }
+    const { id: uploadedDocId } = await uploadDocument(
+      apiContext,
+      sharedFileName,
+      Buffer.from('same filename in folder B'),
+      folderB.fullyQualifiedName
+    );
 
     await navigateToDocuments(page);
 
-    const uploadedRow = await searchAndGetDocumentRow(page, sharedFileName);
+    const uploadedRow = await searchAndGetDocumentRow(
+      page,
+      sharedFileName,
+      uploadedDocId
+    );
     await expect(uploadedRow).toBeVisible();
     await uploadedRow.scrollIntoViewIfNeeded();
 

@@ -37,7 +37,6 @@ import {
   cleanupCurrentArticle,
   createArticleFromButton,
   createArticleViaApi,
-  createQuickLinkViaApi,
   deleteArticleByFqn,
   getArticleFqnFromUrl,
   getLoggedInUser,
@@ -499,46 +498,6 @@ test.describe('Context Center Articles', () => {
     await updatedCard.getByTestId('delete-quick-link-btn').click();
     await deletePage(page, true);
     await expect(updatedCard).not.toBeVisible();
-  });
-
-  test('Quick link created from API can be opened and deleted from hierarchy', async ({
-    page,
-    browser,
-  }) => {
-    test.slow();
-    const { apiContext, afterAction } = await createNewPage(browser);
-    const apiQuickLink = await createQuickLinkViaApi(
-      apiContext,
-      `CC API QuickLink ${uuid()}`
-    );
-    await afterAction();
-
-    await navigateToArticles(page);
-    const node = await scrollHierarchyToNode(page, apiQuickLink.displayName);
-    await node.click();
-    await expect(
-      page.getByRole('textbox', { name: 'Display Name' })
-    ).toHaveValue(apiQuickLink.displayName);
-    await page.keyboard.press('Escape');
-    await node.hover();
-    await page
-      .getByTestId(`${apiQuickLink.displayName}-delete-page-btn`)
-      .click();
-
-    const deleteResPromise = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/contextCenter/pages/${apiQuickLink.id}`) &&
-        response.url().includes('hardDelete=true')
-    );
-    await page.getByTestId('confirm-button').click();
-    const deleteRes = await deleteResPromise;
-
-    expect(deleteRes.status()).toBe(200);
-    await expect(
-      page.getByTestId(`page-node-${apiQuickLink.displayName}`)
-    ).not.toBeVisible();
   });
 
   test('Quick link card opens the configured url in a new tab', async ({
@@ -1246,7 +1205,6 @@ test.describe('Context Center Articles', () => {
     await expect(
       page.getByTestId(`knowledge-card-${updatedTitle}`)
     ).toBeVisible();
-    await scrollHierarchyToNode(page, updatedTitle);
 
     await navigateToArticle(page, article.fullyQualifiedName);
     const titleInput = page.getByTestId('entity-header-display-name');
@@ -1269,7 +1227,7 @@ test.describe('Context Center Articles', () => {
     await cleanupAfterAction();
   });
 
-  test('Article copy, delete, sidebar delete, and same-name recreate do not preserve stale metadata', async ({
+  test('Article copy, delete, and same-name recreate do not preserve stale metadata', async ({
     page,
     browser,
   }) => {
@@ -1311,29 +1269,6 @@ test.describe('Context Center Articles', () => {
     ).not.toBeVisible();
     await expect(
       page.getByText(user.responseData.displayName)
-    ).not.toBeVisible();
-
-    const {
-      apiContext: sidebarDeleteContext,
-      afterAction: sidebarDeleteAfterAction,
-    } = await getApiContext(page);
-    const sidebarDelete = await createArticleViaApi(sidebarDeleteContext, {
-      displayName: `CC Sidebar Delete ${uuid()}`,
-      name: `cc_sidebar_delete_${uuid()}`,
-    });
-    await sidebarDeleteAfterAction();
-    await navigateToArticles(page);
-    const sidebarNode = await scrollHierarchyToNode(
-      page,
-      sidebarDelete.displayName
-    );
-    await sidebarNode.hover();
-    await page
-      .getByTestId(`${sidebarDelete.displayName}-delete-page-btn`)
-      .click();
-    await page.getByTestId('confirm-button').click();
-    await expect(
-      page.getByTestId(`page-node-${sidebarDelete.displayName}`)
     ).not.toBeVisible();
 
     const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =

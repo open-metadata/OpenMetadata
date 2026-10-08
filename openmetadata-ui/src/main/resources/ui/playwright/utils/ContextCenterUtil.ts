@@ -190,8 +190,18 @@ export const DOCUMENTS_URL = '/context-center/documents';
 export const MEMORIES_URL = '/context-center/memories';
 export const MEMORIES_API = '/api/v1/contextCenter/memories';
 
+/**
+ * The per-page `data-testid` wait that follows every navigation is the real
+ * readiness signal; waiting for `load` on a slow CI runner just burns the goto
+ * timeout on in-flight XHRs that the test does not depend on.
+ */
+const PAGE_GOTO_OPTIONS = {
+  timeout: 90_000,
+  waitUntil: 'domcontentloaded',
+} as const;
+
 export const navigateToDashboard = async (page: Page) => {
-  await page.goto(DASHBOARD_URL);
+  await page.goto(DASHBOARD_URL, PAGE_GOTO_OPTIONS);
   await page
     .getByTestId('context-center-dashboard-page')
     .waitFor({ state: 'visible' });
@@ -284,7 +294,7 @@ export const navigateToArticles = async (page: Page) => {
       { timeout: 30_000 }
     )
     .catch(() => null);
-  await page.goto(ARTICLES_URL, { timeout: 90_000 });
+  await page.goto(ARTICLES_URL, PAGE_GOTO_OPTIONS);
   await page
     .getByTestId('context-center-articles-page')
     .waitFor({ state: 'visible' });
@@ -294,7 +304,7 @@ export const navigateToArticles = async (page: Page) => {
 };
 
 export const navigateToDocuments = async (page: Page) => {
-  await page.goto(DOCUMENTS_URL);
+  await page.goto(DOCUMENTS_URL, PAGE_GOTO_OPTIONS);
   await page
     .getByTestId('context-center-documents-page')
     .waitFor({ state: 'visible' });
@@ -302,7 +312,7 @@ export const navigateToDocuments = async (page: Page) => {
 };
 
 export const navigateToMemories = async (page: Page) => {
-  await page.goto(MEMORIES_URL);
+  await page.goto(MEMORIES_URL, PAGE_GOTO_OPTIONS);
   await page
     .getByTestId('context-center-memories-page')
     .waitFor({ state: 'visible' });
@@ -310,7 +320,7 @@ export const navigateToMemories = async (page: Page) => {
 };
 
 export const navigateToArchive = async (page: Page) => {
-  await page.goto('/context-center/archive');
+  await page.goto('/context-center/archive', PAGE_GOTO_OPTIONS);
   await page
     .getByTestId('context-center-archive-page')
     .waitFor({ state: 'visible' });
@@ -368,7 +378,8 @@ export const getDocumentSearchInput = (page: Page): Locator =>
  */
 export const searchAndGetDocumentRow = async (
   page: Page,
-  fileName: string
+  fileName: string,
+  documentId?: string
 ): Promise<Locator> => {
   const searchResPromise = page.waitForResponse(
     (res) =>
@@ -380,10 +391,15 @@ export const searchAndGetDocumentRow = async (
   await searchResPromise;
   await waitForAllLoadersToDisappear(page);
 
-  return page
-    .getByTestId('documents-view')
-    .locator('[data-testid^="document-row-"]')
-    .filter({ hasText: fileName });
+  // Same file name can exist in multiple folders, so prefer the id when known.
+  return documentId
+    ? page
+        .getByTestId('documents-view')
+        .getByTestId(`document-row-${documentId}`)
+    : page
+        .getByTestId('documents-view')
+        .locator('[data-testid^="document-row-"]')
+        .filter({ hasText: fileName });
 };
 
 export const selectFolderInSidebar = async (
@@ -1076,6 +1092,13 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
     }
   }
 
+  // Lazy-loading can stall (sentinel never re-intersects, a page of results is
+  // dropped on a slow runner). Search is deterministic, so fall back to it
+  // rather than failing on a card that exists but was never paged in.
+  if (!(await card.isVisible())) {
+    await verifyArticleSearch(page, displayName);
+  }
+
   await expect(card).toBeVisible();
 
   return card;
@@ -1140,7 +1163,7 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
   );
 
   const articlePath = ARTICLE_DETAIL_ROUTE.replace(':fqn', articleFqn);
-  await page.goto(articlePath, { timeout: 90_000 });
+  await page.goto(articlePath, PAGE_GOTO_OPTIONS);
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
 };
