@@ -313,12 +313,8 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
   test('Verify KPI widget in Landing page', async ({ freshUserPage }) => {
     const { page } = freshUserPage;
-    // This widget belongs to classic home, regardless of the instance's default mode.
-    await page.getByTestId('app-mode-switcher-trigger').click();
-    await page.getByTestId('app-mode-option-classic').click();
-    await expect(
-      page.getByTestId('app-mode-trigger-icon-classic')
-    ).toBeVisible();
+    // A fresh account avoids the shared admin's saved AI-home preference.
+    await expect(page.getByTestId('left-sidebar')).toBeVisible();
 
     const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
