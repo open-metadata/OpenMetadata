@@ -11,6 +11,9 @@ import pytest
 
 
 SCRIPTS = Path(__file__).parents[1]
+# build_playwright_shards imports its sibling playwright_quarantine, which
+# resolves only when the scripts directory is importable.
+sys.path.insert(0, str(SCRIPTS))
 
 
 def load_script(name: str):

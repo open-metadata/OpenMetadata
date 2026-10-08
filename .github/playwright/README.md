@@ -39,6 +39,25 @@ The `Basic` and `chromium` projects share that common 24-runner cap and are bala
 
 The `@ingestion` project is excluded from common Chromium only when the dynamic planner is active. Its source-matched Airflow image is restored only for ingestion shards, so other workflows that invoke the regular Chromium project keep their existing behavior.
 
+## Quarantine
+
+`quarantine.json` lists tests that are known to flake and are being fixed. `build_playwright_shards.py` drops them from pull-request and merge-queue plans, so they cannot fail a PR or eject a queue entry. The nightly `schedule` run still executes them, and `render_playwright_summary.cjs` lists their failures under "Quarantined failures" without failing `playwright-summary`, so the fix keeps getting evidence.
+
+Add an entry only with a GitHub issue that tracks the fix:
+
+```json
+{
+  "spec": "Features/CustomPropertiesPanel.spec.ts",
+  "title": "Custom Properties Panel › shows the property values",
+  "issue": "https://github.com/open-metadata/OpenMetadata/issues/12345",
+  "added": "2026-10-08"
+}
+```
+
+`spec` is relative to `playwright/e2e/` and `title` is the describe › test path, exactly as the `playwright-flaky-tests` artifact (and the "Flaky Playwright tests" section of the job summary) prints it. Planning fails on an entry without a valid issue URL or date, and warns on an entry that matches no test (renamed, moved, or deleted). Remove the entry in the PR that fixes the test, and close the issue when the nightly run stays green. `python3 .github/scripts/playwright_quarantine.py` validates the file locally.
+
+The `@quarantine` tag described in `openmetadata-ui/.../playwright/QUARANTINE.md` is a separate mechanism: it removes a test from every lane, nightly included.
+
 ## Entity matrix
 
 Specs that repeat the same scenarios for every entity type (Entity, Lineage, Custom Properties, Explore right panel, service pages, …) wrap the generating collection in `pickEntityMatrix` from `playwright/utils/entityMatrix.ts`. Pull request and merge-queue runs (`entity_matrix=representative` from `select_playwright_tests.py`) generate those tests for one representative entity only — Table for data assets, Database Service for services. The nightly schedule and manual dispatches run the full matrix, as do local runs. A spec changed directly in the pull request keeps its full matrix so the edit is validated against every entity before it merges. Test titles do not depend on the selected set, so stable IDs and timing history are shared between both modes.
