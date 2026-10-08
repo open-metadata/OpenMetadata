@@ -70,14 +70,26 @@ ERROR_MSG = "Schema/Table name not found in table args. Falling back to default 
 
 
 def _qualified_identifier(*names: str) -> str:
-    """Quote untrusted name parts for Hive, Impala or Databricks.
+    """Quote untrusted name parts for Hive or Databricks.
 
-    All three delimit with backticks. Hive and Databricks unescape a doubled
-    one; Impala has no in-identifier escape, so doubling keeps the name inside
-    the quotes and the statement fails to parse rather than naming a different
-    table.
+    Both delimit with backticks and unescape a doubled one; a backslash is a
+    literal, so doubling the backtick is enough. Impala is different -- see
+    ``_impala_qualified_identifier``.
     """
     return ".".join(f"`{name.replace('`', '``')}`" for name in names)
+
+
+def _impala_qualified_identifier(*names: str) -> str:
+    """Quote untrusted name parts for Impala.
+
+    Impala's lexer (``QuotedIdentifier = `(\\.|[^`])*` ``) treats a backslash as
+    an escape and cannot represent a literal backtick, so a name holding either
+    cannot be safely quoted and is rejected rather than quoted.
+    """
+    for name in names:
+        if "`" in name or "\\" in name:
+            raise ValueError(f"Unsupported Impala identifier: {name!r}")
+    return ".".join(f"`{name}`" for name in names)
 
 
 class AbstractTableMetricComputer(ABC):
@@ -1065,7 +1077,7 @@ class ImpalaTableMetricComputer(_StatsBasedTableMetricComputer):
 
     def compute(self):
         """Sum #Rows across partitions from SHOW TABLE STATS."""
-        query = sa_text(f"SHOW TABLE STATS {_qualified_identifier(self.schema_name, self.table_name)}")
+        query = sa_text(f"SHOW TABLE STATS {_impala_qualified_identifier(self.schema_name, self.table_name)}")
         rows = self.runner._session.execute(query).fetchall()
         total_rows = 0
         for row in rows:

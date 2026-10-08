@@ -17,6 +17,7 @@ and verifies all new dialect-to-class factory registrations.
 
 from unittest.mock import MagicMock, Mock, patch
 
+import pytest
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import DeclarativeBase
 
@@ -642,22 +643,20 @@ class TestImpalaTableMetricComputer:
             result = computer.compute()
         assert result.rowCount == 50
 
-    def test_show_table_stats_escapes_backticks(self):
-        """Impala has no in-identifier backtick escape -- `sql-scanner.flex`:
-        QuotedIdentifier = `(\\.|[^\\`])*` with no unescaping -- so doubling
-        keeps a hostile name inside the backticks and the statement fails to
-        parse instead of naming a different table."""
+    def test_show_table_stats_rejects_unquotable_name(self):
+        """Impala's lexer (`sql-scanner.flex`: QuotedIdentifier =
+        `(\\.|[^\\`])*`) treats a backslash as an escape and cannot represent a
+        literal backtick, so a hostile name is rejected rather than quoted into
+        SQL that could break out of the backticks."""
         session = _build_mock_session()
-        row = MagicMock()
-        row._asdict.return_value = {"#Rows": 1}
-        session.execute.return_value.fetchall.return_value = [row]
 
         computer = _build_computer(session, ImpalaTableMetricComputer)
         computer._schema_name = HOSTILE_SCHEMA
         computer._table_name = HOSTILE_TABLE
-        computer.compute()
+        with pytest.raises(ValueError):
+            computer.compute()
 
-        assert _emitted(session) == "SHOW TABLE STATS `sch``ema`.`ta``ble`"
+        session.execute.assert_not_called()
 
     def test_impala_registration(self):
         assert table_metric_computer_factory._constructs[Dialects.Impala] is ImpalaTableMetricComputer
