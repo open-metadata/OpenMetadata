@@ -697,7 +697,8 @@ test.describe(
         const listResPromise = waitForResponseWithStatus(
           page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET',
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
           200
         );
         await page.getByRole('tab', { name: /created by me/i }).click();
@@ -728,7 +729,8 @@ test.describe(
         const listResPromise = waitForResponseWithStatus(
           page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET',
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
           200
         );
         // Click the first summary card (Total Memories)
@@ -765,7 +767,8 @@ test.describe(
         const listResPromise = waitForResponseWithStatus(
           page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET',
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
           200
         );
         // Click the "Created by Me" summary card
@@ -808,7 +811,8 @@ test.describe(
         const listResPromise = waitForResponseWithStatus(
           page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET',
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
           200
         );
         await authorOption.click();
@@ -860,7 +864,8 @@ test.describe(
         const listResPromise = waitForResponseWithStatus(
           page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET',
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
           200
         );
         await clearBtn.click();
@@ -910,7 +915,8 @@ test.describe(
         const listResPromise = waitForResponseWithStatus(
           page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET',
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
           200
         );
         await page.getByRole('tab', { name: /^all$/i }).click();
@@ -2241,7 +2247,8 @@ test.describe(
         const toPage1 = waitForResponseWithStatus(
           page,
           (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET',
+            res.url().includes(MEMORIES_API) &&
+            res.request().method() === 'GET',
           200
         );
         await page.getByRole('button', { name: /prev/i }).click();

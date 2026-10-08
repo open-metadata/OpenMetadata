@@ -1521,7 +1521,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    const uploadedRow =  await searchAndGetDocumentRow(page, sharedFileName);
+    const uploadedRow = await searchAndGetDocumentRow(page, sharedFileName);
     await expect(uploadedRow).toBeVisible();
     await uploadedRow.scrollIntoViewIfNeeded();
 
