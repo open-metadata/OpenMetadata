@@ -24,6 +24,7 @@ import {
   Label,
   Modal,
   ModalOverlay,
+  parseDate,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -34,8 +35,7 @@ import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
-import { millisToDateValue } from '../../observability/DataQuality/Dashboard/calendarDate.utils';
-import { fromCalendarValue } from './announcementFormUtils';
+import { fromCalendarValue, toCalendarDay } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
 import {
   AnnouncementColorSelect,
@@ -80,10 +80,10 @@ const FieldError = ({
  * and Description, so they have to line up with those fields rather than read
  * as a pair of loose buttons.
  *
- * The epoch-millis <-> `DateValue` bridge is the shared one the data-quality
- * date filters already use, so the conversion is not hand-rolled per form.
- * `tsconfig.json` pins the react-aria packages to this app's copy, without
- * which `DateValue` has two type identities and no value typechecks here.
+ * The epoch-millis bridge crosses as a `yyyy-MM-dd` string and is rebuilt with
+ * core's own `parseDate`. The app and the design system each resolve their own
+ * `@internationalized/date`, so a `DateValue` built here is a different type
+ * from the one this prop expects; a plain day string has no such identity.
  */
 const DateField = ({
   boundary = 'start',
@@ -121,11 +121,13 @@ const DateField = ({
         id={id}
         isInvalid={Boolean(error)}
         triggerVariant="input"
-        value={millisToDateValue(value ?? undefined)}
+        value={value == null ? null : parseDate(toCalendarDay(value))}
         onApply={() => {
           wasApplied.current = true;
         }}
-        onChange={(selected) => onChange(fromCalendarValue(selected, boundary))}
+        onChange={(selected) =>
+          onChange(fromCalendarValue(selected?.toString() ?? null, boundary))
+        }
         onOpenChange={(isOpen) => {
           if (isOpen) {
             valueOnOpen.current = value ?? null;

@@ -12,16 +12,18 @@
  */
 
 import { DateTime } from 'luxon';
-import type { DateValue } from 'react-aria-components';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
-import { dateValueToMillis } from '../../observability/DataQuality/Dashboard/calendarDate.utils';
 import {
   AnnouncementFormValues,
   EditableAnnouncement,
 } from './AnnouncementModal.interface';
 
+/** Epoch millis -> the `yyyy-MM-dd` day they fall on in the viewer's zone. */
+export const toCalendarDay = (ms: number): string =>
+  DateTime.fromMillis(ms).toFormat('yyyy-MM-dd');
+
 /**
- * The picker's value -> epoch millis.
+ * The picker's chosen day (`yyyy-MM-dd`) -> epoch millis.
  *
  * The end date resolves to the *end* of the chosen day, not its start. Both
  * dates are days, but the window is a half-open range in millis: anchoring the
@@ -36,16 +38,16 @@ import {
  * value, so clearing the picker would silently do nothing.
  */
 export const fromCalendarValue = (
-  value: DateValue | null,
+  day: string | null,
   boundary: 'start' | 'end' = 'start'
 ): number | null => {
-  if (value == null) {
+  if (!day) {
     return null;
   }
 
-  // `dateValueToMillis` lands on the start of the day in the viewer's zone,
-  // which is already what a start date wants.
-  const startOfDay = dateValueToMillis(value);
+  // A bare `yyyy-MM-dd` parses to local midnight, which is already what a
+  // start date wants.
+  const startOfDay = DateTime.fromISO(day).toMillis();
 
   return boundary === 'end'
     ? DateTime.fromMillis(startOfDay).endOf('day').toMillis()
