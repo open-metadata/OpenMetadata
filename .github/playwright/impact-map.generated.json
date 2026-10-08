@@ -1135,7 +1135,8 @@
         "playwright/e2e/Features/DataQuality/BundleSuiteBulkOperations.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
     },
     {
@@ -6501,7 +6502,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/BundleSuiteBulkOperations.spec.ts",
-        "playwright/e2e/Features/Table.spec.ts"
+        "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
     },
     {
@@ -9722,7 +9724,8 @@
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts"
+        "playwright/e2e/Pages/Domains.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
     },
     {
@@ -11706,7 +11709,8 @@
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts"
+        "playwright/e2e/Pages/TestSuite.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
     },
     {
