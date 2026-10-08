@@ -4039,6 +4039,7 @@
     "dimension-delete-test-definition-fallback": "Die Dimension wird bei ihnen entfernt, sodass daraus neu erstellte Testfälle ohne Dimension starten.",
     "dimension-description-placeholder": "Beschreiben Sie, was diese Dimension misst und wann sie zu verwenden ist",
     "dimension-display-name-help": "Wird in der Testbibliothek, in Dashboards und in der Dimensionsauswahl angezeigt.",
+    "dimension-failure-policy-helper": "Wie Gruppenergebnisse den Teststatus bestimmen. Mit \"jede verletzende Gruppe lässt den Test fehlschlagen\" schlägt der Test fehl, wenn das Gesamtergebnis oder eine beliebige Gruppe den Schwellenwert überschreitet. Gruppen jenseits der Top-Dimensionen werden zu \"Others\" zusammengefasst und nur gemeinsam geprüft, sodass eine schlechte kleine Gruppe von den gesunden um sie herum verdeckt werden kann.",
     "dimension-impact-unknown": "Wir konnten nicht prüfen, was auf diese Dimension verweist, daher sind die Auswirkungen unbekannt.",
     "dimension-in-use-count": "{{count}} Testfälle verwenden sie derzeit",
     "dimension-in-use-test-definition-count": "{{count}} Testdefinitionen sind ihr zugeordnet",

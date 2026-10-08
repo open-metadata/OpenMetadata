@@ -4039,6 +4039,7 @@
     "dimension-delete-test-definition-fallback": "A dimensão é removida delas, então novos casos de teste criados a partir delas começam sem dimensão.",
     "dimension-description-placeholder": "Descreva o que esta dimensão mede e quando usá-la",
     "dimension-display-name-help": "Exibido na biblioteca de testes, nos painéis e no seletor de dimensões.",
+    "dimension-failure-policy-helper": "Como os resultados dos grupos definem o status do teste. Com \"qualquer grupo em violação reprova o teste\", o teste falha quando o resultado geral ou qualquer grupo ultrapassa o limite. Grupos além das dimensões principais são agrupados em \"Others\" e verificados apenas em conjunto, então um grupo pequeno problemático pode ficar escondido pelos grupos saudáveis ao redor.",
     "dimension-impact-unknown": "Não foi possível verificar o que referencia esta dimensão, portanto o impacto é desconhecido.",
     "dimension-in-use-count": "{{count}} casos de teste a utilizam atualmente",
     "dimension-in-use-test-definition-count": "{{count}} definições de teste estão classificadas nela",

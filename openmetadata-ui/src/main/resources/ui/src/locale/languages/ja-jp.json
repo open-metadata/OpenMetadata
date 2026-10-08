@@ -4039,6 +4039,7 @@
     "dimension-delete-test-definition-fallback": "それらからディメンションが解除されるため、そこから新しく作成するテストケースはディメンションなしで始まります。",
     "dimension-description-placeholder": "このディメンションが何を測定し、いつ使用するかを説明してください",
     "dimension-display-name-help": "テストライブラリ、ダッシュボード、ディメンション選択欄に表示されます。",
+    "dimension-failure-policy-helper": "グループの結果がテストのステータスをどう決めるかを指定します。「違反したグループがあればテストを失敗させる」では、全体の結果またはいずれかのグループがしきい値を超えるとテストは失敗します。上位ディメンションに入らないグループは「Others」にまとめられ、まとめてのみチェックされるため、問題のある小さなグループが周囲の正常なグループに埋もれることがあります。",
     "dimension-impact-unknown": "このディメンションを参照しているものを確認できなかったため、影響範囲は不明です。",
     "dimension-in-use-count": "現在 {{count}} 件のテストケースが使用しています",
     "dimension-in-use-test-definition-count": "{{count}} 件のテスト定義がこのディメンションに分類されています",
