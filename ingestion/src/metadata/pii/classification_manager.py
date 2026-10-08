@@ -137,12 +137,12 @@ class ClassificationManager:
     def __init__(self, metadata: OpenMetadata[Any, Any], status: Status | None = None):
         self.metadata: OpenMetadata[Any, Any] = metadata
         self.status = status
-        self._classification_cache: OrderedDict[str, list[Classification]] = OrderedDict()
-        self._tags_cache: OrderedDict[str, list[Tag]] = OrderedDict()
+        self._classification_cache: OrderedDict[tuple[str, ...] | None, list[Classification]] = OrderedDict()
+        self._tags_cache: OrderedDict[tuple[str, ...], list[Tag]] = OrderedDict()
         self._reported_diagnostics: OrderedDict[tuple[str, str, bool], None] = OrderedDict()
 
     @staticmethod
-    def _cache_result(cache: OrderedDict, key: str, value: list) -> None:
+    def _cache_result(cache: OrderedDict, key: tuple[str, ...] | None, value: list) -> None:
         cache[key] = value
         cache.move_to_end(key)
         if len(cache) > MAX_CACHE_ENTRIES:
@@ -224,7 +224,7 @@ class ClassificationManager:
         Returns:
             List of enabled classification configs
         """
-        cache_key = ",".join(sorted(filter_names)) if filter_names else "all"
+        cache_key = tuple(sorted(filter_names)) if filter_names else None
 
         if cache_key in self._classification_cache:
             logger.debug(f"Returning cached enabled classifications for filter: {cache_key}")
@@ -277,7 +277,7 @@ class ClassificationManager:
         """
         classification_names = [c.name.root for c in classifications]
 
-        cache_key = ",".join(sorted(classification_names))
+        cache_key = tuple(sorted(classification_names))
         if cache_key in self._tags_cache:
             logger.debug(f"Returning cached tags for classifications: {cache_key}")
             self._tags_cache.move_to_end(cache_key)

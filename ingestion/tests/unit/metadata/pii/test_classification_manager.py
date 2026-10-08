@@ -51,6 +51,44 @@ def _warning_message(status):
     return next(iter(status.warnings[0].values()))
 
 
+def test_classification_cache_distinguishes_comma_name_from_two_names(pii_classification):
+    names = ["General,PII", "PII", "General"]
+    raw = [
+        pii_classification.model_copy(update={"name": EntityName(root=name)}).model_dump(mode="json") for name in names
+    ]
+    manager = ClassificationManager(_sdk_response(*raw))
+
+    assert [c.name.root for c in manager.get_enabled_classifications(["General,PII"])] == ["General,PII"]
+    assert [c.name.root for c in manager.get_enabled_classifications(["PII", "General"])] == ["PII", "General"]
+
+
+def test_classification_cache_distinguishes_all_name_from_unfiltered(pii_classification):
+    manager = ClassificationManager(_sdk_response(pii_classification.model_dump(mode="json")))
+
+    assert len(manager.get_enabled_classifications()) == 1
+    assert manager.get_enabled_classifications(["all"]) == []
+
+
+def test_tag_cache_distinguishes_comma_name_from_two_names(pii_classification, email_tag_pii):
+    sdk = _sdk_response()
+
+    def response(path, data):
+        parent = data["parent"]
+        raw = email_tag_pii.model_dump(mode="json")
+        raw["fullyQualifiedName"] = f"{parent}.Email"
+        return {"data": [raw], "paging": {"total": 1}}
+
+    sdk.client.get.side_effect = response
+    manager = ClassificationManager(sdk)
+    classes = {
+        name: pii_classification.model_copy(update={"name": EntityName(root=name)})
+        for name in ["General,PII", "PII", "General"]
+    }
+
+    assert len(manager.get_enabled_tags([classes["General,PII"]])) == 1
+    assert len(manager.get_enabled_tags([classes["PII"], classes["General"]])) == 2
+
+
 @pytest.mark.parametrize("enablement", [None, False, "false", "0", 0, "absent"])
 def test_bad_disabled_tags_do_not_report_diagnostics(pii_classification, email_tag_pii, enablement):
     raw = email_tag_pii.model_dump(mode="json", exclude_none=True)
