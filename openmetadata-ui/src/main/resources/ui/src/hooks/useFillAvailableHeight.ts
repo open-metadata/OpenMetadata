@@ -68,16 +68,24 @@ export const useFillAvailableHeight = (
       return;
     }
     const fit = () => fitToScrollParent(element, scrollParent, minHeight);
+    // Resizing inside the observer's callback resizes an observed child, which
+    // the browser reports as a ResizeObserver loop; the next frame does not.
+    let frame = 0;
+    const scheduleFit = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    };
 
     fit();
 
-    const observer = new ResizeObserver(fit);
+    const observer = new ResizeObserver(scheduleFit);
     observer.observe(scrollParent);
     Array.from(scrollParent.children).forEach((child) =>
       observer.observe(child)
     );
 
     return () => {
+      cancelAnimationFrame(frame);
       observer.disconnect();
       element.style.height = '';
     };

@@ -535,7 +535,7 @@ describe('TasksTab', () => {
     // A reassigned task can leave the current user's visible set, so the list
     // must re-sync with the server rather than being patched client-side.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-task-list', 'me'],
+      queryKey: ['inbox-task-list'],
       refetchType: 'active',
     });
     expect(mockSetTotal).not.toHaveBeenCalled();
@@ -572,7 +572,7 @@ describe('TasksTab', () => {
     // The other status lists may now hold or miss this task; they re-read on
     // their next visit while the showing list keeps its in-place edit.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-task-list', 'me'],
+      queryKey: ['inbox-task-list'],
       refetchType: 'none',
     });
   });

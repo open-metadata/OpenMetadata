@@ -19,7 +19,7 @@ import {
   ActivityFilter,
   InboxDateRange,
 } from '../../discovery/personal-space/InboxPage/inbox.utils';
-import { useInboxActivityCounts } from '../../discovery/personal-space/InboxPage/useInboxActivity';
+import { useInboxActivity } from '../../discovery/personal-space/InboxPage/useInboxActivity';
 import { useTaskStatusCounts } from '../../discovery/personal-space/InboxPage/useTaskQueue';
 
 /**
@@ -38,12 +38,17 @@ export const useActivityFeedCounts = (
   );
   const taskScope = useMemo(() => getTaskListScope(entityLink), [entityLink]);
 
+  // All only: the feed counts Mentions itself, once it is open.
+  const { total, isCapped, isLoading } = useInboxActivity(
+    ActivityFilter.All,
+    dateRange,
+    activityScope
+  );
+
   return {
     activityScope,
     taskScope,
-    activityCount: useInboxActivityCounts(dateRange, activityScope)[
-      ActivityFilter.All
-    ],
+    activityCount: isLoading ? undefined : { total, isCapped },
     taskCounts: useTaskStatusCounts(taskScope),
   };
 };

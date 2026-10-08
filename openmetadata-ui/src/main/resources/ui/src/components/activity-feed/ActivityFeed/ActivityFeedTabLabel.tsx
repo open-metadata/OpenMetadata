@@ -43,7 +43,7 @@ const ActivityFeedCountLabel: React.FC<ActivityFeedTabLabelProps> = ({
   return (
     <TabsLabel
       {...labelProps}
-      // Hidden until the activity arrives, rather than a number that moves.
+      // Hidden until the activity arrives; the task counts land alongside it.
       count={
         activityCount &&
         getTabCount(

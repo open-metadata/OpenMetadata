@@ -17,7 +17,7 @@ import {
   TaskStatusFilter,
 } from '../../discovery/personal-space/InboxPage/useTaskQueue';
 
-export const TASK_STATUS_PARAM = 'taskStatus';
+const TASK_STATUS_PARAM = 'taskStatus';
 const DEFAULT_TASK_STATUS: TaskStatusFilter = 'open';
 
 const toTaskStatus = (value: string | null): TaskStatusFilter =>

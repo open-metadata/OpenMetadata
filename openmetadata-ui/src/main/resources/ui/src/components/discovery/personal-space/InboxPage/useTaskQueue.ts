@@ -48,7 +48,7 @@ export type TaskListScope =
   | { type: 'entity'; aboutEntity: string }
   | { type: 'assignee'; assignee: string };
 
-export const VISIBLE_TASKS: TaskListScope = { type: 'visible' };
+const VISIBLE_TASKS: TaskListScope = { type: 'visible' };
 
 const getTaskScopeKey = (scope: TaskListScope): string => {
   switch (scope.type) {
@@ -84,7 +84,7 @@ const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
 
 // React Query cache key for the All/Open/Closed badge totals. Shared so a task
 // mutation can invalidate them (see handleResolved / handleTaskUpdated).
-export const TASK_STATUS_COUNTS_QUERY_KEY = 'inbox-task-status-counts';
+const TASK_STATUS_COUNTS_QUERY_KEY = 'inbox-task-status-counts';
 const TASK_COUNTS_STALE_TIME = 30_000;
 // React Query cache key prefix for the task lists, one entry per scope, status
 // and search, so switching back to a list reads it from the cache.
@@ -99,7 +99,7 @@ export const STATUS_FILTERS: { id: TaskStatusFilter; labelKey: string }[] = [
 ];
 
 // Pulls the three per-status totals out of the useQueries results array.
-export const getStatusCounts = (
+const getStatusCounts = (
   countQueries: { data?: number }[]
 ): Record<TaskStatusFilter, number> => ({
   all: countQueries[0].data ?? 0,
@@ -207,6 +207,11 @@ export const useTaskQueue = ({
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>(initialStatus);
+  // A host that keeps the status (an entity page's URL) may change it while
+  // the queue is mounted, e.g. a link to another status.
+  useEffect(() => {
+    setStatus(initialStatus);
+  }, [initialStatus]);
   const [search, setSearch] = useState('');
   // The query the server is filtering on. Kept apart from `search` so typing
   // stays responsive while the request trails it.
@@ -343,14 +348,16 @@ export const useTaskQueue = ({
   // cached ones go stale. `refetch` re-reads the showing list now; without it
   // the showing list keeps its in-place edit and every list re-reads on its
   // next visit.
+  // Every scope's lists: a task resolved on an entity also moves in the
+  // Inbox, and the Inbox must not show its old status from cache.
   const invalidateTaskLists = useCallback(
     (refetch = false) => {
       queryClient.invalidateQueries({
-        queryKey: [TASK_LIST_QUERY_KEY, scopeKey],
+        queryKey: [TASK_LIST_QUERY_KEY],
         refetchType: refetch ? 'active' : 'none',
       });
     },
-    [queryClient, scopeKey]
+    [queryClient]
   );
 
   // The server has no `type` filter on the scoped lists, and statuses such as
@@ -500,5 +507,3 @@ export const useTaskQueue = ({
     showEmptyState,
   };
 };
-
-export type TaskQueue = ReturnType<typeof useTaskQueue>;

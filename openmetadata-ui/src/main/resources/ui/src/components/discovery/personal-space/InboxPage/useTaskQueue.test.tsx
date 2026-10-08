@@ -147,6 +147,22 @@ describe('useTaskQueue', () => {
     expect(result.current.status).toBe('all');
     expect(onStatusChange).toHaveBeenCalledWith('all');
   });
+
+  // The host's status (an entity page's URL) can change while it is mounted.
+  it('follows a status changed by its host', () => {
+    const { result, rerender } = renderHook(
+      ({ status }) => useTaskQueue({ scope: ENTITY, initialStatus: status }),
+      {
+        initialProps: { status: 'open' as const } as {
+          status: 'open' | 'closed';
+        },
+      }
+    );
+
+    rerender({ status: 'closed' });
+
+    expect(result.current.status).toBe('closed');
+  });
 });
 
 describe('useTaskStatusCounts', () => {

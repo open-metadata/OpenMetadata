@@ -92,7 +92,12 @@ jest.mock('./ActivityFeedTasks', () => ({
 }));
 
 jest.mock('../../discovery/personal-space/InboxPage/useInboxActivity', () => ({
-  useInboxActivityCounts: () => ({ all: { total: 5, isCapped: false } }),
+  useInboxActivity: () => ({
+    items: [],
+    total: 5,
+    isCapped: false,
+    isLoading: false,
+  }),
 }));
 
 jest.mock('../../discovery/personal-space/InboxPage/useTaskQueue', () => ({
