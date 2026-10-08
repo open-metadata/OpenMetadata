@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { Kpi } from '../../../src/generated/dataInsight/kpi/kpi';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { MetricClass } from '../../support/entity/MetricClass';
+import { expect, test } from '../../support/fixtures/isolatedUser';
 import { okJson } from '../../utils/apiResponse';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
@@ -310,7 +311,15 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     }
   });
 
-  test('Verify KPI widget in Landing page', async ({ page }) => {
+  test('Verify KPI widget in Landing page', async ({ freshUserPage }) => {
+    const { page } = freshUserPage;
+    // This widget belongs to classic home, regardless of the instance's default mode.
+    await page.getByTestId('app-mode-switcher-trigger').click();
+    await page.getByTestId('app-mode-option-classic').click();
+    await expect(
+      page.getByTestId('app-mode-trigger-icon-classic')
+    ).toBeVisible();
+
     const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
