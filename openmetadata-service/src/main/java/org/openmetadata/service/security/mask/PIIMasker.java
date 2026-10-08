@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.openmetadata.schema.entity.data.Container;
@@ -70,21 +69,18 @@ public class PIIMasker {
 
     List<Integer> columnsPositionToBeMasked;
 
-    // If the entity itself is marked as PII, mask all the sample data
+    // Positions index the sample's own columns, which may be a subset of the entity's columns
+    // (and in any order), so an entity-level PII tag masks every sampled column, and a PII column
+    // the sample does not include has nothing to mask.
     if (entityHasPiiTag) {
       columnsPositionToBeMasked =
-          IntStream.range(0, columns.size()).boxed().collect(Collectors.toList());
+          IntStream.range(0, sampleData.getColumns().size()).boxed().collect(Collectors.toList());
     } else {
-      // Otherwise, mask only the PII columns
       columnsPositionToBeMasked =
           columns.stream()
-              .collect(
-                  Collectors.toMap(
-                      Function.identity(), c -> sampleData.getColumns().indexOf(c.getName())))
-              .entrySet()
-              .stream()
-              .filter(entry -> hasPiiSensitiveTag(entry.getKey()))
-              .map(Map.Entry::getValue)
+              .filter(column -> hasPiiSensitiveTag(column))
+              .map(column -> sampleData.getColumns().indexOf(column.getName()))
+              .filter(position -> position >= 0)
               .collect(Collectors.toList());
     }
 
