@@ -561,8 +561,12 @@ jobs:
           path: ${{ runner.temp }}/playwright-selection/selection.json
           retention-days: 1
 
+  # Plans in parallel with `build`: planning reads only the checkout, the
+  # playwright-selection artifact and detect-changes' outputs, never the
+  # distribution. Every job that does consume the build (fixture prepare,
+  # shards) still lists `build` in its own `needs`.
   plan-playwright:
-    needs: [build, detect-changes]
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
