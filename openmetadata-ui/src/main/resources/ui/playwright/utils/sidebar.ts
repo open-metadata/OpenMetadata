@@ -75,6 +75,48 @@ export const sidebarClick = async (page: Page, id: string) => {
     return;
   }
   const items = SIDEBAR_LIST_ITEMS[id as keyof typeof SIDEBAR_LIST_ITEMS];
+  const moduleKeys: Record<string, string> = {
+    [SidebarItem.EXPLORE]: 'explore',
+    [SidebarItem.OBSERVABILITY]: 'observability',
+    [SidebarItem.GOVERNANCE]: 'govern',
+    [SidebarItem.DATA_MARKETPLACE_SECTION]: 'marketplace',
+    [SidebarItem.CONTEXT_CENTER]: 'context-center',
+  };
+  const moduleKey = moduleKeys[items?.[0] ?? id];
+  if (moduleKey && (await page.getByTestId('ask-sidebar').count()) > 0) {
+    // The module navigation replaces hover menus, and either panel can be collapsed.
+    const mainItem = page
+      .getByTestId(`ask-nav-item-${moduleKey}`)
+      .or(page.getByTestId(`ask-rail-item-${moduleKey}`))
+      .or(page.getByTestId(`ask-more-nav-item-${moduleKey}`))
+      .filter({ visible: true });
+    if (!(await mainItem.isVisible())) {
+      await page
+        .getByTestId('ask-nav-item-more')
+        .or(page.getByTestId('ask-rail-item-more'))
+        .filter({ visible: true })
+        .click();
+    }
+    await mainItem.click();
+    if (items) {
+      const subKeys: Record<string, string> = {
+        [SidebarItem.INCIDENT_MANAGER]: 'incidents',
+        [SidebarItem.OBSERVABILITY_ALERT]: 'alerts',
+        [SidebarItem.DOMAIN]: 'domains',
+        [SidebarItem.DATA_PRODUCT]: 'data-products',
+        [SidebarItem.ARTICLE]: 'articles',
+      };
+      const subKey = subKeys[id] ?? id;
+      await page
+        .getByTestId(`ask-sub-panel-item-${subKey}`)
+        .or(page.getByTestId(`ask-sub-rail-item-${subKey}`))
+        .filter({ visible: true })
+        .click();
+    }
+    await waitForAllLoadersToDisappear(page);
+
+    return;
+  }
   if (items) {
     await page.mouse.move(0, 0); // Dismiss any open tooltips before interacting with sidebar
     await page.hover('[data-testid="left-sidebar"]');
