@@ -97,7 +97,11 @@ const ActorInfo = ({
       })}
       data-testid="source-actor">
       {config ? (
-        <CheckCircleIcon className="text-primary" height={12} width={12} />
+        <CheckCircleIcon
+          className="tw:text-fg-brand-primary"
+          height={12}
+          width={12}
+        />
       ) : null}
       <span className="d-flex items-center gap-1">
         <span className="text-grey-500">{actorLabel}</span>

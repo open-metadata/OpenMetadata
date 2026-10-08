@@ -6,7 +6,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.automations.Workflow",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"
   ],
   "definitions": {
     "workflowType": {

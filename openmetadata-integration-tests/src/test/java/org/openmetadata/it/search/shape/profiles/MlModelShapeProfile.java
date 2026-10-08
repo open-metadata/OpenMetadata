@@ -32,7 +32,7 @@ public final class MlModelShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new MlModel()
         .withId(ctx.id())
         .withName("model")
@@ -49,7 +49,7 @@ public final class MlModelShapeProfile implements EntityShapeProfile {
         .build();
   }
 
-  private EntityInterface features(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> features(final EntityInterface<?> entity, final Rung rung) {
     final MlModel model = (MlModel) entity;
     final List<MlFeature> features = new ArrayList<>(rung.magnitude());
     for (int i = 0; i < rung.magnitude(); i++) {

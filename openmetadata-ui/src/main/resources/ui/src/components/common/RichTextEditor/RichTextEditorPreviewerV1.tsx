@@ -97,10 +97,10 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
       </div>
       {hasReadMore && showReadMoreBtn && (
         <Button
-          className="text-xs text-right"
+          className="tw:text-xs tw:font-normal"
           color="link-color"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
-          size="xs"
+          size="sm"
           onPress={handleReadMoreToggle}>
           {readMore ? t('label.less-lowercase') : t('label.more-lowercase')}
         </Button>

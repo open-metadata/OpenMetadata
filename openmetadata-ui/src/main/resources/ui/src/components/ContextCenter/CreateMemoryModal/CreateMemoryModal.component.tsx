@@ -80,8 +80,8 @@ import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ContextMemory,
+  ContextMemoryStatus,
   EntityReference,
-  EntityStatus,
   MemoryType,
   ShareVisibility,
   TagLabel,
@@ -645,12 +645,18 @@ const MemoryTagsRow: FC<{
 );
 
 const getEntityStatusColor = (
-  status: EntityStatus
+  status: ContextMemoryStatus
 ): 'error' | 'warning' | 'gray' => {
-  if (status === EntityStatus.Rejected) {
+  if (
+    status === ContextMemoryStatus.Rejected ||
+    status === ContextMemoryStatus.Invalidated
+  ) {
     return 'error';
   }
-  if (status === EntityStatus.Deprecated) {
+  if (
+    status === ContextMemoryStatus.Deprecated ||
+    status === ContextMemoryStatus.Superseded
+  ) {
     return 'warning';
   }
 
@@ -708,7 +714,9 @@ const MemoryLifecycleRows: FC<{
           data-testid="memory-lifecycle-status"
           size="sm"
           type="color">
-          {t(MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus])}
+          {MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus]
+            ? t(MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus])
+            : memoryToEdit.entityStatus}
         </Badge>
       </div>
     )}
@@ -727,7 +735,8 @@ const MemoryLifecycleRows: FC<{
         </Typography>
       </div>
     )}
-    {memoryToEdit?.entityStatus === EntityStatus.Deprecated &&
+    {(memoryToEdit?.entityStatus === ContextMemoryStatus.Deprecated ||
+      memoryToEdit?.entityStatus === ContextMemoryStatus.Superseded) &&
       memoryToEdit.supersededBy && (
         <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
           <div className="tw:basis-[30%]">

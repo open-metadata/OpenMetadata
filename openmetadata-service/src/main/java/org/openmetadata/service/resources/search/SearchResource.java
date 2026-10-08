@@ -1055,7 +1055,7 @@ public class SearchResource {
 
                       String fields =
                           String.join(",", ReindexingUtil.getSearchIndexFields(entityType));
-                      EntityInterface entity = Entity.getEntity(ref, fields, Include.ALL);
+                      EntityInterface<?> entity = Entity.getEntity(ref, fields, Include.ALL);
 
                       String indexName =
                           indexMapping.getIndexName(searchRepository.getClusterAlias());
@@ -1074,7 +1074,7 @@ public class SearchResource {
                             docSizeBytes,
                             maxContentLength);
 
-                        EntityInterface reducedEntity =
+                        EntityInterface<?> reducedEntity =
                             Entity.getEntity(
                                 ref,
                                 "id,name,fullyQualifiedName,displayName,description,owners,tags,deleted",
