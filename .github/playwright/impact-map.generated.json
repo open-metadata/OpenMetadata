@@ -9100,22 +9100,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/SSOConfiguration.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/TreeSelectWidget.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilderV1/fields/CoreOneOfField.tsx"
       ],
       "specs": [
