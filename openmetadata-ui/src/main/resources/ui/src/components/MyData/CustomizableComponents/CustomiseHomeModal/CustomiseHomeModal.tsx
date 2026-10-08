@@ -227,8 +227,15 @@ const CustomiseHomeModal = ({
             <div
               className={classNames(
                 'sidebar-option text-md font-medium border-radius-xs cursor-pointer d-flex flex-wrap items-center',
-                isWidgetItem ? 'sidebar-widget-item' : '',
-                selectedKey === item.key ? 'active' : '',
+                isWidgetItem
+                  ? 'sidebar-widget-item tw:hover:bg-primary_hover'
+                  : '',
+                selectedKey === item.key
+                  ? 'active tw:bg-brand-primary tw:text-brand-primary'
+                  : '',
+                isWidgetItem && selectedKey !== item.key
+                  ? 'tw:text-tertiary'
+                  : '',
                 isSelectedWidget ? 'selected' : ''
               )}
               data-testid={`sidebar-option-${item.key}`}
@@ -241,7 +248,7 @@ const CustomiseHomeModal = ({
               )}>
               <span>{startCase(item.label)}</span>
               {isAllWidgetsTab && (
-                <span className="widget-count text-xs border-radius-md m-l-sm">
+                <span className="widget-count tw:bg-brand-primary tw:text-brand-primary text-xs border-radius-md m-l-sm">
                   {widgets.length}
                 </span>
               )}
@@ -339,7 +346,7 @@ const CustomiseHomeModal = ({
             </div>
           </Box>
           <Box
-            className="customise-home-modal-footer p-box"
+            className="customise-home-modal-footer p-box tw:border-t tw:border-secondary"
             gap={3}
             justify="end">
             <Button

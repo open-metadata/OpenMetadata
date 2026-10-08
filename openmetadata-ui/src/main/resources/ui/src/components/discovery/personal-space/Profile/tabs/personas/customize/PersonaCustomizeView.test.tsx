@@ -16,7 +16,7 @@ import { useEffect } from 'react';
 import { EntityType } from '../../../../../../../enums/entity.enum';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
-import { useCustomizeStore } from '../../../../../../../hooks/useCustomizeStore';
+import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { getDocumentByFQN } from '../../../../../../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../../../../../../rest/PersonaAPI';
 import { showErrorToast } from '../../../../../../../utils/ToastUtils';

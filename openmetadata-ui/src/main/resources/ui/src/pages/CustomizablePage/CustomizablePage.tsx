@@ -36,7 +36,7 @@ import { Page, PageType } from '../../generated/system/ui/page';
 import { UICustomization } from '../../generated/system/ui/uiCustomization';
 import { PersonaPreferences } from '../../generated/type/personaPreferences';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useCustomizeStore } from '../../hooks/useCustomizeStore';
+import { useCustomizeStore } from './CustomizeStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createDocument,

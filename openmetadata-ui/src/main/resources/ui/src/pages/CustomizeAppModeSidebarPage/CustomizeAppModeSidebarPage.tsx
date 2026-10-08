@@ -54,6 +54,9 @@ import {
   updateDocument,
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
+import { getPersonaDetailsPath } from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import '../SettingsNavigationPage/settings-navigation-page.less';
 import {
   getSidebarHiddenKeys,
   getSidebarNavigationItems,
@@ -62,10 +65,7 @@ import {
   moveSidebarNodeToRoot,
   SidebarDropPosition,
   SidebarTreeNode,
-} from '../../utils/CustomizePage/AppModeSidebar.utils';
-import { getPersonaDetailsPath } from '../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import '../SettingsNavigationPage/settings-navigation-page.less';
+} from './CustomizeAppModeSidebarPage.utils';
 
 /**
  * Persona-level customization editor for the AI (app-mode) sidebar: reorder

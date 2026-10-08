@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import { PageType } from '../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../hooks/useCustomizeStore';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 

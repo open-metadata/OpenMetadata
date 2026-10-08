@@ -13,14 +13,14 @@
 
 import { create } from 'zustand';
 
-import { Document } from '../generated/entity/docStore/document';
-import { Page, PageType } from '../generated/system/ui/page';
-import { NavigationItem } from '../generated/system/ui/uiCustomization';
+import { Document } from '../../generated/entity/docStore/document';
+import { Page, PageType } from '../../generated/system/ui/page';
+import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {
   getPersonaPage,
   normalizePersonaDocument,
   updatePersonaDocumentPage,
-} from '../utils/CustomizePage/PersonaPage.utils';
+} from '../../utils/CustomizePage/PersonaPage.utils';
 
 interface CustomizePageStore {
   document: Document | null;

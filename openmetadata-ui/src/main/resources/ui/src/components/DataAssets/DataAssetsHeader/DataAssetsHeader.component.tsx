@@ -895,7 +895,7 @@ export const DataAssetsHeader = ({
 
     return (
       <div
-        className="tw:flex tw:min-w-0 tw:items-center tw:gap-3"
+        className="tw:flex tw:min-w-0 tw:items-start tw:gap-3"
         data-testid="entity-header-title">
         <div className="tw:flex tw:min-w-0 tw:flex-col">
           {hasDisplayName && (
@@ -925,27 +925,31 @@ export const DataAssetsHeader = ({
             {dataAsset.name}
           </Typography>
         </div>
-        {deleted && (
-          <span className="deleted-badge-button" data-testid="deleted-badge">
-            {t('label.deleted')}
-          </span>
-        )}
-        <Tooltip placement="top" title={copyTooltipTitle}>
-          <TooltipTrigger className="tw:flex tw:items-center">
-            <Button
-              aria-label={t('label.copy-item', {
-                item: t('label.url-uppercase'),
-              })}
-              color="tertiary"
-              data-testid="entity-header-copy-button"
-              iconLeading={Copy01}
-              size="xs"
-              type="button"
-              onClick={handleCopyEntityUrl}
-            />
-          </TooltipTrigger>
-        </Tooltip>
-        <LearningIcon pageId={entityType} />
+        {/* h-8 = the title line, so the actions stay level with the title
+            rather than centring across title + name. */}
+        <div className="tw:flex tw:h-8 tw:shrink-0 tw:items-center tw:gap-3">
+          {deleted && (
+            <span className="deleted-badge-button" data-testid="deleted-badge">
+              {t('label.deleted')}
+            </span>
+          )}
+          <Tooltip placement="top" title={copyTooltipTitle}>
+            <TooltipTrigger className="tw:flex tw:items-center">
+              <Button
+                aria-label={t('label.copy-item', {
+                  item: t('label.url-uppercase'),
+                })}
+                color="tertiary"
+                data-testid="entity-header-copy-button"
+                iconLeading={Copy01}
+                size="xs"
+                type="button"
+                onClick={handleCopyEntityUrl}
+              />
+            </TooltipTrigger>
+          </Tooltip>
+          <LearningIcon pageId={entityType} />
+        </div>
       </div>
     );
   };

@@ -26,7 +26,6 @@ import {
   CustomizePageChromeContext,
   CUSTOMIZE_CHROME_BACK_ID,
 } from '../../../MyData/CustomizableComponents/CustomizablePageHeader/CustomizePageChrome.context';
-import '../PersonalSpaceModal/personal-space-modal.less';
 import {
   hashSubPathToView,
   isFullscreenPersonaHash,
@@ -37,6 +36,21 @@ const PersonaCustomizeView = withSuspenseFallback(
 );
 
 const HASH_TAB = 'personas';
+
+// The wrapper owns the scroll and paints the customize canvas edge to edge, so
+// the legacy page frames inside drop their own background, border and spacing.
+const FULLSCREEN_VIEW_CLASS = [
+  'tw:h-dvh tw:overflow-y-auto tw:bg-utility-blue-light-50',
+  'tw:[&_.page-layout-v1]:m-0! tw:[&_.page-layout-v1]:min-h-full',
+  'tw:[&_.page-layout-v1]:bg-transparent! tw:[&_.page-layout-v1]:p-5!',
+  'tw:[&_.page-layout-v1-vertical-scroll]:h-auto',
+  'tw:[&_.page-layout-v1-vertical-scroll]:overflow-visible',
+  'tw:[&_.customize-details-page]:rounded-none tw:[&_.customize-details-page]:border-0',
+  'tw:[&_.customize-details-page]:bg-transparent tw:[&_.customize-details-page]:p-0',
+  'tw:[&_.customize-details-page]:shadow-none',
+  'tw:[&_.customise-my-data]:rounded-none tw:[&_.customise-my-data]:border-0',
+  'tw:[&_.customise-my-data]:bg-transparent tw:[&_.customise-my-data]:shadow-none',
+].join(' ');
 
 /**
  * Full-page persona customize view (home page, entity pages). AppShell hides
@@ -128,7 +142,7 @@ const PersonaFullscreenPortal: React.FC = () => {
   return (
     <CustomizePageChromeContext.Provider value={chrome}>
       <div
-        className="persona-settings-overlay tw:h-dvh tw:overflow-y-auto tw:bg-utility-blue-light-50"
+        className={FULLSCREEN_VIEW_CLASS}
         data-testid="persona-fullscreen-view">
         <PersonaCustomizeView
           category={category}

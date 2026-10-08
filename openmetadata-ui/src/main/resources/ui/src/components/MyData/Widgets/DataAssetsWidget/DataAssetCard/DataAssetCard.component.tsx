@@ -68,7 +68,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
         </Typography>
 
         <AppBadge
-          className="data-asset-badge m-t-sm"
+          className="data-asset-badge m-t-sm tw:bg-brand-primary!"
           label={toString(doc_count)}
         />
       </Box>

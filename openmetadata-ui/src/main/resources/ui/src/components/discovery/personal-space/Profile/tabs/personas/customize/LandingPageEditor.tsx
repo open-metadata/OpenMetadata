@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Page, PageType } from '../../../../../../../generated/system/ui/page';
 import { PersonaPreferences } from '../../../../../../../generated/type/personaPreferences';
-import { useCustomizeStore } from '../../../../../../../hooks/useCustomizeStore';
+import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import {
   normalizePersonaDocument,
   updatePersonaDocumentPage,

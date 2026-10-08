@@ -14,7 +14,7 @@
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { getEntityIconWithBg } from '../../../../../../../utils/Assets/AssetsUtils';
-import { PageTypeToEntityTypeMap } from '../../../../../../../utils/CustomizePage/PageTypeEntityType.utils';
+import { PageTypeToEntityTypeMap } from '../../../../../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { getCustomizePageOptions } from '../../../../../../../utils/Persona/PersonaUtils';
 
 interface SubCategoryGridProps {

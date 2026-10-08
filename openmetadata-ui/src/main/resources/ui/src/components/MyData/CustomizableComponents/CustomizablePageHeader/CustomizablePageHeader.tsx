@@ -30,7 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { PersonaCustomizePageFqn } from '../../../../constants/Customize.constants';
 import { PageType } from '../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../hooks/useCustomizeStore';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';

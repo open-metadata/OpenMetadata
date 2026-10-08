@@ -759,6 +759,8 @@ test.describe(
     });
 
     test('Home page: a header theme colour is saved', async ({ page }) => {
+      // Loads the full Home page (every widget's API calls) twice.
+      test.slow();
       await openPersonaSettings(
         page,
         personas.homeTheme.data.name,

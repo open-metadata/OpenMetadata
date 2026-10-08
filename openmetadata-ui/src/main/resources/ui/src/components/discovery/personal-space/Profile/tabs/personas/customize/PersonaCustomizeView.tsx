@@ -24,7 +24,7 @@ import { EntityType } from '../../../../../../../enums/entity.enum';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
 import { PageType } from '../../../../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../../../../hooks/useCustomizeStore';
+import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { getDocumentByFQN } from '../../../../../../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../../../../../../rest/PersonaAPI';
 import { getEntityName } from '../../../../../../../utils/EntityNameUtils';

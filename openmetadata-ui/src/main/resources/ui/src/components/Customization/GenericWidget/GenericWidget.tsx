@@ -30,11 +30,11 @@ import {
 } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../hooks/useCustomizeStore';
-import type { WidgetCommonProps } from '../../../interface/customization.interface';
+import type { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
+import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { getGlossaryChildTermsForCustomization } from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermPureUtils';
 import { getDummyDataByPage } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
-import { getEntityTypeFromPageType } from '../../../utils/CustomizePage/PageTypeEntityType.utils';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { CUSTOM_PROPERTIES_WIDGET_GRID_WIDTH } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.constants';

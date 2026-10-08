@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   DotsVertical,
-  Eye,
+  EyeFilled,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -39,7 +39,7 @@ import { EntityTabs } from '../../../enums/entity.enum';
 import { Page, Tab } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { useLeftPanelCrossDrop } from '../../../hooks/platform/useLeftPanelCrossDrop';
-import { useCustomizeStore } from '../../../hooks/useCustomizeStore';
+import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import {
   WidgetCommonProps,
@@ -64,7 +64,7 @@ import {
   placeWidgetBesideLeftPanel,
   placeWidgetInLeftPanel,
 } from '../../../utils/CustomizePage/GridLayoutDragUtils';
-import { getEntityTypeFromPageType } from '../../../utils/CustomizePage/PageTypeEntityType.utils';
+import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showInfoToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -619,7 +619,7 @@ export const CustomizeTabWidget = () => {
                     selectionMode="none"
                     onAction={() => add(item)}>
                     <Dropdown.Item
-                      icon={Eye}
+                      icon={EyeFilled}
                       id="show"
                       label={t('label.show')}
                     />

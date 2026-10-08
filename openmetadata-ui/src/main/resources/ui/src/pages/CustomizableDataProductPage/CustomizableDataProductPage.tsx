@@ -27,10 +27,10 @@ import { EntityType } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Page } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/uiCustomization';
-import { useCustomizeStore } from '../../hooks/useCustomizeStore';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import '../CustomizeDetailsPage/customize-details-page.less';
 
 const CustomizableDataProductPage = ({

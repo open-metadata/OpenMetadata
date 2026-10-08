@@ -94,7 +94,7 @@ const AnnouncementsWidgetV1 = ({
               <Box
                 inline
                 align="center"
-                className="announcement-count-badge"
+                className="announcement-count-badge tw:border tw:border-bg-surface tw:bg-surface tw:px-1.5"
                 data-testid="announcement-count-badge"
                 justify="center"
                 style={{ color: bgColor }}>

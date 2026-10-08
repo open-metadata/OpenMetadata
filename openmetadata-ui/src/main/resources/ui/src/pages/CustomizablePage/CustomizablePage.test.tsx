@@ -86,7 +86,7 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(),
 }));
 
-jest.mock('../../hooks/useCustomizeStore', () => ({
+jest.mock('./CustomizeStore', () => ({
   useCustomizeStore: jest.fn().mockImplementation(() => ({
     document: mockDocumentData,
     setDocument: jest.fn(),

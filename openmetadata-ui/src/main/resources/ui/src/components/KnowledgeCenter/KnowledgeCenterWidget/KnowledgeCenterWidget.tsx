@@ -124,13 +124,13 @@ const KnowledgeCenterWidget = ({
             return (
               <Box
                 align="center"
-                className="article-entry"
+                className="article-entry tw:hover:bg-primary_hover"
                 data-testid="article-entry"
                 gap={2}
                 key={knowledgePage.id}>
                 <Box
                   align="center"
-                  className="knowledge-icon tw:shrink-0 tw:text-brand-tertiary"
+                  className="knowledge-icon tw:shrink-0 tw:bg-utility-blue-light-100 tw:text-brand-tertiary"
                   data-testid={isQuickLink ? 'link-icon' : 'article-icon'}
                   justify="center">
                   <KnowledgeIcon height="1em" width="1em" />
@@ -151,7 +151,7 @@ const KnowledgeCenterWidget = ({
                         }
                   }>
                   <Typography
-                    className="article-header text-sm font-regular text-left cursor-pointer ellipsis-text"
+                    className="article-header tw:text-primary text-sm font-regular text-left cursor-pointer ellipsis-text"
                     ellipsis={{
                       tooltip: true,
                       excludeTriggerFromTabOrder: true,

@@ -96,7 +96,7 @@ const WidgetHeader = ({
   return (
     <Box
       align="center"
-      className={classNames('widget-header', className)}
+      className={classNames('widget-header tw:px-5 tw:py-3', className)}
       data-testid="widget-header"
       gap={2}
       justify="between">
@@ -108,7 +108,7 @@ const WidgetHeader = ({
         )}
         <Typography
           as="p"
-          className="widget-title tw:cursor-pointer"
+          className="widget-title tw:cursor-pointer tw:text-secondary"
           data-testid="widget-title"
           ellipsis={{ tooltip: true }}
           onClick={onTitleClick}>

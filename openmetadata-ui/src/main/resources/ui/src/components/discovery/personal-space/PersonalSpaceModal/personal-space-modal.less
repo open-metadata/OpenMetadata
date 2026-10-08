@@ -45,30 +45,3 @@
     flex-direction: column;
   }
 }
-
-// Persona settings fullscreen view (AI mode). The wrapper owns the scroll and
-// paints the customize canvas colour (Tailwind, on the element); the legacy frames inside
-// (page layout, framed panel) drop their own background, border and spacing so
-// no lighter strip shows around them.
-.persona-settings-overlay {
-  .page-layout-v1 {
-    min-height: 100%;
-    margin: 0 !important;
-    padding: var(--om-space-20) !important;
-    background-color: transparent !important;
-  }
-
-  .page-layout-v1-vertical-scroll {
-    height: auto;
-    overflow: visible;
-  }
-
-  .customize-details-page,
-  .customise-my-data {
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-    background-color: transparent;
-  }
-}

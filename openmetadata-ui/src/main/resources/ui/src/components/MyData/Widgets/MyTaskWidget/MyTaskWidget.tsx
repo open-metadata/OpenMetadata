@@ -132,7 +132,7 @@ const MyTaskWidget = ({
   const widgetContent = (
     <div className="my-task-widget-container">
       {/* Widget Content */}
-      <div className="widget-content tw:flex-1">
+      <div className="widget-content flex-1">
         {isEmpty(tasks) ? (
           <WidgetEmptyState
             dataTestId="my-task-empty-state"
@@ -151,6 +151,7 @@ const MyTaskWidget = ({
             <div className="entity-list-body">
               {tasks.slice(0, PAGE_SIZE_BASE).map((task) => (
                 <TaskFeedCardFromTask
+                  className="tw:py-2!"
                   isOpenInDrawer={myTaskData?.w === 1}
                   key={task.id}
                   task={task}

@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { lazy, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Page, PageType } from '../../../../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../../../../hooks/useCustomizeStore';
+import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { updatePersonaDocumentPage } from '../../../../../../../utils/CustomizePage/PersonaPage.utils';
 import {
   showErrorToast,

@@ -173,10 +173,13 @@ const DomainsWidget = ({
         <div className="domains-widget-grid">
           {domains.slice(0, PAGE_SIZE_BASE).map((domain) => (
             <button
-              className={classNames('domain-card', {
-                'domain-card-full': isFullSize,
-                'p-0': !isFullSize,
-              })}
+              className={classNames(
+                'domain-card tw:border tw:border-primary tw:bg-surface tw:text-secondary tw:transition-colors tw:duration-300',
+                {
+                  'domain-card-full': isFullSize,
+                  'p-0': !isFullSize,
+                }
+              )}
               data-testid={`domain-card-${domain.id || domain.name}`}
               key={domain.id}
               type="button"

@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { GridSizes } from '../../../../constants/CustomizeWidgets.constants';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { PageType } from '../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../hooks/useCustomizeStore';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPagePureUtils';
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
 import { AddDetailsPageWidgetTabContentProps } from './AddDetailsPageWidgetTabContent.interface';

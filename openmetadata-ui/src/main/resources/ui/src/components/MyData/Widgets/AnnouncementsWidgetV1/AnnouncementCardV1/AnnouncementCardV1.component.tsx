@@ -62,13 +62,13 @@ const AnnouncementCardV1 = ({
   const entityIcon = useMemo(() => getEntityIcon(entityType), [entityType]);
 
   const gradientBackground = currentBackgroundColor
-    ? `linear-gradient(270deg, var(--om-color-bg-surface) -12.07%, ${currentBackgroundColor} 500.72%)`
+    ? `linear-gradient(270deg, var(--tw-background-color-surface) -12.07%, ${currentBackgroundColor} 500.72%)`
     : undefined;
 
   return (
     <Box
       className={classNames(
-        'announcement-card-v1 tw:text-primary',
+        'announcement-card-v1 tw:bg-surface tw:text-primary',
         disabled ? 'disabled' : ''
       )}
       data-testid={`announcement-card-v1-${announcement.id}`}

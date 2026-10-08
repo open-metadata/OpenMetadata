@@ -20,7 +20,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import { PageType } from '../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../hooks/useCustomizeStore';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomizablePageHeader } from './CustomizablePageHeader';
 import { CustomizePageChromeContext } from './CustomizePageChrome.context';
@@ -33,7 +33,7 @@ jest.mock('../../../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../../../hooks/useCustomizeStore');
+jest.mock('../../../../pages/CustomizablePage/CustomizeStore');
 
 describe('CustomizablePageHeader', () => {
   const mockProps = {

@@ -596,6 +596,10 @@ test.describe('Curated Assets Widget', () => {
       true
     );
 
+    // The owners MultiSelect keeps its popup open, and an open react-aria
+    // popup hides the rest of the dialog from the accessibility tree. Close it
+    // on the modal title (Escape would also dismiss the modal).
+    await page.getByTestId('curated-assets-modal-title').click();
     await page.getByRole('button', { name: 'Add New Field' }).click();
 
     // Switch first group to OR condition (AND is default)

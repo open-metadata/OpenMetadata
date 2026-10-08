@@ -27,9 +27,9 @@ import {
 import { Document } from '../../../../generated/entity/docStore/document';
 import { Page } from '../../../../generated/system/ui/page';
 import { PageType } from '../../../../generated/system/ui/uiCustomization';
-import { useCustomizeStore } from '../../../../hooks/useCustomizeStore';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
-import { WidgetConfig } from '../../../../interface/customization.interface';
+import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import '../../../../pages/MyDataPage/my-data.less';
 import {
   getAddWidgetHandler,

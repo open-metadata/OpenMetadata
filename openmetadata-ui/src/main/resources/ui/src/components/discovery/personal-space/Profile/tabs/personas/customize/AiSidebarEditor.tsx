@@ -31,7 +31,7 @@ import {
   moveSidebarNodeToRoot,
   SidebarDropPosition,
   SidebarTreeNode,
-} from '../../../../../../../utils/CustomizePage/AppModeSidebar.utils';
+} from '../../../../../../../pages/CustomizeAppModeSidebarPage/CustomizeAppModeSidebarPage.utils';
 import {
   showErrorToast,
   showSuccessToast,

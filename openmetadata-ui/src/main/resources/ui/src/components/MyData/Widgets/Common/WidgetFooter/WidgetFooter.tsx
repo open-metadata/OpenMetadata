@@ -39,7 +39,7 @@ const WidgetFooter = ({
 
   return (
     <div
-      className={classNames('widget-footer', className)}
+      className={classNames('widget-footer tw:bg-surface', className)}
       data-testid="widget-footer">
       {(onMoreClick || moreButtonLink) && (
         <>

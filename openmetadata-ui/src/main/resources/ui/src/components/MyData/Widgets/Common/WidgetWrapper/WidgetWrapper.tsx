@@ -37,7 +37,7 @@ const WidgetWrapper = ({
   return (
     <Card
       className={classNames(
-        'widget-wrapper-container card-widget tw:flex tw:h-full tw:flex-col',
+        'widget-wrapper-container card-widget tw:flex tw:h-full tw:flex-col tw:hover:shadow-md',
         className
       )}
       data-testid={dataTestId}>

@@ -23,7 +23,7 @@ import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageType } from '../../../../generated/system/ui/page';
-import { useCustomizeStore } from '../../../../hooks/useCustomizeStore';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { AddWidgetTabContentProps } from './AddWidgetModal.interface';

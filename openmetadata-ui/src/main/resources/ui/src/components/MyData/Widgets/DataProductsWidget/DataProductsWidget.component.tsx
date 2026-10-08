@@ -153,10 +153,13 @@ const DataProductsWidget = ({
         <div className="data-products-widget-grid">
           {dataProducts.slice(0, PAGE_SIZE_BASE).map((dataProduct) => (
             <button
-              className={classNames('data-product-card', {
-                'data-product-card-full': isFullSize,
-                'p-0': !isFullSize,
-              })}
+              className={classNames(
+                'data-product-card tw:bg-surface tw:text-secondary tw:transition-colors tw:duration-300',
+                {
+                  'data-product-card-full': isFullSize,
+                  'p-0': !isFullSize,
+                }
+              )}
               data-testid={`data-product-card-${dataProduct.id}`}
               key={dataProduct.id}
               type="button"
