@@ -331,9 +331,8 @@ class TestAthenaService(unittest.TestCase):
     def test_query_table_names_and_types_delta(self):
         # Parameters captured byte-for-byte from a real AWS Glue get_table response, written by
         # the Athena CREATE EXTERNAL TABLE ... TBLPROPERTIES ('table_type'='DELTA') DDL against a
-        # live delta-rs table (account 654654299202, ap-south-1). Athena writes table_type in
-        # lowercase ("delta") and also spark.sql.sources.provider=delta, so the match must be
-        # case-insensitive across both keys.
+        # live delta-rs table. Athena writes table_type in lowercase ("delta") and also
+        # spark.sql.sources.provider=delta, so the match must be case-insensitive across both keys.
         mock_glue_client = MagicMock()
         mock_paginator = MagicMock()
         mock_paginator.paginate.return_value = [
