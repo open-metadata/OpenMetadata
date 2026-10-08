@@ -68,6 +68,19 @@ public final class WorkflowDefinitionMasker {
           .distinct()
           .toList();
 
+  /**
+   * The secret fields of each sink type's config, keyed by the sink type value the provider
+   * registry also uses. A sink type missing here has every known secret field masked.
+   */
+  private static final Map<String, List<JsonPointer>> SECRET_POINTERS_BY_SINK_TYPE =
+      Map.of(
+          "git",
+          GIT_SECRET_POINTERS,
+          "webhook",
+          WEBHOOK_SECRET_POINTERS,
+          "httpEndpoint",
+          List.of());
+
   private static final UnaryOperator<String> MASK_SECRET = secret -> PASSWORD_MASK;
   private static final String NODES_FIELD = "nodes";
   private static final String SUB_TYPE_FIELD = "subType";
@@ -237,11 +250,8 @@ public final class WorkflowDefinitionMasker {
     List<JsonPointer> pointers = List.of();
     if (config != null && config.getSinkType() != null) {
       pointers =
-          switch (config.getSinkType()) {
-            case GIT -> GIT_SECRET_POINTERS;
-            case WEBHOOK -> WEBHOOK_SECRET_POINTERS;
-            case HTTP_ENDPOINT -> List.of();
-          };
+          SECRET_POINTERS_BY_SINK_TYPE.getOrDefault(
+              config.getSinkType().value(), ALL_SECRET_POINTERS);
     }
     return pointers;
   }
