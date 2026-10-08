@@ -25,6 +25,10 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../../hooks/useAlertSelection';
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
@@ -230,13 +234,6 @@ jest.mock('../../../../utils/Alerts/AlertsUtil', () => ({
 
 jest.mock('../../../../utils/Alerts/AlertsUtilPure', () => ({
   ...jest.requireActual('../../../../utils/Alerts/AlertsUtilPure'),
-  getFilteredDestinationOptions: jest
-    .fn()
-    .mockImplementation((key: string) =>
-      key === 'internal'
-        ? [{ value: SubscriptionCategory.Admins }]
-        : [{ value: SubscriptionType.Email }, { value: SubscriptionType.Slack }]
-    ),
   getSubscriptionTypeOptions: jest.fn().mockReturnValue([
     { value: 'ActivityFeed', disabled: false },
     { value: 'Email', disabled: false },
@@ -338,6 +335,19 @@ function renderWithDestinationValue(
   return render(<Wrapper />);
 }
 
+const offering = (recipientCategories: string[]): AlertSelection => ({
+  sources: ['table'],
+  support: { recipientCategories },
+  capabilities: { loading: false },
+  loading: false,
+  search: {
+    indexes: [],
+    containerEntities: [],
+    byName: jest.fn(),
+    byId: jest.fn(),
+  },
+});
+
 describe('DestinationSelectItem', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -351,10 +361,12 @@ describe('DestinationSelectItem', () => {
     ).toBeInTheDocument();
   });
 
-  it('filters destination categories for the selected source', () => {
-    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} />, {
-      resources: ['table'],
-    });
+  it('offers the recipients the selected sources reach, as the server says', () => {
+    renderWithForm(
+      <AlertSelectionProvider value={offering([SubscriptionCategory.Admins])}>
+        <DestinationSelectItem {...MOCK_PROPS} />
+      </AlertSelectionProvider>
+    );
 
     expect(
       screen.getByRole('option', { name: SubscriptionCategory.Admins })
@@ -362,6 +374,26 @@ describe('DestinationSelectItem', () => {
     expect(
       screen.queryByRole('option', { name: SubscriptionCategory.Owners })
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps offering the recipient a saved destination already has', () => {
+    renderWithForm(
+      <AlertSelectionProvider value={offering([SubscriptionCategory.Admins])}>
+        <DestinationSelectItem {...MOCK_PROPS} />
+      </AlertSelectionProvider>,
+      {
+        destinations: [
+          {
+            category: SubscriptionCategory.Followers,
+            destinationType: SubscriptionCategory.Followers,
+          },
+        ],
+      }
+    );
+
+    expect(
+      screen.getByRole('option', { name: SubscriptionCategory.Followers })
+    ).toBeInTheDocument();
   });
 
   it('requires a destination category before submission', async () => {

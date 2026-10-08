@@ -37,7 +37,6 @@ import {
   getDescriptionBox,
   toastNotification,
   uuid,
-  waitForAntdPopupToSettle,
 } from './common';
 import {
   getEntityDisplayName,
@@ -698,7 +697,9 @@ export const verifyAlertDetails = async ({
   }
 
   // Check trigger name
-  await expect(page.getByTestId('source-select')).toContainText(triggerName);
+  await expect(page.getByTestId('source-select')).toContainText(
+    sourceLabelOf(triggerName)
+  );
 
   // Check filter details
   await checkActionOrFilterDetails({ page, filters });
@@ -962,8 +963,69 @@ export const inputBasicAlertInformation = async ({
   const sourceTrigger = page.getByTestId('add-source-button');
   await sourceTrigger.click();
   await expect(sourceOption).toBeVisible();
-  await waitForAntdPopupToSettle(page);
   await sourceOption.click();
+
+  await expect(sourceSelect).toHaveText(sourceDisplayName);
+};
+
+// Resolves once the server has answered about exactly these sources, in any order.
+export const waitForCapabilitiesOf = (page: Page, sources: string[]) =>
+  page.waitForResponse((response) => {
+    const asked = response.request().postDataJSON()?.sources ?? [];
+
+    return (
+      response.url().includes('/api/v1/events/subscriptions/capabilities') &&
+      asked.length === sources.length &&
+      sources.every((source) => asked.includes(source))
+    );
+  });
+
+// Adds a source to the ones already chosen, and waits for what the server says about them all.
+export const addAlertSource = async (
+  page: Page,
+  sourceName: string,
+  chosenSources: string[]
+) => {
+  const answered = waitForCapabilitiesOf(page, [...chosenSources, sourceName]);
+  await page.getByTestId('source-select').getByRole('combobox').click();
+  await page.getByRole('listbox').getByTestId(`${sourceName}-option`).click();
+  await answered;
+  await page.keyboard.press('Escape');
+  // The picker gives focus back to its input once it has closed; a click before that loses it.
+  await expect(page.getByRole('listbox')).toBeHidden();
+};
+
+// A source is shown by the name the list gives it: "ingestionPipeline" reads "Ingestion Pipeline".
+export const sourceLabelOf = (sourceName: string) =>
+  new RegExp(sourceName.replace(/([a-z])([A-Z])/g, '$1\\s*$2'), 'i');
+
+// The source picker holds several sources, so choosing another one adds it. Replacing the
+// source means removing what is selected first: some sources, such as All, cannot be combined.
+export const replaceAlertSource = async ({
+  page,
+  sourceName,
+  sourceDisplayName,
+}: {
+  page: Page;
+  sourceName: string;
+  sourceDisplayName: string;
+}) => {
+  const sourceSelect = page.getByTestId('source-select');
+  const input = sourceSelect.getByRole('combobox');
+  // The only buttons in the control are the chosen sources' remove buttons.
+  const chosen = sourceSelect.getByRole('button');
+
+  // Backspace in the empty input moves to the last chosen source; Backspace there removes it.
+  for (let left = await chosen.count(); left > 0; left--) {
+    await input.click();
+    await input.press('Backspace');
+    await page.keyboard.press('Backspace');
+    await expect(chosen).toHaveCount(left - 1);
+  }
+
+  await input.fill(sourceDisplayName);
+  await page.getByRole('listbox').getByTestId(`${sourceName}-option`).click();
+  await page.keyboard.press('Escape');
 
   await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
@@ -984,11 +1046,13 @@ export const saveAlertAndVerifyResponse = async (page: Page) => {
   const getAlertDetails = page.waitForResponse(
     '/api/v1/events/subscriptions/name/*'
   );
+  // The form also asks what its sources support with a POST to .../capabilities, which is not the save.
   const createAlert = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
       response.url().includes('/api/v1/events/subscriptions') &&
-      !response.url().includes('testDestination')
+      !response.url().includes('testDestination') &&
+      !response.url().includes('/capabilities')
   );
 
   await page.click('[data-testid="save-button"]');
@@ -1184,9 +1248,10 @@ export const checkRecentEventDetails = async ({
 
   await page.getByTestId('filter-button').click();
 
-  await page
-    .locator('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]')
-    .waitFor();
+  const failedFilterOption = page.getByRole('menuitemradio', {
+    name: 'Failed',
+  });
+  await failedFilterOption.waitFor();
 
   const getFailedEvents = waitForResponseWithStatus(
     page,
@@ -1199,7 +1264,7 @@ export const checkRecentEventDetails = async ({
     200
   );
 
-  await page.click('.ant-dropdown-menu[role="menu"] [data-menu-id*="failed"]');
+  await failedFilterOption.click();
 
   await getFailedEvents.then(async (response) => {
     const failedEvents: EventDetails[] = (await response.json()).data;

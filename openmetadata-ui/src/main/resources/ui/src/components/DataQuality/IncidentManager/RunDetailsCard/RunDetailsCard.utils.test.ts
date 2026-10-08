@@ -12,6 +12,7 @@
  */
 import {
   TestCase,
+  TestCaseDimensionResult,
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
@@ -112,6 +113,59 @@ describe('RunDetailsCard utils', () => {
       expect(getRunExpectation(testCase, resultWith({}))).toEqual({
         min: 500,
         max: 750,
+      });
+    });
+
+    it('reads the range the run was evaluated against over the configured one', () => {
+      // 90..120 widened by a 5% threshold.
+      const testCase = testCaseWith({
+        parameterValues: [
+          { name: 'minValueForMeanInCol', value: '90' },
+          { name: 'maxValueForMeanInCol', value: '120' },
+          { name: 'threshold', value: '5' },
+          { name: 'thresholdUnit', value: 'PERCENTAGE' },
+        ],
+      });
+
+      expect(
+        getRunExpectation(
+          testCase,
+          resultWith({ minBound: 85.5, maxBound: 126 })
+        )
+      ).toEqual({ min: 85.5, max: 126 });
+    });
+
+    it('keeps a one-sided range the run reports', () => {
+      const testCase = testCaseWith({
+        parameterValues: [{ name: 'maxValueForMeanInCol', value: '120' }],
+      });
+
+      expect(
+        getRunExpectation(testCase, resultWith({ maxBound: 126 }))
+      ).toEqual({ min: undefined, max: 126 });
+    });
+
+    it('reads the range a dimension was evaluated against', () => {
+      const testCase = testCaseWith({
+        parameterValues: [
+          { name: 'minValueForMeanInCol', value: '90' },
+          { name: 'maxValueForMeanInCol', value: '120' },
+        ],
+      });
+      const dimensionResult: TestCaseDimensionResult = {
+        id: 'dim',
+        testCaseResultId: 'res',
+        timestamp: 1,
+        dimensionKey: 'channel=phone',
+        dimensionValues: [{ name: 'channel', value: 'phone' }],
+        testCaseStatus: TestCaseStatus.Failed,
+        minBound: 63,
+        maxBound: 156,
+      };
+
+      expect(getRunExpectation(testCase, dimensionResult)).toEqual({
+        min: 63,
+        max: 156,
       });
     });
 

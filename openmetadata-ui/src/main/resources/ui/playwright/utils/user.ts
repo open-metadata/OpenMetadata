@@ -12,6 +12,7 @@
  */
 
 import { Browser, expect, Page } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../constant/common';
 import {
   GLOBAL_SETTING_PERMISSIONS,
   SETTING_PAGE_ENTITY_PERMISSION,
@@ -181,11 +182,7 @@ export const softDeleteUserProfilePage = async (
   });
   await page.click('[data-testid="user-profile-manage-btn"]');
 
-  await page.locator('.ant-popover:not(.ant-popover-hidden)').waitFor({
-    state: 'visible',
-  });
-
-  await page.getByText('Delete Profile').click();
+  await page.getByRole('dialog').getByText('Delete Profile').click();
 
   await page.getByTestId('delete-modal').waitFor();
 
@@ -736,7 +733,7 @@ export const addUser = async (
   const rolesCombobox = page
     .getByTestId('roles-dropdown')
     .getByRole('combobox');
-  await expect(rolesCombobox).toBeVisible({ timeout: 120000 });
+  await expect(rolesCombobox).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await rolesCombobox.click();
   const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
   await rolesCombobox.fill(role);
@@ -744,7 +741,7 @@ export const addUser = async (
   const roleOption = page
     .locator('.ant-select-item-option-content')
     .filter({ hasText: new RegExp(`^${role}$`) });
-  await expect(roleOption).toBeVisible({ timeout: 120000 });
+  await expect(roleOption).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await roleOption.click();
   await clickOutside(page);
 
