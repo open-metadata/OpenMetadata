@@ -105,8 +105,9 @@ column in a cycle reaches itself.
   zero-length start; it took about 6.6 s per page on the test graph against about 50 ms.
 - **Silent drops.** A mapping whose column is not a projected `om:Column` (for example because its
   table is not in the graph) has no `om:fullyQualifiedName` to join and produces no row.
-- **Page size.** The MCP `sparql_query` tool caps its body at 80,000 bytes. A row of a column and an
-  asset IRI is about 205 bytes with realistic names, so 400 rows overflow and the tool publishes 250.
+- **Page size.** The MCP `sparql_query` tool caps its body at 80% of the server's `maxResponseChars` setting (80,000 bytes by default;
+  an administrator can lower it). A row of a column and an
+  asset IRI is about 205 bytes with realistic names, so 400 rows overflow the default and the tool publishes 250.
   When a page comes back `truncated`, lower `LIMIT` and repeat the same `OFFSET`.
 - **Freshness.** Column mappings reach the graph only on an `RdfIndexApp` run. A live
   `PUT /v1/lineage` projects the table edge but not its `LineageDetails`, so a new mapping appears

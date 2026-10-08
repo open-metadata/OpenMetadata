@@ -475,11 +475,13 @@ configuration.
   - one audit event per call, recorded through the same audit path as the agent endpoint;
   - the response carries the completeness status computed from the row probe (§5), so a client
     can tell a complete page from a truncated one.
-- The MCP response is additionally bounded to the MCP payload budget (80,000 bytes). A bounded
+- The MCP response is additionally bounded to the MCP payload budget: 80% of the server's `maxResponseChars` setting, which is
+  80,000 bytes at its default of 100,000 and can be lowered by an administrator. A bounded
   response is flagged `truncated` with its full size; the caller lowers `LIMIT` and repeats the
   same `OFFSET`. This is a transport limit, separate from the completeness status. A row of a column
   FQN and an asset IRI is about 205 bytes, so the published column-lineage query pages by 250 rows
-  (about 51 KB); 400 rows overflowed the budget in the integration test.
+  (about 51 KB); 400 rows overflowed the default budget in the integration test. A lowered budget
+  truncates sooner, and the client's rule is the same: lower `LIMIT` and repeat the `OFFSET`.
 - The other tools that read the graph (`entity_neighborhood`, `find_by_tag` and `ontology_describe`
   with a `resource`) execute inside the shared timeout and concurrency guard once non-admins can
   call them, and for non-admins they apply the same `READY` check as `sparql_query`. A rebuild that
