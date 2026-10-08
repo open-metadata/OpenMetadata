@@ -43,6 +43,11 @@
   padding-inline: calc(var(--layout-gutter) / 2);
 }
 
+// Matches antd Space: an item whose child renders nothing takes no gap.
+.layout-space-item:empty {
+  display: none;
+}
+
 // Gutters belong to items, not all 23 grid tracks; track gaps overflow narrow layouts.
 .layout-grid {
   column-gap: var(--om-space-0);
