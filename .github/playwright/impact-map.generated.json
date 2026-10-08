@@ -5490,8 +5490,7 @@
         "playwright/e2e/Features/AppMode/AppModePreferenceRoundTrip.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
-        "playwright/e2e/Features/PersonaAppLayout.spec.ts",
-        "playwright/e2e/Pages/DataInsight.spec.ts"
+        "playwright/e2e/Features/PersonaAppLayout.spec.ts"
       ]
     },
     {
@@ -7702,7 +7701,8 @@
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerLocaleLayout.spec.ts",
         "playwright/e2e/Features/RoleFixtureSessions.spec.ts",
-        "playwright/e2e/Features/SettingsNavigationPage.spec.ts"
+        "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Pages/DataInsight.spec.ts"
       ]
     },
     {
