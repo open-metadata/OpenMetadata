@@ -58,6 +58,7 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+import org.openmetadata.service.util.RequestEntityCache;
 
 public class SubjectCacheTest {
   private static List<Role> team1Roles;
@@ -512,6 +513,57 @@ public class SubjectCacheTest {
     List<PolicyContext> afterEdit = SubjectCache.getPolicies("racingUser");
     assertEquals(1, afterEdit.size());
     assertEquals(1, afterEdit.getFirst().getRules().size());
+  }
+
+  /**
+   * The request entity cache is thread-local and outlives a request on pool threads. A policy load
+   * must not read from it, or the rules cached before an edit are compiled into the shared cache
+   * again, including on the retry that follows an invalidation.
+   */
+  @Test
+  void testLoadIgnoresPolicyLeftInTheThreadsRequestCache() {
+    Policy policy = twoRulePolicy();
+    putUserWithPolicy("leakyUser", policy);
+    Policy leaked = JsonUtils.readValue(JsonUtils.pojoToJson(policy), Policy.class);
+    answerPolicyReadsLikeTheRepository();
+
+    try {
+      EntityRepository.CACHE_WITH_ID.put(
+          new ImmutablePair<>(Entity.POLICY, policy.getId()),
+          JsonUtils.pojoToJson(policy.withRules(List.of(policy.getRules().getFirst()))));
+      RequestEntityCache.putById(
+          Entity.POLICY, policy.getId(), null, null, false, leaked, Policy.class);
+
+      List<PolicyContext> loaded = SubjectCache.getPolicies("leakyUser");
+
+      assertEquals(1, loaded.size());
+      assertEquals(1, loaded.getFirst().getRules().size());
+    } finally {
+      RequestEntityCache.clear();
+      restorePolicyReads();
+    }
+  }
+
+  /** Reads the request cache first and fills it, as {@code EntityRepository.get} does. */
+  private static void answerPolicyReadsLikeTheRepository() {
+    doAnswer(
+            invocation -> {
+              UUID id = invocation.getArgument(1);
+              Policy cached =
+                  RequestEntityCache.getById(Entity.POLICY, id, null, null, false, Policy.class);
+              Policy loaded =
+                  cached != null
+                      ? cached
+                      : JsonUtils.readValue(
+                          EntityRepository.CACHE_WITH_ID.get(
+                              new ImmutablePair<>(Entity.POLICY, id)),
+                          Policy.class);
+              RequestEntityCache.putById(
+                  Entity.POLICY, id, null, null, false, loaded, Policy.class);
+              return loaded;
+            })
+        .when(policyRepository)
+        .get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean());
   }
 
   private static Policy twoRulePolicy() {

@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -111,14 +112,14 @@ public class SubjectCache {
           DEFAULT_MAX_ENTRIES,
           POLICIES_TTL,
           Ticker.systemTicker(),
-          SubjectCache::loadPoliciesForUser);
+          SubjectCache::loadPoliciesFresh);
 
   private static final RevocableLoadingCache<User> USER_CONTEXT_CACHE =
       new RevocableLoadingCache<>(
           DEFAULT_MAX_ENTRIES,
           USER_CONTEXT_TTL,
           Ticker.systemTicker(),
-          SubjectCache::loadUserContext);
+          SubjectCache::loadUserContextFresh);
 
   private static final Invalidatable INVALIDATOR =
       (type, id, fqn) -> {
@@ -148,7 +149,7 @@ public class SubjectCache {
       return USER_POLICIES_CACHE.get(userName).policies;
     } catch (Exception e) {
       LOG.warn("Failed to load policies from cache for user {}", userName, e);
-      return loadPoliciesForUser(userName).policies;
+      return loadPoliciesFresh(userName).policies;
     }
   }
 
@@ -185,13 +186,13 @@ public class SubjectCache {
 
   public static void invalidateUser(String userName) {
     LOG.debug("Invalidating policy cache for user: {}", userName);
-    USER_POLICIES_CACHE.invalidate(userName);
-    USER_CONTEXT_CACHE.invalidate(userName);
+    USER_POLICIES_CACHE.invalidateUser(userName);
+    USER_CONTEXT_CACHE.invalidateUser(userName);
   }
 
   public static void invalidateUserContext(String userName) {
     LOG.debug("Invalidating user context cache for user: {}", userName);
-    USER_CONTEXT_CACHE.invalidate(userName);
+    USER_CONTEXT_CACHE.invalidateUser(userName);
   }
 
   public static void invalidateUserContexts(List<EntityReference> users) {
@@ -242,21 +243,20 @@ public class SubjectCache {
    * the request presented it, so match case-insensitively rather than dropping a key that may not
    * exist in that exact form.
    *
-   * <p>Not an exact-key {@code invalidate}: {@code SecurityUtil.getUserName} only splits the
-   * principal on {@code [/@]} and does not case-fold, so an IdP emitting {@code John.Doe@corp.com}
-   * keys this cache under {@code John.Doe} while the FQN is {@code john.doe}. Keys also arrive
-   * from {@code createdBy}/{@code updatedBy} strings. An O(1) lookup would silently miss those and
-   * leave exactly the stale persona this fix is about. The scan is bounded by the cache's maximum
-   * size and only runs on user writes, which are logins and profile edits — per-request activity
+   * <p>{@code SecurityUtil.getUserName} only splits the principal on {@code [/@]} and does not
+   * case-fold, so an IdP emitting {@code John.Doe@corp.com} keys this cache under {@code John.Doe}
+   * while the FQN is {@code john.doe}. Keys also arrive from {@code createdBy}/{@code updatedBy}
+   * strings. The cache shards by the lower-cased key, so every spelling of the name is dropped
+   * together, and this only runs on user writes — logins and profile edits; per-request activity
    * tracking updates the row through a raw {@code JSON_SET} that publishes nothing.
    */
   private static void invalidateUserByFqn(String fqn) {
     try {
       String userName = FullyQualifiedName.unquoteName(fqn);
-      USER_CONTEXT_CACHE.invalidateMatching(key -> key.equalsIgnoreCase(userName));
+      USER_CONTEXT_CACHE.invalidateUser(userName);
       // The policy entry holds this user's roles and their resolved team hierarchy, so a
       // membership or role change on a peer has to drop it too.
-      USER_POLICIES_CACHE.invalidateMatching(key -> key.equalsIgnoreCase(userName));
+      USER_POLICIES_CACHE.invalidateUser(userName);
     } catch (Exception e) {
       LOG.debug("Could not invalidate caches for user fqn {}", fqn, e);
     }
@@ -277,7 +277,7 @@ public class SubjectCache {
       return USER_CONTEXT_CACHE.get(userName);
     } catch (Exception e) {
       LOG.warn("Failed to load user context from cache for user {}", userName, e);
-      return Entity.getEntityByName(Entity.USER, userName, USER_CONTEXT_FIELDS, NON_DELETED);
+      return loadUserContextFresh(userName);
     }
   }
 
@@ -287,9 +287,22 @@ public class SubjectCache {
         USER_POLICIES_CACHE.stats(), USER_CONTEXT_CACHE.stats());
   }
 
-  private static User loadUserContext(String userName) {
-    LOG.debug("Loading user context from database for user: {}", userName);
-    return Entity.getEntityByName(Entity.USER, userName, USER_CONTEXT_FIELDS, NON_DELETED);
+  /**
+   * Every load runs in its own fresh-read scope. The request entity cache is thread-local and
+   * survives on pool threads, so a load that reuses it would read the rules cached before an edit,
+   * and a retry after an invalidation would publish them into the new shared cache.
+   */
+  private static UserPoliciesContext loadPoliciesFresh(String userName) {
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      return loadPoliciesForUser(userName);
+    }
+  }
+
+  private static User loadUserContextFresh(String userName) {
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      LOG.debug("Loading user context from database for user: {}", userName);
+      return Entity.getEntityByName(Entity.USER, userName, USER_CONTEXT_FIELDS, NON_DELETED);
+    }
   }
 
   private static UserPoliciesContext loadPoliciesForUser(String userName) {

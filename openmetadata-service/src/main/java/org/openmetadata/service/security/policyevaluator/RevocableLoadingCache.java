@@ -19,45 +19,53 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 /**
  * A bounded per-user loading cache whose invalidation also covers loads that are already running.
  *
  * <p>Guava's {@code invalidate} removes entries but does not cancel a load in flight: a loader
  * that read the pre-change rows publishes its result afterwards as a fresh entry with a new write
- * time, so a revoked grant would be served for a whole TTL. Two guards close that window without
- * serializing loads behind a lock:
+ * time, and any reader that arrives meanwhile joins that load. Invalidation therefore never
+ * removes anything from a cache that could still receive such a result; it retires the whole cache
+ * and installs an empty one:
  *
  * <ul>
- *   <li>{@link #invalidateAll()} swaps in a new, empty cache. A load running against the retired
- *       cache can only publish into it, and the reader that started it sees the swap and retries
- *       against the active cache.
- *   <li>Targeted invalidation bumps an epoch before it removes the entry. A reader that overlapped
- *       with it drops whatever it just loaded and retries.
+ *   <li>A reader that starts after the swap uses the new cache, so it cannot join a load that
+ *       began before the invalidation.
+ *   <li>A reader that was already waiting on the retired cache sees the swap once its load
+ *       returns, discards the result and retries against the active cache.
  * </ul>
+ *
+ * <p>The keys are spread over {@value #SHARDS} independent shards so that invalidating one user
+ * retires one shard rather than every user's entry. The configured maximum is divided among the
+ * shards and never exceeded; below {@value #SHARDS} entries some shards hold nothing. Keys are matched case-insensitively because a
+ * principal name reaches the cache in whatever case the identity provider emitted it.
  */
 final class RevocableLoadingCache<V> {
+  static final int SHARDS = 32;
   private static final int MAX_LOAD_ATTEMPTS = 3;
 
   private final Duration expireAfterWrite;
   private final Ticker ticker;
   private final Function<String, V> loader;
   private final Object swapLock = new Object();
-  private final AtomicLong targetedInvalidations = new AtomicLong();
-  private volatile LoadingCache<String, V> active;
+  private final Shard<V>[] shards;
   private volatile int maxEntries;
 
+  @SuppressWarnings("unchecked")
   RevocableLoadingCache(
       int maxEntries, Duration expireAfterWrite, Ticker ticker, Function<String, V> loader) {
-    this.maxEntries = maxEntries;
     this.expireAfterWrite = expireAfterWrite;
     this.ticker = ticker;
     this.loader = loader;
-    this.active = newCache(maxEntries);
+    this.maxEntries = maxEntries;
+    this.shards = new Shard[SHARDS];
+    for (int index = 0; index < SHARDS; index++) {
+      shards[index] = new Shard<>(index, newCache(capacityOf(index)));
+    }
   }
 
   /**
@@ -66,50 +74,64 @@ final class RevocableLoadingCache<V> {
    * the caller is never handed a value that predates an invalidation it could have observed.
    */
   V get(String key) throws ExecutionException {
+    Shard<V> shard = shardFor(key);
     V value = null;
     for (int attempt = 0; value == null && attempt < MAX_LOAD_ATTEMPTS; attempt++) {
-      value = loadIfStillCurrent(key);
+      value = loadIfStillCurrent(shard, key);
     }
     return value != null ? value : loader.apply(key);
   }
 
-  private V loadIfStillCurrent(String key) throws ExecutionException {
-    LoadingCache<String, V> generation = active;
-    long invalidationsBefore = targetedInvalidations.get();
+  private V loadIfStillCurrent(Shard<V> shard, String key) throws ExecutionException {
+    LoadingCache<String, V> generation = shard.active;
     V value = generation.get(key);
-    boolean current = generation == active && invalidationsBefore == targetedInvalidations.get();
-    if (!current) {
-      generation.invalidate(key);
+    return generation == shard.active ? value : null;
+  }
+
+  /** Retires the shard holding {@code key}, whatever case it was written in. */
+  void invalidateUser(String key) {
+    Shard<V> shard = shardFor(key);
+    synchronized (swapLock) {
+      shard.active = newCache(capacityOf(shard.index));
     }
-    return current ? value : null;
   }
 
-  void invalidate(String key) {
-    targetedInvalidations.incrementAndGet();
-    active.invalidate(key);
-  }
-
-  void invalidateMatching(Predicate<String> keyFilter) {
-    targetedInvalidations.incrementAndGet();
-    active.asMap().keySet().removeIf(keyFilter);
-  }
-
-  /** Retires the current cache. Loads still running against it can no longer reach readers. */
+  /** Retires every shard. Loads still running against them can no longer reach readers. */
   void invalidateAll() {
     synchronized (swapLock) {
-      active = newCache(maxEntries);
+      replaceAllShards();
     }
   }
 
   void resize(int newMaxEntries) {
     synchronized (swapLock) {
       maxEntries = newMaxEntries;
-      active = newCache(newMaxEntries);
+      replaceAllShards();
     }
   }
 
   CacheStats stats() {
-    return active.stats();
+    CacheStats total = new CacheStats(0, 0, 0, 0, 0, 0);
+    for (Shard<V> shard : shards) {
+      total = total.plus(shard.active.stats());
+    }
+    return total;
+  }
+
+  private void replaceAllShards() {
+    for (Shard<V> shard : shards) {
+      shard.active = newCache(capacityOf(shard.index));
+    }
+  }
+
+  private Shard<V> shardFor(String key) {
+    return shards[Math.floorMod(key.toLowerCase(Locale.ROOT).hashCode(), SHARDS)];
+  }
+
+  /** Splits the configured maximum across the shards so that the capacities sum to exactly it. */
+  private int capacityOf(int shardIndex) {
+    int total = maxEntries;
+    return total / SHARDS + (shardIndex < total % SHARDS ? 1 : 0);
   }
 
   private LoadingCache<String, V> newCache(int entries) {
@@ -125,5 +147,15 @@ final class RevocableLoadingCache<V> {
                 return loader.apply(key);
               }
             });
+  }
+
+  private static final class Shard<V> {
+    private final int index;
+    private volatile LoadingCache<String, V> active;
+
+    private Shard(int index, LoadingCache<String, V> active) {
+      this.index = index;
+      this.active = active;
+    }
   }
 }
