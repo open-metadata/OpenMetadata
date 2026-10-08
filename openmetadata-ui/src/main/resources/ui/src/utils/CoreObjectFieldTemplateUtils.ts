@@ -19,18 +19,12 @@ import {
 } from '../components/common/FormBuilderV1/templates/CoreObjectFieldTemplate.interface';
 import {
   ADVANCED_PROPERTIES,
-  AWS_S3_STORAGE_CONFIG_TITLE,
   CREDENTIAL_VALUE_PROPERTY_ORDER,
   DEFAULT_ADVANCED_PROPERTY_NAMES,
   FULL_WIDTH_FIELD_PATTERN,
   GATED_CREDENTIAL_PROPERTY_ORDER,
   GATED_CREDENTIAL_VISIBLE_PROPERTIES,
-  SAMPLE_DATA_CONFIG_ID_SUFFIX,
-  SAMPLE_DATA_PROPERTY_ORDER,
-  SAMPLE_DATA_SECTION_ID_SUFFIX,
   STATIC_AWS_CREDENTIAL_PROPERTIES,
-  STORAGE_CONFIG_ID_SUFFIX,
-  STORAGE_CONFIG_PROPERTY_ORDER,
 } from '../constants/CoreObjectFieldTemplate.constants';
 import { t } from './i18next/LocalUtil';
 
@@ -172,58 +166,23 @@ const resolveHasIamAuthToggle = (
       !property.hidden && STATIC_AWS_CREDENTIAL_PROPERTIES.has(property.name)
   );
 
-const resolveAwsAndGatedFlags = ({
-  idSchema,
-  title,
+const resolveNestedConfigFlags = ({
   schema,
   isRoot,
   hasIamAuthToggle,
-  isSampleDataSection,
 }: {
-  idSchema: ObjectFieldTemplateProps['idSchema'];
-  title: ObjectFieldTemplateProps['title'];
   schema: ObjectFieldTemplateProps['schema'];
   isRoot: boolean;
   hasIamAuthToggle: boolean;
-  isSampleDataSection: boolean;
 }) => {
-  const isAwsS3StorageConfig =
-    idSchema.$id.endsWith(STORAGE_CONFIG_ID_SUFFIX) ||
-    (title === AWS_S3_STORAGE_CONFIG_TITLE && hasIamAuthToggle);
-  const isGatedCredentialConfig =
-    !isRoot && !schema.additionalProperties && hasIamAuthToggle;
-  const isNonRootNestedSection =
-    !isRoot && !schema.additionalProperties && !isSampleDataSection;
+  const isGenericNestedConfig = !isRoot && !schema.additionalProperties;
+  const isGatedCredentialConfig = isGenericNestedConfig && hasIamAuthToggle;
 
   return {
-    isAwsS3StorageConfig,
     isGatedCredentialConfig,
-    isNonRootNestedSection,
-  };
-};
-
-const resolveNestedConfigFlags = ({
-  isNonRootNestedSection,
-  isSampleDataConfig,
-  isAwsS3StorageConfig,
-  isGatedCredentialConfig,
-}: {
-  isNonRootNestedSection: boolean;
-  isSampleDataConfig: boolean;
-  isAwsS3StorageConfig: boolean;
-  isGatedCredentialConfig: boolean;
-}) => {
-  const isGenericNestedConfig =
-    isNonRootNestedSection && !isSampleDataConfig && !isAwsS3StorageConfig;
-  const isNestedConfigGrid =
-    isSampleDataConfig || isAwsS3StorageConfig || isGenericNestedConfig;
-  const isCredentialAdvancedDisclosure =
-    isGatedCredentialConfig || isGenericNestedConfig;
-
-  return {
     isGenericNestedConfig,
-    isNestedConfigGrid,
-    isCredentialAdvancedDisclosure,
+    isCredentialAdvancedDisclosure:
+      isGatedCredentialConfig || isGenericNestedConfig,
   };
 };
 
@@ -258,35 +217,12 @@ export const getFormSeperationConfig = ({
       ?.flatPropertyLayout ?? false;
 
   const isRoot = idSchema.$id === 'root';
-  const isSampleDataSection = idSchema.$id.endsWith(
-    SAMPLE_DATA_SECTION_ID_SUFFIX
-  );
-  const isSampleDataConfig = idSchema.$id.endsWith(
-    SAMPLE_DATA_CONFIG_ID_SUFFIX
-  );
   const hasIamAuthToggle = resolveHasIamAuthToggle(properties);
   const {
-    isAwsS3StorageConfig,
     isGatedCredentialConfig,
-    isNonRootNestedSection,
-  } = resolveAwsAndGatedFlags({
-    idSchema,
-    title,
-    schema,
-    isRoot,
-    hasIamAuthToggle,
-    isSampleDataSection,
-  });
-  const {
     isGenericNestedConfig,
-    isNestedConfigGrid,
     isCredentialAdvancedDisclosure,
-  } = resolveNestedConfigFlags({
-    isNonRootNestedSection,
-    isSampleDataConfig,
-    isAwsS3StorageConfig,
-    isGatedCredentialConfig,
-  });
+  } = resolveNestedConfigFlags({ schema, isRoot, hasIamAuthToggle });
   const isIamAuthEnabled = resolveIsIamAuthEnabled(hasIamAuthToggle, formData);
   const addEntityLabel = title || t('label.property');
   const shouldShowDescription = Boolean(description && description !== title);
@@ -294,13 +230,9 @@ export const getFormSeperationConfig = ({
   return {
     flatPropertyLayout,
     isRoot,
-    isSampleDataSection,
-    isSampleDataConfig,
     hasIamAuthToggle,
-    isAwsS3StorageConfig,
     isGatedCredentialConfig,
     isGenericNestedConfig,
-    isNestedConfigGrid,
     isCredentialAdvancedDisclosure,
     isIamAuthEnabled,
     addEntityLabel,
@@ -445,19 +377,9 @@ export const partitionProperties = (
 
 export const getOrderedNormalProperties = (
   normalProperties: ObjectFieldTemplateProps['properties'],
-  isSampleDataConfig: boolean,
-  isAwsS3StorageConfig: boolean,
   isGatedCredentialConfig: boolean,
   isGenericNestedConfig: boolean
 ) => {
-  if (isSampleDataConfig) {
-    return orderProperties(normalProperties, SAMPLE_DATA_PROPERTY_ORDER);
-  }
-
-  if (isAwsS3StorageConfig) {
-    return orderProperties(normalProperties, STORAGE_CONFIG_PROPERTY_ORDER);
-  }
-
   if (isGatedCredentialConfig) {
     return orderProperties(normalProperties, GATED_CREDENTIAL_PROPERTY_ORDER);
   }
