@@ -8406,6 +8406,7 @@
       "specs": [
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
