@@ -3033,6 +3033,7 @@
     "sso-test-stage-roles-mapped": "Rollen en teams toegewezen",
     "sso-test-stage-started": "Test gestart",
     "sso-test-stage-token-received": "Aanmeldingsantwoord ontvangen",
+    "sso-test-stage-token-refreshed": "Sessie vernieuwd met het vernieuwingstoken",
     "sso-test-stage-token-validated": "Aanmeldingsantwoord gevalideerd",
     "sso-uppercase": "SSO",
     "stage": "Fase",

@@ -3033,6 +3033,7 @@
     "sso-test-stage-roles-mapped": "Roller och team mappade",
     "sso-test-stage-started": "Testet har startat",
     "sso-test-stage-token-received": "Inloggningssvar mottaget",
+    "sso-test-stage-token-refreshed": "Sessionen förnyades med uppdateringstoken",
     "sso-test-stage-token-validated": "Inloggningssvar validerat",
     "sso-uppercase": "SSO",
     "stage": "Steg",

@@ -3033,6 +3033,7 @@
     "sso-test-stage-roles-mapped": "Funções e equipas mapeadas",
     "sso-test-stage-started": "Teste iniciado",
     "sso-test-stage-token-received": "Resposta de início de sessão recebida",
+    "sso-test-stage-token-refreshed": "Sessão renovada com o token de atualização",
     "sso-test-stage-token-validated": "Resposta de início de sessão validada",
     "sso-uppercase": "SSO",
     "stage": "Fase",

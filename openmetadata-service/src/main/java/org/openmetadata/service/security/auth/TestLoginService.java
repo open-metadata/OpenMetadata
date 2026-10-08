@@ -379,7 +379,7 @@ public final class TestLoginService {
   }
 
   private static TestLoginStageRecorder newOidcRecorder() {
-    return TestLoginStageRecorder.forProtocol(TestLoginProtocol.OIDC);
+    return TestLoginStageRecorder.forPublicOidcClient();
   }
 
   private static void recordBrowserRoundTrip(TestLoginStageRecorder recorder) {

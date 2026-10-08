@@ -811,7 +811,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private RenewedIdToken renewedIdToken(
       OidcProviderTokenRefresher.Outcome outcome, String omRefreshToken) {
     long expiresAt = idTokenExpiresAt(outcome.idToken());
-    if (expiresAt <= System.currentTimeMillis() + BROWSER_RENEWAL_MARGIN_MILLIS) {
+    if (!outlivesBrowserRenewal(expiresAt)) {
       throw endedSession(omRefreshToken, "Identity provider returned no usable ID token");
     }
     SessionService.ProviderTokenUpdate providerTokens =
@@ -822,8 +822,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return new RenewedIdToken(outcome.idToken(), expiresAt, providerTokens);
   }
 
+  /** Whether a token expiring then lasts past the browser's renewal margin. */
+  static boolean outlivesBrowserRenewal(long expiresAt) {
+    return expiresAt > System.currentTimeMillis() + BROWSER_RENEWAL_MARGIN_MILLIS;
+  }
+
   /** Expiry of a provider ID token in epoch millis; 0 when there is none or it cannot be read. */
-  private static long idTokenExpiresAt(String idToken) {
+  static long idTokenExpiresAt(String idToken) {
     try {
       Date expirationTime =
           nullOrEmpty(idToken)

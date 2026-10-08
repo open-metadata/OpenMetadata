@@ -3033,6 +3033,7 @@
     "sso-test-stage-roles-mapped": "תפקידים וצוותים מופו",
     "sso-test-stage-started": "הבדיקה החלה",
     "sso-test-stage-token-received": "התקבלה תגובת ההתחברות",
+    "sso-test-stage-token-refreshed": "הסשן חודש באמצעות אסימון הרענון",
     "sso-test-stage-token-validated": "תגובת ההתחברות אומתה",
     "sso-uppercase": "SSO",
     "stage": "שלב",

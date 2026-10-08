@@ -3033,6 +3033,7 @@
     "sso-test-stage-roles-mapped": "نقش‌ها و تیم‌ها نگاشت شدند",
     "sso-test-stage-started": "آزمایش آغاز شد",
     "sso-test-stage-token-received": "پاسخ ورود دریافت شد",
+    "sso-test-stage-token-refreshed": "نشست با توکن تازه‌سازی تمدید شد",
     "sso-test-stage-token-validated": "پاسخ ورود اعتبارسنجی شد",
     "sso-uppercase": "SSO",
     "stage": "مرحله",

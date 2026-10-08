@@ -3033,6 +3033,7 @@
     "sso-test-stage-roles-mapped": "ロールとチームをマッピングしました",
     "sso-test-stage-started": "テストを開始しました",
     "sso-test-stage-token-received": "サインイン応答を受信しました",
+    "sso-test-stage-token-refreshed": "リフレッシュトークンでセッションを更新しました",
     "sso-test-stage-token-validated": "サインイン応答を検証しました",
     "sso-uppercase": "SSO",
     "stage": "ステージ",

@@ -3033,6 +3033,7 @@
     "sso-test-stage-roles-mapped": "Rollen und Teams zugeordnet",
     "sso-test-stage-started": "Test gestartet",
     "sso-test-stage-token-received": "Anmeldeantwort empfangen",
+    "sso-test-stage-token-refreshed": "Sitzung mit dem Aktualisierungstoken erneuert",
     "sso-test-stage-token-validated": "Anmeldeantwort validiert",
     "sso-uppercase": "SSO",
     "stage": "Stufe",

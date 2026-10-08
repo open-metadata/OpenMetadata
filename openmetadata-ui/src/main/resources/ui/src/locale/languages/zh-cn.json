@@ -3033,6 +3033,7 @@
     "sso-test-stage-roles-mapped": "已映射角色和团队",
     "sso-test-stage-started": "测试已开始",
     "sso-test-stage-token-received": "已收到登录响应",
+    "sso-test-stage-token-refreshed": "已使用刷新令牌续订会话",
     "sso-test-stage-token-validated": "已验证登录响应",
     "sso-uppercase": "SSO",
     "stage": "阶段",

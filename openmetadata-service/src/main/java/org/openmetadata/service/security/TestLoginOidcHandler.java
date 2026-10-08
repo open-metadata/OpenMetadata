@@ -19,6 +19,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.oauth2.sdk.AuthorizationCodeGrant;
 import com.nimbusds.oauth2.sdk.TokenRequest;
 import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
+import com.nimbusds.oauth2.sdk.token.RefreshToken;
 import com.nimbusds.openid.connect.sdk.AuthenticationErrorResponse;
 import com.nimbusds.openid.connect.sdk.AuthenticationResponse;
 import com.nimbusds.openid.connect.sdk.AuthenticationResponseParser;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
@@ -49,6 +51,9 @@ import org.pac4j.oidc.credentials.OidcCredentials;
  * steps {@link AuthenticationCodeFlowHandler} takes for a real login, built from the same
  * package-private helpers so the two cannot drift. It stops where the live handler starts writing:
  * it never provisions a user, issues a token, or touches the live client, session store or config.
+ * It does renew the test sign-in once with the provider's refresh token, as every live session
+ * refresh does, because a provider that cannot do that sends users back to sign in each time their
+ * ID token expires.
  *
  * <p>Public clients are not handled here. Their live login redeems the code in the browser, so
  * their test does too, through the {@code validate-token} endpoint.
@@ -62,6 +67,25 @@ public final class TestLoginOidcHandler {
 
   private record ReceivedCallback(
       OidcConfiguration configuration, AuthenticationSuccessResponse response) {}
+
+  private record RedeemedCallback(
+      ReceivedCallback received, OidcCredentials credentials, Map<String, Object> claims) {}
+
+  private static final String NO_REFRESH_TOKEN =
+      "The identity provider issued no refresh token, so OpenMetadata cannot renew sessions: users "
+          + "will be sent back to the provider whenever their ID token expires. Request the "
+          + "offline_access scope (Okta, Microsoft Entra ID, Auth0) or allow refresh tokens for this "
+          + "client; Google issues one only when the user is shown its consent screen.";
+  private static final String REFRESH_REJECTED =
+      "The identity provider refused the refresh token it had just issued, so OpenMetadata cannot "
+          + "renew sessions.";
+  private static final String REFRESH_UNANSWERED =
+      "The identity provider did not renew the session with its refresh token. Check that this "
+          + "client is allowed the refresh_token grant.";
+  private static final String NO_USABLE_ID_TOKEN =
+      "The identity provider renewed the session without an ID token that lasts more than a "
+          + "minute; OpenMetadata needs one to hand to the browser. Check that the openid scope is "
+          + "requested.";
 
   private TestLoginOidcHandler() {}
 
@@ -98,8 +122,59 @@ public final class TestLoginOidcHandler {
         candidate.getAuthenticationConfiguration().getOidcConfiguration();
     return receive(clientConfig, handshake, callbackParameters, recorder)
         .flatMap(received -> redeem(received, handshake, recorder))
-        .map(claims -> TestLoginService.resolveOidcCallbackIdentity(candidate, claims, recorder))
+        .map(redeemed -> renewThenResolve(candidate, redeemed, recorder))
         .orElseGet(() -> TestLoginService.failure(TestLoginProtocol.OIDC, recorder));
+  }
+
+  /** A failed renewal still resolves the identity, so the admin sees everything that went wrong. */
+  private static TestLoginResult renewThenResolve(
+      SecurityConfiguration candidate, RedeemedCallback redeemed, TestLoginStageRecorder recorder) {
+    checkSessionRenewal(redeemed.received().configuration(), redeemed.credentials(), recorder);
+    return TestLoginService.resolveOidcCallbackIdentity(candidate, redeemed.claims(), recorder);
+  }
+
+  private static void checkSessionRenewal(
+      OidcConfiguration configuration,
+      OidcCredentials credentials,
+      TestLoginStageRecorder recorder) {
+    RefreshToken refreshToken = credentials.toRefreshToken();
+    if (refreshToken == null) {
+      recorder.fail(TestLoginStage.TOKEN_REFRESHED, NO_REFRESH_TOKEN);
+    } else {
+      recordRenewal(refresherFor(configuration).refresh(refreshToken.getValue()), recorder);
+    }
+  }
+
+  private static void recordRenewal(
+      OidcProviderTokenRefresher.Outcome outcome, TestLoginStageRecorder recorder) {
+    long expiresAt = AuthenticationCodeFlowHandler.idTokenExpiresAt(outcome.idToken());
+    if (outcome.isRejected()) {
+      recorder.fail(TestLoginStage.TOKEN_REFRESHED, REFRESH_REJECTED);
+    } else if (!outcome.isRenewed()) {
+      recorder.fail(TestLoginStage.TOKEN_REFRESHED, REFRESH_UNANSWERED);
+    } else if (!AuthenticationCodeFlowHandler.outlivesBrowserRenewal(expiresAt)) {
+      recorder.fail(TestLoginStage.TOKEN_REFRESHED, NO_USABLE_ID_TOKEN);
+    } else {
+      recorder.pass(
+          TestLoginStage.TOKEN_REFRESHED,
+          String.format(
+              "The identity provider renewed the session: its new ID token is valid for %d minutes.",
+              TimeUnit.MILLISECONDS.toMinutes(expiresAt - System.currentTimeMillis())));
+    }
+  }
+
+  /**
+   * The same grant, client authentication and endpoint the live session refresh uses. Built inside
+   * the request factory so a failure becomes the refresher's no-verdict outcome, not a 500.
+   */
+  private static OidcProviderTokenRefresher refresherFor(OidcConfiguration configuration) {
+    return new OidcProviderTokenRefresher(
+        grant ->
+            AuthenticationCodeFlowHandler.createTokenRequest(
+                configuration,
+                AuthenticationCodeFlowHandler.getClientAuthentication(configuration),
+                grant),
+        request -> AuthenticationCodeFlowHandler.executeTokenHttpRequest(configuration, request));
   }
 
   private static Optional<ReceivedCallback> receive(
@@ -141,13 +216,17 @@ public final class TestLoginOidcHandler {
     return (AuthenticationSuccessResponse) response;
   }
 
-  private static Optional<Map<String, Object>> redeem(
+  private static Optional<RedeemedCallback> redeem(
       ReceivedCallback received,
       TestLoginHandshake.Oidc handshake,
       TestLoginStageRecorder recorder) {
-    Optional<Map<String, Object>> claims = Optional.empty();
+    Optional<RedeemedCallback> redeemed = Optional.empty();
     try {
-      claims = Optional.of(claimsFrom(idTokenFor(received, handshake), received, handshake));
+      OidcCredentials credentials = credentialsFor(received, handshake);
+      redeemed =
+          Optional.of(
+              new RedeemedCallback(
+                  received, credentials, claimsFrom(idTokenOf(credentials), received, handshake)));
       recorder.pass(TestLoginStage.TOKEN_VALIDATED);
     } catch (Exception e) {
       // The token exchange helpers are @SneakyThrows (IOException, nimbus ParseException).
@@ -157,17 +236,21 @@ public final class TestLoginOidcHandler {
           "Could not redeem the authorization code with the candidate client credentials: "
               + TestLoginService.rootMessage(e));
     }
-    return claims;
+    return redeemed;
   }
 
   /** Mirrors the live callback: redeem the code when there is one, else use the returned token. */
-  @SneakyThrows
-  private static JWT idTokenFor(ReceivedCallback received, TestLoginHandshake.Oidc handshake) {
+  private static OidcCredentials credentialsFor(
+      ReceivedCallback received, TestLoginHandshake.Oidc handshake) {
     OidcCredentials credentials =
         AuthenticationCodeFlowHandler.buildCredentials(received.response());
     if (credentials.getCode() != null) {
       redeemCode(received.configuration(), credentials, handshake);
     }
+    return credentials;
+  }
+
+  private static JWT idTokenOf(OidcCredentials credentials) {
     JWT idToken = credentials.toIdToken();
     if (idToken == null) {
       throw new TechnicalException("ID token not returned by OIDC provider");
