@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button, Card, Space } from 'antd';
+import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Affix, Button, Card } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -128,14 +128,24 @@ const GithubStarCard = () => {
       }
       `}>
       <Card data-testid="github-star-popup-card">
-        <Space align="center" className="d-flex justify-between">
-          <Space>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal d-flex justify-between"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <StarIcon className="github-star-icon" />
 
             <Typography className="github-star-popup-header">
               {t('label.star-us-on-github')}
             </Typography>
-          </Space>
+          </Box>
           <Button
             className="flex-center m--t-xss"
             data-testid="close-github-star-popup-card"
@@ -143,7 +153,7 @@ const GithubStarCard = () => {
             type="text"
             onClick={handleClosePopup}
           />
-        </Space>
+        </Box>
 
         <Typography as="p" className="github-star-popup-description">
           {t('message.star-on-github-description')}

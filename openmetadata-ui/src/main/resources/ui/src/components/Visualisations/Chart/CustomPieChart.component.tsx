@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import type { PieDatum } from '@openmetadata/ui-core-components/charts';
 import {
   chartColor,
   PieChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Space } from 'antd';
+
 import { isString } from 'lodash';
 import { useCallback } from 'react';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
@@ -73,9 +73,21 @@ const CustomPieChart = ({
       </div>
 
       {showLegends && (
-        <Space wrap size={16}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={4}
+          itemClassName="layout-space-item"
+          wrap="wrap">
           {data.map((item, index) => (
-            <Space align="center" key={item.name} size={8}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item"
+              key={item.name}>
               <div
                 className="legend-dot"
                 style={{
@@ -94,9 +106,9 @@ const CustomPieChart = ({
                   {formatNumberWithComma(item.value)}
                 </Typography>
               </Typography>
-            </Space>
+            </Box>
           ))}
-        </Space>
+        </Box>
       )}
     </div>
   );

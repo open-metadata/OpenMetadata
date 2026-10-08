@@ -12,13 +12,14 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Box, Grid } from '@openmetadata/ui-core-components';
 import {
   chartColor,
   ChartSeries,
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Button, Card, Col, Row, Space } from 'antd';
+import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -41,6 +42,7 @@ import {
 } from '../../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
 import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getDataInsightTooltip } from '../../utils/DataInsightChartUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
 import { buildKpiChartRows, KpiChartRow } from '../../utils/KPI/KPIUtils';
@@ -236,10 +238,12 @@ const KPIChart: FC<Props> = ({
         />
       }>
       {kpiList.length ? (
-        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
           {hasAtLeastOneData ? (
             <>
-              <Col span={DI_STRUCTURE.leftContainerSpan}>
+              <Grid.Item
+                className="layout-column"
+                span={DI_STRUCTURE.leftContainerSpan}>
                 <div id="kpi-chart">
                   <LineChart<KpiChartRow>
                     ariaLabel={t('label.kpi-title')}
@@ -251,17 +255,19 @@ const KPIChart: FC<Props> = ({
                     xKey="day"
                   />
                 </div>
-              </Col>
+              </Grid.Item>
               {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
-                <Col span={DI_STRUCTURE.rightContainerSpan}>
+                <Grid.Item
+                  className="layout-column"
+                  span={DI_STRUCTURE.rightContainerSpan}>
                   <KPILatestResultsV1
                     kpiLatestResultsRecord={kpiLatestResults}
                   />
-                </Col>
+                </Grid.Item>
               )}
             </>
           ) : (
-            <Col className="justify-center" span={24}>
+            <Grid.Item className="layout-column justify-center" span={24}>
               {viewKPIPermission ? (
                 <EmptyGraphPlaceholder />
               ) : (
@@ -273,13 +279,17 @@ const KPIChart: FC<Props> = ({
                   type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
                 />
               )}
-            </Col>
+            </Grid.Item>
           )}
-        </Row>
+        </Grid>
       ) : (
-        <Space
-          className="w-full justify-center items-center"
-          direction="vertical">
+        <Box
+          inline
+          align="stretch"
+          className="layout-space w-full justify-center items-center"
+          direction="col"
+          gap={2}
+          itemClassName="layout-space-item">
           <ErrorPlaceHolder
             button={
               <Button
@@ -305,7 +315,7 @@ const KPIChart: FC<Props> = ({
             }>
             {createKPIPermission && t('message.no-kpi-available-add-new-one')}
           </ErrorPlaceHolder>
-        </Space>
+        </Box>
       )}
     </Card>
   );

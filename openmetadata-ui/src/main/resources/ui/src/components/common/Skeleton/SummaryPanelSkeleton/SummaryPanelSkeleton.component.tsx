@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { uniqueId } from 'lodash';
 import { getSkeletonMockData } from '../../../../utils/Skeleton.utils';
 import ButtonSkeleton from '../CommonSkeletons/ControlElements/ControlElements.component';
@@ -20,8 +22,14 @@ import { SkeletonInterface } from '../Skeleton.interfaces';
 const SummaryPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
   return loading ? (
     <div className="m-b-md p-md">
-      <Row gutter={32} justify="space-between">
-        <Col className="m-t-md" span={24}>
+      <Box
+        className="layout-row"
+        justify="between"
+        style={getLayoutGutter(32)}
+        wrap="wrap">
+        <Box
+          className="layout-column tw:block m-t-md"
+          style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
           {getSkeletonMockData(5).map(() => (
             <LabelCountSkeleton
               isCount
@@ -32,14 +40,16 @@ const SummaryPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
               width={100}
             />
           ))}
-        </Col>
+        </Box>
 
-        <Col className="m-l-xss" span={24}>
+        <Box
+          className="layout-column tw:block m-l-xss"
+          style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
           {getSkeletonMockData(10).map(() => (
             <ButtonSkeleton key={uniqueId()} size="large" />
           ))}
-        </Col>
-      </Row>
+        </Box>
+      </Box>
     </div>
   ) : (
     children

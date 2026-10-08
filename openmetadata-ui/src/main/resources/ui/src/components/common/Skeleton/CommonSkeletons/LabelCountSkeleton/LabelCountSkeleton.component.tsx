@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Skeleton } from '@openmetadata/ui-core-components';
+
 import { LabelCountSkeletonProps } from '../../Skeleton.interfaces';
 
 const LabelCountSkeleton = ({
@@ -26,9 +26,14 @@ const LabelCountSkeleton = ({
   ...props
 }: LabelCountSkeletonProps) => {
   return (
-    <Row className="tw:mb-6" justify="space-between">
+    <Box className="layout-row tw:mb-6" justify="between" wrap="wrap">
       {isSelect || isLabel ? (
-        <Col span={firstColSize}>
+        <Box
+          className="layout-column tw:block"
+          style={{
+            maxWidth: `${(firstColSize / 24) * 100}%`,
+            flex: `0 0 ${`${(firstColSize / 24) * 100}%`}`,
+          }}>
           <div className="w-48 flex">
             {isSelect ? (
               <div>
@@ -41,14 +46,19 @@ const LabelCountSkeleton = ({
               </div>
             ) : null}
           </div>
-        </Col>
+        </Box>
       ) : null}
-      <Col span={secondColSize}>
+      <Box
+        className="layout-column tw:block"
+        style={{
+          maxWidth: `${(secondColSize / 24) * 100}%`,
+          flex: `0 0 ${`${(secondColSize / 24) * 100}%`}`,
+        }}>
         {isCount ? (
           <Skeleton height={16} width={40} {...props} {...countProps} />
         ) : null}
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

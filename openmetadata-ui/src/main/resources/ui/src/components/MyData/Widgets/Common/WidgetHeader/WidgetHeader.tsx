@@ -12,8 +12,8 @@
  */
 
 import { DragOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -88,13 +88,14 @@ const WidgetHeader = ({
   );
 
   return (
-    <Row
-      className={`widget-header ${className}`}
+    <Box
+      className={`layout-row ${`widget-header ${className}`}`}
       data-testid="widget-header"
-      justify="space-between">
-      <Col
-        className="d-flex items-center h-full min-h-8 widget-header-left-col"
-        flex="1">
+      justify="between"
+      wrap="wrap">
+      <Box
+        className="layout-column tw:block d-flex items-center h-full min-h-8 widget-header-left-col"
+        style={{ flex: '1 1 auto' }}>
         {icon && (
           <div className="d-flex h-6 w-6 m-r-xs header-title-icon">{icon}</div>
         )}
@@ -106,9 +107,9 @@ const WidgetHeader = ({
           onClick={onTitleClick}>
           {title}
         </Typography>
-      </Col>
+      </Box>
 
-      <Col flex="none">
+      <Box className="layout-column tw:block" style={{ flex: 'none' }}>
         <div className="flex gap-2">
           {isEditView ? (
             <>
@@ -136,8 +137,8 @@ const WidgetHeader = ({
             sortFilter
           )}
         </div>
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

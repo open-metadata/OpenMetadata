@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button, Card, Col, Row } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Affix, Button, Card } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -105,12 +105,12 @@ const WhatsNewAlert = () => {
           <Card
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
-            <Row gutter={0} wrap={false}>
-              <Col
-                className={`whats-new-alert-left${
+            <Box className="layout-row" wrap="nowrap">
+              <Box
+                className={`layout-column tw:block ${`whats-new-alert-left${
                   releaseDate ? '' : ' whats-new-alert-left--centered'
-                }`}
-                flex="220px">
+                }`}`}
+                style={{ flex: `0 0 ${'220px'}` }}>
                 <div className="whats-new-alert-version-block">
                   <div className="whats-new-alert-meta">
                     <Typography className="whats-new-alert-meta-label">
@@ -134,8 +134,10 @@ const WhatsNewAlert = () => {
                     </>
                   )}
                 </div>
-              </Col>
-              <Col className="whats-new-alert-right" flex="auto">
+              </Box>
+              <Box
+                className="layout-column tw:block whats-new-alert-right"
+                style={{ flex: 'auto' }}>
                 <Typography className="text-md font-semibold">
                   {t('label.new-update-announcement')}
                 </Typography>
@@ -165,15 +167,17 @@ const WhatsNewAlert = () => {
                     </Button>
                   )}
                 </div>
-              </Col>
-              <Col flex="48px">
+              </Box>
+              <Box
+                className="layout-column tw:block"
+                style={{ flex: `0 0 ${'48px'}` }}>
                 <Icon
                   className="whats-new-alert-close"
                   component={CloseIcon}
                   onClick={handleCancel}
                 />
-              </Col>
-            </Row>
+              </Box>
+            </Box>
           </Card>
         </Affix>
       )}

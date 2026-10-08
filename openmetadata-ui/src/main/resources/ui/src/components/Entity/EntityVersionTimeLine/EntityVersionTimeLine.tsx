@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Drawer, Row, Tooltip } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Drawer, Tooltip } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
@@ -106,16 +106,16 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
       maskClosable={false}
       title={
         <>
-          <Row className="p-b-xss" justify="space-between">
-            <Col>
+          <Box className="layout-row p-b-xss" justify="between" wrap="wrap">
+            <Box className="layout-column tw:block">
               <Typography className="font-medium tw:text-primary">
                 {t('label.version-plural-history')}
               </Typography>
-            </Col>
-            <Col>
+            </Box>
+            <Box className="layout-column tw:block">
               <CloseIcon handleCancel={onBack} />
-            </Col>
-          </Row>
+            </Box>
+          </Box>
           <Divider className="m-0" />
         </>
       }

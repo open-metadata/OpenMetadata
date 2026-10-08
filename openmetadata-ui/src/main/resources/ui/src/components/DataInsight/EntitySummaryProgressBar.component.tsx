@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Progress, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Progress } from 'antd';
 import classNames from 'classnames';
 import { round } from 'lodash';
 import { ReactNode } from 'react';
@@ -39,15 +39,12 @@ const EntitySummaryProgressBar = ({
   };
 
   return (
-    <Row
-      className={classNames({
+    <Grid
+      className={`layout-row layout-grid ${classNames({
         'non-active-details': !isActive,
-      })}
+      })}`}
       data-testid="entity-summary-container">
-      <Col
-        className="d-flex justify-between items-center text-xs"
-        md={12}
-        sm={24}>
+      <Grid.Item className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 d-flex justify-between items-center text-xs">
         <Typography
           as="p"
           className="m-b-0 entity-summary-name break-all"
@@ -61,8 +58,8 @@ const EntitySummaryProgressBar = ({
           data-testid="entity-value">
           {label ?? round(progress || 0, 2)}
         </Typography>
-      </Col>
-      <Col md={12} sm={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12">
         <Progress
           className="p-l-xss"
           data-testid="progress-bar"
@@ -71,8 +68,8 @@ const EntitySummaryProgressBar = ({
           size="small"
           strokeColor={isActive ? strokeColor : GRAYED_OUT_COLOR}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 
