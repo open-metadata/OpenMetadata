@@ -54,7 +54,9 @@ public final class ContextMemoryLifecycle {
     if (statusChanged && isSuperseded(original.getEntityStatus())) {
       updated.setSupersededBy(null);
     }
-    if (statusChanged && Objects.equals(original.getStatusReason(), updated.getStatusReason())) {
+    if (statusChanged
+        && updated.getEntityStatus() != ContextMemoryStatus.DRAFT
+        && Objects.equals(original.getStatusReason(), updated.getStatusReason())) {
       updated.setStatusReason(null);
     }
   }

@@ -96,6 +96,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Map.of(
               ContextMemoryStatus.UNPROCESSED,
                   Set.of(
+                      ContextMemoryStatus.DRAFT,
                       ContextMemoryStatus.APPROVED,
                       ContextMemoryStatus.DEPRECATED,
                       ContextMemoryStatus.REJECTED,
@@ -105,6 +106,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
               ContextMemoryStatus.DRAFT,
                   Set.of(
                       ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.REJECTED,
                       ContextMemoryStatus.ARCHIVED,
                       ContextMemoryStatus.UNPROCESSED),
               ContextMemoryStatus.APPROVED,

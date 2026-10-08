@@ -47,6 +47,14 @@ class ContextMemoryStatusTransitionTest {
     assertTrue(MEMORY.allows(ContextMemoryStatus.REJECTED, ContextMemoryStatus.UNPROCESSED));
   }
 
+  @Test
+  void unprocessedConflictsCanAwaitAHumanDecisionAsDraft() {
+    assertTrue(MEMORY.allows(ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT));
+    assertTrue(MEMORY.allows(ContextMemoryStatus.DRAFT, ContextMemoryStatus.APPROVED));
+    assertTrue(MEMORY.allows(ContextMemoryStatus.DRAFT, ContextMemoryStatus.REJECTED));
+    assertTrue(MEMORY.allows(ContextMemoryStatus.DRAFT, ContextMemoryStatus.UNPROCESSED));
+  }
+
   private static final EntityLifecycle<ContextMemoryStatus> MEMORY =
       ContextMemoryRepository.LIFECYCLE;
 
@@ -78,7 +86,7 @@ class ContextMemoryStatusTransitionTest {
   }
 
   @Test
-  void memoryNeverGoesBackToDraft() {
+  void resolvedMemoriesNeverGoBackToDraft() {
     assertFalse(MEMORY.allows(ContextMemoryStatus.APPROVED, ContextMemoryStatus.DRAFT));
     assertFalse(MEMORY.allows(ContextMemoryStatus.ARCHIVED, ContextMemoryStatus.DRAFT));
   }

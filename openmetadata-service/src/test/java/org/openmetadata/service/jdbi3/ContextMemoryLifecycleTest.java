@@ -75,6 +75,31 @@ class ContextMemoryLifecycleTest {
     assertEquals("Anchor table was deleted", updated.getStatusReason());
   }
 
+  @Test
+  void draftingAConflictKeepsItsExistingReviewReason() {
+    ContextMemory original =
+        memory(ContextMemoryStatus.UNPROCESSED).withStatusReason("contradicts: threshold differs");
+    ContextMemory updated = copyOf(original).withEntityStatus(ContextMemoryStatus.DRAFT);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertEquals(original.getStatusReason(), updated.getStatusReason());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "REJECTED", "UNPROCESSED"})
+  void leavingDraftClearsTheOldReviewReason(ContextMemoryStatus status) {
+    ContextMemory original =
+        memory(ContextMemoryStatus.DRAFT).withStatusReason("contradicts: threshold differs");
+    ContextMemory updated = copyOf(original).withEntityStatus(status);
+
+    ContextMemoryLifecycle.applyUpdate(original, updated, NO_LOOKUP);
+
+    assertNull(updated.getStatusReason());
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ContextMemoryStatus.class,
