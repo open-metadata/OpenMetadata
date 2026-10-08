@@ -477,7 +477,6 @@ test.describe('SSO Configuration Tests', () => {
         'useNonce',
         'disablePkce',
         'maxClockSkew',
-        'tokenValidity',
         'maxAge',
         'sessionExpiry',
       ];

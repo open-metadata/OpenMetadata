@@ -37,7 +37,9 @@ The key failure modes are:
 
 1. Store server-managed user sessions in a shared, authoritative backend.
 2. Support both JDBC-backed sessions and Redis-backed sessions.
-3. Bind newly issued browser access JWTs to the server-side session that issued them.
+3. Bind the browser access JWTs OpenMetadata issues (Basic, LDAP, SAML) to the server-side session
+   that issued them. Confidential OIDC browsers present the identity provider's own ID token
+   instead (section 6.7).
 4. Keep provider refresh tokens and OpenMetadata refresh tokens server-side.
 5. Make refresh safe under cross-node concurrency.
 6. Make logout and revocation visible to API and websocket paths.
@@ -178,12 +180,13 @@ SAML and confidential OIDC use pending sessions:
 5. `activatePendingSession` expires the pending session.
 6. A brand-new active session ID is generated and stored.
 7. The active session cookie replaces the pending cookie.
-8. The browser receives an OpenMetadata-signed JWT with the active session ID.
+8. The browser receives its token: for SAML an OpenMetadata-signed JWT with the active session ID,
+   for confidential OIDC the identity provider's own ID token from the code exchange.
 
 Issuing a new active session ID during activation is the session fixation defense. The pre-auth
 cookie value is never reused for the authenticated session.
 
-If activation fails, the newly inserted refresh token is deleted and no JWT is issued.
+If activation fails, the newly inserted refresh token is deleted and no token is handed out.
 
 ### 6.7 Refresh
 
@@ -199,7 +202,9 @@ Refresh is guarded by an optimistic lease:
 6. The provider or OpenMetadata refresh token is rotated as needed.
 7. `completeRefresh` writes the refreshed session back to `ACTIVE`, clears the lease, updates idle
    expiry without extending beyond the absolute session expiry, and increments `version`.
-8. The response contains a new OpenMetadata-signed JWT bound to the same session ID.
+8. The response carries the browser's next token: for Basic, LDAP and SAML a new
+   OpenMetadata-signed JWT bound to the same session ID, for confidential OIDC the identity
+   provider's next ID token (below).
 
 Lease duration is currently `15s`.
 
@@ -218,45 +223,53 @@ anything else (expired, unknown, no cookie). The browser signs out on the first 
 re-authenticating: under `maxActiveSessionsPerUser`, a silently re-established session would evict
 another of the user's sessions, which would do the same in turn.
 
-**Confidential OIDC: following the identity provider.** Opt-in with
-`oidcConfiguration.endSessionWithProvider` (`OIDC_END_SESSION_WITH_PROVIDER`), off by default: on
-providers that revoke refresh tokens with their session (Keycloak), signing out there or reaching
-its idle or maximum session lifetime then signs the user out of OpenMetadata too, which deployments
-that expect a `sessionExpiry`-long session do not want. With the setting on, the provider refresh
-token captured at the callback is kept, encrypted, in the session, together with
-`providerRenewalDueAt`: when the provider's tokens need renewing, taken from the token response's
-`expires_in` (`ProviderTokenSchedule`). The schedule follows the provider, not `sessionExpiry`:
+**Confidential OIDC: the provider's own token.** OpenMetadata issues no token of its own after an
+OIDC sign-in. The callback hands the browser the identity provider's ID token from the code
+exchange and keeps the provider's refresh token, encrypted, in the session. Every refresh redeems
+it for the provider's next ID token with a refresh-token grant (`OidcProviderTokenRefresher`) while
+the node holds the lease, before rotating the OpenMetadata refresh token, so a rejected or failed
+grant leaves that token untouched. The provider therefore decides:
 
-- A refresh renews the provider's tokens whenever they would lapse before the OpenMetadata JWT it
-  is about to issue. The winning node redeems the provider refresh token with a refresh-token grant
-  (`OidcProviderTokenRefresher`) while it holds the lease, before rotating the OpenMetadata refresh
-  token, so a rejected or failed grant leaves that token untouched.
-- The JWT a confidential OIDC session is issued (at the callback and at each refresh) never
-  outlives `providerRenewalDueAt`: its lifetime is `tokenValidity`, cut short to the provider's
-  schedule with a `120s` floor (the browser renews a minute before expiry). An open browser
-  therefore always comes back before the provider's tokens lapse. That keeps a provider session
-  with a short idle timeout alive while the user is active in OpenMetadata (Keycloak counts
-  refresh-token use as activity; its defaults are 5-minute access tokens and a 30-minute SSO idle
-  timeout), and notices a provider session that ended within one provider token lifetime.
+- what the token says: `JwtFilter` resolves the principal from the provider's own claims, so
+  `jwtPrincipalClaimsMapping` and `emailClaim` work with any claim the provider sends (#32000);
+- how long it lasts: its `exp`. `oidcConfiguration.tokenValidity` is ignored for OIDC, and so is
+  `oidcConfiguration.endSessionWithProvider`, since every session now follows the provider (#33553);
+- whether the session goes on: a provider that rejects the refresh token ends the OpenMetadata
+  session too. Keycloak counts refresh-token use as activity, so its short SSO idle timeout stays
+  alive while the user is active in OpenMetadata.
 
 Outcomes:
 
-- `RENEWED` — store a rotated provider refresh token if the provider issued one, and the next due
-  time. The session's `expiresAt` does **not** move. A successful grant says nothing about the
-  provider's browser session (Entra ID refresh tokens survive single sign-out), so only a new
-  sign-in starts a new session lifetime; the browser attempts it silently when the session ends.
+- `RENEWED` with an ID token that outlives the browser's one-minute renewal margin: the response
+  carries it and its expiry, and a rotated provider refresh token is stored. The session's
+  `expiresAt` does **not** move. A successful grant says nothing about the provider's browser
+  session (Entra ID refresh tokens survive single sign-out), so only a new sign-in starts a new
+  session lifetime; the browser attempts it silently when the session ends.
+- Nothing to renew with: a `RENEWED` response without a usable ID token (OpenID Connect allows a
+  refresh response without one), or a session holding no provider refresh token because the
+  provider issued none (Okta, Entra ID and Auth0 need `offline_access`; Google issues one only on a
+  consent screen). The OpenMetadata refresh token is deleted, the session is revoked, and the
+  refresh answers `401`, so the browser signs in again at the provider. Test Login reports this
+  case (stage `TOKEN_REFRESHED`) before the configuration is saved.
 - `REJECTED` — `invalid_grant` or `invalid_token`: the provider ended the grant (sign-out where its
   refresh tokens are bound to its session, maximum session age, disabled user, revoked token). The
   just-rotated OpenMetadata refresh token is deleted, the session is revoked, and the refresh
   answers `401 Identity provider session ended`.
 - `UNAVAILABLE` — timeouts, 5xx, unparseable responses, and errors about the client rather than the
-  user (`invalid_client`, `unauthorized_client`) are not a verdict. The session keeps going and the
-  provider is asked again after `5m`; the JWT issued meanwhile is shortened to match.
+  user (`invalid_client`, `unauthorized_client`) are not a verdict. With no token to hand out, the
+  refresh answers `503` and releases the lease; the session is kept so a later refresh can renew it.
 
-Sessions without a provider refresh token (Basic, LDAP, SAML, providers that issued none, and every
-confidential OIDC session while `endSessionWithProvider` is off) never contact the provider and get
-the full `tokenValidity`; they end at `sessionExpiry`, and the browser re-authenticates silently. A
-renewal time stored while the setting was on is ignored once it is off.
+`providerRenewalDueAt` records when the browser's current ID token expires.
+
+The provider's ID token carries no `sessionId`, so logout, an administrator's revocation and the
+per-user cap take effect at the browser's next refresh rather than its next request: the session
+can no longer be refreshed, while an ID token already handed out stays valid until its `exp`, as in
+the public OIDC flow. `JwtFilter` accepts a provider token only when its audience names a
+configured client and, for confidential clients, its issuer is the one in the provider's discovery
+document, whose `jwks_uri` it trusts alongside `publicKeyUrls`.
+
+Basic, LDAP and SAML sessions have no provider to contact: their JWTs get the full `tokenValidity`,
+the session ends at `sessionExpiry`, and the browser re-authenticates silently.
 
 ### 6.8 Logout and Revocation
 
@@ -291,8 +304,8 @@ Default timeouts:
 - pending session timeout: `10m`
 - authenticated session expiry: `authenticationConfiguration.sessionExpiry`, default `7d`; a
   successful provider refresh-token grant never extends it
-- provider renewal (`endSessionWithProvider` only): when the provider's tokens would lapse before the
-  next OpenMetadata JWT (their `expires_in`); `5m` after a grant that got no verdict
+- confidential OIDC browser token: the identity provider's ID token `exp`; every refresh renews it at
+  the provider
 - refresh lease: `15s`
 - cleanup retention: `7d`
 
@@ -301,7 +314,7 @@ remaining effective session lifetime.
 
 ## 7. Session-Bound JWTs
 
-Server-managed auth flows return OpenMetadata-signed access JWTs with:
+Basic, LDAP and SAML return OpenMetadata-signed access JWTs with:
 
 ```json
 {
@@ -325,8 +338,9 @@ Server-managed auth flows return OpenMetadata-signed access JWTs with:
 
 This means session-backed browser API requests now consult the shared session store. That is an
 intentional tradeoff in the current implementation: revocation is observed on the next request
-instead of waiting for access-token expiry. PATs, bot tokens, and legacy JWTs without `sessionId`
-remain stateless.
+instead of waiting for access-token expiry. PATs, bot tokens, legacy JWTs without `sessionId`, and
+identity-provider tokens (public OIDC, and confidential OIDC since it hands out the provider's ID
+token, section 6.7) remain stateless.
 
 ## 8. WebSocket Session Management
 
@@ -521,6 +535,9 @@ configured for sessions, the service refuses to start without it.
 7. Secure websocket mode derives socket user identity from the JWT principal, not from query params.
 8. Websocket logs do not include initial headers or bearer tokens.
 9. Revocation targets the revoked session instead of disconnecting every socket for the user.
+10. Identity-provider tokens are accepted only when their audience names a configured client and,
+    for confidential clients, their issuer is the provider's discovery issuer: providers such as
+    Google and Entra ID sign every application's tokens with the same keys.
 
 ## 13. Test Coverage
 
@@ -530,7 +547,7 @@ Relevant unit coverage includes:
 - `SessionCookieUtilTest`
 - `SessionTimeoutResolverTest`
 - `OidcProviderTokenRefresherTest`
-- `ProviderTokenScheduleTest`
+- `ProviderTokenValidatorTest`
 - `SessionStoreContractTest`
 - `RedisSessionStoreTest`
 - `JwtFilterTest`
@@ -557,19 +574,17 @@ Important scenarios covered or expected from this suite:
 - websocket principal binding
 - per-session websocket disconnect
 - session-bound JWT rejection for revoked sessions
-- provider renewal schedule: due when the provider's tokens lapse before the next JWT, JWT lifetime
-  cut to the schedule with a floor, an open browser renewing Keycloak-style 5-minute tokens before
-  they lapse, day-long tokens renewed only near their end (`ProviderTokenScheduleTest`)
-- provider refresh-token grant outcomes: renewed with and without rotation and with the provider's
-  lifetime, rejected (`invalid_grant`, `invalid_token`), no verdict (5xx, timeouts, parse errors,
+- provider refresh-token grant outcomes: renewed with and without rotation, with and without an ID
+  token, rejected (`invalid_grant`, `invalid_token`), no verdict (5xx, timeouts, parse errors,
   `invalid_client`, `unauthorized_client`) (`OidcProviderTokenRefresherTest`)
-- a due refresh renews the provider's tokens and shortens the JWT to them; a rejected grant answers
-  `401` and revokes; no verdict keeps the session and asks again in `5m`; a provider not yet due or
-  a session without a provider token is never contacted; the login's own `expires_in` starts the
-  schedule; `endSessionWithProvider` is read from the saved configuration, and with it off a login
-  stores nothing from the provider and a refresh never contacts it and issues full-length JWTs, even
-  for a session with an overdue renewal; an expired OpenMetadata refresh token answers `401`, not
+- a refresh returns the provider's next ID token and its expiry; a rejected grant, a session without
+  a provider refresh token, or a renewal without a usable ID token answers `401` and revokes; no
+  verdict answers `503` and keeps the session; `endSessionWithProvider` no longer decides whether
+  the provider's refresh token is kept; an expired OpenMetadata refresh token answers `401`, not
   `500` (`AuthenticationCodeFlowHandlerTest`)
+- provider tokens issued to another client or by another issuer are rejected, including a
+  multi-tenant Entra issuer filled in from the token's tenant (`ProviderTokenValidatorTest`,
+  `JwtFilterTest`)
 - a renewed or rescheduled provider grant never moves `expiresAt` (`SessionServiceTest`); the
   provider tokens and schedule round-trip through the store (`SessionStoreContractTest`)
 

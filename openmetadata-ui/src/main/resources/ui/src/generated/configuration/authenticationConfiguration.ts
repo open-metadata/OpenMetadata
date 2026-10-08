@@ -346,12 +346,9 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
-     * End the OpenMetadata session when the identity provider ends its own. OpenMetadata then
-     * renews the provider's tokens on the provider's schedule while the user is active, and
-     * signs the user out once the provider rejects its refresh token: after the provider's idle
-     * or maximum session lifetime, or a sign-out on providers that revoke refresh tokens with
-     * the session (Keycloak does; Microsoft Entra ID does not). When off, a session lasts the
-     * configured session expiry whatever the provider does. Applies to confidential clients.
+     * [DEPRECATED: ignored] Confidential OIDC sessions always end with the identity provider's:
+     * each refresh redeems the provider's refresh token for the browser's next ID token, and a
+     * refresh token the provider rejects ends the OpenMetadata session too.
      */
     endSessionWithProvider?: boolean;
     /**
@@ -404,7 +401,9 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
+     * [DEPRECATED: ignored] OpenMetadata no longer issues its own token after OIDC
+     * authentication: the browser presents the identity provider's ID token, whose lifetime the
+     * provider sets.
      */
     tokenValidity?: number;
     /**
