@@ -749,15 +749,14 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await openIncidentTaskTab(actorPage, true);
       const resolveModal = await openIncidentResolveDialog(actorPage);
       const resolveTextareas = resolveModal.locator('textarea');
-      const resolveReasonSelect = resolveModal
-        .locator('.ant-select-selector')
-        .first();
+      const resolveReasonSelect = resolveModal.getByRole('button', {
+        name: /Root Cause/i,
+      });
       const textareaCount = await resolveTextareas.count();
 
       if (await resolveReasonSelect.isVisible().catch(() => false)) {
         await resolveReasonSelect.click();
-        await actorPage.keyboard.press('ArrowDown');
-        await actorPage.keyboard.press('Enter');
+        await actorPage.getByRole('option', { name: 'MissingData' }).click();
         await resolveTextareas.first().fill('test');
       } else if (textareaCount >= 2) {
         await resolveTextareas.nth(0).fill('Missing Data');

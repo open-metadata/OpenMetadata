@@ -49,7 +49,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // ChangeSummaryBadge's button lookup remove three more positional locators;
     // the core assignee/schema-field selectors in the task and incident specs
     // remove three more.
-    'om-playwright/no-positional-locator': 599,
+    'om-playwright/no-positional-locator': 598,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 14,
