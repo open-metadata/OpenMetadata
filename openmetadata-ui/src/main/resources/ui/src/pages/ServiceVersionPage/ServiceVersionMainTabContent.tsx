@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Grid } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Space } from 'antd';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';
@@ -64,20 +65,39 @@ function ServiceVersionMainTabContent({
   );
 
   return (
-    <Row className="h-full" gutter={[0, 16]} wrap={false}>
-      <Col className="p-t-sm m-x-lg" flex="auto">
-        <Row gutter={[16, 16]}>
-          <Col data-testid="description-container" span={24}>
+    <Box
+      className="layout-row h-full"
+      style={{ ...getLayoutGutter(0, 16) }}
+      wrap="nowrap">
+      <Box
+        className="layout-column tw:block p-t-sm m-x-lg"
+        style={{ flex: 'auto' }}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(16, 16) }}>
+          <Grid.Item
+            className="layout-column"
+            data-testid="description-container"
+            span={24}>
             <Description
               description={description}
               entityName={serviceName}
               entityType={entityType}
               showActions={false}
             />
-          </Col>
+          </Grid.Item>
 
-          <Col data-testid="table-container" span={24}>
-            <Space className="w-full m-b-md" direction="vertical" size="middle">
+          <Grid.Item
+            className="layout-column"
+            data-testid="table-container"
+            span={24}>
+            <Box
+              inline
+              align="stretch"
+              className="layout-space w-full m-b-md"
+              direction="col"
+              gap={4}
+              itemClassName="layout-space-item">
               <Table
                 columns={tableColumn}
                 customPaginationProps={{
@@ -112,15 +132,21 @@ function ServiceVersionMainTabContent({
                 scroll={TABLE_SCROLL_VALUE}
                 size="small"
               />
-            </Space>
-          </Col>
-        </Row>
-      </Col>
-      <Col
-        className="entity-tag-right-panel-container"
+            </Box>
+          </Grid.Item>
+        </Grid>
+      </Box>
+      <Box
+        className="layout-column tw:block entity-tag-right-panel-container"
         data-testid="entity-right-panel"
-        flex="220px">
-        <Space className="w-full" direction="vertical" size="large">
+        style={{ flex: `0 0 ${'220px'}` }}>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space w-full"
+          direction="col"
+          gap={6}
+          itemClassName="layout-space-item">
           {Object.keys(TagSource).map((tagType) => (
             <TagsContainerV2
               newLook
@@ -134,9 +160,9 @@ function ServiceVersionMainTabContent({
               tagType={TagSource[tagType as TagSource]}
             />
           ))}
-        </Space>
-      </Col>
-    </Row>
+        </Box>
+      </Box>
+    </Box>
   );
 }
 

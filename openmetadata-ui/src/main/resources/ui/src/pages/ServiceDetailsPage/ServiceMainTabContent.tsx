@@ -12,12 +12,15 @@
  */
 
 import {
+  Box,
   EmptyPlaceholder,
+  Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Space } from 'antd';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -379,14 +382,24 @@ function ServiceMainTabContent({
   }, [searchValue, currentPage, showDeleted]);
 
   return (
-    <Row className="main-tab-content" gutter={[0, 16]} wrap={false}>
-      <Col className="tab-content-height-with-resizable-panel" span={24}>
+    <Box
+      className="layout-row main-tab-content"
+      style={{ ...getLayoutGutter(0, 16) }}
+      wrap="nowrap">
+      <Box
+        className="layout-column tw:block tab-content-height-with-resizable-panel"
+        style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
         <ResizablePanels
           firstPanel={{
             className: 'entity-resizable-panel-container',
             children: (
-              <Row gutter={[16, 16]}>
-                <Col data-testid="description-container" span={24}>
+              <Grid
+                className="layout-row layout-grid"
+                style={{ ...getLayoutGutter(16, 16) }}>
+                <Grid.Item
+                  className="layout-column"
+                  data-testid="description-container"
+                  span={24}>
                   <Description
                     description={serviceDetails.description}
                     entityName={serviceName}
@@ -396,12 +409,18 @@ function ServiceMainTabContent({
                     showCommentsIcon={false}
                     onDescriptionUpdate={handleDescriptionUpdate}
                   />
-                </Col>
-                <Col data-testid="table-container" span={24}>
-                  <Space
-                    className="w-full m-b-md"
-                    direction="vertical"
-                    size="large">
+                </Grid.Item>
+                <Grid.Item
+                  className="layout-column"
+                  data-testid="table-container"
+                  span={24}>
+                  <Box
+                    inline
+                    align="stretch"
+                    className="layout-space w-full m-b-md"
+                    direction="col"
+                    gap={6}
+                    itemClassName="layout-space-item">
                     <Table
                       columns={tableColumn}
                       customPaginationProps={{
@@ -477,9 +496,9 @@ function ServiceMainTabContent({
                       size="small"
                       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
                     />
-                  </Space>
-                </Col>
-              </Row>
+                  </Box>
+                </Grid.Item>
+              </Grid>
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
           }}
@@ -515,8 +534,8 @@ function ServiceMainTabContent({
               'entity-resizable-right-panel-container entity-resizable-panel-container',
           }}
         />
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 }
 

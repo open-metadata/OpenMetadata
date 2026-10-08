@@ -14,11 +14,12 @@
 import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
+  Grid,
   Tabs,
   ToggleBase,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Avatar, Button, Col, Modal, Row, Space, Tooltip } from 'antd';
+import { Avatar, Button, Modal, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -64,6 +65,7 @@ import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/Add
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   EXTENSION_POINTS,
@@ -652,20 +654,20 @@ const TeamDetailsV1 = ({
                   icon={IconOpenLock}
                   id="open-group-dropdown"
                   name={
-                    <Row>
-                      <Col span={21}>
+                    <Grid className="layout-row layout-grid">
+                      <Grid.Item className="layout-column" span={21}>
                         <Typography
                           className="font-medium"
                           data-testid="open-group-label">
                           {t('label.public-team')}
                         </Typography>
-                      </Col>
+                      </Grid.Item>
 
-                      <Col span={3}>
+                      <Grid.Item className="layout-column" span={3}>
                         {/* Visual only: Toggle swallows the click the menu item's onClick needs. */}
                         <ToggleBase isSelected={currentTeam.isJoinable} />
-                      </Col>
-                    </Row>
+                      </Grid.Item>
+                    </Grid>
                   }
                 />
               ),
@@ -876,9 +878,11 @@ const TeamDetailsV1 = ({
           ),
         })
       ) : (
-        <Row className="roles-and-policy p-y-md" gutter={[0, 10]}>
+        <Grid
+          className="layout-row layout-grid roles-and-policy p-y-md"
+          style={{ ...getLayoutGutter(0, 10) }}>
           {canEditAll && (
-            <Col className="d-flex justify-end" span={24}>
+            <Grid.Item className="layout-column d-flex justify-end" span={24}>
               <Button
                 data-testid="add-role"
                 type="primary"
@@ -890,9 +894,9 @@ const TeamDetailsV1 = ({
                 }>
                 {addRole}
               </Button>
-            </Col>
+            </Grid.Item>
           )}
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <ListEntities
               hasAccess={canEditAll}
               isTeamDeleted={isTeamDeleted}
@@ -902,8 +906,8 @@ const TeamDetailsV1 = ({
                 setSelectedEntity({ record, attribute: 'defaultRoles' })
               }
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       ),
     [currentTeam, canEditAll, ungatedFlags, addRole, isTeamDeleted]
   );
@@ -948,9 +952,11 @@ const TeamDetailsV1 = ({
           ),
         })
       ) : (
-        <Row className="roles-and-policy p-y-md" gutter={[0, 10]}>
+        <Grid
+          className="layout-row layout-grid roles-and-policy p-y-md"
+          style={{ ...getLayoutGutter(0, 10) }}>
           {canEditAll && (
-            <Col className="d-flex justify-end" span={24}>
+            <Grid.Item className="layout-column d-flex justify-end" span={24}>
               <Button
                 data-testid="add-policy"
                 title={
@@ -965,9 +971,9 @@ const TeamDetailsV1 = ({
                 }>
                 {addPolicy}
               </Button>
-            </Col>
+            </Grid.Item>
           )}
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <ListEntities
               hasAccess={canEditAll}
               isTeamDeleted={isTeamDeleted}
@@ -977,8 +983,8 @@ const TeamDetailsV1 = ({
                 setSelectedEntity({ record, attribute: 'policies' })
               }
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       ),
     [currentTeam, canEditAll, ungatedFlags, addPolicy, isTeamDeleted]
   );
@@ -1050,7 +1056,12 @@ const TeamDetailsV1 = ({
               </div>
             </div>
 
-            <Space align="center">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               {teamActionButton}
               {!isOrganization ? (
                 ungatedFlags.canEditAll && (
@@ -1087,7 +1098,7 @@ const TeamDetailsV1 = ({
                   extraDropdownContent={[...IMPORT_EXPORT_MENU_ITEM]}
                 />
               )}
-            </Space>
+            </Box>
           </div>
         </div>
         <div className="p-t-md ">
@@ -1190,19 +1201,23 @@ const TeamDetailsV1 = ({
 
   const tabsChildrenRender = useCallback(
     (key: TeamsPageTab) => (
-      <Row className="teams-tabs-content-container">
-        <Col className="teams-scroll-component" span={previewAsset ? 18 : 24}>
+      <Grid className="layout-row layout-grid teams-tabs-content-container">
+        <Grid.Item
+          className="layout-column teams-scroll-component"
+          span={previewAsset ? 18 : 24}>
           {isFetchingAdvancedDetails ? <Loader /> : getTabChildren(key)}
-        </Col>
+        </Grid.Item>
         {previewAsset && (
-          <Col className="border-left team-assets-right-panel" span={6}>
+          <Grid.Item
+            className="layout-column border-left team-assets-right-panel"
+            span={6}>
             <EntitySummaryPanel
               entityDetails={previewAsset}
               handleClosePanel={() => setPreviewAsset(undefined)}
             />
-          </Col>
+          </Grid.Item>
         )}
-      </Row>
+      </Grid>
     ),
     [previewAsset, isFetchingAdvancedDetails, getTabChildren]
   );

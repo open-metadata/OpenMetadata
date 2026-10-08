@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import capitalize from 'lodash/capitalize';
 import isNil from 'lodash/isNil';
@@ -38,6 +39,7 @@ import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServicePureUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
@@ -308,8 +310,10 @@ export const IngestionPipelineList = ({
   );
 
   return (
-    <Row className={className} gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className={`layout-row layout-grid ${className}`}
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         {/* Says why re-deploy is unavailable, or why it will not do anything; the list itself
             stays readable. */}
         <AirflowMessageBanner
@@ -320,8 +324,8 @@ export const IngestionPipelineList = ({
             'message.pipeline-service-unreachable-agent-actions'
           )}
         />
-      </Col>
-      <Col className="text-right" span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column text-right" span={24}>
         <Button
           data-testid="bulk-re-deploy-button"
           disabled={
@@ -335,8 +339,8 @@ export const IngestionPipelineList = ({
           onClick={handleBulkRedeploy}>
           {t('label.re-deploy')}
         </Button>
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <IngestionListTable
           enableActions={false}
           extraTableProps={{
@@ -352,7 +356,7 @@ export const IngestionPipelineList = ({
           onPageChange={handlePipelinePageChange}
           onSortChange={handleSortChange}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
