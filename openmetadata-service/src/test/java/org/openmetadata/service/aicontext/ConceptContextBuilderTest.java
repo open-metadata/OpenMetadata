@@ -48,6 +48,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
+import org.openmetadata.schema.type.aicontext.ConceptBinding;
 import org.openmetadata.schema.type.aicontext.ConceptContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.service.Entity;
@@ -198,6 +199,35 @@ class ConceptContextBuilderTest {
   }
 
   @Test
+  void nestedFieldNeverBorrowsTheSignalsOfATopLevelColumnWithTheSameDottedName() {
+    Catalog catalog = new Catalog();
+    Column nested = column("amount", null).withChildren(List.of(column("cents", TERM)));
+    catalog.assets.add(table("orders", column("amount.cents", null), nested));
+    catalog.profile =
+        new Observability()
+            .withColumnProfiles(
+                List.of(new ColumnProfileSummary().withName("amount.cents").withMin("999")));
+    catalog.samples =
+        new TableData()
+            .withColumns(List.of("amount.cents", "amount"))
+            .withRows(List.of(List.of(999, Map.of("cents", 123))));
+
+    ConceptBinding binding = build(catalog, term()).getBindings().getFirst();
+
+    assertEquals("svc.db.schema.orders.amount.cents", binding.getColumn());
+    assertNull(binding.getProfile());
+    assertNull(binding.getSampleValues());
+
+    catalog.assets.set(0, table("orders", column("amount.cents", TERM), nested));
+    List<ConceptBinding> bindings = build(catalog, term()).getBindings();
+
+    assertEquals("svc.db.schema.orders.\"amount.cents\"", bindings.getFirst().getColumn());
+    assertEquals("999", bindings.getFirst().getProfile().getMin());
+    assertEquals(List.of(999), bindings.getFirst().getSampleValues());
+    assertNull(bindings.get(1).getSampleValues());
+  }
+
+  @Test
   void preservesOntologyAttributesAndVisibleTypedRelations() {
     Catalog catalog = new Catalog();
     catalog.hidden = Set.of("Business.Secret");
@@ -292,6 +322,33 @@ class ConceptContextBuilderTest {
 
     assertEquals(
         List.of("svc.db.schema.orders.amount_cents"), boundColumns(build(catalog, metric)));
+  }
+
+  @Test
+  void metricBindsColumnsNamedInJoinPredicates() {
+    Catalog catalog = new Catalog();
+    catalog.assets.add(
+        table("payments", column("amount_cents", null), column("customer_id", null)));
+    catalog.assets.add(table("customers", column("id", null), column("active", null)));
+    Metric metric =
+        new Metric()
+            .withMetricExpression(
+                new MetricExpression()
+                    .withCode(
+                        "SELECT SUM(p.amount_cents) FROM payments p JOIN customers c"
+                            + " ON p.customer_id = c.id AND c.active = 1"));
+
+    ConceptContext context = build(catalog, metric);
+
+    assertEquals(
+        Set.of(
+            "svc.db.schema.payments.amount_cents",
+            "svc.db.schema.payments.customer_id",
+            "svc.db.schema.customers.id",
+            "svc.db.schema.customers.active"),
+        Set.copyOf(boundColumns(context)));
+    assertEquals(6, context.getTotalBindings());
+    assertFalse(context.getTruncated());
   }
 
   @Test

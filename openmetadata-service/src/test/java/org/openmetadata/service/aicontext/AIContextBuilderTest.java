@@ -544,12 +544,39 @@ class AIContextBuilderTest {
   }
 
   @Test
-  void collectGlossaryFqns_keepsColumnBindingsOutOfTableDefinitions() {
-    Set<String> fqns = AIContextBuilder.collectGlossaryFqns(sampleTable());
+  void collectAssetGlossaryFqns_keepsColumnBindingsOutOfTableDefinitions() {
+    Set<String> fqns = AIContextBuilder.collectAssetGlossaryFqns(sampleTable());
     assertTrue(fqns.contains("Business.Order"), "table-level glossary term missing");
     assertFalse(fqns.contains("Business.CustomerId"), "column term flattened into table context");
     assertTrue(fqns.stream().noneMatch(f -> f.startsWith("PII.")), "classification tag leaked in");
     assertEquals(1, fqns.size());
+  }
+
+  @Test
+  void collectGlossaryFqns_keepsColumnOnlyAndNestedColumnTermsForTheBatch() {
+    Column nested =
+        new Column()
+            .withName("payload")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withTags(
+                            List.of(
+                                new TagLabel()
+                                    .withSource(TagLabel.TagSource.GLOSSARY)
+                                    .withTagFQN("Business.Amount")))));
+    Table table = sampleTable();
+    List<Column> columns = new ArrayList<>(table.getColumns());
+    columns.add(nested);
+    table.withTags(List.of()).withColumns(columns);
+
+    assertEquals(
+        List.of("Business.CustomerId", "Business.Amount"),
+        List.copyOf(AIContextBuilder.collectGlossaryFqns(table)));
+    assertTrue(AIContextBuilder.collectAssetGlossaryFqns(table).isEmpty());
   }
 
   @Test

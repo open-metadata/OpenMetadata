@@ -737,7 +737,7 @@ public class AIContextBuilder {
 
   private List<KnowledgeItem> resolveGlossaryTerms(EntityInterface<?> entity) {
     List<KnowledgeItem> items = new ArrayList<>();
-    for (String termFqn : capped(collectGlossaryFqns(entity), MAX_KNOWLEDGE_ITEMS)) {
+    for (String termFqn : capped(collectAssetGlossaryFqns(entity), MAX_KNOWLEDGE_ITEMS)) {
       KnowledgeItem item = toGlossaryKnowledgeItem(termFqn);
       if (item != null) {
         items.add(item);
@@ -746,10 +746,33 @@ public class AIContextBuilder {
     return items;
   }
 
-  static Set<String> collectGlossaryFqns(EntityInterface<?> entity) {
+  /**
+   * Asset-level terms only: the single-asset envelope carries column terms on their fields
+   * instead.
+   */
+  static Set<String> collectAssetGlossaryFqns(EntityInterface<?> entity) {
     Set<String> fqns = new LinkedHashSet<>();
     addGlossaryFqns(entity.getTags(), fqns);
     return fqns;
+  }
+
+  /**
+   * Asset and (nested) column terms, for the attached-knowledge batch, whose flat item list has no
+   * per-field slot to carry column terms separately.
+   */
+  static Set<String> collectGlossaryFqns(EntityInterface<?> entity) {
+    Set<String> fqns = collectAssetGlossaryFqns(entity);
+    if (entity instanceof Table table) {
+      collectColumnGlossary(table.getColumns(), fqns);
+    }
+    return fqns;
+  }
+
+  private static void collectColumnGlossary(List<Column> columns, Set<String> into) {
+    for (Column column : listOrEmpty(columns)) {
+      addGlossaryFqns(column.getTags(), into);
+      collectColumnGlossary(column.getChildren(), into);
+    }
   }
 
   static List<String> extractClassificationTags(EntityInterface<?> entity) {

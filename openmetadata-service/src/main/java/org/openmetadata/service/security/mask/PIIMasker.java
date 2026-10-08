@@ -313,16 +313,16 @@ public class PIIMasker {
       ResultList<Query> queries, Authorizer authorizer, SecurityContext securityContext) {
     List<Query> maskedQueries =
         queries.getData().stream()
-            .map(
-                query -> {
-                  boolean authorizePII =
-                      authorizer.authorizePII(securityContext, query.getOwners());
-                  if (!authorizePII) return PIIMasker.getQuery(query);
-                  return query;
-                })
+            .map(query -> maskQuery(query, authorizer, securityContext))
             .collect(Collectors.toList());
     queries.setData(maskedQueries);
     return queries;
+  }
+
+  /** Masks a PII.Sensitive query's SQL unless the caller is an admin, a bot or an owner. */
+  public static Query maskQuery(
+      Query query, Authorizer authorizer, SecurityContext securityContext) {
+    return authorizer.authorizePII(securityContext, query.getOwners()) ? query : getQuery(query);
   }
 
   private static boolean hasPiiSensitiveTag(Query query) {

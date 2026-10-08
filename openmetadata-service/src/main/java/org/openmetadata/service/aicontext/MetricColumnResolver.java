@@ -27,8 +27,10 @@ import java.util.Set;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.calcite.config.Lex;
+import org.apache.calcite.sql.JoinConditionType;
 import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlIdentifier;
+import org.apache.calcite.sql.SqlJoin;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
@@ -159,6 +161,10 @@ final class MetricColumnResolver extends SqlBasicVisitor<Void> {
   private void collectAliases(SqlNode node) {
     if (node instanceof SqlSelect) {
       queryScopes++;
+    } else if (node instanceof SqlJoin join) {
+      collectAliases(join.getLeft());
+      collectAliases(join.getRight());
+      visitJoinCondition(join);
     } else if (node instanceof SqlCall call && aliases.size() < MAX_IDENTIFIERS) {
       if (call.getKind() == SqlKind.AS
           && call.operand(0) instanceof SqlIdentifier table
@@ -167,6 +173,17 @@ final class MetricColumnResolver extends SqlBasicVisitor<Void> {
       } else {
         call.getOperandList().stream().filter(Objects::nonNull).forEach(this::collectAliases);
       }
+    }
+  }
+
+  /**
+   * ON predicates name input columns just like WHERE does. Relation names never reach the visitor:
+   * the join's left and right sides go through {@link #collectAliases} only. USING lists are left
+   * out because they name a column on both sides, which is ambiguous by construction.
+   */
+  private void visitJoinCondition(SqlJoin join) {
+    if (join.getConditionType() == JoinConditionType.ON && join.getCondition() != null) {
+      join.getCondition().accept(this);
     }
   }
 

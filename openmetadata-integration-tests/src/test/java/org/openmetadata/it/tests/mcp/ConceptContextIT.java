@@ -50,6 +50,8 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -88,6 +90,7 @@ class ConceptContextIT extends McpTestBase {
   private static final String COLUMN = "amount_cents";
   private static final String EXPRESSION = "SUM(amount_cents) / 100";
   private static final String DEFINITION = "An amount stored in cents.";
+  private static final String MASKED_SQL = "********";
   private static String suffix;
   private static Glossary glossary;
   private static GlossaryTerm term;
@@ -292,6 +295,94 @@ class ConceptContextIT extends McpTestBase {
     assertThat(evidence.hasNonNull("lastRunStatus")).isFalse();
     delete("queries/" + query.getId());
     assertThat(termContext(evidenceTerm).path("evidence").size()).isZero();
+  }
+
+  @Test
+  void piiSensitiveQueryEvidenceIsMaskedForReadersWithoutPiiAccess() throws Exception {
+    GlossaryTerm evidenceTerm = createTerm("PiiEvidence");
+    String sql = "SELECT ssn FROM customers";
+    Query query =
+        post(
+            "queries",
+            new CreateQuery()
+                .withService(orders.getService().getFullyQualifiedName())
+                .withQuery(sql)
+                .withTags(List.of(piiSensitiveTag())),
+            Query.class);
+    post(
+        "contextCenter/memories",
+        new CreateContextMemory()
+            .withName("pii_evidence_" + suffix)
+            .withDescription("Customers are keyed by SSN.")
+            .withQuestion("How are customers keyed?")
+            .withAnswer("By SSN.")
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
+            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PUBLIC))
+            .withPrimaryEntity(reference(evidenceTerm.getId(), "glossaryTerm"))
+            .withRelatedEntities(List.of(reference(query.getId(), "query"))),
+        ContextMemory.class);
+    String reader = restrictedToken("pii_query", List.of(MetadataOperation.EDIT_DESCRIPTION));
+
+    assertThat(termContext(evidenceTerm).at("/evidence/0/query").asText()).isEqualTo(sql);
+    JsonNode restEvidence =
+        conceptResponse("glossaryTerms", evidenceTerm.getFullyQualifiedName(), reader)
+            .at("/assetContext/conceptContext/evidence/0");
+    assertThat(restEvidence.path("id").asText()).isEqualTo(query.getId().toString());
+    assertThat(restEvidence.path("query").asText()).isEqualTo(MASKED_SQL);
+    JsonNode mcpResponse =
+        executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "get_concept_context",
+                Map.of(
+                    "entityType",
+                    "glossaryTerm",
+                    "fqn",
+                    evidenceTerm.getFullyQualifiedName(),
+                    "format",
+                    "json")),
+            reader);
+    JsonNode mcpEvidence =
+        OBJECT_MAPPER
+            .readTree(mcpResponse.at("/result/content/0/text").asText())
+            .at("/assetContext/conceptContext/evidence/0");
+    assertThat(mcpEvidence.path("query").asText()).isEqualTo(MASKED_SQL);
+  }
+
+  @Test
+  void attachedKnowledgeBatchKeepsColumnOnlyAndNestedColumnTerms() throws Exception {
+    GlossaryTerm columnTerm = createTerm("BatchColumn");
+    GlossaryTerm nestedTerm = createTerm("BatchNested");
+    Table table =
+        createTable(
+            "batch_" + suffix,
+            List.of(
+                new Column()
+                    .withName(COLUMN)
+                    .withDataType(ColumnDataType.BIGINT)
+                    .withTags(List.of(glossaryTag(columnTerm))),
+                new Column()
+                    .withName("payload")
+                    .withDataType(ColumnDataType.STRUCT)
+                    .withChildren(
+                        List.of(
+                            new Column()
+                                .withName("amount")
+                                .withDataType(ColumnDataType.BIGINT)
+                                .withTags(List.of(glossaryTag(nestedTerm)))))),
+            List.of());
+
+    JsonNode batch =
+        post(
+            "ai/context/attachedKnowledge",
+            List.of(
+                Map.of("fullyQualifiedName", table.getFullyQualifiedName(), "entityType", "table")),
+            JsonNode.class);
+
+    assertThat(
+            StreamSupport.stream(batch.at("/0/items").spliterator(), false)
+                .map(item -> item.path("fullyQualifiedName").asText())
+                .toList())
+        .containsExactly(columnTerm.getFullyQualifiedName(), nestedTerm.getFullyQualifiedName());
   }
 
   @Test
@@ -592,13 +683,7 @@ class ConceptContextIT extends McpTestBase {
                         .withDataType(ColumnDataType.BIGINT)
                         .withTags(
                             pii
-                                ? List.of(
-                                    glossaryTag(term),
-                                    new TagLabel()
-                                        .withTagFQN("PII.Sensitive")
-                                        .withSource(TagLabel.TagSource.CLASSIFICATION)
-                                        .withLabelType(TagLabel.LabelType.MANUAL)
-                                        .withState(TagLabel.State.CONFIRMED))
+                                ? List.of(glossaryTag(term), piiSensitiveTag())
                                 : List.of(glossaryTag(term))))
             .toList();
     return post(
@@ -731,6 +816,14 @@ class ConceptContextIT extends McpTestBase {
     return new TagLabel()
         .withTagFQN(term.getFullyQualifiedName())
         .withSource(TagLabel.TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
+  }
+
+  private static TagLabel piiSensitiveTag() {
+    return new TagLabel()
+        .withTagFQN("PII.Sensitive")
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
         .withLabelType(TagLabel.LabelType.MANUAL)
         .withState(TagLabel.State.CONFIRMED);
   }

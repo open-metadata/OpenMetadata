@@ -51,6 +51,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRec
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.ChildFieldResolver;
 
@@ -72,6 +73,9 @@ final class ConceptContextCatalog implements ConceptContextBuilder.Catalog {
               Map.of(
                   "bool",
                   Map.of("must_not", Map.of("terms", Map.of("entityType", NON_ASSET_TYPES))))));
+
+  private static final String QUERY_MASKING_FIELDS =
+      String.join(",", Entity.FIELD_OWNERS, Entity.FIELD_TAGS);
 
   private final Authorizer authorizer;
   private final SecurityContext securityContext;
@@ -214,15 +218,22 @@ final class ConceptContextCatalog implements ConceptContextBuilder.Catalog {
     return memory;
   }
 
+  /** SQL of a PII.Sensitive query is masked exactly as the query listing masks it. */
   @Override
   public Query query(EntityReference reference) {
     Query query = null;
     try {
-      query = Entity.getEntity(reference, "", Include.NON_DELETED);
+      query = maskPii(Entity.getEntity(reference, QUERY_MASKING_FIELDS, Include.NON_DELETED));
     } catch (EntityNotFoundException e) {
       LOG.debug("Concept context: evidence query {} is no longer available", reference.getId());
     }
     return query;
+  }
+
+  private Query maskPii(Query query) {
+    return authorizer == null || securityContext == null
+        ? query
+        : PIIMasker.maskQuery(query, authorizer, securityContext);
   }
 
   @Override

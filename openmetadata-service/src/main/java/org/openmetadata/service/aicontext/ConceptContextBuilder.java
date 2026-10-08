@@ -327,15 +327,26 @@ final class ConceptContextBuilder {
     }
     TableData samples = catalog.sampleData(table);
     for (ConceptBinding binding : bindings) {
-      if (binding.getColumn() != null) {
-        String name =
-            FullyQualifiedName.unquoteName(
-                binding.getColumn().substring(table.getFullyQualifiedName().length() + 1));
+      String name = binding.getColumn() == null ? null : topLevelColumnName(table, binding);
+      if (name != null) {
         binding
             .withProfile(columnProfile(profile, name))
             .withSampleValues(sampleValues(samples, name));
       }
     }
+  }
+
+  /**
+   * Stored profiles and samples are keyed by top-level column name, so a nested field gets neither:
+   * its dotted path would otherwise pick up a top-level column literally named {@code
+   * "amount.cents"}.
+   */
+  private static String topLevelColumnName(Table table, ConceptBinding binding) {
+    int tableDepth = FullyQualifiedName.split(table.getFullyQualifiedName()).length;
+    String[] columnPath = FullyQualifiedName.split(binding.getColumn());
+    return columnPath.length == tableDepth + 1
+        ? FullyQualifiedName.unquoteName(columnPath[tableDepth])
+        : null;
   }
 
   private static ColumnProfileSummary columnProfile(Observability profile, String name) {
