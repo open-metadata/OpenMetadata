@@ -121,7 +121,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
         <Box
           inline
           align="center"
-          className="layout-space layout-space-horizontal w-full justify-between align-center"
+          className="layout-space layout-space-horizontal w-full justify-between"
           gap={2}
           itemClassName="layout-space-item">
           <Box
