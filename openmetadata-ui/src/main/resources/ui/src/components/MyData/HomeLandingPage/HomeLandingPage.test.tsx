@@ -42,12 +42,6 @@ jest.mock('./AnnouncementsRail', () => {
     .mockImplementation(() => <div data-testid="announcements-rail" />);
 });
 
-jest.mock('./RecentlyViewedRail', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div data-testid="recently-viewed-rail" />);
-});
-
 jest.mock('./NeedsYouNow/NeedsYouNowSection', () => {
   return jest
     .fn()

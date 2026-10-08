@@ -35,8 +35,7 @@ import {
 /**
  * The landing dashboard's run-dependent content: the activity digest, the
  * Context Center article list (other specs create pages), the estate's asset
- * counts and connector breakdown, the recently-viewed rail (per-browser), and
- * the release toast. Masking these replaces the 3% diff allowance the page used
+ * counts and connector breakdown, and the release toast. Masking these replaces the 3% diff allowance the page used
  * to carry, so the widget chrome stays under test at the suite's default 1% gate.
  */
 const LANDING_PAGE_MASKS = [
@@ -44,7 +43,6 @@ const LANDING_PAGE_MASKS = [
   '[data-testid="KnowledgePanel.KnowledgeCenter"]',
   '[data-testid="KnowledgePanel.DataEstate"] [data-testid="data-estate-total"]',
   '[data-testid="KnowledgePanel.DataEstate"] [data-testid="connector-breakdown"]',
-  '[data-testid="recently-viewed-rail"]',
   '[data-testid="whats-new-alert-card"]',
 ];
 

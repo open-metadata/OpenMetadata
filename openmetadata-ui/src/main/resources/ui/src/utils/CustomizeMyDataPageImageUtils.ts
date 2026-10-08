@@ -11,26 +11,63 @@
  *  limitations under the License.
  */
 
+import ContextCenterImg from '../assets/img/widgets/landing/context-center.png';
+import CuratedAssetsImg from '../assets/img/widgets/landing/curated-assets.png';
+import DataEstateImg from '../assets/img/widgets/landing/data-estate.png';
+import DataProductsImg from '../assets/img/widgets/landing/data-products.png';
+import DataQualityImg from '../assets/img/widgets/landing/data-quality.png';
+import DomainsImg from '../assets/img/widgets/landing/domains.png';
+import KpisImg from '../assets/img/widgets/landing/kpis.png';
+import PlatformHealthImg from '../assets/img/widgets/landing/platform-health.png';
+import TeamActivityImg from '../assets/img/widgets/landing/team-activity.png';
+import YoursAndFollowedImg from '../assets/img/widgets/landing/yours-and-followed.png';
 import KnowledgeCenterWidgetImg from '../assets/img/widgets/context-center-widget.png';
+import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 
 // Widget preview screenshots are only needed inside customize/add-widget flows.
 // Keeping them out of CustomizeMyDataPageClassBase avoids preloading these
 // image modules when /my-data only needs layout defaults.
 /**
- * Landing-page widgets deliberately have no entry here.
+ * One entry per landing-page widget, keyed by the key the picker looks up.
  *
- * Every screenshot this table used to carry was taken of a widget the topic
- * cards replaced — `activity-feed-widget.png` is the old feed, not the Team
- * Activity card now on `KnowledgePanel.ActivityFeed` — so the picker was
- * showing a confident picture of the wrong thing. A missing entry resolves to
- * `''`, which WidgetCard renders as an empty tile rather than a broken image,
- * and the card still carries its name and description. Add the replacement
- * screenshots here, one line each, when they land.
+ * The screenshots live under `widgets/landing/` rather than beside the older
+ * `*-widget.png` files: those were taken of the widgets the topic cards
+ * replaced — `activity-feed-widget.png` is the old feed, not the Team Activity
+ * card now on `ACTIVITY_FEED` — so reusing their names would leave the two
+ * generations indistinguishable.
+ *
+ * A key with no entry still resolves to `''`, which WidgetCard renders as an
+ * empty tile rather than a broken image.
  */
 const WIDGET_IMAGE_BY_KEY: ReadonlyArray<[string, string]> = [
+  [LandingPageWidgetKeys.PLATFORM_HEALTH, PlatformHealthImg],
+  [LandingPageWidgetKeys.DATA_ESTATE, DataEstateImg],
+  // Team Activity, despite the key — the card replaced the activity feed.
+  [LandingPageWidgetKeys.ACTIVITY_FEED, TeamActivityImg],
+  [LandingPageWidgetKeys.YOURS_AND_FOLLOWED, YoursAndFollowedImg],
+  // Context Center, likewise: the landing card sits on the Knowledge Center key.
+  [LandingPageWidgetKeys.KNOWLEDGE_CENTER, ContextCenterImg],
+  [LandingPageWidgetKeys.CURATED_ASSETS, CuratedAssetsImg],
+  [LandingPageWidgetKeys.DATA_QUALITY, DataQualityImg],
+  [LandingPageWidgetKeys.DOMAINS, DomainsImg],
+  [LandingPageWidgetKeys.DATA_PRODUCTS, DataProductsImg],
+  [LandingPageWidgetKeys.KPI, KpisImg],
+  // A detail-page key, not a landing one; kept for the callers that share this
+  // table rather than because the landing picker can reach it.
   [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE, KnowledgeCenterWidgetImg],
 ];
+
+/**
+ * The keys this table covers.
+ *
+ * Exported because the images themselves are not assertable: jest maps every
+ * PNG import to `''`, so a test cannot tell "no entry" from "entry whose
+ * module stubbed to empty". The keys are what a widget added without a preview
+ * would actually be missing from.
+ */
+export const MY_DATA_WIDGET_IMAGE_KEYS: readonly string[] =
+  WIDGET_IMAGE_BY_KEY.map(([widgetKey]) => widgetKey);
 
 export const getMyDataWidgetImageFromKey = (widgetKey: string): string => {
   const match = WIDGET_IMAGE_BY_KEY.find(([key]) => key === widgetKey);

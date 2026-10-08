@@ -46,7 +46,6 @@ import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { TopicCollapseContext } from '../Widgets/Common/TopicWidget/TopicCollapseContext';
 import AnnouncementsRail from './AnnouncementsRail';
 import HomeLandingPageSkeleton from './HomeLandingPageSkeleton';
-import RecentlyViewedRail from './RecentlyViewedRail';
 import TopicsSectionHeader from './TopicsSectionHeader';
 import { useTopicsView } from './useTopicsView';
 
@@ -206,12 +205,6 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
         <PageLayout.Content className={contentClassName(Boolean(footerSlot))}>
           <div className="tw:flex tw:flex-col tw:gap-14 tw:px-4 tw:pt-8">
             <AnnouncementsRail />
-
-            {/* Recently viewed used to live in the customisable landing header,
-              which this page replaced. It is kept here rather than dropped:
-              nothing else in the product surfaces it, and it is the only
-              zero-effort way back to whatever the user had open last. */}
-            <RecentlyViewedRail />
 
             {/* `SystemAlertBanner` and `NeedsYouNowSection` are built but not
               mounted. Both are prototype-only: the alert feed and the ranked
