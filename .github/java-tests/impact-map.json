@@ -83,12 +83,12 @@
         "workflow": "Integration Tests - MySQL + Elasticsearch",
         "laneJobs": {
           "parallel": [
-            "Integration Test Lane (parallel)"
+            "Integration Test Lane (parallel-1)",
+            "Integration Test Lane (parallel-2)"
           ],
           "isolated": [
             "Integration Test Lane (global-state)",
-            "Integration Test Lane (multi-node)",
-            "Integration Test Lane (retry-queue)"
+            "Integration Test Lane (multi-node+retry-queue)"
           ],
           "rdf": [
             "Integration Test Lane (rdf)"
@@ -99,12 +99,12 @@
         "workflow": "Integration Tests - PostgreSQL + OpenSearch",
         "laneJobs": {
           "parallel": [
-            "Integration Test Lane (parallel)"
+            "Integration Test Lane (parallel-1)",
+            "Integration Test Lane (parallel-2)"
           ],
           "isolated": [
             "Integration Test Lane (global-state)",
-            "Integration Test Lane (multi-node)",
-            "Integration Test Lane (retry-queue)"
+            "Integration Test Lane (multi-node+retry-queue)"
           ],
           "rdf": [
             "Integration Test Lane (rdf)"
@@ -115,12 +115,12 @@
         "workflow": "Integration Tests - PostgreSQL + Elasticsearch + Redis",
         "laneJobs": {
           "parallel": [
-            "Integration Test Lane (parallel)"
+            "Integration Test Lane (parallel-1)",
+            "Integration Test Lane (parallel-2)"
           ],
           "isolated": [
             "Integration Test Lane (global-state)",
-            "Integration Test Lane (multi-node)",
-            "Integration Test Lane (retry-queue)"
+            "Integration Test Lane (multi-node+retry-queue)"
           ]
         }
       }

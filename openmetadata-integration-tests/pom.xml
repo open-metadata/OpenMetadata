@@ -28,6 +28,17 @@
          builds from docker/rdf-store; every other run leaves RDF off and they skip. -->
     <integrationTests.rdfTests>Rdf*IT,LodResourceIT,AgentSparqlResourceIT</integrationTests.rdfTests>
     <integrationTests.enableRdf>false</integrationTests.enableRdf>
+    <!-- The parallel-tests execution's class filters. The parallel-1 and parallel-2 lanes
+         override them to split that execution by the first letter of the class name:
+         parallel-1 keeps only names starting with integrationTests.parallelFirstHalf,
+         parallel-2 excludes exactly those. Both keep every other include and exclude, so each
+         class the parallel lane runs lands in exactly one of them, and new classes are
+         assigned automatically. A-L was ~51% of the parallel lane's summed class time on
+         2026-10-08. -->
+    <integrationTests.parallelIncludeIT>**/*IT.java</integrationTests.parallelIncludeIT>
+    <integrationTests.parallelIncludeTest>**/*Test.java</integrationTests.parallelIncludeTest>
+    <integrationTests.parallelShardExclude>**/__no_parallel_shard__.java</integrationTests.parallelShardExclude>
+    <integrationTests.parallelFirstHalf>A-L</integrationTests.parallelFirstHalf>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
          -Dui.it.excludedGroups= to run every UIIT including @Tag("sso-bootstrap"). -->
     <ui.it.excludedGroups>sso-bootstrap</ui.it.excludedGroups>
@@ -350,6 +361,35 @@
       </properties>
     </profile>
     <profile>
+      <id>integration-lane-parallel-1</id>
+      <activation>
+        <property>
+          <name>integrationTests.lane</name>
+          <value>parallel-1</value>
+        </property>
+      </activation>
+      <properties>
+        <integrationTests.skipIsolated>true</integrationTests.skipIsolated>
+        <integrationTests.skipParallel>false</integrationTests.skipParallel>
+        <integrationTests.parallelIncludeIT>%regex[.*/[${integrationTests.parallelFirstHalf}][^/$]*IT\.class]</integrationTests.parallelIncludeIT>
+        <integrationTests.parallelIncludeTest>%regex[.*/[${integrationTests.parallelFirstHalf}][^/$]*Test\.class]</integrationTests.parallelIncludeTest>
+      </properties>
+    </profile>
+    <profile>
+      <id>integration-lane-parallel-2</id>
+      <activation>
+        <property>
+          <name>integrationTests.lane</name>
+          <value>parallel-2</value>
+        </property>
+      </activation>
+      <properties>
+        <integrationTests.skipIsolated>true</integrationTests.skipIsolated>
+        <integrationTests.skipParallel>false</integrationTests.skipParallel>
+        <integrationTests.parallelShardExclude>%regex[.*/[${integrationTests.parallelFirstHalf}][^/]*\.class]</integrationTests.parallelShardExclude>
+      </properties>
+    </profile>
+    <profile>
       <id>integration-lane-global-state</id>
       <activation>
         <property>
@@ -479,8 +519,8 @@
                   <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
-                    <include>**/*IT.java</include>
-                    <include>**/*Test.java</include>
+                    <include>${integrationTests.parallelIncludeIT}</include>
+                    <include>${integrationTests.parallelIncludeTest}</include>
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
@@ -504,6 +544,7 @@
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>${integrationTests.parallelShardExclude}</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -611,8 +652,8 @@
                   <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
-                    <include>**/*IT.java</include>
-                    <include>**/*Test.java</include>
+                    <include>${integrationTests.parallelIncludeIT}</include>
+                    <include>${integrationTests.parallelIncludeTest}</include>
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
@@ -636,6 +677,7 @@
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>${integrationTests.parallelShardExclude}</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -745,8 +787,8 @@
                   <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
-                    <include>**/*IT.java</include>
-                    <include>**/*Test.java</include>
+                    <include>${integrationTests.parallelIncludeIT}</include>
+                    <include>${integrationTests.parallelIncludeTest}</include>
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
@@ -770,6 +812,7 @@
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>${integrationTests.parallelShardExclude}</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -878,8 +921,8 @@
                   <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
-                    <include>**/*IT.java</include>
-                    <include>**/*Test.java</include>
+                    <include>${integrationTests.parallelIncludeIT}</include>
+                    <include>${integrationTests.parallelIncludeTest}</include>
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
@@ -903,6 +946,7 @@
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>${integrationTests.parallelShardExclude}</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1010,8 +1054,8 @@
                   <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
-                    <include>**/*IT.java</include>
-                    <include>**/*Test.java</include>
+                    <include>${integrationTests.parallelIncludeIT}</include>
+                    <include>${integrationTests.parallelIncludeTest}</include>
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
@@ -1035,6 +1079,7 @@
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>${integrationTests.parallelShardExclude}</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1142,8 +1187,8 @@
                   <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
-                    <include>**/*IT.java</include>
-                    <include>**/*Test.java</include>
+                    <include>${integrationTests.parallelIncludeIT}</include>
+                    <include>${integrationTests.parallelIncludeTest}</include>
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
@@ -1167,6 +1212,7 @@
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>${integrationTests.parallelShardExclude}</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1292,8 +1338,8 @@
                   <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
-                    <include>**/*IT.java</include>
-                    <include>**/*Test.java</include>
+                    <include>${integrationTests.parallelIncludeIT}</include>
+                    <include>${integrationTests.parallelIncludeTest}</include>
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
@@ -1317,6 +1363,7 @@
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>${integrationTests.parallelShardExclude}</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
@@ -1431,8 +1478,8 @@
                   <forkedProcessTimeoutInSeconds>${integrationTests.forkTimeoutSeconds}</forkedProcessTimeoutInSeconds>
                   <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
                   <includes>
-                    <include>**/*IT.java</include>
-                    <include>**/*Test.java</include>
+                    <include>${integrationTests.parallelIncludeIT}</include>
+                    <include>${integrationTests.parallelIncludeTest}</include>
                   </includes>
                   <excludes>
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
@@ -1456,6 +1503,7 @@
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
                     <exclude>**/tests/search/scale/**</exclude>
+                    <exclude>${integrationTests.parallelShardExclude}</exclude>
                   </excludes>
                   <!-- excludedGroups must be a direct <configuration> child: nested inside
                        <systemPropertyVariables> it is a no-op (-DexcludedGroups is never read by the
