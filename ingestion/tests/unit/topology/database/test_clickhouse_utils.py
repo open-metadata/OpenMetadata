@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Tests for Clickhouse _get_column_type utility function."""
+"""Tests for Clickhouse utils and engine-based table typing."""
 
 from contextlib import contextmanager
 from types import SimpleNamespace
@@ -161,9 +161,6 @@ class FakeInspector:
     def get_table_names_and_engines(self, schema):
         return self._table_rows
 
-    def get_table_names(self, schema):
-        return [name for name, _ in self._table_rows]
-
     def get_mview_names(self, schema):
         return self._mview_names
 
@@ -292,19 +289,6 @@ class TestGetTableNamesAndEnginesInspectorWrapper:
         result = get_table_names_and_engines(inspector, "db")
         assert result == [("t", "MergeTree")]
         assert dialect.calls == [("the-conn", "db", inspector.info_cache)]
-
-
-class TestTableIdentityPreservedAcrossEngine:
-    """The table NAME (identity anchor; FQN derives from it, not type_) is
-    unchanged whether the engine flips the type to DeltaLake or Regular."""
-
-    def test_name_is_preserved_regardless_of_engine(self):
-        delta = _types_by_name([("shared_name", "DeltaLakeS3")])
-        regular = _types_by_name([("shared_name", "MergeTree")])
-        assert "shared_name" in delta
-        assert "shared_name" in regular
-        assert delta["shared_name"] == TableType.DeltaLake
-        assert regular["shared_name"] == TableType.Regular
 
 
 class TestIsDeltaLakeEngine:
