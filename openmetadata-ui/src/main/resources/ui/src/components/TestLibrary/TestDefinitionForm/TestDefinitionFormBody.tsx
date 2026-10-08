@@ -376,10 +376,6 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     } as FieldProp['props'],
   };
 
-  // `tw:relative` anchors the visually-hidden inputs react-aria renders inside
-  // Toggle/Checkbox. Without it they position against the modal panel, outside
-  // this scroll container, at their unscrolled offset — that makes the modal
-  // overlay scrollable, and focusing a switch scrolls the whole modal away.
   return (
     <div
       className="new-form-style tw:relative tw:flex tw:flex-col tw:gap-5"
