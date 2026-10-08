@@ -27,13 +27,13 @@ import java.util.stream.Stream;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TableData;
@@ -387,7 +387,7 @@ final class ConceptContextBuilder {
   private void addMemoryEvidence(UUID memoryId, Map<UUID, ConceptEvidence> evidence) {
     ContextMemory memory = catalog.memory(memoryId);
     if (memory != null
-        && memory.getEntityStatus() == EntityStatus.APPROVED
+        && memory.getEntityStatus() == ContextMemoryStatus.APPROVED
         && catalog.canView(Entity.CONTEXT_MEMORY, memory.getFullyQualifiedName())) {
       listOrEmpty(memory.getRelatedEntities()).stream()
           .filter(reference -> Entity.QUERY.equals(reference.getType()))

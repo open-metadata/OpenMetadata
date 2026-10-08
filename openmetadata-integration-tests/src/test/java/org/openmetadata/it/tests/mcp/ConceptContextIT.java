@@ -49,6 +49,7 @@ import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServ
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -68,7 +69,6 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
@@ -281,7 +281,7 @@ class ConceptContextIT extends McpTestBase {
             .withDescription("The amount is in cents.")
             .withQuestion("How is the amount encoded?")
             .withAnswer("The amount is stored in cents.")
-            .withEntityStatus(EntityStatus.APPROVED)
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
             .withPrimaryEntity(reference(evidenceTerm.getId(), "glossaryTerm"))
             .withRelatedEntities(List.of(reference(query.getId(), "query"))),
         ContextMemory.class);
@@ -300,7 +300,7 @@ class ConceptContextIT extends McpTestBase {
     Query query = createQuery("SELECT SUM(amount_cents) / 100 AS metric_revenue FROM orders");
     createMemory(
         "metric_memory_" + suffix,
-        EntityStatus.APPROVED,
+        ContextMemoryStatus.APPROVED,
         reference(attached.getId(), "metric"),
         query);
     JsonNode context = metricContext(attached);
@@ -497,8 +497,8 @@ class ConceptContextIT extends McpTestBase {
     Query approved = createQuery(longSql);
     Query draft = createQuery("SELECT 'draft' FROM orders");
     EntityReference primary = reference(evidenceTerm.getId(), "glossaryTerm");
-    createMemory("long_" + suffix, EntityStatus.APPROVED, primary, approved);
-    createMemory("draft_" + suffix, EntityStatus.DRAFT, primary, draft);
+    createMemory("long_" + suffix, ContextMemoryStatus.APPROVED, primary, approved);
+    createMemory("draft_" + suffix, ContextMemoryStatus.DRAFT, primary, draft);
     JsonNode evidence = termContext(evidenceTerm).path("evidence");
     assertThat(evidence.size()).isEqualTo(1);
     assertThat(evidence.at("/0/id").asText()).isEqualTo(approved.getId().toString());
@@ -685,7 +685,8 @@ class ConceptContextIT extends McpTestBase {
   }
 
   private static void createMemory(
-      String name, EntityStatus status, EntityReference primary, Query query) throws Exception {
+      String name, ContextMemoryStatus status, EntityReference primary, Query query)
+      throws Exception {
     post(
         "contextCenter/memories",
         new CreateContextMemory()

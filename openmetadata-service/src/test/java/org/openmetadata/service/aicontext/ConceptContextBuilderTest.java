@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -38,7 +39,6 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
@@ -453,7 +453,7 @@ class ConceptContextBuilderTest {
         new ContextMemory()
             .withId(memoryId)
             .withFullyQualifiedName("memory.amount")
-            .withEntityStatus(EntityStatus.APPROVED)
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
             .withRelatedEntities(
                 List.of(new EntityReference().withId(queryId).withType(Entity.QUERY))));
     catalog.queries.put(
