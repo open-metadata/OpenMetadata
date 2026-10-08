@@ -872,9 +872,19 @@ describe('MetricListPage', () => {
     renderPage();
     await screen.findByText('net_sales');
 
-    for (const status of Object.values(EntityStatus)) {
+    for (const status of Object.values(EntityStatus).filter(
+      (stage) => !['Superseded', 'Invalidated'].includes(stage)
+    )) {
       expect(screen.getByTestId(`menu-item-${status}`)).toBeInTheDocument();
     }
+
+    expect(
+      screen.queryByTestId('menu-item-Superseded')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('menu-item-Invalidated')
+    ).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByTestId(`menu-item-${EntityStatus.Rejected}`));
 
     expect(await screen.findByText('rejected_metric')).toBeInTheDocument();

@@ -54,9 +54,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -260,7 +260,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       UUID sourceFileId,
       UUID sourceEntityId,
       UUID primaryEntityId,
-      List<EntityStatus> statuses)
+      List<ContextMemoryStatus> statuses)
       throws IOException {
     validateSearchBackedListParams(before, after, sourceFileId, sourceEntityId, primaryEntityId);
     SearchListFilter searchListFilter =
@@ -291,18 +291,18 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         getAuthRequestsForListOps());
   }
 
-  private static List<EntityStatus> parseStatuses(String statuses) {
-    Set<EntityStatus> parsed = new LinkedHashSet<>();
+  private static List<ContextMemoryStatus> parseStatuses(String statuses) {
+    Set<ContextMemoryStatus> parsed = new LinkedHashSet<>();
     for (String value : statuses.split(",", -1)) {
       parsed.add(parseMemoryStatus(value.trim()));
     }
     return List.copyOf(parsed);
   }
 
-  private static EntityStatus parseMemoryStatus(String value) {
-    EntityStatus status = null;
+  private static ContextMemoryStatus parseMemoryStatus(String value) {
+    ContextMemoryStatus status = null;
     try {
-      status = EntityStatus.fromValue(value);
+      status = ContextMemoryStatus.fromValue(value);
     } catch (IllegalArgumentException ex) {
       LOG.debug("Unknown memory status '{}'", value, ex);
     }

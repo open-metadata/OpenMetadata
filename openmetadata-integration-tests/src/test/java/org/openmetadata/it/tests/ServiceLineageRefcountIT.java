@@ -137,7 +137,8 @@ public class ServiceLineageRefcountIT {
     }
   }
 
-  private static void putEdge(EntityInterface from, EntityInterface to, LineageDetails details) {
+  private static void putEdge(
+      EntityInterface<?> from, EntityInterface<?> to, LineageDetails details) {
     client()
         .lineage()
         .addLineage(
@@ -149,14 +150,15 @@ public class ServiceLineageRefcountIT {
                         .withLineageDetails(details)));
   }
 
-  private static Integer assetEdges(EntityInterface from, EntityInterface to) throws Exception {
+  private static Integer assetEdges(EntityInterface<?> from, EntityInterface<?> to)
+      throws Exception {
     String response =
         client().getHttpClient().executeForString(HttpMethod.GET, edgePath(from, to), null);
     String edge = MAPPER.readTree(response).get("edge").toString();
     return JsonUtils.readValue(edge, LineageDetails.class).getAssetEdges();
   }
 
-  private static void assertEdgeAbsent(EntityInterface from, EntityInterface to) {
+  private static void assertEdgeAbsent(EntityInterface<?> from, EntityInterface<?> to) {
     OpenMetadataException notFound =
         assertThrows(
             OpenMetadataException.class,
@@ -167,7 +169,7 @@ public class ServiceLineageRefcountIT {
     assertEquals(404, notFound.getStatusCode());
   }
 
-  private static String edgePath(EntityInterface from, EntityInterface to) {
+  private static String edgePath(EntityInterface<?> from, EntityInterface<?> to) {
     return "/v1/lineage/getLineageEdge/" + from.getId() + "/" + to.getId();
   }
 
