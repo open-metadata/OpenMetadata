@@ -21,7 +21,9 @@ import {
   getActiveAnnouncements,
   listAnnouncements,
 } from '../../../rest/announcementsAPI';
+import { ALL_ANNOUNCEMENTS_PAGE_SIZE } from './AllAnnouncementsDialog';
 import AnnouncementsRail from './AnnouncementsRail';
+import { getDismissedAnnouncementsStorageKey } from './useDismissedAnnouncements';
 
 jest.mock('react-router-dom', () => ({
   Link: ({
@@ -33,6 +35,12 @@ jest.mock('react-router-dom', () => ({
       {children}
     </a>
   ),
+}));
+
+let mockCurrentUser: { id: string; isAdmin?: boolean } | undefined;
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({ currentUser: mockCurrentUser })),
 }));
 
 jest.mock('../../../rest/announcementsAPI', () => ({
@@ -165,6 +173,7 @@ const mockListAnnouncements = listAnnouncements as jest.MockedFunction<
   typeof listAnnouncements
 >;
 
+const USER_ID = 'user-1';
 const ANNOUNCEMENT_ID = 'announcement-1';
 const CARD_TESTID = `announcement-card-${ANNOUNCEMENT_ID}`;
 const RAIL_TESTID = 'announcement-rail';
@@ -251,6 +260,8 @@ describe('AnnouncementsRail cache integration', () => {
     jest.clearAllMocks();
     queryClient.clear();
     window.sessionStorage.clear();
+    window.localStorage.clear();
+    mockCurrentUser = { id: USER_ID };
     mockGetActiveAnnouncements.mockResolvedValue({
       data: [makeAnnouncement(ANNOUNCEMENT_ID)],
     } as never);
@@ -355,6 +366,8 @@ describe('AnnouncementsRail rail', () => {
     jest.clearAllMocks();
     queryClient.clear();
     window.sessionStorage.clear();
+    window.localStorage.clear();
+    mockCurrentUser = { id: USER_ID };
     mockGetActiveAnnouncements.mockResolvedValue({
       data: [
         makeAnnouncement('a1'),
@@ -482,6 +495,8 @@ describe('AnnouncementsRail type badge', () => {
     jest.clearAllMocks();
     queryClient.clear();
     window.sessionStorage.clear();
+    window.localStorage.clear();
+    mockCurrentUser = { id: USER_ID };
     mockListAnnouncements.mockResolvedValue({ data: [] } as never);
   });
 
@@ -540,6 +555,8 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     jest.clearAllMocks();
     queryClient.clear();
     window.sessionStorage.clear();
+    window.localStorage.clear();
+    mockCurrentUser = { id: USER_ID };
     mockGetActiveAnnouncements.mockResolvedValue({
       data: [makeAnnouncement('a1')],
     } as never);
@@ -620,5 +637,173 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     fireEvent.click(screen.getAllByLabelText(DISMISS_LABEL)[0]);
 
     expect(screen.queryByTestId(cardId('a1'))).not.toBeInTheDocument();
+  });
+
+  // The dialog used to live inside the rail's section, so dismissing the last
+  // live card emptied the rail, unmounted the section and closed the dialog on
+  // the scheduled and expired announcements it was still listing.
+  it('stays open when the last live announcement is dismissed from it', async () => {
+    await openDialog();
+
+    const list = screen.getByTestId('all-announcements-list');
+    fireEvent.click(
+      list.querySelector(`[aria-label="${DISMISS_LABEL}"]`) as HTMLElement
+    );
+
+    expect(
+      screen.queryByTestId('announcements-section')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('all-announcements-list')).toBeInTheDocument();
+    expect(screen.getByTestId(cardId('old'))).toBeInTheDocument();
+    expect(screen.getByTestId(cardId('soon'))).toBeInTheDocument();
+  });
+
+  it('pages past the first batch instead of silently truncating', async () => {
+    mockListAnnouncements
+      .mockResolvedValueOnce({
+        data: [
+          makeAnnouncement('a1'),
+          makeAnnouncement('soon', SCHEDULED_WINDOW),
+        ],
+        paging: { after: 'cursor-2', total: 3 },
+      } as never)
+      .mockResolvedValueOnce({
+        data: [makeAnnouncement('old', EXPIRED_WINDOW)],
+        paging: { total: 3 },
+      } as never);
+
+    await openDialog();
+
+    expect(mockListAnnouncements).toHaveBeenLastCalledWith({
+      after: undefined,
+      limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
+    });
+    // The badge counts the whole list, not just the page on screen.
+    expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
+      '3'
+    );
+    expect(screen.queryByTestId(cardId('old'))).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('all-announcements-load-more'));
+
+    expect(await screen.findByTestId(cardId('old'))).toBeInTheDocument();
+    expect(mockListAnnouncements).toHaveBeenLastCalledWith({
+      after: 'cursor-2',
+      limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
+    });
+    expect(
+      screen.queryByTestId('all-announcements-load-more')
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('AnnouncementsRail persisted dismissals', () => {
+  const storageKey = getDismissedAnnouncementsStorageKey(USER_ID);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    queryClient.clear();
+    window.localStorage.clear();
+    mockCurrentUser = { id: USER_ID };
+    mockGetActiveAnnouncements.mockResolvedValue({
+      data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
+    } as never);
+    mockListAnnouncements.mockResolvedValue({ data: [] } as never);
+  });
+
+  it('keeps a dismissed announcement hidden on the next visit', async () => {
+    const first = renderWithQueryClient(<AnnouncementsRail />);
+
+    fireEvent.click((await screen.findAllByLabelText(DISMISS_LABEL))[0]);
+
+    expect(JSON.parse(localStorage.getItem(storageKey) ?? '[]')).toEqual([
+      'a1',
+    ]);
+
+    first.unmount();
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    expect(await screen.findByTestId(cardId('a2'))).toBeInTheDocument();
+    expect(screen.queryByTestId(cardId('a1'))).not.toBeInTheDocument();
+  });
+
+  it("does not hand one user's dismissals to another", async () => {
+    localStorage.setItem(storageKey, JSON.stringify(['a1']));
+    mockCurrentUser = { id: 'user-2' };
+
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    expect(await screen.findByTestId(cardId('a1'))).toBeInTheDocument();
+  });
+
+  // Only live announcements can be dismissed, so an id the active list stops
+  // returning has expired or been deleted and would otherwise be kept forever.
+  it('forgets dismissals of announcements that are no longer live', async () => {
+    localStorage.setItem(storageKey, JSON.stringify(['a1', 'gone']));
+
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    await screen.findByTestId(cardId('a2'));
+
+    await waitFor(() => {
+      expect(JSON.parse(localStorage.getItem(storageKey) ?? '[]')).toEqual([
+        'a1',
+      ]);
+    });
+
+    expect(screen.queryByTestId(cardId('a1'))).not.toBeInTheDocument();
+  });
+});
+
+describe('AnnouncementsRail entry point with nothing live', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    queryClient.clear();
+    window.localStorage.clear();
+    mockGetActiveAnnouncements.mockResolvedValue({ data: [] } as never);
+    mockListAnnouncements.mockResolvedValue({
+      data: [makeAnnouncement('soon', SCHEDULED_WINDOW)],
+    } as never);
+  });
+
+  it('keeps a compact "View all" for an admin when there are announcements to list', async () => {
+    mockCurrentUser = { id: USER_ID, isAdmin: true };
+
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    fireEvent.click(await screen.findByTestId(VIEW_ALL_BTN));
+
+    expect(await screen.findByTestId(cardId('soon'))).toBeInTheDocument();
+    expect(screen.queryByTestId(RAIL_TESTID)).not.toBeInTheDocument();
+  });
+
+  it('shows an admin nothing when there is nothing at all to list', async () => {
+    mockCurrentUser = { id: USER_ID, isAdmin: true };
+    mockListAnnouncements.mockResolvedValue({ data: [] } as never);
+
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    await waitFor(() => {
+      expect(mockListAnnouncements).toHaveBeenCalledWith({ limit: 1 });
+    });
+
+    expect(
+      screen.queryByTestId('announcements-section')
+    ).not.toBeInTheDocument();
+  });
+
+  it('stands the section down for everyone else, without asking', async () => {
+    mockCurrentUser = { id: USER_ID };
+
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    await waitFor(() => {
+      expect(mockGetActiveAnnouncements).toHaveBeenCalled();
+    });
+
+    expect(
+      screen.queryByTestId('announcements-section')
+    ).not.toBeInTheDocument();
+    expect(mockListAnnouncements).not.toHaveBeenCalled();
   });
 });

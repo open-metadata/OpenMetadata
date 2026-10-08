@@ -10,11 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { PageHeader, Typography } from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
+import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { headerBackgroundColors } from '../../../constants/Mydata.constants';
-import CustomiseLandingPageHeader from '../CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import { getLandingPageHeaderTintStyle } from '../HomeLandingPage/landingPageHeaderColor';
 import './header-theme.less';
 
 interface HeaderThemeProps {
@@ -24,6 +28,11 @@ interface HeaderThemeProps {
 
 const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
   const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
+  const displayName = getEntityName(currentUser);
+  // The colour is laid on the home page's header as a light wash, so the
+  // preview renders that same header rather than a swatch of the raw colour.
+  const tintStyle = getLandingPageHeaderTintStyle(selectedColor);
 
   const handleColorClick = (color: string) => {
     setSelectedColor(color);
@@ -36,14 +45,25 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
         className="header-theme-title display-xs font-semibold">
         {t('label.preview-header')}
       </Typography>
-      <div className="header-theme-container p-box bg-white">
-        <CustomiseLandingPageHeader
-          hideCustomiseButton
-          isPreviewHeader
-          backgroundColor={selectedColor}
-          dataTestId="modal-header-theme"
-        />
-      </div>
+      <PageHeader
+        data-testid="modal-header-theme"
+        density="comfortable"
+        icon={
+          currentUser?.name ? (
+            <ProfilePicture
+              displayName={displayName}
+              name={currentUser.name}
+              width="42"
+            />
+          ) : null
+        }
+        style={tintStyle}
+        subtitle={t('message.home-landing-page-subtitle')}
+        title={t('message.hi-user', {
+          user: displayName ? startCase(displayName) : t('label.user'),
+        })}
+        variant={tintStyle ? 'flat' : 'gradient'}
+      />
       <div className="select-background-container">
         <Typography className="display-xs font-semibold">
           {t('label.select-background')}

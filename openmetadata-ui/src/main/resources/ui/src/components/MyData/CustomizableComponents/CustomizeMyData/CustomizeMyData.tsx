@@ -78,7 +78,8 @@ function CustomizeMyData({
         initialPageData?.layout as WidgetConfig[] | undefined,
         defaultLayout,
         customizeMyDataPageClassBase.getExcludedWidgetFqns(),
-        customizeMyDataPageClassBase.landingPageMaxGridSize
+        customizeMyDataPageClassBase.landingPageMaxGridSize,
+        customizeMyDataPageClassBase.getKnownWidgetKeyPrefixes()
       ),
     [initialPageData?.layout, defaultLayout]
   );
@@ -239,7 +240,8 @@ function CustomizeMyData({
         undefined,
         defaultLayout,
         customizeMyDataPageClassBase.getExcludedWidgetFqns(),
-        customizeMyDataPageClassBase.landingPageMaxGridSize
+        customizeMyDataPageClassBase.landingPageMaxGridSize,
+        customizeMyDataPageClassBase.getKnownWidgetKeyPrefixes()
       )
     );
     setLayout(newMainPanelLayout);

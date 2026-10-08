@@ -17,12 +17,9 @@ import { Card, Col, Row } from 'antd';
  * Widget-grid placeholder shown while persona / layout data loads.
  *
  * Intentionally renders only the card grid — not a fake header — so
- * {@link MyDataPage} can always mount {@link CustomiseLandingPageHeader}
- * immediately (skeleton-first pattern). This avoids the extra API round-trip
- * that was blocking LCP on /my-data.
- *
- * Match the eight-column grid used in `MyDataPage` so cards land in roughly
- * the same place a real widget would, avoiding layout shift on reveal.
+ * {@link HomeLandingPage} can always mount its page header immediately
+ * (skeleton-first pattern). This avoids the extra API round-trip that was
+ * blocking LCP on /my-data.
  */
 export const HomeLandingPageSkeleton = () => {
   return (

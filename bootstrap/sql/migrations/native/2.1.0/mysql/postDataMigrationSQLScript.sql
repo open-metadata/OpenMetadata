@@ -479,7 +479,7 @@ SET json = JSON_REMOVE(
 WHERE jsonSchema = 'contextMemory'
   AND JSON_CONTAINS_PATH(json, 'one', '$.status');
 
--- Landing-page widgets: re-point the five panels whose widget was replaced, and drop the five
+-- Landing-page widgets: re-point the six panels whose widget was replaced, and drop the five
 -- whose widget was retired.
 --
 -- The seed loader (EntityRepository.initializeEntity) only inserts rows it cannot find -- it
@@ -534,6 +534,18 @@ SET json = JSON_SET(
     '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
 )
 WHERE name = 'KPI' AND entityType = 'KnowledgePanel';
+
+-- Collate seeded this same fullyQualifiedName for its own Data Quality widget, which the topic
+-- card replaced. An install that came up through that build keeps the old row -- the loader skips
+-- the OSS seed -- and with it the old description and a single "small" grid size.
+UPDATE doc_store
+SET json = JSON_SET(
+    json,
+    '$.displayName', 'Data Quality',
+    '$.description', 'Overview of data quality test results (passing, failing, and aborted) with a link through to the failing tests.',
+    '$.data.gridSizes', CAST('["small","medium","large"]' AS JSON)
+)
+WHERE name = 'DataQuality' AND entityType = 'KnowledgePanel';
 
 -- Retired: their seed files are gone and no component resolves their key, so the renderer would
 -- answer with a render-nothing component and leave an empty cell. The UI already filters them out

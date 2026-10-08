@@ -15,6 +15,7 @@ import { ModalProps } from 'antd';
 import { CustomiseHomeModalSelectedKey } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
+import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { MY_DATA_WIDGET_KEYS } from '../../../../utils/CustomizeMyDataPageWidgetUtils';
 import CustomiseHomeModal from './CustomiseHomeModal';
 
@@ -102,6 +103,35 @@ describe('CustomiseHomeModal widget list', () => {
     // later was offered by default and rendered as an empty grid slot.
     expect(offered).not.toContain('KnowledgePanel.SomethingSeededLater');
     expect(offered).not.toContain('KnowledgePanel.RecentlyViewed');
+  });
+
+  describe('when a subclass registers its own widget', () => {
+    const EXTENSION_KEY = 'KnowledgePanel.SomethingSeededLater';
+
+    afterEach(() => jest.restoreAllMocks());
+
+    // The picker reads the overridable registry, not the OSS map, so a widget
+    // a subclass resolves in `getWidgetsFromKey` can be offered too.
+    it('offers it once it is in the registry', async () => {
+      jest
+        .spyOn(customizeMyDataPageClassBase, 'getKnownWidgetKeyPrefixes')
+        .mockReturnValue([...MY_DATA_WIDGET_KEYS, EXTENSION_KEY]);
+
+      expect(await renderPicker()).toContain(EXTENSION_KEY);
+    });
+
+    // A widget the platform places itself (Collate's onboarding checklist)
+    // must survive a saved layout without becoming something users can add.
+    it('withholds it when the subclass keeps it out of the pickable set', async () => {
+      jest
+        .spyOn(customizeMyDataPageClassBase, 'getKnownWidgetKeyPrefixes')
+        .mockReturnValue([...MY_DATA_WIDGET_KEYS, EXTENSION_KEY]);
+      jest
+        .spyOn(customizeMyDataPageClassBase, 'getPickableWidgetKeyPrefixes')
+        .mockReturnValue([...MY_DATA_WIDGET_KEYS]);
+
+      expect(await renderPicker()).toEqual([...MY_DATA_WIDGET_KEYS]);
+    });
   });
 });
 

@@ -58,6 +58,11 @@ const WidgetCard = ({
     }
   }, [currentPageType, widget]);
 
+  // `displayName` is what the widget is called today; `name` is the stable key
+  // and lags a rename. The preview's alt text has to name the same widget the
+  // caption below it does.
+  const widgetLabel = widget.displayName ?? startCase(widget.name);
+
   const handleClick = () => {
     onSelectWidget?.(widget.id ?? '');
   };
@@ -75,7 +80,7 @@ const WidgetCard = ({
           screenshot keep an empty tile instead. */}
         {widgetImage ? (
           <img
-            alt={widget.name}
+            alt={widgetLabel}
             className="h-full w-full"
             data-testid="widget-image"
             src={widgetImage}
@@ -93,9 +98,7 @@ const WidgetCard = ({
         )}
       </div>
       <div className="p-t-md p-x-sm">
-        <Typography className="text-sm font-medium">
-          {widget.displayName ?? startCase(widget.name)}
-        </Typography>
+        <Typography className="text-sm font-medium">{widgetLabel}</Typography>
         <Typography
           as="p"
           className="widget-desc m-t-xs text-xs font-regular"

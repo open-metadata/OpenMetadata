@@ -62,6 +62,14 @@ jest.mock(
   }
 );
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ title }) => (
+      <div data-testid="document-title">{title}</div>
+    ));
+});
+
 jest.mock('../../hoc/LimitWrapper', () => {
   return jest
     .fn()
@@ -115,6 +123,18 @@ describe('MyDataPage component', () => {
 
     expect(screen.queryByText('WelcomeScreen')).not.toBeInTheDocument();
     expect(screen.getByTestId('home-landing-page')).toBeInTheDocument();
+  });
+
+  // HomeLandingPage uses the core PageLayout, which does not claim the tab
+  // title, so without this the home tab fell back to the bare brand name.
+  it('should claim the My Data tab title for the landing page', () => {
+    localStorage.setItem('loggedInUsers', mockUserData.name);
+
+    render(<MyDataPage />);
+
+    expect(screen.getByTestId('document-title')).toHaveTextContent(
+      'label.my-data'
+    );
   });
 
   it('should wrap the landing page in the asset LimitWrapper', () => {

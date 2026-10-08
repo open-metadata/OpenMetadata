@@ -11,33 +11,56 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   DEFAULT_HEADER_BG_COLOR,
   headerBackgroundColors,
 } from '../../../constants/Mydata.constants';
+import { getLandingPageHeaderTintStyle } from '../HomeLandingPage/landingPageHeaderColor';
 import HeaderTheme from './HeaderTheme';
 
-// Mock dependencies
-jest.mock(
-  '../CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader',
-  () => {
-    return function MockCustomiseLandingPageHeader({
-      backgroundColor,
-      hideCustomiseButton,
-    }: {
-      backgroundColor: string;
-      hideCustomiseButton: boolean;
-    }) {
-      return (
+// jsdom drops a `linear-gradient(...)` background, so the header is stubbed to
+// expose the treatment it was handed instead.
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  PageHeader: jest
+    .fn()
+    .mockImplementation(
+      ({
+        icon,
+        style,
+        subtitle,
+        title,
+        variant,
+        'data-testid': dataTestId,
+      }: {
+        icon?: ReactNode;
+        style?: CSSProperties;
+        subtitle?: ReactNode;
+        title: ReactNode;
+        variant?: string;
+        'data-testid'?: string;
+      }) => (
         <div
-          data-background-color={backgroundColor}
-          data-hide-customise-button={hideCustomiseButton}
-          data-testid="customise-landing-page-header">
-          Mock Landing Page Header
+          data-background-image={style?.backgroundImage}
+          data-testid={dataTestId}
+          data-variant={variant}>
+          {icon}
+          {title}
+          {subtitle}
         </div>
-      );
-    };
-  }
+      )
+    ),
+}));
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    currentUser: { name: 'jane_doe' },
+  })),
+}));
+
+jest.mock('../../common/ProfilePicture/ProfilePicture', () =>
+  jest.fn().mockImplementation(() => <div data-testid="profile-picture" />)
 );
 
 describe('HeaderTheme Component', () => {
@@ -59,24 +82,28 @@ describe('HeaderTheme Component', () => {
 
       expect(screen.getByText('label.preview-header')).toBeInTheDocument();
       expect(screen.getByText('label.select-background')).toBeInTheDocument();
-      expect(
-        screen.getByTestId('customise-landing-page-header')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('modal-header-theme')).toBeInTheDocument();
     });
 
-    it('should render preview header with correct props', () => {
+    it('should preview the home page header for the current user', () => {
       render(<HeaderTheme {...defaultProps} />);
 
-      const previewHeader = screen.getByTestId('customise-landing-page-header');
+      const previewHeader = screen.getByTestId('modal-header-theme');
 
-      expect(previewHeader).toHaveAttribute(
-        'data-background-color',
-        defaultSelectedColor
+      expect(previewHeader).toHaveTextContent('message.hi-user');
+      expect(previewHeader).toHaveTextContent(
+        'message.home-landing-page-subtitle'
       );
-      expect(previewHeader).toHaveAttribute(
-        'data-hide-customise-button',
-        'true'
-      );
+      expect(screen.getByTestId('profile-picture')).toBeInTheDocument();
+    });
+
+    it('should keep the default header when the colour is the legacy gradient', () => {
+      render(<HeaderTheme {...defaultProps} />);
+
+      const previewHeader = screen.getByTestId('modal-header-theme');
+
+      expect(previewHeader).toHaveAttribute('data-variant', 'gradient');
+      expect(previewHeader).not.toHaveAttribute('data-background-image');
     });
   });
 
@@ -135,26 +162,23 @@ describe('HeaderTheme Component', () => {
   });
 
   describe('Props Handling', () => {
-    it('should pass updated backgroundColor to preview header', () => {
-      const customColor = '#00ff00';
+    it('should tint the preview with the selected colour as the home page does', () => {
       const { rerender } = render(<HeaderTheme {...defaultProps} />);
 
-      // Initial render
-      let previewHeader = screen.getByTestId('customise-landing-page-header');
-
-      expect(previewHeader).toHaveAttribute(
-        'data-background-color',
-        defaultSelectedColor
+      rerender(
+        <HeaderTheme
+          {...defaultProps}
+          selectedColor={headerBackgroundColors[1].color}
+        />
       );
 
-      // Rerender with new color
-      rerender(<HeaderTheme {...defaultProps} selectedColor={customColor} />);
+      const previewHeader = screen.getByTestId('modal-header-theme');
 
-      previewHeader = screen.getByTestId('customise-landing-page-header');
-
+      expect(previewHeader).toHaveAttribute('data-variant', 'flat');
       expect(previewHeader).toHaveAttribute(
-        'data-background-color',
-        customColor
+        'data-background-image',
+        getLandingPageHeaderTintStyle(headerBackgroundColors[1].color)
+          ?.backgroundImage
       );
     });
   });

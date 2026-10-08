@@ -14,6 +14,7 @@
 import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import HomeLandingPage from '../../components/MyData/HomeLandingPage/HomeLandingPage';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
@@ -79,8 +80,12 @@ const MyDataPage = () => {
     );
   }
 
+  // HomeLandingPage is laid out with the core PageLayout, which does not claim
+  // the tab title the way PageLayoutV1 does — claimed here so classic's home
+  // tab keeps the title it had, without imposing it on AI mode's chrome.
   return (
     <>
+      <DocumentTitle title={t('label.my-data')} />
       <HomeLandingPage />
       <LimitWrapper resource="dataAssets">
         <br />

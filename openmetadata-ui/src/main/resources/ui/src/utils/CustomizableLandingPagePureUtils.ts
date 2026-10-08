@@ -318,7 +318,7 @@ export const getLayoutUpdateHandler =
         ...(!widgetData ? {} : widgetData),
         ...widget,
         w: getConstrainedWidgetWidth(widget.w),
-        h: 3,
+        h: LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
         static: false,
       };
     });

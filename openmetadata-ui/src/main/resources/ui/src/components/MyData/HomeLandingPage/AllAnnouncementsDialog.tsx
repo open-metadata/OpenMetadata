@@ -13,13 +13,14 @@
 
 import {
   Badge,
+  Button,
   Dialog,
   Modal,
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Announcement02 } from '@openmetadata/ui-core-components/icons';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../components/common/Loader/Loader';
@@ -36,19 +37,19 @@ export const ALL_ANNOUNCEMENTS_QUERY_KEY = [
   'all',
 ] as const;
 const ALL_ANNOUNCEMENTS_TTL_MS = 60_000;
+
 // The rail shows only live announcements, so this list is the one place expired
-// and scheduled ones surface — fetch the whole window, not just the active slice.
-const ALL_ANNOUNCEMENTS_LIMIT = 100;
+// and scheduled ones surface. It grows without bound as announcements expire,
+// so it is paged on the API's `after` cursor rather than capped at one fetch —
+// a cap would silently drop the oldest with nothing telling the user so.
+export const ALL_ANNOUNCEMENTS_PAGE_SIZE = 50;
 
-const fetchAllAnnouncements = async (): Promise<AnnouncementEntity[]> => {
-  const response = await listAnnouncements({ limit: ALL_ANNOUNCEMENTS_LIMIT });
-
-  return response.data ?? [];
-};
+const fetchAnnouncementsPage = ({ pageParam }: { pageParam?: string }) =>
+  listAnnouncements({ limit: ALL_ANNOUNCEMENTS_PAGE_SIZE, after: pageParam });
 
 interface AllAnnouncementsDialogProps {
   open: boolean;
-  /** Dismissals are session-local, so the dialog honours the rail's. */
+  /** The rail owns dismissals (see useDismissedAnnouncements); the dialog honours them. */
   dismissedIds: Set<string>;
   onClose: () => void;
   onDismiss: (id: string) => void;
@@ -64,20 +65,36 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
 
   // Deferred until the dialog is opened — most sessions never open it, and the
   // rail's active-only query already covers the default view.
-  const { data, isLoading } = useQuery<AnnouncementEntity[]>({
-    enabled: open,
-    queryFn: fetchAllAnnouncements,
-    queryKey: ALL_ANNOUNCEMENTS_QUERY_KEY,
-    staleTime: ALL_ANNOUNCEMENTS_TTL_MS,
-  });
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+    useInfiniteQuery({
+      enabled: open,
+      getNextPageParam: (lastPage) => lastPage.paging?.after,
+      initialPageParam: undefined as string | undefined,
+      queryFn: fetchAnnouncementsPage,
+      queryKey: ALL_ANNOUNCEMENTS_QUERY_KEY,
+      staleTime: ALL_ANNOUNCEMENTS_TTL_MS,
+    });
 
+  const loaded = useMemo<AnnouncementEntity[]>(
+    () => data?.pages.flatMap((page) => page.data ?? []) ?? [],
+    [data]
+  );
+
+  // Sorted across every page loaded so far, so a later page can slot items in
+  // above ones already shown; the API pages in its own order, not this one.
   const announcements = useMemo(
     () =>
-      (data ?? [])
-        .filter((a) => !dismissedIds.has(a.id))
-        .sort(compareAnnouncements),
-    [data, dismissedIds]
+      loaded.filter((a) => !dismissedIds.has(a.id)).sort(compareAnnouncements),
+    [loaded, dismissedIds]
   );
+
+  // The badge counts the whole list, not just the pages loaded: the server's
+  // total, less what the user dismissed among the ones already here.
+  const total = data?.pages[0]?.paging?.total;
+  const count =
+    total === undefined
+      ? announcements.length
+      : Math.max(total - (loaded.length - announcements.length), 0);
 
   const renderBody = () => {
     if (isLoading) {
@@ -88,7 +105,7 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
       );
     }
 
-    if (announcements.length === 0) {
+    if (announcements.length === 0 && !hasNextPage) {
       return (
         <div className="tw:flex tw:items-center tw:justify-center tw:py-8">
           <Typography className="tw:text-secondary">
@@ -99,19 +116,33 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
     }
 
     return (
-      <ul
-        className="tw:flex tw:flex-col tw:gap-3"
-        data-testid="all-announcements-list">
-        {announcements.map((announcement) => (
-          <li className="tw:flex" key={announcement.id}>
-            <AnnouncementCard
-              announcement={announcement}
-              className="tw:w-full"
-              onDismiss={onDismiss}
-            />
-          </li>
-        ))}
-      </ul>
+      <>
+        <ul
+          className="tw:flex tw:flex-col tw:gap-3"
+          data-testid="all-announcements-list">
+          {announcements.map((announcement) => (
+            <li className="tw:flex" key={announcement.id}>
+              <AnnouncementCard
+                announcement={announcement}
+                className="tw:w-full"
+                onDismiss={onDismiss}
+              />
+            </li>
+          ))}
+        </ul>
+        {hasNextPage && (
+          <div className="tw:mt-3 tw:flex tw:justify-center">
+            <Button
+              color="secondary"
+              data-testid="all-announcements-load-more"
+              isLoading={isFetchingNextPage}
+              size="sm"
+              onPress={() => fetchNextPage()}>
+              {t('label.load-more')}
+            </Button>
+          </div>
+        )}
+      </>
     );
   };
 
@@ -141,7 +172,7 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
                 data-testid="all-announcements-count"
                 size="sm"
                 type="color">
-                {announcements.length}
+                {count}
               </Badge>
             </div>
           </Dialog.Header>

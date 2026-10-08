@@ -14,6 +14,7 @@
 import { isEmpty } from 'lodash';
 import { lazy, type ComponentType } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import { LANDING_PAGE_DEFAULT_WIDGET_HEIGHT } from '../constants/CustomizeMyDataPage.constants';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import type {
   WidgetCommonProps,
@@ -140,20 +141,17 @@ export const MY_DATA_WIDGET_KEYS: readonly LandingPageWidgetKeys[] =
  * Persona layouts outlive the widgets in them: a doc saved before a widget was
  * retired still lists it. Callers use this to drop those entries rather than
  * leave an empty cell in the grid.
- */
-export const isKnownMyDataWidgetKey = (widgetKey: string): boolean =>
-  WIDGET_KEY_PREFIX_MAP.some(([prefix]) => widgetKey.startsWith(prefix));
-
-/**
- * Whether a landing-page widget may appear on the page at all — both in the
- * grid and in the Add Widgets picker.
  *
- * The picker and the renderer have to answer this the same way. A key the
- * picker offers but the renderer cannot resolve becomes a blank grid cell, and
- * a key the renderer accepts but the picker withholds is a widget nobody can
- * add back once it is removed. Sharing one predicate is what keeps the offered
- * set and the renderable set equal.
+ * `knownWidgetKeys` defaults to the OSS registry. Callers that can see the
+ * class base pass `getKnownWidgetKeyPrefixes()` instead, so a key a subclass
+ * resolves through its own `getWidgetsFromKey` is not mistaken for a retired
+ * one.
  */
+export const isKnownMyDataWidgetKey = (
+  widgetKey: string,
+  knownWidgetKeys: readonly string[] = MY_DATA_WIDGET_KEYS
+): boolean => knownWidgetKeys.some((prefix) => widgetKey.startsWith(prefix));
+
 /**
  * The widget key a layout entry names, without the instance suffix.
  *
@@ -168,11 +166,24 @@ export const getMyDataWidgetBaseKey = (widgetKey: string): string =>
   WIDGET_KEY_PREFIX_MAP.find(([prefix]) => widgetKey.startsWith(prefix))?.[0] ??
   widgetKey;
 
+/**
+ * Whether a landing-page widget may appear on the page at all — both in the
+ * grid and in the Add Widgets picker.
+ *
+ * The picker and the renderer have to answer this the same way. A key the
+ * picker offers but the renderer cannot resolve becomes a blank grid cell, and
+ * a key the renderer accepts but the picker withholds is a widget nobody can
+ * add back once it is removed. Sharing one predicate is what keeps the offered
+ * set and the renderable set equal. The one deliberate gap is a widget the
+ * platform places itself (Collate's onboarding checklist): the picker passes
+ * `getPickableWidgetKeyPrefixes()`, which leaves it out.
+ */
 export const isAvailableMyDataWidgetKey = (
   widgetKey: string,
-  excludedWidgetFqns: string[]
+  excludedWidgetFqns: string[],
+  knownWidgetKeys: readonly string[] = MY_DATA_WIDGET_KEYS
 ): boolean =>
-  isKnownMyDataWidgetKey(widgetKey) &&
+  isKnownMyDataWidgetKey(widgetKey, knownWidgetKeys) &&
   !excludedWidgetFqns.some((fqn) => widgetKey.startsWith(fqn));
 
 export const getMyDataWidgetFromKey = (
@@ -205,11 +216,12 @@ export const normalizeLandingPageLayout = (
   savedLayout: WidgetConfig[] | undefined,
   defaultLayout: WidgetConfig[],
   excludedWidgetFqns: string[],
-  cols: number
+  cols: number,
+  knownWidgetKeys: readonly string[]
 ): WidgetConfig[] => {
   const filtered = (savedLayout ?? [])
     .filter((widget) =>
-      isAvailableMyDataWidgetKey(widget.i, excludedWidgetFqns)
+      isAvailableMyDataWidgetKey(widget.i, excludedWidgetFqns, knownWidgetKeys)
     )
     // One column each, rather than `getConstrainedWidgetWidth`'s upper bound.
     // The landing grid exposes no width control -- CustomiseHomeModal adds at
@@ -217,7 +229,17 @@ export const normalizeLandingPageLayout = (
     // stale state from the three-column era that nothing in the UI can undo,
     // and at two columns a `w` of 2 spans the whole row. Revisit this line if a
     // size control comes back.
-    .map((widget) => ({ ...widget, w: LANDING_PAGE_WIDGET_COLUMN_SPAN }));
+    //
+    // Height likewise: every topic card is one fixed height, and the editor
+    // already forces it on its first layout pass (`getLayoutUpdateHandler`).
+    // A pre-redesign `h` of 4 or 6 would otherwise draw the card up to twice
+    // as tall on the home page as in the editor that saved it. Clamped before
+    // the reflow, which stacks rows by `h`.
+    .map((widget) => ({
+      ...widget,
+      w: LANDING_PAGE_WIDGET_COLUMN_SPAN,
+      h: LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
+    }));
 
   // Re-packed whichever source it came from: a default a subclass positioned
   // itself can overflow the grid just as a saved layout can.

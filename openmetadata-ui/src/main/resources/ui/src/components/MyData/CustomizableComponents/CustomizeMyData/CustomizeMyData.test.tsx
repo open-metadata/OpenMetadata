@@ -182,16 +182,6 @@ jest.mock(
   })
 );
 
-jest.mock('../CustomiseLandingPageHeader/CustomiseLandingPageHeader', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="customise-landing-page-header">
-        CustomiseLandingPageHeader
-      </div>
-    ))
-);
-
 jest.mock(
   '../../../../components/common/NavigationBlocker/NavigationBlocker',
   () => ({

@@ -446,7 +446,7 @@ SET json = (json::jsonb - 'status') || jsonb_build_object(
 WHERE jsonSchema = 'contextMemory'
   AND json::jsonb -> 'status' IS NOT NULL;
 
--- Landing-page widgets: re-point the five panels whose widget was replaced, and drop the five
+-- Landing-page widgets: re-point the six panels whose widget was replaced, and drop the five
 -- whose widget was retired.
 --
 -- The seed loader (EntityRepository.initializeEntity) only inserts rows it cannot find -- it
@@ -506,6 +506,19 @@ SET json = jsonb_set(
     '{data,gridSizes}', '["small","medium","large"]'::jsonb
 )
 WHERE name = 'KPI' AND entityType = 'KnowledgePanel';
+
+-- Collate seeded this same fullyQualifiedName for its own Data Quality widget, which the topic
+-- card replaced. An install that came up through that build keeps the old row -- the loader skips
+-- the OSS seed -- and with it the old description and a single "small" grid size.
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'displayName', 'Data Quality',
+      'description', 'Overview of data quality test results (passing, failing, and aborted) with a link through to the failing tests.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'DataQuality' AND entityType = 'KnowledgePanel';
 
 -- Retired: their seed files are gone and no component resolves their key, so the renderer would
 -- answer with a render-nothing component and leave an empty cell. The UI already filters them out

@@ -46,6 +46,10 @@ import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { TopicCollapseContext } from '../Widgets/Common/TopicWidget/TopicCollapseContext';
 import AnnouncementsRail from './AnnouncementsRail';
 import HomeLandingPageSkeleton from './HomeLandingPageSkeleton';
+import {
+  getLandingPageHeaderTintStyle,
+  resolveLandingPageHeaderColor,
+} from './landingPageHeaderColor';
 import TopicsSectionHeader from './TopicsSectionHeader';
 import { useTopicsView } from './useTopicsView';
 
@@ -78,17 +82,10 @@ export interface HomeLandingPageProps {
 }
 
 /**
- * The home page, shared by both app modes.
- *
- * Fixed shell top to bottom — standing alert, announcements rail, the
- * "needs you now" inbox — then the persona's widget grid. Which widgets appear
- * and where is entirely the persona's landing-page layout (docStore), edited
- * through `CustomizeMyData`; nothing here is mode-specific. Widgets that have
- * AI-only content decide that for themselves.
+ * The persona's landing page as the grid and header render it: the normalized
+ * widget layout, whether it is still resolving, and the saved header colour.
  */
-const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
+const usePersonaLandingPage = () => {
   const { currentUser, selectedPersona } = useApplicationStore();
 
   const personaFqn = personaDocFqn(selectedPersona);
@@ -99,7 +96,13 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
     retry: false,
     staleTime: PERSONA_DOC_STALE_TIME,
   });
-  const isLoading = !!personaFqn && isDocPending;
+  // The store resolves `selectedPersona` in the same write that sets the
+  // user, so until the user is in, "no persona" is not an answer yet. Mounting
+  // the default grid on that would fire every widget's queries, then tear the
+  // grid down for the skeleton the moment the persona lands, and fire the
+  // persona grid's queries on top.
+  const isPersonaResolved = Boolean(currentUser?.id);
+  const isLoading = !isPersonaResolved || (!!personaFqn && isDocPending);
 
   const layout = useMemo<WidgetConfig[]>(
     () =>
@@ -110,10 +113,43 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
           : [],
         customizeMyDataPageClassBase.defaultLayout,
         customizeMyDataPageClassBase.getExcludedWidgetFqns(),
-        customizeMyDataPageClassBase.landingPageMaxGridSize
+        customizeMyDataPageClassBase.landingPageMaxGridSize,
+        customizeMyDataPageClassBase.getKnownWidgetKeyPrefixes()
       ),
     [docData]
   );
+
+  // Set through the customize page's Header Theme tab (persona-wide) or a
+  // user's own persona preference, which wins.
+  const headerTintStyle = useMemo(
+    () =>
+      getLandingPageHeaderTintStyle(
+        resolveLandingPageHeaderColor(
+          selectedPersona?.id,
+          currentUser?.personaPreferences,
+          docData?.data?.personPreferences
+        )
+      ),
+    [selectedPersona?.id, currentUser?.personaPreferences, docData]
+  );
+
+  return { currentUser, headerTintStyle, isLoading, layout, selectedPersona };
+};
+
+/**
+ * The home page, shared by both app modes.
+ *
+ * Fixed shell top to bottom — header, announcements rail — then the persona's
+ * widget grid. Which widgets appear and where is entirely the persona's
+ * landing-page layout (docStore), edited through `CustomizeMyData`; nothing
+ * here is mode-specific. Widgets that have AI-only content decide that for
+ * themselves.
+ */
+const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { currentUser, headerTintStyle, isLoading, layout, selectedPersona } =
+    usePersonaLandingPage();
 
   const {
     collapseValue,
@@ -197,21 +233,15 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
               />
             ) : null
           }
+          style={headerTintStyle}
           subtitle={t('message.home-landing-page-subtitle')}
           title={greeting}
-          variant="gradient"
+          variant={headerTintStyle ? 'flat' : 'gradient'}
         />
 
         <PageLayout.Content className={contentClassName(Boolean(footerSlot))}>
           <div className="tw:flex tw:flex-col tw:gap-14 tw:px-4 tw:pt-8">
             <AnnouncementsRail />
-
-            {/* `SystemAlertBanner` and `NeedsYouNowSection` are built but not
-              mounted. Both are prototype-only: the alert feed and the ranked
-              cross-domain inbox have no API behind them, and their stand-in
-              content is an invented security incident and an invented approval
-              queue. Rendering that to every user states something false about
-              their deployment. Mount them when the endpoints land. */}
 
             <section data-testid="topics-to-catch-up-on">
               <TopicsSectionHeader

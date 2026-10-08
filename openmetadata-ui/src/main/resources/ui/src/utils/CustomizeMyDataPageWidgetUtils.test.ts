@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DEFAULT_LANDING_PAGE_LAYOUT } from '../constants/CustomizeMyDataPage.constants';
+import {
+  DEFAULT_LANDING_PAGE_LAYOUT,
+  LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
+} from '../constants/CustomizeMyDataPage.constants';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import {
@@ -30,8 +33,13 @@ const DEFAULT_LAYOUT = [
 
 const normalize = (
   saved: WidgetConfig[] | undefined,
-  excluded: string[] = []
-) => normalizeLandingPageLayout(saved, DEFAULT_LAYOUT, excluded, 2);
+  excluded: string[] = [],
+  known: readonly string[] = MY_DATA_WIDGET_KEYS
+) => normalizeLandingPageLayout(saved, DEFAULT_LAYOUT, excluded, 2, known);
+
+// Stands in for a key a subclass resolves through its own `getWidgetsFromKey`
+// (Collate's onboarding checklist) — not in the OSS registry.
+const EXTENSION_KEY = 'KnowledgePanel.Onboarding';
 
 describe('MY_DATA_WIDGET_KEYS', () => {
   // Pinned rather than derived: the picker offers this set and the grid renders
@@ -77,6 +85,17 @@ describe('isAvailableMyDataWidgetKey', () => {
     ).toBe(false);
   });
 
+  it('accepts a key the caller adds to the registry', () => {
+    expect(isAvailableMyDataWidgetKey(EXTENSION_KEY, [])).toBe(false);
+    expect(
+      isAvailableMyDataWidgetKey(
+        EXTENSION_KEY,
+        [],
+        [...MY_DATA_WIDGET_KEYS, EXTENSION_KEY]
+      )
+    ).toBe(true);
+  });
+
   it('rejects an excluded key even though the registry resolves it', () => {
     expect(
       isAvailableMyDataWidgetKey(LandingPageWidgetKeys.DATA_QUALITY, [
@@ -107,6 +126,25 @@ describe('normalizeLandingPageLayout', () => {
     ]);
   });
 
+  // A subclass that resolves its own key has to be able to keep it: otherwise
+  // a layout saved with that widget loses it on the very next read, in the
+  // editor as well as on the home page.
+  it('keeps an entry the caller-supplied registry resolves', () => {
+    const saved = [
+      widget(EXTENSION_KEY, 0, 0),
+      widget(LandingPageWidgetKeys.KPI, 1, 0),
+    ];
+
+    expect(normalize(saved).map(({ i }) => i)).toEqual([
+      LandingPageWidgetKeys.KPI,
+    ]);
+    expect(
+      normalize(saved, [], [...MY_DATA_WIDGET_KEYS, EXTENSION_KEY]).map(
+        ({ i }) => i
+      )
+    ).toEqual([EXTENSION_KEY, LandingPageWidgetKeys.KPI]);
+  });
+
   it('drops excluded widgets, matching on the key prefix', () => {
     const saved = [
       widget(LandingPageWidgetKeys.ACTIVITY_FEED, 0, 0),
@@ -135,6 +173,23 @@ describe('normalizeLandingPageLayout', () => {
     ];
 
     expect(normalize(saved).map(({ w }) => w)).toEqual([1, 1]);
+  });
+
+  // Pre-redesign layouts carry an `h` of 4 or 6. The editor forces every card
+  // to the one landing height on its first layout pass, so keeping the saved
+  // `h` here would draw the card taller on the home page than in the editor.
+  it('clamps a height saved before the redesign to the landing height', () => {
+    const saved = [
+      widget(LandingPageWidgetKeys.ACTIVITY_FEED, 0, 0, 1, 6),
+      widget(LandingPageWidgetKeys.KPI, 1, 0, 1, 4),
+      widget(LandingPageWidgetKeys.DOMAINS, 0, 6),
+    ];
+
+    expect(normalize(saved).map(({ h }) => h)).toEqual([
+      LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
+      LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
+      LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
+    ]);
   });
 
   it('packs a collapsed widget alongside its neighbour rather than below it', () => {

@@ -73,6 +73,8 @@ const CustomiseHomeModal = ({
       });
       const excludedWidgetFqns =
         customizeMyDataPageClassBase.getExcludedWidgetFqns();
+      const pickableWidgetKeys =
+        customizeMyDataPageClassBase.getPickableWidgetKeyPrefixes();
       // An allowlist off the widget registry, not a denylist of known-bad FQNs.
       // docStore holds every KnowledgePanel ever seeded — retired widgets, this
       // edition's widgets on an install of the other one — and a denylist has to
@@ -83,7 +85,8 @@ const CustomiseHomeModal = ({
         data.filter((widget) =>
           isAvailableMyDataWidgetKey(
             widget.fullyQualifiedName ?? '',
-            excludedWidgetFqns
+            excludedWidgetFqns,
+            pickableWidgetKeys
           )
         )
       );

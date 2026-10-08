@@ -35,7 +35,10 @@ import type {
   WidgetConfig,
 } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getMyDataWidgetImageFromKey } from './CustomizeMyDataPageImageUtils';
-import { getMyDataWidgetFromKey } from './CustomizeMyDataPageWidgetUtils';
+import {
+  getMyDataWidgetFromKey,
+  MY_DATA_WIDGET_KEYS,
+} from './CustomizeMyDataPageWidgetUtils';
 import type { LandingPageWidgetIconSource } from './LandingPageWidgetIconUtils.interface';
 
 const WIDGET_HEIGHT_KEY_MAP: Record<string, string> = {
@@ -146,6 +149,28 @@ class CustomizeMyDataPageClassBase {
    */
   public getPlatformHealthInsight(): ComponentType<PlatformHealthInsightProps> | null {
     return null;
+  }
+
+  /**
+   * Widget keys a saved landing layout may keep, matched by prefix.
+   *
+   * Every key `getWidgetsFromKey` resolves has to be listed here, or reading a
+   * saved layout (`normalizeLandingPageLayout`) drops it as retired. A subclass
+   * that resolves extra keys in its `getWidgetsFromKey` override appends them.
+   */
+  public getKnownWidgetKeyPrefixes(): string[] {
+    return [...MY_DATA_WIDGET_KEYS];
+  }
+
+  /**
+   * Widget keys the Add Widgets picker may offer.
+   *
+   * The same set as `getKnownWidgetKeyPrefixes` unless a subclass narrows it
+   * for a widget the platform places on the page itself rather than one a
+   * user chooses.
+   */
+  public getPickableWidgetKeyPrefixes(): string[] {
+    return this.getKnownWidgetKeyPrefixes();
   }
 
   public getWidgetsFromKey(

@@ -31,11 +31,10 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 /**
  * One entry per landing-page widget, keyed by the key the picker looks up.
  *
- * The screenshots live under `widgets/landing/` rather than beside the older
- * `*-widget.png` files: those were taken of the widgets the topic cards
- * replaced — `activity-feed-widget.png` is the old feed, not the Team Activity
- * card now on `ACTIVITY_FEED` — so reusing their names would leave the two
- * generations indistinguishable.
+ * The screenshots live under `widgets/landing/`, apart from the detail-page
+ * previews beside it. Several keys outlived the widget they were named for —
+ * `ACTIVITY_FEED` is the Team Activity card, not the old feed — so the files
+ * are named for what they show, not for the key.
  *
  * A key with no entry still resolves to `''`, which WidgetCard renders as an
  * empty tile rather than a broken image.
