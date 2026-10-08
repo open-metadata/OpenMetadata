@@ -17,6 +17,7 @@ their data model as well; the Metric is an additional, first-class view of the s
 """
 
 import re
+from collections import Counter
 from collections.abc import Iterator
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
@@ -228,22 +229,30 @@ def metric_measures_parents_first(dataset: Dataset) -> list[tuple[PowerBiTable, 
 def measure_dimensions(dataset: Dataset, home_table: PowerBiTable, measure: PowerBiMeasures) -> list[MetricDimension]:
     """Visible columns of the measure's home table and of the tables its DAX reads.
 
+    A column name shared by several of those tables (a star-schema key such as ``CustomerKey``)
+    is qualified as ``Table.Column``: the server derives a dimension's FQN from its name alone.
+
     ponytail: tables reachable only through model relationships are not included; read the
     scan's `relationships` if slicing across a star schema needs to show up here.
     """
     table_names = {(home_table.name or "").lower()} | {
         table.lower() for table, _ in referenced_columns(dataset, measure)
     }
-    return [
-        MetricDimension(  # pyright: ignore[reportCallIssue]
-            name=column.name,
-            type=Type.TIME if (column.dataType or "").lower() in _TIME_DATA_TYPES else Type.CATEGORICAL,
-            description=column.description,
-        )
+    columns = [
+        (table, name, column)
         for table in dataset.tables or []
         if (table.name or "").lower() in table_names
         for column in table.columns or []
-        if column.name and not column.isHidden
+        if (name := column.name) and not column.isHidden
+    ]
+    name_counts = Counter(name.lower() for _, name, _ in columns)
+    return [
+        MetricDimension(  # pyright: ignore[reportCallIssue]
+            name=f"{table.name}.{name}" if name_counts[name.lower()] > 1 else name,
+            type=Type.TIME if (column.dataType or "").lower() in _TIME_DATA_TYPES else Type.CATEGORICAL,
+            description=column.description,
+        )
+        for table, name, column in columns
     ]
 
 

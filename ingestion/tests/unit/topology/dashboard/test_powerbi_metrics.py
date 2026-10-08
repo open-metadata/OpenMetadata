@@ -217,6 +217,26 @@ def test_dimensions_are_visible_columns_of_the_tables_the_measure_reads():
     }
 
 
+def test_dimension_names_clashing_across_tables_are_qualified_with_the_table():
+    sales = PowerBiTable(
+        name="Sales",
+        columns=[
+            PowerBiColumns(name="CustomerKey", dataType="Int64"),
+            PowerBiColumns(name="Amount", dataType="Double"),
+        ],
+    )
+    customer = PowerBiTable(
+        name="Customer",
+        columns=[PowerBiColumns(name="customerkey", dataType="Int64"), PowerBiColumns(name="Name", dataType="String")],
+    )
+    measure = PowerBiMeasures(name="Customers", expression="DISTINCTCOUNT(Customer[CustomerKey])")
+    dataset = Dataset(id="ds-star", name="Star", tables=[sales, customer])
+
+    names = [dim.name for dim in measure_dimensions(dataset, sales, measure)]
+
+    assert names == ["Sales.CustomerKey", "Amount", "Customer.customerkey", "Name"]
+
+
 def test_metric_stage_emits_metrics_with_assets_and_lineage(make_source):
     _, outputs = _run_workspace(make_source(), [SALES_DATASET])
 
