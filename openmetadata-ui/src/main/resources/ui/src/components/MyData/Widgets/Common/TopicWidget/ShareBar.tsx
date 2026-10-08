@@ -33,6 +33,8 @@ export interface ShareBarProps {
   total?: number;
   /** Labels the bar as a whole — see the comment on the wrapper below. */
   ariaLabel: string;
+  /** Formats the count in a segment's tooltip. Defaults to the raw number. */
+  valueFormatter?: (value: number) => string;
   className?: string;
   dataTestId?: string;
 }
@@ -43,17 +45,24 @@ const STACK_ID = 'share';
 // named `share` cannot collide with the category field.
 const valueKey = (index: number) => `value-${index}`;
 
-// The bar is the whole plot: no axes, no legend, no padding.
+/**
+ * The bar is the whole plot: no axes, no legend, no padding.
+ *
+ * `trigger: 'item'` is set here rather than through the `tooltip` prop because
+ * `ChartTooltipProps` does not carry a trigger — cartesian charts are built with
+ * `'axis'`, which on a one-category stack would open every series at once and
+ * just restate the legend. Hovering one segment has to name that segment, which
+ * is the whole point on a bar where the smallest share is a few pixels wide.
+ * The consumer `option` is deep-merged over the built one, so this wins.
+ */
 const SHARE_OPTION: ChartOption = {
   grid: { bottom: 0, left: 0, outerBoundsMode: 'none', right: 0, top: 0 },
+  tooltip: { trigger: 'item' },
 };
 // One category in the band, so the bar fills the height the caller gives it.
 const FULL_WIDTH_BAR = { barWidth: '100%' };
 const CATEGORY_AXIS = { show: false };
 const NO_LEGEND = { show: false };
-// Every value is repeated in the legend the callers draw under the bar, so a
-// tooltip would read the same numbers twice.
-const NO_TOOLTIP = { show: false };
 
 type ShareRow = Record<string, string | number>;
 
@@ -65,6 +74,7 @@ const ShareBar: React.FC<ShareBarProps> = ({
   segments,
   total,
   ariaLabel,
+  valueFormatter,
   className,
   dataTestId,
 }) => {
@@ -97,6 +107,16 @@ const ShareBar: React.FC<ShareBarProps> = ({
   // gap at the end of the bar, so the scale is pinned to the total.
   const valueAxis = useMemo(() => ({ max, min: 0, show: false }), [max]);
 
+  const tooltip = useMemo(
+    () => ({
+      valueFormatter: (value: number | string) =>
+        typeof value === 'number' && valueFormatter
+          ? valueFormatter(value)
+          : String(value),
+    }),
+    [valueFormatter]
+  );
+
   if (max <= 0) {
     return null;
   }
@@ -124,7 +144,7 @@ const ShareBar: React.FC<ShareBarProps> = ({
         legend={NO_LEGEND}
         option={SHARE_OPTION}
         series={chartSeries}
-        tooltip={NO_TOOLTIP}
+        tooltip={tooltip}
         xAxis={CATEGORY_AXIS}
         xKey={CATEGORY_KEY}
         yAxis={valueAxis}

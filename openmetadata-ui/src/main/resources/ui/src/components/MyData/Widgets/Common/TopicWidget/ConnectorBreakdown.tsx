@@ -38,7 +38,7 @@ const ConnectorBreakdown: React.FC<ConnectorBreakdownProps> = ({
     () =>
       connectors.map((connector, index) => ({
         color: getSeriesColor(index),
-        key: connector.name,
+        key: connector.key,
         name: connector.name,
         value: connector.count,
       })),
@@ -55,6 +55,7 @@ const ConnectorBreakdown: React.FC<ConnectorBreakdownProps> = ({
         ariaLabel={t('label.by-connector')}
         className="tw:h-2"
         segments={segments}
+        valueFormatter={format}
       />
 
       {/* Cased in CSS, not in the string: a locale whose script has no case
@@ -75,17 +76,22 @@ const ConnectorBreakdown: React.FC<ConnectorBreakdownProps> = ({
         {segments.map((segment) => (
           <li
             className="tw:inline-flex tw:max-w-full tw:items-center tw:gap-1.5"
+            data-testid="connector-entry"
             key={segment.key}>
             <span
               aria-hidden
               className="tw:size-2 tw:shrink-0 tw:rounded-xs"
               style={{ backgroundColor: segment.color }}
             />
-            <Typography className="tw:text-text-secondary!" size="text-sm">
+            <Typography
+              className="tw:text-text-secondary!"
+              data-testid="connector-name"
+              size="text-sm">
               {segment.name}
             </Typography>
             <Typography
               className="tw:shrink-0 tw:text-text-primary!"
+              data-testid="connector-count"
               size="text-sm"
               weight="medium">
               {format(segment.value)}

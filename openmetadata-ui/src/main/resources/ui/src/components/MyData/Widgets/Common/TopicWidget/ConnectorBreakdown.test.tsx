@@ -23,9 +23,9 @@ jest.mock('react-i18next', () => ({
 }));
 
 const CONNECTORS = [
-  { count: 800, name: 'Snowflake' },
-  { count: 120, name: 'Datalake' },
-  { count: 75, name: 'Redshift' },
+  { count: 800, key: 'Snowflake', name: 'Snowflake' },
+  { count: 120, key: 'Datalake', name: 'Datalake' },
+  { count: 75, key: 'Redshift', name: 'Redshift' },
 ];
 
 const renderBreakdown = () =>
@@ -69,12 +69,12 @@ describe('ConnectorBreakdown', () => {
   it('shows connector names in full rather than truncating them', () => {
     render(
       <ConnectorBreakdown
-        connectors={[{ count: 65, name: 'dashboardDataModel' }]}
+        connectors={[{ count: 65, key: 'BigQuery', name: 'Big Query' }]}
         format={String}
       />
     );
 
-    expect(screen.getByText('dashboardDataModel')).toBeInTheDocument();
+    expect(screen.getByText('Big Query')).toBeInTheDocument();
   });
 
   it('cases the heading in CSS so translations are not pre-uppercased', () => {
@@ -86,7 +86,7 @@ describe('ConnectorBreakdown', () => {
   it('renders nothing when every connector is empty', () => {
     const { container } = render(
       <ConnectorBreakdown
-        connectors={[{ count: 0, name: 'Snowflake' }]}
+        connectors={[{ count: 0, key: 'Snowflake', name: 'Snowflake' }]}
         format={String}
       />
     );

@@ -93,4 +93,33 @@ describe('ShareBar', () => {
     expect(screen.getByTestId('share-bar')).toHaveAttribute('role', 'img');
     expect(screen.getByRole('img', { name: '40 tests' })).toBeInTheDocument();
   });
+
+  // Cartesian charts are built with `trigger: 'axis'`, which on a one-category
+  // stack opens every series at once and just restates the legend. The whole
+  // value of a tooltip here is naming the segment under the cursor, which on a
+  // long tail is a few pixels wide.
+  it('opens one segment at a time, not the whole stack', () => {
+    render(<ShareBar ariaLabel="tests" segments={SEGMENTS} />);
+
+    expect(chartProps().option.tooltip).toMatchObject({ trigger: 'item' });
+    expect(chartProps().tooltip.show).not.toBe(false);
+  });
+
+  it('formats the count with the formatter it was given', () => {
+    render(
+      <ShareBar
+        ariaLabel="tests"
+        segments={SEGMENTS}
+        valueFormatter={(value) => `${value} tests`}
+      />
+    );
+
+    expect(chartProps().tooltip.valueFormatter(30)).toBe('30 tests');
+  });
+
+  it('falls back to the raw count when no formatter is given', () => {
+    render(<ShareBar ariaLabel="tests" segments={SEGMENTS} />);
+
+    expect(chartProps().tooltip.valueFormatter(30)).toBe('30');
+  });
 });

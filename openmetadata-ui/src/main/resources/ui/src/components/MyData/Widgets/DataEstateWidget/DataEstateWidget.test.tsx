@@ -45,7 +45,7 @@ jest.mock('../../../../hooks/useDataEstate', () => ({
 const ESTATE = {
   totalAssets: 1257,
   totalDelta: 4,
-  connectors: [{ count: 800, name: 'table' }],
+  connectors: [{ count: 800, key: 'Snowflake', name: 'Snowflake' }],
   descriptionCoverage: 23,
   descriptionCoverageDelta: 0.4,
   descriptionCoverageSeries: [22.6, 23],

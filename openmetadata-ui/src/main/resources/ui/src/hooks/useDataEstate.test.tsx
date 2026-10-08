@@ -17,15 +17,32 @@ import React from 'react';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { queryClient } from '../queryClient';
 import { getMultiChartsPreviewByName } from '../rest/DataInsightAPI';
+import { searchData } from '../rest/miscAPI';
 import { useDataEstate } from './useDataEstate';
 
 jest.mock('../rest/DataInsightAPI', () => ({
   getMultiChartsPreviewByName: jest.fn(),
 }));
 
+jest.mock('../rest/miscAPI', () => ({
+  searchData: jest.fn(),
+}));
+
 const mockGetCharts = getMultiChartsPreviewByName as jest.MockedFunction<
   typeof getMultiChartsPreviewByName
 >;
+const mockSearchData = searchData as jest.MockedFunction<typeof searchData>;
+
+const serviceTypeBuckets = (...buckets: Array<[string, number]>) =>
+  ({
+    data: {
+      aggregations: {
+        'sterms#serviceType': {
+          buckets: buckets.map(([key, doc_count]) => ({ doc_count, key })),
+        },
+      },
+    },
+  } as never);
 
 const DAY_ONE = 1_700_000_000_000;
 const DAY_TWO = DAY_ONE + 86_400_000;
@@ -51,6 +68,7 @@ describe('useDataEstate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     queryClient.clear();
+    mockSearchData.mockResolvedValue(serviceTypeBuckets());
   });
 
   it('totals the newest day and ranks connectors by size', async () => {
@@ -70,10 +88,49 @@ describe('useDataEstate', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.totalAssets).toBe(350);
+  });
+
+  // The card says "by connector", and the chart's groups are entity types
+  // (table, chart, databaseSchema) — reading the breakdown off it is what put
+  // those under that heading. The service dimension only exists on the search
+  // aggregation, so that is where the split has to come from.
+  it("splits by service, not by the chart's entity-type groups", async () => {
+    mockGetCharts.mockResolvedValue(
+      chartsResponse([{ count: 350, day: DAY_TWO, group: 'table' }], [])
+    );
+    mockSearchData.mockResolvedValue(
+      serviceTypeBuckets(['Snowflake', 100], ['BigQuery', 250])
+    );
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Largest first, and labelled the way the classic widget labelled them.
     expect(result.current.connectors).toEqual([
-      { count: 250, name: 'Redshift' },
-      { count: 100, name: 'Snowflake' },
+      { count: 250, key: 'BigQuery', name: 'Big Query' },
+      { count: 100, key: 'Snowflake', name: 'Snowflake' },
     ]);
+  });
+
+  // The range filter moves the totals delta and the coverage trend; "how much
+  // of the estate is Snowflake" is a live count with no window to narrow.
+  it('does not refetch the split when the window changes', async () => {
+    mockGetCharts.mockResolvedValue(
+      chartsResponse([{ count: 350, day: DAY_TWO, group: 'table' }], [])
+    );
+
+    const { result, rerender } = renderHook(
+      ({ windowDays }) => useDataEstate({ windowDays }),
+      { initialProps: { windowDays: 7 }, wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    rerender({ windowDays: 90 });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetCharts).toHaveBeenCalledTimes(2);
+    expect(mockSearchData).toHaveBeenCalledTimes(1);
   });
 
   it('reports the change across the window, not the whole estate', async () => {

@@ -12,12 +12,16 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import type { Bucket } from 'Models';
 import { useMemo } from 'react';
 import { SystemChartType } from '../enums/DataInsight.enum';
+import { SearchIndex } from '../enums/search.enum';
 import {
   DataInsightCustomChartResult,
   getMultiChartsPreviewByName,
 } from '../rest/DataInsightAPI';
+import { searchData } from '../rest/miscAPI';
+import { getFormattedDataAssetServiceType } from '../utils/DataAssetServiceUtils';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -25,9 +29,20 @@ export const DATA_ESTATE_WINDOW_DAYS = 7;
 /** Windows the card's range filter offers. */
 export const DATA_ESTATE_WINDOW_OPTIONS = [DATA_ESTATE_WINDOW_DAYS, 30, 90];
 export const DATA_ESTATE_QUERY_KEY = ['landingPage', 'widgets', 'dataEstate'];
+export const DATA_ESTATE_CONNECTORS_QUERY_KEY = [
+  'landingPage',
+  'widgets',
+  'dataEstateConnectors',
+];
 const DATA_ESTATE_TTL_MS = 5 * 60 * 1000;
 
+/** The server's default term aggregation on the data-asset index. */
+const SERVICE_TYPE_AGGREGATION = 'sterms#serviceType';
+
 export interface ConnectorCount {
+  /** The raw `serviceType`, e.g. `BigQuery` — stable across locales. */
+  key: string;
+  /** What the legend shows, e.g. `Big Query`. */
   name: string;
   count: number;
 }
@@ -59,22 +74,6 @@ const sumForDay = (results: ChartResults, day: number): number =>
   results
     .filter((row) => row.day === day)
     .reduce((total, row) => total + row.count, 0);
-
-const connectorsForDay = (
-  results: ChartResults,
-  day: number
-): ConnectorCount[] => {
-  const byConnector = new Map<string, number>();
-  results
-    .filter((row) => row.day === day && row.group)
-    .forEach((row) =>
-      byConnector.set(row.group, (byConnector.get(row.group) ?? 0) + row.count)
-    );
-
-  return Array.from(byConnector, ([name, count]) => ({ count, name })).sort(
-    (a, b) => b.count - a.count
-  );
-};
 
 interface CoverageAccumulator {
   /** Σ (group percentage × group asset count). */
@@ -141,6 +140,33 @@ const coverageSeries = (
     });
 };
 
+/**
+ * The estate's split by connector — Snowflake, Redshift, BigQuery — read from
+ * the same `serviceType` aggregation the classic Data Assets widget used.
+ *
+ * Deliberately NOT the `total_data_assets` chart: that groups by *entity type*
+ * (table, chart, databaseSchema), which is what the card was showing under a
+ * "by connector" heading. Nothing in the data-insight charts carries the
+ * service dimension, so this is a second request rather than a different read
+ * of the first.
+ */
+const fetchConnectorBreakdown = async (): Promise<ConnectorCount[]> => {
+  // size 0: the aggregation is the whole answer, the hits are dead weight.
+  const response = await searchData('', 0, 0, '', '', '', [
+    SearchIndex.DATA_ASSET,
+  ]);
+  const buckets: Bucket[] =
+    response.data.aggregations?.[SERVICE_TYPE_AGGREGATION]?.buckets ?? [];
+
+  return buckets
+    .map((bucket) => ({
+      count: bucket.doc_count,
+      key: bucket.key,
+      name: getFormattedDataAssetServiceType(bucket.key),
+    }))
+    .sort((a, b) => b.count - a.count);
+};
+
 const fetchDataEstate = async (windowDays: number) => {
   const end = Date.now();
 
@@ -163,12 +189,27 @@ export const useDataEstate = (options?: {
   windowDays?: number;
 }): DataEstate => {
   const windowDays = options?.windowDays ?? DATA_ESTATE_WINDOW_DAYS;
+  const enabled = options?.enabled ?? true;
   const { data, isPending, isError } = useQuery({
-    enabled: options?.enabled ?? true,
+    enabled,
     queryFn: () => fetchDataEstate(windowDays),
     // The window is part of the key: two ranges are two different answers, and
     // sharing one entry would serve the previous range's data on a switch.
     queryKey: [...DATA_ESTATE_QUERY_KEY, windowDays],
+    staleTime: DATA_ESTATE_TTL_MS,
+  });
+
+  // A live count, so no window in the key — the range filter moves the totals
+  // delta and the coverage trend, both of which are time series. "How much of
+  // the estate is Snowflake" is not.
+  const {
+    data: connectors,
+    isPending: isConnectorsPending,
+    isError: isConnectorsError,
+  } = useQuery({
+    enabled,
+    queryFn: fetchConnectorBreakdown,
+    queryKey: DATA_ESTATE_CONNECTORS_QUERY_KEY,
     staleTime: DATA_ESTATE_TTL_MS,
   });
 
@@ -195,17 +236,24 @@ export const useDataEstate = (options?: {
     const series = coverageSeries(coverage, totals);
 
     return {
-      connectors: connectorsForDay(totals, newestDay),
+      connectors: connectors ?? [],
       descriptionCoverage: series.length > 0 ? series[series.length - 1] : null,
       descriptionCoverageDelta:
         series.length > 1 ? series[series.length - 1] - series[0] : null,
       descriptionCoverageSeries: series,
-      isError,
-      isLoading: isPending,
+      isError: isError || isConnectorsError,
+      isLoading: isPending || isConnectorsPending,
       // A single-day window has no baseline to compare against, so report no
       // movement rather than the whole estate's worth of it.
       totalDelta: oldestDay === newestDay ? null : totalAssets - baseline,
       totalAssets,
     };
-  }, [data, isPending, isError]);
+  }, [
+    data,
+    isPending,
+    isError,
+    connectors,
+    isConnectorsPending,
+    isConnectorsError,
+  ]);
 };
