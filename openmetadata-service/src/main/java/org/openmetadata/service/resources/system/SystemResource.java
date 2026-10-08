@@ -1272,8 +1272,8 @@ public class SystemResource {
 
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
-          systemRepository.validateSecurityConfiguration(
-              updatedConfig, applicationConfig, currentUsername);
+          systemRepository.validateSecurityConfigurationChange(
+              currentConfig, updatedConfig, applicationConfig, currentUsername);
 
       boolean isValidConfig =
           validationResponse.getStatus() == SecurityValidationResponse.Status.SUCCESS;

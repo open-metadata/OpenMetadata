@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.unboundid.ldap.listener.InMemoryDirectoryServer;
 import com.unboundid.ldap.listener.InMemoryDirectoryServerConfig;
 import com.unboundid.ldap.listener.InMemoryListenerConfig;
@@ -2295,6 +2296,40 @@ public class SystemResourceIT {
               "/v1/system/security/config",
               originalSecurityConfigJson,
               RequestOptions.builder().build());
+    }
+  }
+
+  /**
+   * The SSO page's self-signup switch sends exactly this one-operation patch (#28379). Like a
+   * configuration seeded from the environment before field validation existed, the test server's
+   * stored configuration fails full validation, and a patch that leaves those fields alone must
+   * still be saved.
+   */
+  @Test
+  void test_patchSecurityConfig_savesAChangeDespiteErrorsTheStoredConfigAlreadyHas()
+      throws Exception {
+    SecurityConfiguration stored = getSecurityConfig();
+    assertEquals(
+        SecurityValidationResponse.Status.FAILED,
+        validateSecurityConfig(stored).getStatus(),
+        "The stored configuration must already fail validation for this test to mean anything");
+    boolean selfSignup = stored.getAuthenticationConfiguration().getEnableSelfSignup();
+    ArrayNode patch = MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/authenticationConfiguration/enableSelfSignup")
+        .put("value", !selfSignup);
+
+    try {
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(HttpMethod.PATCH, "/v1/system/security/config", patch);
+
+      assertEquals(
+          !selfSignup, getSecurityConfig().getAuthenticationConfiguration().getEnableSelfSignup());
+    } finally {
+      putSecurityConfig(MAPPER.writeValueAsString(stored));
     }
   }
 
