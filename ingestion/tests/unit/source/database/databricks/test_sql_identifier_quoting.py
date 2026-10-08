@@ -26,6 +26,9 @@ from metadata.ingestion.source.database.databricks.metadata import get_schema_na
 
 HOSTILE_CATALOG = "a`--"
 HOSTILE_SCHEMA = "b`--"
+# Both characters at once: the quote that closed the old string-literal form
+# early, and the backtick the identifier form has to double.
+HOSTILE_CATALOG_WITH_QUOTE = "a`'--"
 
 
 class _FakeResult:
@@ -73,10 +76,9 @@ def test_use_catalog_quotes_the_catalog_as_an_identifier():
     escapes a string literal with \\' rather than '', so the identifier form is
     used instead -- the same form the two sibling call sites already emit."""
     emitted = []
-    # The real dialect, so the preparer under test is the production one.
-    get_schema_names(DatabricksDialect(), _FakeConnection(emitted), database="a'--")
+    get_schema_names(DatabricksDialect(), _FakeConnection(emitted), database=HOSTILE_CATALOG_WITH_QUOTE)
 
-    assert emitted[0] == "USE CATALOG `a'--`"
+    assert emitted[0] == "USE CATALOG `a``'--`"
 
 
 def test_engine_wrapper_escapes_backticks_in_catalog_and_schema():

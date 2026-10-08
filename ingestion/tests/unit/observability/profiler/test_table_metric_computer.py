@@ -60,6 +60,16 @@ def _build_mock_session(db_name="test_db"):
     return session
 
 
+# Schema and table names are enumerated from the source system, so anyone with
+# CREATE rights there controls them. All three engines below quote with backticks.
+HOSTILE_SCHEMA = "sch`ema"
+HOSTILE_TABLE = "ta`ble"
+
+
+def _emitted(session) -> str:
+    return str(session.execute.call_args[0][0])
+
+
 def _build_computer(session, computer_class, table_type=TableType.Regular):
     runner = QueryRunner(
         session=session,
@@ -572,6 +582,19 @@ class TestHiveTableMetricComputer:
             result = computer.compute()
         assert result.rowCount == 200
 
+    def test_describe_formatted_escapes_backticks(self):
+        """Hive doubles a backtick inside a quoted identifier and unescapes it
+        again -- `HiveLexer.g`: ('`' ( '``' | ~('`') )+ '`')."""
+        session = _build_mock_session()
+        session.execute.return_value.fetchall.return_value = [("", "numRows", "1")]
+
+        computer = _build_computer(session, HiveTableMetricComputer)
+        computer._schema_name = HOSTILE_SCHEMA
+        computer._table_name = HOSTILE_TABLE
+        computer.compute()
+
+        assert _emitted(session) == "DESCRIBE FORMATTED `sch``ema`.`ta``ble`"
+
     def test_hive_registration(self):
         assert table_metric_computer_factory._constructs[Dialects.Hive] is HiveTableMetricComputer
 
@@ -619,6 +642,23 @@ class TestImpalaTableMetricComputer:
             result = computer.compute()
         assert result.rowCount == 50
 
+    def test_show_table_stats_escapes_backticks(self):
+        """Impala has no in-identifier backtick escape -- `sql-scanner.flex`:
+        QuotedIdentifier = `(\\.|[^\\`])*` with no unescaping -- so doubling
+        keeps a hostile name inside the backticks and the statement fails to
+        parse instead of naming a different table."""
+        session = _build_mock_session()
+        row = MagicMock()
+        row._asdict.return_value = {"#Rows": 1}
+        session.execute.return_value.fetchall.return_value = [row]
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        computer._schema_name = HOSTILE_SCHEMA
+        computer._table_name = HOSTILE_TABLE
+        computer.compute()
+
+        assert _emitted(session) == "SHOW TABLE STATS `sch``ema`.`ta``ble`"
+
     def test_impala_registration(self):
         assert table_metric_computer_factory._constructs[Dialects.Impala] is ImpalaTableMetricComputer
 
@@ -662,6 +702,20 @@ class TestDatabricksTableMetricComputer:
 
             assert result is not None
             assert result.rowCount == 5000
+
+    def test_describe_detail_escapes_backticks(self):
+        """Databricks SQL: "Use ` to escape ` itself"."""
+        session = _build_mock_session()
+        result = MagicMock()
+        result._asdict.return_value = {"numRecords": 1}
+        session.execute.return_value.first.return_value = result
+
+        computer = _build_computer(session, DatabricksTableMetricComputer)
+        computer._schema_name = HOSTILE_SCHEMA
+        computer._table_name = HOSTILE_TABLE
+        computer.compute()
+
+        assert _emitted(session) == "DESCRIBE DETAIL `sch``ema`.`ta``ble`"
 
     def test_databricks_registration(self):
         assert table_metric_computer_factory._constructs[Dialects.Databricks] is DatabricksTableMetricComputer

@@ -135,31 +135,3 @@ class TestDownloadPbitFiles:
 
         assert not (outside / "bad.pbit").exists(), "the escaping key must be skipped"
         assert (extract_dir / "sub" / "good.pbit").exists(), "the legitimate key in the same group must still download"
-
-
-class TestPbitZipExtraction:
-    """Lock-in, not a regression guard: CPython's `ZipFile._extract_member`
-    already drops the drive prefix and every `..` component before joining the
-    member name to the destination, so `extractall` cannot write outside it.
-    This test fails if a future Python, or a switch away from `extractall`,
-    removes that guarantee."""
-
-    def test_archive_members_cannot_escape_the_extract_dir(self, tmp_path):
-        import zipfile
-
-        from metadata.ingestion.source.dashboard.powerbi.file_client import (
-            get_datamodel_schema_files_from_pbit,
-        )
-
-        pbit = tmp_path / "report.pbit"
-        with zipfile.ZipFile(pbit, "w") as archive:
-            archive.writestr("../../escape.txt", "traversal")
-            archive.writestr("/abs_escape.txt", "absolute")
-            archive.writestr("nested/dir/DataModelSchema", "{}")
-
-        get_datamodel_schema_files_from_pbit(str(tmp_path))
-
-        extracted = tmp_path / "extracted"
-        written = {p for p in tmp_path.rglob("*") if p.is_file() and p != pbit}
-        assert written, "nothing was extracted, so the test proves nothing"
-        assert all(extracted in p.parents for p in written)

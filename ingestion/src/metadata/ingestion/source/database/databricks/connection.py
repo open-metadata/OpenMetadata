@@ -189,8 +189,12 @@ class DatabricksEngineWrapper:
         return self._inspector
 
     def _quote_identifier(self, identifier: str) -> str:
-        """Catalog and schema names come from the workspace, so they are untrusted."""
-        return self.engine.dialect.identifier_preparer.quote_identifier(identifier)
+        """Catalog and schema names come from the workspace, so they are untrusted.
+
+        Not via the dialect preparer: databricks-sqlalchemy leaves `escape_quote`
+        at `"` up to 2.0.9, which the pin allows, so it would not escape at all.
+        """
+        return f"`{identifier.replace('`', '``')}`"
 
     def get_schemas(self, schema_name: str | None = None):
         """Get schemas and cache them"""

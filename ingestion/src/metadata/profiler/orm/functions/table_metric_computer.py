@@ -69,6 +69,17 @@ logger = profiler_interface_registry_logger()
 ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
 
 
+def _qualified_identifier(*names: str) -> str:
+    """Quote untrusted name parts for Hive, Impala or Databricks.
+
+    All three delimit with backticks. Hive and Databricks unescape a doubled
+    one; Impala has no in-identifier escape, so doubling keeps the name inside
+    the quotes and the statement fails to parse rather than naming a different
+    table.
+    """
+    return ".".join(f"`{name.replace('`', '``')}`" for name in names)
+
+
 class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
@@ -1034,7 +1045,7 @@ class HiveTableMetricComputer(_StatsBasedTableMetricComputer):
         """Parse numRows from DESCRIBE FORMATTED output.
         Hive returns 3-column rows: (col_name, data_type, comment).
         After ANALYZE, a row with data_type='numRows' contains the count in comment."""
-        query = sa_text(f"DESCRIBE FORMATTED `{self.schema_name}`.`{self.table_name}`")
+        query = sa_text(f"DESCRIBE FORMATTED {_qualified_identifier(self.schema_name, self.table_name)}")
         rows = self.runner._session.execute(query).fetchall()
         for row in rows:
             try:
@@ -1054,7 +1065,7 @@ class ImpalaTableMetricComputer(_StatsBasedTableMetricComputer):
 
     def compute(self):
         """Sum #Rows across partitions from SHOW TABLE STATS."""
-        query = sa_text(f"SHOW TABLE STATS `{self.schema_name}`.`{self.table_name}`")
+        query = sa_text(f"SHOW TABLE STATS {_qualified_identifier(self.schema_name, self.table_name)}")
         rows = self.runner._session.execute(query).fetchall()
         total_rows = 0
         for row in rows:
@@ -1074,7 +1085,7 @@ class DatabricksTableMetricComputer(_StatsBasedTableMetricComputer):
         """Extract numRecords from DESCRIBE DETAIL."""
         if self._entity.tableType in (TableType.View, TableType.MaterializedView):
             return super().compute()
-        query = sa_text(f"DESCRIBE DETAIL `{self.schema_name}`.`{self.table_name}`")
+        query = sa_text(f"DESCRIBE DETAIL {_qualified_identifier(self.schema_name, self.table_name)}")
         result = self.runner._session.execute(query).first()
         if result:
             row_dict = result._asdict()

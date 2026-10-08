@@ -18,6 +18,7 @@ name must not reach the SQL at all.
 import pytest
 
 from metadata.ingestion.source.database.domodatabase.metadata import DomodatabaseSource
+from metadata.ingestion.source.database.domodatabase.models import OutputDataset, Owner
 
 # A single SELECT, so Domo's read-only restriction does not block it.
 HOSTILE_NAME = 'sales" UNION SELECT * FROM "secrets'
@@ -61,3 +62,26 @@ def test_the_dataset_is_addressed_by_id_not_by_name(source):
     dataset_id, sql = source.emitted[0]
     assert dataset_id == "dataset-42"
     assert "orders" not in sql
+
+
+def _dataset() -> OutputDataset:
+    return OutputDataset(id="abc-123", name="orders", rows=0, columns=0, owner=Owner(id=1, name="owner"))
+
+
+def test_get_columns_survives_a_dataset_with_no_resolvable_schema(source):
+    """`get_columns` overwrites `schemas` with the probe's result, and the probe
+    returns None whenever Domo rejects the query."""
+    assert source.get_columns(_dataset()) == []
+
+
+def test_federated_columns_are_parsed_from_the_response(source):
+    """Pins the branch the fix made reachable: names come from `columns`, types
+    from the matching index of `metadata`."""
+    source.domo_client.datasets.query = lambda dataset_id, sql: {
+        "columns": ["id", "total"],
+        "metadata": [{"type": "LONG"}, {"type": "DOUBLE"}],
+    }
+
+    schema = source.get_columns_from_federated_dataset(table_name="orders", dataset_id="abc-123")
+
+    assert [(column.name, column.type) for column in schema.columns] == [("id", "LONG"), ("total", "DOUBLE")]
