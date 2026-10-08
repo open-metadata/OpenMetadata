@@ -7,8 +7,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -32,6 +34,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ListFilter extends Filter<ListFilter> {
   /** The severity filter value for incidents with no severity. */
   public static final String NO_INCIDENT_SEVERITY = "none";
+
+  private static final Pattern ENTITY_TYPE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9]*");
 
   public static final String NULL_PARAM = "null";
 
@@ -1063,32 +1067,53 @@ public class ListFilter extends Filter<ListFilter> {
           entityIdColumn, entityTypeCondition);
     }
 
-    // A selected domain's fqnHash widens the id set to its sub-domains (fqnHash = self OR
-    // "self.%"), so a parent pick includes descendants; without a hash, exact ids only.
-    String domainFqnHash = getQueryParam("domainFqnHash");
-    String domainInClause =
-        nullOrEmpty(domainFqnHash)
-            ? buildIndexedBindParams("domainId", domainId.replace("'", ""))
-            : buildDomainSubtreeIdSubquery(domainFqnHash);
+    String domainInClause = domainIdList(domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
       return String.format(
-          "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain' AND er.toId = %s) OR "
-              + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain' AND er2.fromId IN (%s) AND er2.relation=10))",
-          entityIdColumn, entityIdColumn, domainInClause);
+          "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain'%s AND er.toId = %s) OR "
+              + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain'%s AND er2.fromId IN (%s) AND er2.relation=10))",
+          domainEntityTypeCondition("er"),
+          entityIdColumn,
+          entityIdColumn,
+          domainEntityTypeCondition("er2"),
+          domainInClause);
     }
 
     return String.format(
-        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain'%s AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
-        entityIdColumn, domainInClause);
+        entityIdColumn, domainEntityTypeCondition("entity_relationship"), domainInClause);
   }
 
-  /** Ids of the domain with {@code fqnHash} plus every domain nested under it. */
-  private String buildDomainSubtreeIdSubquery(String fqnHash) {
-    queryParams.put("domainFqnHash", fqnHash);
-    queryParams.put("domainFqnHashPrefix", fqnHash + Entity.SEPARATOR + "%");
-    return "SELECT id FROM domain_entity WHERE fqnHash = :domainFqnHash OR fqnHash LIKE :domainFqnHashPrefix";
+  // Domain ids are inlined as canonical UUIDs rather than bound, so Postgres plans each statement
+  // with the selected domains' real asset counts; a generic plan guesses an average domain (e.g. it
+  // scans a whole schema for an empty domain, or probes every asset of a large one).
+  private String domainIdList(String domainIds) {
+    List<String> ids =
+        Arrays.stream(domainIds.split(",")).map(String::trim).filter(id -> !id.isEmpty()).toList();
+    List<String> uuids = ids.stream().map(ListFilter::canonicalUuid).toList();
+    return ids.isEmpty() || uuids.contains(null)
+        ? buildIndexedBindParams("domainId", domainIds)
+        : uuids.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
+  }
+
+  private static String canonicalUuid(String value) {
+    try {
+      return UUID.fromString(value).toString();
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  // Keeps a domain's membership rows to the listed type, so a table list doesn't collect the
+  // domain's other assets (e.g. its dashboards) before matching ids. Inlined for the same planning
+  // reason as the ids; it is an entity type name (e.g. "table"), never user input.
+  private String domainEntityTypeCondition(String alias) {
+    String entityType = getQueryParam("domainEntityType");
+    return entityType == null || !ENTITY_TYPE_NAME.matcher(entityType).matches()
+        ? ""
+        : String.format(" AND %s.toEntity = '%s'", alias, entityType);
   }
 
   private String getDomainSelfCondition(String tableName) {

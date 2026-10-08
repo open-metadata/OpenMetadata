@@ -15,6 +15,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.function.Supplier;
+
 /**
  * Applies the global (navbar) domain filter to a list from the caller's persisted selected domain.
  *
@@ -62,8 +64,9 @@ public final class DomainNavFilter {
 
   /**
    * Stamps the selection onto {@code filter} when {@link #shouldApply} allows it. {@code
-   * selectedDomainFqnHash} lets the list also match assets in the selected domain's sub-domains
-   * (a parent pick includes its descendants); pass null to match the exact domain only.
+   * matchedDomainIds} supplies the comma-separated ids the list matches: the selected domain and
+   * its sub-domains, so a parent pick includes its descendants. It is only called when the filter
+   * applies.
    *
    * <p>An explicit {@code ?domain=} keeps control of which domain is listed. When it merely echoes
    * the request's active domain (the UI sends the navbar pick on every list call), it is the
@@ -75,14 +78,9 @@ public final class DomainNavFilter {
       String entityType,
       boolean supportsDomains,
       String selectedDomainIds,
-      String selectedDomainFqnHash) {
+      Supplier<String> matchedDomainIds) {
     apply(
-        filter,
-        entityType,
-        supportsDomains,
-        selectedDomainIds,
-        selectedDomainFqnHash,
-        ParentScope.NONE);
+        filter, entityType, supportsDomains, selectedDomainIds, matchedDomainIds, ParentScope.NONE);
   }
 
   /**
@@ -94,7 +92,7 @@ public final class DomainNavFilter {
       String entityType,
       boolean supportsDomains,
       String selectedDomainIds,
-      String selectedDomainFqnHash,
+      Supplier<String> matchedDomainIds,
       ParentScope parent) {
     String explicitDomainIds = filter.getQueryParams().get("domainId");
     boolean hasExplicitDomain = explicitDomainIds != null;
@@ -110,17 +108,11 @@ public final class DomainNavFilter {
     }
     if (shouldApply(
         entityType, supportsDomains, hasExplicitDomain && !echoesSelection, selectedDomainIds)) {
-      stamp(filter, selectedDomainIds, selectedDomainFqnHash);
+      filter.addQueryParam("domainId", matchedDomainIds.get());
+      filter.addQueryParam("domainEntityType", entityType);
       if (parent == ParentScope.IN_SELECTION) {
         filter.addQueryParam("domainAccessControl", Boolean.TRUE.toString());
       }
-    }
-  }
-
-  private static void stamp(ListFilter filter, String domainIds, String domainFqnHash) {
-    filter.addQueryParam("domainId", domainIds);
-    if (!nullOrEmpty(domainFqnHash)) {
-      filter.addQueryParam("domainFqnHash", domainFqnHash);
     }
   }
 }

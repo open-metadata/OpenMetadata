@@ -1143,10 +1143,25 @@ public final class EntityUtil {
         entityType,
         supportsDomains(entityType),
         selected == null ? null : selected.getId().toString(),
-        nullOrEmpty(selectedFqn) ? null : FullyQualifiedName.buildHash(selectedFqn),
+        () -> domainAndSubDomainIds(selected),
         nullOrEmpty(selectedFqn)
             ? DomainNavFilter.ParentScope.NONE
             : parentScope(parent.get(), selectedFqn));
+  }
+
+  // Resolved up front so list queries bind plain ids: planners estimate an id list well, but not a
+  // fqnHash LIKE inside the query (e.g. Postgres generic plans then probe every domain asset).
+  private static String domainAndSubDomainIds(EntityReference domain) {
+    String fqn = domain.getFullyQualifiedName();
+    if (nullOrEmpty(fqn)) {
+      return domain.getId().toString();
+    }
+    String fqnHash = FullyQualifiedName.buildHash(fqn);
+    List<String> ids =
+        Entity.getCollectionDAO()
+            .domainDAO()
+            .listSubtreeIds(fqnHash, fqnHash + Entity.SEPARATOR + "%");
+    return ids.isEmpty() ? domain.getId().toString() : String.join(",", ids);
   }
 
   // An allowed domain covers itself and its sub-domains, as domain access does.

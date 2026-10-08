@@ -48,6 +48,7 @@ import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO.UsageDetailsWithId;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GovernanceDAOs;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.ActiveDomainContext;
@@ -855,6 +856,7 @@ class EntityUtilTest {
 
   @Test
   void addDomainQueryParam_appliesNavbarDomainAsViewFilter() {
+    String subDomainId = UUID.randomUUID().toString();
     EntityReference selected =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -897,6 +899,7 @@ class EntityUtilTest {
             org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
       // Other test classes leave a SearchRepository set statically; pin the no-search fallback.
       entity.when(Entity::getSearchRepository).thenReturn(null);
+      stubSubDomainIds(entity, List.of(selected.getId().toString(), subDomainId));
       // Unit tests register no repositories; stand in for the intrinsic supportsDomains lookup.
       entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
       entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
@@ -935,9 +938,10 @@ class EntityUtilTest {
       EntityUtil.addDomainQueryParam(securityContext, restrictedFilter, "table");
 
       String id = selected.getId().toString();
-      assertEquals(id, viewFilter.getQueryParam("domainId"));
+      // the selected domain and its sub-domains
+      assertEquals(id + "," + subDomainId, viewFilter.getQueryParam("domainId"));
       assertNull(viewFilter.getQueryParam("domainAccessControl")); // a filter, never enforcement
-      assertEquals(id, adminFilter.getQueryParam("domainId"));
+      assertEquals(id + "," + subDomainId, adminFilter.getQueryParam("domainId"));
       assertTrue(excludedFilter.getQueryParams().isEmpty());
       assertEquals("'explicit'", explicitFilter.getQueryParam("domainId"));
       assertTrue(botFilter.getQueryParams().isEmpty());
@@ -1080,6 +1084,7 @@ class EntityUtilTest {
           .when(() -> Entity.getEntityRepository("glossaryTerm"))
           .thenReturn(domainAwareRepository);
       entity.when(Entity::getSearchRepository).thenReturn(null);
+      stubSubDomainIds(entity, List.of());
       entity
           .when(() -> Entity.getEntityReferenceById("domain", sales.getId(), NON_DELETED))
           .thenReturn(sales);
@@ -1234,6 +1239,7 @@ class EntityUtilTest {
             org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
       // Other test classes leave a SearchRepository set statically; pin the no-search fallback.
       entity.when(Entity::getSearchRepository).thenReturn(null);
+      stubSubDomainIds(entity, List.of());
       entity.when(() -> Entity.hasEntityRepository("table")).thenReturn(true);
       entity.when(() -> Entity.getEntityRepository("table")).thenReturn(domainAwareRepository);
       entity
@@ -1282,6 +1288,7 @@ class EntityUtilTest {
             org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
       // Other test classes leave a SearchRepository set statically; pin the no-search fallback.
       entity.when(Entity::getSearchRepository).thenReturn(null);
+      stubSubDomainIds(entity, List.of());
       entity.when(() -> Entity.hasEntityRepository("page")).thenReturn(true);
       entity.when(() -> Entity.getEntityRepository("page")).thenReturn(domainAwareRepository);
       entity
@@ -1339,6 +1346,7 @@ class EntityUtilTest {
         entity.when(() -> Entity.getEntityRepository(type)).thenReturn(domainAwareRepository);
       }
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      stubSubDomainIds(entity, List.of());
       entity
           .when(() -> Entity.getEntityReferenceById("domain", selected.getId(), NON_DELETED))
           .thenReturn(selected);
@@ -1602,5 +1610,16 @@ class EntityUtilTest {
     // Test that regular Unicode characters are preserved
     String unicodeFqn = "测试.データ.тест";
     assertEquals(unicodeFqn, encodeEntityFqnSafe(unicodeFqn));
+  }
+
+  // Stands in for the sub-domain lookup; an empty result leaves just the selected domain.
+  private static void stubSubDomainIds(MockedStatic<Entity> entity, List<String> ids) {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    GovernanceDAOs.DomainDAO domainDAO = mock(GovernanceDAOs.DomainDAO.class);
+    when(collectionDAO.domainDAO()).thenReturn(domainDAO);
+    when(domainDAO.listSubtreeIds(
+            org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
+        .thenReturn(ids);
+    entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
   }
 }
