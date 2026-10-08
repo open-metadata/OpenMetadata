@@ -28,6 +28,11 @@ export const FOLLOWED_ASSETS_QUERY_KEY = [
   'widgets',
   'followedAssets',
 ];
+export const CHANGED_FOLLOWED_COUNT_QUERY_KEY = [
+  'landingPage',
+  'widgets',
+  'changedFollowedCount',
+];
 
 export interface TrackedAsset {
   id: string;
@@ -40,12 +45,23 @@ export interface TrackedAsset {
 }
 
 export interface OwnedAndFollowed {
+  /** The first {@link PAGE_SIZE} owned assets, newest change first. */
   owned: TrackedAsset[];
+  /** The first {@link PAGE_SIZE} followed assets, newest change first. */
   followed: TrackedAsset[];
-  /** Followed assets touched inside the window — the card's headline number. */
+  /** Every asset the user owns — not just the rows on screen. */
+  ownedTotal: number;
+  /** Every asset the user follows — not just the rows on screen. */
+  followedTotal: number;
+  /**
+   * Followed assets touched inside the window, counted by the search engine
+   * across all of them — the card's headline number.
+   */
   changedCount: number;
   isLoading: boolean;
   isError: boolean;
+  /** Re-runs whichever of the searches failed. */
+  refetch: () => void;
 }
 
 interface SearchHit {
@@ -58,6 +74,11 @@ interface SearchHit {
     serviceType?: string;
     updatedAt?: number;
   };
+}
+
+interface TrackedPage {
+  hits: SearchHit[];
+  total: number;
 }
 
 const toAssets = (hits: SearchHit[], since: number): TrackedAsset[] =>
@@ -73,7 +94,7 @@ const toAssets = (hits: SearchHit[], since: number): TrackedAsset[] =>
 const runSearch = async (
   searchIndex: SearchIndex,
   filter: Record<string, string | string[]>
-) => {
+): Promise<TrackedPage> => {
   // Sorted newest-first because the card only has room for PAGE_SIZE rows: the
   // assets worth surfacing in that slice are the ones that just moved, which is
   // also what the "recently moved" summary above the list claims to describe.
@@ -84,24 +105,59 @@ const runSearch = async (
     searchIndex,
     sortField: 'updatedAt',
     sortOrder: 'desc',
+    trackTotalHits: true,
   });
 
-  return (response.hits?.hits ?? []) as unknown as SearchHit[];
+  return {
+    hits: (response.hits?.hits ?? []) as unknown as SearchHit[],
+    total: response.hits?.total?.value ?? 0,
+  };
 };
 
 /**
+ * How many followed assets changed inside the window, as a size-0 count: the
+ * five rows on screen are a sample, and counting changes among them alone
+ * would cap the headline at five.
+ */
+const countChangedFollowed = async (
+  userId: string,
+  since: number
+): Promise<number> => {
+  const response = await searchQuery({
+    pageNumber: 1,
+    pageSize: 0,
+    queryFilter: {
+      query: {
+        bool: {
+          must: [
+            { term: { followers: userId } },
+            { range: { updatedAt: { gte: since } } },
+          ],
+        },
+      },
+    },
+    searchIndex: SearchIndex.ALL,
+    trackTotalHits: true,
+  });
+
+  return response.hits?.total?.value ?? 0;
+};
+
+const windowStart = () => Date.now() - CHANGE_WINDOW_DAYS * DAY_MS;
+
+/**
  * The assets a user owns and the ones they follow, flagged with whether each
- * moved inside the change window.
+ * moved inside the change window, plus the real totals behind both lists.
  *
  * `updatedAt` is the only change signal on the search document, so this reports
  * *that* an asset changed, not what changed about it — distinguishing a schema
  * edit from a lost certification needs the change-event history.
  */
 export const useOwnedAndFollowed = (userId?: string): OwnedAndFollowed => {
-  const since = Date.now() - CHANGE_WINDOW_DAYS * DAY_MS;
+  const since = windowStart();
   const enabled = Boolean(userId);
 
-  const [ownedQuery, followedQuery] = useQueries({
+  const [ownedQuery, followedQuery, changedQuery] = useQueries({
     queries: [
       {
         enabled,
@@ -117,19 +173,32 @@ export const useOwnedAndFollowed = (userId?: string): OwnedAndFollowed => {
         queryKey: [...FOLLOWED_ASSETS_QUERY_KEY, userId],
         staleTime: TTL_MS,
       },
+      {
+        enabled,
+        // The window is computed when the request runs, not when the key is
+        // built, so the key stays stable across renders.
+        queryFn: () => countChangedFollowed(userId ?? '', windowStart()),
+        queryKey: [...CHANGED_FOLLOWED_COUNT_QUERY_KEY, userId],
+        staleTime: TTL_MS,
+      },
     ],
   });
 
-  const owned = toAssets(ownedQuery.data ?? [], since);
-  const followed = toAssets(followedQuery.data ?? [], since);
+  const queries = [ownedQuery, followedQuery, changedQuery];
 
   return {
-    changedCount: followed.filter((asset) => asset.hasChanged).length,
-    followed,
-    isError: ownedQuery.isError || followedQuery.isError,
+    changedCount: changedQuery.data ?? 0,
+    followed: toAssets(followedQuery.data?.hits ?? [], since),
+    followedTotal: followedQuery.data?.total ?? 0,
+    isError: queries.some((query) => query.isError),
     // Disabled queries stay pending forever, so gate on `enabled` too or the
     // card would sit in a permanent skeleton before the user resolves.
-    isLoading: enabled && (ownedQuery.isPending || followedQuery.isPending),
-    owned,
+    isLoading: enabled && queries.some((query) => query.isPending),
+    owned: toAssets(ownedQuery.data?.hits ?? [], since),
+    ownedTotal: ownedQuery.data?.total ?? 0,
+    refetch: () =>
+      queries
+        .filter((query) => query.isError)
+        .forEach((query) => void query.refetch()),
   };
 };

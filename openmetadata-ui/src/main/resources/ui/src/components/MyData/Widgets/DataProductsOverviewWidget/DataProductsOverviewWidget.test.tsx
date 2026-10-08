@@ -13,11 +13,17 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { useDataProducts } from '../../../../hooks/useDataProducts';
+import { OverviewFilter } from '../../../../hooks/useDomainOverview';
 import { FilterButtonOption } from '../Common/TopicWidget/FilterButton';
 import DataProductsOverviewWidget from './DataProductsOverviewWidget';
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    // Echoes the count, so a test can tell which bucket a label describes.
+    t: (key: string, options?: { count?: number }) =>
+      options?.count === undefined ? key : `${key}:${options.count}`,
+    i18n: { language: 'en' },
+  }),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -27,6 +33,11 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../../hooks/useDataProducts', () => ({
   useDataProducts: jest.fn(),
+}));
+
+// Plain, not virtual: only the enum is read, and the hook module is real.
+jest.mock('../../../../hooks/useDomainOverview', () => ({
+  OverviewFilter: { ALL: 'all', EMPTY: 'empty', NO_OWNER: 'noOwner' },
 }));
 
 // The real control is a popover listbox; here each option is a button so a
@@ -97,16 +108,20 @@ const PRODUCTS = [
   },
 ];
 
-const renderWidget = () => {
-  (useDataProducts as jest.Mock).mockReturnValue({
-    domainCount: 2,
-    emptyCount: 2,
-    isError: false,
-    isLoading: false,
-    products: PRODUCTS,
-    totalCount: PRODUCTS.length,
-    unownedCount: 1,
-  });
+const OVERVIEW = {
+  domainCount: 2,
+  emptyCount: 2,
+  isError: false,
+  isFetching: false,
+  isLoading: false,
+  products: PRODUCTS,
+  refetch: jest.fn(),
+  totalCount: 40,
+  unownedCount: 1,
+};
+
+const renderWidget = (overview: Partial<typeof OVERVIEW> = {}) => {
+  (useDataProducts as jest.Mock).mockReturnValue({ ...OVERVIEW, ...overview });
 
   return render(
     <DataProductsOverviewWidget widgetKey="KnowledgePanel.DataProducts-1" />
@@ -177,5 +192,74 @@ describe('DataProductsOverviewWidget sort', () => {
       expect.stringContaining('Campaign Attribution'),
       expect.stringContaining('Marketing Analytics'),
     ]);
+  });
+});
+
+describe('DataProductsOverviewWidget buckets', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // The chips used to filter the ten rows in hand, so "Empty" could show none
+  // of an estate's hundred empty products.
+  it('queries the selected bucket instead of filtering the page', () => {
+    renderWidget();
+
+    expect(useDataProducts).toHaveBeenLastCalledWith(OverviewFilter.ALL);
+
+    fireEvent.click(screen.getByTestId('data-products-filter-empty'));
+
+    expect(useDataProducts).toHaveBeenLastCalledWith(OverviewFilter.EMPTY);
+  });
+
+  it('shows the estate-wide count on each chip', () => {
+    renderWidget();
+
+    expect(
+      screen.getByTestId('data-products-filter-all-count')
+    ).toHaveTextContent('40');
+    expect(
+      screen.getByTestId('data-products-filter-noOwner-count')
+    ).toHaveTextContent('1');
+    expect(
+      screen.getByTestId('data-products-filter-empty-count')
+    ).toHaveTextContent('2');
+  });
+
+  // The status chip and the footer used to print the same "N products".
+  it('does not repeat the status in the footer', () => {
+    renderWidget();
+
+    expect(screen.getByTestId('topic-status-dataProducts')).toHaveTextContent(
+      'message.count-unowned:1'
+    );
+    // 40 products, 4 listed.
+    expect(
+      screen.getByText('message.count-more-data-products:36')
+    ).toBeInTheDocument();
+  });
+
+  it('pluralises the asset count rather than gluing a label to a number', () => {
+    renderWidget();
+
+    expect(
+      screen.getAllByTestId('data-product-asset-count')[0]
+    ).toHaveTextContent(/^label\.count-asset:\d+$/);
+  });
+
+  it('keeps the owner apart from the domain instead of splicing a separator in', () => {
+    renderWidget();
+
+    const owners = screen
+      .getAllByTestId('data-product-owner')
+      .map((node) => node.textContent);
+
+    expect(owners).toContain('Dale Kim');
+    expect(owners.some((text) => text?.includes('·'))).toBe(false);
+  });
+
+  it('shows an error body, not the empty-state copy, when the fetch fails', () => {
+    renderWidget({ isError: true, products: [], totalCount: 0 });
+
+    expect(screen.getByTestId('topic-error-dataProducts')).toBeInTheDocument();
+    expect(screen.queryByText('message.no-data-products-yet')).toBeNull();
   });
 });

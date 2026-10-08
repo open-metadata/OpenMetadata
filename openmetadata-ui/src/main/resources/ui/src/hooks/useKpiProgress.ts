@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { Kpi } from '../generated/dataInsight/kpi/kpi';
+import { PAGE_SIZE_LARGE } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
+import { Kpi, KpiTargetType } from '../generated/dataInsight/kpi/kpi';
 import { getListKpiResult, getListKPIs } from '../rest/KpiAPI';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -41,6 +43,8 @@ export interface KpiProgress {
   /** Latest observed value, in the KPI's own units. */
   current: number;
   target: number;
+  /** Whether `current` and `target` are percentages or plain counts. */
+  metricType: KpiTargetType;
   endDate: number;
   /** Change across the window; null when there is no earlier point. */
   delta: number | null;
@@ -56,13 +60,21 @@ export interface KpiProgress {
   /** The window the series covers, for the sparkline's axis labels. */
   windowStart: number;
   windowEnd: number;
+  /**
+   * Days the selected range spans, for the "in the last N days" wording; null
+   * on all time, where each KPI is read from its own start date instead.
+   */
+  windowDays: number | null;
 }
 
 export interface KpiOverview {
   kpis: KpiProgress[];
   atRiskCount: number;
+  /** First load only — a range switch keeps the previous KPIs on screen. */
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
+  refetch: () => void;
 }
 
 /**
@@ -70,18 +82,23 @@ export interface KpiOverview {
  *
  * This is deliberately client-side arithmetic over data the KPI endpoints
  * already return — no projection field exists on the API, and none is needed.
+ *
+ * `spanDays` is the distance between the first and last result, not the
+ * selected window: a KPI that only started reporting a week into a 30-day
+ * window moved its whole delta in that week, and spreading it over thirty
+ * days understated the rate and called the KPI at risk.
  */
 export const projectValue = (
   series: number[],
-  windowDays: number,
+  spanDays: number,
   daysLeft: number
 ): number | null => {
-  if (series.length < 2 || windowDays <= 0) {
+  if (series.length < 2 || spanDays <= 0) {
     return null;
   }
   const first = series[0];
   const last = series[series.length - 1];
-  const perDay = (last - first) / windowDays;
+  const perDay = (last - first) / spanDays;
 
   return last + perDay * daysLeft;
 };
@@ -108,26 +125,52 @@ export const resolveStatus = (
   return projected >= target ? 'onTrack' : 'atRisk';
 };
 
+interface KpiSeries {
+  /** Value per day, oldest first. */
+  series: number[];
+  /** Days between the first and last result — what the rate is measured over. */
+  spanDays: number;
+}
+
 const seriesFor = (
   results: Array<{ count: number; day: number }>
-): number[] => {
+): KpiSeries => {
   const byDay = new Map<number, number>();
   results.forEach((row) => byDay.set(row.day, row.count));
+  const days = Array.from(byDay.entries()).sort(([a], [b]) => a - b);
+  const spanDays =
+    days.length > 1 ? (days[days.length - 1][0] - days[0][0]) / DAY_MS : 0;
 
-  return Array.from(byDay.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([, value]) => value);
+  return { series: days.map(([, value]) => value), spanDays };
 };
 
 interface KpiResultWindow {
   /** End of the window actually fetched, not of the current clock. */
   end: number;
+  /** The range this answer was fetched for — null on all time. */
+  windowDays: number | null;
   /**
    * `start` is per entry, not shared: on "All time" each KPI is read from its
    * own start date, so one global bound could not describe the set.
    */
-  entries: Array<{ kpi: Kpi; series: number[]; start: number }>;
+  entries: Array<{ kpi: Kpi; start: number } & KpiSeries>;
 }
+
+/**
+ * Every KPI, following the paging cursor: the list endpoint defaults to ten,
+ * and an estate with more targets than that silently lost the rest.
+ */
+const fetchAllKpis = async (after?: string): Promise<Kpi[]> => {
+  const { data, paging } = await getListKPIs({
+    after,
+    fields: TabSpecificField.DATA_INSIGHT_CHART,
+    limit: PAGE_SIZE_LARGE,
+  });
+
+  return paging?.after
+    ? [...data, ...(await fetchAllKpis(paging.after))]
+    : data;
+};
 
 /**
  * The KPIs and their results over one window.
@@ -142,7 +185,7 @@ interface KpiResultWindow {
  */
 const fetchKpiProgress = async (range: KpiWindow): Promise<KpiResultWindow> => {
   const end = Date.now();
-  const { data: kpis } = await getListKPIs({ fields: 'dataInsightChart' });
+  const kpis = await fetchAllKpis();
   const startOf = (kpi: Kpi) =>
     range === KPI_ALL_TIME ? kpi.startDate : end - range * DAY_MS;
 
@@ -160,9 +203,10 @@ const fetchKpiProgress = async (range: KpiWindow): Promise<KpiResultWindow> => {
     end,
     entries: kpis.map((kpi, index) => ({
       kpi,
-      series: seriesFor(results[index]?.results ?? []),
+      ...seriesFor(results[index]?.results ?? []),
       start: startOf(kpi),
     })),
+    windowDays: range === KPI_ALL_TIME ? null : range,
   };
 };
 
@@ -170,7 +214,11 @@ const fetchKpiProgress = async (range: KpiWindow): Promise<KpiResultWindow> => {
 export const useKpiProgress = (
   range: KpiWindow = KPI_WINDOW_DAYS
 ): KpiOverview => {
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isFetching, isError, refetch } = useQuery({
+    // Keeps the previous range's KPIs on screen while the next one loads, so a
+    // range switch dims the card instead of swapping it for a skeleton — which
+    // unmounted the range filter mid-interaction and dropped its focus.
+    placeholderData: keepPreviousData,
     queryFn: () => fetchKpiProgress(range),
     // The window is part of the identity: without it a switch to 90 days would
     // be served the cached 30-day series and silently project off the wrong rate.
@@ -186,12 +234,11 @@ export const useKpiProgress = (
   return useMemo(() => {
     const end = data?.end ?? 0;
     const progress: KpiProgress[] = (data?.entries ?? []).map(
-      ({ kpi, series, start }) => {
-        // Measured off the bounds actually fetched rather than the argument:
+      ({ kpi, series, spanDays, start }) => {
+        // Measured off the results actually fetched rather than the argument:
         // while a window switch is in flight the series in hand is still the
         // previous window's, and projecting it over the newly selected span
         // would report a rate nobody measured.
-        const spanDays = Math.max(1, Math.round((end - start) / DAY_MS));
         const current = series.length > 0 ? series[series.length - 1] : 0;
         const daysLeft = Math.max(0, Math.ceil((kpi.endDate - end) / DAY_MS));
         const projected = projectValue(series, spanDays, daysLeft);
@@ -205,11 +252,13 @@ export const useKpiProgress = (
           // `Kpi.id` is optional on the generated type; the FQN identifies a KPI
           // just as well and is what its results are fetched by.
           id: kpi.id ?? kpi.fullyQualifiedName ?? kpi.name,
+          metricType: kpi.metricType,
           name: kpi.displayName ?? kpi.name,
           projected,
           series,
           status: resolveStatus(projected, kpi.targetValue, daysLeft, current),
           target: kpi.targetValue,
+          windowDays: data?.windowDays ?? null,
           windowEnd: end,
           windowStart: start,
         };
@@ -219,8 +268,10 @@ export const useKpiProgress = (
     return {
       atRiskCount: progress.filter((kpi) => kpi.status !== 'onTrack').length,
       isError,
+      isFetching,
       isLoading: isPending,
       kpis: progress,
+      refetch: () => void refetch(),
     };
-  }, [data, isPending, isError]);
+  }, [data, isPending, isFetching, isError, refetch]);
 };

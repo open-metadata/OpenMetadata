@@ -11,77 +11,87 @@
  *  limitations under the License.
  */
 
-import { TFunction } from 'i18next';
-import { ActivityEventType } from '../../../../../generated/entity/activity/activityEvent';
+import React from 'react';
+import { Trans } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import {
+  ActivityEvent,
+  ActivityEventType,
+} from '../../../../../generated/entity/activity/activityEvent';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+
+const UPDATED = 'message.activity-actor-updated-entity';
+const DELETED = 'message.activity-actor-deleted-entity';
+const STATUS_CHANGED = 'message.activity-actor-changed-status-of-entity';
 
 /**
- * The phrase between the actor and the entity, e.g. "added tags to".
+ * One whole sentence per event, with the actor and the entity as its slots.
  *
- * OSS builds the same sentences in `FeedUtils`' ACTIVITY_EVENT_HEADER_RENDERERS,
- * but that map is unexported and returns Ant Design nodes, so it cannot be
- * reused here. The label keys below are the ones it uses, so the wording stays
- * identical across both feeds without adding a translation per verb.
+ * Each sentence is translated as a unit rather than assembled from a verb and
+ * a field noun, so a locale can order the parts its own way and keep its own
+ * capitalisation (a German noun stays capitalised mid-sentence).
  */
-const UPDATED = 'label.updated-lowercase';
-const ADDED = 'label.added-lowercase';
-
-const FIELD_VERBS: Partial<
-  Record<ActivityEventType, { field: string; action: string }>
-> = {
-  [ActivityEventType.ColumnDescriptionUpdated]: {
-    action: UPDATED,
-    field: 'label.description',
-  },
-  [ActivityEventType.ColumnTagsUpdated]: {
-    action: ADDED,
-    field: 'label.tag-plural',
-  },
-  [ActivityEventType.DescriptionUpdated]: {
-    action: UPDATED,
-    field: 'label.description',
-  },
-  [ActivityEventType.DomainUpdated]: {
-    action: UPDATED,
-    field: 'label.domain',
-  },
-  [ActivityEventType.OwnerUpdated]: {
-    action: UPDATED,
-    field: 'label.owner',
-  },
-  [ActivityEventType.TagsUpdated]: {
-    action: ADDED,
-    field: 'label.tag-plural',
-  },
-  [ActivityEventType.TierUpdated]: {
-    action: UPDATED,
-    field: 'label.tier',
-  },
-};
-
-const SIMPLE_VERBS: Partial<Record<ActivityEventType, string>> = {
-  [ActivityEventType.EntityCreated]: 'label.created-lowercase',
-  [ActivityEventType.EntityDeleted]: 'label.deleted-lowercase',
-  [ActivityEventType.EntityRestored]: 'label.restored-lowercase',
-  [ActivityEventType.EntitySoftDeleted]: 'label.deleted-lowercase',
+const SENTENCE_KEYS: Partial<Record<ActivityEventType, string>> = {
+  [ActivityEventType.ColumnDescriptionUpdated]:
+    'message.activity-actor-updated-column-description-of-entity',
+  [ActivityEventType.ColumnTagsUpdated]:
+    'message.activity-actor-updated-column-tags-of-entity',
+  [ActivityEventType.CustomPropertyUpdated]:
+    'message.activity-actor-updated-custom-property-of-entity',
+  [ActivityEventType.DescriptionUpdated]:
+    'message.activity-actor-updated-description-of-entity',
+  [ActivityEventType.DomainUpdated]:
+    'message.activity-actor-updated-domain-of-entity',
+  [ActivityEventType.EntityCreated]: 'message.activity-actor-created-entity',
+  [ActivityEventType.EntityDeleted]: DELETED,
+  [ActivityEventType.EntityRestored]: 'message.activity-actor-restored-entity',
+  [ActivityEventType.EntitySoftDeleted]: DELETED,
   [ActivityEventType.EntityUpdated]: UPDATED,
+  [ActivityEventType.OwnerUpdated]:
+    'message.activity-actor-updated-owners-of-entity',
+  [ActivityEventType.PipelineStatusChanged]: STATUS_CHANGED,
+  [ActivityEventType.TagsUpdated]:
+    'message.activity-actor-updated-tags-of-entity',
+  [ActivityEventType.TestCaseStatusChanged]: STATUS_CHANGED,
+  [ActivityEventType.TierUpdated]:
+    'message.activity-actor-updated-tier-of-entity',
 };
 
-/**
- * Renders as "<actor> {verb} <entity>", so the phrase carries the preposition
- * and the caller supplies both ends.
- */
-export const getActivityVerb = (
-  eventType: ActivityEventType,
-  t: TFunction
-): string => {
-  const fieldVerb = FIELD_VERBS[eventType];
-  if (fieldVerb) {
-    return `${t(fieldVerb.action)} ${t(fieldVerb.field).toLowerCase()}`;
-  }
+/** An unmapped event still reads as a generic update rather than a gap. */
+export const getActivitySentenceKey = (eventType: ActivityEventType): string =>
+  SENTENCE_KEYS[eventType] ?? UPDATED;
 
-  const simpleVerb = SIMPLE_VERBS[eventType];
+export interface ActivitySentenceProps {
+  event: ActivityEvent;
+  /**
+   * Where the entity name links to. Omit it where the sentence sits inside
+   * another control (a card header's toggle), which must not nest a link.
+   */
+  entityLink?: string;
+}
 
-  // An unmapped event still reads sensibly as a generic update rather than
-  // leaving a gap in the sentence.
-  return t(simpleVerb ?? UPDATED);
-};
+/** "<actor> updated the description of <entity>", translated as one sentence. */
+export const ActivitySentence: React.FC<ActivitySentenceProps> = ({
+  event,
+  entityLink,
+}) => (
+  <Trans
+    components={{
+      actor: <span className="tw:font-medium tw:text-text-primary" />,
+      entity: entityLink ? (
+        <Link
+          className="tw:font-medium tw:text-brand-secondary"
+          data-testid={`activity-entity-link-${event.id}`}
+          to={entityLink}
+        />
+      ) : (
+        <span className="tw:font-medium tw:text-text-primary" />
+      ),
+    }}
+    i18nKey={getActivitySentenceKey(event.eventType)}
+    values={{
+      actor: getEntityName(event.actor),
+      entity: getEntityName(event.entity),
+    }}
+  />
+);

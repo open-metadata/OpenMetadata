@@ -13,12 +13,13 @@
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { Sort } from '@openmetadata/ui-core-components/icons';
+import { Config } from '@react-awesome-query-builder/ui';
 import React, { lazy, useCallback, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../../../constants/constants';
 import { CURATED_ASSETS_WIDGET_DEFAULT_VALUES } from '../../../../constants/CustomizeMyDataPage.constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
   CuratedAssetsSource,
   useCuratedAssets,
@@ -27,9 +28,18 @@ import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../../interface/customization.interface';
-import { DEFAULT_CURATED_RULE } from '../../../../utils/curatedRule';
+import { getExploreURLForAdvancedFilter } from '../../../../utils/CuratedAssetsPureUtils';
+import {
+  buildCuratedQueryFilter,
+  DEFAULT_CURATED_RULE,
+  describeCuratedRule,
+} from '../../../../utils/curatedRule';
+import { getExplorePath } from '../../../../utils/RouterUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import {
+  AdvanceSearchProvider,
+  useAdvanceSearch,
+} from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
 import CuratedAssetRows from './CuratedAssetRows';
@@ -48,6 +58,33 @@ const TONE = {
 
 export type CuratedAssetsSummaryWidgetProps = WidgetCommonProps;
 
+/**
+ * Explore opened on the same rule the card counts, so "View all matches" lands
+ * on those matches rather than on the unfiltered estate. A saved filter goes
+ * through the advanced-search tree the persona editor built it with — the link
+ * the previous Curated Assets widget gave; the chip rule is plain term clauses,
+ * which Explore takes directly as a quick filter.
+ */
+const getCuratedExploreURL = (
+  { queryFilter, resources, rule }: CuratedAssetsSource,
+  config: Config
+): string => {
+  if (queryFilter) {
+    return getExploreURLForAdvancedFilter({
+      config,
+      queryFilter,
+      selectedResource: resources?.length ? resources : [EntityType.ALL],
+    });
+  }
+
+  return getExplorePath({
+    extraParameters: {
+      quickFilter: JSON.stringify(buildCuratedQueryFilter(rule)),
+    },
+    isPersistFilters: false,
+  });
+};
+
 /** The assets matching a saved rule, e.g. certified Tier-1 tables. */
 const CuratedAssetsSummaryWidgetContent: React.FC<
   CuratedAssetsSummaryWidgetProps
@@ -59,8 +96,9 @@ const CuratedAssetsSummaryWidgetContent: React.FC<
   handleLayoutUpdate,
   handleSaveLayout,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { config: searchConfig } = useAdvanceSearch();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Read off the layout, not the `widgetConfig` prop: `getWidgetFromKey` — the
@@ -86,7 +124,13 @@ const CuratedAssetsSummaryWidgetContent: React.FC<
   const hasSavedFilter = Boolean(source.queryFilter);
   const savedTitle = config?.title as string | undefined;
 
-  const { assets, totalCount, isError, isLoading } = useCuratedAssets(source);
+  const { assets, totalCount, isError, isLoading, refetch } =
+    useCuratedAssets(source);
+
+  const exploreURL = useMemo(
+    () => getCuratedExploreURL(source, searchConfig),
+    [source, searchConfig]
+  );
 
   // Writing the config back onto this widget's layout entry is the only way it
   // is persisted -- the rule lives on the persona's page layout, not on an
@@ -124,46 +168,46 @@ const CuratedAssetsSummaryWidgetContent: React.FC<
   // Chips describe the built-in rule only; a saved advanced filter is arbitrary
   // JSON that cannot be rendered back as `<field> is <value>` clauses.
   const ruleClauses = hasSavedFilter ? [] : DEFAULT_CURATED_RULE;
-  const ruleText = ruleClauses
-    .map((clause) => `${t(clause.labelKey)} is ${clause.displayValue}`)
-    .join(', ');
   const remaining = Math.max(0, totalCount - assets.length);
+  const matchCount = t('message.count-assets-match-rule', {
+    count: totalCount,
+  });
+  // The chip rule reads as the summary, with the match count beside the
+  // title; a saved filter has no phrase to show, so its count is the summary
+  // instead — never both, which said the count twice.
+  const headline =
+    ruleClauses.length > 0
+      ? {
+          status: { color: 'gray' as const, label: matchCount },
+          summary: describeCuratedRule(ruleClauses, t, i18n.language),
+        }
+      : { status: undefined, summary: matchCount };
 
   return (
     <>
       <TopicCard
         action={{
           label: t('label.view-all-entity', {
-            entity: t('label.match-plural'),
+            entity: t('label.matches'),
           }),
-          onPress: () => navigate(ROUTES.EXPLORE),
+          onPress: () => navigate(exploreURL),
         }}
         handleRemoveWidget={handleRemoveWidget}
         isEditView={isEditView}
+        isError={isError}
         isLoading={isLoading}
         meta={
           remaining > 0
             ? t('message.count-more-assets-match-rule', { count: remaining })
             : undefined
         }
-        status={{
-          color: 'gray',
-          label: t('message.count-assets-match-rule', { count: totalCount }),
-        }}
-        summary={
-          isError
-            ? t('message.something-went-wrong')
-            : [
-                t('message.count-assets-match-rule', { count: totalCount }),
-                ruleText,
-              ]
-                .filter(Boolean)
-                .join(' · ')
-        }
-        title={savedTitle || t('label.curated-assets')}
+        status={headline.status}
+        summary={headline.summary}
+        title={savedTitle || t('label.curated-asset-plural')}
         tone={TONE}
         topicKey={TopicKey.CURATED_ASSETS}
-        widgetKey={widgetKey}>
+        widgetKey={widgetKey}
+        onRetry={refetch}>
         {isUnconfigured && (
           <div
             className="tw:flex tw:flex-col tw:items-start tw:gap-3"

@@ -93,4 +93,18 @@ describe('ConnectorBreakdown', () => {
 
     expect(container).toBeEmptyDOMElement();
   });
+
+  // The folded tail is named in the reader's locale, not by the hook.
+  it('labels the folded tail as Other', () => {
+    render(
+      <ConnectorBreakdown
+        connectors={[...CONNECTORS, { count: 9, key: '__other__', name: '' }]}
+        format={(value) => String(value)}
+      />
+    );
+
+    expect(screen.getAllByTestId('connector-name')[3]).toHaveTextContent(
+      'label.other'
+    );
+  });
 });

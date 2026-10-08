@@ -16,6 +16,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { SearchIndex } from '../enums/search.enum';
 import { queryClient } from '../queryClient';
+import { postAggregateFieldOptions } from '../rest/miscAPI';
 import { searchQuery } from '../rest/searchAPI';
 import {
   buildCuratedQueryFilter,
@@ -27,7 +28,30 @@ jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
+jest.mock('../rest/miscAPI', () => ({
+  postAggregateFieldOptions: jest.fn(),
+}));
+
 const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
+const mockAggregate = postAggregateFieldOptions as jest.MockedFunction<
+  typeof postAggregateFieldOptions
+>;
+
+/** The test-case index's answer: one bucket per asset with a failing test. */
+const failingAssets = (...fqns: string[]) =>
+  ({
+    data: {
+      aggregations: {
+        'sterms#originEntityFQN': {
+          // Normalised to lowercase on the index.
+          buckets: fqns.map((key) => ({
+            doc_count: 1,
+            key: key.toLowerCase(),
+          })),
+        },
+      },
+    },
+  } as never);
 
 const hit = (name: string, extra: Record<string, unknown> = {}) => ({
   _source: {
@@ -60,6 +84,7 @@ describe('useCuratedAssets', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     queryClient.clear();
+    mockAggregate.mockResolvedValue(failingAssets());
   });
 
   it('reports the rule total, not just the page it renders', async () => {
@@ -97,19 +122,13 @@ describe('useCuratedAssets', () => {
     expect(result.current.assets[0].tier).toBe('Tier1');
   });
 
-  it('marks an asset unhealthy only when a test is actually failing', async () => {
+  // No data-asset document carries a test outcome — the `failedTestCases`
+  // this read before is on no index, so every row showed a green dot.
+  it('marks an asset unhealthy only when the test-case index has it failing', async () => {
     mockSearchQuery.mockResolvedValue({
-      hits: {
-        hits: [
-          hit('failing', { failedTestCases: 2 }),
-          hit('passing', { failedTestCases: 0 }),
-          // No test counts at all: nothing is known to be failing, which is
-          // not the same as a warning the user can act on.
-          hit('untested'),
-        ],
-        total: { value: 3 },
-      },
+      hits: { hits: [hit('Failing'), hit('passing')], total: { value: 2 } },
     } as never);
+    mockAggregate.mockResolvedValue(failingAssets('svc.db.Failing'));
 
     const { result } = renderHook(
       () => useCuratedAssets({ rule: DEFAULT_CURATED_RULE }),
@@ -118,13 +137,45 @@ describe('useCuratedAssets', () => {
       }
     );
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() =>
+      expect(result.current.assets[0]?.isHealthy).toBeDefined()
+    );
 
     expect(result.current.assets.map((a) => a.isHealthy)).toEqual([
       false,
       true,
-      true,
     ]);
+
+    // One aggregation for the whole page, scoped to its FQNs and to failures.
+    expect(mockAggregate).toHaveBeenCalledTimes(1);
+
+    const request = mockAggregate.mock.calls[0][0];
+
+    expect(request.fieldName).toBe('originEntityFQN');
+    expect(request.index).toBe(SearchIndex.TEST_CASE);
+    expect(request.query).toContain('svc.db.Failing');
+    expect(request.query).toContain('Failed');
+  });
+
+  it('shows no health at all when the test lookup fails', async () => {
+    mockSearchQuery.mockResolvedValue({
+      hits: { hits: [hit('a')], total: { value: 1 } },
+    } as never);
+    mockAggregate.mockRejectedValue(new Error('network'));
+
+    const { result } = renderHook(
+      () => useCuratedAssets({ rule: DEFAULT_CURATED_RULE }),
+      {
+        wrapper,
+      }
+    );
+
+    await waitFor(() => expect(mockAggregate).toHaveBeenCalled());
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+
+    // Unknown, not healthy — and the card itself is not in error.
+    expect(result.current.assets[0].isHealthy).toBeUndefined();
+    expect(result.current.isError).toBe(false);
   });
 
   it('narrows the saved filter by entity type rather than by index', async () => {

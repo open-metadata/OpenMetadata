@@ -17,8 +17,14 @@ import React from 'react';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { queryClient } from '../queryClient';
 import { getListTestCaseBySearch } from '../rest/testAPI';
-import { DEFAULT_DATA_QUALITY_FILTERS } from '../utils/dataQualityFilters';
-import { useDataQualitySummary } from './useDataQualitySummary';
+import {
+  DataQualityRange,
+  DEFAULT_DATA_QUALITY_FILTERS,
+} from '../utils/dataQualityFilters';
+import {
+  DATA_QUALITY_FAILED_ROWS,
+  useDataQualitySummary,
+} from './useDataQualitySummary';
 
 jest.mock('../rest/testAPI', () => ({
   getListTestCaseBySearch: jest.fn(),
@@ -119,7 +125,11 @@ describe('useDataQualitySummary', () => {
       params?.limit,
     ]);
 
-    expect(limits).toContainEqual([TestCaseStatus.Failed, 10]);
+    // Exactly the rows the card lists, so "N more" is the bucket minus them.
+    expect(limits).toContainEqual([
+      TestCaseStatus.Failed,
+      DATA_QUALITY_FAILED_ROWS,
+    ]);
     expect(limits).toContainEqual([TestCaseStatus.Success, 1]);
     expect(limits).toContainEqual([TestCaseStatus.Aborted, 1]);
   });
@@ -138,5 +148,35 @@ describe('useDataQualitySummary', () => {
 
     expect(result.current.total).toBe(0);
     expect(result.current.failedTests).toEqual([]);
+  });
+
+  // A filter change is a new key; without placeholder data the card dropped
+  // back to its first-load skeleton and unmounted the dropdown just used.
+  it('keeps the previous counts on screen while a filter change loads', async () => {
+    respondByStatus({
+      [TestCaseStatus.Aborted]: 0,
+      [TestCaseStatus.Failed]: 3,
+      [TestCaseStatus.Success]: 7,
+    });
+
+    const { result, rerender } = renderHook(
+      ({ filters }) => useDataQualitySummary(filters),
+      { initialProps: { filters: DEFAULT_DATA_QUALITY_FILTERS }, wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    mockSearch.mockReturnValue(new Promise(() => undefined));
+    rerender({
+      filters: {
+        ...DEFAULT_DATA_QUALITY_FILTERS,
+        range: DataQualityRange.LAST_30_DAYS,
+      },
+    });
+
+    await waitFor(() => expect(result.current.isFetching).toBe(true));
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.total).toBe(10);
   });
 });

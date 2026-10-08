@@ -12,12 +12,16 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { TestCaseStatus } from '../generated/tests/testCase';
 import type { QueryFilterInterface } from '../interface/queryFilter.interface';
+import { postAggregateFieldOptions } from '../rest/miscAPI';
 import { searchQuery } from '../rest/searchAPI';
 import { getModifiedQueryFilterWithSelectedAssets } from '../utils/CuratedAssetsPureUtils';
 import { buildCuratedQueryFilter, CuratedRule } from '../utils/curatedRule';
+import { getAggregations } from '../utils/ExplorePureUtils';
 
 export const CURATED_ASSETS_QUERY_KEY = [
   'landingPage',
@@ -34,8 +38,12 @@ export interface CuratedAsset {
   entityType: string;
   serviceType?: string;
   tier?: string;
-  /** False when the asset has an open incident or a failing test. */
-  isHealthy: boolean;
+  /**
+   * False when a test case on the asset is currently failing. Undefined until
+   * that lookup answers — and for good if it fails — so the row shows no
+   * health at all rather than a green it never confirmed.
+   */
+  isHealthy?: boolean;
 }
 
 /**
@@ -62,6 +70,7 @@ export interface CuratedAssets {
   totalCount: number;
   isLoading: boolean;
   isError: boolean;
+  refetch: () => void;
 }
 
 interface SearchHit {
@@ -73,10 +82,11 @@ interface SearchHit {
     entityType: string;
     serviceType?: string;
     tier?: { tagFQN?: string };
-    totalTestCases?: number;
-    failedTestCases?: number;
   };
 }
+
+/** Test cases point at their table through this field; it is lowercased on the index. */
+const ORIGIN_ENTITY_FIELD = 'originEntityFQN';
 
 // `Tier.Tier1` reads as noise in a chip; the leaf is what the mock shows.
 const tierLeaf = (tagFQN?: string): string | undefined =>
@@ -127,32 +137,88 @@ const fetchCuratedAssets = async ({
   });
 };
 
+/**
+ * Which of the listed assets have a failing test right now, as a set of
+ * lowercased FQNs.
+ *
+ * The data-asset documents carry no test outcome at all — `failedTestCases`,
+ * which the row used to read, is on no index — so the answer comes from the
+ * test-case index: one aggregation over the page's FQNs, keeping only test
+ * cases whose latest result failed. One request for the page, not one per row.
+ */
+const fetchFailingAssets = async (fqns: string[]): Promise<Set<string>> => {
+  const response = await postAggregateFieldOptions({
+    deleted: false,
+    fieldName: ORIGIN_ENTITY_FIELD,
+    index: SearchIndex.TEST_CASE,
+    query: JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            { terms: { [ORIGIN_ENTITY_FIELD]: fqns } },
+            {
+              term: { 'testCaseResult.testCaseStatus': TestCaseStatus.Failed },
+            },
+          ],
+        },
+      },
+    }),
+    size: fqns.length,
+  });
+  const buckets =
+    getAggregations(response.data.aggregations ?? {})[ORIGIN_ENTITY_FIELD]
+      ?.buckets ?? [];
+
+  return new Set(buckets.map((bucket) => bucket.key.toLowerCase()));
+};
+
 /** The assets matching a curated rule, with a health dot per row. */
 export const useCuratedAssets = (
   source: CuratedAssetsSource
 ): CuratedAssets => {
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, refetch } = useQuery({
     queryFn: () => fetchCuratedAssets(source),
     queryKey: [...CURATED_ASSETS_QUERY_KEY, source],
     staleTime: TTL_MS,
   });
 
-  const hits = (data?.hits?.hits ?? []) as unknown as SearchHit[];
+  const hits = useMemo(
+    () => (data?.hits?.hits ?? []) as unknown as SearchHit[],
+    [data]
+  );
+  const fqns = useMemo(
+    () => hits.map(({ _source: hit }) => hit.fullyQualifiedName),
+    [hits]
+  );
 
-  return {
-    assets: hits.map(({ _source: source }) => ({
-      entityType: source.entityType,
-      fullyQualifiedName: source.fullyQualifiedName,
-      id: source.id,
-      // Absent test counts mean "nothing is known to be failing", which reads
-      // as healthy rather than as a warning the user cannot act on.
-      isHealthy: (source.failedTestCases ?? 0) === 0,
-      name: source.displayName || source.name,
-      serviceType: source.serviceType,
-      tier: tierLeaf(source.tier?.tagFQN),
-    })),
-    isError,
-    isLoading: isPending,
-    totalCount: data?.hits?.total?.value ?? 0,
-  };
+  // Supplementary: a failure here costs the rows their health dot, never the
+  // card — so it is neither part of `isLoading` nor of `isError`.
+  const { data: failing } = useQuery({
+    enabled: fqns.length > 0,
+    queryFn: () => fetchFailingAssets(fqns),
+    queryKey: [...CURATED_ASSETS_QUERY_KEY, 'failing', fqns],
+    retry: false,
+    staleTime: TTL_MS,
+  });
+
+  return useMemo(
+    () => ({
+      assets: hits.map(({ _source: hit }) => ({
+        entityType: hit.entityType,
+        fullyQualifiedName: hit.fullyQualifiedName,
+        id: hit.id,
+        isHealthy: failing
+          ? !failing.has(hit.fullyQualifiedName.toLowerCase())
+          : undefined,
+        name: hit.displayName || hit.name,
+        serviceType: hit.serviceType,
+        tier: tierLeaf(hit.tier?.tagFQN),
+      })),
+      isError,
+      isLoading: isPending,
+      refetch: () => void refetch(),
+      totalCount: data?.hits?.total?.value ?? 0,
+    }),
+    [hits, failing, isError, isPending, refetch, data]
+  );
 };

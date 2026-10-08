@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { KpiTargetType } from '../../../../generated/dataInsight/kpi/kpi';
 import {
   KpiProgress,
   KPI_ALL_TIME,
@@ -72,11 +73,13 @@ const KPI: KpiProgress = {
   endDate: 1_760_000_000_000,
   fullyQualifiedName: 'ownership-coverage',
   id: 'kpi-ownership',
+  metricType: KpiTargetType.Percentage,
   name: 'Ownership coverage',
   projected: 34,
   series: [26, 28],
   status: 'atRisk',
   target: 63,
+  windowDays: KPI_WINDOW_DAYS,
   windowEnd: 1_757_000_000_000,
   windowStart: 1_754_000_000_000,
 };
@@ -85,8 +88,10 @@ const renderWidget = (kpis: KpiProgress[] = [KPI]) => {
   (useKpiProgress as jest.Mock).mockReturnValue({
     atRiskCount: kpis.filter((kpi) => kpi.status !== 'onTrack').length,
     isError: false,
+    isFetching: false,
     isLoading: false,
     kpis,
+    refetch: jest.fn(),
   });
 
   return render(<KpiProgressWidget widgetKey="KnowledgePanel.KPI-1" />);

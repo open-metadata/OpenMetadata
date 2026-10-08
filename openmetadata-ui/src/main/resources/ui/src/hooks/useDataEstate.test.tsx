@@ -17,21 +17,27 @@ import React from 'react';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { queryClient } from '../queryClient';
 import { getMultiChartsPreviewByName } from '../rest/DataInsightAPI';
-import { searchData } from '../rest/miscAPI';
-import { useDataEstate } from './useDataEstate';
+import { postAggregateFieldOptions } from '../rest/miscAPI';
+import {
+  MAX_NAMED_CONNECTORS,
+  OTHER_CONNECTORS_KEY,
+  useDataEstate,
+} from './useDataEstate';
 
 jest.mock('../rest/DataInsightAPI', () => ({
   getMultiChartsPreviewByName: jest.fn(),
 }));
 
 jest.mock('../rest/miscAPI', () => ({
-  searchData: jest.fn(),
+  postAggregateFieldOptions: jest.fn(),
 }));
 
 const mockGetCharts = getMultiChartsPreviewByName as jest.MockedFunction<
   typeof getMultiChartsPreviewByName
 >;
-const mockSearchData = searchData as jest.MockedFunction<typeof searchData>;
+const mockSearchData = postAggregateFieldOptions as jest.MockedFunction<
+  typeof postAggregateFieldOptions
+>;
 
 const serviceTypeBuckets = (...buckets: Array<[string, number]>) =>
   ({
@@ -289,5 +295,82 @@ describe('useDataEstate', () => {
 
     expect(result.current.totalAssets).toBe(0);
     expect(result.current.connectors).toEqual([]);
+  });
+
+  // The search query's built-in aggregation stops at the engine's default of
+  // ten buckets; an eleventh connector vanished from the bar and from "across
+  // N connectors".
+  it('asks for every connector rather than the default ten buckets', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockSearchData).toHaveBeenCalledWith(
+      expect.objectContaining({ fieldName: 'serviceType', size: 1000 })
+    );
+  });
+
+  it('folds the tail into one Other segment without losing its assets', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+    const buckets = Array.from(
+      { length: 12 },
+      (_, index) => [`Service${index}`, 100 - index] as [string, number]
+    );
+    mockSearchData.mockResolvedValue(serviceTypeBuckets(...buckets));
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const { connectors } = result.current;
+    const total = buckets.reduce((sum, [, count]) => sum + count, 0);
+
+    expect(result.current.connectorCount).toBe(12);
+    expect(connectors).toHaveLength(MAX_NAMED_CONNECTORS);
+    expect(connectors[connectors.length - 1].key).toBe(OTHER_CONNECTORS_KEY);
+    expect(connectors.reduce((sum, c) => sum + c.count, 0)).toBe(total);
+  });
+
+  // Data Insights has no rows until its pipeline runs; the header used to
+  // print 0 next to a populated breakdown.
+  it('falls back to the live connector sum when Data Insights has no rows', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+    mockSearchData.mockResolvedValue(
+      serviceTypeBuckets(['Snowflake', 100], ['BigQuery', 250])
+    );
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.totalAssets).toBe(350);
+    expect(result.current.totalDelta).toBeNull();
+  });
+
+  // A window switch is a new key; without placeholder data the card dropped
+  // back to its first-load skeleton and unmounted the filter just used.
+  it('keeps the previous window on screen while the next one loads', async () => {
+    mockGetCharts.mockResolvedValueOnce(
+      chartsResponse([{ count: 350, day: DAY_TWO, group: 'table' }], [])
+    );
+
+    const { result, rerender } = renderHook(
+      ({ windowDays }) => useDataEstate({ windowDays }),
+      { initialProps: { windowDays: 7 }, wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    mockGetCharts.mockReturnValueOnce(new Promise(() => undefined));
+    rerender({ windowDays: 30 });
+
+    await waitFor(() => expect(result.current.isFetching).toBe(true));
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.totalAssets).toBe(350);
+    // The label must still describe the figures shown, not the new range.
+    expect(result.current.windowDays).toBe(7);
   });
 });

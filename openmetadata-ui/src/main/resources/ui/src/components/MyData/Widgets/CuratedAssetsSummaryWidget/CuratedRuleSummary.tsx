@@ -15,7 +15,10 @@ import { Badge, Typography } from '@openmetadata/ui-core-components';
 import { Lock01 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CuratedRule } from '../../../../utils/curatedRule';
+import {
+  CuratedRule,
+  describeCuratedClause,
+} from '../../../../utils/curatedRule';
 
 export interface CuratedRuleSummaryProps {
   clauses: CuratedRule;
@@ -48,7 +51,7 @@ const CuratedRuleSummary: React.FC<CuratedRuleSummaryProps> = ({ clauses }) => {
               </Typography>
             )}
             <Badge color="gray" size="sm" type="color">
-              {`${t(clause.labelKey)} ${clause.displayValue}`}
+              {describeCuratedClause(clause, t)}
             </Badge>
           </React.Fragment>
         ))}

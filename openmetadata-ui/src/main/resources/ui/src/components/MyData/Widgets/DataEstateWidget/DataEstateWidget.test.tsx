@@ -24,7 +24,12 @@ jest.mock('@openmetadata/ui-core-components/charts', () => ({
 }));
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    // Echoes the options, so a test can tell which figures a label carries.
+    t: (key: string, options?: Record<string, unknown>) =>
+      options ? `${key} ${JSON.stringify(options)}` : key,
+    i18n: { language: 'en' },
+  }),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -46,11 +51,15 @@ const ESTATE = {
   totalAssets: 1257,
   totalDelta: 4,
   connectors: [{ count: 800, key: 'Snowflake', name: 'Snowflake' }],
+  connectorCount: 1,
   descriptionCoverage: 23,
   descriptionCoverageDelta: 0.4,
   descriptionCoverageSeries: [22.6, 23],
   isLoading: false,
+  isFetching: false,
   isError: false,
+  refetch: jest.fn(),
+  windowDays: 30,
 };
 
 const renderWidget = (isAiMode: boolean, estate = ESTATE) => {
@@ -94,5 +103,44 @@ describe('DataEstateWidget', () => {
     renderWidget(true, { ...ESTATE, descriptionCoverage: null } as never);
 
     expect(screen.queryByTestId('description-coverage')).toBeNull();
+  });
+
+  // The chip read "+4 this week" on a 30- or 90-day window.
+  it('words the status chip for the window the delta was measured over', () => {
+    renderWidget(false);
+
+    expect(screen.getByTestId('topic-status-dataEstate')).toHaveTextContent(
+      'message.value-in-last-count-days {"count":30,"value":"+4"}'
+    );
+  });
+
+  it('signs a shrinking estate rather than printing a bare number', () => {
+    renderWidget(false, { ...ESTATE, totalDelta: -3 } as never);
+
+    expect(screen.getByTestId('topic-status-dataEstate')).toHaveTextContent(
+      '"value":"-3"'
+    );
+  });
+
+  // The footer used to repeat the summary word for word.
+  it('does not repeat the summary in the footer', () => {
+    renderWidget(false);
+
+    expect(
+      screen.getAllByText(/message\.assets-across-count-connectors/)
+    ).toHaveLength(1);
+  });
+
+  it('shows an error body, not a zero estate, when the fetch fails', () => {
+    renderWidget(false, {
+      ...ESTATE,
+      connectors: [],
+      isError: true,
+      totalAssets: 0,
+    } as never);
+
+    expect(screen.getByTestId('topic-error-dataEstate')).toBeInTheDocument();
+    expect(screen.queryByTestId('data-estate-total')).toBeNull();
+    expect(screen.queryByTestId('topic-status-dataEstate')).toBeNull();
   });
 });

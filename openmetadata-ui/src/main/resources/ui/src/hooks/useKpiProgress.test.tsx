@@ -14,9 +14,11 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
+import { KpiTargetType } from '../generated/dataInsight/kpi/kpi';
 import { queryClient } from '../queryClient';
 import { getListKpiResult, getListKPIs } from '../rest/KpiAPI';
 import {
+  KpiWindow,
   KPI_ALL_TIME,
   KPI_WINDOW_DAYS,
   useKpiProgress,
@@ -43,13 +45,14 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 const START_DATE = NOW - 400 * DAY_MS;
 
-const kpi = (endDate: number, targetValue = 100) =>
+const kpi = (endDate: number, targetValue = 100, name = 'completeness') =>
   ({
     displayName: 'Completeness',
     endDate,
-    fullyQualifiedName: 'completeness',
-    id: 'kpi-1',
-    name: 'completeness',
+    fullyQualifiedName: name,
+    id: `kpi-${name}`,
+    metricType: KpiTargetType.Percentage,
+    name,
     startDate: START_DATE,
     targetValue,
   } as never);
@@ -201,5 +204,96 @@ describe('useKpiProgress', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(result.current.kpis).toEqual([]);
+  });
+
+  // The rate is the change over the days the results actually span. A KPI
+  // that started reporting a day ago spread its whole move over the 30-day
+  // window, understated its pace, and was called at risk.
+  it('projects off the span the results cover, not the selected window', async () => {
+    mockGetListKPIs.mockResolvedValue(kpiList(kpi(NOW + 10 * DAY_MS)));
+    mockGetListKpiResult.mockResolvedValue(
+      kpiResults({ count: 40, day: DAY_ONE }, { count: 70, day: DAY_TWO })
+    );
+
+    const { result } = renderHook(() => useKpiProgress(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // +30 in one day, ten days left.
+    expect(result.current.kpis[0].projected).toBe(370);
+    expect(result.current.kpis[0].status).toBe('onTrack');
+  });
+
+  // The list endpoint pages at ten by default; anything past the first page
+  // silently dropped off the card.
+  it('follows the paging cursor until every KPI is read', async () => {
+    mockGetListKPIs
+      .mockResolvedValueOnce({
+        data: [kpi(NOW + 10 * DAY_MS, 100, 'first')],
+        paging: { after: 'cursor-1', total: 2 },
+      } as never)
+      .mockResolvedValueOnce({
+        data: [kpi(NOW + 10 * DAY_MS, 100, 'second')],
+        paging: { total: 2 },
+      } as never);
+    mockGetListKpiResult.mockResolvedValue(kpiResults({ count: 40, day: NOW }));
+
+    const { result } = renderHook(() => useKpiProgress(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(
+      result.current.kpis.map((entry) => entry.fullyQualifiedName)
+    ).toEqual(['first', 'second']);
+    expect(mockGetListKPIs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ after: 'cursor-1', limit: expect.any(Number) })
+    );
+  });
+
+  it('carries the metric type and the window the delta is worded for', async () => {
+    mockGetListKPIs.mockResolvedValue(kpiList(kpi(NOW + 10 * DAY_MS)));
+    mockGetListKpiResult.mockResolvedValue(kpiResults({ count: 40, day: NOW }));
+
+    const { result, rerender } = renderHook(
+      ({ range }) => useKpiProgress(range),
+      {
+        initialProps: { range: KPI_WINDOW_DAYS as KpiWindow },
+        wrapper,
+      }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.kpis[0].metricType).toBe(KpiTargetType.Percentage);
+    expect(result.current.kpis[0].windowDays).toBe(KPI_WINDOW_DAYS);
+
+    rerender({ range: KPI_ALL_TIME });
+
+    await waitFor(() => expect(result.current.kpis[0].windowDays).toBeNull());
+  });
+
+  // A range switch is a new key; without placeholder data the card dropped
+  // back to its first-load skeleton and unmounted the range filter.
+  it('keeps the previous range on screen while the next one loads', async () => {
+    mockGetListKPIs.mockResolvedValue(kpiList(kpi(NOW + 10 * DAY_MS)));
+    mockGetListKpiResult.mockResolvedValue(kpiResults({ count: 40, day: NOW }));
+
+    const { result, rerender } = renderHook(
+      ({ range }) => useKpiProgress(range),
+      {
+        initialProps: { range: KPI_WINDOW_DAYS as KpiWindow },
+        wrapper,
+      }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    mockGetListKPIs.mockReturnValue(new Promise(() => undefined));
+    rerender({ range: 90 });
+
+    await waitFor(() => expect(result.current.isFetching).toBe(true));
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.kpis).toHaveLength(1);
   });
 });

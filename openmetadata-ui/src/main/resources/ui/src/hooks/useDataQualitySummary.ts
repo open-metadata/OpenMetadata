@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useQueries } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCase, TestCaseStatus } from '../generated/tests/testCase';
 import { getListTestCaseBySearch } from '../rest/testAPI';
@@ -22,8 +22,13 @@ import {
 
 export const DATA_QUALITY_QUERY_KEY = ['landingPage', 'widgets', 'dataQuality'];
 const TTL_MS = 5 * 60 * 1000;
-// Only the failing bucket needs rows; the rest are counted, not listed.
-const FAILED_PAGE_SIZE = 10;
+
+/**
+ * Failing tests the card lists. Only that bucket needs rows; the rest are
+ * counted, not listed — and it fetches exactly what is shown, so "N more" is
+ * the bucket total minus these rather than minus a larger page nobody sees.
+ */
+export const DATA_QUALITY_FAILED_ROWS = 4;
 const COUNT_ONLY_PAGE_SIZE = 1;
 
 export interface DataQualitySummary {
@@ -33,8 +38,11 @@ export interface DataQualitySummary {
   total: number;
   /** The failing tests themselves, for the card's rows. */
   failedTests: TestCase[];
+  /** First load only — a filter change keeps the previous counts on screen. */
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
+  refetch: () => void;
 }
 
 const fetchByStatus = async (
@@ -80,43 +88,29 @@ export const useDataQualitySummary = (
     userName,
   ];
 
-  const [failedQuery, passedQuery, abortedQuery] = useQueries({
-    queries: [
-      {
-        queryFn: () =>
-          fetchByStatus(
-            TestCaseStatus.Failed,
-            FAILED_PAGE_SIZE,
-            filters,
-            userName
-          ),
-        queryKey: keyFor(TestCaseStatus.Failed),
-        staleTime: TTL_MS,
-      },
-      {
-        queryFn: () =>
-          fetchByStatus(
-            TestCaseStatus.Success,
-            COUNT_ONLY_PAGE_SIZE,
-            filters,
-            userName
-          ),
-        queryKey: keyFor(TestCaseStatus.Success),
-        staleTime: TTL_MS,
-      },
-      {
-        queryFn: () =>
-          fetchByStatus(
-            TestCaseStatus.Aborted,
-            COUNT_ONLY_PAGE_SIZE,
-            filters,
-            userName
-          ),
-        queryKey: keyFor(TestCaseStatus.Aborted),
-        staleTime: TTL_MS,
-      },
-    ],
+  // `keepPreviousData` on each: a filter change is a new key, and without it
+  // the card fell back to its first-load skeleton — unmounting the very filter
+  // dropdown that was just used, and dropping its focus.
+  const queryFor = (status: TestCaseStatus, limit: number) => ({
+    placeholderData: keepPreviousData,
+    queryFn: () => fetchByStatus(status, limit, filters, userName),
+    queryKey: keyFor(status),
+    staleTime: TTL_MS,
   });
+
+  // Three `useQuery` calls rather than one `useQueries`: the latter matches its
+  // observers by key, so on a key change there is no previous observer for
+  // `keepPreviousData` to read from and the placeholder never appears.
+  const failedQuery = useQuery(
+    queryFor(TestCaseStatus.Failed, DATA_QUALITY_FAILED_ROWS)
+  );
+  const passedQuery = useQuery(
+    queryFor(TestCaseStatus.Success, COUNT_ONLY_PAGE_SIZE)
+  );
+  const abortedQuery = useQuery(
+    queryFor(TestCaseStatus.Aborted, COUNT_ONLY_PAGE_SIZE)
+  );
+  const queries = [failedQuery, passedQuery, abortedQuery];
 
   const failed = failedQuery.data?.total ?? 0;
   const passed = passedQuery.data?.total ?? 0;
@@ -126,10 +120,14 @@ export const useDataQualitySummary = (
     aborted,
     failed,
     failedTests: failedQuery.data?.tests ?? [],
-    isError: failedQuery.isError || passedQuery.isError || abortedQuery.isError,
-    isLoading:
-      failedQuery.isPending || passedQuery.isPending || abortedQuery.isPending,
+    isError: queries.some((query) => query.isError),
+    isFetching: queries.some((query) => query.isFetching),
+    isLoading: queries.some((query) => query.isPending),
     passed,
+    refetch: () =>
+      queries.forEach((query) => {
+        void query.refetch();
+      }),
     total: passed + failed + aborted,
   };
 };

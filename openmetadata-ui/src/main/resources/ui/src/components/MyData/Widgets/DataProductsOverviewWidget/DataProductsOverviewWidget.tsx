@@ -24,6 +24,7 @@ import {
   DataProductSummary,
   useDataProducts,
 } from '../../../../hooks/useDataProducts';
+import { OverviewFilter } from '../../../../hooks/useDomainOverview';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import { getDataProductDetailsPath } from '../../../../utils/RouterUtils';
 import FilterButton from '../Common/TopicWidget/FilterButton';
@@ -31,14 +32,10 @@ import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
 
-/** Bucket filters over the products already fetched — no extra request. */
-const PRODUCT_FILTERS = {
-  ALL: 'all',
-  EMPTY: 'empty',
-  NO_OWNER: 'noOwner',
-} as const;
-
-/** Sorts over the products already fetched — no extra request. */
+/**
+ * Sorts over the page already fetched — no extra request. The bucket chips are
+ * queried server-side; the order within the page they return is the card's.
+ */
 const PRODUCT_SORTS = {
   MOST_ASSETS: 'mostAssets',
   RECENTLY_UPDATED: 'recentlyUpdated',
@@ -83,6 +80,10 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [filter, setFilter] = useState<OverviewFilter>(OverviewFilter.ALL);
+  const [sort, setSort] = useState<string>(PRODUCT_SORTS.MOST_ASSETS);
+  // Each bucket is queried, not filtered out of the rows in hand — the rows are
+  // one page, and a chip counted or filtered over a page describes the page.
   const {
     products,
     totalCount,
@@ -90,10 +91,10 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
     emptyCount,
     domainCount,
     isError,
+    isFetching,
     isLoading,
-  } = useDataProducts();
-  const [filter, setFilter] = useState<string>(PRODUCT_FILTERS.ALL);
-  const [sort, setSort] = useState<string>(PRODUCT_SORTS.MOST_ASSETS);
+    refetch,
+  } = useDataProducts(filter);
 
   const sortOptions = useMemo(
     () => [
@@ -111,31 +112,19 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
     [t]
   );
 
-  const visibleProducts = useMemo(() => {
-    const matches = (product: DataProductSummary) => {
-      if (filter === PRODUCT_FILTERS.NO_OWNER) {
-        return !product.ownerName;
-      }
-      if (filter === PRODUCT_FILTERS.EMPTY) {
-        return product.assetCount === 0;
-      }
+  // A copy, so sorting in place never reorders the hook's own result.
+  const visibleProducts = useMemo(
+    () =>
+      [...products].sort(BY_SORT[sort] ?? BY_SORT[PRODUCT_SORTS.MOST_ASSETS]),
+    [products, sort]
+  );
 
-      return true;
-    };
-
-    // `filter` hands back a fresh array, so sorting it in place is safe —
-    // `products` itself must never be sorted, it is the hook's own result.
-    return products
-      .filter(matches)
-      .sort(BY_SORT[sort] ?? BY_SORT[PRODUCT_SORTS.MOST_ASSETS]);
-  }, [products, filter, sort]);
-
-  const summary = isError
-    ? t('message.something-went-wrong')
-    : t('message.count-products-across-domains', {
-        count: totalCount,
-        domains: domainCount,
-      });
+  const bucketSize: Record<OverviewFilter, number> = {
+    [OverviewFilter.ALL]: totalCount,
+    [OverviewFilter.NO_OWNER]: unownedCount,
+    [OverviewFilter.EMPTY]: emptyCount,
+  };
+  const remaining = Math.max(0, bucketSize[filter] - products.length);
 
   return (
     <TopicCard
@@ -145,18 +134,32 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isError={isError}
+      isFetching={isFetching}
       isLoading={isLoading}
-      meta={t('message.count-products', { count: totalCount })}
-      status={{
-        color: 'gray',
-        label: t('message.count-products', { count: totalCount }),
-      }}
-      summary={summary}
+      meta={
+        remaining > 0
+          ? t('message.count-more-data-products', { count: remaining })
+          : undefined
+      }
+      status={
+        unownedCount > 0
+          ? {
+              color: 'warning',
+              label: t('message.count-unowned', { count: unownedCount }),
+            }
+          : undefined
+      }
+      summary={t('message.count-products-across-domains', {
+        count: totalCount,
+        domains: domainCount,
+      })}
       title={t(PRODUCTS_LABEL_KEY)}
       tone={TONE}
       topicKey={TopicKey.DATA_PRODUCTS}
-      widgetKey={widgetKey}>
-      {products.length === 0 ? (
+      widgetKey={widgetKey}
+      onRetry={refetch}>
+      {totalCount === 0 ? (
         // `!` on the colours throughout: Typography renders `.prose`, whose
         // unlayered `color` rule is emitted after the Tailwind utilities.
         <Typography className="tw:text-text-secondary!" size="text-sm">
@@ -169,26 +172,27 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
               chips={[
                 {
                   count: totalCount,
-                  id: PRODUCT_FILTERS.ALL,
+                  id: OverviewFilter.ALL,
                   label: t('label.all'),
                   tone: 'brand',
                 },
                 {
                   count: unownedCount,
-                  id: PRODUCT_FILTERS.NO_OWNER,
+                  id: OverviewFilter.NO_OWNER,
                   label: t(NO_OWNER_LABEL_KEY),
                   tone: 'warning',
                 },
                 {
                   count: emptyCount,
-                  id: PRODUCT_FILTERS.EMPTY,
+                  id: OverviewFilter.EMPTY,
                   label: t('label.empty'),
                   tone: 'muted',
                 },
               ]}
               label={t(PRODUCTS_LABEL_KEY)}
+              testIdPrefix="data-products"
               value={filter}
-              onChange={setFilter}
+              onChange={(next) => setFilter(next as OverviewFilter)}
             />
             <FilterButton
               label={t('label.sort-by')}
@@ -233,10 +237,16 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                           />
                           <Typography
                             className="tw:min-w-0 tw:text-text-tertiary!"
+                            data-testid="data-product-domain"
                             ellipsis={{ rows: 1 }}
                             size="text-sm">
                             {product.domainName}
                           </Typography>
+                          {/* Drawn, not spliced into the owner's string. */}
+                          <span
+                            aria-hidden
+                            className="tw:size-1 tw:shrink-0 tw:rounded-full tw:bg-fg-quaternary"
+                          />
                         </>
                       )}
                       <Typography
@@ -245,11 +255,10 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                             ? 'tw:min-w-0 tw:text-text-tertiary!'
                             : 'tw:min-w-0 tw:text-utility-warning-700!'
                         }
+                        data-testid="data-product-owner"
                         ellipsis={{ rows: 1 }}
                         size="text-sm">
-                        {product.domainName
-                          ? `· ${product.ownerName ?? t(NO_OWNER_LABEL_KEY)}`
-                          : product.ownerName ?? t(NO_OWNER_LABEL_KEY)}
+                        {product.ownerName ?? t(NO_OWNER_LABEL_KEY)}
                       </Typography>
                     </span>
                   </div>
@@ -259,7 +268,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
                     data-testid="data-product-asset-count"
                     size="sm"
                     type="pill-color">
-                    {`${product.assetCount} ${t('label.asset-plural')}`}
+                    {t('label.count-asset', { count: product.assetCount })}
                   </Badge>
                 </Link>
               </li>

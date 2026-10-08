@@ -49,7 +49,8 @@ const KpiProgressWidget: React.FC<KpiProgressWidgetProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [range, setRange] = useState<KpiWindow>(KPI_WINDOW_DAYS);
-  const { kpis, atRiskCount, isError, isLoading } = useKpiProgress(range);
+  const { kpis, atRiskCount, isError, isFetching, isLoading, refetch } =
+    useKpiProgress(range);
 
   const windowOptions = useMemo(
     () =>
@@ -57,24 +58,26 @@ const KpiProgressWidget: React.FC<KpiProgressWidgetProps> = ({
         label:
           option === KPI_ALL_TIME
             ? t('label.all-time')
-            : t('label.last-count-days', { count: option }),
+            : t('label.last-n-days', { count: option }),
         value: String(option),
       })),
     [t]
   );
 
-  const summary = isError
-    ? t('message.something-went-wrong')
-    : t('message.count-kpis-tracked', { count: kpis.length });
+  const summary = t('message.count-kpis-tracked', { count: kpis.length });
 
   return (
     <TopicCard
       action={{
-        label: t('label.manage-entity', { entity: t('label.kpi-plural') }),
+        label: t('label.manage-entity', {
+          entity: t('label.kpi-uppercase-plural'),
+        }),
         onPress: () => navigate(ROUTES.KPI_LIST),
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isError={isError}
+      isFetching={isFetching}
       isLoading={isLoading}
       status={
         atRiskCount > 0
@@ -85,10 +88,11 @@ const KpiProgressWidget: React.FC<KpiProgressWidgetProps> = ({
           : undefined
       }
       summary={summary}
-      title={t('label.key-performance-indicator-plural')}
+      title={t('label.kpi-title')}
       tone={TONE}
       topicKey={TopicKey.KPIS}
-      widgetKey={widgetKey}>
+      widgetKey={widgetKey}
+      onRetry={refetch}>
       {kpis.length === 0 ? (
         // `!` on the colour: Typography renders `.prose`, whose unlayered
         // `color` rule is emitted after the Tailwind utilities.

@@ -72,19 +72,24 @@ const CuratedAssetRows: React.FC<CuratedAssetRowsProps> = ({ assets }) => {
                   </Typography>
                 )}
               </span>
-              <span
-                // Colour alone must not carry the meaning, so the dot has
-                // a text alternative for assistive tech.
-                aria-label={
-                  asset.isHealthy ? t('label.healthy') : t('label.failing')
-                }
-                className={`tw:size-2 tw:shrink-0 tw:rounded-full ${
-                  asset.isHealthy
-                    ? 'tw:bg-utility-success-500'
-                    : 'tw:bg-utility-error-500'
-                }`}
-                role="img"
-              />
+              {/* Only once the test lookup has answered: an unknown health
+                gets no dot rather than a green nobody confirmed. */}
+              {asset.isHealthy !== undefined && (
+                <span
+                  // Colour alone must not carry the meaning, so the dot has
+                  // a text alternative for assistive tech.
+                  aria-label={
+                    asset.isHealthy ? t('label.healthy') : t('label.failing')
+                  }
+                  className={`tw:size-2 tw:shrink-0 tw:rounded-full ${
+                    asset.isHealthy
+                      ? 'tw:bg-utility-success-500'
+                      : 'tw:bg-utility-error-500'
+                  }`}
+                  data-testid={`curated-asset-health-${asset.id}`}
+                  role="img"
+                />
+              )}
             </Link>
           </li>
         ))}

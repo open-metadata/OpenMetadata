@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Typography } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { AlertCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import TopicCardControls from './TopicCardControls';
 import TopicCardFooter from './TopicCardFooter';
 import TopicCardHeader from './TopicCardHeader';
@@ -51,6 +57,20 @@ export interface TopicCardProps {
    * something false.
    */
   isLoading?: boolean;
+  /**
+   * A refetch is in flight while the previous answer is still on screen, e.g.
+   * after a filter change. The body stays mounted — a filter living in the
+   * body must not unmount under the pointer — and only dims to say so.
+   */
+  isFetching?: boolean;
+  /**
+   * The widget's fetch failed. Its counts then read zero, so the summary,
+   * status and meta are withheld rather than reporting an empty estate, and the
+   * body explains the failure instead of showing empty-state copy.
+   */
+  isError?: boolean;
+  /** Offered as a retry action on the error body when given. */
+  onRetry?: () => void;
 }
 
 /** Body placeholder: a few rows at the widths a populated card tends to use. */
@@ -83,22 +103,105 @@ const TopicSummary = ({
     </Typography>
   );
 
+/** Stands in for the body when the fetch failed, with a retry where offered. */
+const TopicError = ({
+  onRetry,
+  title,
+  topicKey,
+}: Pick<TopicCardProps, 'onRetry' | 'title' | 'topicKey'>) => {
+  const { t } = useTranslation();
+
+  return (
+    // `tw:static` lifts the placeholder out of its page-level absolute
+    // positioning, so it sits in the card's flow instead of covering it.
+    <EmptyPlaceholder
+      actions={
+        onRetry
+          ? [
+              {
+                color: 'secondary',
+                key: 'retry',
+                label: t('label.retry'),
+                onPress: onRetry,
+              },
+            ]
+          : undefined
+      }
+      className="tw:static tw:py-2"
+      data-testid={`topic-error-${topicKey}`}
+      gap={3}
+      icon={AlertCircle}
+      title={t('server.entity-fetch-error', { entity: title })}
+    />
+  );
+};
+
 const TopicBody = ({
   children,
   isLoading,
+  isError,
+  onRetry,
+  title,
   topicKey,
-}: Pick<TopicCardProps, 'children' | 'topicKey'> & { isLoading: boolean }) =>
-  isLoading ? (
-    <div
-      className="tw:flex tw:flex-col tw:gap-3.5"
-      data-testid={`topic-body-skeleton-${topicKey}`}>
-      {SKELETON_ROW_WIDTHS.map((width) => (
-        <Skeleton height={14} key={width} width={width} />
-      ))}
-    </div>
+}: Pick<TopicCardProps, 'children' | 'onRetry' | 'title' | 'topicKey'> & {
+  isLoading: boolean;
+  isError: boolean;
+}) => {
+  if (isLoading) {
+    return (
+      <div
+        className="tw:flex tw:flex-col tw:gap-3.5"
+        data-testid={`topic-body-skeleton-${topicKey}`}>
+        {SKELETON_ROW_WIDTHS.map((width) => (
+          <Skeleton height={14} key={width} width={width} />
+        ))}
+      </div>
+    );
+  }
+
+  return isError ? (
+    <TopicError title={title} topicKey={topicKey} onRetry={onRetry} />
   ) : (
-    children
+    <>{children}</>
   );
+};
+
+type TopicBodyRegionProps = Pick<
+  TopicCardProps,
+  'children' | 'onRetry' | 'title' | 'topicKey'
+> & { isLoading: boolean; isFetching: boolean; isError: boolean };
+
+/**
+ * The scrolling body, or nothing for a card with nothing to show.
+ *
+ * min-h-0 is what lets this flex child scroll rather than grow past the card;
+ * without it `overflow-y-auto` never engages. `*:shrink-0` stops the column
+ * from compressing its own children to fit — without it a block that carries
+ * `min-h-0` is squeezed and clips its text mid-line instead of scrolling.
+ */
+const TopicBodyRegion = ({
+  children,
+  isFetching,
+  ...bodyProps
+}: TopicBodyRegionProps) => {
+  const isRefetching = isFetching && !bodyProps.isLoading;
+
+  if (!children && !bodyProps.isLoading && !bodyProps.isError) {
+    return null;
+  }
+
+  return (
+    <div
+      aria-busy={isRefetching}
+      className={classNames(
+        'tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-y-auto tw:border-t tw:border-secondary tw:p-5 tw:transition-opacity tw:*:shrink-0',
+        isRefetching && 'tw:opacity-60'
+      )}
+      data-testid={`topic-body-${bodyProps.topicKey}`}>
+      <TopicBody {...bodyProps}>{children}</TopicBody>
+    </div>
+  );
+};
 
 /**
  * The shell every landing-page topic widget renders into: a summary header, the
@@ -121,9 +224,23 @@ const TopicCard: React.FC<TopicCardProps> = ({
   isEditView = false,
   handleRemoveWidget,
   isLoading = false,
+  isFetching = false,
+  isError = false,
+  onRetry,
 }) => {
+  const { t } = useTranslation();
   const collapse = useTopicCollapse();
   const isCollapsed = collapse.isCollapsed(widgetKey);
+  // A failed fetch leaves every count at zero: the summary says so instead,
+  // and the status and meta — which would only restate the zeros — are dropped.
+  const hasError = isError && !isLoading;
+  const shown = hasError
+    ? {
+        meta: undefined,
+        status: undefined,
+        summary: t('message.something-went-wrong'),
+      }
+    : { meta, status, summary };
 
   return (
     <section
@@ -140,11 +257,11 @@ const TopicCard: React.FC<TopicCardProps> = ({
         <TopicCardHeader
           isCollapsed={isCollapsed}
           isLoading={isLoading}
-          status={status}
+          status={shown.status}
           summarySlot={
             <TopicSummary
               isLoading={isLoading}
-              summary={summary}
+              summary={shown.summary}
               topicKey={topicKey}
             />
           }
@@ -164,24 +281,23 @@ const TopicCard: React.FC<TopicCardProps> = ({
         />
       </div>
 
-      {/* min-h-0 is what lets this flex child scroll rather than grow past the
-        card; without it `overflow-y-auto` never engages. `*:shrink-0` stops the
-        column from compressing its own children to fit — without it a block
-        that carries `min-h-0` is squeezed and clips its text mid-line instead
-        of the body scrolling. */}
-      {!isCollapsed && (children || isLoading) && (
-        <div className="tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-y-auto tw:border-t tw:border-secondary tw:p-5 tw:*:shrink-0">
-          <TopicBody isLoading={isLoading} topicKey={topicKey}>
-            {children}
-          </TopicBody>
-        </div>
+      {!isCollapsed && (
+        <TopicBodyRegion
+          isError={hasError}
+          isFetching={isFetching}
+          isLoading={isLoading}
+          title={title}
+          topicKey={topicKey}
+          onRetry={onRetry}>
+          {children}
+        </TopicBodyRegion>
       )}
 
       {!isCollapsed && (
         <TopicCardFooter
           action={action}
           isLoading={isLoading}
-          meta={meta}
+          meta={shown.meta}
           topicKey={topicKey}
         />
       )}

@@ -18,12 +18,15 @@ import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { HEALTH_PARAM } from '../../../../components/integration/ConnectionsPage/ConnectionsPage.constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityTabs } from '../../../../enums/entity.enum';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import connectionsRouterClassBase from '../../../../utils/ConnectionsRouterClassBase';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import FailingServiceRow from '../Common/TopicWidget/FailingServiceRow';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
@@ -46,7 +49,7 @@ const TONE = {
 
 interface HealthCounts {
   connectedServices: number;
-  failingServices: FailingService[];
+  failingCount: number;
   healthyServices: number;
   pendingServices: number;
 }
@@ -58,7 +61,7 @@ interface HealthCounts {
 const buildHealthStats = (
   {
     connectedServices,
-    failingServices,
+    failingCount,
     healthyServices,
     pendingServices,
   }: HealthCounts,
@@ -68,11 +71,10 @@ const buildHealthStats = (
   {
     id: 'failing',
     label: t('message.count-of-total-failing', {
-      count: failingServices.length,
+      count: failingCount,
       total: connectedServices,
     }),
-    onPress:
-      failingServices.length > 0 ? () => goToHealth('failing') : undefined,
+    onPress: failingCount > 0 ? () => goToHealth('failing') : undefined,
     tone: 'critical',
   },
   {
@@ -89,14 +91,96 @@ const buildHealthStats = (
   },
 ];
 
+const buildSummary = (
+  {
+    connectedServices,
+    failingCount,
+    isError,
+    isHealthy,
+  }: Pick<HealthCounts, 'connectedServices' | 'failingCount'> & {
+    isError: boolean;
+    isHealthy: boolean;
+  },
+  t: TFunction
+): string => {
+  if (isError) {
+    return t('message.something-went-wrong');
+  }
+
+  return isHealthy
+    ? t('message.all-services-healthy', { count: connectedServices })
+    : t('message.services-failing-of-total', {
+        count: failingCount,
+        total: connectedServices,
+      });
+};
+
+// When the numbers were read, not when something last failed.
+const getFreshness = (
+  hasVerdict: boolean,
+  dataUpdatedAt: number,
+  t: TFunction
+): string | undefined =>
+  hasVerdict && dataUpdatedAt > 0
+    ? t('message.updated-relative', { time: getRelativeTime(dataUpdatedAt) })
+    : undefined;
+
+interface FailingServicesListProps {
+  failingCount: number;
+  failingServices: FailingService[];
+  onOpen: (service: FailingService) => void;
+  onViewAll: () => void;
+}
+
+/** The worst offenders, and a way to the rest when there are more of them. */
+const FailingServicesList: React.FC<FailingServicesListProps> = ({
+  failingCount,
+  failingServices,
+  onOpen,
+  onViewAll,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {failingServices.length > 0 && (
+        <ul
+          className="tw:mt-4 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+          data-testid="platform-health-rows">
+          {failingServices.slice(0, MAX_VISIBLE_ROWS).map((service) => (
+            <FailingServiceRow
+              key={service.id}
+              service={service}
+              onOpen={onOpen}
+            />
+          ))}
+        </ul>
+      )}
+
+      {failingCount > MAX_VISIBLE_ROWS && (
+        <Button
+          className="tw:mt-3 tw:self-start tw:px-0"
+          color="link-color"
+          data-testid="view-all-failing-services"
+          size="sm"
+          onPress={onViewAll}>
+          {t('message.view-all-count-failing-services', {
+            count: failingCount,
+          })}
+        </Button>
+      )}
+    </>
+  );
+};
+
 export type PlatformHealthWidgetProps = WidgetCommonProps;
 
 /**
  * The card once we know the viewer may read ingestion data.
  *
- * Split out so the admin check happens *before* these hooks mount: every
- * endpoint behind the stats is admin-only, so a non-admin must not issue the
- * request at all rather than issue it and discard the 403.
+ * Split out so the permission check happens *before* these hooks mount: a
+ * viewer who may not read ingestion pipelines must not issue the request at
+ * all rather than issue it and discard the 403.
  */
 const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
   widgetKey,
@@ -109,20 +193,35 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
     customizeMyDataPageClassBase.getPlatformHealthInsight();
   const {
     connectedServices,
+    dataUpdatedAt,
     failedServices,
     failingServices,
     healthyServices,
     pendingServices,
+    warningServices,
     isLoading,
     isError,
+    refetch,
   } = useIngestionPipelineStats();
 
-  const isHealthy = !isLoading && !isError && failingServices.length === 0;
+  // The rows are only the worst few; the count is the server's tally.
+  const failingCount = failedServices + warningServices;
+  // No verdict without data: an error must not read as "Needs attention" over
+  // a row of zeros, nor as healthy.
+  const hasVerdict = !isLoading && !isError;
+  const isHealthy = hasVerdict && failingCount === 0;
 
+  // Only the Connections listing reads `health`; the classic Settings >
+  // Services page ignores it, so a filter appended there would promise a
+  // filtered list and show the unfiltered category menu instead.
   const goToHealth = useCallback(
     (filter: ServiceHealthFilter): void => {
+      const servicesPath = connectionsRouterClassBase.getSettingsServicesPath();
+
       navigate(
-        `${connectionsRouterClassBase.getSettingsServicesPath()}?${HEALTH_PARAM}=${filter}`
+        connectionsRouterClassBase.isEmbeddedMode()
+          ? `${servicesPath}?${HEALTH_PARAM}=${filter}`
+          : servicesPath
       );
     },
     [navigate]
@@ -146,7 +245,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
       buildHealthStats(
         {
           connectedServices,
-          failingServices,
+          failingCount,
           healthyServices,
           pendingServices,
         },
@@ -154,7 +253,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
         t
       ),
     [
-      failingServices,
+      failingCount,
       connectedServices,
       healthyServices,
       pendingServices,
@@ -163,13 +262,10 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
     ]
   );
 
-  const summary = isHealthy
-    ? t('message.all-services-healthy', { count: connectedServices })
-    : t('message.services-failing-of-total', {
-        count: failingServices.length,
-        total: connectedServices,
-      });
-  const lastRunTs = failingServices[0]?.lastRunTs;
+  const summary = buildSummary(
+    { connectedServices, failingCount, isError, isHealthy },
+    t
+  );
 
   return (
     <TopicCard
@@ -180,49 +276,30 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isError={isError}
       isLoading={isLoading}
-      meta={
-        lastRunTs
-          ? t('message.updated-relative', { time: getRelativeTime(lastRunTs) })
-          : undefined
-      }
+      meta={getFreshness(hasVerdict, dataUpdatedAt, t)}
       status={
-        isHealthy
-          ? undefined
-          : { color: 'error', label: t('label.needs-attention') }
+        hasVerdict && !isHealthy
+          ? { color: 'error', label: t('label.needs-attention') }
+          : undefined
       }
       summary={summary}
       title={t('label.platform-health')}
       tone={TONE}
       topicKey={TopicKey.PLATFORM_HEALTH}
-      widgetKey={widgetKey}>
-      <TopicStatChips stats={stats} />
-
-      {failingServices.length > 0 && (
-        <ul
-          className="tw:mt-4 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
-          data-testid="platform-health-rows">
-          {failingServices.slice(0, MAX_VISIBLE_ROWS).map((service) => (
-            <FailingServiceRow
-              key={service.id}
-              service={service}
-              onOpen={openService}
-            />
-          ))}
-        </ul>
-      )}
-
-      {failingServices.length > MAX_VISIBLE_ROWS && (
-        <Button
-          className="tw:mt-3 tw:self-start tw:px-0"
-          color="link-color"
-          data-testid="view-all-failing-services"
-          size="sm"
-          onPress={() => goToHealth('failing')}>
-          {t('message.view-all-count-failing-services', {
-            count: failingServices.length,
-          })}
-        </Button>
+      widgetKey={widgetKey}
+      onRetry={refetch}>
+      {!isError && (
+        <>
+          <TopicStatChips stats={stats} />
+          <FailingServicesList
+            failingCount={failingCount}
+            failingServices={failingServices}
+            onOpen={openService}
+            onViewAll={() => goToHealth('failing')}
+          />
+        </>
       )}
 
       {PlatformHealthInsight && (
@@ -235,6 +312,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
           isHealthy={isHealthy}
           isLoading={isLoading}
           pendingServices={pendingServices}
+          warningServices={warningServices}
         />
       )}
     </TopicCard>
@@ -250,11 +328,15 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
  */
 const PlatformHealthWidget: React.FC<PlatformHealthWidgetProps> = (props) => {
   const { t } = useTranslation();
-  const isAdmin = Boolean(
-    useApplicationStore((state) => state.currentUser)?.isAdmin
+  const { permissions } = usePermissionProvider();
+  // The card is a view onto ingestion pipelines, so it opens to whoever may
+  // view them, not only to admins.
+  const { hasViewAccess } = getDerivedPermissionFlags(
+    permissions?.[ResourceEntity.INGESTION_PIPELINE] ??
+      DEFAULT_ENTITY_PERMISSION
   );
 
-  if (!isAdmin) {
+  if (!hasViewAccess) {
     return (
       <TopicCard
         handleRemoveWidget={props.handleRemoveWidget}

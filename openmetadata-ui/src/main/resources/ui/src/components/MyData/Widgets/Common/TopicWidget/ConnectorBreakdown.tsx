@@ -15,7 +15,10 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { getSeriesColor } from '@openmetadata/ui-core-components/charts';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConnectorCount } from '../../../../../hooks/useDataEstate';
+import {
+  ConnectorCount,
+  OTHER_CONNECTORS_KEY,
+} from '../../../../../hooks/useDataEstate';
 import ShareBar, { ShareSegment } from './ShareBar';
 
 export interface ConnectorBreakdownProps {
@@ -39,10 +42,15 @@ const ConnectorBreakdown: React.FC<ConnectorBreakdownProps> = ({
       connectors.map((connector, index) => ({
         color: getSeriesColor(index),
         key: connector.key,
-        name: connector.name,
+        // The folded tail is named here rather than in the hook, which has no
+        // translator — and so it follows a language switch.
+        name:
+          connector.key === OTHER_CONNECTORS_KEY
+            ? t('label.other')
+            : connector.name,
         value: connector.count,
       })),
-    [connectors]
+    [connectors, t]
   );
 
   if (segments.every((segment) => segment.value === 0)) {

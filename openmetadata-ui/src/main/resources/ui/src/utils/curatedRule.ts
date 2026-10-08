@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import type { TFunction } from 'i18next';
+
 /** One `<field> is <value>` clause of a curated-assets rule. */
 export interface CuratedRuleClause {
   /** i18n key naming the field, e.g. `label.tier`. */
@@ -58,3 +60,27 @@ export const buildCuratedQueryFilter = (rule: CuratedRule) => ({
     },
   },
 });
+
+/** One clause as a phrase, e.g. "Tier is Tier1" — one key, so a locale owns the word order. */
+export const describeCuratedClause = (
+  clause: CuratedRuleClause,
+  t: TFunction
+): string =>
+  t('message.field-is-value', {
+    field: t(clause.labelKey),
+    value: clause.displayValue,
+  });
+
+/**
+ * The whole rule as one phrase — "Tier is Tier1 and Certification is Gold" —
+ * joined by `Intl.ListFormat`, so the conjunction and the comma rules come
+ * from the reader's locale rather than a hardcoded `', '`.
+ */
+export const describeCuratedRule = (
+  rule: CuratedRule,
+  t: TFunction,
+  language: string
+): string =>
+  new Intl.ListFormat(language, { style: 'long', type: 'conjunction' }).format(
+    rule.map((clause) => describeCuratedClause(clause, t))
+  );

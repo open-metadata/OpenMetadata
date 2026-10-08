@@ -22,6 +22,9 @@ import type { IngestionPipelineStats } from './useIngestionPipelineStats';
  * implementation, so the card renders without it; Collate supplies one that
  * summarises the failing services with an agent. Everything the block needs is
  * already fetched by the card, so it never issues its own health request.
+ *
+ * `failingServices` is only the worst few rows (`MAX_FAILING_ROWS`); the number
+ * of failing services is `failedServices + warningServices`.
  */
 export interface PlatformHealthInsightProps
   extends Pick<
@@ -31,6 +34,7 @@ export interface PlatformHealthInsightProps
     | 'failingServices'
     | 'healthyServices'
     | 'pendingServices'
+    | 'warningServices'
     | 'isLoading'
     | 'isError'
   > {

@@ -15,471 +15,407 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import {
+  ServiceHealth,
+  ServicesOverview,
+  ServiceSummary,
+} from '../../../../generated/api/services/servicesOverview';
+import {
   PipelineState,
   PipelineType,
 } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { queryClient } from '../../../../queryClient';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
-import { searchQuery } from '../../../../rest/searchAPI';
+import { getServicesOverview } from '../../../../rest/serviceAPI';
 import {
   createRouteActivationStore,
   RouteActivationProvider,
   RouteActivationStore,
 } from '../../../platform/ai-shell/context/RouteActivationContext';
-import { useIngestionPipelineStats } from './useIngestionPipelineStats';
-
-jest.mock(
-  '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline',
-  () => ({
-    PipelineState: {
-      Failed: 'failed',
-      PartialSuccess: 'partialSuccess',
-      Running: 'running',
-      Success: 'success',
-    },
-    PipelineType: {
-      AutoClassification: 'autoClassification',
-      Dbt: 'dbt',
-      Lineage: 'lineage',
-      Metadata: 'metadata',
-      Profiler: 'profiler',
-      Usage: 'usage',
-    },
-  })
-);
+import {
+  MAX_FAILING_ROWS,
+  PIPELINE_STATS_TTL_MS,
+  useIngestionPipelineStats,
+} from './useIngestionPipelineStats';
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn(),
 }));
 
-jest.mock('../../../../rest/searchAPI', () => ({
-  searchQuery: jest.fn(),
-}));
-
-jest.mock('../../../../constants/Services.constant', () => ({
-  OPEN_METADATA: 'OpenMetadata',
+jest.mock('../../../../rest/serviceAPI', () => ({
+  getServicesOverview: jest.fn(),
 }));
 
 const mockGetIngestionPipelines = getIngestionPipelines as jest.MockedFunction<
   typeof getIngestionPipelines
 >;
-const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
+const mockGetServicesOverview = getServicesOverview as jest.MockedFunction<
+  typeof getServicesOverview
+>;
 
-// The single search now returns every connection service in one response. Each
-// hit's _source carries the fields the health buckets need; entityType defaults to
-// a database service (its category is irrelevant to the failed/healthy/pending
-// counts, which key off pipeline state per service id).
-const mockServices = (
-  services: Array<{ id: string; [key: string]: unknown }>
-) => {
-  mockSearchQuery.mockResolvedValue({
-    hits: {
-      hits: services.map((service) => ({
-        _source: { entityType: 'databaseService', ...service },
-      })),
-      total: { value: services.length },
-    },
-  } as never);
-};
+const service = (
+  id: string,
+  health: ServiceHealth,
+  extra: Partial<ServiceSummary> = {}
+): ServiceSummary => ({
+  entityType: 'databaseService',
+  fullyQualifiedName: id,
+  health,
+  id,
+  name: id,
+  serviceType: 'Snowflake',
+  ...extra,
+});
+
+/**
+ * One overview response. `healthCounts` is the estate-wide tally the server
+ * keeps per entity type; `data` is the filtered page of failing services.
+ */
+const overview = (
+  healthCounts: ServicesOverview['healthCounts'],
+  data: ServiceSummary[] = [],
+  total = 0
+): ServicesOverview =>
+  ({
+    counts: {},
+    data,
+    healthCounts,
+    paging: { total: data.length },
+    serviceTypeCounts: {},
+    total,
+  } as ServicesOverview);
+
+const run = (
+  pipelineState: PipelineState,
+  timestamp: number,
+  error?: string
+) => ({
+  pipelineState,
+  status: error ? [{ failures: [{ error }] }] : [],
+  timestamp,
+});
 
 const pipeline = (
-  pipelineState: PipelineState | undefined,
-  serviceId: string
+  fqn: string,
+  pipelineType: PipelineType,
+  latest: ReturnType<typeof run>
 ) => ({
-  pipelineStatuses: pipelineState ? [{ pipelineState }] : undefined,
-  service: { id: serviceId },
+  fullyQualifiedName: fqn,
+  pipelineStatuses: [latest],
+  pipelineType,
 });
 
 const withQueryClient = ({ children }: { children: React.ReactNode }) =>
   React.createElement(QueryClientProvider, { client: queryClient }, children);
 
-describe('useIngestionPipelineStats cache integration', () => {
+const renderStats = () =>
+  renderHook(() => useIngestionPipelineStats(), { wrapper: withQueryClient });
+
+describe('useIngestionPipelineStats', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     queryClient.clear();
     window.sessionStorage.clear();
-    mockServices([
-      { id: 'svc-1' },
-      { id: 'svc-2' },
-      { id: 'svc-3' },
-      { id: 'svc-4' },
-    ]);
-    mockGetIngestionPipelines.mockResolvedValue({
-      data: [
-        pipeline(PipelineState.Success, 'svc-1'),
-        pipeline(PipelineState.PartialSuccess, 'svc-2'),
-        pipeline(PipelineState.Failed, 'svc-3'),
-        pipeline(undefined, 'svc-4'),
-      ],
-    } as never);
+    mockGetServicesOverview.mockResolvedValue(
+      overview(
+        {
+          dashboardService: { failed: 1, notRun: 2, success: 4 },
+          databaseService: { failed: 2, success: 3 },
+        },
+        [
+          service('snowflake_prod', ServiceHealth.Failed),
+          service('looker', ServiceHealth.Failed, {
+            entityType: 'dashboardService',
+          }),
+        ],
+        12
+      )
+    );
+    mockGetIngestionPipelines.mockResolvedValue({ data: [] } as never);
   });
 
-  it('deduplicates concurrent ingestion pipeline stats requests', async () => {
-    const first = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
+  it('reads the buckets from the server tally, summed across service types', async () => {
+    const { result } = renderStats();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current).toMatchObject({
+      connectedServices: 12,
+      failedServices: 3,
+      healthyServices: 7,
+      isError: false,
+      pendingServices: 2,
+      warningServices: 0,
     });
-    const second = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
+    expect(result.current.dataUpdatedAt).toBeGreaterThan(0);
+  });
+
+  // The old hook pulled every service and every pipeline (1000 per page, up to
+  // 20 pages) on each landing load. The estate must now cost one request.
+  it('asks the overview for the estate counts plus one page of failed services', async () => {
+    const { result } = renderStats();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetServicesOverview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        excludeProvider: 'system',
+        health: [ServiceHealth.Failed],
+        includeHealth: true,
+        limit: MAX_FAILING_ROWS,
+      })
+    );
+  });
+
+  it('reads pipelines only for the failing services it shows, scoped by service type', async () => {
+    const { result } = renderStats();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(2);
+    expect(mockGetIngestionPipelines).toHaveBeenCalledWith(
+      expect.objectContaining({
+        arrQueryFields: ['pipelineStatuses'],
+        serviceFilter: 'looker',
+        serviceType: 'dashboardService',
+      })
+    );
+  });
+
+  it('fills the remaining rows with partially failed services', async () => {
+    mockGetServicesOverview
+      .mockResolvedValueOnce(
+        overview({ databaseService: { failed: 1, partialSuccess: 4 } }, [
+          service('a', ServiceHealth.Failed),
+        ])
+      )
+      .mockResolvedValueOnce(
+        overview({ databaseService: { failed: 1, partialSuccess: 4 } }, [
+          service('b', ServiceHealth.PartialSuccess),
+        ])
+      );
+
+    const { result } = renderStats();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetServicesOverview).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        health: [ServiceHealth.PartialSuccess],
+        limit: MAX_FAILING_ROWS - 1,
+      })
+    );
+    expect(result.current.failingServices.map((s) => s.state)).toEqual([
+      'failed',
+      'partialSuccess',
+    ]);
+    expect(result.current).toMatchObject({
+      failedServices: 1,
+      warningServices: 4,
     });
+  });
+
+  it('skips the partial read when failed services already fill the rows', async () => {
+    mockGetServicesOverview.mockResolvedValue(
+      overview(
+        { databaseService: { failed: 40, partialSuccess: 5 } },
+        Array.from({ length: MAX_FAILING_ROWS }, (_, i) =>
+          service(`svc-${i}`, ServiceHealth.Failed)
+        )
+      )
+    );
+
+    const { result } = renderStats();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetServicesOverview).toHaveBeenCalledTimes(1);
+    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(MAX_FAILING_ROWS);
+    // The count is the server's, not the number of rows fetched.
+    expect(result.current.failedServices).toBe(40);
+    expect(result.current.failingServices).toHaveLength(MAX_FAILING_ROWS);
+  });
+
+  it('skips the partial read when nothing is partially failing', async () => {
+    mockGetServicesOverview.mockResolvedValue(
+      overview({ databaseService: { failed: 1, success: 1 } }, [
+        service('a', ServiceHealth.Failed),
+      ])
+    );
+
+    const { result } = renderStats();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetServicesOverview).toHaveBeenCalledTimes(1);
+  });
+
+  it('explains a row with the most recent run in the service worst state', async () => {
+    mockGetServicesOverview.mockResolvedValue(
+      overview({ databaseService: { failed: 1 } }, [
+        service('snowflake_prod', ServiceHealth.Failed, {
+          displayName: 'Snowflake Prod',
+        }),
+      ])
+    );
+    mockGetIngestionPipelines.mockResolvedValue({
+      data: [
+        pipeline(
+          'snowflake_prod.lineage',
+          PipelineType.Lineage,
+          run(PipelineState.Failed, 1000, 'Workflow failed - check logs')
+        ),
+        pipeline(
+          'snowflake_prod.metadata',
+          PipelineType.Metadata,
+          run(
+            PipelineState.Failed,
+            2000,
+            'Authentication failed connecting to Snowflake'
+          )
+        ),
+        pipeline(
+          'snowflake_prod.profiler',
+          PipelineType.Profiler,
+          run(PipelineState.Success, 3000)
+        ),
+      ],
+    } as never);
+
+    const { result } = renderStats();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.failingServices[0]).toMatchObject({
+      displayName: 'Snowflake Prod',
+      fqn: 'snowflake_prod',
+      lastRunTs: 2000,
+      pipelineFqn: 'snowflake_prod.metadata',
+      pipelineType: PipelineType.Metadata,
+      reason: 'Authentication failed connecting to Snowflake',
+      serviceCategory: 'databaseServices',
+      serviceType: 'Snowflake',
+      state: 'failed',
+    });
+  });
+
+  // The fallback sentence is translated by the row, so the hook must not
+  // compose English for it.
+  it('leaves the reason empty when the raw error is generic', async () => {
+    mockGetServicesOverview.mockResolvedValue(
+      overview({ databaseService: { failed: 1 } }, [
+        service('redshift_eu', ServiceHealth.Failed),
+      ])
+    );
+    mockGetIngestionPipelines.mockResolvedValue({
+      data: [
+        pipeline(
+          'redshift_eu.lineage',
+          PipelineType.Lineage,
+          run(PipelineState.Failed, 5000, 'Workflow failed - check logs')
+        ),
+      ],
+    } as never);
+
+    const { result } = renderStats();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.failingServices[0]).toMatchObject({
+      pipelineType: PipelineType.Lineage,
+      reason: '',
+    });
+  });
+
+  it('ranks failed services before partial ones, then by most recent run', async () => {
+    mockGetServicesOverview
+      .mockResolvedValueOnce(
+        overview({ databaseService: { failed: 2, partialSuccess: 1 } }, [
+          service('old-failure', ServiceHealth.Failed),
+          service('new-failure', ServiceHealth.Failed),
+        ])
+      )
+      .mockResolvedValueOnce(
+        overview({ databaseService: { failed: 2, partialSuccess: 1 } }, [
+          service('partial', ServiceHealth.PartialSuccess),
+        ])
+      );
+    mockGetIngestionPipelines.mockImplementation(
+      async ({ serviceFilter }) =>
+        ({
+          data: [
+            pipeline(
+              `${serviceFilter}.metadata`,
+              PipelineType.Metadata,
+              run(
+                serviceFilter === 'partial'
+                  ? PipelineState.PartialSuccess
+                  : PipelineState.Failed,
+                { 'new-failure': 300, 'old-failure': 100, partial: 900 }[
+                  serviceFilter ?? ''
+                ] ?? 0
+              )
+            ),
+          ],
+        } as never)
+    );
+
+    const { result } = renderStats();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.failingServices.map((s) => s.id)).toEqual([
+      'new-failure',
+      'old-failure',
+      'partial',
+    ]);
+  });
+
+  it('deduplicates concurrent requests and hydrates a remount from cache', async () => {
+    const first = renderStats();
+    const second = renderStats();
 
     await waitFor(() => {
       expect(first.result.current.isLoading).toBe(false);
       expect(second.result.current.isLoading).toBe(false);
     });
 
-    expect(first.result.current).toMatchObject({
-      connectedServices: 4,
-      failedServices: 1,
-      healthyServices: 1,
-      pendingServices: 1,
-      warningServices: 1,
-    });
-    expect(second.result.current).toMatchObject(first.result.current);
-    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(1);
-  });
+    const third = renderStats();
 
-  // A single capped read left every pipeline past the first page unseen, so
-  // the services owning them fell into "not run yet" whatever state they were
-  // actually in -- wrong on exactly the large installs that lean on this card.
-  it('follows the paging cursor so late pipelines are not miscounted', async () => {
-    mockServices([{ id: 'svc-1' }, { id: 'svc-2' }]);
-    mockGetIngestionPipelines
-      .mockResolvedValueOnce({
-        data: [pipeline(PipelineState.Success, 'svc-1')],
-        paging: { after: 'page-2' },
-      } as never)
-      .mockResolvedValueOnce({
-        data: [pipeline(PipelineState.Failed, 'svc-2')],
-        paging: {},
-      } as never);
-
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(2);
-    expect(mockGetIngestionPipelines).toHaveBeenLastCalledWith(
-      expect.objectContaining({ paging: { after: 'page-2' } })
-    );
-    // svc-2's only pipeline is on the second page: unpaged it was "not run
-    // yet" rather than failing.
-    expect(result.current).toMatchObject({
-      failedServices: 1,
-      healthyServices: 1,
-      pendingServices: 0,
-    });
-  });
-
-  it('stops paging once the cursor clears', async () => {
-    mockServices([{ id: 'svc-1' }]);
-    mockGetIngestionPipelines.mockResolvedValue({
-      data: [pipeline(PipelineState.Success, 'svc-1')],
-      paging: {},
-    } as never);
-
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(1);
-  });
-
-  it('counts every configured service, not just ones with pipelines', async () => {
-    // Connections page shows every configured service regardless of whether
-    // it has ever run a pipeline -- svc-5 has no pipeline at all and must
-    // still be counted (as pending), matching what /connections shows.
-    mockServices([{ id: 'svc-1' }, { id: 'svc-5' }]);
-    mockGetIngestionPipelines.mockResolvedValue({
-      data: [pipeline(PipelineState.Success, 'svc-1')],
-    } as never);
-
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current).toMatchObject({
-      connectedServices: 2,
-      failedServices: 0,
-      healthyServices: 1,
-      pendingServices: 1,
-      warningServices: 0,
-    });
-  });
-
-  it('counts each service once, worst pipeline state wins', async () => {
-    mockServices([{ id: 'svc-1' }, { id: 'svc-2' }, { id: 'svc-3' }]);
-    mockGetIngestionPipelines.mockResolvedValue({
-      data: [
-        // Same service: metadata pipeline succeeded, profiler pipeline failed
-        // -> any failing agent flags the whole service as failed.
-        pipeline(PipelineState.Success, 'svc-1'),
-        pipeline(PipelineState.Failed, 'svc-1'),
-        // Same service: two successful pipelines -> counted once as healthy.
-        pipeline(PipelineState.Success, 'svc-2'),
-        pipeline(PipelineState.Success, 'svc-2'),
-        // Distinct service, single warning pipeline.
-        pipeline(PipelineState.PartialSuccess, 'svc-3'),
-      ],
-    } as never);
-
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current).toMatchObject({
-      connectedServices: 3,
-      failedServices: 1,
-      healthyServices: 1,
-      pendingServices: 0,
-      warningServices: 1,
-    });
-  });
-
-  it('lets a failed pipeline override an earlier in-progress one regardless of array order', async () => {
-    // Running/Queued/Stopped have no entry in STATE_SEVERITY. If an
-    // unmapped state becomes "worst" first, a later Failed pipeline must
-    // still override it -- not get masked because its severity comparison
-    // against an undefined baseline silently evaluates to false.
-    mockServices([{ id: 'svc-1' }]);
-    mockGetIngestionPipelines.mockResolvedValue({
-      data: [
-        pipeline(PipelineState.Running, 'svc-1'),
-        pipeline(PipelineState.Failed, 'svc-1'),
-      ],
-    } as never);
-
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current).toMatchObject({
-      connectedServices: 1,
-      failedServices: 1,
-      healthyServices: 0,
-      pendingServices: 0,
-      warningServices: 0,
-    });
-  });
-
-  it('ignores pipelines parented by a non-service container (e.g. an AI automation agent or a test suite)', async () => {
-    // Only svc-1 is a real configured service; agent-1 is an aiAutomation
-    // container that also owns a pipeline but must not inflate the count.
-    mockServices([{ id: 'svc-1' }]);
-    mockGetIngestionPipelines.mockResolvedValue({
-      data: [
-        pipeline(PipelineState.Success, 'svc-1'),
-        pipeline(PipelineState.Failed, 'agent-1'),
-      ],
-    } as never);
-
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current).toMatchObject({
-      connectedServices: 1,
-      failedServices: 0,
-      healthyServices: 1,
-      pendingServices: 0,
-      warningServices: 0,
-    });
-  });
-
-  it('excludes the built-in OpenMetadata metadata service (server-side filter)', async () => {
-    // The built-in OpenMetadata service is now excluded server-side by the shared
-    // connections query filter, so the search returns no such hit.
-    mockServices([]);
-    mockGetIngestionPipelines.mockResolvedValue({ data: [] } as never);
-
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.connectedServices).toBe(0);
-    expect(mockSearchQuery).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryFilter: expect.objectContaining({
-          query: {
-            bool: expect.objectContaining({
-              must_not: [
-                {
-                  bool: {
-                    filter: [
-                      { term: { entityType: 'metadataService' } },
-                      { term: { fullyQualifiedName: 'OpenMetadata' } },
-                    ],
-                  },
-                },
-              ],
-            }),
-          },
-        }),
-      })
-    );
-  });
-
-  it('hydrates from cache on remount without loading', async () => {
-    const first = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    await waitFor(() => {
-      expect(first.result.current.connectedServices).toBe(4);
-    });
-
-    const second = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    expect(second.result.current).toMatchObject({
-      connectedServices: 4,
-      failedServices: 1,
-      healthyServices: 1,
+    expect(third.result.current).toMatchObject({
+      failedServices: 3,
       isLoading: false,
-      pendingServices: 1,
-      warningServices: 1,
     });
-    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(1);
+    expect(mockGetServicesOverview).toHaveBeenCalledTimes(1);
   });
 
-  it('flags isError on fetch failure and retries on the next mount', async () => {
-    mockGetIngestionPipelines
-      .mockRejectedValueOnce(new Error('network'))
-      .mockResolvedValueOnce({
-        data: [pipeline(PipelineState.Success, 'svc-1')],
-      } as never);
+  it('flags isError on failure and retries on the next mount', async () => {
+    mockGetServicesOverview.mockRejectedValueOnce(new Error('network'));
 
-    const failed = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
+    const failed = renderStats();
 
-    await waitFor(() => {
-      expect(failed.result.current.isLoading).toBe(false);
-    });
+    await waitFor(() => expect(failed.result.current.isLoading).toBe(false));
 
-    // On failure the hook must flag the error so consumers can render an explicit
-    // "unavailable" state rather than treating zeros as a real (healthy) reading.
+    // Consumers must be able to tell "unavailable" from a real (healthy) zero.
     expect(failed.result.current.isError).toBe(true);
+    expect(failed.result.current.connectedServices).toBe(0);
 
-    const recovered = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
+    const recovered = renderStats();
 
-    await waitFor(() => {
-      expect(recovered.result.current.healthyServices).toBe(1);
-    });
+    await waitFor(() =>
+      expect(recovered.result.current.connectedServices).toBe(12)
+    );
 
     expect(recovered.result.current.isError).toBe(false);
-    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(2);
   });
 
-  it('surfaces failing services with the worst recent pipeline and a clean reason', async () => {
-    mockServices([
-      {
-        displayName: 'Snowflake Prod',
-        fullyQualifiedName: 'snowflake_prod',
-        id: 'svc-db',
-        name: 'snowflake_prod',
-        serviceType: 'Snowflake',
-      },
-    ]);
-    mockGetIngestionPipelines.mockResolvedValue({
-      data: [
-        {
-          pipelineStatuses: [
-            {
-              pipelineState: PipelineState.Failed,
-              status: [
-                { failures: [{ error: 'Workflow failed - check logs' }] },
-              ],
-              timestamp: 1000,
-            },
-          ],
-          pipelineType: PipelineType.Lineage,
-          service: { id: 'svc-db' },
-        },
-        {
-          pipelineStatuses: [
-            {
-              pipelineState: PipelineState.Failed,
-              status: [
-                {
-                  failures: [
-                    { error: 'Authentication failed connecting to Snowflake' },
-                  ],
-                },
-              ],
-              timestamp: 2000,
-            },
-          ],
-          pipelineType: PipelineType.Metadata,
-          service: { id: 'svc-db' },
-        },
-      ],
-    } as never);
-
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.failingServices).toHaveLength(1);
-    expect(result.current.failingServices[0]).toMatchObject({
-      displayName: 'Snowflake Prod',
-      fqn: 'snowflake_prod',
-      pipelineType: PipelineType.Metadata,
-      reason: 'Authentication failed connecting to Snowflake',
-      serviceType: 'Snowflake',
-      state: 'failed',
-    });
-  });
-
-  it('falls back to a typed reason when the raw error is generic', async () => {
-    mockServices([
-      { id: 'svc-db', name: 'redshift_eu', serviceType: 'Redshift' },
-    ]);
-    mockGetIngestionPipelines.mockResolvedValue({
-      data: [
-        {
-          pipelineStatuses: [
-            {
-              pipelineState: PipelineState.Failed,
-              status: [
-                { failures: [{ error: 'Workflow failed - check logs' }] },
-              ],
-              timestamp: 5000,
-            },
-          ],
-          pipelineType: PipelineType.Lineage,
-          service: { id: 'svc-db' },
-        },
-      ],
-    } as never);
-
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withQueryClient,
-    });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.failingServices[0].reason).toBe(
-      'Lineage ingestion failed'
+  it('stays idle and not loading while disabled', () => {
+    const { result } = renderHook(
+      () => useIngestionPipelineStats({ enabled: false }),
+      { wrapper: withQueryClient }
     );
+
+    expect(result.current.isLoading).toBe(false);
+    expect(mockGetServicesOverview).not.toHaveBeenCalled();
   });
 });
 
@@ -496,64 +432,53 @@ describe('useIngestionPipelineStats route revalidation', () => {
     return Wrapper;
   };
 
+  const renderActive = async () => {
+    const store = createRouteActivationStore();
+    store.setActivePath(ROUTE);
+    const view = renderHook(() => useIngestionPipelineStats(), {
+      wrapper: withActivation(store),
+    });
+    await waitFor(() => expect(view.result.current.isLoading).toBe(false));
+
+    return { ...view, store };
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     queryClient.clear();
     window.sessionStorage.clear();
-    mockServices([{ id: 'svc-1' }]);
-    mockGetIngestionPipelines.mockResolvedValue({
-      data: [pipeline(PipelineState.Success, 'svc-1')],
-    } as never);
+    mockGetServicesOverview.mockResolvedValue(
+      overview({ databaseService: { success: 1 } }, [], 1)
+    );
   });
 
   it('does not fetch again on activation while the cache is fresh', async () => {
-    const store = createRouteActivationStore();
-    store.setActivePath(ROUTE);
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withActivation(store),
-    });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const { store } = await renderActive();
 
-    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(1);
-
+    act(() => jest.advanceTimersByTime(PIPELINE_STATS_TTL_MS - 1_000));
     act(() => store.bumpEpoch(ROUTE));
 
-    // Within the 30s TTL the activation revalidation is a no-op.
-    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(1);
+    expect(mockGetServicesOverview).toHaveBeenCalledTimes(1);
   });
 
   it('refetches on activation once the cache TTL has expired', async () => {
-    const store = createRouteActivationStore();
-    store.setActivePath(ROUTE);
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withActivation(store),
-    });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const { store } = await renderActive();
 
-    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(1);
-
-    act(() => jest.advanceTimersByTime(31_000)); // past PIPELINE_STATS_TTL_MS
+    act(() => jest.advanceTimersByTime(PIPELINE_STATS_TTL_MS + 1_000));
     act(() => store.bumpEpoch(ROUTE));
 
     await waitFor(() =>
-      expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(2)
+      expect(mockGetServicesOverview).toHaveBeenCalledTimes(2)
     );
   });
 
   it('force-refetches immediately on a websocket dirty signal, ignoring TTL', async () => {
-    const store = createRouteActivationStore();
-    store.setActivePath(ROUTE);
-    const { result } = renderHook(() => useIngestionPipelineStats(), {
-      wrapper: withActivation(store),
-    });
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const { store } = await renderActive();
 
-    expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(1);
-
-    act(() => store.markRouteDirty(ROUTE)); // dirty → invalidate + refetch now
+    act(() => store.markRouteDirty(ROUTE));
 
     await waitFor(() =>
-      expect(mockGetIngestionPipelines).toHaveBeenCalledTimes(2)
+      expect(mockGetServicesOverview).toHaveBeenCalledTimes(2)
     );
   });
 });

@@ -86,19 +86,27 @@ const TestStatusBar: React.FC<TestStatusBarProps> = ({
           {t('message.count-total-tests', { count: total })}
         </Typography>
         {segments.map((segment) => (
+          // Name and count as two nodes, not one concatenated string, matching
+          // the connector legend — a locale reads the pair as a label and its
+          // figure rather than as a sentence it has to word-order.
           <span
             className="tw:flex tw:items-center tw:gap-1.5"
+            data-testid={`test-status-${segment.key}`}
             key={segment.key}>
             <span
               aria-hidden
               className="tw:size-1.5 tw:shrink-0 tw:rounded-full"
               style={{ backgroundColor: segment.color }}
             />
+            <Typography className="tw:text-text-secondary!" size="text-sm">
+              {segment.name}
+            </Typography>
             <Typography
-              className="tw:text-text-secondary!"
+              className="tw:text-text-primary!"
+              data-testid={`test-status-${segment.key}-count`}
               size="text-sm"
               weight="medium">
-              {`${segment.name} ${segment.value}`}
+              {segment.value}
             </Typography>
           </span>
         ))}

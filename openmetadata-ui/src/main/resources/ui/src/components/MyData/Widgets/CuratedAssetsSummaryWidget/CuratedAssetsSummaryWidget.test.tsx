@@ -10,19 +10,42 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { CuratedAssetsSource } from '../../../../hooks/useCuratedAssets';
 import { WidgetConfig } from '../../../../interface/customization.interface';
 import CuratedAssetsSummaryWidget from './CuratedAssetsSummaryWidget';
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    // Echoes interpolation, so a test can see what was passed and not only
+    // which key.
+    t: (key: string, options?: Record<string, unknown>) =>
+      options ? `${key} ${JSON.stringify(options)}` : key,
+    i18n: { language: 'en' },
+  }),
 }));
 
+const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
-  useNavigate: () => jest.fn(),
+  useNavigate: () => mockNavigate,
   Link: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+}));
+
+const mockGetExploreURLForAdvancedFilter = jest.fn(
+  (_args: unknown) => '/explore?saved'
+);
+jest.mock('../../../../utils/CuratedAssetsPureUtils', () => ({
+  getExploreURLForAdvancedFilter: (args: unknown) =>
+    mockGetExploreURLForAdvancedFilter(args),
+}));
+
+jest.mock('../../../../utils/RouterUtils', () => ({
+  getExplorePath: ({
+    extraParameters,
+  }: {
+    extraParameters?: Record<string, string>;
+  }) => `/explore?quickFilter=${extraParameters?.quickFilter ?? ''}`,
 }));
 
 const mockUseCuratedAssets = jest.fn();
@@ -37,6 +60,7 @@ jest.mock(
     AdvanceSearchProvider: ({ children }: { children?: ReactNode }) => (
       <>{children}</>
     ),
+    useAdvanceSearch: () => ({ config: { fields: {} } }),
   })
 );
 
@@ -75,6 +99,7 @@ describe('CuratedAssetsSummaryWidget', () => {
       assets: [],
       isError: false,
       isLoading: false,
+      refetch: jest.fn(),
       totalCount: 0,
     });
   });
@@ -135,5 +160,68 @@ describe('CuratedAssetsSummaryWidget', () => {
 
     expect(screen.getByTestId('edit-curated-assets')).toBeInTheDocument();
     expect(screen.queryByTestId('widget-empty-state')).not.toBeInTheDocument();
+  });
+
+  // The summary used to be built as `${label} is ${value}` joined with ', ' —
+  // English word order and punctuation hardcoded into every locale.
+  it('describes the chip rule through one interpolated key per clause', () => {
+    renderWidget(layoutWith(undefined));
+
+    // The summary is the one node naming both clauses; the rule chips below
+    // carry one each.
+    const summary = screen
+      .getAllByText(/message\.field-is-value/)
+      .find(
+        (node) =>
+          node.textContent?.includes('label.tier') &&
+          node.textContent?.includes('label.certification')
+      );
+
+    expect(summary).toBeDefined();
+    expect(summary?.textContent).not.toMatch(/ is /);
+  });
+
+  // "View all matches" used to open Explore with no filter at all.
+  it('opens Explore on the chip rule it counts', () => {
+    renderWidget(layoutWith(undefined));
+
+    fireEvent.click(screen.getByTestId('topic-action-curatedAssets'));
+
+    const url = String(mockNavigate.mock.calls[0][0]);
+
+    expect(url).toContain('tier.tagFQN');
+    expect(url).toContain('Tier.Tier1');
+    expect(url).toContain('Certification.Gold');
+  });
+
+  it('opens Explore on a saved filter through the advanced-search tree', () => {
+    renderWidget(
+      layoutWith({ queryFilter: SAVED_FILTER, resources: ['table'] })
+    );
+
+    fireEvent.click(screen.getByTestId('topic-action-curatedAssets'));
+
+    expect(mockGetExploreURLForAdvancedFilter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryFilter: SAVED_FILTER,
+        selectedResource: ['table'],
+      })
+    );
+    expect(mockNavigate).toHaveBeenCalledWith('/explore?saved');
+  });
+
+  it('shows an error body instead of an empty rule result on failure', () => {
+    mockUseCuratedAssets.mockReturnValue({
+      assets: [],
+      isError: true,
+      isLoading: false,
+      refetch: jest.fn(),
+      totalCount: 0,
+    });
+
+    renderWidget(layoutWith(undefined));
+
+    expect(screen.getByTestId('topic-error-curatedAssets')).toBeInTheDocument();
+    expect(screen.queryByTestId('topic-status-curatedAssets')).toBeNull();
   });
 });

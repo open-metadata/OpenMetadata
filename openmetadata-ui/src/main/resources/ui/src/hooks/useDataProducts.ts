@@ -11,9 +11,20 @@
  *  limitations under the License.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { AGGREGATE_PAGE_SIZE_LARGE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
-import { searchQuery } from '../rest/searchAPI';
+import { getAllDataProductsWithAssetsCount } from '../rest/dataProductAPI';
+import { postAggregateFieldOptions } from '../rest/miscAPI';
+import { getAggregations } from '../utils/ExplorePureUtils';
+import {
+  emptyFqnsOf,
+  fetchOverviewPage,
+  fetchUnownedCount,
+  OverviewFilter,
+  OVERVIEW_PAGE_SIZE,
+} from './useDomainOverview';
 
 export const DATA_PRODUCTS_QUERY_KEY = [
   'landingPage',
@@ -21,7 +32,7 @@ export const DATA_PRODUCTS_QUERY_KEY = [
   'dataProducts',
 ];
 const TTL_MS = 5 * 60 * 1000;
-const PAGE_SIZE = 10;
+const DOMAIN_FIELD = 'domains.fullyQualifiedName';
 
 export interface DataProductSummary {
   id: string;
@@ -35,26 +46,31 @@ export interface DataProductSummary {
 }
 
 export interface DataProductsOverview {
+  /** The page for the selected bucket. */
   products: DataProductSummary[];
+  /** Every data product, from the asset-count map. */
   totalCount: number;
+  /** Estate-wide, from a count query rather than the page in hand. */
   unownedCount: number;
+  /** Estate-wide, from the asset-count map. */
   emptyCount: number;
+  /** Domains holding at least one data product, across the estate. */
   domainCount: number;
+  /** First load only — a bucket switch keeps the previous rows on screen. */
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
+  refetch: () => void;
 }
 
-interface SearchHit {
-  _source: {
-    id: string;
-    name: string;
-    displayName?: string;
-    fullyQualifiedName: string;
-    assets?: unknown[];
-    domains?: Array<{ displayName?: string; name?: string }>;
-    owners?: Array<{ displayName?: string; name?: string }>;
-    updatedAt?: number;
-  };
+interface DataProductSource {
+  id: string;
+  name: string;
+  displayName?: string;
+  fullyQualifiedName: string;
+  domains?: Array<{ displayName?: string; name?: string }>;
+  owners?: Array<{ displayName?: string; name?: string }>;
+  updatedAt?: number;
 }
 
 const firstName = (
@@ -62,47 +78,106 @@ const firstName = (
 ): string | undefined =>
   refs?.length ? refs[0].displayName || refs[0].name : undefined;
 
-/** Data products with their domain, owner and asset count. */
-export const useDataProducts = (): DataProductsOverview => {
-  const { data, isPending, isError } = useQuery({
+/** Distinct domains across every data product — a terms aggregation, not a page. */
+const fetchDomainCount = async (): Promise<number> => {
+  const response = await postAggregateFieldOptions({
+    deleted: false,
+    fieldName: DOMAIN_FIELD,
+    index: SearchIndex.DATA_PRODUCT,
+    size: AGGREGATE_PAGE_SIZE_LARGE,
+  });
+
+  return (
+    getAggregations(response.data.aggregations ?? {})[DOMAIN_FIELD]?.buckets
+      .length ?? 0
+  );
+};
+
+/**
+ * Data products with their domain, owner and asset count, and the size of each
+ * ownership bucket.
+ *
+ * Asset counts come from `/dataProducts/assets/counts`: the data-product search
+ * document deliberately leaves `assets` out, so reading a length off it put
+ * every product at zero. The map is one request for the whole estate — the
+ * source the OSS Data Products widget uses — and, since it lists every product,
+ * it also gives the total and the "empty" bucket.
+ */
+export const useDataProducts = (
+  filter: OverviewFilter = OverviewFilter.ALL
+): DataProductsOverview => {
+  const [countsQuery, unownedQuery, domainsQuery] = useQueries({
+    queries: [
+      {
+        queryFn: getAllDataProductsWithAssetsCount,
+        queryKey: [...DATA_PRODUCTS_QUERY_KEY, 'counts'],
+        staleTime: TTL_MS,
+      },
+      {
+        queryFn: () => fetchUnownedCount(SearchIndex.DATA_PRODUCT),
+        queryKey: [...DATA_PRODUCTS_QUERY_KEY, 'unowned'],
+        staleTime: TTL_MS,
+      },
+      {
+        queryFn: fetchDomainCount,
+        queryKey: [...DATA_PRODUCTS_QUERY_KEY, 'domains'],
+        staleTime: TTL_MS,
+      },
+    ],
+  });
+
+  const counts = countsQuery.data;
+  const emptyFqns = useMemo(() => emptyFqnsOf(counts ?? {}), [counts]);
+  const needsCounts = filter === OverviewFilter.EMPTY;
+
+  const listQuery = useQuery({
+    // "Empty" is resolved through the count map, so it waits for it.
+    enabled: !needsCounts || Boolean(counts),
+    // A bucket switch keeps the previous rows on screen while the next page
+    // loads, instead of dropping the card back to its first-load skeleton.
+    placeholderData: keepPreviousData,
     queryFn: () =>
-      searchQuery({
-        pageNumber: 1,
-        pageSize: PAGE_SIZE,
-        query: '',
-        searchIndex: SearchIndex.DATA_PRODUCT,
-      }),
-    queryKey: DATA_PRODUCTS_QUERY_KEY,
+      fetchOverviewPage(SearchIndex.DATA_PRODUCT, filter, emptyFqns),
+    queryKey: [
+      ...DATA_PRODUCTS_QUERY_KEY,
+      'list',
+      filter,
+      needsCounts ? emptyFqns.slice(0, OVERVIEW_PAGE_SIZE) : [],
+    ],
     staleTime: TTL_MS,
   });
 
-  const hits = (data?.hits?.hits ?? []) as unknown as SearchHit[];
+  const queries = [countsQuery, unownedQuery, domainsQuery, listQuery];
+  const listData = listQuery.data;
 
-  const products: DataProductSummary[] = hits.map(({ _source: source }) => ({
-    // `assets` is the product's own asset list on the search document, so the
-    // count needs no second lookup per row.
-    assetCount: source.assets?.length ?? 0,
-    domainName: firstName(source.domains),
-    fullyQualifiedName: source.fullyQualifiedName,
-    id: source.id,
-    name: source.displayName || source.name,
-    ownerName: firstName(source.owners),
-    updatedAt: source.updatedAt ?? 0,
-  }));
-
-  const domains = new Set(
-    products.map((product) => product.domainName).filter(Boolean)
+  // Memoised on the query results, so a re-render with nothing new hands the
+  // widget the same array and its sort memo holds.
+  const products = useMemo<DataProductSummary[]>(
+    () =>
+      ((listData?.sources ?? []) as DataProductSource[]).map((source) => ({
+        assetCount: counts?.[source.fullyQualifiedName] ?? 0,
+        domainName: firstName(source.domains),
+        fullyQualifiedName: source.fullyQualifiedName,
+        id: source.id,
+        name: source.displayName || source.name,
+        ownerName: firstName(source.owners),
+        updatedAt: source.updatedAt ?? 0,
+      })),
+    [listData, counts]
   );
 
   return {
-    // Counted over the page in hand — the search response carries no aggregate
-    // for "unowned" or "empty", so these describe what is listed.
-    domainCount: domains.size,
-    emptyCount: products.filter((product) => product.assetCount === 0).length,
-    isError,
-    isLoading: isPending,
+    domainCount: domainsQuery.data ?? 0,
+    emptyCount: emptyFqns.length,
+    isError: queries.some((query) => query.isError),
+    isFetching: queries.some((query) => query.isFetching),
+    isLoading: queries.some((query) => query.isPending),
     products,
-    totalCount: data?.hits?.total?.value ?? 0,
-    unownedCount: products.filter((product) => !product.ownerName).length,
+    refetch: () =>
+      queries.forEach((query) => {
+        void query.refetch();
+      }),
+    totalCount: Object.keys(counts ?? {}).length,
+    unownedCount: unownedQuery.data ?? 0,
   };
 };

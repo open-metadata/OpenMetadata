@@ -14,6 +14,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
+import { SearchIndex } from '../enums/search.enum';
 import { queryClient } from '../queryClient';
 import { searchQuery } from '../rest/searchAPI';
 import { CHANGE_WINDOW_DAYS, useOwnedAndFollowed } from './useOwnedAndFollowed';
@@ -42,9 +43,48 @@ const hit = (name: string, updatedAt?: number) => ({
   },
 });
 
+type Hit = ReturnType<typeof hit>;
+
+/**
+ * Answers the three searches by shape: the owned page (data-asset index), the
+ * followed page (all index) and the size-0 changed count.
+ */
+const mockSearches = ({
+  owned = [],
+  followed = [],
+  ownedTotal = owned.length,
+  followedTotal = followed.length,
+  changed = 0,
+}: {
+  owned?: Hit[];
+  followed?: Hit[];
+  ownedTotal?: number;
+  followedTotal?: number;
+  changed?: number;
+}) =>
+  mockSearchQuery.mockImplementation((async (request: {
+    pageSize: number;
+    searchIndex: SearchIndex;
+  }) => {
+    if (request.pageSize === 0) {
+      return { hits: { hits: [], total: { value: changed } } };
+    }
+
+    return request.searchIndex === SearchIndex.DATA_ASSET
+      ? { hits: { hits: owned, total: { value: ownedTotal } } }
+      : { hits: { hits: followed, total: { value: followedTotal } } };
+  }) as never);
+
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
+
+const renderLoaded = async () => {
+  const view = renderHook(() => useOwnedAndFollowed(USER_ID), { wrapper });
+  await waitFor(() => expect(view.result.current.isLoading).toBe(false));
+
+  return view.result;
+};
 
 describe('useOwnedAndFollowed', () => {
   beforeEach(() => {
@@ -55,56 +95,63 @@ describe('useOwnedAndFollowed', () => {
   it('flags only the assets touched inside the change window', async () => {
     const recent = Date.now() - DAY_MS;
     const old = Date.now() - (CHANGE_WINDOW_DAYS + 3) * DAY_MS;
-    mockSearchQuery.mockResolvedValue({
-      hits: { hits: [hit('fresh', recent), hit('stale', old)] },
-    } as never);
+    mockSearches({ followed: [hit('fresh', recent), hit('stale', old)] });
 
-    const { result } = renderHook(() => useOwnedAndFollowed(USER_ID), {
-      wrapper,
-    });
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const result = await renderLoaded();
 
     expect(result.current.followed.map((a) => a.hasChanged)).toEqual([
       true,
       false,
     ]);
-    expect(result.current.changedCount).toBe(1);
   });
 
   it('treats an asset with no updatedAt as unchanged', async () => {
-    mockSearchQuery.mockResolvedValue({
-      hits: { hits: [hit('unknown')] },
-    } as never);
+    mockSearches({ followed: [hit('unknown')] });
 
-    const { result } = renderHook(() => useOwnedAndFollowed(USER_ID), {
-      wrapper,
-    });
+    const result = await renderLoaded();
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(result.current.changedCount).toBe(0);
+    expect(result.current.followed[0].hasChanged).toBe(false);
   });
 
-  it('counts changes among followed assets only, not owned ones', async () => {
-    const recent = Date.now() - DAY_MS;
-    mockSearchQuery
-      .mockResolvedValueOnce({
-        hits: { hits: [hit('owned-a', recent), hit('owned-b', recent)] },
-      } as never)
-      .mockResolvedValueOnce({
-        hits: { hits: [hit('followed', recent)] },
-      } as never);
-
-    const { result } = renderHook(() => useOwnedAndFollowed(USER_ID), {
-      wrapper,
+  // The totals used to be the length of the five-row page.
+  it('reports the search totals, not the number of rows fetched', async () => {
+    mockSearches({
+      followed: [hit('f1')],
+      followedTotal: 48,
+      owned: [hit('o1'), hit('o2')],
+      ownedTotal: 31,
     });
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const result = await renderLoaded();
 
     expect(result.current.owned).toHaveLength(2);
-    // The headline number is about what the user follows, not what they own.
-    expect(result.current.changedCount).toBe(1);
+    expect(result.current).toMatchObject({ followedTotal: 48, ownedTotal: 31 });
+    expect(mockSearchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ pageSize: 5, trackTotalHits: true })
+    );
+  });
+
+  // Counting changes among the five rows on screen capped the headline at five.
+  it('counts changed followed assets with a size-0 search over the window', async () => {
+    mockSearches({ changed: 12, followed: [hit('f1')] });
+
+    const result = await renderLoaded();
+
+    expect(result.current.changedCount).toBe(12);
+
+    const countCall = mockSearchQuery.mock.calls
+      .map(([request]) => request)
+      .find((request) => request.pageSize === 0);
+    const [followerTerm, range] = (
+      countCall?.queryFilter as {
+        query: { bool: { must: Array<Record<string, unknown>> } };
+      }
+    ).query.bool.must;
+
+    expect(followerTerm).toEqual({ term: { followers: USER_ID } });
+    expect(
+      (range as { range: { updatedAt: { gte: number } } }).range.updatedAt.gte
+    ).toBeLessThanOrEqual(Date.now() - CHANGE_WINDOW_DAYS * DAY_MS);
   });
 
   it('stays idle until the current user resolves', async () => {

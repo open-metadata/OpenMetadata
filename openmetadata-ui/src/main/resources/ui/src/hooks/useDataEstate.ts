@@ -11,17 +11,19 @@
  *  limitations under the License.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { Bucket } from 'Models';
 import { useMemo } from 'react';
+import { AGGREGATE_PAGE_SIZE_LARGE } from '../constants/constants';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   DataInsightCustomChartResult,
   getMultiChartsPreviewByName,
 } from '../rest/DataInsightAPI';
-import { searchData } from '../rest/miscAPI';
+import { postAggregateFieldOptions } from '../rest/miscAPI';
 import { getFormattedDataAssetServiceType } from '../utils/DataAssetServiceUtils';
+import { getAggregations } from '../utils/ExplorePureUtils';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -36,8 +38,16 @@ export const DATA_ESTATE_CONNECTORS_QUERY_KEY = [
 ];
 const DATA_ESTATE_TTL_MS = 5 * 60 * 1000;
 
-/** The server's default term aggregation on the data-asset index. */
-const SERVICE_TYPE_AGGREGATION = 'sterms#serviceType';
+const SERVICE_TYPE_FIELD = 'serviceType';
+
+/**
+ * Connectors the bar names individually. The rest fold into one "Other"
+ * segment: past this many the slivers are unreadable, but their assets still
+ * belong in the bar, or it would no longer add up to the estate.
+ */
+export const MAX_NAMED_CONNECTORS = 6;
+/** Key of the folded remainder — the breakdown labels it in the reader's locale. */
+export const OTHER_CONNECTORS_KEY = '__other__';
 
 export interface ConnectorCount {
   /** The raw `serviceType`, e.g. `BigQuery` — stable across locales. */
@@ -48,17 +58,33 @@ export interface ConnectorCount {
 }
 
 export interface DataEstate {
+  /**
+   * The newest Data Insights total, or — when Data Insights has no rows for the
+   * window — the live sum of the per-connector counts.
+   */
   totalAssets: number;
   /** Change in total assets across the window; null when there is no baseline. */
   totalDelta: number | null;
+  /**
+   * The window the figures on screen were measured over. Trails the selected
+   * window while a switch is in flight, so a label never pairs the new range
+   * with the previous range's delta.
+   */
+  windowDays: number;
+  /** The largest connectors, then one `OTHER_CONNECTORS_KEY` entry for the rest. */
   connectors: ConnectorCount[];
+  /** Every connector holding assets, not just the ones the bar names. */
+  connectorCount: number;
   descriptionCoverage: number | null;
   /** Percentage-point change in coverage across the window. */
   descriptionCoverageDelta: number | null;
   /** Coverage per day, oldest first — the footprint of the trend line. */
   descriptionCoverageSeries: number[];
+  /** First load only — a window switch keeps the previous figures on screen. */
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
+  refetch: () => void;
 }
 
 type ChartResults = DataInsightCustomChartResult['results'];
@@ -141,22 +167,29 @@ const coverageSeries = (
 };
 
 /**
- * The estate's split by connector — Snowflake, Redshift, BigQuery — read from
- * the same `serviceType` aggregation the classic Data Assets widget used.
+ * The estate's split by connector — Snowflake, Redshift, BigQuery — from a
+ * `serviceType` terms aggregation over the data-asset index.
  *
  * Deliberately NOT the `total_data_assets` chart: that groups by *entity type*
  * (table, chart, databaseSchema), which is what the card was showing under a
  * "by connector" heading. Nothing in the data-insight charts carries the
  * service dimension, so this is a second request rather than a different read
  * of the first.
+ *
+ * The aggregate endpoint rather than the search query's built-in aggregation:
+ * that one carries the engine's default of ten buckets, so an estate with an
+ * eleventh connector under-reported both the split and "across N connectors".
  */
 const fetchConnectorBreakdown = async (): Promise<ConnectorCount[]> => {
-  // size 0: the aggregation is the whole answer, the hits are dead weight.
-  const response = await searchData('', 0, 0, '', '', '', [
-    SearchIndex.DATA_ASSET,
-  ]);
+  const response = await postAggregateFieldOptions({
+    deleted: false,
+    fieldName: SERVICE_TYPE_FIELD,
+    index: SearchIndex.DATA_ASSET,
+    size: AGGREGATE_PAGE_SIZE_LARGE,
+  });
   const buckets: Bucket[] =
-    response.data.aggregations?.[SERVICE_TYPE_AGGREGATION]?.buckets ?? [];
+    getAggregations(response.data.aggregations ?? {})[SERVICE_TYPE_FIELD]
+      ?.buckets ?? [];
 
   return buckets
     .map((bucket) => ({
@@ -167,16 +200,77 @@ const fetchConnectorBreakdown = async (): Promise<ConnectorCount[]> => {
     .sort((a, b) => b.count - a.count);
 };
 
+/** Names the largest connectors and folds the tail into one "Other" entry. */
+const foldConnectors = (connectors: ConnectorCount[]): ConnectorCount[] => {
+  if (connectors.length <= MAX_NAMED_CONNECTORS) {
+    return connectors;
+  }
+  const named = connectors.slice(0, MAX_NAMED_CONNECTORS - 1);
+  const rest = connectors.slice(MAX_NAMED_CONNECTORS - 1);
+
+  return [
+    ...named,
+    {
+      count: rest.reduce((total, connector) => total + connector.count, 0),
+      key: OTHER_CONNECTORS_KEY,
+      name: '',
+    },
+  ];
+};
+
 const fetchDataEstate = async (windowDays: number) => {
   const end = Date.now();
-
-  return getMultiChartsPreviewByName(
+  const charts = await getMultiChartsPreviewByName(
     [
       SystemChartType.TotalDataAssets,
       SystemChartType.PercentageOfDataAssetWithDescription,
     ],
     { end, start: end - windowDays * DAY_MS }
   );
+
+  return { charts, windowDays };
+};
+
+/** The card's figures from the two answers in hand — pure, so the hook can memoise it. */
+const deriveEstate = (
+  charts: Awaited<ReturnType<typeof getMultiChartsPreviewByName>> | undefined,
+  allConnectors: ConnectorCount[]
+) => {
+  const totals = charts?.[SystemChartType.TotalDataAssets]?.results ?? [];
+  const coverage =
+    charts?.[SystemChartType.PercentageOfDataAssetWithDescription]?.results ??
+    [];
+
+  const newestDay = latestDay(totals);
+  const oldestDay = totals.reduce(
+    (oldest, row) => Math.min(oldest, row.day),
+    newestDay
+  );
+  const liveTotal = allConnectors.reduce(
+    (total, connector) => total + connector.count,
+    0
+  );
+  // Data Insights only has rows once its pipeline has run. Without them the
+  // header would print 0 above a populated breakdown, so it falls back to the
+  // live connector sum — which leaves out assets with no service (glossary
+  // terms and the like), so it is a floor rather than the same figure.
+  const hasInsights = totals.length > 0;
+  const totalAssets = hasInsights ? sumForDay(totals, newestDay) : liveTotal;
+  const series = coverageSeries(coverage, totals);
+  // A single-day window has no baseline to compare against, so report no
+  // movement rather than the whole estate's worth of it.
+  const hasBaseline = hasInsights && oldestDay !== newestDay;
+
+  return {
+    connectorCount: allConnectors.length,
+    connectors: foldConnectors(allConnectors),
+    descriptionCoverage: series.length > 0 ? series[series.length - 1] : null,
+    descriptionCoverageDelta:
+      series.length > 1 ? series[series.length - 1] - series[0] : null,
+    descriptionCoverageSeries: series,
+    totalAssets,
+    totalDelta: hasBaseline ? totalAssets - sumForDay(totals, oldestDay) : null,
+  };
 };
 
 /**
@@ -190,8 +284,12 @@ export const useDataEstate = (options?: {
 }): DataEstate => {
   const windowDays = options?.windowDays ?? DATA_ESTATE_WINDOW_DAYS;
   const enabled = options?.enabled ?? true;
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isFetching, isError, refetch } = useQuery({
     enabled,
+    // Keeps the previous window's figures on screen while the next one loads,
+    // so a range switch dims the card instead of swapping it for a skeleton —
+    // which unmounted the range filter mid-interaction and dropped its focus.
+    placeholderData: keepPreviousData,
     queryFn: () => fetchDataEstate(windowDays),
     // The window is part of the key: two ranges are two different answers, and
     // sharing one entry would serve the previous range's data on a switch.
@@ -206,6 +304,7 @@ export const useDataEstate = (options?: {
     data: connectors,
     isPending: isConnectorsPending,
     isError: isConnectorsError,
+    refetch: refetchConnectors,
   } = useQuery({
     enabled,
     queryFn: fetchConnectorBreakdown,
@@ -219,41 +318,29 @@ export const useDataEstate = (options?: {
   // entry animation. Deriving fresh arrays per render made any unrelated
   // re-render of the landing page — a sibling widget resolving its own query —
   // animate the bar a second time.
-  return useMemo(() => {
-    const totals = data?.[SystemChartType.TotalDataAssets]?.results ?? [];
-    const coverage =
-      data?.[SystemChartType.PercentageOfDataAssetWithDescription]?.results ??
-      [];
-
-    const newestDay = latestDay(totals);
-    const oldestDay = totals.reduce(
-      (oldest, row) => Math.min(oldest, row.day),
-      newestDay
-    );
-
-    const totalAssets = sumForDay(totals, newestDay);
-    const baseline = sumForDay(totals, oldestDay);
-    const series = coverageSeries(coverage, totals);
-
-    return {
-      connectors: connectors ?? [],
-      descriptionCoverage: series.length > 0 ? series[series.length - 1] : null,
-      descriptionCoverageDelta:
-        series.length > 1 ? series[series.length - 1] - series[0] : null,
-      descriptionCoverageSeries: series,
+  return useMemo(
+    () => ({
+      ...deriveEstate(data?.charts, connectors ?? []),
       isError: isError || isConnectorsError,
+      isFetching,
       isLoading: isPending || isConnectorsPending,
-      // A single-day window has no baseline to compare against, so report no
-      // movement rather than the whole estate's worth of it.
-      totalDelta: oldestDay === newestDay ? null : totalAssets - baseline,
-      totalAssets,
-    };
-  }, [
-    data,
-    isPending,
-    isError,
-    connectors,
-    isConnectorsPending,
-    isConnectorsError,
-  ]);
+      refetch: () => {
+        void refetch();
+        void refetchConnectors();
+      },
+      windowDays: data?.windowDays ?? windowDays,
+    }),
+    [
+      windowDays,
+      data,
+      isPending,
+      isFetching,
+      isError,
+      refetch,
+      connectors,
+      isConnectorsPending,
+      isConnectorsError,
+      refetchConnectors,
+    ]
+  );
 };

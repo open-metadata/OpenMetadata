@@ -312,3 +312,65 @@ describe('TopicCard collapse chevron', () => {
     expect(toggle.querySelectorAll('button')).toHaveLength(0);
   });
 });
+
+describe('TopicCard error and refetch states', () => {
+  const renderState = (props: Partial<Parameters<typeof TopicCard>[0]>) =>
+    render(
+      <TopicCard
+        meta="12 more"
+        status={{ color: 'warning', label: '3 unowned' }}
+        summary="0 domains"
+        title="Domains"
+        tone={TONE}
+        topicKey={TopicKey.DOMAINS}
+        widgetKey={WIDGET_KEY}
+        {...props}>
+        <div data-testid="body">No domains yet.</div>
+      </TopicCard>
+    );
+
+  // A failed fetch leaves every count at zero, and the body used to render its
+  // empty-state copy — "No domains yet." — for an estate it never saw.
+  it('replaces the body, summary, status and meta when the fetch failed', () => {
+    renderState({ isError: true });
+
+    expect(screen.getByTestId('topic-error-domains')).toBeInTheDocument();
+    expect(screen.queryByTestId('body')).toBeNull();
+    expect(screen.queryByText('0 domains')).toBeNull();
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('topic-status-domains')).toBeNull();
+    expect(screen.queryByText('12 more')).toBeNull();
+  });
+
+  it('offers a retry when the widget can refetch', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onRetry = jest.fn();
+    renderState({ isError: true, onRetry });
+
+    await user.click(screen.getByRole('button', { name: 'label.retry' }));
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the skeleton, not the error, while the first load is in flight', () => {
+    renderState({ isError: true, isLoading: true });
+
+    expect(screen.queryByTestId('topic-error-domains')).toBeNull();
+    expect(
+      screen.getByTestId(`topic-body-skeleton-${TopicKey.DOMAINS}`)
+    ).toBeInTheDocument();
+  });
+
+  // A filter lives in the body; swapping the body for a skeleton on every
+  // refetch unmounted it mid-interaction. A refetch only dims.
+  it('keeps the body mounted and marks it busy during a refetch', () => {
+    renderState({ isFetching: true });
+
+    expect(screen.getByTestId('body')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`topic-body-${TopicKey.DOMAINS}`)
+    ).toHaveAttribute('aria-busy', 'true');
+  });
+});

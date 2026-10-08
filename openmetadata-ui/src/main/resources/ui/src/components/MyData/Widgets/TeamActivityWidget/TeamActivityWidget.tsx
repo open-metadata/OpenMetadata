@@ -14,9 +14,10 @@
 import { Avatar, Typography } from '@openmetadata/ui-core-components';
 import { Teams } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
+import type { TFunction } from 'i18next';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EntityTabs } from '../../../../enums/entity.enum';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -26,7 +27,7 @@ import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getUserPath } from '../../../../utils/RouterUtils';
-import { getActivityVerb } from '../Common/TopicWidget/activityVerb';
+import { ActivitySentence } from '../Common/TopicWidget/activityVerb';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
 
@@ -35,11 +36,17 @@ export const TEAM_ACTIVITY_QUERY_KEY = [
   'widgets',
   'teamActivity',
 ];
-const TEAM_ACTIVITY_WINDOW_DAYS = 7;
+export const TEAM_ACTIVITY_WINDOW_DAYS = 7;
 const TEAM_ACTIVITY_TTL_MS = 60_000;
 // The card is a digest; the footer link is the full feed.
 const MAX_VISIBLE_ROWS = 6;
-const FETCH_LIMIT = 20;
+
+/**
+ * The feed returns no total, so the count is read off the page itself. One
+ * event past the limit is fetched only to learn that there are more, which the
+ * card then says as "20+" instead of passing the cap off as the real number.
+ */
+export const TEAM_ACTIVITY_COUNT_CAP = 20;
 
 const TONE = {
   icon: Teams,
@@ -49,15 +56,23 @@ const TONE = {
 const fetchTeamActivity = async (): Promise<ActivityEvent[]> => {
   const response = await getMyActivityFeed({
     days: TEAM_ACTIVITY_WINDOW_DAYS,
-    limit: FETCH_LIMIT,
+    limit: TEAM_ACTIVITY_COUNT_CAP + 1,
   });
 
   return response.data ?? [];
 };
 
+const getCountLabel = (count: number, t: TFunction): string =>
+  count > TEAM_ACTIVITY_COUNT_CAP
+    ? t('message.count-plus-updates', { count: TEAM_ACTIVITY_COUNT_CAP })
+    : t('message.count-updates', { count });
+
 export type TeamActivityWidgetProps = WidgetCommonProps;
 
-/** What changed recently in the domains this user owns. */
+/**
+ * What changed recently on the assets this user, or one of their teams, owns —
+ * the scope of the `my-feed` endpoint.
+ */
 const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
   widgetKey,
   isEditView,
@@ -66,7 +81,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const currentUser = useApplicationStore((state) => state.currentUser);
-  const { data, isError, isPending } = useQuery<ActivityEvent[]>({
+  const { data, isError, isPending, refetch } = useQuery<ActivityEvent[]>({
     queryFn: fetchTeamActivity,
     queryKey: TEAM_ACTIVITY_QUERY_KEY,
     staleTime: TEAM_ACTIVITY_TTL_MS,
@@ -74,23 +89,24 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
 
   const events = useMemo(() => data ?? [], [data]);
   const count = events.length;
+  const [latest] = events;
 
   // The newest event doubles as the card's summary, so a collapsed card still
-  // says what actually happened rather than only how much did.
-  const summary = useMemo(() => {
-    if (isError) {
-      return t('message.something-went-wrong');
-    }
-    const [latest] = events;
-    if (!latest) {
-      return t('message.no-recent-team-activity');
-    }
-
-    return `${getEntityName(latest.actor)} ${getActivityVerb(
-      latest.eventType,
-      t
-    )} ${getEntityName(latest.entity)} · ${getRelativeTime(latest.timestamp)}`;
-  }, [events, isError, t]);
+  // says what actually happened rather than only how much did. No link here:
+  // the summary sits inside the header's collapse toggle.
+  let summary: React.ReactNode = t(
+    'message.no-recent-activity-on-owned-assets'
+  );
+  if (isError) {
+    summary = t('message.something-went-wrong');
+  } else if (latest) {
+    summary = (
+      <>
+        <ActivitySentence event={latest} />
+        {` · ${getRelativeTime(latest.timestamp)}`}
+      </>
+    );
+  }
 
   return (
     <TopicCard
@@ -103,33 +119,40 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isError={isError}
       isLoading={isPending}
       meta={
         count > 0
-          ? t('message.count-updates-in-domains-you-own', { count })
+          ? t('message.activity-on-assets-owned-by-you-or-your-teams', {
+              count: TEAM_ACTIVITY_WINDOW_DAYS,
+            })
           : undefined
       }
       status={
         count > 0
-          ? { color: 'gray', label: t('message.count-updates', { count }) }
+          ? { color: 'gray', label: getCountLabel(count, t) }
           : undefined
       }
       summary={summary}
       title={t('label.team-activity')}
       tone={TONE}
       topicKey={TopicKey.TEAM_ACTIVITY}
-      widgetKey={widgetKey}>
-      {count === 0 ? (
-        <Typography className="tw:text-text-secondary!" size="text-sm">
-          {t('message.no-recent-team-activity')}
+      widgetKey={widgetKey}
+      onRetry={() => void refetch()}>
+      {!isError && count === 0 && (
+        <Typography
+          className="tw:text-text-secondary!"
+          data-testid="team-activity-empty"
+          size="text-sm">
+          {t('message.no-recent-activity-on-owned-assets')}
         </Typography>
-      ) : (
+      )}
+      {!isError && count > 0 && (
         <ul
           className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
           data-testid="team-activity-rows">
           {events.slice(0, MAX_VISIBLE_ROWS).map((event) => {
             const actorName = getEntityName(event.actor);
-            const entityName = getEntityName(event.entity);
             const entityLink = event.entity.fullyQualifiedName
               ? entityUtilClassBase.getEntityLink(
                   event.entity.type,
@@ -154,19 +177,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
                 <Typography
                   className="tw:min-w-0 tw:flex-1 tw:text-pretty tw:text-text-secondary!"
                   size="text-sm">
-                  <span className="tw:font-medium tw:text-text-primary">
-                    {actorName}
-                  </span>
-                  {` ${getActivityVerb(event.eventType, t)} `}
-                  {entityLink ? (
-                    <Link
-                      className="tw:font-medium tw:text-brand-secondary"
-                      to={entityLink}>
-                      {entityName}
-                    </Link>
-                  ) : (
-                    entityName
-                  )}
+                  <ActivitySentence entityLink={entityLink} event={event} />
                   {` · ${getRelativeTime(event.timestamp)}`}
                 </Typography>
               </li>

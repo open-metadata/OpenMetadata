@@ -13,23 +13,19 @@
 
 import { Badge, Typography } from '@openmetadata/ui-core-components';
 import { Globe01 as Domain } from '@openmetadata/ui-core-components/icons';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
-import { useDomainOverview } from '../../../../hooks/useDomainOverview';
+import {
+  OverviewFilter,
+  useDomainOverview,
+} from '../../../../hooks/useDomainOverview';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import { getDomainPath } from '../../../../utils/RouterUtils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
 import { TopicKey } from '../Common/TopicWidget/topics.types';
-
-/** Bucket filters over the domains already fetched — no extra request. */
-const DOMAIN_FILTERS = {
-  ALL: 'all',
-  EMPTY: 'empty',
-  NO_OWNER: 'noOwner',
-} as const;
 
 const DOMAINS_LABEL_KEY = 'label.domain-plural';
 
@@ -48,29 +44,26 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { domains, totalCount, unownedCount, emptyCount, isError, isLoading } =
-    useDomainOverview();
-  const [filter, setFilter] = useState<string>(DOMAIN_FILTERS.ALL);
+  const [filter, setFilter] = useState<OverviewFilter>(OverviewFilter.ALL);
+  // Each bucket is queried, not filtered out of the rows in hand — the rows are
+  // one page, and a chip counted or filtered over a page describes the page.
+  const {
+    domains,
+    totalCount,
+    unownedCount,
+    emptyCount,
+    isError,
+    isFetching,
+    isLoading,
+    refetch,
+  } = useDomainOverview(filter);
 
-  const visibleDomains = useMemo(() => {
-    if (filter === DOMAIN_FILTERS.NO_OWNER) {
-      return domains.filter((domain) => !domain.ownerName);
-    }
-    if (filter === DOMAIN_FILTERS.EMPTY) {
-      return domains.filter((domain) => domain.assetCount === 0);
-    }
-
-    return domains;
-  }, [domains, filter]);
-
-  const remaining = Math.max(0, totalCount - domains.length);
-
-  const summary = isError
-    ? t('message.something-went-wrong')
-    : [
-        t('message.count-unowned', { count: unownedCount }),
-        t('message.count-total-tests', { count: totalCount }),
-      ].join(' · ');
+  const bucketSize: Record<OverviewFilter, number> = {
+    [OverviewFilter.ALL]: totalCount,
+    [OverviewFilter.NO_OWNER]: unownedCount,
+    [OverviewFilter.EMPTY]: emptyCount,
+  };
+  const remaining = Math.max(0, bucketSize[filter] - domains.length);
 
   return (
     <TopicCard
@@ -80,6 +73,8 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
       }}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
+      isError={isError}
+      isFetching={isFetching}
       isLoading={isLoading}
       meta={
         remaining > 0
@@ -94,12 +89,16 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
             }
           : undefined
       }
-      summary={summary}
+      summary={t('message.count-domains-count-unowned', {
+        count: totalCount,
+        unowned: unownedCount,
+      })}
       title={t(DOMAINS_LABEL_KEY)}
       tone={TONE}
       topicKey={TopicKey.DOMAINS}
-      widgetKey={widgetKey}>
-      {domains.length === 0 ? (
+      widgetKey={widgetKey}
+      onRetry={refetch}>
+      {totalCount === 0 ? (
         // `!` on the colours throughout: Typography renders `.prose`, whose
         // unlayered `color` rule is emitted after the Tailwind utilities.
         <Typography className="tw:text-text-secondary!" size="text-sm">
@@ -111,32 +110,33 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
             chips={[
               {
                 count: totalCount,
-                id: DOMAIN_FILTERS.ALL,
+                id: OverviewFilter.ALL,
                 label: t('label.all'),
                 tone: 'brand',
               },
               {
                 count: unownedCount,
-                id: DOMAIN_FILTERS.NO_OWNER,
+                id: OverviewFilter.NO_OWNER,
                 label: t('label.no-owner'),
                 tone: 'warning',
               },
               {
                 count: emptyCount,
-                id: DOMAIN_FILTERS.EMPTY,
+                id: OverviewFilter.EMPTY,
                 label: t('label.empty'),
                 tone: 'muted',
               },
             ]}
             label={t(DOMAINS_LABEL_KEY)}
+            testIdPrefix="domains"
             value={filter}
-            onChange={setFilter}
+            onChange={(next) => setFilter(next as OverviewFilter)}
           />
 
           <ul
             className="tw:mt-3 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
             data-testid="domain-rows">
-            {visibleDomains.map((domain) => (
+            {domains.map((domain) => (
               <li data-testid={`domain-card-${domain.id}`} key={domain.id}>
                 <Link
                   className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3"
@@ -149,6 +149,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
                   <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
                     <Typography
                       className="tw:min-w-0 tw:text-text-primary!"
+                      data-testid="domain-name"
                       ellipsis={{ rows: 1 }}
                       size="text-sm"
                       weight="medium">
@@ -171,7 +172,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
                     data-testid="domain-asset-count"
                     size="sm"
                     type="pill-color">
-                    {`${domain.assetCount} ${t('label.asset-plural')}`}
+                    {t('label.count-asset', { count: domain.assetCount })}
                   </Badge>
                 </Link>
               </li>
