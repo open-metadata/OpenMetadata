@@ -175,6 +175,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private static final Duration DEPLOY_CONNECT_TIMEOUT = Duration.ofSeconds(30);
   private static final Duration MIN_DEPLOY_CHUNK_TIMEOUT = Duration.ofMinutes(2);
   private static final String STATUS_FAILED = "FAILED";
+  private static final String STATUS_SKIPPED_DELETED_SERVICE = "SKIPPED - service is soft-deleted";
   private static final int STATUS_COLUMN_INDEX = 3;
 
   private OpenMetadataApplicationConfig config;
@@ -2563,8 +2564,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
             new ListFilter(Include.NON_DELETED));
     LOG.debug("Pipelines size {}", pipelines.size());
     final List<List<String>> pipelineStatuses = new ArrayList<>();
-    if (!pipelines.isEmpty()) {
-      deployPipelinesViaAPI(pipelines, pipelineStatuses, chunkSize, secondsPerPipeline);
+    final List<IngestionPipeline> deployable =
+        skipPipelinesOfDeletedServices(pipelines, pipelineStatuses);
+    if (!deployable.isEmpty()) {
+      deployPipelinesViaAPI(deployable, pipelineStatuses, chunkSize, secondsPerPipeline);
     }
     printToAsciiTable(
         Arrays.asList("Name", "Type", "Service Name", "Status"),
@@ -3246,6 +3249,26 @@ public class OpenMetadataOperations implements Callable<Integer> {
       timeout = budgeted;
     }
     return timeout;
+  }
+
+  // Report pipelines of soft-deleted services as skipped rather than failing the whole run
+  static List<IngestionPipeline> skipPipelinesOfDeletedServices(
+      final List<IngestionPipeline> pipelines, final List<List<String>> pipelineStatuses) {
+    final List<IngestionPipeline> deployable = new ArrayList<>();
+    for (IngestionPipeline pipeline : pipelines) {
+      final EntityReference service = pipeline.getService();
+      if (service != null && Boolean.TRUE.equals(service.getDeleted())) {
+        pipelineStatuses.add(
+            Arrays.asList(
+                pipeline.getName(),
+                pipeline.getPipelineType().value(),
+                service.getName(),
+                STATUS_SKIPPED_DELETED_SERVICE));
+      } else {
+        deployable.add(pipeline);
+      }
+    }
+    return deployable;
   }
 
   static boolean hasDeployFailures(final List<List<String>> pipelineStatuses) {
