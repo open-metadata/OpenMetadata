@@ -26,6 +26,12 @@ import {
   FetchOptionsResponse,
 } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { UseAsyncDataAssetOptionsParams } from './DataAssetPicker.interface';
+import {
+  SearchHitBody,
+  SearchResponse,
+  TableSearchSource,
+} from '../../../interface/search.interface';
+import { SearchIndex } from '../../../enums/search.enum';
 
 export const useAsyncDataAssetOptions = ({
   isOpen,
@@ -47,14 +53,6 @@ export const useAsyncDataAssetOptions = ({
   const [options, setOptions] = useState<DataAssetOption[]>([]);
   const [searchText, setSearchText] = useState('');
 
-  // Stabilize queryFilter by value so inline object literals from callers don't
-  // cause fetchOptions/loadOptions to change identity on every render.
-
-  const stableQueryFilter = useMemo(
-    () => queryFilter,
-    [JSON.stringify(queryFilter)]
-  );
-
   const fetchOptions = useCallback(
     async (
       searchQueryParam: string,
@@ -65,18 +63,20 @@ export const useAsyncDataAssetOptions = ({
         pageNumber: page,
         pageSize: PAGE_SIZE,
         searchIndex,
-        queryFilter: stableQueryFilter ?? {
+        queryFilter: queryFilter ?? {
           query: { bool: { must_not: [{ match: { isBot: true } }] } },
         },
       });
 
-      const hits = response.hits.hits;
+      const hits = response.hits.hits as Array<
+        SearchHitBody<SearchIndex.TABLE, TableSearchSource>
+      >;
       const total = response.hits.total.value;
 
       const data = hits.map(({ _source }) => {
         const entityName = getEntityName(_source);
         const entityRef = getEntityReferenceFromEntity(
-          _source as EntityReference,
+          _source,
           _source.entityType as EntityType
         );
 
@@ -92,7 +92,7 @@ export const useAsyncDataAssetOptions = ({
 
       return { data, paging: { total } };
     },
-    [searchIndex, stableQueryFilter]
+    [searchIndex, queryFilter]
   );
 
   const loadOptions = useCallback(
@@ -100,6 +100,11 @@ export const useAsyncDataAssetOptions = ({
       // Reopening the list asks for the same query again; reuse what is shown.
       const loaded = loadedQuery.current;
       if (loaded?.query === query && loaded.fetcher === fetchOptions) {
+        // Drop any newer search still pending so it cannot replace these results.
+        ++latestRequest.current;
+        setIsLoading(false);
+        setSearchText(query);
+
         return;
       }
       const request = ++latestRequest.current;

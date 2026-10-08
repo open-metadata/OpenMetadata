@@ -26,6 +26,7 @@ import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 
 export interface ApplicationConfigurationProps {
   appData: App | AppMarketPlaceDefinition;
@@ -59,18 +60,14 @@ const ApplicationConfiguration = ({
   };
 
   const formPanel = (
-    <FormBuilder
-      capitalizeOptionLabel
-      useSelectWidget
+    <FormBuilderV1
       cancelText={t('label.back')}
       formData={appData?.appConfiguration ?? {}}
       hideCancelButton={!onCancel}
       isLoading={isLoading}
       okText={t('label.save')}
       schema={jsonSchema}
-      serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
       uiSchema={UiSchema}
-      validator={validator}
       onCancel={onCancel}
       onFocus={handleFieldFocus}
       onSubmit={onConfigSave}

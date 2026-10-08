@@ -24,11 +24,11 @@ import { MCPConfiguration } from '../../../../generated/configuration/mcpConfigu
 import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 
 export interface McpApplicationConfigurationProps {
   appName: string;
@@ -129,18 +129,14 @@ const McpApplicationConfiguration = ({
   }
 
   const formPanel = (
-    <FormBuilder
-      capitalizeOptionLabel
+    <FormBuilderV1
       hideCancelButton
-      useSelectWidget
       cancelText={t('label.back')}
       formData={formConfig}
       isLoading={isSaving}
       okText={t('label.save')}
       schema={jsonSchema}
-      serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
       uiSchema={UiSchema}
-      validator={validator}
       onFocus={handleFieldFocus}
       onSubmit={handleSubmit}
     />

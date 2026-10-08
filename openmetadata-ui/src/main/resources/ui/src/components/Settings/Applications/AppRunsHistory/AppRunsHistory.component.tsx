@@ -73,6 +73,7 @@ import {
   AppRunRecordWithId,
   AppRunsHistoryProps,
 } from './AppRunsHistory.interface';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 
 // Statuses in which an app run has already finished, so it can no longer be stopped.
 const TERMINAL_APP_RUN_STATUSES: Status[] = [
@@ -573,19 +574,15 @@ const AppRunsHistory = forwardRef(
           }
           width={800}>
           {jsonSchema && (
-            <FormBuilder
-              capitalizeOptionLabel
+            <FormBuilderV1
               hideCancelButton
               readonly
-              useSelectWidget
               cancelText={t('label.back')}
               formData={appRunRecordConfig}
               isLoading={false}
               okText={t('label.submit')}
               schema={jsonSchema}
-              serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
               uiSchema={UiSchema}
-              validator={validator}
               onCancel={noop}
               onSubmit={noop}
             />

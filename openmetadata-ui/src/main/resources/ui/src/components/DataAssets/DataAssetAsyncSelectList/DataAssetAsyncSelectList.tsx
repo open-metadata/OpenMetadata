@@ -149,7 +149,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
             <ProfilePicture
               isTeam={type === EntityType.TEAM}
               name={option?.name ?? ''}
-              width="24"
+              size="xs"
             />
             <span data-testid={item.label}>{item.label}</span>
           </div>
@@ -171,6 +171,12 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     );
   };
 
+  const visibleCount = useMemo(() => {
+    const selectedIds = new Set(selectedItems.map((s) => s.id));
+
+    return items.filter((i) => !selectedIds.has(i.id)).length;
+  }, [items, selectedItems]);
+
   return (
     <Autocomplete
       // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the async select when the list mounts
@@ -185,7 +191,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       popoverClassName={popoverClassName}
       popoverFooter={<DataAssetPickerFooter />}
       popoverHeader={
-        <DataAssetPickerCountBar count={items.length} total={totalCount} />
+        <DataAssetPickerCountBar count={visibleCount} total={totalCount} />
       }
       selectedItems={selectedItems}
       onItemCleared={handleItemCleared}

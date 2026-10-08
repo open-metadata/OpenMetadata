@@ -100,7 +100,7 @@ import {
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
-import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
+
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -121,6 +121,7 @@ import {
 } from './SSOConfigurationForm.interface';
 import SsoConfigurationFormArrayFieldTemplate from './SsoConfigurationFormArrayFieldTemplate';
 import SsoRolesSelectField from './SsoRolesSelectField';
+import CoreSelectWidget from '../../common/FormBuilderV1/widgets/CoreSelectWidget';
 
 interface MetadataUploadStatusCardProps {
   status: 'success' | 'error';
@@ -174,7 +175,7 @@ const MetadataUploadStatusCard = ({
 };
 
 const widgets = {
-  SelectWidget: SelectWidget,
+  SelectWidget: CoreSelectWidget,
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
