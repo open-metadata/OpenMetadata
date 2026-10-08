@@ -79,6 +79,7 @@ ATHENA_TAG = "ATHENA TAG"
 ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
 
 ICEBERG_TABLE_TYPE = "ICEBERG"
+GLUE_VIEW_TABLE_TYPE = "VIRTUAL_VIEW"
 
 ATHENA_INTERVAL_TYPE_MAP = {
     **dict.fromkeys(["enum", "string", "VARCHAR"], PartitionIntervalTypes.COLUMN_VALUE),
@@ -142,7 +143,10 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
         return self.schema_description_map.get(schema_name)
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
-        """Return tables with proper type detection using a single Glue API pass."""
+        """Return tables with proper type detection using a single Glue API pass.
+
+        Views are left to the view pass, which types them View with their definition.
+        """
         if self.glue_client:
             try:
                 results = []
@@ -152,6 +156,11 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
                     paginate_params["CatalogId"] = self.service_connection.catalogId
                 for page in paginator.paginate(**paginate_params):
                     for table in page.get("TableList", []):
+                        # Glue lists views too. Emitting them here would send each view twice and put
+                        # it under includeTables instead of includeViews. Checked before the Iceberg
+                        # branch because Glue also stamps Iceberg views with table_type=ICEBERG.
+                        if table.get("TableType") == GLUE_VIEW_TABLE_TYPE:
+                            continue
                         params = table.get("Parameters", {})
                         table_type = (
                             TableType.Iceberg if params.get("table_type") == ICEBERG_TABLE_TYPE else TableType.External

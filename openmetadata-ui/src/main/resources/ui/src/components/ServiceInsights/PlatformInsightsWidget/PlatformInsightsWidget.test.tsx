@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
@@ -137,12 +137,28 @@ describe('PlatformInsightsWidget', () => {
       ).toBeInTheDocument();
     });
 
-    it('should render expand/collapse functionality', () => {
+    it('collapses and restores chart content through its accessible header', () => {
       renderComponent();
+      const header = screen.getByRole('button', { expanded: true });
 
-      const expandIcon = screen.getByText('label.view-more');
+      expect(screen.getByText('85%')).toBeVisible();
 
-      expect(expandIcon).toBeInTheDocument();
+      fireEvent.click(header);
+
+      expect(header).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByText('85%')).not.toBeVisible();
+
+      fireEvent.click(header);
+
+      expect(header).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByText('85%')).toBeVisible();
+    });
+
+    it('keeps embedded charts visible without a disabled collapse control', () => {
+      renderComponent({ variant: 'embedded' });
+
+      expect(screen.getByText('85%')).toBeVisible();
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 
     it('should render the export class for platform insights chart', () => {

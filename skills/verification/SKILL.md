@@ -43,8 +43,8 @@ mvn test-compile -pl <module>
 # 3. Run relevant tests
 mvn test -pl <module> -Dtest=<TestClass>
 
-# 4. For API changes: run integration tests
-mvn verify -pl openmetadata-integration-tests -Dtest=<IntegrationTestClass>
+# 4. Unit tests + integration tests the diff impacts (PR CI runs no ITs; see java-affected-tests)
+make java_affected_run
 ```
 
 ### Python Ingestion Changes

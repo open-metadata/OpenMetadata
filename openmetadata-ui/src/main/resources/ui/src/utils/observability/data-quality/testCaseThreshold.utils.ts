@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { omit } from 'lodash';
 import {
   ProfileSampleType,
   SampleConfigType,
@@ -23,7 +24,8 @@ export const THRESHOLD_PARAM = 'threshold';
 export const THRESHOLD_UNIT_PARAM = 'thresholdUnit';
 const OPERATOR_PARAM = 'operator';
 const STRATEGY_PARAM = 'strategy';
-const DIMENSION_FAILURE_POLICY_PARAM = 'dimensionFailurePolicy';
+
+export const DIMENSION_FAILURE_POLICY_PARAM = 'dimensionFailurePolicy';
 const MATCH_ENUM_PARAM = 'matchEnum';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
@@ -194,6 +196,20 @@ const DIMENSION_FAILURE_POLICY_LABEL_KEYS: Record<string, string> = {
   OVERALL_ONLY: 'label.dimension-failure-policy-overall-only',
   ANY_DIMENSION: 'label.dimension-failure-policy-any-dimension',
 };
+
+/**
+ * Drops `dimensionFailurePolicy` from the submitted params of a test case that
+ * has no dimension columns: it only rolls dimension groups up, and the form
+ * hides it there, so a value left over from an earlier selection must not be
+ * saved where nobody can see or change it.
+ */
+export const omitDimensionFailurePolicy = <T extends object>(
+  params: T | undefined,
+  isDimensionalTest: boolean
+): T | undefined =>
+  isDimensionalTest || !params
+    ? params
+    : (omit(params, DIMENSION_FAILURE_POLICY_PARAM) as T);
 
 export const getThresholdTestSemantic = (
   definitionName: string | undefined
