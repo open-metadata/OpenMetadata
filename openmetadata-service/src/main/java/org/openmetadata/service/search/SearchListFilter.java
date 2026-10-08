@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
@@ -16,7 +16,8 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
 public class SearchListFilter extends Filter<SearchListFilter> {
-  private List<EntityStatus> memoryStatuses = ContextMemorySearchVisibility.SEARCHABLE_STATUSES;
+  private List<ContextMemoryStatus> memoryStatuses =
+      ContextMemorySearchVisibility.SEARCHABLE_STATUSES;
 
   public SearchListFilter() {
     this(Include.NON_DELETED);
@@ -30,12 +31,12 @@ public class SearchListFilter extends Filter<SearchListFilter> {
    * Context memory stages the listing admits. Applied with memory visibility rather than as a
    * condition, since ordinary search already admits Approved memories only.
    */
-  public SearchListFilter withMemoryStatuses(List<EntityStatus> statuses) {
+  public SearchListFilter withMemoryStatuses(List<ContextMemoryStatus> statuses) {
     memoryStatuses = List.copyOf(statuses);
     return this;
   }
 
-  public List<EntityStatus> getMemoryStatuses() {
+  public List<ContextMemoryStatus> getMemoryStatuses() {
     return memoryStatuses;
   }
 

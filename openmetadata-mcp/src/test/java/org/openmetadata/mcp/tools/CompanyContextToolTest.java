@@ -34,12 +34,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -293,7 +293,7 @@ class CompanyContextToolTest {
         "pill-fqn",
         sharedWith(
             memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
-                .withEntityStatus(EntityStatus.DEPRECATED),
+                .withEntityStatus(ContextMemoryStatus.DEPRECATED),
             "bob"));
     CatalogSecurityContext securityContext = securityContextFor("bob");
 
@@ -448,7 +448,7 @@ class CompanyContextToolTest {
         .withFullyQualifiedName(fqn)
         .withQuestion("Q")
         .withAnswer("A")
-        .withEntityStatus(EntityStatus.APPROVED)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withSourceType(sourceType)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }

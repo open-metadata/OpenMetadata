@@ -138,7 +138,7 @@ public class FilterEntityImpl implements JavaDelegate {
       List<String> includeFields,
       String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-    EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
     boolean fieldBasedFilter;
     Optional<ChangeDescription> oChangeDescription =

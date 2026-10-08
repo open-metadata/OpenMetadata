@@ -178,7 +178,7 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
   }
 
   @Override
-  public EntityInterface getParentEntity(LLMModel entity, String fields) {
+  public EntityInterface<?> getParentEntity(LLMModel entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }

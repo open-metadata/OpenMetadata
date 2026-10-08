@@ -73,7 +73,7 @@ class ActivityStreamRepositoryTest {
     ActivityStreamRepository repository = new ActivityStreamRepository(dao);
 
     ChangeEvent changeEvent = changeEventWith(/* userName */ null);
-    EntityInterface entity = tableEntity();
+    EntityInterface<?> entity = tableEntity();
 
     repository.createFromChangeEvent(changeEvent, entity);
 
@@ -91,7 +91,7 @@ class ActivityStreamRepositoryTest {
     ActivityStreamRepository repository = new ActivityStreamRepository(dao);
 
     ChangeEvent changeEvent = changeEventWith("ghost-user");
-    EntityInterface entity = tableEntity();
+    EntityInterface<?> entity = tableEntity();
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
@@ -169,7 +169,7 @@ class ActivityStreamRepositoryTest {
         .withUserName(userName);
   }
 
-  private static EntityInterface tableEntity() {
+  private static EntityInterface<?> tableEntity() {
     return new Table().withId(UUID.randomUUID()).withFullyQualifiedName("svc.db.schema.table");
   }
 
