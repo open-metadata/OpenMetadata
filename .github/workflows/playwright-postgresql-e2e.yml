@@ -72,12 +72,20 @@ on:
   # change start no test runners and the summary reports green (see the gate
   # and check-changes jobs in the reusable). pull_request_target stays off on
   # purpose (#34740): fork PRs rely on the queue.
+  #
+  # `labeled` lets a same-repo PR whose summary went red only because the
+  # `safe to test` label was missing (the build's "Verify PR labels" step)
+  # recover by adding it. Any other label skips both jobs below: the reusable
+  # is never called, so its concurrency group (which already exempts labeled
+  # events from cancel-in-progress) never sees the event and an in-flight run
+  # for the PR keeps going.
   pull_request:
     types:
       - opened
       - synchronize
       - reopened
       - ready_for_review
+      - labeled
 
 permissions:
   actions: read
@@ -86,6 +94,7 @@ permissions:
 
 jobs:
   playwright:
+    if: ${{ github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
     # reusable without re-listing each one; the reusable only reads what it
@@ -111,9 +120,18 @@ jobs:
       # be fixed.
       retries: 1
 
+  # An ignored label event must not report under the required check's name:
+  # a skipped `playwright-summary` counts as passing and would replace the
+  # real run's result on the same commit. It reports as a skipped check with
+  # a different name instead.
   playwright-summary:
-    name: playwright-summary
-    if: ${{ always() && !cancelled() }}
+    name: >-
+      ${{
+        (github.event.action == 'labeled' && github.event.label.name != 'safe to test')
+        && 'playwright-summary (ignored label event)'
+        || 'playwright-summary'
+      }}
+    if: ${{ always() && !cancelled() && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     needs: [playwright]
     runs-on: ubuntu-latest
     timeout-minutes: 20
