@@ -20964,6 +20964,11 @@
                       "description": "Supports Lineage Extraction.",
                       "type": "boolean",
                       "default": true
+                    },
+                    "supportsUsageExtraction": {
+                      "description": "Supports Usage Extraction.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -58711,6 +58716,11 @@
                     },
                     "supportsLineageExtraction": {
                       "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsUsageExtraction": {
+                      "description": "Supports Usage Extraction.",
                       "type": "boolean",
                       "default": true
                     }
