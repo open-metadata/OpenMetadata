@@ -23,14 +23,20 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.service.exception.UnhandledServerException;
 
 final class MultiUrlJwkProvider implements JwkProvider {
   private final List<JwkProvider> jwkProviders;
+  private final Set<String> configuredUrls;
+  private final Supplier<List<URL>> providerKeySetUrls;
   private final LocalJwkProvider localJwkProvider = new LocalJwkProvider();
   private final LoadingCache<String, Jwk> CACHE =
       CacheBuilder.newBuilder()
@@ -50,7 +56,7 @@ final class MultiUrlJwkProvider implements JwkProvider {
                           "JWT Token keyID doesn't match the configured keyID. This usually happens if you didn't configure "
                               + "proper publicKeyUrls under authentication configuration.",
                           null);
-                  for (JwkProvider jwkProvider : jwkProviders) {
+                  for (JwkProvider jwkProvider : candidateProviders()) {
                     try {
                       return jwkProvider.get(key);
                     } catch (JwkException e) {
@@ -62,10 +68,29 @@ final class MultiUrlJwkProvider implements JwkProvider {
               });
 
   public MultiUrlJwkProvider(List<URL> publicKeyUris) {
+    this(publicKeyUris, List::of);
+  }
+
+  /**
+   * {@code providerKeySetUrls} adds the identity provider's own key set (its discovery document's
+   * {@code jwks_uri}) to the configured URLs: provider tokens are signed with it, and a deployment
+   * configured only through the environment never had it written into {@code publicKeyUrls}.
+   */
+  MultiUrlJwkProvider(List<URL> publicKeyUris, Supplier<List<URL>> providerKeySetUrls) {
     this.jwkProviders =
-        publicKeyUris.stream()
-            .map(UrlJwkProvider::new)
-            .collect(java.util.stream.Collectors.toList());
+        publicKeyUris.stream().map(UrlJwkProvider::new).collect(Collectors.toList());
+    this.configuredUrls =
+        publicKeyUris.stream().map(URL::toExternalForm).collect(Collectors.toUnmodifiableSet());
+    this.providerKeySetUrls = providerKeySetUrls;
+  }
+
+  private List<JwkProvider> candidateProviders() {
+    List<JwkProvider> candidates = new ArrayList<>(jwkProviders);
+    providerKeySetUrls.get().stream()
+        .filter(url -> !configuredUrls.contains(url.toExternalForm()))
+        .map(UrlJwkProvider::new)
+        .forEach(candidates::add);
+    return candidates;
   }
 
   @Override

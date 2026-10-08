@@ -53,8 +53,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
@@ -68,14 +70,17 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -163,6 +168,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private String maxAge;
   private String promptType;
   private boolean endsSessionWithProvider;
+  @Getter private String providerIssuer;
+  @Getter private URL providerKeySetUrl;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final SessionService sessionService;
@@ -293,6 +300,28 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         Boolean.TRUE.equals(
             authenticationConfiguration.getOidcConfiguration().getEndSessionWithProvider());
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
+    OIDCProviderMetadata providerMetadata = resolveProviderMetadata(client.getConfiguration());
+    this.providerIssuer =
+        providerMetadata.getIssuer() == null ? null : providerMetadata.getIssuer().getValue();
+    this.providerKeySetUrl = keySetUrlOf(providerMetadata);
+  }
+
+  private static URL keySetUrlOf(OIDCProviderMetadata providerMetadata) {
+    URI keySetUri = providerMetadata.getJWKSetURI();
+    try {
+      return keySetUri == null ? null : keySetUri.toURL();
+    } catch (MalformedURLException | IllegalArgumentException e) {
+      throw new TechnicalException("Identity provider published an invalid jwks_uri", e);
+    }
+  }
+
+  /** Whether this handler signs users in for {@code oidcClient}: same client, same provider. */
+  public boolean servesClient(OidcClientConfig oidcClient) {
+    OidcClientConfig current = authenticationConfiguration.getOidcConfiguration();
+    return oidcClient != null
+        && Objects.equals(current.getId(), oidcClient.getId())
+        && StringUtils.trimToEmpty(current.getDiscoveryUri())
+            .equals(StringUtils.trimToEmpty(oidcClient.getDiscoveryUri()));
   }
 
   /**

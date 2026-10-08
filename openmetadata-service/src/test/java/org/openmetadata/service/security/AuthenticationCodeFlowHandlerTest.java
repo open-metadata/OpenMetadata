@@ -1485,6 +1485,51 @@ class AuthenticationCodeFlowHandlerTest {
     return handler;
   }
 
+  /** JwtFilter verifies the provider's tokens against what its discovery document names. */
+  @Test
+  void configuredHandler_capturesTheProvidersIssuerAndKeySet(@TempDir Path directory)
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = configuredHandler(fileDiscoveredClient(directory));
+
+    assertEquals("https://idp.test", handler.getProviderIssuer());
+    assertEquals("https://idp.test/keys", handler.getProviderKeySetUrl().toExternalForm());
+  }
+
+  @Test
+  void servesClient_onlyForTheSameClientAtTheSameProvider(@TempDir Path directory)
+      throws Exception {
+    OidcClientConfig configured = fileDiscoveredClient(directory);
+    AuthenticationCodeFlowHandler handler = configuredHandler(configured);
+
+    assertTrue(
+        handler.servesClient(
+            new OidcClientConfig()
+                .withId(configured.getId())
+                .withDiscoveryUri(" " + configured.getDiscoveryUri() + " ")));
+    assertFalse(
+        handler.servesClient(
+            new OidcClientConfig()
+                .withId("another-client")
+                .withDiscoveryUri(configured.getDiscoveryUri())));
+    assertFalse(
+        handler.servesClient(
+            new OidcClientConfig()
+                .withId(configured.getId())
+                .withDiscoveryUri("https://another-idp.test/.well-known/openid-configuration")));
+    assertFalse(handler.servesClient(null));
+  }
+
+  private static OidcClientConfig fileDiscoveredClient(Path directory) throws IOException {
+    Path discoveryDocument =
+        Files.writeString(directory.resolve("openid-configuration"), DISCOVERY_DOCUMENT);
+    return new OidcClientConfig()
+        .withId("om-client")
+        .withSecret("om-secret")
+        .withDiscoveryUri("file:" + discoveryDocument.toAbsolutePath())
+        .withServerUrl(TEST_SERVER_URL)
+        .withCallbackUrl(TEST_SERVER_URL + "/callback");
+  }
+
   private AuthenticationCodeFlowHandler configuredHandler(OidcClientConfig oidcConfig) {
     AuthenticationConfiguration authConfig =
         new AuthenticationConfiguration()

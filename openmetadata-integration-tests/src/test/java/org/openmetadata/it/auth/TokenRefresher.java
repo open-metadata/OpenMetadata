@@ -75,7 +75,7 @@ public final class TokenRefresher implements AutoCloseable {
           current.timeUntilExpiry().toSeconds());
       final TokenSet refreshed = backend.refresh(current, server, idp);
       AuthSession.update(refreshed);
-      SdkClients.overrideAdminToken(refreshed.accessToken());
+      SdkClients.overrideAdminToken(refreshed.bearerToken());
     } catch (RuntimeException e) {
       LOG.warn("Token refresh failed; will retry on next tick", e);
     }
