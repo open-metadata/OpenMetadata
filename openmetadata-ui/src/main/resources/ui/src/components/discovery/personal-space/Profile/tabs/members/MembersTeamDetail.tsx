@@ -896,9 +896,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       )
       .map((tab) => ({
         key: tab.key,
-        // Contributions may carry a literal or an i18n key; `t` returns the
-        // input unchanged when it isn't a known key, so this covers both.
-        label: typeof tab.label === 'string' ? t(tab.label) : tab.key,
+        // `label` is `string | ReactNode`. A string may be an i18n key or a
+        // literal — `t` returns the input unchanged when it isn't a known key,
+        // so this covers both. A ReactNode (icon + text, a badge) is rendered
+        // as-is, as TeamDetailsV1 does; substituting `tab.key` here would show
+        // the raw key instead of the element.
+        label: typeof tab.label === 'string' ? t(tab.label) : tab.label,
         component: tab.component,
       }));
   }, [getContributions, team?.id, t]);

@@ -247,4 +247,23 @@ describe('MembersTeamDetail', () => {
     expect(body).toHaveClass('tw:flex-1');
     expect(body).toHaveClass('tw:w-full');
   });
+
+  it('renders a contributed ReactNode label as-is', async () => {
+    // `TabContribution.label` is `string | ReactNode`; an element label (icon +
+    // text, a badge) must render, not be replaced by the contribution's key.
+    mockGetContributions.mockReturnValue([
+      {
+        key: 'sql-studio',
+        label: <span data-testid="plugin-tab-label">SQL Studio</span>,
+        component: () => null,
+      },
+    ]);
+
+    renderWithRouter(
+      <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+    );
+
+    expect(await screen.findByTestId('plugin-tab-label')).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'sql-studio' })).toBeNull();
+  });
 });
