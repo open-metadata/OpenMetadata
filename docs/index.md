@@ -19,10 +19,9 @@ verdict cites an artifact that was checked to still exist):
 
 | Guide | What it is |
 |---|---|
-| `CLAUDE.md` | Always-loaded session guidance; the pointer index to `.claude/rules/*` and skills |
+| `AGENTS.md` | Always-loaded session guidance for every harness; the pointer index to `.claude/rules/*` and skills. `CLAUDE.md` and `.github/copilot-instructions.md` are symlinks to it |
 | `ARCHITECTURE.md` | System map — modules, the request/ingestion/search paths, the invariants that hold |
 | `DEVELOPER.md` | How to build, test, and add an entity or connector (end-to-end checklists) |
-| `AGENTS.md` | Codex entry doc — **carries known contradictions** (Webpack→Vite, antd, Python ceiling); see `docs/tech-debt.md` #6 |
 
 ## Backend & platform design docs (`docs/`)
 
