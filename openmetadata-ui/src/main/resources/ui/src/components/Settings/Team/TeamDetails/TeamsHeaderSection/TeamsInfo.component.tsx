@@ -427,7 +427,6 @@ const TeamsInfo = ({
 
   return (
     <Box
-      inline
       align="center"
       className="layout-space layout-space-horizontal teams-info-header-container"
       data-testid="teams-info-header"
