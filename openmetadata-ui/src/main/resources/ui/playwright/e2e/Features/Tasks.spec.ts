@@ -156,9 +156,7 @@ test.describe('Task Workflow Tests', () => {
       });
 
       // Add suggested tags
-      const tagsInput = page.locator(
-        '[data-testid="tag-selector"] .ant-select-selection-search input'
-      );
+      const tagsInput = page.getByTestId('tag-selector').getByRole('combobox');
       if (await tagsInput.isVisible().catch(() => false)) {
         await addTagSuggestion({
           page,

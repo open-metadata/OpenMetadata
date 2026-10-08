@@ -117,18 +117,16 @@ export const createDescriptionTask = async (
   );
 
   if (isUndefined(value.assignee) || assigneeDisabled) {
-    await expect(
-      page.locator('[data-testid="select-assignee"] > .ant-select-selector')
-    ).toHaveText(value.assignee);
+    await expect(page.getByTestId('select-assignee')).toHaveText(
+      value.assignee
+    );
 
     await expect(
-      page.locator(
-        '[data-testid="select-assignee"] > .ant-select-selector input'
-      )
+      page.locator('[data-testid="select-assignee"] input')
     ).toBeDisabled();
   } else {
     const assigneeField = page.locator(
-      '[data-testid="select-assignee"] > .ant-select-selector #assignees'
+      '[data-testid="select-assignee"] #assignees'
     );
     await assigneeField.click();
     await assigneeField.fill(value.assignee);
@@ -162,19 +160,17 @@ export const createTagTask = async (
   );
 
   if (isUndefined(value.assignee) || assigneeDisabled) {
-    await expect(
-      page.locator('[data-testid="select-assignee"] > .ant-select-selector')
-    ).toHaveText(value.assignee);
+    await expect(page.getByTestId('select-assignee')).toHaveText(
+      value.assignee
+    );
 
     await expect(
-      page.locator(
-        '[data-testid="select-assignee"] > .ant-select-selector input'
-      )
+      page.locator('[data-testid="select-assignee"] input')
     ).toBeDisabled();
   } else {
     // select assignee
     const assigneeField = page.locator(
-      '[data-testid="select-assignee"] > .ant-select-selector #assignees'
+      '[data-testid="select-assignee"] #assignees'
     );
     await assigneeField.click();
     await assigneeField.fill(value.assignee);
@@ -189,9 +185,7 @@ export const createTagTask = async (
 
   if (addTag) {
     // select tags
-    const suggestTags = page.locator(
-      '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
-    );
+    const suggestTags = page.locator('[data-testid="tag-selector"] input');
     await suggestTags.click();
 
     const querySearchResponse = page.waitForResponse(

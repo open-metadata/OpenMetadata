@@ -31,6 +31,7 @@ import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import TaskPayloadSchemaFields from './TaskPayloadSchemaFields';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
   Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Button: ({
@@ -256,6 +257,34 @@ describe('TaskPayloadSchemaFields', () => {
       confidence: 0,
       reviewNotes: '',
     });
+  });
+
+  it('renders enum fields as a select and marks required fields', async () => {
+    const onChange = jest.fn();
+    const schema: JsonSchemaObject = {
+      type: 'object',
+      required: ['severity'],
+      properties: {
+        severity: { title: 'Severity', type: 'string', enum: ['Low', 'High'] },
+      },
+    };
+
+    render(
+      <TaskPayloadSchemaFields
+        payload={{}}
+        schema={schema}
+        uiSchema={{}}
+        onChange={onChange}
+      />
+    );
+
+    expect(screen.getByText('Severity:')).toBeInTheDocument();
+    expect(screen.getByText('*')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(await screen.findByRole('option', { name: 'High' }));
+
+    expect(onChange).toHaveBeenCalledWith({ severity: 'High' });
   });
 
   it('renders boolean fields from the schema and updates the payload', () => {

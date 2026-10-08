@@ -12,7 +12,6 @@
  */
 
 import { Owner, Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -179,14 +178,14 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
   return (
     <div className="lineage-tab-content">
       <div className="lineage-filter-buttons">
-        <Button
-          className={`lineage-filter-button ${
+        <button
+          className={`lineage-filter-button tw:cursor-pointer ${
             filter === 'upstream' ? 'active' : ''
           }`}
           data-testid={`upstream-button-${
             filter === 'upstream' ? 'active' : ''
           }`}
-          size="small"
+          type="button"
           onClick={() => onFilterChange('upstream')}>
           <span
             className="lineage-filter-button-text"
@@ -199,15 +198,15 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             }`}>
             {upstreamCount}
           </span>
-        </Button>
-        <Button
-          className={`lineage-filter-button ${
+        </button>
+        <button
+          className={`lineage-filter-button tw:cursor-pointer ${
             filter === 'downstream' ? 'active' : ''
           }`}
           data-testid={`downstream-button-${
             filter === 'downstream' ? 'active' : ''
           }`}
-          size="small"
+          type="button"
           onClick={() => onFilterChange('downstream')}>
           <span
             className="lineage-filter-button-text"
@@ -220,7 +219,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             }`}>
             {downstreamCount}
           </span>
-        </Button>
+        </button>
       </div>
       <SearchBarComponent
         containerClassName="searchbar-container"

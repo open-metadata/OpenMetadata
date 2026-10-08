@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
 import { ReactComponent as UpdatedIcon } from '../../../../../assets/svg/updated-icon.svg';
@@ -44,15 +44,15 @@ function ActivityDescriptionFeed({
   }, [isAdded]);
 
   return (
-    <Row gutter={[12, 12]} wrap={false}>
-      <Col className="h-4">{operationIcon}</Col>
-      <Col>
+    <Box gap={3}>
+      <div className="h-4">{operationIcon}</div>
+      <div>
         <RichTextEditorPreviewNew
           className="text-wrap"
           markdown={getFrontEndFormat(description)}
         />
-      </Col>
-    </Row>
+      </div>
+    </Box>
   );
 }
 

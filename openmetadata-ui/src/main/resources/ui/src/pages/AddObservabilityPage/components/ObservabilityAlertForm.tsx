@@ -20,10 +20,8 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  ModifiedCreateEventSubscription,
-  ObservabilityAlertFormProps,
-} from '../AddObservabilityPage.interface';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
+import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
 import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
 
 function ObservabilityAlertForm({
@@ -46,6 +44,7 @@ function ObservabilityAlertForm({
   templates,
 }: Readonly<ObservabilityAlertFormProps>) {
   const { t } = useTranslation();
+  const values = Form.useWatch<ModifiedCreateEventSubscription>([], form);
 
   return (
     <Row gutter={[16, 16]}>
@@ -110,6 +109,7 @@ function ObservabilityAlertForm({
                       key={name}
                       templateResourcePermission={templateResourcePermission}
                       templates={templates}
+                      values={values}
                     />
                   )
                 )}

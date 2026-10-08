@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, GridItem, Skeleton } from '@openmetadata/ui-core-components';
 import { LabelCountSkeletonProps } from '../../Skeleton.interfaces';
 
 const LabelCountSkeleton = ({
@@ -26,9 +25,9 @@ const LabelCountSkeleton = ({
   ...props
 }: LabelCountSkeletonProps) => {
   return (
-    <Row className="tw:mb-6" justify="space-between">
+    <Grid className="tw:mb-6">
       {isSelect || isLabel ? (
-        <Col span={firstColSize}>
+        <GridItem span={firstColSize}>
           <div className="w-48 flex">
             {isSelect ? (
               <div>
@@ -41,14 +40,14 @@ const LabelCountSkeleton = ({
               </div>
             ) : null}
           </div>
-        </Col>
+        </GridItem>
       ) : null}
-      <Col span={secondColSize}>
+      <GridItem span={secondColSize}>
         {isCount ? (
           <Skeleton height={16} width={40} {...props} {...countProps} />
         ) : null}
-      </Col>
-    </Row>
+      </GridItem>
+    </Grid>
   );
 };
 

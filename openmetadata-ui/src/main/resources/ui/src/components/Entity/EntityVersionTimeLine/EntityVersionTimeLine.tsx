@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Drawer, Row, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  Divider,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
@@ -65,7 +70,10 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         })}
         {hiddenVersions?.length > 0 ? (
           <>
-            <Tooltip title={`+${hiddenVersions.length} more versions`}>
+            <Tooltip
+              excludeTriggerFromTabOrder
+              title={`+${hiddenVersions.length} more versions`}
+              triggerClassName="tw:block">
               <div className="version-hidden">
                 {hiddenVersions.map((v) =>
                   renderVersionButton(v, currentVersion, versionHandler)
@@ -81,10 +89,9 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               </Typography>
 
               <Button
-                block
-                className="m-t-lg"
-                href="/settings/billing/plans"
-                type="primary">
+                className="m-t-lg tw:w-full"
+                color="primary"
+                href="/settings/billing/plans">
                 {t('label.see-upgrade-option-plural')}
               </Button>
             </div>
@@ -95,33 +102,20 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
   }, [versionList, currentVersion, versionHandler]);
 
   return (
-    <Drawer
-      destroyOnClose
-      open
+    <aside
       className="versions-list-container"
-      closable={false}
-      data-testid="versions-list-container"
-      getContainer={false}
-      mask={false}
-      maskClosable={false}
-      title={
-        <>
-          <Row className="p-b-xss" justify="space-between">
-            <Col>
-              <Typography className="font-medium tw:text-primary">
-                {t('label.version-plural-history')}
-              </Typography>
-            </Col>
-            <Col>
-              <CloseIcon handleCancel={onBack} />
-            </Col>
-          </Row>
-          <Divider className="m-0" />
-        </>
-      }
-      width={330}>
-      {versions}
-    </Drawer>
+      data-testid="versions-list-container">
+      <div className="versions-list-header">
+        <Box align="center" className="p-b-xss" justify="between">
+          <Typography className="font-medium tw:text-primary">
+            {t('label.version-plural-history')}
+          </Typography>
+          <CloseIcon handleCancel={onBack} />
+        </Box>
+        <Divider className="m-0" />
+      </div>
+      <div className="versions-list-body">{versions}</div>
+    </aside>
   );
 };
 

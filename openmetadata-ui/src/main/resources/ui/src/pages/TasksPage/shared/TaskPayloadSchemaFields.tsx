@@ -28,9 +28,13 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
+  FormItemLabel,
+  Input,
+  Select,
+  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Checkbox, Form, Input, InputNumber, Select } from 'antd';
 import { uniqBy } from 'lodash';
 import {
   ReactNode,
@@ -306,6 +310,26 @@ const TaskPayloadSchemaFields = ({
     return JSON.stringify(value, null, 2);
   };
 
+  // Mirrors the spacing of the antd Form.Item rows these fields sit between.
+  const renderFieldItem = (
+    key: string,
+    label: string | undefined,
+    children: ReactNode,
+    required?: boolean
+  ) => (
+    <Box className="tw:mb-6" direction="col" gap={2} key={key}>
+      {label ? <FormItemLabel label={label} required={required} /> : null}
+      {children}
+    </Box>
+  );
+
+  const renderDescription = (description?: string) =>
+    description ? (
+      <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
+        {description}
+      </Typography>
+    ) : null;
+
   const renderReadOnlyRow = (
     key: string,
     label: string,
@@ -445,19 +469,17 @@ const TaskPayloadSchemaFields = ({
       );
     }
 
-    return (
-      <Form.Item key={fieldName} label={`${label}:`}>
+    return renderFieldItem(
+      fieldName,
+      `${label}:`,
+      <>
         <DescriptionTabs
           suggestion={String(payload.newDescription ?? '')}
           value={String(payload.currentDescription ?? '')}
           onChange={(value) => updateField(fieldName, value)}
         />
-        {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
-            {description}
-          </Typography>
-        ) : null}
-      </Form.Item>
+        {renderDescription(description)}
+      </>
     );
   };
 
@@ -483,8 +505,10 @@ const TaskPayloadSchemaFields = ({
       );
     }
 
-    return (
-      <Form.Item key={fieldName} label={`${label}:`}>
+    return renderFieldItem(
+      fieldName,
+      `${label}:`,
+      <>
         <TagsTabs
           tags={currentTags}
           value={suggestedTags}
@@ -505,12 +529,8 @@ const TaskPayloadSchemaFields = ({
             });
           }}
         />
-        {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
-            {description}
-          </Typography>
-        ) : null}
-      </Form.Item>
+        {renderDescription(description)}
+      </>
     );
   };
 
@@ -529,18 +549,16 @@ const TaskPayloadSchemaFields = ({
       );
     }
 
-    return (
-      <Form.Item key={fieldName} label={`${label}:`}>
+    return renderFieldItem(
+      fieldName,
+      `${label}:`,
+      <>
         <TagSuggestion
           value={(payload[fieldName] as TagLabel[] | undefined) ?? []}
           onChange={(newTags) => updateField(fieldName, newTags)}
         />
-        {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
-            {description}
-          </Typography>
-        ) : null}
-      </Form.Item>
+        {renderDescription(description)}
+      </>
     );
   };
 
@@ -559,25 +577,23 @@ const TaskPayloadSchemaFields = ({
       );
     }
 
-    return (
-      <Form.Item
-        key={fieldName}
+    return renderFieldItem(
+      fieldName,
+      undefined,
+      <Select
+        isRequired={requiredFields.has(fieldName)}
+        items={(fieldSchema?.enum ?? []).map((value) => ({
+          id: value,
+          label: value,
+        }))}
         label={`${label}:`}
-        required={requiredFields.has(fieldName)}
-        rules={
-          requiredFields.has(fieldName)
-            ? [{ required: true, message: `${label} is required` }]
-            : undefined
-        }>
-        <Select
-          options={(fieldSchema?.enum ?? []).map((value) => ({
-            label: value,
-            value,
-          }))}
-          value={getFieldValue(fieldName) as string | undefined}
-          onChange={(value) => updateField(fieldName, value)}
-        />
-      </Form.Item>
+        placeholder=""
+        selectedKey={(getFieldValue(fieldName) as string | undefined) ?? null}
+        // The antd Form.Item never ran its rules; keep submit unblocked.
+        validationBehavior="aria"
+        onSelectionChange={(value) => updateField(fieldName, value)}>
+        {(item) => <Select.Item id={item.id} label={item.label} />}
+      </Select>
     );
   };
 
@@ -596,14 +612,17 @@ const TaskPayloadSchemaFields = ({
       );
     }
 
-    return (
-      <Form.Item key={fieldName} label={`${label}:`}>
-        <InputNumber
-          className="w-full"
-          value={getFieldValue(fieldName) as number | undefined}
-          onChange={(value) => updateField(fieldName, value)}
-        />
-      </Form.Item>
+    return renderFieldItem(
+      fieldName,
+      undefined,
+      <Input
+        label={`${label}:`}
+        type="number"
+        value={String(getFieldValue(fieldName) ?? '')}
+        onChange={(value) =>
+          updateField(fieldName, value === '' ? null : Number(value))
+        }
+      />
     );
   };
 
@@ -622,14 +641,15 @@ const TaskPayloadSchemaFields = ({
       );
     }
 
-    return (
-      <Form.Item key={fieldName} label={`${label}:`} valuePropName="checked">
-        <Checkbox
-          checked={Boolean(getFieldValue(fieldName, false))}
-          onChange={(event) => updateField(fieldName, event.target.checked)}>
-          {description}
-        </Checkbox>
-      </Form.Item>
+    return renderFieldItem(
+      fieldName,
+      `${label}:`,
+      <Checkbox
+        aria-label={label}
+        isSelected={Boolean(getFieldValue(fieldName, false))}
+        label={description}
+        onChange={(isSelected) => updateField(fieldName, isSelected)}
+      />
     );
   };
 
@@ -648,22 +668,17 @@ const TaskPayloadSchemaFields = ({
       );
     }
 
-    return (
-      <Form.Item
-        key={fieldName}
+    return renderFieldItem(
+      fieldName,
+      undefined,
+      <TextArea
+        autoSize={{ minRows: 4, maxRows: 10 }}
+        isRequired={requiredFields.has(fieldName)}
         label={`${label}:`}
-        required={requiredFields.has(fieldName)}
-        rules={
-          requiredFields.has(fieldName)
-            ? [{ required: true, message: `${label} is required` }]
-            : undefined
-        }>
-        <Input.TextArea
-          autoSize={{ minRows: 4, maxRows: 10 }}
-          value={String(getFieldValue(fieldName, '') ?? '')}
-          onChange={(event) => updateField(fieldName, event.target.value)}
-        />
-      </Form.Item>
+        validationBehavior="aria"
+        value={String(getFieldValue(fieldName, '') ?? '')}
+        onChange={(value) => updateField(fieldName, value)}
+      />
     );
   };
 
@@ -697,27 +712,26 @@ const TaskPayloadSchemaFields = ({
       );
     }
 
-    return (
-      <Form.Item key={fieldName} label={`${label}:`}>
-        <Input.TextArea
+    return renderFieldItem(
+      fieldName,
+      undefined,
+      <>
+        <TextArea
           autoSize={{ minRows: 4, maxRows: 12 }}
+          label={`${label}:`}
           value={stringifyValue(
             getFieldValue(fieldName, fieldSchema?.type === 'array' ? [] : {})
           )}
-          onChange={(event) => {
+          onChange={(value) => {
             try {
-              updateField(fieldName, JSON.parse(event.target.value));
+              updateField(fieldName, JSON.parse(value));
             } catch {
-              updateField(fieldName, event.target.value);
+              updateField(fieldName, value);
             }
           }}
         />
-        {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
-            {description}
-          </Typography>
-        ) : null}
-      </Form.Item>
+        {renderDescription(description)}
+      </>
     );
   };
 
@@ -736,18 +750,17 @@ const TaskPayloadSchemaFields = ({
       );
     }
 
-    return (
-      <Form.Item key={fieldName} label={`${label}:`}>
+    return renderFieldItem(
+      fieldName,
+      undefined,
+      <>
         <Input
+          label={`${label}:`}
           value={String(getFieldValue(fieldName, '') ?? '')}
-          onChange={(event) => updateField(fieldName, event.target.value)}
+          onChange={(value) => updateField(fieldName, value)}
         />
-        {description ? (
-          <Typography as="p" className="m-b-0 m-t-xs" color="secondary">
-            {description}
-          </Typography>
-        ) : null}
-      </Form.Item>
+        {renderDescription(description)}
+      </>
     );
   };
 

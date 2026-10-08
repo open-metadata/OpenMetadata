@@ -126,13 +126,9 @@
     width: inherit;
     border: 0.5px solid @grey-15;
 
-    .ant-card-body {
+    .activity-feed-card-new-body {
       width: inherit;
       padding: var(--om-space-20);
-
-      .ant-space-item {
-        width: inherit;
-      }
     }
   }
 
@@ -178,7 +174,7 @@
     flex-wrap: wrap;
     width: inherit;
 
-    .ant-card-body {
+    .activity-feed-card-new-body {
       width: inherit;
       padding: 0;
       //  margin: 10px  0px 20px 0px;
@@ -187,10 +183,6 @@
       background: var(--om-legacy-color-239-244-250-0-25);
 
       padding-bottom: var(--om-space-16);
-
-      .ant-space-item {
-        width: inherit;
-      }
     }
 
     .activity-feed-reply-card-message {
@@ -232,6 +224,33 @@
         color: @primary-heading-color;
       }
     }
+  }
+}
+
+// The box antd's Card used to give the feed card. :where() keeps it at zero
+// specificity so every card rule in these files overrides it, as they did
+// antd's own .ant-card.
+:where(.activity-feed-card-new-surface) {
+  position: relative;
+  color: @text-color;
+  background: var(--om-color-bg-surface);
+  border: 1px solid @border-color;
+}
+
+// The landing-page feed widget lays out its own card body through a descendant
+// `.ant-card-body` rule (feed-widget.less, widget-wrapper.less) that also
+// reached this card's body while it was an antd Card. Mirror it so widget
+// cards keep their compact, unpadded layout.
+.feed-widget-container,
+.widget-wrapper-container {
+  .activity-feed-card-new .activity-feed-card-new-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
   }
 }
 
@@ -277,7 +296,7 @@
 .activity-feed-editor-send-btn {
   color: var(--tw-color-text-white);
 
-  .ant-btn.send-button {
+  .send-button {
     position: absolute;
     bottom: 8px;
     right: 8px;
@@ -450,7 +469,7 @@
 // normal flow is what stops the bar overlapping the comment text - it can no
 // longer be mispositioned relative to a padding or line-height it doesn't know
 // about.
-.reply-card .feed-actions.ant-space {
+.reply-card .feed-actions {
   position: static;
   padding-top: var(--om-space-2);
   padding-bottom: var(--om-space-2);

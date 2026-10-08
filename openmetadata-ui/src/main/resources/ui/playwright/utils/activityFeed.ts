@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { getDescriptionBox, waitForAntdModalToSettle } from './common';
+import { getDescriptionBox } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import { TaskDetails } from './task';
@@ -47,9 +47,11 @@ export const checkDescriptionInEditModal = async (
 
   await taskActionMenu.getByRole('menuitem', { name: 'edit' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  const editTaskModal = page.getByTestId('suggestion-edit-task-modal');
 
-  await expect(page.locator('.ant-modal-title')).toContainText(
+  await expect(editTaskModal).toBeVisible();
+
+  await expect(editTaskModal.getByRole('heading')).toContainText(
     `Update description for table ${taskValue.term} columns/${taskValue.columnName}`
   );
 
@@ -79,8 +81,7 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
 
   await page.locator('[data-testid="delete-message"]').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
-  await waitForAntdModalToSettle(page);
+  await page.getByTestId('confirmation-modal').waitFor();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/conversations/*/replies/*'

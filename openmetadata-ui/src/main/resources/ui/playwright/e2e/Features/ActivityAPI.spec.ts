@@ -368,7 +368,10 @@ test.describe(
               .includes(`/api/v1/conversations/${firstActivityId}/replies/`) &&
             response.request().method() === 'DELETE'
         );
-        await page.locator('.ant-modal').getByTestId('save-button').click();
+        await page
+          .getByTestId('confirmation-modal')
+          .getByTestId('save-button')
+          .click();
         await deleteResponse;
 
         await expect(editedReplyCard).toHaveCount(0);

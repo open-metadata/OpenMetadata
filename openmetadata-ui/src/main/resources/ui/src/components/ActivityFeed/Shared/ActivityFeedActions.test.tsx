@@ -117,6 +117,22 @@ describe('ActivityFeedActions', () => {
     expect(screen.queryByTestId('delete-message')).not.toBeInTheDocument();
   });
 
+  it('renders no action bar when the user has no action on the post', () => {
+    mockUseApplicationStore.mockReturnValue({
+      currentUser: { id: 'other-id', name: 'bob', isAdmin: false },
+    });
+
+    render(
+      <ActivityFeedActions
+        isReply
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+
+    expect(screen.queryByTestId('feed-actions')).not.toBeInTheDocument();
+  });
+
   it('allows an administrator to edit and delete another users reply', () => {
     mockUseApplicationStore.mockReturnValue({
       currentUser: { id: 'admin-id', name: 'admin', isAdmin: true },

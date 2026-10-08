@@ -20,11 +20,20 @@
     color: @primary-heading-color;
   }
 }
+// The header and body chrome antd's Drawer used to supply (its title
+// typography, a scrolling body), less the padding this drawer always removed.
 .activity-feed-drawer {
-  .ant-drawer-body {
-    padding: 0;
+  .activity-feed-drawer-header {
+    flex-shrink: 0;
+    font-size: var(--om-font-size-md);
+    font-weight: var(--om-font-weight-medium);
+    line-height: 22px;
+    color: @heading-color;
   }
-  .ant-drawer-header {
-    padding: 0;
+
+  .activity-feed-drawer-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 }

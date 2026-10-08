@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
-import Modal from 'antd/lib/modal/Modal';
-import classNames from 'classnames';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmationModalProps } from './ConfirmationModal.interface';
 
-/**
- * Modal to show confirmation on varios page
- * @param param0
- * @returns
- */
 const ConfirmationModal = ({
   isLoading,
   cancelText,
@@ -40,52 +39,58 @@ const ConfirmationModal = ({
   visible,
 }: ConfirmationModalProps) => {
   const { t } = useTranslation();
+  const headerId = useId();
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className={className}
-      closable={false}
-      closeIcon={null}
-      data-testid="confirmation-modal"
-      footer={
-        <div className={classNames('justify-end', footerClassName)}>
-          <Button
-            className={classNames('mr-2', cancelButtonCss)}
-            data-testid="cancel"
-            key="remove-edge-btn"
-            type="text"
-            onClick={onCancel}>
-            {cancelText}
-          </Button>
-          <Button
-            className={confirmButtonCss}
-            danger={confirmText === t('label.delete')}
-            data-testid={isLoading ? 'loading-button' : 'save-button'}
-            key="save-btn"
-            loading={isLoading}
-            type="primary"
-            onClick={onConfirm}>
-            {confirmText}
-          </Button>
-        </div>
-      }
-      maskClosable={false}
-      open={visible}
-      title={
-        <Typography
-          className={headerClassName}
-          data-testid="modal-header"
-          weight="semibold">
-          {header}
-        </Typography>
-      }
-      onCancel={onCancel}>
-      <div className={classNames('h-20', bodyClassName)}>
-        <Typography data-testid="body-text">{bodyText}</Typography>
-      </div>
-    </Modal>
+    <ModalOverlay
+      isDismissable={false}
+      isOpen={visible}
+      onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <Modal>
+        {/* `header` may be a node, so the dialog is named by reference
+            rather than through Dialog's string `title`. */}
+        <Dialog
+          aria-labelledby={headerId}
+          className={className}
+          data-testid="confirmation-modal"
+          width={520}>
+          <Dialog.Header>
+            <Typography
+              className={headerClassName}
+              data-testid="modal-header"
+              id={headerId}
+              size="text-md"
+              weight="semibold">
+              {header}
+            </Typography>
+          </Dialog.Header>
+          <Dialog.Content className={bodyClassName}>
+            <Typography data-testid="body-text">{bodyText}</Typography>
+          </Dialog.Content>
+          <Dialog.Footer className={footerClassName}>
+            <Button
+              className={cancelButtonCss}
+              color="tertiary"
+              data-testid="cancel"
+              onPress={onCancel}>
+              {cancelText}
+            </Button>
+            <Button
+              className={confirmButtonCss}
+              color={
+                confirmText === t('label.delete')
+                  ? 'primary-destructive'
+                  : 'primary'
+              }
+              data-testid={isLoading ? 'loading-button' : 'save-button'}
+              isLoading={isLoading}
+              onPress={onConfirm}>
+              {confirmText}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

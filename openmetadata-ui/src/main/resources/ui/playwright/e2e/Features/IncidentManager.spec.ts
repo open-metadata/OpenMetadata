@@ -107,6 +107,7 @@ const waitForIncidentTask = async (page: Page, testCaseFqn?: string) => {
               category: 'Incident',
               limit: 100,
               fields: 'about,payload,assignees',
+              ...(testCaseFqn ? { aboutEntity: testCaseFqn } : {}),
             },
           });
 
@@ -175,7 +176,7 @@ const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
     '[data-testid="edit-assignees"]:visible'
   );
   const reassignModal = page
-    .locator('.ant-modal-wrap:visible')
+    .locator('[role="dialog"]:visible')
     .filter({ hasText: /Re-?assign Task/i });
   const reassignMenuItem = page
     .locator('.task-action-dropdown:visible')
@@ -259,16 +260,18 @@ const reassignIncidentTask = async (
 ) => {
   const reassignModal = await openIncidentReassignModal(page, testCaseName);
   const assigneeSelect = reassignModal.getByTestId('select-assignee');
-  const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
   const assigneeInput = assigneeSelect.getByRole('combobox');
   const assigneeOption = page.getByTestId(assignee.name.toLowerCase());
 
-  await expect(assigneeSelector).toBeVisible();
-  await assigneeSelector.click();
+  await expect(assigneeInput).toBeVisible();
+  await assigneeInput.click();
   await assigneeInput.fill(assignee.displayName);
   await expect(assigneeOption).toBeVisible({ timeout: ACTION_TIMEOUT });
 
   await assigneeOption.click();
+  // The open combobox popover aria-hides the rest of the dialog, Save included.
+  await reassignModal.locator('h2').click();
+  await expect(assigneeOption).toBeHidden();
 
   const updateAssignee = waitForTaskResolveResponse(page);
 
@@ -303,8 +306,9 @@ const openIncidentResolveDialog = async (
   const actionTrigger = page.locator(
     '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
   );
+  // Menu popovers are role=dialog too; data-trigger tells them from modals.
   const resolveModal = page.locator(
-    '.ant-modal-wrap:visible .ant-modal-content'
+    '[role="dialog"]:not([data-trigger]):visible'
   );
   const modalTextareas = resolveModal.locator('textarea');
 
@@ -743,7 +747,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const resolveModal = await openIncidentResolveDialog(actorPage);
       const resolveTextareas = resolveModal.locator('textarea');
       const resolveReasonSelect = resolveModal
-        .locator('.ant-select-selector')
+        .locator('button[aria-haspopup="listbox"]')
         .first();
       const textareaCount = await resolveTextareas.count();
 
@@ -1149,7 +1153,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     );
     await page
       .getByTestId('select-assignee')
-      .getByLabel('close-circle')
+      .getByTestId('autocomplete-selected-item')
+      .getByRole('button')
       .click();
     await nonAssigneeFilterRes;
 

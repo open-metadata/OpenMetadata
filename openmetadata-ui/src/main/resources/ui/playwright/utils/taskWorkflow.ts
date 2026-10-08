@@ -41,7 +41,7 @@ export interface CreatedTask {
 
 const TASK_TAB_SELECTOR = '[data-testid="task-tab"]';
 const TASK_PANEL_SELECTOR = '#task-panel';
-const VISIBLE_TASK_MODAL_SELECTOR = '.ant-modal-wrap:visible';
+const VISIBLE_TASK_MODAL_SELECTOR = '[role="dialog"]:visible';
 
 const logTaskDebug = (...messages: Array<string | number | boolean>) => {
   if (process.env.PW_TASK_DEBUG) {
@@ -64,7 +64,7 @@ const selectTagSuggestion = async ({
   tagTestId: string;
 }) => {
   const tagSelector = root.locator('[data-testid="tag-selector"]');
-  const tagsInput = tagSelector.locator('.ant-select-selection-search-input');
+  const tagsInput = tagSelector.getByRole('combobox');
   const tagOption = page.getByTestId(tagTestId);
   const tagSearchResponse = page
     .waitForResponse(
@@ -93,7 +93,11 @@ const selectTagSuggestion = async ({
   await expect(tagOption).toBeVisible({ timeout: 5000 });
   logTaskDebug('selectTagSuggestion:optionVisible', tagTestId);
   await tagOption.click();
-  await page.keyboard.press('Escape');
+  // The multi-select schedules a re-open (~150ms) while its input still has
+  // focus, which would undo an Escape sent right after the pick. Blurring the
+  // input closes the menu and cancels that re-open for good.
+  await tagsInput.blur();
+  await expect(tagsInput).toHaveAttribute('aria-expanded', 'false');
   logTaskDebug('selectTagSuggestion:done', tagTestId);
 };
 
@@ -214,9 +218,9 @@ export const openTaskForm = async (page: Page, route: string) => {
 };
 
 export const selectAssignee = async (page: Page, assigneeName: string) => {
-  const assigneeInput = page.locator(
-    '[data-testid="select-assignee"] .ant-select-selection-search input'
-  );
+  const assigneeInput = page
+    .getByTestId('select-assignee')
+    .getByRole('combobox');
   const assigneeOption = page.getByTestId(assigneeName);
   const assigneeSearchResponse = page
     .waitForResponse(

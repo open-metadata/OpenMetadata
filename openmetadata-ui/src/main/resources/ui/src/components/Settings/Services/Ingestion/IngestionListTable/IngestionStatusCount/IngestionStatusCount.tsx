@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { getIngestionStatusCountData } from '../../../../../../utils/IngestionConfigUtils';
@@ -29,21 +28,21 @@ function IngestionStatusCount({
   );
 
   return (
-    <Row
-      align="middle"
+    <Box
+      align="center"
       className="ingestion-status-count"
-      gutter={[4, 4]}
-      justify="space-evenly"
-      wrap={false}>
+      gap={1}
+      justify="evenly"
+      wrap="nowrap">
       {records.map((record) => (
-        <Col key={`${record.label}-${runId}`}>
-          <div className={classNames('status-count', record.type)}>
-            <Typography className="record-count">{record.value}</Typography>
-            <Typography className="record-label">{record.label}</Typography>
-          </div>
-        </Col>
+        <div
+          className={classNames('status-count', record.type)}
+          key={`${record.label}-${runId}`}>
+          <Typography className="record-count">{record.value}</Typography>
+          <Typography className="record-label">{record.label}</Typography>
+        </div>
       ))}
-    </Row>
+    </Box>
   );
 }
 

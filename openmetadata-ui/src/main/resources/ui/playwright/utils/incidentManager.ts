@@ -151,8 +151,11 @@ export const acknowledgeTask = async (data: {
   await page.getByTestId(testCase).getByText(testCase).click();
   await waitForAllLoadersToDisappear(page);
   await page.click('[data-testid="edit-resolution-icon"]');
-  await page.click('[data-testid="test-case-resolution-status-type"]');
-  await page.click('[title="Ack"]');
+  await page
+    .getByTestId('test-case-resolution-status-type')
+    .getByRole('button')
+    .click();
+  await page.getByRole('option', { name: 'Ack', exact: true }).click();
   const statusChangeResponse = waitForTaskResolveResponse(page);
   await page.click('#update-status-button');
   await statusChangeResponse;
@@ -187,10 +190,10 @@ export const addAssigneeFromPopoverWidget = async (data: {
     await taskTabEditAssigneesButton.click();
     await waitForAllLoadersToDisappear(page);
 
-    const assigneeModal = page.locator('.ant-modal-content').last();
+    const assigneeModal = page.getByRole('dialog').last();
     const assigneeSelect = assigneeModal.getByTestId('select-assignee');
-    const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
-    const assigneeInput = assigneeSelect.locator('input').last();
+    const assigneeSelector = assigneeSelect.getByRole('combobox');
+    const assigneeInput = assigneeSelector;
     const assigneeOption = page.getByTestId(user.name).first();
     const normalizedAssigneeOption = page
       .getByTestId(user.name.toLowerCase())

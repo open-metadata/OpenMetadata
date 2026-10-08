@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -147,7 +147,7 @@ const DescriptionSourceBadge = ({
     return (
       <>
         {config.iconOnly ? (
-          <Tooltip title={t(config.tooltipKey)}>
+          <Tooltip excludeTriggerFromTabOrder title={t(config.tooltipKey)}>
             <output
               aria-live="polite"
               className="description-source-icon"
@@ -156,7 +156,10 @@ const DescriptionSourceBadge = ({
             </output>
           </Tooltip>
         ) : (
-          <Tooltip title={tooltipContent}>
+          <Tooltip
+            excludeTriggerFromTabOrder
+            isDisabled={!tooltipContent}
+            title={tooltipContent}>
             <div
               className={classNames(
                 'description-source-badge',

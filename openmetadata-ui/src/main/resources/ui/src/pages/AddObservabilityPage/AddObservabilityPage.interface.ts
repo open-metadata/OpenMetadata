@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { FormInstance } from 'antd';
 import type { ComponentType } from 'react';
 import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
 import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -48,17 +47,12 @@ export interface ObservabilityFilterResourceDescriptor {
   supportedFilters?: EventFilterRule[];
 }
 
-export interface UseObservabilityAlertFormOptions {
+export interface UseAlertFormDataOptions {
   afterSaveAction?: (fqn: string) => Promise<void> | void;
   /** Defaults to Observability; selects which resource catalogue to load. */
   alertType?: AlertType;
-  form?: FormInstance<ModifiedCreateEventSubscription>;
   fqn?: string;
   onCancel?: () => void;
-}
-
-export interface UseAlertFormDataOptions
-  extends Omit<UseObservabilityAlertFormOptions, 'form'> {
   /** The chosen alert sources; the server says what they support. */
   sources?: string[];
   /** The filters and triggers chosen so far, so the server can warn about sources they never match. */
@@ -86,7 +80,7 @@ export interface UseObservabilityAlertTemplatesOptions {
   ) => Promise<OperationPermission>;
 }
 
-export interface UseObservabilityAlertFormReturn {
+export interface UseAlertFormDataReturn {
   alert?: ModifiedEventSubscription;
   breadcrumb: {
     name: string;
@@ -95,7 +89,6 @@ export interface UseObservabilityAlertFormReturn {
   extraFormButtons: Record<string, ComponentType<AddAlertFormWidgetProps>>;
   extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
   filterResources: ObservabilityFilterResourceDescriptor[];
-  form: FormInstance<ModifiedCreateEventSubscription>;
   handleCancel: () => void;
   handleSave: (data: ModifiedCreateEventSubscription) => Promise<void>;
   inlineAlertDetails?: InlineAlertProps;
@@ -109,26 +102,6 @@ export interface UseObservabilityAlertFormReturn {
   templateResourcePermission: OperationPermission;
   templates: NotificationTemplate[];
 }
-
-export type UseAlertFormDataReturn = Omit<
-  UseObservabilityAlertFormReturn,
-  'form'
->;
-
-export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
-
-export type ObservabilityAlertFormFieldsProps = Pick<
-  ObservabilityAlertFormProps,
-  | 'alert'
-  | 'extraFormWidgets'
-  | 'filterResources'
-  | 'form'
-  | 'isLoading'
-  | 'shouldShowActionsSection'
-  | 'shouldShowFiltersSection'
-  | 'templateResourcePermission'
-  | 'templates'
->;
 
 export interface AddObservabilityPageProps {
   pageTitle: string;

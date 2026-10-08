@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LeftOutlined, RightOutlined } from '@ant-design/icons';
-import { Button, Carousel } from 'antd';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  ChevronLeft,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import AvatarCarouselItem from '../AvatarCarouselItem/AvatarCarouselItem';
@@ -66,22 +69,18 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
   return (
     <div className="avatar-carousel-container d-flex items-center">
       {showArrows && (
-        <Button
+        <ButtonUtility
           className="carousel-arrow"
+          color="tertiary"
           data-testid="prev-slide"
-          disabled={avatarList.length <= 1 || currentSlide <= 0}
-          icon={<LeftOutlined />}
-          size="small"
-          type="text"
+          icon={ChevronLeft}
+          isDisabled={avatarList.length <= 1 || currentSlide <= 0}
+          size="xs"
           onClick={prevSlide}
         />
       )}
 
-      <Carousel
-        afterChange={(current) => setCurrentSlide(current)}
-        dots={false}
-        infinite={false}
-        slidesToShow={avatarList.length}>
+      <div className="tw:flex tw:items-center">
         {avatarList.map((avatar, index) => (
           <AvatarCarouselItem
             avatar={avatar}
@@ -92,18 +91,18 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
             onAvatarClick={setCurrentSlide}
           />
         ))}
-      </Carousel>
+      </div>
 
       {showArrows && (
-        <Button
+        <ButtonUtility
           className="carousel-arrow"
+          color="tertiary"
           data-testid="next-slide"
-          disabled={
+          icon={ChevronRight}
+          isDisabled={
             avatarList.length <= 1 || currentSlide === avatarList.length - 1
           }
-          icon={<RightOutlined />}
-          size="small"
-          type="text"
+          size="xs"
           onClick={nextSlide}
         />
       )}

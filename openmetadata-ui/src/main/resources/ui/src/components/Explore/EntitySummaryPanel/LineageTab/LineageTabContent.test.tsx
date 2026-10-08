@@ -109,23 +109,6 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
     )),
 }));
 
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick, className, size, ...props }) => (
-      <button
-        className={className}
-        data-size={size}
-        data-testid="button"
-        onClick={onClick}
-        {...props}>
-        {children}
-      </button>
-    )),
-}));
-
 // Mock SVG components with unique implementations
 jest.mock('../../../../assets/svg/downstream.svg', () => ({
   __esModule: true,

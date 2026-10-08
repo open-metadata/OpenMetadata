@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
 import CodeMirror from '@uiw/react-codemirror';
-import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/copy-left.svg';
@@ -98,19 +97,16 @@ const CodeEditor = ({
             <div
               className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
               data-testid="copy-button-container">
-              <Tooltip
-                title={
+              <ButtonUtility
+                color="tertiary"
+                data-testid="query-copy-button"
+                icon={<CopyIcon height={16} width={16} />}
+                size="xs"
+                tooltip={
                   hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
-                }>
-                <Button
-                  className="flex-center"
-                  data-testid="query-copy-button"
-                  icon={<CopyIcon height={16} width={16} />}
-                  size="small"
-                  type="text"
-                  onClick={() => onCopyToClipBoard(internalValue)}
-                />
-              </Tooltip>
+                }
+                onClick={() => onCopyToClipBoard(internalValue)}
+              />
             </div>
           )}
         </div>

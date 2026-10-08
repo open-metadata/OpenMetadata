@@ -11,22 +11,22 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { FunctionComponent, ReactNode, useRef, useState } from 'react';
+import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { removeAttachmentsWithoutUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
-import './modal-with-markdown-editor.less';
 import { ModalWithMarkdownEditorProps } from './ModalWithMarkdownEditor.interface';
-
-const modalRender = (node: ReactNode) => (
-  <div data-react-aria-top-layer>{node}</div>
-);
 
 export const ModalWithMarkdownEditor: FunctionComponent<
   ModalWithMarkdownEditorProps
@@ -58,50 +58,58 @@ export const ModalWithMarkdownEditor: FunctionComponent<
   };
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className="description-markdown-editor"
-      closable={false}
-      data-testid="markdown-editor"
-      footer={
-        <KeyDownStopPropagationWrapper>
-          <Button
-            data-testid="cancel"
-            disabled={isLoading}
-            key="cancelButton"
-            type="link"
-            onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            data-testid="save"
-            key="saveButton"
-            loading={isLoading}
-            type="primary"
-            onClick={handleSaveData}>
-            {t('label.save')}
-          </Button>
-        </KeyDownStopPropagationWrapper>
-      }
-      maskClosable={false}
-      modalRender={modalRender}
-      open={visible}
-      title={
-        <Typography className="tw:text-primary" data-testid="header">
-          {header}
-        </Typography>
-      }
-      width="90%"
-      onCancel={onCancel}>
-      <KeyDownStopPropagationWrapper>
-        <RichTextEditor
-          autofocus
-          initialValue={value}
-          placeHolder={placeholder}
-          ref={markdownRef}
-        />
-      </KeyDownStopPropagationWrapper>
-    </Modal>
+    <ModalOverlay
+      isDismissable={false}
+      isOpen={visible}
+      onOpenChange={(isOpen) => !isOpen && onCancel?.()}>
+      <Modal>
+        <Dialog
+          aria-label={header}
+          className="description-markdown-editor"
+          data-testid="markdown-editor"
+          panelClassName="tw:max-w-[90vw]!">
+          <Dialog.Header className="tw:border-b tw:border-subtle tw:pb-5">
+            <Typography
+              as="h4"
+              className="tw:text-primary"
+              data-testid="header"
+              size="text-md"
+              weight="semibold">
+              {header}
+            </Typography>
+          </Dialog.Header>
+          <Dialog.Content className="tw:max-h-none tw:pb-5">
+            <KeyDownStopPropagationWrapper>
+              <RichTextEditor
+                autofocus
+                initialValue={value}
+                placeHolder={placeholder}
+                ref={markdownRef}
+              />
+            </KeyDownStopPropagationWrapper>
+          </Dialog.Content>
+          <Dialog.Footer className="tw:mt-0">
+            <KeyDownStopPropagationWrapper>
+              <div className="tw:flex tw:gap-3">
+                <Button
+                  color="secondary"
+                  data-testid="cancel"
+                  isDisabled={isLoading}
+                  onPress={onCancel}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  data-testid="save"
+                  isLoading={isLoading}
+                  onPress={handleSaveData}>
+                  {t('label.save')}
+                </Button>
+              </div>
+            </KeyDownStopPropagationWrapper>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };

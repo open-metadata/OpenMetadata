@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { FC } from 'react';
+import { FC, KeyboardEvent } from 'react';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/check-colored.svg';
 import { BetaBadge } from '../Badge/Badge.component';
 import './selection-card-group.less';
@@ -29,15 +29,27 @@ export const SelectionCard: FC<SelectionCardProps> = ({
   disabled = false,
   layout = 'horizontal',
 }: SelectionCardProps) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!disabled && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <Card
+      aria-checked={isSelected}
+      aria-disabled={disabled}
       className={classNames('selection-card', `selection-card-${layout}`, {
         selected: isSelected,
         disabled: disabled,
         'has-beta': option.isBeta,
       })}
+      role="radio"
       style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
-      onClick={disabled ? undefined : onClick}>
+      tabIndex={disabled ? -1 : 0}
+      onClick={disabled ? undefined : onClick}
+      onKeyDown={handleKeyDown}>
       {option.isBeta && <BetaBadge />}
       <div className="selection-content">
         <div className="selection-body">
@@ -79,7 +91,8 @@ const SelectionCardGroup: FC<SelectionCardGroupProps> = ({
     <div
       className={classNames('selection-card-group', className, {
         'selection-card-group-disabled': disabled,
-      })}>
+      })}
+      role="radiogroup">
       {options.map((option) => (
         <SelectionCard
           disabled={disabled}

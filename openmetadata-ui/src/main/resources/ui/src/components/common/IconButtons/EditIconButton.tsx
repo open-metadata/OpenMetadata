@@ -10,12 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { PlusOutlined } from '@ant-design/icons';
-import { ButtonUtility } from '@openmetadata/ui-core-components';
-import type { ButtonProps } from 'antd';
-import { Button, Tooltip } from 'antd';
+import {
+  Button,
+  ButtonUtility,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { forwardRef } from 'react';
+import {
+  ButtonHTMLAttributes,
+  FC,
+  forwardRef,
+  MouseEventHandler,
+  ReactNode,
+} from 'react';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
@@ -23,95 +31,90 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
 
-export type IconButtonProps = ButtonProps & {
+export type IconButtonProps = Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'color' | 'onClick' | 'children'
+> & {
   newLook?: boolean;
+  /** Legacy antd size names; `small` renders the compact 20px box. */
+  size?: 'small' | 'middle' | 'large';
+  icon?: ReactNode;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
 };
+
+type BaseIconButtonProps = IconButtonProps & {
+  defaultIcon: FC<{ className?: string }>;
+  bordered?: boolean;
+};
+
+// The bordered look mirrors the antd `.ant-btn-icon-only.bordered` box (20px /
+// 30px with a 12px / 16px glyph); the plain look the antd `type="text"` button.
+const BaseIconButton = forwardRef<HTMLButtonElement, BaseIconButtonProps>(
+  (
+    {
+      title,
+      className,
+      size,
+      bordered,
+      disabled,
+      icon,
+      defaultIcon: DefaultIcon,
+      newLook: _newLook,
+      ...props
+    },
+    ref
+  ) => (
+    <Tooltip isDisabled={!title} title={title}>
+      <Button
+        aria-label={title}
+        className={classNames(
+          'tw:p-0!',
+          bordered
+            ? {
+                'tw:size-5 tw:[&_svg]:size-3': size === 'small',
+                'tw:size-7.5 tw:[&_svg]:size-4': size !== 'small',
+              }
+            : 'tw:size-6 tw:[&_svg]:size-3.5',
+          className
+        )}
+        color={bordered ? 'secondary' : 'tertiary'}
+        iconLeading={icon ?? DefaultIcon}
+        isDisabled={disabled}
+        ref={ref}
+        size="xxs"
+        {...props}
+      />
+    </Tooltip>
+  )
+);
 
 // Forwards its ref so react-aria's Pressable can make it a PopoverTrigger child.
 export const EditIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
-  ({ title, className, size, newLook, ...props }, ref) => {
-    return (
-      <Tooltip title={title}>
-        {newLook ? (
-          <Button
-            aria-label={title}
-            className={classNames('bordered', className)}
-            icon={<EditIcon />}
-            ref={ref}
-            size={size}
-            {...props}
-          />
-        ) : (
-          <Button
-            aria-label={title}
-            className={className}
-            icon={<EditIcon className="table-action-icon" />}
-            ref={ref}
-            size="small"
-            type="text"
-            {...props}
-          />
-        )}
-      </Tooltip>
-    );
-  }
+  (props, ref) => (
+    <BaseIconButton
+      bordered={props.newLook}
+      defaultIcon={EditIcon}
+      ref={ref}
+      {...props}
+    />
+  )
 );
 
-export const RequestIconButton = ({
-  title,
-  className,
-  newLook,
-  size,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      {newLook ? (
-        <Button
-          aria-label={title}
-          className={classNames('bordered', className)}
-          icon={<RequestIcon />}
-          size={size}
-          {...props}
-        />
-      ) : (
-        <Icon
-          className={classNames('table-action-icon', className)}
-          component={RequestIcon}
-          {...props}
-        />
-      )}
-    </Tooltip>
-  );
-};
+export const RequestIconButton = (props: IconButtonProps) => (
+  <BaseIconButton
+    bordered={props.newLook}
+    defaultIcon={RequestIcon}
+    {...props}
+  />
+);
 
-export const CommentIconButton = ({
-  title,
-  className,
-  newLook,
-  size,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      {newLook ? (
-        <Button
-          aria-label={title}
-          className={classNames('bordered', className)}
-          icon={<CommentIcon />}
-          size={size}
-          {...props}
-        />
-      ) : (
-        <Icon
-          className={classNames('table-action-icon', className)}
-          component={CommentIcon}
-          {...props}
-        />
-      )}
-    </Tooltip>
-  );
-};
+export const CommentIconButton = (props: IconButtonProps) => (
+  <BaseIconButton
+    bordered={props.newLook}
+    defaultIcon={CommentIcon}
+    {...props}
+  />
+);
 
 interface AlignRightIconButtonProps {
   title: string;
@@ -134,65 +137,14 @@ export const AlignRightIconButton = ({
   />
 );
 
-export const CardExpandCollapseIconButton = ({
-  title,
-  className,
-  disabled,
-  ...props
-}: IconButtonProps) => {
-  const button = (
-    <Button
-      aria-label={title}
-      className={classNames('bordered', className)}
-      disabled={disabled}
-      icon={<CardExpandCollapseIcon />}
-      tabIndex={0}
-      type="text"
-      {...props}
-    />
-  );
+export const CardExpandCollapseIconButton = (props: IconButtonProps) => (
+  <BaseIconButton bordered defaultIcon={CardExpandCollapseIcon} {...props} />
+);
 
-  return (
-    <Tooltip title={title}>
-      {/* Adding span to fix the issue with className is not being applied for disabled button
-        Refer this comment for more details https://github.com/ant-design/ant-design/issues/21404#issuecomment-586800984 */}
-      {disabled ? <span className={className}>{button}</span> : button}
-    </Tooltip>
-  );
-};
+export const PlusIconButton = (props: IconButtonProps) => (
+  <BaseIconButton bordered defaultIcon={Plus} {...props} />
+);
 
-export const PlusIconButton = ({
-  title,
-  className,
-  size,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      <Button
-        className={classNames('bordered', className)}
-        icon={<PlusOutlined />}
-        size={size}
-        {...props}
-      />
-    </Tooltip>
-  );
-};
-
-export const DeleteIconButton = ({
-  title,
-  className,
-  size,
-  ...props
-}: IconButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      <Button
-        className={classNames('bordered', className)}
-        icon={<IconDelete />}
-        size={size}
-        {...props}
-      />
-    </Tooltip>
-  );
-};
+export const DeleteIconButton = (props: IconButtonProps) => (
+  <BaseIconButton bordered defaultIcon={IconDelete} {...props} />
+);

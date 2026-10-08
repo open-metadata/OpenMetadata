@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
@@ -50,10 +49,10 @@ const CreateErrorPlaceHolder = ({
     <div
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm bg-white w-full'
+        'h-full flex-center border-default border-radius-sm tw:bg-surface w-full'
       )}
       data-testid={`create-error-placeholder-${heading}`}>
-      <Space align="center" className="w-full" direction="vertical" size={10}>
+      <div className="tw:flex tw:w-full tw:flex-col tw:items-center tw:gap-2.5">
         <AddPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
@@ -87,22 +86,17 @@ const CreateErrorPlaceHolder = ({
           )}
 
           {onClick && (
-            <Tooltip
-              placement="top"
-              title={!permission && t('message.admin-only-action')}>
-              <Button
-                ghost
-                className="p-x-lg"
-                data-testid={buttonId ?? 'add-placeholder-button'}
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={onClick}>
-                {t('label.add')}
-              </Button>
-            </Tooltip>
+            <Button
+              color="secondary-brand"
+              data-testid={buttonId ?? 'add-placeholder-button'}
+              iconLeading={Plus}
+              size="sm"
+              onPress={onClick}>
+              {t('label.add')}
+            </Button>
           )}
         </div>
-      </Space>
+      </div>
     </div>
   );
 };

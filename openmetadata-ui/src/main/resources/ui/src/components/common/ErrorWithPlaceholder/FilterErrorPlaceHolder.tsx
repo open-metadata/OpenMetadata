@@ -12,7 +12,6 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
@@ -33,10 +32,10 @@ const FilterErrorPlaceHolder = ({
     <div
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm bg-white'
+        'h-full flex-center border-default border-radius-sm tw:bg-surface'
       )}
       data-testid="search-error-placeholder">
-      <Space align="center" direction="vertical" size={10}>
+      <div className="tw:flex tw:flex-col tw:items-center tw:gap-2.5">
         <FilterPlaceHolderIcon
           data-testid="no-search-image"
           height={size}
@@ -83,7 +82,7 @@ const FilterErrorPlaceHolder = ({
             ''
           )}
         </div>
-      </Space>
+      </div>
     </div>
   );
 };

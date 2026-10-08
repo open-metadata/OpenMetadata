@@ -12,7 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import type { Type } from '../../../../../../generated/entity/type';
 import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -246,6 +246,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <div data-testid={testId} {...rest}>
         {children}
       </div>
+    ),
+    ButtonUtility: ({
+      icon,
+      tooltip: _tooltip,
+      ...props
+    }: {
+      icon?: ReactNode;
+      tooltip?: ReactNode;
+    } & ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button {...props}>{icon}</button>
     ),
     Button: ({
       children,
