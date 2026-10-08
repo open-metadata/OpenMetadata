@@ -561,3 +561,28 @@ describe('band series on a real chart', () => {
     expect(span.get(stacked, 1)).toBe(4);
   });
 });
+
+describe('axis labels on a real chart', () => {
+  const PALE_LINE = '#e9eaeb';
+  // The fill of the label that reads `text`.
+  const labelFill = (chart: echarts.ECharts, text: string) =>
+    chart
+      .renderToSVGString()
+      .match(new RegExp(`<text[^>]*fill="([^"]+)"[^>]*>${text}</text>`))?.[1];
+
+  it('keep their own colour when the caller themes the axis line', () => {
+    const chart = mount(
+      buildLineOption(
+        input({
+          xAxis: { axisLine: { lineStyle: { color: PALE_LINE } } },
+          yAxis: { axisLine: { show: true, lineStyle: { color: PALE_LINE } } },
+        }),
+        LIGHT_CHART_THEME
+      )
+    );
+
+    expect(labelFill(chart, 'd0')).toBeDefined();
+    expect(labelFill(chart, 'd0')).not.toBe(PALE_LINE);
+    expect(labelFill(chart, '0')).not.toBe(PALE_LINE);
+  });
+});

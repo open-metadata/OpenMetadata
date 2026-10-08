@@ -346,16 +346,6 @@ describe('TestSummaryGraph', () => {
     });
   });
 
-  // ECharts gives axis labels the axis line's colour unless they have their
-  // own, and the baseline is a pale track colour.
-  it('should keep the time labels legible over the pale baseline', () => {
-    render(<TestSummaryGraph {...mockProps} />);
-
-    expect(getChartProps().xAxis?.axisLabel).toEqual(
-      expect.objectContaining({ color: '#606060' })
-    );
-  });
-
   it('should format the y axis as a duration for freshness tests', () => {
     render(
       <TestSummaryGraph
@@ -459,14 +449,14 @@ describe('TestSummaryGraph', () => {
     );
   });
 
-  it('should wash a single series in 5% brand blue, under a 2px line', () => {
+  it("should wash a single series in 5% of the palette's brand series colour, under a 2px line", () => {
     render(
       <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
     );
 
     expect(getSeries('value').seriesOption).toEqual(
       expect.objectContaining({
-        areaStyle: { color: '#0000a0@0.05' },
+        areaStyle: { color: '#100000@0.05' },
         lineStyle: { width: 2 },
       })
     );
@@ -664,7 +654,7 @@ describe('TestSummaryGraph', () => {
     render(<TestSummaryGraph {...mockProps} />);
 
     expect(
-      screen.getByText('message.click-a-point-for-run-details')
+      screen.getByText('message.select-a-point-for-run-details')
     ).toBeInTheDocument();
   });
 

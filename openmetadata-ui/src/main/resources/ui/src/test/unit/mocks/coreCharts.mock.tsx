@@ -63,13 +63,6 @@ export const chartColor = (
 
 export const hexToRgba = (hex: string, alpha: number) => `${hex}@${alpha}`;
 
-export const useIsDarkMode = jest.fn(() => false);
-
-// Stand-in theme: only what app code reads of it.
-export const buildChartTheme = ({ isDark = false } = {}) => ({
-  axisText: isDark ? '#d0d0d0' : '#606060',
-});
-
 export const PieChart = mockChart('core-pie-chart');
 export const LineChart = mockChart('core-line-chart');
 export const AreaChart = mockChart('core-area-chart');

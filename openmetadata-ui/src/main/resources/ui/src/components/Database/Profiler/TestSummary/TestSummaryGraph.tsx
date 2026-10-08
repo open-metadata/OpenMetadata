@@ -25,11 +25,9 @@ import type {
   ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
 import {
-  buildChartTheme,
   ComposedChart,
   hexToRgba,
   useChartPalette,
-  useIsDarkMode,
 } from '@openmetadata/ui-core-components/charts';
 import { useQueries } from '@tanstack/react-query';
 import { isEmpty, isNumber, isUndefined } from 'lodash';
@@ -205,7 +203,6 @@ function TestSummaryGraph({
     setSelectedRunTimestamp,
   } = useTestCaseStore();
   const plotRef = useRef<HTMLDivElement>(null);
-  const isDarkMode = useIsDarkMode(plotRef);
   const tooltipCloseTimer = useRef<ReturnType<typeof setTimeout>>();
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip>();
 
@@ -411,9 +408,10 @@ function TestSummaryGraph({
     const lines = seriesLabels.map<ChartSeries>((label) => ({
       key: label,
       name: label,
-      // One series reads as data and keeps a grey wash under it; several
-      // need the palette to be told apart. Muted, not neutral: neutral is a
-      // track colour, too pale for a line.
+      // One series is a muted grey line over a brand wash, as the mock draws
+      // it, so the status-coloured dots on it stand out; several need the
+      // palette to be told apart. Muted, not neutral: neutral is a track
+      // colour, too pale for a line.
       type: isSingleSeries ? 'area' : 'line',
       status: isSingleSeries ? 'muted' : undefined,
       smooth: false,
@@ -427,7 +425,8 @@ function TestSummaryGraph({
         ...(isSingleSeries
           ? {
               areaStyle: {
-                color: hexToRgba(palette.status.info, SINGLE_SERIES_WASH),
+                // The palette's first series colour is its brand blue.
+                color: hexToRgba(palette.series[0], SINGLE_SERIES_WASH),
               },
               lineStyle: { width: SINGLE_SERIES_LINE_WIDTH },
             }
@@ -517,8 +516,6 @@ function TestSummaryGraph({
       axisLabel: {
         rotate: 45,
         customValues: tickValues,
-        // Without a colour of their own, the labels take the axis line's.
-        color: buildChartTheme({ isDark: isDarkMode }).axisText,
       },
       // ECharts' own axis grey does not follow the theme.
       axisLine: { lineStyle: { color: palette.status.neutral } },
@@ -528,7 +525,7 @@ function TestSummaryGraph({
         max: instants[0] + SINGLE_INSTANT_X_PADDING,
       }),
     };
-  }, [plottedData, palette, isDarkMode]);
+  }, [plottedData, palette]);
 
   const yAxis = useMemo<ChartYAxisProps>(
     () => ({
@@ -638,7 +635,7 @@ function TestSummaryGraph({
       <Box align="center" className="tw:pb-2" gap={2} wrap="wrap">
         <TestSummaryStatusKey statuses={plottedStatuses} />
         <Typography className="tw:ml-auto tw:text-quaternary" size="text-xs">
-          {t('message.click-a-point-for-run-details')}
+          {t('message.select-a-point-for-run-details')}
         </Typography>
       </Box>
     </Box>
