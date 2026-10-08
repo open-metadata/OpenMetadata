@@ -1596,8 +1596,9 @@ export const TaskTabNew = ({
             </Grid.Item>
 
             {isEditAssignee ? (
+              // Width alone fills one track when the form is a direct grid child.
               <Form
-                className="w-full"
+                className="w-full tw:col-span-full"
                 form={assigneesForm}
                 layout="vertical"
                 onFinish={handleAssigneeUpdate}>
