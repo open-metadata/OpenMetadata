@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import WidgetWrapper from '../../Widgets/Common/WidgetWrapper/WidgetWrapper';
@@ -44,11 +43,10 @@ function EmptyWidgetPlaceholderV1({
         })}
       </Typography>
       <Button
-        className="add-widgets-button"
+        color="primary"
         data-testid="add-widget-button"
-        icon={<PlusOutlined />}
-        type="primary"
-        onClick={handleAddClick}>
+        iconLeading={Plus}
+        onPress={handleAddClick}>
         {t('label.add-widget-plural')}
       </Button>
     </div>

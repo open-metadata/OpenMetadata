@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
+  Dialog,
   Divider,
+  Modal,
+  ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -244,7 +247,7 @@ const CustomiseHomeModal = ({
               )}
               {isSelectedWidget && (
                 <span className="selected-widget-icon">
-                  <CheckOutlined />
+                  <Check />
                 </span>
               )}
             </div>
@@ -292,64 +295,71 @@ const CustomiseHomeModal = ({
     return colorChanged || widgetsSelected;
   }, [selectedColor, currentBackgroundColor, selectedWidgets]);
 
-  if (!open) {
-    return null;
-  }
+  const title = t('label.customize-entity', { entity: t('label.home') });
 
   return (
-    <div
-      className="tw:fixed tw:inset-0 tw:z-[9999] tw:flex tw:flex-col tw:bg-page"
-      data-testid="customise-home-modal">
-      <Box
-        align="center"
-        className="tw:shrink-0 tw:border-b tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
-        direction="row"
-        gap={3}>
-        <AddIcon className="tw:size-6" />
-        <Typography size="text-xl" weight="semibold">
-          {t('label.customize-entity', {
-            entity: t('label.home'),
-          })}
-        </Typography>
-      </Box>
-      <Box className="tw:flex-1 tw:min-h-0" direction="row">
-        <div className="tw:shrink-0 tw:w-64 tw:overflow-y-auto tw:border-r tw:border-secondary tw:p-5">
-          {sidebarOptions}
-        </div>
-        <Divider className="tw:h-auto tw:self-stretch" orientation="vertical" />
-        <div className="tw:flex-1 tw:overflow-y-auto tw:p-5" ref={contentRef}>
-          {selectedKey === CustomiseHomeModalSelectedKey.ALL_WIDGETS &&
-          isFetchingWidgets ? (
-            <div className="tw:flex tw:justify-center tw:items-center tw:h-full">
-              <Loader />
+    <ModalOverlay
+      isDismissable
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          aria-label={title}
+          data-testid="customise-home-modal"
+          panelClassName="customise-home-modal"
+          width={1800}
+          onClose={onClose}>
+          <Box
+            align="center"
+            className="customise-home-modal-header p-box"
+            gap={3}>
+            <AddIcon className="add-icon tw:size-8" />
+            <Typography className="text-white" size="text-xl" weight="semibold">
+              {title}
+            </Typography>
+          </Box>
+          <Box className="customise-home-modal-body tw:h-[70vh]" gap={1}>
+            <div className="sidebar p-box tw:overflow-y-auto">
+              {sidebarOptions}
             </div>
-          ) : (
-            selectedComponent
-          )}
-        </div>
-      </Box>
-      <Box
-        align="center"
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
-        direction="row"
-        gap={2}
-        justify="end">
-        <Button
-          color="tertiary"
-          data-testid="cancel-btn"
-          onPress={onClose}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          color="primary"
-          data-testid="apply-btn"
-          isDisabled={!hasChanges}
-          isLoading={isLoading}
-          onPress={handleApply}>
-          {t('label.apply')}
-        </Button>
-      </Box>
-    </div>
+            <Divider
+              className="tw:h-auto tw:self-stretch"
+              orientation="vertical"
+            />
+            <div className="content p-box tw:overflow-y-auto" ref={contentRef}>
+              {selectedKey === CustomiseHomeModalSelectedKey.ALL_WIDGETS &&
+              isFetchingWidgets ? (
+                <Box align="center" className="tw:h-full" justify="center">
+                  <Loader />
+                </Box>
+              ) : (
+                selectedComponent
+              )}
+            </div>
+          </Box>
+          <Box
+            className="customise-home-modal-footer p-box tw:bg-primary"
+            gap={3}
+            justify="end">
+            <Button
+              color="secondary"
+              data-testid="cancel-btn"
+              onPress={onClose}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="apply-btn"
+              isDisabled={!hasChanges}
+              isLoading={isLoading}
+              onPress={handleApply}>
+              {t('label.apply')}
+            </Button>
+          </Box>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

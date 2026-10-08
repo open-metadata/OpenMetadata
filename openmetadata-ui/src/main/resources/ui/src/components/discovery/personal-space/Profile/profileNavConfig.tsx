@@ -15,8 +15,8 @@ import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Bell01,
   Key01,
-  Persona as PersonaIcon,
   PermissionDebugger as AccessControlIcon,
+  Persona as PersonaIcon,
   Policy as GovernanceTabIcon,
   Settings02,
   ShieldTick,
@@ -36,8 +36,8 @@ import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
-import PersonasPanel from './tabs/personas/PersonasPanel';
 import PermissionsTab from './tabs/PermissionsTab';
+import PersonasPanel from './tabs/personas/PersonasPanel';
 
 export type ProfileNavId =
   | 'profile'

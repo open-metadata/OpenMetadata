@@ -36,8 +36,8 @@ import {
   DEFAULT_PAGE_VIEW_MODE,
   LANDING_PAGE_SECTIONS,
   PAGE_VIEW_MODE_LABEL_KEYS,
-  VIEW_MODE_PAGES,
   ViewModePage,
+  VIEW_MODE_PAGES,
 } from '../../../../../../../constants/platform/personaAppLayout.constants';
 import {
   AppMode,

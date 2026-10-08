@@ -15,13 +15,14 @@ import {
   Box,
   Button,
   ButtonUtility,
-  Input,
   Card,
+  Input,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
+  Copy01,
   Edit01 as Edit,
   Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
@@ -41,6 +42,7 @@ import { EntityType } from '../../../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Persona } from '../../../../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   getPersonaByName,
@@ -57,6 +59,7 @@ import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import SubCategoryGrid from './customize/SubCategoryGrid';
 import PersonaCustomizeGrid from './PersonaCustomizeGrid';
 import type { PersonaDetailTab } from './Personas.types';
 import PersonaUsersTab from './PersonaUsersTab';
@@ -64,6 +67,8 @@ import PersonaUsersTab from './PersonaUsersTab';
 interface PersonaDetailProps {
   fqn: string;
   activeTab: PersonaDetailTab;
+  /** `governance` / `data-assets`: Customize UI lists that category's entities. */
+  subCategory?: string;
   onTabChange: (tab: PersonaDetailTab) => void;
   onSelectCategory: (category: string) => void;
   onDeleted: () => void;
@@ -76,6 +81,7 @@ interface PersonaDetailProps {
 const PersonaDetail: FC<PersonaDetailProps> = ({
   fqn,
   activeTab,
+  subCategory,
   onTabChange,
   onSelectCategory,
   onDeleted,
@@ -96,7 +102,6 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
-  const renameInputRef = useRef<HTMLInputElement>(null);
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -109,6 +114,11 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     canEditDescription,
     canDelete: hasDeletePermission,
   } = useEntityPermissions(ResourceEntity.PERSONA, fqn);
+
+  // Deep link that reopens this persona in the personal-space modal.
+  const { onCopyToClipBoard, hasCopied } = useClipboard(
+    `${globalThis.location.origin}${globalThis.location.pathname}#personas/${fqn}`
+  );
 
   const fetchPersona = useCallback(async () => {
     setIsLoading(true);
@@ -126,12 +136,6 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   useEffect(() => {
     fetchPersona();
   }, [fetchPersona]);
-
-  useEffect(() => {
-    if (isRenameOpen) {
-      renameInputRef.current?.focus();
-    }
-  }, [isRenameOpen]);
 
   const patchPersona = useCallback(
     async (data: Partial<Persona>) => {
@@ -231,9 +235,12 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     return (
       <Box align="center" direction="row" gap={2}>
         <Input
+          // The input renders in the parent header a render later, so focus it
+          // on mount rather than from an effect here.
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- user just asked to rename
+          autoFocus
           className="tw:text-lg tw:font-bold"
           data-testid="persona-rename-input"
-          ref={renameInputRef}
           value={renameValue}
           onChange={setRenameValue}
         />
@@ -265,23 +272,45 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     }
 
     return (
-      <ButtonUtility
-        color="tertiary"
-        data-testid="rename-persona-btn"
-        icon={Edit}
-        isDisabled={!canEditDescription}
-        size="xs"
-        tooltip={String(
-          canEditDescription ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
-        )}
-        tooltipPlacement="right"
-        onPress={() => {
-          setRenameValue(persona.displayName || persona.name || '');
-          setIsRenameOpen(true);
-        }}
-      />
+      <Box align="center" direction="row" gap={1}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="copy-persona-link"
+          icon={Copy01}
+          size="xs"
+          tooltip={String(
+            hasCopied
+              ? t('message.link-copy-to-clipboard')
+              : t('label.copy-item', { item: t('label.url-uppercase') })
+          )}
+          tooltipPlacement="right"
+          onPress={() => onCopyToClipBoard()}
+        />
+        <ButtonUtility
+          color="tertiary"
+          data-testid="rename-persona-btn"
+          icon={Edit}
+          isDisabled={!canEditDescription}
+          size="xs"
+          tooltip={String(
+            canEditDescription ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
+          )}
+          tooltipPlacement="right"
+          onPress={() => {
+            setRenameValue(persona.displayName || persona.name || '');
+            setIsRenameOpen(true);
+          }}
+        />
+      </Box>
     );
-  }, [isRenameOpen, persona, canEditDescription, t]);
+  }, [
+    isRenameOpen,
+    persona,
+    canEditDescription,
+    hasCopied,
+    onCopyToClipBoard,
+    t,
+  ]);
 
   const actionsNode = useMemo<React.ReactNode>(() => {
     if (isRenameOpen || !persona) {
@@ -352,8 +381,26 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       );
     }
 
+    if (subCategory) {
+      return (
+        <SubCategoryGrid
+          baseCategory={subCategory}
+          onSelectEntity={(entityKey) =>
+            onSelectCategory(`${subCategory}/${entityKey}`)
+          }
+        />
+      );
+    }
+
     return <PersonaCustomizeGrid onSelectCategory={onSelectCategory} />;
-  }, [activeTab, canEditAll, persona, handleUpdateUsers, onSelectCategory]);
+  }, [
+    activeTab,
+    canEditAll,
+    persona,
+    handleUpdateUsers,
+    onSelectCategory,
+    subCategory,
+  ]);
 
   if (isLoading) {
     return <Loader />;

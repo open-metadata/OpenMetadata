@@ -18,7 +18,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { DotsGrid } from '@openmetadata/ui-core-components/icons';
-import { TreeDataNode } from 'antd';
 import { AxiosError } from 'axios';
 import { isEqual } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
@@ -40,6 +39,7 @@ import {
   getParentKeys,
   moveNavNode,
   moveNavNodeToRoot,
+  NavigationTreeNode,
 } from './NavigationEditor.utils';
 
 const NavigationEditor = ({
@@ -55,7 +55,7 @@ const NavigationEditor = ({
     [document]
   );
 
-  const [treeData, setTreeData] = useState<TreeDataNode[]>(() =>
+  const [treeData, setTreeData] = useState<NavigationTreeNode[]>(() =>
     getTreeDataForNavigationItems(navigation, plugins)
   );
   const [hiddenKeys, setHiddenKeys] = useState<string[]>(() =>
@@ -145,7 +145,7 @@ const NavigationEditor = ({
     [treeData]
   );
 
-  const renderNode = (node: TreeDataNode) => {
+  const renderNode = (node: NavigationTreeNode) => {
     const key = String(node.key);
     const label = t(node.title as string);
 

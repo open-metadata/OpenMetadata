@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PageType } from '../../../../../../generated/system/ui/page';
 import type { PersonaView } from './Personas.types';
 
 const PATH_ADD = 'add';
@@ -64,4 +65,34 @@ export function viewToSubPath(view: PersonaView): string | undefined {
     default:
       return undefined;
   }
+}
+
+/** Categories that open a grid of entity tiles instead of an editor. */
+export const SUB_GRID_CATEGORIES = new Set(['governance', 'data-assets']);
+
+const FULLSCREEN_CATEGORIES = new Set<string>([
+  'homepage',
+  PageType.LandingPage,
+]);
+
+/**
+ * Home page and entity-level categories (`governance/Domain`) are edited on a
+ * full page outside the personal-space modal; everything else stays inside it.
+ */
+export function isFullscreenPersonaCategory(category: string): boolean {
+  return FULLSCREEN_CATEGORIES.has(category) || category.includes('/');
+}
+
+export function isFullscreenPersonaHash(
+  tab: string | null,
+  subPath: string
+): boolean {
+  if (tab !== 'personas') {
+    return false;
+  }
+  const view = hashSubPathToView(subPath);
+
+  return (
+    view.type === 'customize' && isFullscreenPersonaCategory(view.category)
+  );
 }

@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { TreeDataNode } from 'antd';
 import {
   getParentKeys,
   moveNavNode,
   moveNavNodeToRoot,
+  NavigationTreeNode,
 } from './NavigationEditor.utils';
 
-const tree = (): TreeDataNode[] => [
+const tree = (): NavigationTreeNode[] => [
   { key: 'a', title: 'a' },
   {
     key: 'b',
@@ -31,7 +31,7 @@ const tree = (): TreeDataNode[] => [
   { key: 'c', title: 'c' },
 ];
 
-const keys = (nodes: TreeDataNode[]): string[] =>
+const keys = (nodes: NavigationTreeNode[]): string[] =>
   nodes.map((n) => String(n.key));
 
 describe('NavigationEditor.utils', () => {

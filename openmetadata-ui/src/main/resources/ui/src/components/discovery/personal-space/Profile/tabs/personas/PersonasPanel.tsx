@@ -26,18 +26,22 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
-import { PageType } from '../../../../../../generated/system/ui/page';
 import {
   getCustomizePageCategories,
   getCustomizePageOptions,
 } from '../../../../../../utils/Persona/PersonaUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
-import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
 import PersonaAddForm from './PersonaAddForm';
+import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
 import PersonaDetail from './PersonaDetail';
 import type { PersonaDetailTab, PersonaView } from './Personas.types';
-import { hashSubPathToView, viewToSubPath } from './Personas.utils';
+import {
+  hashSubPathToView,
+  isFullscreenPersonaCategory,
+  SUB_GRID_CATEGORIES,
+  viewToSubPath,
+} from './Personas.utils';
 import PersonasLanding from './PersonasLanding';
 
 const PersonaCustomizeView = withSuspenseFallback(
@@ -46,16 +50,11 @@ const PersonaCustomizeView = withSuspenseFallback(
 
 const HASH_TAB = 'personas';
 
-const FULLSCREEN_CATEGORIES = new Set<string>([
-  'homepage',
-  PageType.LandingPage as string,
-  PageType.DataMarketplace as string,
-]);
-
 interface PersonasPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
 
+/* eslint-disable sonarjs/cyclomatic-complexity -- one switch over the persona sub-views */
 const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { state: hashState, setHash, updateParams } = useSettingsHash();
@@ -92,14 +91,17 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   const viewFqn =
     view.type === 'detail' || view.type === 'customize' ? view.fqn : undefined;
 
-  const isFullscreenCustomize = useMemo(() => {
-    if (view.type !== 'customize') {
-      return false;
-    }
-    const cat = view.category;
+  const isFullscreenCustomize =
+    view.type === 'customize' && isFullscreenPersonaCategory(view.category);
 
-    return FULLSCREEN_CATEGORIES.has(cat) || cat.includes('/');
-  }, [view]);
+  // Governance / Data Assets keep the persona detail page (description, tabs,
+  // header actions) and only swap the Customize UI tiles, as in legacy.
+  const subCategory =
+    view.type === 'customize' && SUB_GRID_CATEGORIES.has(view.category)
+      ? view.category
+      : undefined;
+  const isDetailLike = view.type === 'detail' || Boolean(subCategory);
+  const resetKey = isDetailLike ? 'detail' : view.type;
 
   // Close the modal silently when entering a fullscreen customize view so the
   // PersonaFullscreenPortal (mounted outside the modal tree) can take over.
@@ -119,7 +121,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     setDetailTitleSuffix(undefined);
     setCustomizeActions(undefined);
     setResolvedName('');
-  }, [view.type, viewFqn]);
+  }, [resetKey, viewFqn]);
 
   /** For `governance/Domain` style categories: [baseCategory, entityType]. */
   const [categoryBase, categoryEntity] = useMemo(() => {
@@ -230,13 +232,18 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
       return;
     }
 
-    if (view.type === 'detail') {
+    if (isDetailLike) {
       const name = resolvedName || view.name;
       onHeaderChange({
         breadcrumbs: [
           settingsItem,
           personasItem,
-          { id: 'current', label: name },
+          ...(subCategory
+            ? [
+                { id: 'detail', label: name },
+                { id: 'current', label: categoryMeta?.label ?? subCategory },
+              ]
+            : [{ id: 'current', label: name }]),
         ],
         title: name,
         description: personasDesc,
@@ -289,6 +296,8 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     parentCategoryMeta,
     customizeIcon,
     onNavigate,
+    subCategory,
+    isDetailLike,
   ]);
 
   if (view.type === 'add') {
@@ -300,12 +309,13 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     );
   }
 
-  if (view.type === 'detail') {
+  if (isDetailLike && view.type !== 'landing') {
     return (
       <div className="tw:flex-1 tw:overflow-y-auto tw:pt-1">
         <PersonaDetail
           activeTab={activeTab}
           fqn={view.fqn}
+          subCategory={subCategory}
           onDeleted={() => onNavigate({ type: 'landing' })}
           onRename={setResolvedName}
           onSelectCategory={(category) =>
@@ -335,24 +345,12 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
       return null;
     }
 
-    // "back" for entity-level (e.g. governance/Domain) goes to parent sub-grid.
-    const baseCategory = cat.includes('/') ? cat.split('/', 1)[0] : undefined;
-    const handleBack = () =>
-      onNavigate(
-        baseCategory
-          ? { type: 'customize', fqn, name, category: baseCategory }
-          : { type: 'detail', fqn, name }
-      );
-
     return (
       <PersonaCustomizeView
         category={cat}
         personaFqn={fqn}
-        onBack={handleBack}
+        onBack={() => onNavigate({ type: 'detail', fqn, name })}
         onHeaderActionsChange={setCustomizeActions}
-        onNavigateToEntity={(entityCategory) =>
-          onNavigate({ type: 'customize', fqn, name, category: entityCategory })
-        }
         onRename={setResolvedName}
       />
     );
@@ -364,5 +362,6 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     </div>
   );
 };
+/* eslint-enable sonarjs/cyclomatic-complexity */
 
 export default PersonasPanel;

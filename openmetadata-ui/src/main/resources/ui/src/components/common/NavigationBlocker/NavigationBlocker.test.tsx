@@ -158,7 +158,7 @@ describe('NavigationBlocker component', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
 
     // Close modal by clicking the X button
-    const closeButton = screen.getByLabelText('Close');
+    const closeButton = screen.getByRole('button', { name: /close/i });
     await act(async () => {
       await fireEvent.click(closeButton);
     });

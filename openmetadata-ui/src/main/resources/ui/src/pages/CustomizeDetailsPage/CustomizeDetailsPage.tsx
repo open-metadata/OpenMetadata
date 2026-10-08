@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@openmetadata/ui-core-components';
 import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -35,7 +36,6 @@ import { PageTypeToEntityTypeMap } from './CustomizeDetailPage.interface';
 export const CustomizeDetailsPage = ({
   personaDetails,
   onSaveLayout,
-  onClose,
 }: CustomizeMyDataProps) => {
   const { t } = useTranslation();
   const { currentPage, currentPageType, getPage } = useCustomizeStore();
@@ -82,11 +82,10 @@ export const CustomizeDetailsPage = ({
         pageTitle={t('label.customize-entity', {
           entity: t('label.' + kebabCase(currentPageType)),
         })}>
-        <div className="customize-details-page tw:flex tw:flex-col tw:gap-5">
+        <Box className="customize-details-page" direction="col" gap={5}>
           <CustomizablePageHeader
             disableSave={disableSave}
             personaName={getEntityName(personaDetails)}
-            onClose={onClose}
             onReset={handleReset}
             onSave={handleSave}
           />
@@ -106,7 +105,7 @@ export const CustomizeDetailsPage = ({
           />
           {/* CustomizeTabWidget renders its own cols internally */}
           <CustomizeTabWidget />
-        </div>
+        </Box>
       </PageLayoutV1>
     </NavigationBlocker>
   );

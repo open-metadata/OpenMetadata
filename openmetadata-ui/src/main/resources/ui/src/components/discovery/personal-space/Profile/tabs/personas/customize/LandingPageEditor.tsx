@@ -14,8 +14,6 @@
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import CustomizeMyData from '../../../../../../MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
-import '../../../../../../MyData/CustomizableComponents/CustomizeMyData/customize-my-data.less';
 import { Page, PageType } from '../../../../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import {
@@ -26,6 +24,8 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
+import '../../../../../../MyData/CustomizableComponents/CustomizeMyData/customize-my-data.less';
+import CustomizeMyData from '../../../../../../MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import { CustomizeEditorProps } from './customizeEditor.types';
 import { savePersonaDocument } from './customizeEditor.utils';
 
@@ -34,7 +34,6 @@ const LandingPageEditor = ({
   document,
   onDocumentSaved,
   onActionsChange,
-  onBack,
 }: CustomizeEditorProps) => {
   const { t } = useTranslation();
   const { currentPage, setDocument, setCurrentPageType } = useCustomizeStore();
@@ -111,21 +110,16 @@ const LandingPageEditor = ({
   }, [handleSaveLayout, handleReset, isDirty, isSaving, onActionsChange]);
 
   return (
-    <div
-      className="tw:fixed tw:inset-0 tw:z-[9999] tw:flex tw:flex-col tw:bg-page persona-settings-overlay"
-      data-testid="landing-page-editor-overlay">
-      <div className="tw:flex-1 tw:overflow-auto">
-        <CustomizeMyData
-          initialPageData={initialPage}
-          personaDetails={persona}
-          onClose={onBack}
-          onSaveLayout={(p) => {
-            setIsDirty(true);
+    <div data-testid="landing-page-editor-overlay">
+      <CustomizeMyData
+        initialPageData={initialPage}
+        personaDetails={persona}
+        onSaveLayout={(p) => {
+          setIsDirty(true);
 
-            return handleSaveLayout(p);
-          }}
-        />
-      </div>
+          return handleSaveLayout(p);
+        }}
+      />
     </div>
   );
 };

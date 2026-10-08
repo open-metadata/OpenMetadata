@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { lazy, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import withSuspenseFallback from '../../../../../../AppRouter/withSuspenseFallback';
 import { Page, PageType } from '../../../../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { updatePersonaDocumentPage } from '../../../../../../../utils/CustomizePage/PersonaPage.utils';
@@ -22,6 +21,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../../../../AppRouter/withSuspenseFallback';
 import { CustomizeEditorProps } from './customizeEditor.types';
 import { savePersonaDocument } from './customizeEditor.utils';
 
@@ -53,14 +53,12 @@ interface EntityCustomizeOverlayProps
     'persona' | 'document' | 'onDocumentSaved'
   > {
   entityType: string;
-  onClose: () => void;
 }
 
 const EntityCustomizeOverlay = ({
   persona,
   document,
   entityType,
-  onClose,
   onDocumentSaved,
 }: EntityCustomizeOverlayProps) => {
   const { t } = useTranslation();
@@ -93,28 +91,22 @@ const EntityCustomizeOverlay = ({
   const isGlossary = GLOSSARY_TYPES.has(entityType);
 
   return (
-    <div
-      className="tw:fixed tw:inset-0 tw:z-[9999] tw:flex tw:flex-col tw:bg-page"
-      data-testid="entity-customize-overlay">
-      <div className="tw:flex-1 tw:overflow-auto">
-        {isGlossary ? (
-          <CustomiseGlossaryTermDetailPage
-            initialPageData={null}
-            isGlossary={entityType === PageType.Glossary}
-            personaDetails={persona}
-            onClose={onClose}
-            onSaveLayout={handleSaveLayout}
-          />
-        ) : (
-          <CustomizeDetailsPage
-            initialPageData={null}
-            isGlossary={false}
-            personaDetails={persona}
-            onClose={onClose}
-            onSaveLayout={handleSaveLayout}
-          />
-        )}
-      </div>
+    <div data-testid="entity-customize-overlay">
+      {isGlossary ? (
+        <CustomiseGlossaryTermDetailPage
+          initialPageData={null}
+          isGlossary={entityType === PageType.Glossary}
+          personaDetails={persona}
+          onSaveLayout={handleSaveLayout}
+        />
+      ) : (
+        <CustomizeDetailsPage
+          initialPageData={null}
+          isGlossary={false}
+          personaDetails={persona}
+          onSaveLayout={handleSaveLayout}
+        />
+      )}
     </div>
   );
 };

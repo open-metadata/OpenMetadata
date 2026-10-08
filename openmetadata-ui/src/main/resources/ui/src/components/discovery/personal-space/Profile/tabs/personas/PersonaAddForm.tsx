@@ -25,7 +25,6 @@ import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
-import { EntityReference } from '../../../../../../generated/entity/type';
 import { createPersona } from '../../../../../../rest/PersonaAPI';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import {
@@ -34,11 +33,16 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import UserMultiSelect from './UserMultiSelect';
+import {
+  getPersonaUserRefs,
+  PersonaUserOption,
+  usePersonaUsersField,
+} from './usePersonaUsersField';
 
 interface FormValues {
   name: string;
   displayName: string;
+  users: PersonaUserOption[];
 }
 
 interface PersonaAddFormProps {
@@ -49,13 +53,14 @@ interface PersonaAddFormProps {
 const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
   const { t } = useTranslation();
   const descEditorRef = useRef<EditorContentRef>(null);
-  const [users, setUsers] = useState<EntityReference[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<FormValues>({
-    defaultValues: { name: '', displayName: '' },
+    defaultValues: { name: '', displayName: '', users: [] },
   });
   const { handleSubmit } = form;
+
+  const usersField = usePersonaUsersField('persona-users-select');
 
   const fields: FieldProp[] = [
     {
@@ -88,7 +93,7 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
         name: data.name.trim(),
         displayName: data.displayName?.trim() || undefined,
         description,
-        users: users.map((u) => u.id),
+        users: getPersonaUserRefs(data.users).map((user) => user.id),
       });
       showSuccessToast(
         t('server.create-entity-success', { entity: t('label.persona') })
@@ -134,19 +139,7 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
             />
           </Box>
 
-          <Box direction="col" gap={1}>
-            <Typography
-              className="tw:text-secondary"
-              size="text-sm"
-              weight="medium">
-              {t('label.user-plural')}
-            </Typography>
-            <UserMultiSelect
-              data-testid="persona-users-select"
-              selectedUsers={users}
-              onChange={setUsers}
-            />
-          </Box>
+          <FormFields fields={[usersField]} />
         </Box>
       </HookForm>
 

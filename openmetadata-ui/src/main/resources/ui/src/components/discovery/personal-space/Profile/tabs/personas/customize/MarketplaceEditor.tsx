@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import { DotsGrid } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -31,30 +32,31 @@ import { TAB_GRID_MAX_COLUMNS } from '../../../../../../../constants/CustomizeWi
 import { EntityTabs } from '../../../../../../../enums/entity.enum';
 import { Page, PageType } from '../../../../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../../../../hooks/useGridLayoutDirection';
+import '../../../../../../../pages/CustomizableDataMarketplacePage/customizable-data-marketplace-page.less';
 import { WidgetConfig } from '../../../../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
-import { getEntityName } from '../../../../../../../utils/EntityNameUtils';
-import dataMarketplaceClassBase from '../../../../../../../utils/DataMarketplace/DataMarketplaceClassBase';
-import { getDataMarketplaceWidgetsFromKey } from '../../../../../../../utils/DataMarketplace/DataMarketplaceUtils';
+import '../../../../../../../pages/DataMarketplacePage/data-marketplace-page.less';
 import {
   normalizePersonaDocument,
   updatePersonaDocumentPage,
 } from '../../../../../../../utils/CustomizePage/PersonaPage.utils';
+import dataMarketplaceClassBase from '../../../../../../../utils/DataMarketplace/DataMarketplaceClassBase';
+import { getDataMarketplaceWidgetsFromKey } from '../../../../../../../utils/DataMarketplace/DataMarketplaceUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
-import { CustomizablePageHeader } from '../../../../../../MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
+import MarketplaceOverviewHeader from '../../../../../../governance/marketplace/MarketplaceOverviewHeader/MarketplaceOverviewHeader';
 import '../../../../../../MyData/CustomizableComponents/CustomizeMyData/customize-my-data.less';
 import { CustomizeEditorProps } from './customizeEditor.types';
 import { savePersonaDocument } from './customizeEditor.utils';
-import '../../../../../../../pages/DataMarketplacePage/data-marketplace-page.less';
 
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
 
 const ROW_HEIGHT = 170;
+const WIDGET_MARGIN: [number, number] = [16, 18];
 const PAGE_TYPE = PageType.DataMarketplace;
 
 const dragHandle = (
@@ -70,11 +72,9 @@ const normalizeWidget = (widget: WidgetConfig): WidgetConfig => ({
 });
 
 const MarketplaceEditor = ({
-  persona,
   document,
   onDocumentSaved,
   onActionsChange,
-  onBack,
 }: CustomizeEditorProps) => {
   const { t } = useTranslation();
   const {
@@ -142,6 +142,15 @@ const MarketplaceEditor = ({
 
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
+      // react-grid-layout also reports the layout on mount; only an actual
+      // reorder counts as an edit.
+      const isReordered = updatedLayout.some(
+        (item) => layout.find((w) => w.i === item.i)?.y !== item.y
+      );
+      if (!isReordered) {
+        return;
+      }
+
       const newLayout = updatedLayout.map(
         (item) =>
           ({
@@ -208,36 +217,32 @@ const MarketplaceEditor = ({
   );
 
   return (
-    <div
-      className="tw:fixed tw:inset-0 tw:z-[9999] tw:flex tw:flex-col tw:bg-page persona-settings-overlay"
-      data-testid="marketplace-editor">
-      <div className="tw:flex-1 tw:overflow-auto">
-        <CustomizablePageHeader
-          disableSave={!isDirty}
-          personaName={getEntityName(persona)}
-          onClose={onBack}
-          onReset={handleReset}
-          onSave={handleSave}
-        />
-        <div
-          className="marketplace-grid-wrapper tw:!max-w-none"
-          dir="ltr">
-          <ReactGridLayout
-            useCSSTransforms
-            verticalCompact
-            className="marketplace-customize-widgets"
-            cols={TAB_GRID_MAX_COLUMNS}
-            compactType="vertical"
-            draggableHandle=".marketplace-drag-handle"
-            isResizable={false}
-            margin={[16, 24]}
-            rowHeight={ROW_HEIGHT}
-            onLayoutChange={handleLayoutUpdate}>
-            {widgets}
-          </ReactGridLayout>
-        </div>
+    <Box data-testid="marketplace-editor" direction="col">
+      {/* Mirrors the AI-mode DataMarketplacePage chrome: header band 8px in,
+          widget column on the 16px gutter with the same 18px gap. */}
+      <div className="tw:px-2 tw:pt-2">
+        <MarketplaceOverviewHeader isCustomizeView />
       </div>
-    </div>
+      {/* w-full: the wrapper's auto margins would otherwise shrink it to the
+          grid's (absolutely positioned) content inside this flex column. */}
+      <div
+        className="marketplace-grid-wrapper tw:w-full tw:!max-w-none"
+        dir="ltr">
+        <ReactGridLayout
+          useCSSTransforms
+          verticalCompact
+          className="marketplace-customize-widgets"
+          cols={TAB_GRID_MAX_COLUMNS}
+          compactType="vertical"
+          draggableHandle=".marketplace-drag-handle"
+          isResizable={false}
+          margin={WIDGET_MARGIN}
+          rowHeight={ROW_HEIGHT}
+          onLayoutChange={handleLayoutUpdate}>
+          {widgets}
+        </ReactGridLayout>
+      </div>
+    </Box>
   );
 };
 

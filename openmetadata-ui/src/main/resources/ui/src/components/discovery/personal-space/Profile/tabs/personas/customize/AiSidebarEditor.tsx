@@ -22,16 +22,6 @@ import { AxiosError } from 'axios';
 import { isEqual } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAllAppModules } from '../../../../../../platform/ai-shell/sharedAppModules';
-import {
-  APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT,
-  APP_MODE_SIDEBAR_CUSTOMIZATION_KEY,
-  APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT,
-} from '../../../../../../platform/ai-shell/Sidebar/appModeSidebar.constants';
-import {
-  buildMainNavItems,
-  MORE_NAV_KEY,
-} from '../../../../../../platform/ai-shell/Sidebar/navConfig';
 import { NavigationItem } from '../../../../../../../generated/system/ui/uiCustomization';
 import {
   getSidebarHiddenKeys,
@@ -46,6 +36,16 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
+import { useAllAppModules } from '../../../../../../platform/ai-shell/sharedAppModules';
+import {
+  APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT,
+  APP_MODE_SIDEBAR_CUSTOMIZATION_KEY,
+  APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT,
+} from '../../../../../../platform/ai-shell/Sidebar/appModeSidebar.constants';
+import {
+  buildMainNavItems,
+  MORE_NAV_KEY,
+} from '../../../../../../platform/ai-shell/Sidebar/navConfig';
 import { CustomizeEditorProps } from './customizeEditor.types';
 import { savePersonaDocument } from './customizeEditor.utils';
 

@@ -21,6 +21,4 @@ export interface CustomizeMyDataProps {
   backgroundColor?: string;
   onSaveLayout: (page?: Page) => Promise<void>;
   onBackgroundColorUpdate?: (color?: string) => Promise<void>;
-  /** Override the close-button action (used when embedded in the personas modal overlay). */
-  onClose?: () => void;
 }

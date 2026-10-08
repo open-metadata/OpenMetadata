@@ -12,7 +12,12 @@
  */
 
 import type { PersonaView } from './Personas.types';
-import { hashSubPathToView, viewToSubPath } from './Personas.utils';
+import {
+  hashSubPathToView,
+  isFullscreenPersonaCategory,
+  isFullscreenPersonaHash,
+  viewToSubPath,
+} from './Personas.utils';
 
 describe('Personas.utils', () => {
   describe('hashSubPathToView', () => {
@@ -84,6 +89,40 @@ describe('Personas.utils', () => {
 
     it.each(views)('survives view → subPath → view for %o', (view) => {
       expect(hashSubPathToView(viewToSubPath(view) ?? '')).toEqual(view);
+    });
+  });
+
+  describe('isFullscreenPersonaCategory', () => {
+    it.each([
+      'homepage',
+      'LandingPage',
+      'governance/Domain',
+      'data-assets/Table',
+    ])('is fullscreen for %s', (category) => {
+      expect(isFullscreenPersonaCategory(category)).toBe(true);
+    });
+
+    it.each(['navigation', 'DataMarketplace', 'governance', 'data-assets'])(
+      'stays in the modal for %s',
+      (category) => {
+        expect(isFullscreenPersonaCategory(category)).toBe(false);
+      }
+    );
+  });
+
+  describe('isFullscreenPersonaHash', () => {
+    it('is true only for a personas customize hash on a fullscreen category', () => {
+      expect(
+        isFullscreenPersonaHash('personas', 'p1/customize/data-assets/Table')
+      ).toBe(true);
+      expect(
+        isFullscreenPersonaHash('personas', 'p1/customize/governance')
+      ).toBe(false);
+      expect(isFullscreenPersonaHash('personas', 'p1')).toBe(false);
+      expect(isFullscreenPersonaHash('bots', 'p1/customize/homepage')).toBe(
+        false
+      );
+      expect(isFullscreenPersonaHash(null, '')).toBe(false);
     });
   });
 });

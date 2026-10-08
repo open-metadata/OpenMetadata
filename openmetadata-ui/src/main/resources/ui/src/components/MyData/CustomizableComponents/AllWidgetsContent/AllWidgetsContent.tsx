@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@openmetadata/ui-core-components';
 import { forwardRef, useMemo } from 'react';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
@@ -35,16 +36,13 @@ const AllWidgetsContent = forwardRef<HTMLDivElement, AllWidgetsContentProps>(
         const isSelected = selectedWidgets.includes(widget.id ?? '');
 
         return (
-          <div
-            className="tw:flex"
-            data-widget-key={widget.fullyQualifiedName}
-            key={widget.id}>
+          <Box data-widget-key={widget.fullyQualifiedName} key={widget.id}>
             <WidgetCard
               isSelected={isAlreadyAdded || isSelected}
               widget={widget}
               onSelectWidget={onSelectWidget}
             />
-          </div>
+          </Box>
         );
       });
     }, [widgets, addedWidgetsList, selectedWidgets, onSelectWidget]);

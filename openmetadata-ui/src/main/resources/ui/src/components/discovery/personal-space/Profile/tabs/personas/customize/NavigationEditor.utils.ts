@@ -11,16 +11,20 @@
  *  limitations under the License.
  */
 
-import { TreeDataNode } from 'antd';
 import { cloneDeep } from 'lodash';
+import type { getTreeDataForNavigationItems } from '../../../../../../../utils/CustomizaNavigation/CustomizeNavigation';
+
+export type NavigationTreeNode = ReturnType<
+  typeof getTreeDataForNavigationItems
+>[number];
 
 export type NavDropPosition = 'before' | 'after' | 'on';
 
 /** Remove the node with `key` (and its subtree) from `nodes`, returning it. */
 const takeNode = (
-  nodes: TreeDataNode[],
+  nodes: NavigationTreeNode[],
   key: string
-): TreeDataNode | undefined => {
+): NavigationTreeNode | undefined => {
   for (let i = 0; i < nodes.length; i++) {
     if (String(nodes[i].key) === key) {
       return nodes.splice(i, 1)[0];
@@ -39,8 +43,8 @@ const takeNode = (
 
 /** Insert `node` relative to `targetKey`; returns false if the target is gone. */
 const insertNode = (
-  nodes: TreeDataNode[],
-  node: TreeDataNode,
+  nodes: NavigationTreeNode[],
+  node: NavigationTreeNode,
   targetKey: string,
   position: NavDropPosition
 ): boolean => {
@@ -69,11 +73,11 @@ const insertNode = (
  * unchanged.
  */
 export const moveNavNode = (
-  tree: TreeDataNode[],
+  tree: NavigationTreeNode[],
   sourceKey: string,
   targetKey: string,
   position: NavDropPosition
-): TreeDataNode[] => {
+): NavigationTreeNode[] => {
   if (sourceKey === targetKey) {
     return tree;
   }
@@ -88,9 +92,9 @@ export const moveNavNode = (
 
 /** Move `sourceKey` to the end of the root level. */
 export const moveNavNodeToRoot = (
-  tree: TreeDataNode[],
+  tree: NavigationTreeNode[],
   sourceKey: string
-): TreeDataNode[] => {
+): NavigationTreeNode[] => {
   const next = cloneDeep(tree);
   const node = takeNode(next, sourceKey);
   if (!node) {
@@ -102,7 +106,7 @@ export const moveNavNodeToRoot = (
 };
 
 /** Keys of every node that has children (for default-expanded state). */
-export const getParentKeys = (tree: TreeDataNode[]): string[] =>
+export const getParentKeys = (tree: NavigationTreeNode[]): string[] =>
   tree.flatMap((node) =>
     node.children?.length
       ? [String(node.key), ...getParentKeys(node.children)]

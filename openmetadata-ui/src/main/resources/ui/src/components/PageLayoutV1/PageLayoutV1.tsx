@@ -106,7 +106,10 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           <div
             className="page-layout-rightpanel page-layout-v1-vertical-scroll"
             id="right-panelV1"
-            style={{ flex: `0 0 ${rightPanelWidth}px`, width: rightPanelWidth }}>
+            style={{
+              flex: `0 0 ${rightPanelWidth}px`,
+              width: rightPanelWidth,
+            }}>
             {rightPanel}
           </div>
         )}

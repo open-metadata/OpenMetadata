@@ -11,90 +11,134 @@
  *  limitations under the License.
  */
 
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import React, { lazy, useCallback, useMemo, useState } from 'react';
-import { PageType } from '../../../../generated/system/ui/page';
+import { useTranslation } from 'react-i18next';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
+import '../../../../pages/CustomizeDetailsPage/customize-details-page.less';
+import {
+  getCustomizePageCategories,
+  getCustomizePageOptions,
+} from '../../../../utils/Persona/PersonaUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import { hashSubPathToView } from '../Profile/tabs/personas/Personas.utils';
+import {
+  CustomizePageChrome,
+  CustomizePageChromeContext,
+  CUSTOMIZE_CHROME_BACK_ID,
+} from '../../../MyData/CustomizableComponents/CustomizablePageHeader/CustomizePageChrome.context';
+import {
+  hashSubPathToView,
+  isFullscreenPersonaHash,
+} from '../Profile/tabs/personas/Personas.utils';
 
 const PersonaCustomizeView = withSuspenseFallback(
   lazy(() => import('../Profile/tabs/personas/customize/PersonaCustomizeView'))
 );
 
-/** Categories whose editor opens a full-screen overlay outside the modal. */
-const FULLSCREEN_CATEGORIES = new Set<string>([
-  'homepage',
-  PageType.LandingPage as string,
-  PageType.DataMarketplace as string,
-]);
-
-function isFullscreenCategory(category: string): boolean {
-  if (FULLSCREEN_CATEGORIES.has(category)) {
-    return true;
-  }
-  // Entity-level customization (e.g. 'governance/Domain', 'data-assets/Table')
-  return category.includes('/');
-}
+const HASH_TAB = 'personas';
 
 /**
- * Mounted at the app-shell level (sibling of PersonalSpaceModal).
- * When the hash describes a fullscreen persona customize view, renders it here
- * so PersonalSpaceModal can be closed (removing its backdrop and focus trap)
- * without unmounting the overlay.
- *
- * Hash drives visibility; back navigation updates the hash and re-opens the modal.
+ * Full-page persona customize view (home page, entity pages). AppShell hides
+ * its own layout while this renders, so it sits in normal document flow and
+ * every modal / popover / toast it opens stacks above it without z-index
+ * overrides. Hash drives visibility; leaving restores the hash and re-opens the
+ * personal-space modal over the untouched page underneath.
  */
 const PersonaFullscreenPortal: React.FC = () => {
+  const { t } = useTranslation();
   const { state: hashState, setHash } = useSettingsHash();
   const openModal = usePersonalSpaceStore((state) => state.open);
-  const [, setResolvedName] = useState('');
+  const [personaName, setPersonaName] = useState('');
 
-  const view = hashSubPathToView(hashState.subPath ?? '');
-
-  const isVisible =
-    hashState.tab === 'personas' &&
-    view.type === 'customize' &&
-    isFullscreenCategory(view.category);
-
-  // Derive stable values used by hooks — must be computed before any hook.
+  const isVisible = isFullscreenPersonaHash(hashState.tab, hashState.subPath);
+  const view = hashSubPathToView(hashState.subPath);
   const fqn = isVisible && view.type === 'customize' ? view.fqn : '';
-  const category =
-    isVisible && view.type === 'customize' ? view.category : '';
+  const category = isVisible && view.type === 'customize' ? view.category : '';
+  const [baseCategory, entityKey] = category.split('/', 2);
 
-  const baseCategory = useMemo(
-    () => (category.includes('/') ? category.split('/', 1)[0] : undefined),
-    [category]
-  );
-
-  const handleBack = useCallback(() => {
-    const previousSubPath = baseCategory
-      ? `${fqn}/customize/${baseCategory}`
-      : fqn;
-    setHash('personas', previousSubPath);
-    openModal('profile');
-  }, [fqn, baseCategory, setHash, openModal]);
-
-  const handleNavigateToEntity = useCallback(
-    (entityCategory: string) => {
-      setHash('personas', `${fqn}/customize/${entityCategory}`);
+  const goToModal = useCallback(
+    (subPath?: string) => {
+      setHash(HASH_TAB, subPath);
+      openModal('profile');
     },
-    [fqn, setHash]
+    [setHash, openModal]
   );
+
+  const handleBack = useCallback(
+    () => goToModal(entityKey ? `${fqn}/customize/${baseCategory}` : fqn),
+    [goToModal, fqn, baseCategory, entityKey]
+  );
+
+  const chrome = useMemo<CustomizePageChrome>(() => {
+    const categories = getCustomizePageCategories();
+    const parentLabel = categories.find((c) => c.key === baseCategory)?.label;
+    const currentLabel = entityKey
+      ? getCustomizePageOptions(baseCategory).find((c) => c.key === entityKey)
+          ?.label
+      : parentLabel;
+
+    const breadcrumbs: BreadcrumbItemType[] = [
+      { id: 'settings', label: t('label.setting-plural') },
+      { id: 'personas', label: t('label.persona-plural') },
+      { id: 'persona', label: personaName || fqn },
+      ...(entityKey
+        ? [{ id: 'parent', label: parentLabel ?? baseCategory }]
+        : []),
+      { id: 'current', label: currentLabel ?? category },
+    ];
+
+    const onNavigate = (id: string) => {
+      switch (id) {
+        case 'settings':
+        case 'personas':
+          goToModal();
+
+          break;
+        case 'persona':
+          goToModal(fqn);
+
+          break;
+        case 'parent':
+        case CUSTOMIZE_CHROME_BACK_ID:
+          handleBack();
+
+          break;
+        default:
+          break;
+      }
+    };
+
+    return { breadcrumbs, onNavigate };
+  }, [
+    t,
+    personaName,
+    fqn,
+    category,
+    baseCategory,
+    entityKey,
+    goToModal,
+    handleBack,
+  ]);
 
   if (!isVisible) {
     return null;
   }
 
   return (
-    <PersonaCustomizeView
-      category={category}
-      personaFqn={fqn}
-      onBack={handleBack}
-      onHeaderActionsChange={() => undefined}
-      onNavigateToEntity={handleNavigateToEntity}
-      onRename={setResolvedName}
-    />
+    <CustomizePageChromeContext.Provider value={chrome}>
+      <div
+        className="persona-settings-overlay tw:h-dvh tw:overflow-y-auto"
+        data-testid="persona-fullscreen-view">
+        <PersonaCustomizeView
+          category={category}
+          personaFqn={fqn}
+          onBack={handleBack}
+          onHeaderActionsChange={() => undefined}
+          onRename={setPersonaName}
+        />
+      </div>
+    </CustomizePageChromeContext.Provider>
   );
 };
 

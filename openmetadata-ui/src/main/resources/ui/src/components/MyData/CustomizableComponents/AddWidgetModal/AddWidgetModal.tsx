@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
 import {
   Box,
   Dialog,
@@ -19,6 +18,7 @@ import {
   ModalOverlay,
   Tabs,
 } from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -104,8 +104,8 @@ function AddWidgetModal({
                   w.startsWith(widget.fullyQualifiedName) &&
                   !w.includes('EmptyWidgetPlaceholder')
               ) && (
-                <CheckOutlined
-                  className="m-l-xs"
+                <Check
+                  className="m-l-xs tw:size-4"
                   data-testid={`${widget.name}-check-icon`}
                   style={{ color: LIGHT_GREEN_COLOR }}
                 />

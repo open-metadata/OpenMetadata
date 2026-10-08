@@ -16,6 +16,8 @@ import {
   Button,
   ButtonUtility,
   EmptyPlaceholder,
+  FormFields,
+  HookForm,
   Skeleton,
   Table,
   TableCard,
@@ -24,6 +26,7 @@ import {
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
@@ -31,7 +34,11 @@ import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { getUserById } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import UserMultiSelect from './UserMultiSelect';
+import {
+  getPersonaUserRefs,
+  PersonaUserOption,
+  usePersonaUsersField,
+} from './usePersonaUsersField';
 
 type UserColumnId = 'name' | 'teams' | 'roles' | 'actions';
 type UserColumn = { id: UserColumnId; label: string; className?: string };
@@ -63,7 +70,18 @@ const PersonaUsersTab = ({
   const [isLoading, setIsLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<User[]>([]);
   const [isAdding, setIsAdding] = useState(false);
-  const [pendingUsers, setPendingUsers] = useState<EntityReference[]>([]);
+  const usersField = usePersonaUsersField('add-persona-users-select');
+  const addUsersForm = useForm<{ users: PersonaUserOption[] }>({
+    defaultValues: { users: [] },
+  });
+  const selectedOptions = useWatch({
+    control: addUsersForm.control,
+    name: 'users',
+  });
+  const pendingUsers = useMemo(
+    () => getPersonaUserRefs(selectedOptions),
+    [selectedOptions]
+  );
 
   const handleRemove = useCallback(
     (id: string) => onUsersChange(users.filter((u) => u.id !== id)),
@@ -72,8 +90,8 @@ const PersonaUsersTab = ({
 
   const handleCancelAdd = useCallback(() => {
     setIsAdding(false);
-    setPendingUsers([]);
-  }, []);
+    addUsersForm.reset();
+  }, [addUsersForm]);
 
   const handleConfirmAdd = useCallback(() => {
     onUsersChange(uniqBy([...users, ...pendingUsers], 'id'));
@@ -204,11 +222,9 @@ const PersonaUsersTab = ({
             weight="semibold">
             {t('label.add-entity', { entity: t('label.user-plural') })}
           </Typography>
-          <UserMultiSelect
-            data-testid="add-persona-users-select"
-            selectedUsers={pendingUsers}
-            onChange={setPendingUsers}
-          />
+          <HookForm form={addUsersForm}>
+            <FormFields fields={[usersField]} />
+          </HookForm>
           <Box direction="row" gap={3} justify="end">
             <Button color="tertiary" size="sm" onPress={handleCancelAdd}>
               {t('label.cancel')}

@@ -11,12 +11,19 @@
  *  limitations under the License.
  */
 
-import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import {
-  Button as CoreButton,
+  Box,
+  Button,
+  Card,
   Dropdown,
+  Input,
+  SimpleModal,
 } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Input, Modal } from 'antd';
+import {
+  DotsVertical,
+  Eye,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
@@ -213,12 +220,8 @@ export const CustomizeTabWidget = () => {
     }
   };
 
-  const handleChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
-    editableItem &&
-      setEditableItem({
-        ...editableItem,
-        displayName: event.target.value ?? '',
-      });
+  const handleChange = (displayName: string) => {
+    editableItem && setEditableItem({ ...editableItem, displayName });
   };
 
   const handleOpenAddWidgetModal = () => {
@@ -474,22 +477,23 @@ export const CustomizeTabWidget = () => {
 
   return (
     <>
-      <Col span={24}>
-        <Card
-          bordered={false}
-          data-testid="customize-tab-card"
+      <Card data-testid="customize-tab-card">
+        <Card.Header
+          className="tw:items-center tw:border-b-0 tw:pt-5"
           extra={
             <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={() => setShowAddTabModal(true)}>
+              color="primary"
+              iconLeading={Plus}
+              onPress={() => setShowAddTabModal(true)}>
               {t('label.add-entity', {
                 entity: t('label.tab'),
               })}
             </Button>
           }
-          title={t('label.customize-tab-plural')}>
-          <div className="d-flex flex-wrap gap-4">
+          title={t('label.customize-tab-plural')}
+        />
+        <Card.Content className="tw:pb-6">
+          <Box gap={4} wrap="wrap">
             {items.map((item, index) => (
               <TabItem
                 index={index}
@@ -509,13 +513,13 @@ export const CustomizeTabWidget = () => {
             ))}
             {hiddenTabs.map((item) => (
               <Dropdown.Root key={item.id}>
-                <CoreButton
+                <Button
                   className="draggable-hidden-tab-item bg-grey"
                   color="secondary"
                   data-testid={`tab-${item.name}`}
-                  iconTrailing={MoreOutlined}>
+                  iconTrailing={DotsVertical}>
                   {getTabDisplayName(item)}
-                </CoreButton>
+                </Button>
                 <Dropdown.Popover
                   className="tw:w-auto"
                   placement="bottom start">
@@ -524,7 +528,7 @@ export const CustomizeTabWidget = () => {
                     selectionMode="none"
                     onAction={() => add(item)}>
                     <Dropdown.Item
-                      icon={EyeFilled}
+                      icon={Eye}
                       id="show"
                       label={t('label.show')}
                     />
@@ -532,19 +536,18 @@ export const CustomizeTabWidget = () => {
                 </Dropdown.Popover>
               </Dropdown.Root>
             ))}
-          </div>
-        </Card>
-      </Col>
-      <Col span={24}>
-        <Card
-          bodyStyle={{ padding: 0, paddingBottom: '20px' }}
-          bordered={false}
+          </Box>
+        </Card.Content>
+      </Card>
+      <Card>
+        <Card.Header
+          className="tw:items-center tw:border-b-0 tw:pt-5"
           extra={
             activeKey === EntityTabs.CUSTOM_PROPERTIES ? undefined : (
               <Button
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={handleOpenAddWidgetModal}>
+                color="primary"
+                iconLeading={Plus}
+                onPress={handleOpenAddWidgetModal}>
                 {t('label.add-entity', {
                   entity: t('label.widget'),
                 })}
@@ -555,7 +558,9 @@ export const CustomizeTabWidget = () => {
             entity: getEntityName(
               items.find((item) => item.id === activeKey) as Tab
             ),
-          })}>
+          })}
+        />
+        <div className="tw:pb-5">
           {/* 
             ReactGridLayout with optimized drag and drop behavior for tab customization
             - verticalCompact: Packs widgets tightly without gaps
@@ -583,8 +588,8 @@ export const CustomizeTabWidget = () => {
               {widgets}
             </ReactGridLayout>
           )}
-        </Card>
-      </Col>
+        </div>
+      </Card>
 
       {currentPageType && (
         <AddDetailsPageWidgetModal
@@ -597,42 +602,39 @@ export const CustomizeTabWidget = () => {
           widgetsList={getCustomizableWidgetByPage(currentPageType)}
         />
       )}
-      {showAddTabModal && (
-        <Modal
-          closable
-          cancelText={t('label.cancel')}
-          closeIcon={null}
-          okText={t('label.add')}
-          open={showAddTabModal}
-          title={t('label.add-entity', {
-            entity: t('label.tab'),
-          })}
-          onCancel={() => setShowAddTabModal(false)}
-          onOk={() => add()}>
-          <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the input when the add-tab modal opens
-            autoFocus
-            data-testid="add-tab-input"
-            value={newTabName}
-            onChange={(e) => setNewTabName(e.target.value)}
-          />
-        </Modal>
-      )}
-      {editableItem && (
-        <Modal
-          maskClosable
-          open={!isNil(editableItem)}
-          title="Rename tab"
-          onCancel={() => setEditableItem(null)}
-          onOk={handleRenameSave}>
-          <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the input when the rename-tab modal opens
-            autoFocus
-            value={getTabDisplayName(editableItem)}
-            onChange={handleChange}
-          />
-        </Modal>
-      )}
+      <SimpleModal
+        cancelText={t('label.cancel')}
+        isOpen={showAddTabModal}
+        okText={t('label.add')}
+        title={t('label.add-entity', {
+          entity: t('label.tab'),
+        })}
+        onCancel={() => setShowAddTabModal(false)}
+        onOk={() => add()}>
+        <Input
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the input when the add-tab modal opens
+          autoFocus
+          aria-label={t('label.tab')}
+          inputDataTestId="add-tab-input"
+          value={newTabName}
+          onChange={setNewTabName}
+        />
+      </SimpleModal>
+      <SimpleModal
+        cancelText={t('label.cancel')}
+        isOpen={!isNil(editableItem)}
+        okText={t('label.ok')}
+        title={t('label.rename-entity', { entity: t('label.tab') })}
+        onCancel={() => setEditableItem(null)}
+        onOk={handleRenameSave}>
+        <Input
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the input when the rename-tab modal opens
+          autoFocus
+          aria-label={t('label.tab')}
+          value={editableItem ? getTabDisplayName(editableItem) : ''}
+          onChange={handleChange}
+        />
+      </SimpleModal>
     </>
   );
 };

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
 import { lazy, useCallback, useMemo } from 'react';
@@ -52,7 +53,6 @@ const GlossaryHeaderWidget = withSuspenseFallback(
 function CustomizeGlossaryTermDetailPage({
   personaDetails,
   onSaveLayout,
-  onClose,
   isGlossary,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
@@ -98,18 +98,17 @@ function CustomizeGlossaryTermDetailPage({
         pageTitle={t('label.customize-entity', {
           entity: t('label.' + kebabCase(currentPageType)),
         })}>
-        <div className="customize-details-page tw:flex tw:flex-col tw:gap-5">
+        <Box className="customize-details-page" direction="col" gap={5}>
           <CustomizablePageHeader
             disableSave={disableSave}
             personaName={getEntityName(personaDetails)}
-            onClose={onClose}
             onReset={handleReset}
             onSave={handleSave}
           />
           <GlossaryHeaderWidget isGlossary={isGlossary} />
           {/* CustomizeTabWidget renders its own cols internally */}
           <CustomizeTabWidget />
-        </div>
+        </Box>
       </PageLayoutV1>
     </NavigationBlocker>
   );

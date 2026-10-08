@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Space } from 'antd';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { DotsGrid, Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,62 +49,51 @@ function EmptyWidgetPlaceholder({
 
   return (
     <Card
-      bodyStyle={{ height: '100%' }}
-      className="empty-widget-placeholder"
+      className="empty-widget-placeholder tw:flex tw:h-full tw:flex-col tw:p-6"
       data-testid={widgetKey}>
-      <Row className="h-full">
-        {isEditable && (
-          <Col span={24}>
-            <Row gutter={8} justify="end">
-              <Col>
-                <DragOutlined
-                  className="drag-widget-icon cursor-pointer"
-                  data-testid="drag-widget-button"
-                  size={14}
-                />
-              </Col>
-              <Col>
-                <CloseOutlined
-                  data-testid="remove-widget-button"
-                  size={14}
-                  onClick={handleCloseClick}
-                />
-              </Col>
-            </Row>
-          </Col>
-        )}
-        <Col className="h-full" span={24}>
-          <Row align="middle" className="h-full" justify="center">
-            <Col>
-              <Space
-                align="center"
-                className="w-full"
-                direction="vertical"
-                size={0}>
-                <AddPlaceHolderIcon
-                  data-testid="no-data-image"
-                  height={iconHeight}
-                  width={iconWidth}
-                />
-                <Typography>
-                  {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                    entity: t('label.widget'),
-                  })}
-                </Typography>
-                <Button
-                  ghost
-                  className="add-button"
-                  data-testid="add-widget-button"
-                  icon={<PlusOutlined />}
-                  type="primary"
-                  onClick={handleAddClick}>
-                  {t('label.add')}
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+      {isEditable && (
+        <Box align="center" direction="row" gap={2} justify="end">
+          {/* Grid drag handle: react-grid-layout starts a drag on mousedown here. */}
+          <span
+            aria-hidden
+            className="drag-widget-icon tw:flex tw:cursor-grab tw:text-fg-quaternary tw:active:cursor-grabbing"
+            data-testid="drag-widget-button">
+            <DotsGrid className="tw:size-4" />
+          </span>
+          <ButtonUtility
+            aria-label={t('label.remove-entity', { entity: t('label.widget') })}
+            color="tertiary"
+            data-testid="remove-widget-button"
+            icon={XClose}
+            size="xs"
+            onPress={handleCloseClick}
+          />
+        </Box>
+      )}
+      <Box
+        align="center"
+        className="tw:flex-1 tw:text-center"
+        direction="col"
+        justify="center">
+        <AddPlaceHolderIcon
+          data-testid="no-data-image"
+          height={iconHeight}
+          width={iconWidth}
+        />
+        <Typography>
+          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+            entity: t('label.widget'),
+          })}
+        </Typography>
+        <Button
+          className="tw:mt-4"
+          color="secondary"
+          data-testid="add-widget-button"
+          iconLeading={Plus}
+          onPress={handleAddClick}>
+          {t('label.add')}
+        </Button>
+      </Box>
     </Card>
   );
 }

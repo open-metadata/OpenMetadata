@@ -14,43 +14,23 @@
 import {
   Box,
   Button,
-  ButtonUtility,
-  Typography,
+  EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
-import { Edit01 as Edit } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../../../../common/Loader/Loader';
-import RichTextEditor from '../../../../../../common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../../../../../common/RichTextEditor/RichTextEditor.interface';
-import RichTextEditorPreviewerV1 from '../../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ClientErrors } from '../../../../../../../enums/Axios.enum';
 import { EntityType } from '../../../../../../../enums/entity.enum';
-import { ResourceEntity } from '../../../../../../../enums/permissions.enum';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
 import { PageType } from '../../../../../../../generated/system/ui/page';
-import { useEntityPermissions } from '../../../../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { getDocumentByFQN } from '../../../../../../../rest/DocStoreAPI';
-import {
-  getPersonaByName,
-  updatePersona,
-} from '../../../../../../../rest/PersonaAPI';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
+import { getDocumentByFQN } from '../../../../../../../rest/DocStoreAPI';
+import { getPersonaByName } from '../../../../../../../rest/PersonaAPI';
 import { getEntityName } from '../../../../../../../utils/EntityNameUtils';
-import {
-  showErrorToast,
-  showSuccessToast,
-} from '../../../../../../../utils/ToastUtils';
+import { showErrorToast } from '../../../../../../../utils/ToastUtils';
+import Loader from '../../../../../../common/Loader/Loader';
+import { isFullscreenPersonaCategory } from '../Personas.utils';
 import AiSidebarEditor from './AiSidebarEditor';
 import AppLayoutEditor from './AppLayoutEditor';
 import {
@@ -61,120 +41,14 @@ import EntityCustomizeOverlay from './EntityCustomizeOverlay';
 import LandingPageEditor from './LandingPageEditor';
 import MarketplaceEditor from './MarketplaceEditor';
 import NavigationEditor from './NavigationEditor';
-import SubCategoryGrid from './SubCategoryGrid';
 
 interface PersonaCustomizeViewProps {
   personaFqn: string;
   category: string;
   onBack: () => void;
-  onHeaderActionsChange: (actions: React.ReactNode) => void;
+  onHeaderActionsChange?: (actions: React.ReactNode) => void;
   onRename: (name: string) => void;
-  onNavigateToEntity: (entityCategory: string) => void;
 }
-
-/** Categories that have sub-option grids rather than direct editors. */
-const SUB_GRID_CATEGORIES = new Set(['governance', 'data-assets']);
-
-/** Categories whose editor renders its own full-screen chrome (no panel footer). */
-const FULLSCREEN_CATEGORIES = new Set([
-  'homepage',
-  PageType.LandingPage as string,
-  PageType.DataMarketplace as string,
-]);
-
-interface SubGridContentProps {
-  baseCategory: string;
-  canEditDescription: boolean;
-  descEditorRef: React.RefObject<EditorContentRef>;
-  isEditingDesc: boolean;
-  isSavingDesc: boolean;
-  persona: Persona;
-  onNavigateToEntity: (entityCategory: string) => void;
-  onSaveDescription: () => void;
-  onSetEditingDesc: (v: boolean) => void;
-}
-
-const SubGridContent: React.FC<SubGridContentProps> = ({
-  baseCategory,
-  canEditDescription,
-  descEditorRef,
-  isEditingDesc,
-  isSavingDesc,
-  persona,
-  onNavigateToEntity,
-  onSaveDescription,
-  onSetEditingDesc,
-}) => {
-  const { t } = useTranslation();
-  const descPreview = persona.description ? (
-    <RichTextEditorPreviewerV1 markdown={persona.description} />
-  ) : (
-    <Typography className="tw:text-tertiary" size="text-sm">
-      {t('label.no-description')}
-    </Typography>
-  );
-
-  return (
-    <Box direction="col" gap={5}>
-      <Box
-        className="tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-5 tw:py-4"
-        direction="col"
-        gap={2}>
-        <Box align="center" direction="row" gap={2}>
-          <Typography className="tw:text-primary" weight="medium">
-            {t('label.description')}
-          </Typography>
-          {canEditDescription && !isEditingDesc && (
-            <ButtonUtility
-              color="tertiary"
-              data-testid="edit-sub-grid-desc-btn"
-              icon={Edit}
-              size="xs"
-              tooltip={String(
-                t('label.edit-entity', { entity: t('label.description') })
-              )}
-              tooltipPlacement="right"
-              onPress={() => onSetEditingDesc(true)}
-            />
-          )}
-        </Box>
-        {isEditingDesc ? (
-          <Box direction="col" gap={2}>
-            <RichTextEditor
-              className="new-form-style"
-              initialValue={persona.description ?? ''}
-              ref={descEditorRef}
-            />
-            <Box direction="row" gap={2} justify="end">
-              <Button
-                color="tertiary"
-                isDisabled={isSavingDesc}
-                size="sm"
-                onPress={() => onSetEditingDesc(false)}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                isLoading={isSavingDesc}
-                size="sm"
-                onPress={onSaveDescription}>
-                {t('label.save')}
-              </Button>
-            </Box>
-          </Box>
-        ) : (
-          descPreview
-        )}
-      </Box>
-      <SubCategoryGrid
-        baseCategory={baseCategory}
-        onSelectEntity={(entityKey) =>
-          onNavigateToEntity(`${baseCategory}/${entityKey}`)
-        }
-      />
-    </Box>
-  );
-};
 
 const EDITORS: Record<string, React.ComponentType<CustomizeEditorProps>> = {
   navigation: NavigationEditor,
@@ -185,14 +59,12 @@ const EDITORS: Record<string, React.ComponentType<CustomizeEditorProps>> = {
   homepage: LandingPageEditor,
 };
 
-/* eslint-disable sonarjs/cyclomatic-complexity */
 const PersonaCustomizeView = ({
   personaFqn,
   category,
   onBack,
   onHeaderActionsChange,
   onRename,
-  onNavigateToEntity,
 }: PersonaCustomizeViewProps) => {
   const { t } = useTranslation();
   const { setDocument } = useCustomizeStore();
@@ -200,16 +72,6 @@ const PersonaCustomizeView = ({
   const [document, setDocState] = useState<Document | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actions, setActions] = useState<CustomizeEditorActions>();
-
-  // Inline description edit (shown in sub-grid views)
-  const [isEditingDesc, setIsEditingDesc] = useState(false);
-  const [isSavingDesc, setIsSavingDesc] = useState(false);
-  const descEditorRef = useRef<EditorContentRef>(null);
-
-  const { canEditDescription } = useEntityPermissions(
-    ResourceEntity.PERSONA,
-    persona?.fullyQualifiedName ?? persona?.name ?? ''
-  );
 
   // Split `governance/Domain` → baseCategory='governance', entityType='Domain'
   const [baseCategory, entityType] = useMemo(() => {
@@ -219,7 +81,6 @@ const PersonaCustomizeView = ({
   }, [category]);
 
   const Editor = entityType ? undefined : EDITORS[baseCategory];
-  const isSubGrid = !entityType && SUB_GRID_CATEGORIES.has(baseCategory);
 
   const loadDocument = useCallback(
     async (
@@ -292,30 +153,6 @@ const PersonaCustomizeView = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personaFqn]);
 
-  const handleSaveDescription = useCallback(async () => {
-    if (!persona) {
-      return;
-    }
-    const description = descEditorRef.current?.getEditorContent() ?? '';
-    const updated = { ...persona, description };
-    setIsSavingDesc(true);
-    try {
-      const response = await updatePersona(
-        persona.id,
-        compare(persona, updated)
-      );
-      setPersona(response);
-      setIsEditingDesc(false);
-      showSuccessToast(
-        t('server.update-entity-success', { entity: t('label.persona') })
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsSavingDesc(false);
-    }
-  }, [persona, t]);
-
   const handleDocumentSaved = useCallback(
     (saved: Document) => {
       setDocState(saved);
@@ -330,26 +167,15 @@ const PersonaCustomizeView = ({
   );
 
   useEffect(() => {
-    onHeaderActionsChange(actions?.headerAction);
+    onHeaderActionsChange?.(actions?.headerAction);
   }, [actions?.headerAction, onHeaderActionsChange]);
 
   const content = useMemo(() => {
     if (!persona || !document) {
-      return <ErrorPlaceHolder />;
-    }
-
-    if (isSubGrid) {
       return (
-        <SubGridContent
-          baseCategory={baseCategory}
-          canEditDescription={canEditDescription}
-          descEditorRef={descEditorRef}
-          isEditingDesc={isEditingDesc}
-          isSavingDesc={isSavingDesc}
-          persona={persona}
-          onNavigateToEntity={onNavigateToEntity}
-          onSaveDescription={handleSaveDescription}
-          onSetEditingDesc={setIsEditingDesc}
+        <EmptyPlaceholder
+          data-testid="persona-customize-empty"
+          title={t('message.no-data-available')}
         />
       );
     }
@@ -367,21 +193,18 @@ const PersonaCustomizeView = ({
       );
     }
 
-    return <ErrorPlaceHolder />;
+    return (
+      <EmptyPlaceholder
+        data-testid="persona-customize-empty"
+        title={t('message.no-data-available')}
+      />
+    );
   }, [
-    isSubGrid,
     Editor,
-    baseCategory,
     persona,
     document,
-    canEditDescription,
-    isEditingDesc,
-    isSavingDesc,
-    handleSaveDescription,
     handleActionsChange,
     handleDocumentSaved,
-    descEditorRef,
-    onNavigateToEntity,
     onBack,
   ]);
 
@@ -389,62 +212,61 @@ const PersonaCustomizeView = ({
     return <Loader />;
   }
 
+  if (entityType && persona && document) {
+    return (
+      <EntityCustomizeOverlay
+        document={document}
+        entityType={entityType}
+        persona={persona}
+        onDocumentSaved={handleDocumentSaved}
+      />
+    );
+  }
+
+  // Full-page editors (home page) own their chrome and spacing, so they get
+  // neither the in-modal padding nor the Cancel / Reset / Save footer.
+  if (isFullscreenPersonaCategory(category)) {
+    return content;
+  }
+
   return (
-    <>
-      {/* Entity-level full-screen overlay (position:fixed, covers the modal) */}
-      {entityType && persona && document && (
-        <EntityCustomizeOverlay
-          document={document}
-          entityType={entityType}
-
-          persona={persona}
-          onClose={onBack}
-          onDocumentSaved={handleDocumentSaved}
-        />
-      )}
-
+    <Box
+      className="tw:flex-1 tw:min-h-0"
+      data-testid="persona-customize-view"
+      direction="col">
+      <div className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-8">
+        {content}
+      </div>
       <Box
-        className="tw:flex-1 tw:min-h-0"
-        data-testid="persona-customize-view"
-        direction="col">
-        <div className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-8">
-          {content}
-        </div>
-        {/* Footer only shown for panel editors, not sub-grids, entity overlays, or fullscreen editors */}
-        {!isSubGrid && !entityType && !FULLSCREEN_CATEGORIES.has(baseCategory) && (
-          <Box
-            className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-8 tw:py-4"
-            data-testid="persona-customize-footer"
-            direction="row"
-            gap={3}
-            justify="end">
-            <Button
-              color="tertiary"
-              data-testid="customize-cancel"
-              onPress={onBack}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="secondary"
-              data-testid="customize-reset"
-              isDisabled={!actions || actions.isSaving}
-              onPress={() => actions?.onReset()}>
-              {t('label.reset')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="customize-save"
-              isDisabled={!actions?.canSave}
-              isLoading={actions?.isSaving}
-              onPress={() => actions?.onSave()}>
-              {t('label.save')}
-            </Button>
-          </Box>
-        )}
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-8 tw:py-4"
+        data-testid="persona-customize-footer"
+        direction="row"
+        gap={3}
+        justify="end">
+        <Button
+          color="tertiary"
+          data-testid="customize-cancel"
+          onPress={onBack}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="secondary"
+          data-testid="customize-reset"
+          isDisabled={!actions || actions.isSaving}
+          onPress={() => actions?.onReset()}>
+          {t('label.reset')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid="customize-save"
+          isDisabled={!actions?.canSave}
+          isLoading={actions?.isSaving}
+          onPress={() => actions?.onSave()}>
+          {t('label.save')}
+        </Button>
       </Box>
-    </>
+    </Box>
   );
 };
-/* eslint-enable sonarjs/cyclomatic-complexity */
 
 export default PersonaCustomizeView;

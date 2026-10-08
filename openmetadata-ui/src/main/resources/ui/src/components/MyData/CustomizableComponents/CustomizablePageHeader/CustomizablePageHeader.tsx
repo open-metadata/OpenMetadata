@@ -15,17 +15,19 @@ import {
   Breadcrumbs,
   Button,
   ButtonUtility,
+  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Minimize01,
   Plus,
   RefreshCcw01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { kebabCase } from 'lodash';
-import { type Key, useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type Key } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PersonaCustomizePageFqn } from '../../../../constants/Customize.constants';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -34,18 +36,21 @@ import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
+import './customizable-page-header.less';
+import {
+  CUSTOMIZE_CHROME_BACK_ID,
+  useCustomizePageChrome,
+} from './CustomizePageChrome.context';
 
 export const CustomizablePageHeader = ({
   disableSave,
   onAddWidget,
-  onClose: onCloseOverride,
   onReset,
   onSave,
   personaName,
 }: {
   disableSave?: boolean;
   onAddWidget?: () => void;
-  onClose?: () => void;
   onReset: () => void;
   onSave: () => Promise<void>;
   personaName: string;
@@ -55,9 +60,11 @@ export const CustomizablePageHeader = ({
   const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { currentPageType } = useCustomizeStore();
   const navigate = useNavigate();
-  const location = useLocation();
+  const chrome = useCustomizePageChrome();
   const [saving, setSaving] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  // Crumb id the user tried to leave to while there were unsaved changes.
+  const [pendingExit, setPendingExit] = useState<string>();
 
   const showWidgetActions =
     currentPageType === PageType.LandingPage ||
@@ -69,21 +76,28 @@ export const CustomizablePageHeader = ({
   const isNavigationPage = pageFqn === PersonaCustomizePageFqn.Navigation;
   const isAppLayoutPage = pageFqn === PersonaCustomizePageFqn.AppLayout;
 
-  const handleClose = useCallback(() => {
-    if (onCloseOverride) {
-      onCloseOverride();
+  // Persona settings leave via a hash change, which NavigationBlocker lets
+  // through, so the unsaved-changes prompt has to be raised here instead.
+  const requestExit = useCallback(
+    (id: string) => {
+      if (!chrome) {
+        navigate(getPersonaDetailsPath(personaFqn));
 
-      return;
-    }
-    if (
-      (location.state as { fromPersonasModal?: boolean } | null)
-        ?.fromPersonasModal
-    ) {
-      navigate(-1);
-    } else {
-      navigate(getPersonaDetailsPath(personaFqn));
-    }
-  }, [onCloseOverride, navigate, personaFqn, location.state]);
+        return;
+      }
+      if (disableSave) {
+        chrome.onNavigate(id);
+      } else {
+        setPendingExit(id);
+      }
+    },
+    [chrome, disableSave, navigate, personaFqn]
+  );
+
+  const handleClose = useCallback(
+    () => requestExit(CUSTOMIZE_CHROME_BACK_ID),
+    [requestExit]
+  );
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -96,14 +110,31 @@ export const CustomizablePageHeader = ({
     setResetModalOpen(false);
   }, [onReset]);
 
+  const handleDiscardExit = useCallback(() => {
+    if (pendingExit) {
+      chrome?.onNavigate(pendingExit);
+    }
+    setPendingExit(undefined);
+  }, [chrome, pendingExit]);
+
+  const handleSaveAndExit = useCallback(async () => {
+    try {
+      await handleSave();
+      handleDiscardExit();
+    } catch {
+      // onSave already surfaced the error; stay on the page.
+      setSaving(false);
+      setPendingExit(undefined);
+    }
+  }, [handleSave, handleDiscardExit]);
+
+  const pageEntityLabel = isLandingPage
+    ? t('label.home-page')
+    : t(`label.${kebabCase(currentPageType as string)}`);
+
   const i18Values = useMemo(
-    () => ({
-      persona: personaName,
-      entity: isLandingPage
-        ? t('label.home-page')
-        : t(`label.${kebabCase(currentPageType as string)}`),
-    }),
-    [personaName, isLandingPage, currentPageType, t]
+    () => ({ persona: personaName, entity: pageEntityLabel }),
+    [personaName, pageEntityLabel]
   );
 
   const subTitle = useMemo(() => {
@@ -118,108 +149,103 @@ export const CustomizablePageHeader = ({
     return 'message.customize-entity-landing-page-header-for-persona';
   }, [isNavigationPage, isAppLayoutPage, isLandingPage]);
 
-  const pageTypeLabel = useMemo(() => {
-    if (isLandingPage) {
-      return t('label.home-page');
-    } else if (isNavigationPage) {
-      return t('label.navigation');
-    } else if (isAppLayoutPage) {
-      return t('label.app-layout');
-    }
-
-    return t(`label.${kebabCase(currentPageType as string)}`);
-  }, [isLandingPage, isNavigationPage, isAppLayoutPage, currentPageType, t]);
-
-  const breadcrumbItems = useMemo(
-    () => [
-      { id: 'persona', label: personaName },
-      { id: 'current', label: pageTypeLabel },
-    ],
-    [personaName, pageTypeLabel]
-  );
-
-  const handleBreadcrumbAction = useCallback(
-    (id: Key) => {
-      if (String(id) === 'persona') {
-        navigate(getPersonaDetailsPath(personaFqn));
-      }
-    },
-    [navigate, personaFqn]
+  const personaLink = chrome ? (
+    <Button
+      className="tw:inline"
+      color="link-color"
+      data-testid="customize-persona-link"
+      onPress={handleClose}
+    />
+  ) : (
+    <Link to={getPersonaDetailsPath(personaFqn)} />
   );
 
   return (
     <>
-      <div className="tw:px-6 tw:pt-3 tw:pb-1">
-        <Breadcrumbs
-          divider="chevron"
-          items={breadcrumbItems}
-          size="xs"
-          type="text"
-          onAction={handleBreadcrumbAction}
-        />
-      </div>
-      <Box
-        align="center"
-        className="tw:border-b tw:border-secondary tw:bg-primary tw:px-6 tw:py-4 tw:mb-6"
-        data-testid="customize-landing-page-header"
-        direction="row"
-        justify="between">
-        <Box direction="col" gap={1}>
-          <Typography
-            as="h5"
-            className="tw:m-0 tw:text-primary"
-            data-testid="customize-page-title"
-            size="text-md"
-            weight="semibold">
-            {t('label.customize-entity', {
-              entity: isLandingPage
-                ? t('label.home-page')
-                : t(`label.${kebabCase(currentPageType as string)}`),
-            })}
-          </Typography>
-          <Typography as="p" className="tw:m-0 tw:text-tertiary" size="text-sm">
-            <Transi18next
-              i18nKey={subTitle}
-              renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
-              values={i18Values}
+      {/* Breadcrumbs and card form one block so parent layouts (flex gap vs
+          none) can't space them differently across customize pages. */}
+      <Box direction="col" gap={3}>
+        {chrome && (
+          <Box
+            align="center"
+            data-testid="customize-page-breadcrumbs"
+            direction="row"
+            justify="between">
+            <Breadcrumbs
+              divider="chevron"
+              items={chrome.breadcrumbs}
+              size="xs"
+              type="text"
+              onAction={(id: Key) => requestExit(String(id))}
             />
-          </Typography>
-        </Box>
-        <Box align="center" direction="row" gap={2}>
-          {showWidgetActions && onAddWidget && (
-            <Button
-              color="secondary"
-              data-testid="add-widget-button"
-              iconLeading={<Plus />}
-              onPress={onAddWidget}>
-              {t('label.add-widget-plural')}
-            </Button>
-          )}
-          <Button
-            color="secondary"
-            data-testid="reset-button"
-            iconLeading={<RefreshCcw01 />}
-            isDisabled={saving}
-            onPress={() => setResetModalOpen(true)}>
-            {t('label.reset')}
-          </Button>
-          <Button
-            color="primary"
-            data-testid="save-button"
-            isDisabled={disableSave}
-            isLoading={saving}
-            onPress={handleSave}>
-            {t('label.save')}
-          </Button>
-          <ButtonUtility
-            aria-label={t('label.cancel')}
-            color="tertiary"
-            data-testid="cancel-button"
-            icon={XClose}
-            isDisabled={saving}
-            onPress={handleClose}
-          />
-        </Box>
+            <ButtonUtility
+              aria-label={t('label.close')}
+              color="tertiary"
+              data-testid="customize-minimize-button"
+              icon={Minimize01}
+              size="sm"
+              onPress={handleClose}
+            />
+          </Box>
+        )}
+        <Card
+          className="customize-page-header m-b-lg tw:p-6"
+          data-testid="customize-landing-page-header">
+          <Box align="center" direction="row" justify="between">
+            <Box direction="col" gap={1}>
+              <Typography
+                as="h5"
+                className="tw:m-0 tw:text-primary"
+                data-testid="customize-page-title"
+                size="text-md"
+                weight="semibold">
+                {t('label.customize-entity', { entity: pageEntityLabel })}
+              </Typography>
+              <Typography as="p" className="tw:m-0 tw:text-tertiary">
+                <Transi18next
+                  i18nKey={subTitle}
+                  renderElement={personaLink}
+                  values={i18Values}
+                />
+              </Typography>
+            </Box>
+            <Box align="center" direction="row" gap={2}>
+              {showWidgetActions && onAddWidget && (
+                <Button
+                  color="primary"
+                  data-testid="add-widget-button"
+                  iconLeading={<Plus />}
+                  onPress={onAddWidget}>
+                  {t('label.add-widget-plural')}
+                </Button>
+              )}
+              <Button
+                color="secondary"
+                data-testid="reset-button"
+                iconLeading={<RefreshCcw01 />}
+                isDisabled={saving}
+                onPress={() => setResetModalOpen(true)}>
+                {t('label.reset')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="save-button"
+                isDisabled={disableSave}
+                isLoading={saving}
+                onPress={handleSave}>
+                {t('label.save')}
+              </Button>
+              <ButtonUtility
+                aria-label={t('label.cancel')}
+                color="tertiary"
+                data-testid="cancel-button"
+                icon={XClose}
+                isDisabled={saving}
+                onPress={handleClose}
+              />
+            </Box>
+          </Box>
+        </Card>
       </Box>
 
       <UnsavedChangesModal
@@ -232,6 +258,13 @@ export const CustomizablePageHeader = ({
         onCancel={() => setResetModalOpen(false)}
         onDiscard={() => setResetModalOpen(false)}
         onSave={handleResetConfirm}
+      />
+      <UnsavedChangesModal
+        loading={saving}
+        open={Boolean(pendingExit)}
+        onCancel={() => setPendingExit(undefined)}
+        onDiscard={handleDiscardExit}
+        onSave={handleSaveAndExit}
       />
     </>
   );

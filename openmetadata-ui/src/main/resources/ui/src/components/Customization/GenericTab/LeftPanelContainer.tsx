@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { lazy, useMemo } from 'react';
 import type { ReactGridLayoutProps } from 'react-grid-layout';
@@ -21,6 +21,13 @@ import type { WidgetConfig } from '../../../pages/CustomizablePage/CustomizableP
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './generic-tab.less';
+
+// Same box as the antd 24-column `Col span` this replaced; widget.w is a 0..1 fraction.
+const getColumnStyle = (w: number) => {
+  const width = `${(Math.round(w * 24) / 24) * 100}%`;
+
+  return { flex: `0 0 ${width}`, maxWidth: width };
+};
 
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
@@ -122,9 +129,13 @@ export const LeftPanelContainer = ({
 
     return layout?.map((widget: WidgetConfig) => {
       return (
-        <Col id={widget.i} key={widget.i} span={Math.round(widget.w * 24)}>
+        <div
+          className="tw:px-2"
+          id={widget.i}
+          key={widget.i}
+          style={getColumnStyle(widget.w)}>
           {getWidgetsFromKey(type, widget)}
-        </Col>
+        </div>
       );
     });
   }, [layout, type, isEditView]);
@@ -153,8 +164,8 @@ export const LeftPanelContainer = ({
   }
 
   return (
-    <Row className="left-panel-content" gutter={[16, 16]}>
+    <Box className="left-panel-content tw:-mx-2" rowGap={4} wrap="wrap">
       {widgets}
-    </Row>
+    </Box>
   );
 };
