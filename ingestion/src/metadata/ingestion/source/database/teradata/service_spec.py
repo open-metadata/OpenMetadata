@@ -7,6 +7,6 @@ from metadata.utils.service_spec.default import DefaultDatabaseSpec
 ServiceSpec = DefaultDatabaseSpec(
     metadata_source_class=TeradataSource,
     lineage_source_class=TeradataLineageSource,
-    usage_source_class=TeradataUsageSource,
+    usage_source_class=TeradataUsageSource,  # pyright: ignore[reportArgumentType]
     connection_class=TeradataConnection,  # pyright: ignore[reportArgumentType]
 )

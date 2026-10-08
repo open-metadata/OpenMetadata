@@ -39,7 +39,7 @@ class TeradataQueryParserSource(QueryParserSource, ABC):
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: TeradataConnection = config.serviceConnection.root.config
+        connection = config.serviceConnection.root.config if config.serviceConnection else None
         if not isinstance(connection, TeradataConnection):
             raise InvalidSourceException(f"Expected TeradataConnection, but got {connection}")
         return cls(config, metadata)
