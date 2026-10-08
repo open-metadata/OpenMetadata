@@ -72,7 +72,7 @@ COCKROACH_GET_PARTITION_DETAILS = """
     partitions.name AS partition_name,
     column_names,
     CASE 
-        WHEN list_value IS NOT NULL THEN 'list'
+        WHEN partitions.list_value IS NOT NULL THEN 'list'
         ELSE 'range'
     END AS partition_type,
     tables.name AS table_name,
@@ -81,7 +81,12 @@ FROM
     crdb_internal.partitions
 JOIN
     crdb_internal.tables ON partitions.table_id = tables.table_id
+JOIN
+    crdb_internal.table_indexes ON partitions.table_id = table_indexes.descriptor_id
+        AND partitions.index_id = table_indexes.index_id
 WHERE
     tables.name = :table_name
-    AND tables.schema_name = :schema_name;
+    AND tables.schema_name = :schema_name
+    AND table_indexes.index_type = 'primary'
+    AND partitions.parent_name IS NULL;
 """  # noqa: W291

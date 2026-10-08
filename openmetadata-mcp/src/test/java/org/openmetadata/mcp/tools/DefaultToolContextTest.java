@@ -22,12 +22,14 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * Direct coverage for {@link DefaultToolContext}'s Phase 3 outcome construction. The recorder side
@@ -268,6 +270,25 @@ class DefaultToolContextTest {
         .contains("\"tool\":\"get_entity_details\"")
         .contains("\"maxResponseChars\":" + McpResponseTrim.MAX_RESPONSE_CHARS)
         .doesNotContain("zzzz");
+  }
+
+  @Test
+  void serializeWithinBudgetUsesTheCapSetOnTheMcpServer() {
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    MCPConfiguration previous = SecurityConfigurationManager.getCurrentMcpConfig();
+    manager.setCurrentMcpConfig(new MCPConfiguration().withMaxResponseChars(20_000));
+    try {
+      String serialized =
+          DefaultToolContext.serializeWithinBudget(
+              Map.of("blob", "z".repeat(30_000)), "get_entity_details");
+
+      assertThat(serialized)
+          .contains("\"truncated\":true")
+          .contains("\"maxResponseChars\":20000")
+          .doesNotContain("zzzz");
+    } finally {
+      manager.setCurrentMcpConfig(previous);
+    }
   }
 
   @Test

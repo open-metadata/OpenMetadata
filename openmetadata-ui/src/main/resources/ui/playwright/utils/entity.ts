@@ -41,6 +41,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
+import { pickDateInCorePicker } from './datePicker';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -1592,14 +1593,9 @@ const announcementForm = async (
 ) => {
   await page.fill('#title', data.title);
 
-  // `fill` alone is enough for a native `<input type="date">`. The old
-  // click-then-Enter dance is left over from the antd DatePicker and is now
-  // actively harmful: the picker indicator is stretched across the whole
-  // control so a click opens the native picker, and the Enter then commits
-  // whatever date that picker has highlighted — today — silently overwriting
-  // the end date that was just filled.
-  await page.fill('#startTime', data.startDate);
-  await page.fill('#endTime', data.endDate);
+  // Announcement dates are core DatePickers (segmented, not a text input).
+  await pickDateInCorePicker(page, page.locator('#startTime'), data.startDate);
+  await pickDateInCorePicker(page, page.locator('#endTime'), data.endDate);
 
   // Scoped to the announcement dialog, not the page: this form opens over an
   // entity page that has description editors of its own, and an unscoped

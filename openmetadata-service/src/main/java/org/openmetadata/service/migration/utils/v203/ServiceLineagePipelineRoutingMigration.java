@@ -277,7 +277,7 @@ public class ServiceLineagePipelineRoutingMigration {
         .get(
             entityId,
             id -> {
-              EntityInterface entity =
+              EntityInterface<?> entity =
                   Entity.getEntity(entityType, UUID.fromString(id), SERVICE_FIELD, Include.ALL);
               return Optional.ofNullable(entity.getService());
             })

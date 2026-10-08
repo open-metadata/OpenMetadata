@@ -30,6 +30,9 @@ class TestLoginCandidatesTest {
   private static final String LIVE_BIND_PASSWORD = "live-bind-password";
   private static final String DISCOVERY =
       "https://idp.example.com/.well-known/openid-configuration";
+  private static final String AUTHORITY = "https://idp.example.com";
+  private static final String SERVER_URL = "https://openmetadata.example.com";
+  private static final String ATTACKER = "https://attacker.example.net";
 
   @Test
   void restoresAMaskedSecretForTheSameClientAtTheSameProvider() {
@@ -50,6 +53,36 @@ class TestLoginCandidatesTest {
             oidc(oidcClient(LIVE_SECRET, DISCOVERY)));
 
     assertEquals(MASK, secretOf(restored));
+  }
+
+  @Test
+  void withoutADiscoveryUriKeepsTheMaskWhenTheProviderIsLookedUpSomewhereElse() {
+    // The validate checks then find a custom provider from the authority, or else the server URL.
+    SecurityConfiguration live = oidc(oidcClient(LIVE_SECRET, "", SERVER_URL), AUTHORITY);
+
+    SecurityConfiguration otherAuthority =
+        TestLoginCandidates.withLiveSecretsRestored(
+            oidc(oidcClient(MASK, "", SERVER_URL), ATTACKER), live);
+    SecurityConfiguration otherServerUrl =
+        TestLoginCandidates.withLiveSecretsRestored(
+            oidc(oidcClient(MASK, "", ATTACKER), AUTHORITY), live);
+    SecurityConfiguration unchanged =
+        TestLoginCandidates.withLiveSecretsRestored(
+            oidc(oidcClient(MASK, "", SERVER_URL), AUTHORITY), live);
+
+    assertEquals(MASK, secretOf(otherAuthority));
+    assertEquals(MASK, secretOf(otherServerUrl));
+    assertEquals(LIVE_SECRET, secretOf(unchanged));
+  }
+
+  @Test
+  void withADiscoveryUriMovingOpenMetadataToAnotherHostKeepsTheSecret() {
+    SecurityConfiguration restored =
+        TestLoginCandidates.withLiveSecretsRestored(
+            oidc(oidcClient(MASK, DISCOVERY, "https://new-host.example.com"), AUTHORITY),
+            oidc(oidcClient(LIVE_SECRET, DISCOVERY, SERVER_URL), AUTHORITY));
+
+    assertEquals(LIVE_SECRET, secretOf(restored));
   }
 
   @Test
@@ -109,6 +142,10 @@ class TestLoginCandidatesTest {
         .withDiscoveryUri(discoveryUri);
   }
 
+  private static OidcClientConfig oidcClient(String secret, String discoveryUri, String serverUrl) {
+    return oidcClient(secret, discoveryUri).withServerUrl(serverUrl);
+  }
+
   private static LdapConfiguration ldapBind(String host, String password) {
     return new LdapConfiguration()
         .withHost(host)
@@ -132,6 +169,12 @@ class TestLoginCandidatesTest {
     return new SecurityConfiguration()
         .withAuthenticationConfiguration(
             new AuthenticationConfiguration().withOidcConfiguration(client));
+  }
+
+  private static SecurityConfiguration oidc(OidcClientConfig client, String authority) {
+    SecurityConfiguration config = oidc(client);
+    config.getAuthenticationConfiguration().setAuthority(authority);
+    return config;
   }
 
   private static SecurityConfiguration ldap(LdapConfiguration ldapConfiguration) {

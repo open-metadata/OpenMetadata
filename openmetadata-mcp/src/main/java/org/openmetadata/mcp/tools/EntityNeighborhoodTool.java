@@ -106,7 +106,7 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
     // share one admission slot so a busy guard cannot reject the summary after the CONSTRUCT ran.
     GraphRead read =
         guardedRead(securityContext, () -> readGraph(repository, entityUri, depth, limit));
-    RdfBody.Bounded bounded = RdfBody.bound(read.triples(), RdfBody.MAX_BYTES);
+    RdfBody.Bounded bounded = RdfBody.bound(read.triples(), RdfBody.maxBytes());
     return new Neighborhood(
         entityUri,
         depth,

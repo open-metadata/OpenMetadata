@@ -46,6 +46,7 @@ import { PageViewMode } from '../../generated/type/personaPreferences';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
+import dataProductClassBase from '../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
@@ -237,6 +238,8 @@ const DataProductListPage = ({
   const view = selectedView ?? personaView;
   const { renderDataProductCard } = useDomainCardTemplates();
 
+  const extraColumns = dataProductClassBase.getListingExtraColumns();
+
   const dataProductColumns: ColumnDef[] = useMemo(
     () => [
       { id: 'name', label: t('label.data-product') },
@@ -245,8 +248,9 @@ const DataProductListPage = ({
       { id: 'domains', label: t('label.domain-plural') },
       { id: 'tags', label: t('label.tag-plural') },
       { id: 'experts', label: t('label.expert-plural') },
+      ...extraColumns.map(({ id, labelKey }) => ({ id, label: t(labelKey) })),
     ],
-    [t]
+    [t, extraColumns]
   );
 
   const renderDataProductCell = useCallback(
@@ -272,10 +276,14 @@ const DataProductListPage = ({
             showDashPlaceholder: true,
           });
         default:
-          return null;
+          return (
+            extraColumns
+              .find((column) => column.id === columnId)
+              ?.render(entity) ?? null
+          );
       }
     },
-    [dataProductListing.actionHandlers.onEntityClick]
+    [dataProductListing.actionHandlers.onEntityClick, extraColumns]
   );
 
   const selectedDataProductEntities = useMemo(

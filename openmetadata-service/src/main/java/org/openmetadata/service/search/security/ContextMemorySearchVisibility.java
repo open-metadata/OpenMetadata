@@ -18,10 +18,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
@@ -70,7 +70,8 @@ public class ContextMemorySearchVisibility {
   public static final String FIELD_SHARED_WITH_IDS = "sharedWithIds";
 
   /** Memory stages ordinary search admits; the Context Center listing may ask for others. */
-  public static final List<EntityStatus> SEARCHABLE_STATUSES = List.of(EntityStatus.APPROVED);
+  public static final List<ContextMemoryStatus> SEARCHABLE_STATUSES =
+      List.of(ContextMemoryStatus.APPROVED);
 
   private final QueryBuilderFactory queryBuilderFactory;
 
@@ -89,7 +90,7 @@ public class ContextMemorySearchVisibility {
 
   /** As above, admitting memories in any of {@code statuses} instead of Approved only. */
   public OMQueryBuilder buildVisibilityFilter(
-      SubjectContext subjectContext, List<EntityStatus> statuses) {
+      SubjectContext subjectContext, List<ContextMemoryStatus> statuses) {
     OMQueryBuilder filter = null;
     if (isVisibilityEnforced(subjectContext)) {
       User user = subjectContext.user();
@@ -129,7 +130,7 @@ public class ContextMemorySearchVisibility {
         readable =
             (MemoryVisibility.ENTITY.value().equals(visibility)
                     || MemoryVisibility.PUBLIC.value().equals(visibility))
-                && EntityStatus.APPROVED
+                && ContextMemoryStatus.APPROVED
                     .value()
                     .equals(document.get(ContextMemoryIndex.FIELD_STATUS))
                 && ContextMemoryIndex.UNANCHORED.equals(
@@ -188,7 +189,8 @@ public class ContextMemorySearchVisibility {
   }
 
   /** Applies the selected status constraint and optional visibility clause only to memories. */
-  private OMQueryBuilder scopeMemoriesTo(OMQueryBuilder memoryClause, List<EntityStatus> statuses) {
+  private OMQueryBuilder scopeMemoriesTo(
+      OMQueryBuilder memoryClause, List<ContextMemoryStatus> statuses) {
     OMQueryBuilder nonMemory =
         queryBuilderFactory
             .boolQuery()
@@ -200,7 +202,7 @@ public class ContextMemorySearchVisibility {
   }
 
   private OMQueryBuilder statusMemoryClause(
-      OMQueryBuilder memoryClause, List<EntityStatus> statuses) {
+      OMQueryBuilder memoryClause, List<ContextMemoryStatus> statuses) {
     List<OMQueryBuilder> clauses = new ArrayList<>();
     if (memoryClause != null) {
       clauses.add(memoryClause);
@@ -211,7 +213,7 @@ public class ContextMemorySearchVisibility {
                 ContextMemoryIndex.FIELD_STATUS, statuses.getFirst().value())
             : queryBuilderFactory.termsQuery(
                 ContextMemoryIndex.FIELD_STATUS,
-                statuses.stream().map(EntityStatus::value).toList()));
+                statuses.stream().map(ContextMemoryStatus::value).toList()));
     return queryBuilderFactory.boolQuery().must(clauses);
   }
 

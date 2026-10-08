@@ -73,7 +73,7 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
   return (
     <Card
       isClickable
-      className="tw:flex tw:flex-col tw:gap-2.5 tw:p-4"
+      className="tw:flex tw:flex-col tw:gap-2.5 tw:p-4 tw:dark:bg-secondary tw:dark:hover:bg-secondary_hover"
       data-testid={`service-card-${service.name}`}
       variant="elevated"
       onClick={handleClick}>

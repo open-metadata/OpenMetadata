@@ -47,16 +47,6 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
  */
 public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
 
-  /**
-   * Default and ceiling both come from the dispatch-level budget rather than a standalone megabyte
-   * figure. The previous 1 MiB default and 16 MiB ceiling were 10x and 160x the dispatch cap, so a
-   * large SELECT was executed and paid for in full, then discarded wholesale by {@code
-   * DefaultToolContext.applyBudget} and replaced with a data-less truncation stub. See {@link
-   * RdfBody}. {@code maxBytes} can therefore only narrow the response, never widen it.
-   */
-  private static final int DEFAULT_MAX_BYTES = RdfBody.MAX_BYTES;
-
-  private static final int HARD_MAX_BYTES = RdfBody.MAX_BYTES;
   private static final int MIN_MAX_BYTES = RdfBody.MIN_BYTES;
   private static final String FORMAT_PARAMETER = "format";
   private static final String INFERENCE_LEVEL_PARAMETER = "inferenceLevel";
@@ -246,9 +236,14 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
     return CommonUtils.principal(securityContext);
   }
 
+  /**
+   * Default and ceiling both come from the dispatch-level budget: a larger response would be
+   * discarded wholesale by {@code DefaultToolContext.applyBudget}, so {@code maxBytes} can only
+   * narrow the response, never widen it.
+   */
   private static int maxBytes(final McpToolParameters parameters) {
-    return RdfBody.clamp(
-        parameters.integer("maxBytes", DEFAULT_MAX_BYTES), MIN_MAX_BYTES, HARD_MAX_BYTES);
+    int budgetBytes = RdfBody.maxBytes();
+    return RdfBody.clamp(parameters.integer("maxBytes", budgetBytes), MIN_MAX_BYTES, budgetBytes);
   }
 
   @FunctionalInterface

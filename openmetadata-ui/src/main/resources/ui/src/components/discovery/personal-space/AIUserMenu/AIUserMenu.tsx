@@ -148,10 +148,7 @@ const MenuItemRenderer: React.FC<{ item: MenuItemConfig }> = ({ item }) => {
             />
           )}
         </Dropdown.Item>
-        <Popover
-          className={SUBMENU_POPOVER_CLASS}
-          offset={4}
-          placement="right top">
+        <Popover className={SUBMENU_POPOVER_CLASS} placement="right top">
           <Menu
             className={SUBMENU_MENU_CLASS}
             onAction={(key) => item.onAction?.(String(key))}>

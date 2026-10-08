@@ -111,7 +111,7 @@ describe('ColorUtils', () => {
     it('should return an outlined utility-color class set for non-solid avatars', () => {
       const result = getAvatarColorClass('John Doe', false);
 
-      expect(result.container).toMatch(/tw:bg-utility-[a-z]+-50\b/);
+      expect(result.container).toMatch(/tw:from-utility-[a-z]+-50\b/);
       expect(result.container).toMatch(/tw:border-utility-[a-z]+-200/);
       expect(result.text).toMatch(/tw:text-utility-[a-z]+-700/);
     });
@@ -128,7 +128,7 @@ describe('ColorUtils', () => {
       const family = solid.container.match(/tw:bg-utility-([a-z]+)-500/)?.[1];
 
       expect(family).toBeDefined();
-      expect(outlined.container).toContain(`tw:bg-utility-${family}-50`);
+      expect(outlined.container).toContain(`tw:from-utility-${family}-50`);
     });
 
     it('should not throw for an empty name', () => {
