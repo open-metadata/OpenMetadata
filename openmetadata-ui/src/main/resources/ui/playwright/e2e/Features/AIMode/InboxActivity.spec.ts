@@ -33,9 +33,9 @@ import {
   searchInboxTask,
   switchActivityFeed,
   switchInboxTab,
+  VIEW_ALL_RULE,
   visitInbox,
   visitMyData,
-  VIEW_ALL_RULE,
 } from '../../../utils/inbox';
 import {
   waitForOwnedAssetCount,

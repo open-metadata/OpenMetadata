@@ -24,7 +24,7 @@ import {
 } from '../support/access-control/PoliciesClass';
 import { RolesClass } from '../support/access-control/RolesClass';
 import { UserClass } from '../support/user/UserClass';
-import { deleteFixtureEntity, okJson } from './apiResponse';
+import { assertFulfilled, deleteFixtureEntity, okJson } from './apiResponse';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForResponseWithStatus } from './waitHelpers';
 
@@ -216,18 +216,24 @@ export const inSequence = async <T>(
   return results;
 };
 
-/** Hard-delete seeded tasks, one at a time (see {@link inSequence}). */
-export const deleteInboxTasks = (
+/**
+ * Hard-delete seeded tasks one at a time (see {@link inSequence}), attempting
+ * every one even after a failure, then reporting all failures together.
+ */
+export const deleteInboxTasks = async (
   apiContext: APIRequestContext,
   tasks: { id: string }[]
-) =>
-  inSequence(
-    tasks.map(
-      ({ id }) =>
-        () =>
-          deleteFixtureEntity(apiContext, `/api/v1/tasks/${id}?hardDelete=true`)
-    )
-  );
+) => {
+  const results: PromiseSettledResult<unknown>[] = [];
+  for (const { id } of tasks) {
+    results.push(
+      ...(await Promise.allSettled([
+        deleteFixtureEntity(apiContext, `/api/v1/tasks/${id}?hardDelete=true`),
+      ]))
+    );
+  }
+  assertFulfilled(results);
+};
 
 /**
  * File a task assigned to one user. Its unique `name` is what the Triage
