@@ -474,16 +474,12 @@ test.describe.serial(
 
         const visibleModal = page.getByRole('dialog').first();
         await expect(visibleModal).toBeVisible();
-        const proposedTextField = visibleModal
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Proposed Text' })
-          .getByRole('textbox')
-          .first();
-        const reviewNotesField = visibleModal
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Review Notes' })
-          .getByRole('textbox')
-          .first();
+        const proposedTextField = visibleModal.getByRole('textbox', {
+          name: /Proposed Text/,
+        });
+        const reviewNotesField = visibleModal.getByRole('textbox', {
+          name: /Review Notes/,
+        });
 
         await proposedTextField.fill(updatedDescription);
         await reviewNotesField.fill(updatedReviewNotes);

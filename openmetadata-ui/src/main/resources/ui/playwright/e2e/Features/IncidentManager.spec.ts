@@ -259,12 +259,11 @@ const reassignIncidentTask = async (
 ) => {
   const reassignModal = await openIncidentReassignModal(page, testCaseName);
   const assigneeSelect = reassignModal.getByTestId('select-assignee');
-  const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
   const assigneeInput = assigneeSelect.getByRole('combobox');
   const assigneeOption = page.getByTestId(assignee.name.toLowerCase());
 
-  await expect(assigneeSelector).toBeVisible();
-  await assigneeSelector.click();
+  await expect(assigneeInput).toBeVisible();
+  await assigneeInput.click();
   await assigneeInput.fill(assignee.displayName);
   await expect(assigneeOption).toBeVisible({ timeout: ACTION_TIMEOUT });
 
@@ -1123,7 +1122,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await afterAction();
     }
 
-    await page.click('[data-testid="select-assignee"]');
+    await page.click('[data-testid="select-assignee"] input');
     const assigneeOption = page.locator(
       `[data-testid="${assigneeTestCase.username}"]`
     );
@@ -1149,7 +1148,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     );
     await page
       .getByTestId('select-assignee')
-      .getByLabel('close-circle')
+      .getByTestId('autocomplete-selected-item')
+      .getByRole('button')
       .click();
     await nonAssigneeFilterRes;
 
