@@ -27,7 +27,8 @@
 #
 # It covers THREE tiers, in three independent jobs:
 #
-#   populate     apt, yarn, browser. Cheap, no build, single runner.
+#   populate     apt, yarn, node_modules, browser. Cheap, no build, single
+#                runner.
 #   warm-fixture the OpenMetadata distribution, the golden fixture (seeded DB +
 #                OpenSearch + auth state) and the ingestion image. These are
 #                what actually cost time: 13 consecutive merge-queue runs
@@ -130,6 +131,7 @@ jobs:
           version: playwright-chromium-deps-v2
 
       - name: Setup Node.js
+        id: setup-node
         uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
@@ -169,6 +171,27 @@ jobs:
         with:
           path: ~/.cache/yarn
           key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
+      # The shards restore this tree instead of running yarn install. Saved
+      # right after the install (before npx touches anything) and only when it
+      # succeeded, for the same never-bake-a-partial-copy reason as above.
+      # lookup-only: the warm job never needs the tree back, only whether the
+      # key already exists.
+      - name: Look up node_modules cache
+        id: node-modules-lookup
+        if: steps.warm-yarn.outcome == 'success'
+        uses: actions/cache/restore@v6
+        with:
+          path: openmetadata-ui/src/main/resources/ui/node_modules
+          key: playwright-node-modules-v1-${{ runner.os }}-${{ runner.arch }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          lookup-only: true
+
+      - name: Save node_modules cache (main-scoped writer)
+        if: steps.warm-yarn.outcome == 'success' && steps.node-modules-lookup.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: openmetadata-ui/src/main/resources/ui/node_modules
+          key: playwright-node-modules-v1-${{ runner.os }}-${{ runner.arch }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
 
       - name: Restore Playwright browser cache
         id: browser-restore
