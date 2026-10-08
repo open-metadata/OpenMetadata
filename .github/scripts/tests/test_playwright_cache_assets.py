@@ -654,3 +654,26 @@ def test_shards_restore_the_node_modules_tree_that_only_main_writes() -> None:
     install_step = shard_job.split("- name: Install dependencies", 1)[1].split("- name:", 1)[0]
     assert "yarn check --integrity --ignore-scripts" in install_step
     assert "yarn --ignore-scripts --frozen-lockfile" in install_step
+
+
+def test_visual_regression_fixture_path_is_opt_in_and_restore_only() -> None:
+    """Required PR / merge-queue checks keep the MySQL bootstrap until the
+    baselines are proven on the fixture's data."""
+    visual = (ROOT / ".github/workflows/playwright-visual.yml").read_text()
+    reusable = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+
+    assert "default: full-docker" in visual
+    gate = visual.split("- name: Restore golden Playwright fixture", 1)[1].split("run:", 1)[0]
+    assert "github.event_name == 'workflow_dispatch' && inputs.setup_mode == 'postgres-fixture'" in gate
+    assert "uses: actions/cache/save@" not in visual
+    key = "playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-"
+    assert key in visual and key in reusable
+
+    fallback = visual.split("- name: Setup Openmetadata Test Environment", 1)[1].split("- name:", 1)[0]
+    assert "if: ${{ steps.fixture.outputs.usable != 'true' }}" in fallback
+    assert 'args: "-d mysql"' in fallback
+
+    config = (ROOT / "openmetadata-ui/src/main/resources/ui/playwright.config.ts").read_text()
+    visual_project = config.split("name: 'visual-regression'", 1)[1].split("},", 1)[0]
+    assert "dependencies: entityDependencies" in visual_project
+    assert ": ['setup', 'entity-data-setup'];" in config.split("const entityDependencies", 1)[1].split("\n", 3)[2]
