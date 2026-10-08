@@ -147,7 +147,6 @@ def databend_connection(databend_container):
                 f"{databend_container.get_container_host_ip()}:"
                 f"{databend_container.get_exposed_port(DATABEND_HTTP_PORT)}"
             ),
-            "database": "default",
             "databaseSchema": "analytics",
             "connectionOptions": {"sslmode": "disable"},
         }

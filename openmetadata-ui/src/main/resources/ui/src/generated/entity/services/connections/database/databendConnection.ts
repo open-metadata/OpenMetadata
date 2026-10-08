@@ -14,11 +14,6 @@
  * Databend Database Connection Config
  */
 export interface DatabendConnection {
-    /**
-     * Optional Databend catalog to ingest as an OpenMetadata database. When omitted, all
-     * accessible catalogs are scanned.
-     */
-    catalog?:             string;
     connectionArguments?: { [key: string]: any };
     /**
      * Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP
@@ -27,17 +22,14 @@ export interface DatabendConnection {
      */
     connectionOptions?: { [key: string]: string };
     /**
-     * Databend database used to establish the initial connection. This does not control the
-     * OpenMetadata database name.
-     */
-    database?: string;
-    /**
-     * Regex to include or exclude Databend catalogs.
+     * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+     * ingested.
      */
     databaseFilterPattern?: FilterPattern;
     /**
-     * Optional Databend database to ingest. When omitted, all accessible Databend databases are
-     * scanned as OpenMetadata schemas.
+     * Optional Databend database to ingest. It is also used as the initial database of the
+     * connection. When omitted, the connection starts in the `default` database and all
+     * accessible Databend databases are scanned as OpenMetadata schemas.
      */
     databaseSchema?: string;
     /**
@@ -75,7 +67,8 @@ export interface DatabendConnection {
 }
 
 /**
- * Regex to include or exclude Databend catalogs.
+ * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+ * ingested.
  *
  * Regex to only fetch entities that matches the pattern.
  *

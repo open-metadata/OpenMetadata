@@ -10,39 +10,27 @@
 #  limitations under the License.
 """Databend metadata source."""
 
-import traceback
 from collections.abc import Iterable
-from copy import deepcopy
 
-from sqlalchemy import text
-
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.databendConnection import (
     DatabendConnection,
 )
-from metadata.generated.schema.entity.services.ingestionPipelines.status import (
-    StackTraceError,
-)
 from metadata.generated.schema.metadataIngestion.workflow import Source as WorkflowSource
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.databend.constants import SYSTEM_DATABASES
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
+from metadata.ingestion.source.database.databend.constants import (
+    DEFAULT_CATALOG,
+    SYSTEM_DATABASES,
+)
 
 
 class DatabendSource(CommonDbSourceService):
-    """Extract databases, tables, views, columns, and comments from Databend."""
+    """Extract the default catalog's databases, tables, views, columns, and comments from Databend.
 
-    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-        super().__init__(config, metadata)
-        self.database_entity_source_state = set()
+    The Databend catalog maps to the OpenMetadata Database and each Databend database maps to an
+    OpenMetadata schema.
+    """
 
     @classmethod
     def create(
@@ -58,74 +46,9 @@ class DatabendSource(CommonDbSourceService):
             raise InvalidSourceException(f"Expected DatabendConnection, but got {connection}")
         return cls(config, metadata)
 
-    def set_inspector(self, database_name: str) -> None:
-        """Create a fresh Catalog-scoped engine and reflection cache."""
-        self._release_engine()
-        logger.info("Ingesting from catalog: %s", database_name)
-
-        service_connection = deepcopy(self.service_connection)
-        service_connection.catalog = database_name
-        connection = create_connection(service_connection)
-        if connection is None:
-            raise RuntimeError("Databend connection class is not registered")
-        self._connection = connection
-        self.engine = connection.client
-        self.session = create_and_bind_thread_safe_session(self.engine)
-        self.connection_obj = self.engine
-
-    def _validate_catalog(self, catalog_name: str) -> None:
-        self.set_inspector(catalog_name)
-        _ = self.inspector.get_schema_names()
-
     def get_database_names(self) -> Iterable[str]:
-        configured_catalog = self.service_connection.catalog
-        if configured_catalog:
-            self._validate_catalog(configured_catalog)
-            yield configured_catalog
-            return
-
-        catalogs = [row[0] for row in self.connection.execute(text("SHOW CATALOGS")) if row and row[0]]
-        if not catalogs:
-            raise RuntimeError("No accessible Databend catalogs found")
-        selected_catalogs = 0
-        ingested_catalogs = 0
-        for catalog_name in catalogs:
-            database_fqn = (
-                fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                    database_name=catalog_name,
-                )
-                or catalog_name
-            )
-            if filter_by_database(
-                self.source_config.databaseFilterPattern,
-                database_fqn if self.source_config.useFqnForFiltering else catalog_name,
-            ):
-                self.status.filter(database_fqn, "Database Filtered Out")
-                continue
-
-            selected_catalogs += 1
-            try:
-                self._validate_catalog(catalog_name)
-                ingested_catalogs += 1
-                yield catalog_name
-            except Exception as exc:  # pylint: disable=broad-except
-                self.database_entity_source_state.add(database_fqn)
-                stack_trace = traceback.format_exc()
-                logger.warning("Error trying to ingest catalog %s: %s", catalog_name, exc)
-                logger.debug(stack_trace)
-                self.status.failed(
-                    StackTraceError(
-                        name=catalog_name,
-                        error=f"Error trying to ingest catalog {catalog_name}: {exc}",
-                        stackTrace=stack_trace,
-                    )
-                )
-
-        if selected_catalogs and not ingested_catalogs:
-            raise RuntimeError("Failed to ingest any selected Databend catalog")
+        # Named after the catalog so the FQNs stay stable once external catalogs are supported.
+        yield DEFAULT_CATALOG
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.databaseSchema:

@@ -215,7 +215,8 @@ export interface Connection {
      *
      * Regex to only include or exclude matching databases.
      *
-     * Regex to include or exclude Databend catalogs.
+     * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+     * ingested.
      *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
@@ -439,9 +440,6 @@ export interface Connection {
      * Initial database to connect to. Metadata reading is restricted to this database unless
      * Ingest All Databases is enabled, in which case this database is used as the entry point
      * to discover and scan all databases.
-     *
-     * Databend database used to establish the initial connection. This does not control the
-     * OpenMetadata database name.
      *
      * Database of the data source.
      *
@@ -690,8 +688,9 @@ export interface Connection {
      *
      * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
      *
-     * Optional Databend database to ingest. When omitted, all accessible Databend databases are
-     * scanned as OpenMetadata schemas.
+     * Optional Databend database to ingest. It is also used as the initial database of the
+     * connection. When omitted, the connection starts in the `default` database and all
+     * accessible Databend databases are scanned as OpenMetadata schemas.
      *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
@@ -764,9 +763,6 @@ export interface Connection {
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
-     *
-     * Optional Databend catalog to ingest as an OpenMetadata database. When omitted, all
-     * accessible catalogs are scanned.
      *
      * Presto catalog
      *
@@ -1981,7 +1977,8 @@ export interface AccessDatabaseLocationLocalPathOrS3 {
  *
  * Regex to only include or exclude matching tables.
  *
- * Regex to include or exclude Databend catalogs.
+ * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+ * ingested.
  *
  * Regex to include or exclude Databend databases.
  *

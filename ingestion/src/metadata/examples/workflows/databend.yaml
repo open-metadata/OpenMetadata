@@ -7,8 +7,6 @@ source:
       username: databend
       password: databend
       hostPort: localhost:8000
-      catalog: default
-      database: default
       connectionOptions:
         sslmode: disable
   sourceConfig:

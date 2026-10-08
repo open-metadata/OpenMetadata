@@ -8977,20 +8977,9 @@
                       "type": "string",
                       "default": "localhost:8000"
                     },
-                    "database": {
-                      "title": "Database",
-                      "description": "Databend database used to establish the initial connection. This does not control the OpenMetadata database name.",
-                      "type": "string",
-                      "default": "default"
-                    },
-                    "catalog": {
-                      "title": "Catalog",
-                      "description": "Optional Databend catalog to ingest as an OpenMetadata database. When omitted, all accessible catalogs are scanned.",
-                      "type": "string"
-                    },
                     "databaseSchema": {
                       "title": "Database Schema",
-                      "description": "Optional Databend database to ingest. When omitted, all accessible Databend databases are scanned as OpenMetadata schemas.",
+                      "description": "Optional Databend database to ingest. It is also used as the initial database of the connection. When omitted, the connection starts in the `default` database and all accessible Databend databases are scanned as OpenMetadata schemas.",
                       "type": "string"
                     },
                     "connectionOptions": {
@@ -9069,7 +9058,7 @@
                     },
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
-                      "description": "Regex to include or exclude Databend catalogs.",
+                      "description": "Regex to include or exclude Databend catalogs. Only the `default` catalog is currently ingested.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -46796,20 +46785,9 @@
                       "type": "string",
                       "default": "localhost:8000"
                     },
-                    "database": {
-                      "title": "Database",
-                      "description": "Databend database used to establish the initial connection. This does not control the OpenMetadata database name.",
-                      "type": "string",
-                      "default": "default"
-                    },
-                    "catalog": {
-                      "title": "Catalog",
-                      "description": "Optional Databend catalog to ingest as an OpenMetadata database. When omitted, all accessible catalogs are scanned.",
-                      "type": "string"
-                    },
                     "databaseSchema": {
                       "title": "Database Schema",
-                      "description": "Optional Databend database to ingest. When omitted, all accessible Databend databases are scanned as OpenMetadata schemas.",
+                      "description": "Optional Databend database to ingest. It is also used as the initial database of the connection. When omitted, the connection starts in the `default` database and all accessible Databend databases are scanned as OpenMetadata schemas.",
                       "type": "string"
                     },
                     "connectionOptions": {
@@ -46888,7 +46866,7 @@
                     },
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
-                      "description": "Regex to include or exclude Databend catalogs.",
+                      "description": "Regex to include or exclude Databend catalogs. Only the `default` catalog is currently ingested.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {

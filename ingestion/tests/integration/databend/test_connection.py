@@ -26,8 +26,8 @@ def test_connection_checks_catalog_schemas_tables_and_views(metadata, databend_c
     assert all(step.passed for step in result.steps)
 
 
-def test_connection_uses_explicit_catalog(metadata, databend_connection):
-    configured_connection = databend_connection.model_copy(update={"catalog": "default"})
+def test_connection_without_database_schema_starts_in_default_database(metadata, databend_connection):
+    configured_connection = databend_connection.model_copy(update={"databaseSchema": None})
 
     result = get_test_connection_fn(configured_connection)(metadata)
 

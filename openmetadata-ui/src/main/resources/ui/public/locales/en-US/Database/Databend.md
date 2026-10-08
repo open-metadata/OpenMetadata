@@ -1,20 +1,20 @@
 # Databend
 
-Use this connector to ingest catalogs, databases, tables, views, columns, and descriptions from Databend. It also supports table and column profiling, sampling and sample data, data quality tests, and auto-classification.
+Use this connector to ingest databases, tables, views, columns, and descriptions from the Databend `default` catalog. It also supports table and column profiling, sampling and sample data, data quality tests, and auto-classification.
 
 Databend objects are represented in OpenMetadata as follows:
 
-- Databend Catalog → OpenMetadata Database
+- Databend Catalog `default` → OpenMetadata Database `default`
 - Databend Database → OpenMetadata Database Schema
 - Databend Table or View → OpenMetadata Table
 
-For example, the Databend table `customers` in Catalog `default` and Database `analytics` is ingested with the OpenMetadata FQN `local_databend.default.analytics.customers`.
+For example, the Databend table `customers` in Database `analytics` is ingested with the OpenMetadata FQN `local_databend.default.analytics.customers`.
+
+External catalogs, such as Iceberg or Hive catalogs, are not ingested by this connector. Ingest those tables with the OpenMetadata connector for the system that owns them.
 
 ## Requirements
 
-The Databend user must be able to connect to the HTTP query service, list the Catalogs and Databases to ingest, and read their table, view, column, and comment metadata.
-
-When Catalog is left blank, the user also needs permission to run `SHOW CATALOGS`. Catalogs that the user cannot access are skipped as long as at least one selected Catalog can be ingested.
+The Databend user must be able to connect to the HTTP query service and read the table, view, column, and comment metadata of the Databases to ingest. Databend only lists the Databases and tables that the user has been granted access to.
 
 ### Profiler, Sampling, Data Quality, and Auto-Classification
 
@@ -49,21 +49,11 @@ Password used to connect to Databend.
 $$
 
 $$section
-### Database $(id="database")
-
-Databend Database used only to establish the initial SQLAlchemy connection. The default is `default`. This value is the Database component of the Databend DSN and does not determine the OpenMetadata Database name.
-$$
-
-$$section
-### Catalog $(id="catalog")
-
-Optional Databend Catalog to ingest. The Catalog is represented as an OpenMetadata Database. When left blank, the connector runs `SHOW CATALOGS` and scans all accessible Catalogs that pass the Database Filter Pattern.
-$$
-
-$$section
 ### Database Schema $(id="databaseSchema")
 
-Optional Databend Database to ingest from each selected Catalog. The Databend Database is represented as an OpenMetadata Database Schema. When left blank, the connector scans all accessible Databend Databases except `information_schema`, `system`, and `system_history`. You can explicitly enter one of these system Databases if you need to ingest it.
+Optional Databend Database to ingest. The Databend Database is represented as an OpenMetadata Database Schema, and it is also used as the initial database of the connection, so it must exist.
+
+When left blank, the connection starts in the `default` Database and the connector scans all accessible Databend Databases except `information_schema`, `system`, and `system_history`. You can explicitly enter one of these system Databases if you need to ingest it.
 $$
 
 $$section
@@ -83,7 +73,7 @@ $$
 $$section
 ### Default Database Filter Pattern $(id="databaseFilterPattern")
 
-Regular expressions used to include or exclude Databend Catalogs. Because Catalogs are represented as OpenMetadata Databases, this field is named Database Filter Pattern.
+Regular expressions used to include or exclude Databend Catalogs, which are represented as OpenMetadata Databases. Only the `default` catalog is currently ingested.
 $$
 
 $$section

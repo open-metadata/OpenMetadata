@@ -11,3 +11,11 @@
 """Databend connector constants."""
 
 SYSTEM_DATABASES = frozenset({"information_schema", "system", "system_history"})
+
+# Only the default catalog is ingested: databend-sqlalchemy opens a new driver session per cursor,
+# so a session-level `USE CATALOG` cannot be relied on for external catalogs yet.
+DEFAULT_CATALOG = "default"
+
+# Databend validates the initial database against the default catalog at login, and this
+# database always exists there.
+DEFAULT_DATABASE = "default"

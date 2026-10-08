@@ -12,8 +12,8 @@
     },
     {
       "name": "GetDatabases",
-      "description": "List Databend catalogs available to the user or validate the configured catalog.",
-      "errorMessage": "Failed to access Databend catalogs.",
+      "description": "Validate access to the Databend default catalog.",
+      "errorMessage": "Failed to access the Databend default catalog.",
       "mandatory": true
     },
     {
