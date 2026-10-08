@@ -182,7 +182,7 @@ test.describe('Glossary tests', () => {
 
       // Check reviewer's notifications before approval
       await page1.getByTestId('task-notifications').click();
-      await page1.locator('.ant-dropdown').waitFor();
+      await page1.getByTestId('notification-heading').waitFor();
       const firstNotification = page1
         .locator('.ant-list-items > .ant-list-item')
         .first();

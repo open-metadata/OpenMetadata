@@ -838,7 +838,7 @@
   },
   "playwright/utils/userDetails.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   }
 }
