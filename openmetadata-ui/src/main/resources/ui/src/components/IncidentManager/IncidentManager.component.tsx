@@ -115,9 +115,7 @@ const IncidentManager = ({
           data-testid="incident-filter-controls">
           <Form.Item className="m-b-0" label={t('label.assignee')}>
             <Assignees
-              allowClear
               isSingleSelect
-              showArrow
               className="w-min-10"
               options={assigneeOptionsWithSelected}
               placeholder={t('label.assignee')}
