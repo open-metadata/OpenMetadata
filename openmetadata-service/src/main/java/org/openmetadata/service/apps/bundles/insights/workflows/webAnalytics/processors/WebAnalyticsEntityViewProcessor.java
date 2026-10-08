@@ -96,7 +96,7 @@ public class WebAnalyticsEntityViewProcessor
       if (!entityViewData.containsKey(entityFqn)) {
         // Create a new WebAnalyticEntityViewReportData based on the Event data.
         try {
-          EntityInterface entity =
+          EntityInterface<?> entity =
               Entity.getEntityByName(
                   URLDecoder.decode(entityType, StandardCharsets.UTF_8),
                   URLDecoder.decode(entityFqn, StandardCharsets.UTF_8),

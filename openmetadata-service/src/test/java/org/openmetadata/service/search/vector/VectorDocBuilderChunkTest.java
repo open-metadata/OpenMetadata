@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -35,7 +36,6 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
@@ -393,14 +393,14 @@ class VectorDocBuilderChunkTest {
   @Test
   void chunkDocs_carryTheMemoryStatusOnEveryChunk() {
     ContextMemory memory =
-        memory(MemoryVisibility.ENTITY).withEntityStatus(EntityStatus.DEPRECATED);
+        memory(MemoryVisibility.ENTITY).withEntityStatus(ContextMemoryStatus.DEPRECATED);
     memory.withDescription("revenue ".repeat(900));
 
     List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
 
     assertTrue(docs.size() > 1);
     for (Map<String, Object> doc : docs) {
-      assertEquals(EntityStatus.DEPRECATED.value(), doc.get("entityStatus"));
+      assertEquals(ContextMemoryStatus.DEPRECATED.value(), doc.get("entityStatus"));
     }
   }
 
@@ -418,7 +418,7 @@ class VectorDocBuilderChunkTest {
                 + "|");
 
     assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
-    memory.setEntityStatus(EntityStatus.DEPRECATED);
+    memory.setEntityStatus(ContextMemoryStatus.DEPRECATED);
     memory.setPrimaryEntity(new EntityReference().withId(UUID.randomUUID()).withType("table"));
     assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
   }

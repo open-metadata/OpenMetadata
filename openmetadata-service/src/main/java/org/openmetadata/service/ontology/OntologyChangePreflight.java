@@ -26,11 +26,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
@@ -80,7 +80,7 @@ public final class OntologyChangePreflight {
           (ContextMemory) entityLoader.load(Entity.CONTEXT_MEMORY, memoryId);
       active =
           !Boolean.TRUE.equals(memory.getDeleted())
-              && memory.getEntityStatus() == EntityStatus.APPROVED;
+              && memory.getEntityStatus() == ContextMemoryStatus.APPROVED;
     } catch (EntityNotFoundException e) {
       active = false;
     }
@@ -203,7 +203,7 @@ public final class OntologyChangePreflight {
 
   private VersionGuard loadVersionGuard(
       final OntologyChangeOperation operation, final OperationTarget target) {
-    final EntityInterface entity = entityLoader.load(target.entityType(), target.id());
+    final EntityInterface<?> entity = entityLoader.load(target.entityType(), target.id());
     requireVersion(operation, operation.getBaseVersion(), entity.getVersion());
     return new VersionGuard(target, operation.getBaseVersion());
   }
@@ -255,6 +255,6 @@ public final class OntologyChangePreflight {
 
   @FunctionalInterface
   public interface EntityLoader {
-    EntityInterface load(String entityType, UUID id);
+    EntityInterface<?> load(String entityType, UUID id);
   }
 }

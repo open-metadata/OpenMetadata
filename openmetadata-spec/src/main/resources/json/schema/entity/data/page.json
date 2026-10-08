@@ -6,7 +6,7 @@
   "description": "This schema defines the type of Page.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Page",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "pageType": {
       "javaType": "org.openmetadata.schema.entity.data.PageType",

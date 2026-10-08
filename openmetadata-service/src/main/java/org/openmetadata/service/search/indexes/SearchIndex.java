@@ -94,7 +94,7 @@ public interface SearchIndex {
     Map<String, Object> esDoc = JsonUtils.getMap(entity);
 
     // Phase 1: Common entity fields (owners, domains, displayName, etc.)
-    if (entity instanceof EntityInterface ei) {
+    if (entity instanceof EntityInterface<?> ei) {
       populateCommonFields(esDoc, ei, getEntityTypeName());
     }
 
@@ -173,7 +173,7 @@ public interface SearchIndex {
    * NOT call this — it is handled by the framework.
    */
   default void populateCommonFields(
-      Map<String, Object> doc, EntityInterface entity, String entityType) {
+      Map<String, Object> doc, EntityInterface<?> entity, String entityType) {
     doc.put(
         "displayName",
         entity.getDisplayName() != null && !entity.getDisplayName().isBlank()
@@ -197,7 +197,7 @@ public interface SearchIndex {
     doc.put(
         "entityStatus",
         entity.getEntityStatus() != null
-            ? entity.getEntityStatus().value()
+            ? entity.getEntityStatus().toString()
             : org.openmetadata.schema.type.EntityStatus.UNPROCESSED.value());
     if (entity.getVotes() != null) {
       int upVotes = entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0;
@@ -271,7 +271,7 @@ public interface SearchIndex {
     return cloneEntity;
   }
 
-  default String getDescriptionStatus(EntityInterface entity) {
+  default String getDescriptionStatus(EntityInterface<?> entity) {
     return nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
   }
 
@@ -301,7 +301,7 @@ public interface SearchIndex {
    * falls back to per-entity DB lookups via {@link #getLineageData(EntityReference)}.
    */
   static Map<UUID, List<EsLineageData>> prefetchLineageIfSupported(
-      String entityType, List<? extends EntityInterface> entities) {
+      String entityType, List<? extends EntityInterface<?>> entities) {
     Map<UUID, List<EsLineageData>> result = null;
     if (!nullOrEmpty(entities) && supportsLineagePrefetch(entityType)) {
       Map<UUID, List<EsLineageData>> prefetched = prefetchUpstreamLineage(entities);
@@ -313,7 +313,7 @@ public interface SearchIndex {
   }
 
   static Map<UUID, Optional<Style>> prefetchServiceStylesIfSupported(
-      String entityType, List<? extends EntityInterface> entities) {
+      String entityType, List<? extends EntityInterface<?>> entities) {
     Map<UUID, Optional<Style>> result = null;
     if (!nullOrEmpty(entities) && supportsServiceStylePrefetch(entityType)) {
       Map<UUID, Optional<Style>> prefetched = prefetchServiceStyles(entities);
@@ -408,7 +408,7 @@ public interface SearchIndex {
    * so doc-build falls back to per-entity DB lookups.
    */
   static Map<UUID, List<EsLineageData>> prefetchUpstreamLineage(
-      List<? extends EntityInterface> entities) {
+      List<? extends EntityInterface<?>> entities) {
     Map<UUID, List<EsLineageData>> result = new HashMap<>();
     if (!nullOrEmpty(entities)) {
       populatePrefetchedUpstreamLineage(entities, result);
@@ -417,7 +417,7 @@ public interface SearchIndex {
   }
 
   static Map<UUID, Optional<Style>> prefetchServiceStyles(
-      List<? extends EntityInterface> entities) {
+      List<? extends EntityInterface<?>> entities) {
     Map<UUID, Optional<Style>> result = new HashMap<>();
     if (!nullOrEmpty(entities)) {
       populatePrefetchedServiceStyles(entities, result);
@@ -434,10 +434,10 @@ public interface SearchIndex {
   }
 
   private static void populatePrefetchedServiceStyles(
-      List<? extends EntityInterface> entities, Map<UUID, Optional<Style>> result) {
+      List<? extends EntityInterface<?>> entities, Map<UUID, Optional<Style>> result) {
     Map<UUID, UUID> serviceIdByEntityId = new HashMap<>();
     Map<String, Set<UUID>> serviceIdsByType = new HashMap<>();
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       UUID entityId = entity.getId();
       if (entityId == null) {
         continue;
@@ -490,13 +490,13 @@ public interface SearchIndex {
   }
 
   private static void populatePrefetchedUpstreamLineage(
-      List<? extends EntityInterface> entities, Map<UUID, List<EsLineageData>> result) {
+      List<? extends EntityInterface<?>> entities, Map<UUID, List<EsLineageData>> result) {
     Map<UUID, EntityReference> toRefByEntityId = new HashMap<>(entities.size());
     List<String> toIds = new ArrayList<>(entities.size());
     // Seed every input id with the shared immutable empty-list sentinel. Reindex batches are
     // typically sparse in upstream lineage (most entities have none), so deferring the
     // ArrayList allocation to the first edge keeps the no-lineage path GC-free.
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       UUID entityId = entity.getId();
       if (entityId == null) {
         continue;
@@ -741,7 +741,7 @@ public interface SearchIndex {
   }
 
   private static Map<String, Object> buildUpstreamRelationshipMap(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Table relatedEntity,
       TableConstraint tableConstraint,
       String referredColumn,
@@ -806,7 +806,7 @@ public interface SearchIndex {
   }
 
   private static Map<String, Object> buildUpstreamColumnMap(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       TableConstraint tableConstraint,
       String referredColumn,
       int columnIndex) {
@@ -848,7 +848,7 @@ public interface SearchIndex {
   }
 
   private static void updateExistingUpstreamRelationship(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       TableConstraint tableConstraint,
       Map<String, Object> existingRelationship,
       String referredColumn,
