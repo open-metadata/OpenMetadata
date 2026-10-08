@@ -920,6 +920,66 @@ class TestQueryTableNamesAndTypesCatalogId:
         mock_inspector.get_table_names.assert_called_once_with(MOCK_DATABASE_SCHEMA.name.root)
 
 
+class TestQueryTableNamesAndTypesDelta:
+    """Delta Lake detection from the Glue table Parameters."""
+
+    @pytest.mark.parametrize(
+        "parameters",
+        [
+            # Captured byte-for-byte from a real AWS Glue get_table response, written by the Athena
+            # CREATE EXTERNAL TABLE ... TBLPROPERTIES ('table_type'='DELTA') DDL against a live
+            # delta-rs table. Athena writes table_type in lowercase ("delta") and also
+            # spark.sql.sources.provider=delta, so the match must be case-insensitive.
+            {
+                "EXTERNAL": "TRUE",
+                "spark.sql.sources.schema.part.0": (
+                    '{"type":"struct","fields":[{"name":"id","type":"long",'
+                    '"nullable":true,"metadata":{}},{"name":"name","type":"string",'
+                    '"nullable":true,"metadata":{}}]}'
+                ),
+                "spark.sql.partitionProvider": "catalog",
+                "spark.sql.sources.schema.numParts": "1",
+                "spark.sql.sources.provider": "delta",
+                "delta.lastUpdateVersion": "0",
+                "delta.lastCommitTimestamp": "1791387883367",
+                "table_type": "delta",
+            },
+            # Either marker alone is enough.
+            {"table_type": "DELTA"},
+            {"spark.sql.sources.provider": "delta"},
+        ],
+        ids=["athena_ddl_capture", "table_type_only", "provider_only"],
+    )
+    def test_delta_table_types_as_delta_lake(self, parameters):
+        source, _ = _make_source_with_glue(
+            deepcopy(mock_athena_config),
+            [{"Name": MOCK_TABLE_NAME, "Parameters": parameters}],
+        )
+
+        assert source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root) == [
+            TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.DeltaLake)
+        ]
+
+    def test_iceberg_wins_over_delta(self):
+        # A UniForm table can carry both markers. The Iceberg check runs first, so it stays Iceberg.
+        source, _ = _make_source_with_glue(
+            deepcopy(mock_athena_config),
+            [
+                {
+                    "Name": MOCK_TABLE_NAME,
+                    "Parameters": {
+                        "table_type": "ICEBERG",
+                        "spark.sql.sources.provider": "delta",
+                    },
+                }
+            ],
+        )
+
+        assert source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root) == [
+            TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.Iceberg)
+        ]
+
+
 class TestAthenaColumnDeduplication:
     @staticmethod
     def _column(name, type_="string", comment=None):
