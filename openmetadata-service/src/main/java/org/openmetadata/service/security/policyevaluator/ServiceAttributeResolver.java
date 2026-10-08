@@ -279,11 +279,11 @@ public final class ServiceAttributeResolver {
       Map<String, Set<String>> serviceIdsByName,
       Map<String, Set<String>> serviceIdsByEnvironment,
       Map<String, Set<String>> serviceIdsByType) {
-    EntityRepository<? extends EntityInterface> repository =
+    EntityRepository<? extends EntityInterface<?>> repository =
         Entity.getEntityRepository(serviceEntityType);
-    List<? extends EntityInterface> services =
+    List<? extends EntityInterface<?>> services =
         repository.listAll(repository.getFields(Entity.FIELD_TAGS), new ListFilter(Include.ALL));
-    for (EntityInterface service : services) {
+    for (EntityInterface<?> service : services) {
       String serviceId = service.getId().toString();
       serviceIdsByName.computeIfAbsent(service.getName(), name -> new HashSet<>()).add(serviceId);
       for (TagLabel tag : Entity.getEntityTags(serviceEntityType, service)) {
@@ -297,7 +297,7 @@ public final class ServiceAttributeResolver {
   }
 
   private static void indexServiceType(
-      EntityInterface service, String serviceId, Map<String, Set<String>> serviceIdsByType) {
+      EntityInterface<?> service, String serviceId, Map<String, Set<String>> serviceIdsByType) {
     String serviceType = ServiceAttributeUtil.serviceTypeOf(service);
     if (serviceType == null) {
       return;
@@ -312,7 +312,9 @@ public final class ServiceAttributeResolver {
    * so it arrives with the listing and needs no extra field projection.
    */
   private static void indexEnvironment(
-      EntityInterface service, String serviceId, Map<String, Set<String>> serviceIdsByEnvironment) {
+      EntityInterface<?> service,
+      String serviceId,
+      Map<String, Set<String>> serviceIdsByEnvironment) {
     if (!(service instanceof ServiceEntityInterface typedService)) {
       return;
     }

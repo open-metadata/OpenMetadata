@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/context/contextMemoryStatus.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ContextMemoryStatus",
+  "description": "Lifecycle stage of a context memory. Unprocessed awaits reconciliation; only Approved memories ground new memories and agent responses. Deprecated and Rejected remain readable legacy retirement stages.",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.entity.context.ContextMemoryStatus",
+  "enum": [
+    "Draft",
+    "Approved",
+    "Archived",
+    "Superseded",
+    "Invalidated",
+    "Unprocessed",
+    "Deprecated",
+    "Rejected"
+  ]
+}

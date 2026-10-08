@@ -15,24 +15,33 @@
 
 .om-rdg {
   border-radius: var(--om-radius-xl);
-  border: 1px solid @om-rdg-border-color;
+  border: 1px solid var(--tw-color-border-secondary);
   overflow: hidden;
   user-select: none;
 
   .rdg-cell-range-selections {
-    background-color: @rdg-cell-range-selections-background-color;
+    background-color: var(--tw-color-bg-brand-primary);
   }
 
+  // react-data-grid paints from its own variables (inside `@layer rdg`), so
+  // pointing them at theme tokens themes the grid in both modes.
   .rdg {
+    --rdg-color: var(--tw-color-text-primary);
+    --rdg-border-color: var(--tw-color-border-secondary);
+    --rdg-background-color: var(--tw-color-bg-primary);
+    --rdg-header-background-color: var(--tw-color-bg-secondary);
+    --rdg-row-hover-background-color: var(--tw-color-bg-primary_hover);
+    --rdg-row-selected-background-color: var(--tw-color-bg-primary);
+    --rdg-row-selected-hover-background-color: var(--tw-color-bg-primary_hover);
     border: none;
     height: calc(100vh - 280px);
-    background-color: @grey-9;
+    background-color: var(--tw-color-bg-secondary);
   }
 
   .rdg-cell {
     line-height: 18px;
     padding: 0 var(--om-space-12);
-    color: @grey-900;
+    color: var(--tw-color-text-primary);
   }
 
   .rdg-editor-container {
@@ -55,9 +64,9 @@
   }
 
   .rdg-header-row {
-    background-color: @grey-50;
+    background-color: var(--tw-color-bg-secondary);
     font-weight: var(--om-font-weight-semibold);
-    color: @om-rdg-header-color;
+    color: var(--tw-color-text-secondary);
   }
 
   .rdg-cell-tags {

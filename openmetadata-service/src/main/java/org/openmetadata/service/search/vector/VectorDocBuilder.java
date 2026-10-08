@@ -100,7 +100,7 @@ public class VectorDocBuilder {
      * behavior. Implementations should be fast and side-effect free; they run on the hot path of
      * every create/update and every reembed iteration.
      */
-    String extract(EntityInterface entity);
+    String extract(EntityInterface<?> entity);
   }
 
   private static final Map<String, BodyTextExtractor> BODY_TEXT_EXTRACTORS =
@@ -116,7 +116,7 @@ public class VectorDocBuilder {
    * an entry keyed by {@link Entity#DATABASE} is only consulted for {@link Database} entities.
    */
   private record SemanticChildrenSpec(
-      Function<EntityInterface, List<EntityReference>> childGetter, String phrasePrefix) {}
+      Function<EntityInterface<?>, List<EntityReference>> childGetter, String phrasePrefix) {}
 
   private static final Map<String, SemanticChildrenSpec> SEMANTIC_CHILDREN_SPECS =
       Map.of(
@@ -138,11 +138,12 @@ public class VectorDocBuilder {
    * shared subject/type phrase. Table-driven so new type enrichers are one map entry rather than
    * another {@code instanceof} branch.
    */
-  private static final Map<String, BiConsumer<List<String>, EntityInterface>> SEMANTIC_ENRICHERS =
-      Map.of(
-          Entity.GLOSSARY_TERM,
-              (phrases, e) -> appendGlossaryTermPhrases(phrases, (GlossaryTerm) e),
-          Entity.METRIC, (phrases, e) -> appendMetricPhrases(phrases, (Metric) e));
+  private static final Map<String, BiConsumer<List<String>, EntityInterface<?>>>
+      SEMANTIC_ENRICHERS =
+          Map.of(
+              Entity.GLOSSARY_TERM,
+                  (phrases, e) -> appendGlossaryTermPhrases(phrases, (GlossaryTerm) e),
+              Entity.METRIC, (phrases, e) -> appendMetricPhrases(phrases, (Metric) e));
 
   /**
    * Register a custom {@link BodyTextExtractor} for an entity type. The registry is consulted by
@@ -166,7 +167,7 @@ public class VectorDocBuilder {
    * {@code <parentId>_<chunkIndex>}.
    */
   public static List<Map<String, Object>> fromEntity(
-      EntityInterface entity, EmbeddingClient embeddingClient) {
+      EntityInterface<?> entity, EmbeddingClient embeddingClient) {
     if (embeddingClient == null || !embeddingClient.isAvailable()) {
       // Signal the outage explicitly rather than returning an empty list, which callers cannot
       // distinguish from "entity has no chunks" and would treat as a delete of existing vectors.
@@ -184,7 +185,7 @@ public class VectorDocBuilder {
    * so the service layer can fall back to a full re-embed.
    */
   public static List<Map<String, Object>> fromEntityReusingEmbeddings(
-      EntityInterface entity, Map<Integer, float[]> reuseEmbeddings) {
+      EntityInterface<?> entity, Map<Integer, float[]> reuseEmbeddings) {
     return fromEntity(
         entity,
         (index, textToEmbed) -> {
@@ -198,7 +199,7 @@ public class VectorDocBuilder {
   }
 
   private static List<Map<String, Object>> fromEntity(
-      EntityInterface entity, ChunkEmbeddingSource embeddingSource) {
+      EntityInterface<?> entity, ChunkEmbeddingSource embeddingSource) {
     List<Map<String, Object>> docs = buildChunkFields(entity, embeddingSource);
     if (entity instanceof GlossaryTerm term) {
       List<Map<String, Object>> relatedTermDocs = buildRelatedTermRefs(term);
@@ -232,7 +233,7 @@ public class VectorDocBuilder {
   }
 
   private record ChunkContext(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       String entityType,
       String parentId,
       String fingerprint,
@@ -244,12 +245,12 @@ public class VectorDocBuilder {
 
   /** One embedding-field map per body chunk. See {@link #fromEntity} for the doc shape. */
   public static List<Map<String, Object>> buildChunkFields(
-      EntityInterface entity, EmbeddingClient embeddingClient) {
+      EntityInterface<?> entity, EmbeddingClient embeddingClient) {
     return buildChunkFields(entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed));
   }
 
   private static List<Map<String, Object>> buildChunkFields(
-      EntityInterface entity, ChunkEmbeddingSource embeddingSource) {
+      EntityInterface<?> entity, ChunkEmbeddingSource embeddingSource) {
     EntityReference reference = entity.getEntityReference();
     String entityType = reference == null ? null : reference.getType();
     ChunkContext ctx =
@@ -324,7 +325,7 @@ public class VectorDocBuilder {
    * rather than describe, so the chunk header records them for the restamp check instead.
    */
   private static Map<String, Object> buildDenormalizedFields(
-      EntityInterface entity, String entityType) {
+      EntityInterface<?> entity, String entityType) {
     Map<String, Object> fields = new HashMap<>();
     fields.put("entityType", entityType);
     fields.put("deleted", Boolean.TRUE.equals(entity.getDeleted()));
@@ -464,7 +465,7 @@ public class VectorDocBuilder {
    * matches an owner on nested {@code owners.id}, the same field the entity indices carry; name
    * alone would make an owner unable to find their own restricted memory.
    */
-  private static List<Map<String, Object>> ownerNameObjects(EntityInterface entity) {
+  private static List<Map<String, Object>> ownerNameObjects(EntityInterface<?> entity) {
     List<Map<String, Object>> owners = new ArrayList<>();
     List<EntityReference> ownerRefs =
         entity.getOwners() != null ? entity.getOwners() : Collections.emptyList();
@@ -488,7 +489,7 @@ public class VectorDocBuilder {
    * have it; absence is a no-op.
    */
   private static void addReferenceField(
-      Map<String, Object> fields, EntityInterface entity, String key, String getter) {
+      Map<String, Object> fields, EntityInterface<?> entity, String key, String getter) {
     try {
       Method method = entity.getClass().getMethod(getter);
       Object result = method.invoke(entity);
@@ -514,7 +515,7 @@ public class VectorDocBuilder {
     }
   }
 
-  private static List<Map<String, Object>> tagFqnObjects(EntityInterface entity) {
+  private static List<Map<String, Object>> tagFqnObjects(EntityInterface<?> entity) {
     List<Map<String, Object>> tags = new ArrayList<>();
     List<TagLabel> tagLabels =
         entity.getTags() != null ? entity.getTags() : Collections.emptyList();
@@ -526,7 +527,7 @@ public class VectorDocBuilder {
     return tags;
   }
 
-  private static List<Map<String, Object>> domainNameObjects(EntityInterface entity) {
+  private static List<Map<String, Object>> domainNameObjects(EntityInterface<?> entity) {
     List<Map<String, Object>> domains = new ArrayList<>();
     List<EntityReference> domainRefs =
         entity.getDomains() != null ? entity.getDomains() : Collections.emptyList();
@@ -548,7 +549,7 @@ public class VectorDocBuilder {
    * model.
    */
   public static Map<String, Object> buildEmbeddingFields(
-      EntityInterface entity, EmbeddingClient embeddingClient) {
+      EntityInterface<?> entity, EmbeddingClient embeddingClient) {
     String parentId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
 
@@ -582,7 +583,7 @@ public class VectorDocBuilder {
     return fields;
   }
 
-  public static String computeFingerprintForEntity(EntityInterface entity) {
+  public static String computeFingerprintForEntity(EntityInterface<?> entity) {
     String entityType = entity.getEntityReference().getType();
     String metaLight = buildMetaLightText(entity, entityType);
     String body = buildBodyText(entity, entityType);
@@ -594,7 +595,7 @@ public class VectorDocBuilder {
    * Status and anchor are filter metadata; tracking them separately avoids paid re-embedding.
    */
   @SuppressWarnings("unchecked")
-  private static String shareConfigPart(EntityInterface entity) {
+  private static String shareConfigPart(EntityInterface<?> entity) {
     String part = "";
     if (entity instanceof ContextMemory memory) {
       Map<String, Object> shareConfig = ContextMemoryIndex.shareConfigFields(memory);
@@ -605,7 +606,7 @@ public class VectorDocBuilder {
     return part;
   }
 
-  static String buildMetaLightText(EntityInterface entity, String entityType) {
+  static String buildMetaLightText(EntityInterface<?> entity, String entityType) {
     boolean isGlossary = entity instanceof Glossary;
     boolean isGlossaryTerm = entity instanceof GlossaryTerm;
     boolean isMetric = entity instanceof Metric;
@@ -723,7 +724,7 @@ public class VectorDocBuilder {
     return String.join("; ", parts) + " | ";
   }
 
-  static String buildBodyText(EntityInterface entity, String entityType) {
+  static String buildBodyText(EntityInterface<?> entity, String entityType) {
     if (entityType != null) {
       BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
       if (customExtractor != null) {
@@ -755,14 +756,14 @@ public class VectorDocBuilder {
    * (FQN, entityType, serviceType, owners, customProperties, chunk marker) so the pooled vector
    * isn't dominated by structural tokens that appear in every document.
    */
-  static String buildSemanticMetaLightText(EntityInterface entity, String entityType) {
+  static String buildSemanticMetaLightText(EntityInterface<?> entity, String entityType) {
     boolean isGlossary = entity instanceof Glossary;
     boolean isGlossaryTerm = entity instanceof GlossaryTerm;
 
     List<String> phrases = new ArrayList<>();
     appendSubjectPhrase(phrases, entity, entityType);
 
-    BiConsumer<List<String>, EntityInterface> enricher =
+    BiConsumer<List<String>, EntityInterface<?>> enricher =
         entityType == null ? null : SEMANTIC_ENRICHERS.get(entityType);
     if (enricher != null) {
       enricher.accept(phrases, entity);
@@ -779,7 +780,7 @@ public class VectorDocBuilder {
   }
 
   private static void appendSubjectPhrase(
-      List<String> phrases, EntityInterface entity, String entityType) {
+      List<String> phrases, EntityInterface<?> entity, String entityType) {
     String name = entity.getName();
     String displayName = entity.getDisplayName();
     String subject = null;
@@ -799,7 +800,7 @@ public class VectorDocBuilder {
   }
 
   private static void appendTierAndCertificationPhrases(
-      List<String> phrases, EntityInterface entity) {
+      List<String> phrases, EntityInterface<?> entity) {
     String tier = extractTierLabel(entity);
     if (tier != null) {
       phrases.add(tier.replace('.', ' '));
@@ -849,7 +850,7 @@ public class VectorDocBuilder {
   }
 
   private static void appendTagPhrases(
-      List<String> phrases, EntityInterface entity, boolean isGlossary, boolean isGlossaryTerm) {
+      List<String> phrases, EntityInterface<?> entity, boolean isGlossary, boolean isGlossaryTerm) {
     List<TagLabel> tagsPojo = entity.getTags() != null ? entity.getTags() : Collections.emptyList();
     List<String> classificationTagNames =
         tagsPojo.stream()
@@ -872,7 +873,7 @@ public class VectorDocBuilder {
     }
   }
 
-  private static void appendDomainPhrase(List<String> phrases, EntityInterface entity) {
+  private static void appendDomainPhrase(List<String> phrases, EntityInterface<?> entity) {
     List<EntityReference> domainsPojo =
         entity.getDomains() != null ? entity.getDomains() : Collections.emptyList();
     List<String> domainNames =
@@ -895,7 +896,7 @@ public class VectorDocBuilder {
     return metaLight + ". " + body;
   }
 
-  static String buildSemanticBodyText(EntityInterface entity, String entityType) {
+  static String buildSemanticBodyText(EntityInterface<?> entity, String entityType) {
     if (entityType != null) {
       BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
       if (customExtractor != null) {
@@ -952,7 +953,7 @@ public class VectorDocBuilder {
    * compile-time checked. Returns null when the entity is not a known container or when the
    * child list is empty.
    */
-  static String buildChildContextPhrase(EntityInterface entity, String entityType) {
+  static String buildChildContextPhrase(EntityInterface<?> entity, String entityType) {
     if (entityType == null) {
       return null;
     }
@@ -986,7 +987,7 @@ public class VectorDocBuilder {
     return names;
   }
 
-  static String extractServiceType(EntityInterface entity) {
+  static String extractServiceType(EntityInterface<?> entity) {
     try {
       Method method = entity.getClass().getMethod("getServiceType");
       Object result = method.invoke(entity);
@@ -996,7 +997,7 @@ public class VectorDocBuilder {
     }
   }
 
-  static String extractTierLabel(EntityInterface entity) {
+  static String extractTierLabel(EntityInterface<?> entity) {
     if (entity.getTags() == null) return null;
     for (TagLabel tag : entity.getTags()) {
       if (tag.getTagFQN() != null && tag.getTagFQN().startsWith("Tier.")) {
@@ -1006,7 +1007,7 @@ public class VectorDocBuilder {
     return null;
   }
 
-  static String extractCertificationLabel(EntityInterface entity) {
+  static String extractCertificationLabel(EntityInterface<?> entity) {
     AssetCertification cert = entity.getCertification();
     if (cert != null && cert.getTagLabel() != null) {
       return cert.getTagLabel().getTagFQN();

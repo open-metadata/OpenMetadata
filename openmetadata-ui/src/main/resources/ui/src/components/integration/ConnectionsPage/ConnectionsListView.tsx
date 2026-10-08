@@ -42,6 +42,7 @@ import {
   SlotContribution,
 } from '../../../utils/ExtensionPointTypes';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
+import { getServiceLogoThemeClass } from '../../../utils/ServiceIconUtils';
 import { getServiceCategoryLabel } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -723,6 +724,15 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
                 searchable
                 label={t('label.all-service-types')}
                 options={serviceTypeOptions}
+                renderItemIcon={(serviceType) => (
+                  <img
+                    alt={serviceType}
+                    className={`tw:size-4 tw:object-contain ${getServiceLogoThemeClass(
+                      serviceType
+                    )}`}
+                    src={serviceUtilClassBase.getServiceLogo(serviceType)}
+                  />
+                )}
                 testId="connections-service-type-filter"
                 value={selectedServiceTypes}
                 onChange={(values) => setCsvParam(SERVICE_TYPE_PARAM, values)}

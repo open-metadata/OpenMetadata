@@ -11,14 +11,23 @@
  *  limitations under the License.
  */
 import { Box } from '@openmetadata/ui-core-components';
-import { isUndefined } from 'lodash';
+import { isUndefined, orderBy } from 'lodash';
 import { lazy, useMemo } from 'react';
-import type { ReactGridLayoutProps } from 'react-grid-layout';
+import type {
+  ItemCallback,
+  Layout,
+  ReactGridLayoutProps,
+} from 'react-grid-layout';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import type { WidgetConfig } from '../../../interface/customization.interface';
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
+import {
+  fromLeftPanelEditGrid,
+  getLeftPanelFlowLayout,
+  toLeftPanelEditGrid,
+} from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './generic-tab.less';
 
@@ -57,6 +66,10 @@ interface GenericTabProps {
   isEditView: boolean;
   handleOpenAddWidgetModal?: () => void;
   handlePlaceholderWidgetKey?: (value: string) => void;
+  // Columns of the edit grid: the ones the panel spans in the tab grid.
+  editColumns?: number;
+  onDrag?: ItemCallback;
+  onDragStop?: ItemCallback;
 }
 
 export const LeftPanelContainer = ({
@@ -66,9 +79,30 @@ export const LeftPanelContainer = ({
   isEditView = false,
   handleOpenAddWidgetModal,
   handlePlaceholderWidgetKey,
+  editColumns = 1,
+  onDrag,
+  onDragStop,
 }: GenericTabProps) => {
   const handleRemoveWidget = (widgetKey: string) => {
     onUpdate(layout.filter((widget) => widget.i !== widgetKey));
+  };
+
+  // The edit grid is controlled and always shows the flow layout view mode
+  // draws, so a widget moved or resized into a gap snaps to where it will show.
+  const editLayout = useMemo(
+    () =>
+      getLeftPanelFlowLayout(layout).map((widget) =>
+        toLeftPanelEditGrid(widget, editColumns)
+      ),
+    [layout, editColumns]
+  );
+
+  const handleLayoutChange = (gridLayout: Layout[]) => {
+    onUpdate(
+      getLeftPanelFlowLayout(
+        gridLayout.map((widget) => fromLeftPanelEditGrid(widget, editColumns))
+      )
+    );
   };
 
   const handleWidgetConfigChange = (
@@ -115,7 +149,7 @@ export const LeftPanelContainer = ({
       }
 
       return (
-        <div data-grid={widget} id={widget.i} key={widget.i}>
+        <div id={widget.i} key={widget.i}>
           {widgetComponent}
         </div>
       );
@@ -127,7 +161,9 @@ export const LeftPanelContainer = ({
       return getWidgetFromLayout(layout);
     }
 
-    return layout?.map((widget: WidgetConfig) => {
+    // The edit grid saves its widgets in list order, which need not match where
+    // they sit, so view mode lays them out by row and then column.
+    return orderBy(layout, ['y', 'x']).map((widget: WidgetConfig) => {
       return (
         <div
           className="tw:px-2"
@@ -150,14 +186,17 @@ export const LeftPanelContainer = ({
         useCSSTransforms
         verticalCompact
         className="grid-container"
-        cols={1}
+        cols={editColumns}
         containerPadding={[16, 16]}
         isDraggable={isEditView}
         isResizable={isEditView}
+        layout={editLayout}
         margin={[type === PageType.GlossaryTerm ? 16 : 0, 16]}
         preventCollision={false}
         rowHeight={100}
-        onLayoutChange={onUpdate}>
+        onDrag={onDrag}
+        onDragStop={onDragStop}
+        onLayoutChange={handleLayoutChange}>
         {widgets}
       </ReactGridLayout>
     );

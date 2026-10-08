@@ -28,6 +28,7 @@ import {
   getThresholdUnitLabelParts,
   hasThresholdUnitParam,
   isThresholdUnitOptionDisabled,
+  omitDimensionFailurePolicy,
   ThresholdNoun,
   ThresholdSamplingKind,
   ThresholdTestSemantic,
@@ -159,6 +160,24 @@ describe('getParamOptionLabelKey', () => {
     expect(
       getParamOptionLabelKey('someOtherTest', 'operator', '<=')
     ).toBeUndefined();
+  });
+});
+
+describe('omitDimensionFailurePolicy', () => {
+  const params = { threshold: 5, dimensionFailurePolicy: 'ANY_DIMENSION' };
+
+  it('keeps the policy on a dimensional test', () => {
+    expect(omitDimensionFailurePolicy(params, true)).toEqual(params);
+  });
+
+  it('drops only the policy on any other test', () => {
+    expect(omitDimensionFailurePolicy(params, false)).toEqual({
+      threshold: 5,
+    });
+  });
+
+  it('passes absent params through', () => {
+    expect(omitDimensionFailurePolicy(undefined, false)).toBeUndefined();
   });
 });
 

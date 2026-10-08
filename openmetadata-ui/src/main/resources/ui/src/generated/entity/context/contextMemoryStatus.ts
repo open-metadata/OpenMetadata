@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,24 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@import (reference) '../../../styles/variables.less';
-@import (reference) '../../../styles/components/card.less';
-
-.entity-right-panel-vertical-nav {
-  &.drawer-entity-right-panel-vertical-nav {
-    height: 100vh;
-    max-height: calc(100vh - 70px);
-    margin-right: var(--om-space-8);
-  }
-  height: 100%;
-  width: 80px;
-  right: 2px;
-  position: relative;
-  background: var(--om-color-bg-surface);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border: 1px solid @grey-15;
-  border-radius: var(--om-radius-lg);
+/**
+ * Lifecycle stage of a context memory. Unprocessed awaits reconciliation; only Approved
+ * memories ground new memories and agent responses. Deprecated and Rejected remain readable
+ * legacy retirement stages.
+ */
+export enum ContextMemoryStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    Invalidated = "Invalidated",
+    Rejected = "Rejected",
+    Superseded = "Superseded",
+    Unprocessed = "Unprocessed",
 }

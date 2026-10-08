@@ -247,7 +247,7 @@ public class MigrationUtil {
       if (ref == null || ref.getId() == null) return Collections.emptyList();
 
       Object entity = repo.get(null, ref.getId(), repo.getFields(Entity.FIELD_DOMAINS));
-      if (!(entity instanceof EntityInterface ei)) {
+      if (!(entity instanceof EntityInterface<?> ei)) {
         return Collections.emptyList();
       }
 
