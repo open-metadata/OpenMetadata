@@ -435,12 +435,12 @@ public class DefaultToolContext {
   static BudgetedResult applyBudget(Object result, String toolName) {
     String serialized = JsonUtils.pojoToJson(result);
     Object payload = result;
-    if (serialized.length() > McpResponseTrim.MAX_RESPONSE_CHARS) {
+    if (serialized.length() > McpResponseTrim.maxResponseChars()) {
       LOG.warn(
           "[MCP] tool '{}' response {} chars exceeds {} budget; returning truncation envelope",
           toolName,
           serialized.length(),
-          McpResponseTrim.MAX_RESPONSE_CHARS);
+          McpResponseTrim.maxResponseChars());
       payload =
           McpResponseTrim.oversizedEnvelope(
               serialized.length(), Map.of("tool", toolName), OVERSIZED_ADVICE);
