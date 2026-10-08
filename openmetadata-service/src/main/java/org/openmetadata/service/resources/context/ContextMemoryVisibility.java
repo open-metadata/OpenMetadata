@@ -119,7 +119,7 @@ public final class ContextMemoryVisibility {
    * rule when {@code entity} is a memory and does nothing for every other entity type, so a caller
    * needs no per-type knowledge to be safe.
    */
-  public static void enforceVisibility(EntityInterface entity, SecurityContext securityContext) {
+  public static void enforceVisibility(EntityInterface<?> entity, SecurityContext securityContext) {
     if (entity instanceof ContextMemory memory) {
       enforceVisibility(memory, securityContext);
     }

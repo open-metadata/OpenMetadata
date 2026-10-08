@@ -1532,7 +1532,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       }
     } catch (Exception e) {
       // If not a user, try to resolve as a team
-      EntityInterface entity = Entity.getEntityByName(Entity.TEAM, userOrTeamName, "", ALL);
+      EntityInterface<?> entity = Entity.getEntityByName(Entity.TEAM, userOrTeamName, "", ALL);
       ids.append(entity.getId().toString());
     }
 
@@ -1785,7 +1785,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   @Override
   protected void processChangeEventForBulkImport(
-      EntityRepository<EntityInterface> versioningRepo,
+      EntityRepository<EntityInterface<?>> versioningRepo,
       UriInfo uriInfo,
       SecurityContext securityContext,
       String name,
