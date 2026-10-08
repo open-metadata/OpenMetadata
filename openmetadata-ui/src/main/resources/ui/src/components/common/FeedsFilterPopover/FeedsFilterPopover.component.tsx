@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Checkbox, List, Popover, Space, Tooltip } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Checkbox, List, Popover, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
@@ -49,7 +49,12 @@ const FeedsFilterPopover = ({
         bordered
         dataSource={items}
         footer={
-          <Space className="w-full justify-end">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-end"
+            gap={2}
+            itemClassName="layout-space-item">
             <Button
               color="primary"
               data-testid="cancel-button"
@@ -64,7 +69,7 @@ const FeedsFilterPopover = ({
               onClick={onFilterUpdate}>
               {t('label.update')}
             </Button>
-          </Space>
+          </Box>
         }
         header={
           <Typography className="font-medium">
@@ -77,15 +82,26 @@ const FeedsFilterPopover = ({
             key={item.key}
             title="All"
             onClick={() => setSelectedFilter(item.key)}>
-            <Space align="start">
+            <Box
+              inline
+              align="start"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <Checkbox checked={selectedFilter === item.key} />
-              <Space direction="vertical" size={0}>
+              <Box
+                inline
+                align="stretch"
+                className="layout-space"
+                direction="col"
+                gap={0}
+                itemClassName="layout-space-item">
                 <Typography className="font-medium">{item.title}</Typography>
                 <Typography className="text-muted text-xs">
                   {item.description}
                 </Typography>
-              </Space>
-            </Space>
+              </Box>
+            </Box>
           </List.Item>
         )}
       />

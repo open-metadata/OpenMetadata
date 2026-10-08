@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Input, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps, Input } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -276,10 +276,13 @@ const RequestDescription = () => {
                 />
 
                 <Form.Item noStyle>
-                  <Space
-                    className="w-full justify-end"
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal w-full justify-end"
                     data-testid="cta-buttons"
-                    size={16}>
+                    gap={4}
+                    itemClassName="layout-space-item">
                     <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
@@ -292,7 +295,7 @@ const RequestDescription = () => {
                         ? t('label.suggest')
                         : t('label.save')}
                     </Button>
-                  </Space>
+                  </Box>
                 </Form.Item>
               </Form>
             </div>

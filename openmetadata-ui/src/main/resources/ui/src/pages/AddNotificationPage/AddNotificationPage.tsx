@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Divider,
+  Grid,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Form, Input, Row } from 'antd';
+import { Button, Card, Form, Input } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -74,6 +76,7 @@ import {
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import { toCapabilitiesInput } from '../../utils/Alerts/AlertSelectionUtil';
 import alertsClassBase from '../../utils/AlertsClassBase';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -323,20 +326,22 @@ const AddNotificationPage = () => {
         allowScroll: true,
         children: (
           <Card className="steps-form-container">
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(16, 16) }}>
+              <Grid.Item className="layout-column" span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
-              </Col>
+              </Grid.Item>
 
-              <Col span={24}>
+              <Grid.Item className="layout-column" span={24}>
                 <Typography as="h5" size="text-md" weight="semibold">
                   {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
                     entity: t('label.alert'),
                   })}
                 </Typography>
                 <Typography>{t('message.alerts-description')}</Typography>
-              </Col>
-              <Col span={24}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
                 <AlertSelectionProvider value={selection}>
                   <Form<ModifiedCreateEventSubscription>
                     className="alerts-notification-form"
@@ -351,8 +356,10 @@ const AddNotificationPage = () => {
                     {isLoading ? (
                       <SkeletonParagraph animation={false} rows={8} />
                     ) : (
-                      <Row gutter={[20, 20]}>
-                        <Col span={24}>
+                      <Grid
+                        className="layout-row layout-grid"
+                        style={{ ...getLayoutGutter(20, 20) }}>
+                        <Grid.Item className="layout-column" span={24}>
                           <Form.Item
                             label={t('label.name')}
                             labelCol={{ span: 24 }}
@@ -360,8 +367,8 @@ const AddNotificationPage = () => {
                             rules={NAME_FIELD_RULES}>
                             <Input placeholder={t('label.name')} />
                           </Form.Item>
-                        </Col>
-                        <Col span={24}>
+                        </Grid.Item>
+                        <Grid.Item className="layout-column" span={24}>
                           <Form.Item
                             label={t('label.description')}
                             labelCol={{ span: 24 }}
@@ -372,36 +379,54 @@ const AddNotificationPage = () => {
                               initialValue={alert?.description}
                             />
                           </Form.Item>
-                        </Col>
-                        <Col span={24}>
-                          <Row justify="center">
-                            <Col span={24}>
+                        </Grid.Item>
+                        <Grid.Item className="layout-column" span={24}>
+                          <Box
+                            className="layout-row"
+                            justify="center"
+                            wrap="wrap">
+                            <Box
+                              className="layout-column tw:block"
+                              style={{
+                                maxWidth: '100%',
+                                flex: `0 0 ${'100%'}`,
+                              }}>
                               <AlertFormSourceItem
                                 filterResources={entityFunctions}
                               />
-                            </Col>
+                            </Box>
                             {shouldShowFiltersSection && (
                               <>
-                                <Col>
+                                <Box className="layout-column tw:block">
                                   <Divider
                                     dashed
                                     className="tw:mx-2 tw:h-6 tw:border-r"
                                     orientation="vertical"
                                   />
-                                </Col>
-                                <Col span={24}>
+                                </Box>
+                                <Box
+                                  className="layout-column tw:block"
+                                  style={{
+                                    maxWidth: '100%',
+                                    flex: `0 0 ${'100%'}`,
+                                  }}>
                                   <ObservabilityFormFiltersItem />
-                                </Col>
+                                </Box>
                               </>
                             )}
-                            <Col>
+                            <Box className="layout-column tw:block">
                               <Divider
                                 dashed
                                 className="tw:mx-2 tw:h-6 tw:border-r"
                                 orientation="vertical"
                               />
-                            </Col>
-                            <Col span={24}>
+                            </Box>
+                            <Box
+                              className="layout-column tw:block"
+                              style={{
+                                maxWidth: '100%',
+                                flex: `0 0 ${'100%'}`,
+                              }}>
                               <DestinationFormItemFormBridge
                                 renderValidationField={(validate) => (
                                   <Form.Item
@@ -426,21 +451,26 @@ const AddNotificationPage = () => {
                                   );
                                 }}
                               />
-                            </Col>
+                            </Box>
 
                             {!isEmpty(extraFormWidgets) && (
                               <>
                                 {Object.entries(extraFormWidgets).map(
                                   ([name, Widget]) => (
                                     <Fragment key={name}>
-                                      <Col>
+                                      <Box className="layout-column tw:block">
                                         <Divider
                                           dashed
                                           className="tw:mx-2 tw:h-6 tw:border-r"
                                           orientation="vertical"
                                         />
-                                      </Col>
-                                      <Col span={24}>
+                                      </Box>
+                                      <Box
+                                        className="layout-column tw:block"
+                                        style={{
+                                          maxWidth: '100%',
+                                          flex: `0 0 ${'100%'}`,
+                                        }}>
                                         <Widget
                                           alertDetails={alert}
                                           formRef={form}
@@ -450,14 +480,14 @@ const AddNotificationPage = () => {
                                           }
                                           templates={templates}
                                         />
-                                      </Col>
+                                      </Box>
                                     </Fragment>
                                   )
                                 )}
                               </>
                             )}
-                          </Row>
-                        </Col>
+                          </Box>
+                        </Grid.Item>
                         <Form.Item
                           hidden
                           initialValue={AlertType.Notification}
@@ -474,12 +504,12 @@ const AddNotificationPage = () => {
                         />
 
                         {!isUndefined(inlineAlertDetails) && (
-                          <Col span={24}>
+                          <Grid.Item className="layout-column" span={24}>
                             <InlineAlert {...inlineAlertDetails} />
-                          </Col>
+                          </Grid.Item>
                         )}
 
-                        <Col span={24}>
+                        <Grid.Item className="layout-column" span={24}>
                           <div className="flex justify-end gap-2">
                             <Button
                               data-testid="cancel-button"
@@ -509,13 +539,13 @@ const AddNotificationPage = () => {
                               {t('label.save')}
                             </Button>
                           </div>
-                        </Col>
-                      </Row>
+                        </Grid.Item>
+                      </Grid>
                     )}
                   </Form>
                 </AlertSelectionProvider>
-              </Col>
-            </Row>
+              </Grid.Item>
+            </Grid>
           </Card>
         ),
         minWidth: 700,

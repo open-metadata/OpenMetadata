@@ -17,7 +17,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Card, Space } from 'antd';
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';
@@ -409,7 +409,12 @@ const ActivityFeedCardNew = ({
       )}
       data-conversation-id={feed?.id}
       data-testid="feed-card-v2-sidebar">
-      <Space align="start" className="w-full">
+      <Box
+        inline
+        align="start"
+        className="layout-space layout-space-horizontal w-full"
+        gap={2}
+        itemClassName="layout-space-item">
         <div className="flex gap-2 w-full">
           <div className="flex-center flex-col">
             <UserPopOverCard
@@ -450,11 +455,15 @@ const ActivityFeedCardNew = ({
                 {timestamp}
               </div>
               {!isPost && (
-                <Space
-                  className={getHeaderTagsClassName(
+                <Box
+                  inline
+                  align="center"
+                  className={`layout-space layout-space-horizontal ${getHeaderTagsClassName(
                     showThread,
                     entityRef?.type
-                  )}>
+                  )}`}
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <Typography
                     className="card-style-feed-header"
                     data-testid="headerText"
@@ -463,7 +472,7 @@ const ActivityFeedCardNew = ({
                   </Typography>
 
                   {renderEntityLink}
-                </Space>
+                </Box>
               )}
             </div>
             <FeedCardBodyNew
@@ -500,7 +509,7 @@ const ActivityFeedCardNew = ({
             )}
           </div>
         </div>
-      </Space>
+      </Box>
       {feedActions}
     </Card>
   );
@@ -580,14 +589,32 @@ const ActivityFeedCardNew = ({
       )}
       data-conversation-id={feed?.id}
       data-testid="feed-card-v2-sidebar">
-      <Space align="start" className="w-full">
-        <Space className="d-flex" direction="vertical">
-          <Space
-            className={classNames('d-inline-flex justify-start', {
-              'items-center': !showThread,
-              'items-start':
-                showThread && entityRef?.type === EntityType.CONTAINER,
-            })}>
+      <Box
+        inline
+        align="start"
+        className="layout-space layout-space-horizontal w-full"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Box
+          inline
+          align="stretch"
+          className="layout-space d-flex"
+          direction="col"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Box
+            inline
+            align="center"
+            className={`layout-space layout-space-horizontal ${classNames(
+              'd-inline-flex justify-start',
+              {
+                'items-center': !showThread,
+                'items-start':
+                  showThread && entityRef?.type === EntityType.CONTAINER,
+              }
+            )}`}
+            gap={2}
+            itemClassName="layout-space-item">
             <UserPopOverCard userName={createdBy}>
               <div className="d-flex items-center">
                 <ProfilePicture
@@ -597,13 +624,24 @@ const ActivityFeedCardNew = ({
                 />
               </div>
             </UserPopOverCard>
-            <Space className="d-flex flex-col align-start gap-2" size={0}>
-              <Space
-                className={classNames('d-flex align-center gap-2', {
-                  'header-container-card': !showThread,
-                  'header-container-right-panel': showThread,
-                })}
-                size={0}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal d-flex flex-col align-start gap-2"
+              gap={0}
+              itemClassName="layout-space-item">
+              <Box
+                inline
+                align="center"
+                className={`layout-space layout-space-horizontal ${classNames(
+                  'd-flex align-center gap-2',
+                  {
+                    'header-container-card': !showThread,
+                    'header-container-right-panel': showThread,
+                  }
+                )}`}
+                gap={0}
+                itemClassName="layout-space-item">
                 <Typography
                   className={classNames('mr-2 not-prose', {
                     'activity-feed-user-name': !isPost,
@@ -621,13 +659,17 @@ const ActivityFeedCardNew = ({
                   </UserPopOverCard>
                 </Typography>
                 {timestamp}
-              </Space>
+              </Box>
               {!isPost && (
-                <Space
-                  className={getHeaderTagsClassName(
+                <Box
+                  inline
+                  align="center"
+                  className={`layout-space layout-space-horizontal ${getHeaderTagsClassName(
                     showThread,
                     entityRef?.type
-                  )}>
+                  )}`}
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <Typography
                     className="card-style-feed-header"
                     data-testid="headerText"
@@ -636,10 +678,10 @@ const ActivityFeedCardNew = ({
                   </Typography>
 
                   {renderEntityLink}
-                </Space>
+                </Box>
               )}
-            </Space>
-          </Space>
+            </Box>
+          </Box>
 
           <FeedCardBodyNew
             activity={activity}
@@ -670,8 +712,8 @@ const ActivityFeedCardNew = ({
               onActivityClick={onActivityClick}
             />
           )}
-        </Space>
-      </Space>
+        </Box>
+      </Box>
       {(showThread || isOpenInDrawer) && renderCommentsSection()}
       {feedActions}
     </Card>

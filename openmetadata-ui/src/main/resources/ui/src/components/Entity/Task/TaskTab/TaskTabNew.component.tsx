@@ -12,12 +12,14 @@
  */
 import Icon from '@ant-design/icons';
 import {
+  Box,
   Divider,
+  Grid,
   Owner,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Input, Row, Space, Tooltip } from 'antd';
+import { Button, Form, Input, Tooltip } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
@@ -97,6 +99,7 @@ import {
   TaskPayload,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import {
   formatDate,
   formatIsoDuration,
@@ -1267,10 +1270,13 @@ export const TaskTabNew = ({
 
     if (task.availableTransitions.length === 1 && selectedTransition) {
       return (
-        <Space
-          className="items-end justify-end"
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal items-end justify-end"
           data-testid="task-cta-buttons"
-          size="small">
+          gap={2}
+          itemClassName="layout-space-item">
           <Button
             className="task-action-button"
             data-testid="workflow-task-action-primary"
@@ -1282,15 +1288,18 @@ export const TaskTabNew = ({
             }>
             {selectedTransition.label}
           </Button>
-        </Space>
+        </Box>
       );
     }
 
     return (
-      <Space
-        className="items-end justify-end"
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal items-end justify-end"
         data-testid="task-cta-buttons"
-        size="small">
+        gap={2}
+        itemClassName="layout-space-item">
         <TaskActionSplitButton
           data-testid="workflow-task-action-dropdown"
           isDisabled={!hasWorkflowAccess}
@@ -1306,7 +1315,7 @@ export const TaskTabNew = ({
             }
           }}
         />
-      </Space>
+      </Box>
     );
   }, [
     hasEditAccess,
@@ -1325,10 +1334,13 @@ export const TaskTabNew = ({
       isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
     return (
-      <Space
-        className="items-end  justify-end"
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal items-end  justify-end"
         data-testid="task-cta-buttons"
-        size="small">
+        gap={2}
+        itemClassName="layout-space-item">
         <Tooltip
           title={
             hasApprovalAccess
@@ -1348,7 +1360,7 @@ export const TaskTabNew = ({
             />
           </span>
         </Tooltip>
-      </Space>
+      </Box>
     );
   }, [
     taskAction,
@@ -1410,10 +1422,13 @@ export const TaskTabNew = ({
     }
 
     return (
-      <Space
-        className="items-end  justify-end"
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal items-end  justify-end"
         data-testid="task-cta-buttons"
-        size="small">
+        gap={2}
+        itemClassName="layout-space-item">
         {isCreator && !hasEditAccess && (
           <Button data-testid="close-button" onClick={onTaskClose}>
             {t('label.close')}
@@ -1446,7 +1461,7 @@ export const TaskTabNew = ({
             )}
           </>
         )}
-      </Space>
+      </Box>
     );
   }, [
     onTaskClose,
@@ -1548,17 +1563,22 @@ export const TaskTabNew = ({
           }
         )}>
         <div className="d-flex gap-2" data-testid="task-assignees">
-          <Row className="m-l-0" gutter={[16, 16]}>
-            <Col
-              className="flex items-center gap-2 text-grey-muted"
+          <Grid
+            className="layout-row layout-grid m-l-0"
+            style={{ ...getLayoutGutter(16, 16) }}>
+            <Grid.Item
+              className="layout-column flex items-center gap-2 text-grey-muted"
               span={8}
               style={{ paddingLeft: 0 }}>
               <UserIcon height={16} />
               <Typography className="incident-manager-details-label">
                 {t('label.created-by')}
               </Typography>
-            </Col>
-            <Col span={16} style={{ paddingLeft: '2px' }}>
+            </Grid.Item>
+            <Grid.Item
+              className="layout-column"
+              span={16}
+              style={{ paddingLeft: '2px' }}>
               <Link
                 className="no-underline flex items-center gap-2"
                 to={getUserPath(task.createdBy?.name ?? '')}>
@@ -1573,7 +1593,7 @@ export const TaskTabNew = ({
 
                 <Typography>{task.createdBy?.name}</Typography>
               </Link>
-            </Col>
+            </Grid.Item>
 
             {isEditAssignee ? (
               <Form
@@ -1625,17 +1645,17 @@ export const TaskTabNew = ({
               </Form>
             ) : (
               <>
-                <Col
-                  className="flex gap-2 text-grey-muted"
+                <Grid.Item
+                  className="layout-column flex gap-2 text-grey-muted"
                   span={8}
                   style={{ paddingLeft: 0 }}>
                   <AssigneesIcon height={16} />
                   <Typography className="incident-manager-details-label @grey-8">
                     {t('label.assignee-plural')}
                   </Typography>
-                </Col>
-                <Col
-                  className="flex gap-2"
+                </Grid.Item>
+                <Grid.Item
+                  className="layout-column flex gap-2"
                   span={16}
                   style={{ paddingLeft: '2px' }}>
                   {task?.assignees?.length === 1 ? (
@@ -1662,10 +1682,10 @@ export const TaskTabNew = ({
                       showLabel={false}
                     />
                   )}
-                </Col>
+                </Grid.Item>
               </>
             )}
-          </Row>
+          </Grid>
         </div>
       </div>
     );
@@ -1692,11 +1712,11 @@ export const TaskTabNew = ({
 
     return (
       <div className="action-required-card d-flex flex-wrap justify-between items-center">
-        <Col>
+        <Box className="layout-column tw:block">
           <Typography className="action-required-text">
             {t('label.action-required')}
           </Typography>
-        </Col>
+        </Box>
         {actionButtons}
       </div>
     );
@@ -1733,11 +1753,17 @@ export const TaskTabNew = ({
   const comments = useMemo(() => {
     if (isPostsLoading) {
       return (
-        <Space className="m-y-md" direction="vertical" size={16}>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space m-y-md"
+          direction="col"
+          gap={4}
+          itemClassName="layout-space-item">
           <SkeletonParagraph />
           <SkeletonParagraph />
           <SkeletonParagraph />
-        </Space>
+        </Box>
       );
     }
 
@@ -1748,7 +1774,9 @@ export const TaskTabNew = ({
     );
 
     return (
-      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+      <Box
+        className="layout-column tw:block p-l-0 p-r-0"
+        data-testid="feed-replies">
         {sortedComments.map((comment, index, arr) => {
           const { canEdit, canDelete } = resolveCommentPermissions(
             currentUser,
@@ -1790,7 +1818,7 @@ export const TaskTabNew = ({
             />
           );
         })}
-      </Col>
+      </Box>
     );
   }, [task, closeFeedEditor, isPostsLoading, currentUser, fetchUpdatedThread]);
 
@@ -1810,7 +1838,7 @@ export const TaskTabNew = ({
     }
 
     return (
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <div className="task-proposed-changes">
           <Typography className="task-proposed-changes-title">
             {t('label.proposed-change-plural')}
@@ -1865,7 +1893,7 @@ export const TaskTabNew = ({
             )}
           </div>
         </div>
-      </Col>
+      </Grid.Item>
     );
   };
 
@@ -1928,7 +1956,7 @@ export const TaskTabNew = ({
     );
 
     return (
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <div className="activity-feed-comments-container d-flex flex-col">
           <Typography className={commentsTitleClassName}>
             {t('label.comment-plural')}
@@ -1969,7 +1997,7 @@ export const TaskTabNew = ({
 
           {comments}
         </div>
-      </Col>
+      </Grid.Item>
     );
   };
 
@@ -2104,11 +2132,13 @@ export const TaskTabNew = ({
   };
 
   return (
-    <Row
-      className="relative task-details-panel"
+    <Grid
+      className="layout-row layout-grid relative task-details-panel"
       data-testid="task-tab"
-      gutter={[0, 20]}>
-      <Col className="d-flex items-start task-feed-message-container" span={24}>
+      style={{ ...getLayoutGutter(0, 20) }}>
+      <Grid.Item
+        className="layout-column d-flex items-start task-feed-message-container"
+        span={24}>
         <Icon
           className="m-r-xs"
           component={isTaskClosed ? TaskCloseIcon : TaskOpenIcon}
@@ -2116,19 +2146,23 @@ export const TaskTabNew = ({
         />
 
         {taskLinkTitleElement}
-      </Col>
-      <Divider className="m-0" />
-      {!darHeaderRows && <Col span={24}>{taskHeader}</Col>}
+      </Grid.Item>
+      <Divider className="tw:col-span-full m-0" />
+      {!darHeaderRows && (
+        <Grid.Item className="layout-column" span={24}>
+          {taskHeader}
+        </Grid.Item>
+      )}
       {renderProposedChangesSection()}
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         {renderFeedbackOrTaskPayload()}
         {renderActionRequiredSection()}
 
         {renderCommentsSection()}
-      </Col>
+      </Grid.Item>
 
       {renderPrimaryTaskModal()}
       {renderAssigneeReassignModal()}
-    </Row>
+    </Grid>
   );
 };

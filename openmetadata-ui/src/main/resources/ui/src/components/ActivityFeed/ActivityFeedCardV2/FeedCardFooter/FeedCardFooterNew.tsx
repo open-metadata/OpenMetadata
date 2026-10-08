@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { AvatarStack } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import { AvatarStack, Grid } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -77,9 +77,12 @@ function FeedCardFooterNew({
   }, [showDrawer, conversation]);
 
   return (
-    <Row align="top" className={classNames({ 'm-y-md': isReply })}>
-      <Col
-        className="footer-container"
+    <Grid
+      className={`layout-row layout-grid tw:items-start ${classNames({
+        'm-y-md': isReply,
+      })}`}>
+      <Grid.Item
+        className="layout-column footer-container"
         data-testid="feed-card-footer"
         span={24}>
         <div>
@@ -118,8 +121,8 @@ function FeedCardFooterNew({
             />
           </div>
         </div>
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 }
 
