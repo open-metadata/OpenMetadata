@@ -2366,7 +2366,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/PersonaOverviewCardWidgets.spec.ts",
-        "playwright/e2e/Pages/DataInsight.spec.ts"
+        "playwright/e2e/Pages/DataInsight.spec.ts",
+        "playwright/e2e/Pages/Domains.spec.ts"
       ]
     },
     {
