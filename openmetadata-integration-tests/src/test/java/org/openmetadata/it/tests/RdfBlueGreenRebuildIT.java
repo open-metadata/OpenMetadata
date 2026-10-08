@@ -14,6 +14,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -376,6 +377,34 @@ public class RdfBlueGreenRebuildIT {
                       .one());
       assertTrue(dirty);
     }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
+  void promotionInvalidatesTheDirtyVersionARunningMaterializationRead(final Database database) {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      database.jdbi.useHandle(
+          handle ->
+              handle.execute(
+                  "INSERT INTO rdf_inference_rule (name, json, updatedAt, dirty) VALUES ('clean-rule', '{}', 1, FALSE)"));
+      final long readByRun = dirtyVersion(database, "clean-rule");
+      final BuildTarget target = fixture.primary.begin();
+      write(fixture.primary.buildStorage(target), UUID.randomUUID(), "rebuilt source");
+
+      fixture.primary.promote(target, "test");
+
+      assertNotEquals(readByRun, dirtyVersion(database, "clean-rule"));
+    }
+  }
+
+  private static long dirtyVersion(final Database database, final String rule) {
+    return database.jdbi.withHandle(
+        handle ->
+            handle
+                .createQuery("SELECT dirtyVersion FROM rdf_inference_rule WHERE name = :name")
+                .bind("name", rule)
+                .mapTo(Long.class)
+                .one());
   }
 
   @ParameterizedTest
