@@ -206,6 +206,11 @@ public class SystemResourceIT {
 
     Boolean migrationsPassed = migrations.get("passed").asBoolean();
     assertTrue(migrationsPassed, "Database migrations should have passed");
+    JsonNode seedArtifacts = statusNode.get("System Bots and Agents");
+    assertNotNull(seedArtifacts, "Status should report essential seed artifacts");
+    assertTrue(
+        seedArtifacts.get("passed").asBoolean(),
+        "A clean server has every essential artifact: " + seedArtifacts.get("message").asText());
     assertFalse(
         statusNode.has("LDAP"),
         "The status reports on an LDAP directory only when LDAP is the login provider");

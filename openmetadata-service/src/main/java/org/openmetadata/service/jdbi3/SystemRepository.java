@@ -33,10 +33,12 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -127,6 +129,8 @@ import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
+import org.openmetadata.service.seeding.EssentialSeedReport;
+import org.openmetadata.service.seeding.EssentialSeeds;
 import org.openmetadata.service.seeding.RequiredSeedRows;
 import org.openmetadata.service.seeding.RequiredSeedRows.SeedTable;
 import org.openmetadata.service.util.EntityUtil;
@@ -149,6 +153,7 @@ public class SystemRepository {
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
+  private static final String SEED_ARTIFACTS_VALIDATION_KEY = "System Bots and Agents";
   private static final String LDAP_VALIDATION_KEY = "LDAP";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
@@ -162,7 +167,10 @@ public class SystemRepository {
     LDAP("Validate that the login LDAP directory is reachable and accepts the lookup account."),
     SEARCH_REINDEX(
         "Validate that every deployed search index was built from the current index mapping "
-            + "(i.e. no reindex is pending).");
+            + "(i.e. no reindex is pending)."),
+    SEED_ARTIFACTS(
+        "Validate that the built-in system bots and AI agents exist and were created without"
+            + " errors.");
 
     public final String key;
 
@@ -753,6 +761,7 @@ public class SystemRepository {
     validation.setAdditionalProperty(
         "Object Storage", getObjectStorageValidation(applicationConfig));
     validation.setAdditionalProperty(REINDEX_STATUS_VALIDATION_KEY, getReindexStatusValidation());
+    validation.setAdditionalProperty(SEED_ARTIFACTS_VALIDATION_KEY, getSeedArtifactsValidation());
 
     addExtraValidations(applicationConfig, validation);
 
@@ -1339,6 +1348,46 @@ public class SystemRepository {
       LOG.warn("Failed to check for missing indexes: {}", e.getMessage());
     }
     return missing;
+  }
+
+  private StepValidation getSeedArtifactsValidation() {
+    return seedArtifactsValidation(EssentialSeeds.getInstance()::report);
+  }
+
+  // A lookup failure fails this step only, so one card cannot take down the whole status page.
+  static StepValidation seedArtifactsValidation(Supplier<EssentialSeedReport> report) {
+    StepValidation result;
+    try {
+      result = buildSeedArtifactsStepValidation(report.get());
+    } catch (RuntimeException e) {
+      LOG.error("Could not verify system bots and agents", e);
+      result =
+          new StepValidation()
+              .withDescription(ValidationStepDescription.SEED_ARTIFACTS.key)
+              .withPassed(Boolean.FALSE)
+              .withMessage("Could not verify system bots and agents.");
+    }
+    return result;
+  }
+
+  // Lists type and name only: /system/status is readable by any authenticated user, and seeding
+  // errors can name secret paths and KMS failures. The error text is served by Admin Ops only.
+  static StepValidation buildSeedArtifactsStepValidation(EssentialSeedReport report) {
+    String message =
+        report.isHealthy()
+            ? "All system bots and agents are present."
+            : Stream.concat(
+                    report.missing().stream()
+                        .map(missing -> "Missing: " + missing.entityType() + " " + missing.name()),
+                    report.failures().stream()
+                        .map(
+                            failure ->
+                                "Failed to set up: " + failure.entityType() + " " + failure.item()))
+                .collect(Collectors.joining("\n"));
+    return new StepValidation()
+        .withDescription(ValidationStepDescription.SEED_ARTIFACTS.key)
+        .withPassed(report.isHealthy())
+        .withMessage(message);
   }
 
   private StepValidation getReindexStatusValidation() {
