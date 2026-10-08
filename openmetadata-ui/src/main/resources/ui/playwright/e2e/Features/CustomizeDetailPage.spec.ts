@@ -29,7 +29,6 @@ import {
   getApiContext,
   redirectToHomePage,
   toastNotification,
-  waitForAntdModalToSettle,
 } from '../../utils/common';
 import {
   getCustomizeDetailsDefaultTabs,
@@ -481,9 +480,6 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByRole('dialog')
           .getByRole('button', { name: 'Add' });
 
-        // Wait for dialog animation to complete and button to be stable
-        await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
-        await waitForAntdModalToSettle(adminPage);
         await expect(addButton).toBeEnabled();
         await addButton.click();
 
