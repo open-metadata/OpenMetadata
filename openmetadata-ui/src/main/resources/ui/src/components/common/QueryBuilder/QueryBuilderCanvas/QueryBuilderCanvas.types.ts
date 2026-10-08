@@ -25,6 +25,8 @@ type QueryBuilderButtonKind = 'addRule' | 'delRule' | 'addGroup' | 'delGroup';
 // The testids Playwright locates each surface's buttons by.
 export interface QueryBuilderButtonPreset {
   testIds: Record<QueryBuilderButtonKind, string>;
+  // The rule's remove button; `secondary` matches a form whose other rows remove with a plain button.
+  delRuleColor?: 'link-destructive' | 'secondary';
 }
 
 export interface QueryBuilderNode {
