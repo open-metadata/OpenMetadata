@@ -180,37 +180,6 @@ export const waitForOwnerIndexed = async (
 };
 
 /**
- * Polls the search API until the entity's document matches the given ES query.
- * Use for any field that re-indexes asynchronously after a PATCH (description,
- * tags, domains, etc.). Pass a raw ES query object as `queryFilter`.
- *
- * @example
- * // Wait until description is set
- * await waitForEntityFieldIndexed(page, fqn, 'page', { match: { description: text } });
- * // Wait until description is cleared
- * await waitForEntityFieldIndexed(page, fqn, 'page', { bool: { must_not: [{ exists: { field: 'description' } }] } });
- */
-export const waitForEntityFieldIndexed = async (
-  page: Page,
-  entityFqn: string | undefined,
-  index: string,
-  query: Record<string, unknown>,
-  options?: { timeout?: number; intervals?: number[] }
-) => {
-  const { apiContext, afterAction } = await getApiContext(page);
-
-  try {
-    await waitForSearchIndexed(apiContext, entityFqn, index, {
-      timeout: options?.timeout ?? 60_000,
-      intervals: options?.intervals,
-      queryFilter: JSON.stringify({ query }),
-    });
-  } finally {
-    await afterAction();
-  }
-};
-
-/**
  * Replacement for `page.waitForLoadState('networkidle')`.
  * Waits for DOM content to load and all loader spinners to disappear.
  */

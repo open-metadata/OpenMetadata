@@ -25,10 +25,7 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import {
-  waitForEntityFieldIndexed,
-  waitForOwnerIndexed,
-} from '../../utils/polling';
+import { waitForOwnerIndexed, waitForSearchIndexed } from '../../utils/polling';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
@@ -683,10 +680,13 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       test('Should clear description for knowledgeCenter', async ({
         adminPage,
       }) => {
-        const { page: authenticatedPage, afterAction } =
-          await performAdminLogin(adminPage.context().browser()!, {
-            navigate: true,
-          });
+        const {
+          page: authenticatedPage,
+          apiContext,
+          afterAction,
+        } = await performAdminLogin(adminPage.context().browser()!, {
+          navigate: true,
+        });
         const rightPanel = new RightPanelPageObject(authenticatedPage);
         const localOverview = new OverviewPageObject(rightPanel);
 
@@ -700,25 +700,35 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           const descriptionText = `Description to remove - ${uuid()}`;
           await localOverview.editDescription(descriptionText);
-          await waitForEntityFieldIndexed(
-            authenticatedPage,
+          await waitForSearchIndexed(
+            apiContext,
             knowledgeCenter.responseData.fullyQualifiedName,
             'page',
-            { match_phrase: { description: descriptionText } },
-            { timeout: 90_000 }
+            {
+              timeout: 90_000,
+              queryFilter: JSON.stringify({
+                query: { match_phrase: { description: descriptionText } },
+              }),
+            }
           );
           await localOverview.shouldShowDescriptionWithText(descriptionText);
 
           await localOverview.editDescription('');
 
-          await waitForEntityFieldIndexed(
-            authenticatedPage,
+          await waitForSearchIndexed(
+            apiContext,
             knowledgeCenter.responseData.fullyQualifiedName,
             'page',
             {
-              bool: { must_not: [{ match: { description: descriptionText } }] },
-            },
-            { timeout: 90_000 }
+              timeout: 90_000,
+              queryFilter: JSON.stringify({
+                query: {
+                  bool: {
+                    must_not: [{ match: { description: descriptionText } }],
+                  },
+                },
+              }),
+            }
           );
 
           await navigateToKCEntity(
