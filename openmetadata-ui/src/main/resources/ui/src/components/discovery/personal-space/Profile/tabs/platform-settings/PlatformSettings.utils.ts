@@ -45,7 +45,12 @@ export const hashSubPathToView = (
   }
 
   const isEditing = Boolean(page.hasEditView) && mode === EDIT_SEGMENT;
-  const itemId = isEditing && rest.length ? rest.join('/') : undefined;
+  let itemId: string | undefined;
+  if (isEditing) {
+    itemId = rest.length ? rest.join('/') : undefined;
+  } else if (page.hasItemViews && mode && mode !== EDIT_SEGMENT) {
+    itemId = [mode, ...rest].join('/');
+  }
 
   return {
     type: 'page',
@@ -63,7 +68,7 @@ export const viewToSubPath = (
   }
 
   if (!view.isEditing) {
-    return view.page;
+    return view.itemId ? `${view.page}/${view.itemId}` : view.page;
   }
 
   return view.itemId
@@ -88,3 +93,38 @@ export const nonNegativeNumberRules = (
     Number(value) >= 0 ||
     `${t('label.greater-than-or-equal-to')} 0`,
 });
+
+/** The page's header title and the breadcrumbs below the Platform Settings root. */
+export const getPageHeader = (
+  page: PlatformSettingsPage,
+  view: PlatformSettingsView,
+  t: TFunction
+): { title: string; breadcrumbs: { id: string; label: string }[] } => {
+  const pageTitle = t(page.titleKey);
+  const breadcrumbs = [{ id: page.id, label: pageTitle }];
+  if (view.type !== 'page') {
+    return { title: pageTitle, breadcrumbs };
+  }
+
+  if (view.isEditing) {
+    const title =
+      page.getEditTitle?.(t, view.itemId) ??
+      String(t('label.edit-entity', { entity: pageTitle }));
+
+    return {
+      title,
+      breadcrumbs: [...breadcrumbs, { id: 'edit', label: title }],
+    };
+  }
+
+  if (view.itemId) {
+    const title = page.getItemTitle?.(t, view.itemId) ?? view.itemId;
+
+    return {
+      title,
+      breadcrumbs: [...breadcrumbs, { id: 'item', label: title }],
+    };
+  }
+
+  return { title: pageTitle, breadcrumbs };
+};

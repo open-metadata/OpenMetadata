@@ -33,7 +33,15 @@ export const useSettingsFetch = <T>(fetcher: () => Promise<T>) => {
     }
   }, []);
 
+  // Once per mount. StrictMode runs this effect twice in development; a second
+  // fetch resolving after the user starts typing would let forms that reset
+  // on new data overwrite their edits.
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
+    if (hasLoadedRef.current) {
+      return;
+    }
+    hasLoadedRef.current = true;
     void reload();
   }, [reload]);
 

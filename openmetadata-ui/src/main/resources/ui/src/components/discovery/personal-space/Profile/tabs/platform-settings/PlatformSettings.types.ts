@@ -24,6 +24,9 @@ export type PlatformSettingsPageId =
   | 'data-quality'
   | 'lineage'
   | 'brand-url'
+  | 'data-asset-rules'
+  | 'learning-resources'
+  | 'search'
   | 'app-mode';
 
 export type PlatformSettingsView =
@@ -43,15 +46,22 @@ export interface PlatformSettingsPage {
   descriptionKey: string;
   /** Read-only view first, with an Edit action that opens `<page>/edit`. */
   hasEditView?: boolean;
+  /** Shows a "Beta" badge on the landing card, as the classic menu did. */
+  isBeta?: boolean;
   /** False when the edit form has no per-field docs to offer as hints. */
   hasFieldHints?: boolean;
   isVisible?: (authProvider?: AuthProvider) => boolean;
+  /** Read-only sub-pages at `<page>/<itemId>`, e.g. one entity's search settings. */
+  hasItemViews?: boolean;
+  /** Header title for a read-only sub-page. */
+  getItemTitle?: (t: TFunction, itemId: string) => string;
   /** Overrides the default "Edit {title}" header, e.g. "Add Dimension" on a list page. */
   getEditTitle?: (t: TFunction, itemId?: string) => string;
 }
 
 /** Shared by every platform-settings page: report back to the panel. */
 export interface PlatformSettingsPageProps {
+  itemId?: string;
   onNavigate: (view: PlatformSettingsView) => void;
   onSetHeaderActions: (actions: React.ReactNode) => void;
 }

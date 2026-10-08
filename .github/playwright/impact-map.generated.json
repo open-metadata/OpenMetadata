@@ -7979,6 +7979,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SearchSettings/EntitySeachSettings/EntitySearchSettings.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Search/SearchRelevance.spec.ts"
       ]
@@ -7988,6 +7989,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SearchSettings/FieldConfiguration/FieldConfiguration.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts"
       ]
@@ -8027,6 +8029,7 @@
         "playwright/e2e/Features/MetricAssets.spec.ts",
         "playwright/e2e/Features/OnlineUsers.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Features/SchemaSearch.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
@@ -10143,6 +10146,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/bots/BotAddForm.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts"
       ]
@@ -10443,6 +10447,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/DataAssetRulesSettings.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/DataQualitySettings.tsx"
       ],
       "specs": [
@@ -10471,6 +10483,15 @@
       ],
       "specs": [
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/LearningResourcesSettings.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Pages/LearningResources.spec.ts"
       ]
     },
     {
@@ -10512,6 +10533,70 @@
       ],
       "specs": [
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/EntitySearchSettings.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/FieldValueBoostTable.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/GlobalSearchSettings.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/MatchingFieldCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/RankingSection.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Search/SearchRelevance.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/SearchPreviewPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Search/SearchRelevance.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/search/SearchSettingsView.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
       ]
     },
     {
@@ -12144,6 +12229,7 @@
       "specs": [
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
         "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts"
@@ -12208,6 +12294,7 @@
       "specs": [
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts"
       ]
@@ -12217,6 +12304,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/LearningResourcesPage/LearningResourcesPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts"
       ]
     },
@@ -12427,6 +12515,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/SearchSettingsPage/SearchSettingsPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts"
       ]
     },

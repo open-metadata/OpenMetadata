@@ -14,7 +14,7 @@
 import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Hint, Sliders02 } from '@openmetadata/ui-core-components/icons';
 import type { Key, ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
@@ -23,11 +23,14 @@ import AppModeSettings from './AppModeSettings';
 import AppModeSettingsForm from './AppModeSettingsForm';
 import BrandUrlSettings from './BrandUrlSettings';
 import BrandUrlSettingsForm from './BrandUrlSettingsForm';
+import DataAssetRulesSettings from './DataAssetRulesSettings';
 import DataQualitySettings from './DataQualitySettings';
 import DimensionSettingsForm from './DimensionSettingsForm';
 import EmailSettings from './EmailSettings';
 import EmailSettingsForm from './EmailSettingsForm';
 import HealthCheckSettings from './HealthCheckSettings';
+import LearningResourceSettingsForm from './LearningResourceSettingsForm';
+import LearningResourcesSettings from './LearningResourcesSettings';
 import LineageSettings from './LineageSettings';
 import LineageSettingsForm from './LineageSettingsForm';
 import LoginSettings from './LoginSettings';
@@ -40,6 +43,7 @@ import type {
   PlatformSettingsView,
 } from './PlatformSettings.types';
 import {
+  getPageHeader,
   getVisiblePlatformSettingsPages,
   hashSubPathToView,
   viewToSubPath,
@@ -47,6 +51,8 @@ import {
 import PlatformSettingsLanding from './PlatformSettingsLanding';
 import ProfilerSettings from './ProfilerSettings';
 import ProfilerSettingsForm from './ProfilerSettingsForm';
+import EntitySearchSettings from './search/EntitySearchSettings';
+import SearchSettingsView from './search/SearchSettingsView';
 import ThemeSettings from './ThemeSettings';
 import ThemeSettingsForm from './ThemeSettingsForm';
 
@@ -68,7 +74,15 @@ const VIEW_PAGES: Partial<
   'data-quality': (props) => <DataQualitySettings {...props} />,
   'brand-url': (props) => <BrandUrlSettings {...props} />,
   lineage: (props) => <LineageSettings {...props} />,
+  'data-asset-rules': () => <DataAssetRulesSettings />,
+  'learning-resources': (props) => <LearningResourcesSettings {...props} />,
   'app-mode': (props) => <AppModeSettings {...props} />,
+  search: (props) =>
+    props.itemId ? (
+      <EntitySearchSettings {...props} />
+    ) : (
+      <SearchSettingsView {...props} />
+    ),
 };
 
 /** The `/edit` view of each page that has one. */
@@ -85,6 +99,7 @@ const FORM_PAGES: Partial<
   'data-quality': (props) => <DimensionSettingsForm {...props} />,
   'brand-url': (props) => <BrandUrlSettingsForm {...props} />,
   lineage: (props) => <LineageSettingsForm {...props} />,
+  'learning-resources': (props) => <LearningResourceSettingsForm {...props} />,
   'app-mode': (props) => <AppModeSettingsForm {...props} />,
 };
 
@@ -139,16 +154,9 @@ const PlatformSettingsPanel = ({
     let title = rootLabel;
 
     if (activePage) {
-      const pageTitle = t(activePage.titleKey);
-      breadcrumbs.push({ id: activePage.id, label: pageTitle });
-      title = pageTitle;
-
-      if (view.type === 'page' && view.isEditing) {
-        title =
-          activePage.getEditTitle?.(t, view.itemId) ??
-          t('label.edit-entity', { entity: pageTitle });
-        breadcrumbs.push({ id: 'edit', label: title });
-      }
+      const header = getPageHeader(activePage, view, t);
+      breadcrumbs.push(...header.breadcrumbs);
+      title = header.title;
     }
 
     const hintToggle = (
@@ -210,6 +218,7 @@ const PlatformSettingsPanel = ({
     }
 
     return VIEW_PAGES[view.page]?.({
+      itemId: view.itemId,
       onNavigate,
       onSetHeaderActions: setPageActions,
     });
@@ -226,7 +235,9 @@ const PlatformSettingsPanel = ({
             ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden'
             : 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0'
         }>
-        {content}
+        {/* Keyed by route so moving between items (edit A -> edit B, add ->
+            edit, browser back/forward) remounts the page and loads its data. */}
+        <Fragment key={viewToSubPath(view) ?? 'landing'}>{content}</Fragment>
       </div>
     </Box>
   );
