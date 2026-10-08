@@ -31,15 +31,16 @@
   min-height: 6rem;
 }
 
-.layout-row {
+// :where() keeps specificity at zero so padding utilities on columns still apply.
+:where(.layout-row) {
   --layout-gutter: var(--om-space-0);
+}
 
-  > .layout-column {
-    position: relative;
-    min-width: 0;
-    min-height: 1px;
-    padding-inline: calc(var(--layout-gutter) / 2);
-  }
+:where(.layout-row > .layout-column) {
+  position: relative;
+  min-width: 0;
+  min-height: 1px;
+  padding-inline: calc(var(--layout-gutter) / 2);
 }
 
 // Gutters belong to items, not all 23 grid tracks; track gaps overflow narrow layouts.
