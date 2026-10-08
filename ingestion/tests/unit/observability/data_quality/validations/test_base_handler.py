@@ -285,6 +285,8 @@ class TestBaseTestValidator:
         mock_dimension_result_1.result = "Passed: 80, Failed: 20"
         mock_dimension_result_1.testResultValue = []
         mock_dimension_result_1.impactScore = None
+        mock_dimension_result_1.minBound = None
+        mock_dimension_result_1.maxBound = None
 
         mock_dimension_result_2 = MagicMock(spec=DimensionResult)
         mock_dimension_result_2.dimensionValues = [
@@ -299,6 +301,8 @@ class TestBaseTestValidator:
         mock_dimension_result_2.result = "Passed: 50, Failed: 50"
         mock_dimension_result_2.testResultValue = []
         mock_dimension_result_2.impactScore = None
+        mock_dimension_result_2.minBound = None
+        mock_dimension_result_2.maxBound = None
 
         # Mock _run_dimensional_validation to return DimensionResult objects
         validator._run_dimensional_validation = MagicMock(

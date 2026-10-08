@@ -34,6 +34,37 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+// The calendar popover is react-aria's concern; a native date input keeps
+// these cases about the form's own value handling.
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
+  return {
+    ...actual,
+    DatePicker: ({
+      value,
+      onChange,
+      'aria-label': ariaLabel,
+      'data-testid': testId,
+    }: {
+      value: { toString: () => string } | null;
+      onChange: (value: unknown) => void;
+      'aria-label'?: string;
+      'data-testid'?: string;
+    }) => (
+      <input
+        aria-label={ariaLabel}
+        data-testid={testId}
+        type="date"
+        value={value?.toString() ?? ''}
+        onChange={(e) =>
+          onChange(e.target.value ? actual.parseDate(e.target.value) : null)
+        }
+      />
+    ),
+  };
+});
+
 // The block editor is heavy and irrelevant to what this form owns.
 jest.mock('../../common/RichTextEditor/RichTextEditor', () => ({
   __esModule: true,

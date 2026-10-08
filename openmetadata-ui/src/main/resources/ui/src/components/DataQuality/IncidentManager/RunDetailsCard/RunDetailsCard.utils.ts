@@ -59,18 +59,22 @@ export const getSelectedRun = (
   maxBy(results, 'timestamp');
 
 /**
- * What the run was measured against. A dynamic assertion learns its range per
- * run, so it comes from the result; everything else comes from the parameters
- * or, for tests like not-null, from what the definition implies.
+ * What the run was measured against. A range the result reports wins: it is
+ * the one the run was evaluated against, after a failure threshold widened the
+ * configured bounds or a dynamic assertion learned them. Everything else comes
+ * from the parameters or, for tests like not-null, from what the definition
+ * implies.
  */
 export const getRunExpectation = (
   testCase: TestCase,
   result: RunResult
 ): RunExpectation => {
+  if (!isUndefined(result.minBound) || !isUndefined(result.maxBound)) {
+    return { min: result.minBound, max: result.maxBound };
+  }
+
   if (testCase.useDynamicAssertion) {
-    return 'minBound' in result
-      ? { min: result.minBound, max: result.maxBound }
-      : {};
+    return {};
   }
 
   const { expected, min, max } = resolveParameterExpectation(testCase);
