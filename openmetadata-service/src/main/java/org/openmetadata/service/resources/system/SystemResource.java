@@ -1383,7 +1383,7 @@ public class SystemResource {
     validateConfigurationOfActiveProvider(securityConfig);
     String currentUsername = SecurityUtil.getUserName(securityContext);
     return systemRepository.validateSecurityConfiguration(
-        securityConfig, applicationConfig, currentUsername);
+        withLiveSecretsRestored(securityConfig), applicationConfig, currentUsername);
   }
 
   @POST
@@ -1443,10 +1443,7 @@ public class SystemResource {
     // Scope bean validation to the active provider, as the validate and PUT endpoints do.
     validateConfigurationOfActiveProvider(candidate);
     return TestLoginRoundTrip.getInstance()
-        .start(
-            SecurityUtil.getUserName(securityContext),
-            TestLoginCandidates.withLiveSecretsRestored(
-                candidate, SecurityConfigurationManager.getInstance().getCurrentSecurityConfig()));
+        .start(SecurityUtil.getUserName(securityContext), withLiveSecretsRestored(candidate));
   }
 
   @GET
@@ -1506,6 +1503,15 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
     return TestLoginRoundTrip.getInstance()
         .submitCredentials(SecurityUtil.getUserName(securityContext), request);
+  }
+
+  /**
+   * The SSO form only ever holds the saved secrets masked, so its checks and its Test Login would
+   * otherwise send the mask to the provider or directory and always fail.
+   */
+  private static SecurityConfiguration withLiveSecretsRestored(SecurityConfiguration candidate) {
+    return TestLoginCandidates.withLiveSecretsRestored(
+        candidate, SecurityConfigurationManager.getInstance().getCurrentSecurityConfig());
   }
 
   private static SecurityConfiguration requireTestLoginCandidate(TestLoginStartRequest request) {
