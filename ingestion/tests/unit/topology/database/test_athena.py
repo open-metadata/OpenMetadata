@@ -914,32 +914,37 @@ class TestQueryTableNamesAndTypesCatalogId:
 class TestQueryTableNamesAndTypesDelta:
     """Delta Lake detection from the Glue table Parameters."""
 
-    def test_delta_table_types_as_delta_lake(self):
-        # Parameters captured byte-for-byte from a real AWS Glue get_table response, written by
-        # the Athena CREATE EXTERNAL TABLE ... TBLPROPERTIES ('table_type'='DELTA') DDL against a
-        # live delta-rs table. Athena writes table_type in lowercase ("delta") and also
-        # spark.sql.sources.provider=delta, so the match must be case-insensitive across both keys.
+    @pytest.mark.parametrize(
+        "parameters",
+        [
+            # Captured byte-for-byte from a real AWS Glue get_table response, written by the Athena
+            # CREATE EXTERNAL TABLE ... TBLPROPERTIES ('table_type'='DELTA') DDL against a live
+            # delta-rs table. Athena writes table_type in lowercase ("delta") and also
+            # spark.sql.sources.provider=delta, so the match must be case-insensitive.
+            {
+                "EXTERNAL": "TRUE",
+                "spark.sql.sources.schema.part.0": (
+                    '{"type":"struct","fields":[{"name":"id","type":"long",'
+                    '"nullable":true,"metadata":{}},{"name":"name","type":"string",'
+                    '"nullable":true,"metadata":{}}]}'
+                ),
+                "spark.sql.partitionProvider": "catalog",
+                "spark.sql.sources.schema.numParts": "1",
+                "spark.sql.sources.provider": "delta",
+                "delta.lastUpdateVersion": "0",
+                "delta.lastCommitTimestamp": "1791387883367",
+                "table_type": "delta",
+            },
+            # Either marker alone is enough.
+            {"table_type": "DELTA"},
+            {"spark.sql.sources.provider": "delta"},
+        ],
+        ids=["athena_ddl_capture", "table_type_only", "provider_only"],
+    )
+    def test_delta_table_types_as_delta_lake(self, parameters):
         source, _ = _make_source_with_glue(
             deepcopy(mock_athena_config),
-            [
-                {
-                    "Name": MOCK_TABLE_NAME,
-                    "Parameters": {
-                        "EXTERNAL": "TRUE",
-                        "spark.sql.sources.schema.part.0": (
-                            '{"type":"struct","fields":[{"name":"id","type":"long",'
-                            '"nullable":true,"metadata":{}},{"name":"name","type":"string",'
-                            '"nullable":true,"metadata":{}}]}'
-                        ),
-                        "spark.sql.partitionProvider": "catalog",
-                        "spark.sql.sources.schema.numParts": "1",
-                        "spark.sql.sources.provider": "delta",
-                        "delta.lastUpdateVersion": "0",
-                        "delta.lastCommitTimestamp": "1791387883367",
-                        "table_type": "delta",
-                    },
-                }
-            ],
+            [{"Name": MOCK_TABLE_NAME, "Parameters": parameters}],
         )
 
         assert source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root) == [
