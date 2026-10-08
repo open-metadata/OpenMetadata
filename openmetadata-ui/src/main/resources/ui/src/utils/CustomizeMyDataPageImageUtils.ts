@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import KnowledgeCenterWidgetImg from '../assets/img/widgets/context-center-widget.png';
 import ContextCenterImg from '../assets/img/widgets/landing/context-center.png';
 import CuratedAssetsImg from '../assets/img/widgets/landing/curated-assets.png';
 import DataEstateImg from '../assets/img/widgets/landing/data-estate.png';
@@ -21,7 +22,6 @@ import KpisImg from '../assets/img/widgets/landing/kpis.png';
 import PlatformHealthImg from '../assets/img/widgets/landing/platform-health.png';
 import TeamActivityImg from '../assets/img/widgets/landing/team-activity.png';
 import YoursAndFollowedImg from '../assets/img/widgets/landing/yours-and-followed.png';
-import KnowledgeCenterWidgetImg from '../assets/img/widgets/context-center-widget.png';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 
