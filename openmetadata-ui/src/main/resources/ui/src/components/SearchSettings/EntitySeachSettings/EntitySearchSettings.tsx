@@ -916,10 +916,10 @@ const EntitySearchSettings = () => {
         className="layout-row d-flex gap-5 items-start entity-search-settings-content m-x-0"
         wrap="wrap">
         <Box
-          className="layout-column tw:block d-flex flex-column settings-left-panel"
+          className="layout-column d-flex flex-column settings-left-panel"
           style={{
             maxWidth: '33.33333333333333%',
-            flex: `0 0 ${'33.33333333333333%'}`,
+            flex: '0 0 33.33333333333333%',
           }}>
           <Collapse
             accordion
@@ -949,7 +949,7 @@ const EntitySearchSettings = () => {
               key="1">
               <div className="bg-white configuration-container">
                 <Box
-                  className={`layout-row p-y-xs `}
+                  className="layout-row p-y-xs"
                   data-testid="field-configurations"
                   wrap="wrap">
                   {entitySearchFields.map(
@@ -964,7 +964,7 @@ const EntitySearchSettings = () => {
                       <Box
                         className="layout-column tw:block m-b-sm"
                         key={field.fieldName}
-                        style={{ maxWidth: '100%', flex: `0 0 ${'100%'}` }}>
+                        style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                         <FieldConfiguration
                           entityFields={entityFields}
                           field={field}
@@ -981,7 +981,7 @@ const EntitySearchSettings = () => {
                     )
                   )}
                   {/* Score Mode and Boost Mode Section */}
-                  <Box className="layout-column tw:block flex flex-col w-full">
+                  <Box className="layout-column flex flex-col w-full">
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
                       <Typography
                         className="text-xs font-normal"
@@ -1063,11 +1063,8 @@ const EntitySearchSettings = () => {
           </Collapse>
         </Box>
         <Box
-          className="layout-column tw:block bg-white border-radius-card p-box h-full d-flex flex-column preview-section"
-          style={{
-            maxWidth: '66.66666666666666%',
-            flex: `0 0 ${'66.66666666666666%'}`,
-          }}>
+          className="layout-column bg-white border-radius-card p-box h-full d-flex flex-column preview-section"
+          style={{ maxWidth: '66.66666666666666%' }}>
           <SearchPreview
             disabledSave={!searchSettings.isUpdated || isSaving}
             handleRestoreDefaults={handleRestoreDefaults}

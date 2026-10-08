@@ -1038,7 +1038,7 @@ public class MigrationUtil {
       EntityRepository<?> repo = Entity.getEntityRepository(entityType);
       Object entity =
           repo.getByName(null, entityFQN, repo.getFields(""), Include.NON_DELETED, true);
-      if (entity instanceof EntityInterface ei && ei.getId() != null) {
+      if (entity instanceof EntityInterface<?> ei && ei.getId() != null) {
         resolvedId = ei.getId().toString();
       }
     } catch (Exception e) {
@@ -1779,7 +1779,7 @@ public class MigrationUtil {
       }
       Object entity =
           repo.get(null, UUID.fromString(entityId), repo.getFields(Entity.FIELD_DOMAINS));
-      if (!(entity instanceof EntityInterface ei)) {
+      if (!(entity instanceof EntityInterface<?> ei)) {
         DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
         return Collections.emptyList();
       }

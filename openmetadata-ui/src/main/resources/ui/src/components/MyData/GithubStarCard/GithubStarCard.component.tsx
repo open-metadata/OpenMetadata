@@ -129,7 +129,6 @@ const GithubStarCard = () => {
       `}>
       <Card data-testid="github-star-popup-card">
         <Box
-          inline
           align="center"
           className="layout-space layout-space-horizontal d-flex justify-between"
           gap={2}

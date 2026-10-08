@@ -109,7 +109,7 @@ const SearchBoostsSection = ({
             <Box
               className="layout-row d-flex items-center justify-between w-full"
               wrap="wrap">
-              <Box className="layout-column tw:block d-flex items-center gap-4">
+              <Box className="layout-column d-flex items-center gap-4">
                 <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.term-boost')}
                 </Typography>
@@ -117,7 +117,7 @@ const SearchBoostsSection = ({
                   {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
                 </span>
               </Box>
-              <Box className="layout-column tw:block d-flex items-center gap-2">
+              <Box className="layout-column d-flex items-center gap-2">
                 <Button
                   className="term-boost-save-btn"
                   data-testid="term-boost-save-btn"
@@ -154,7 +154,7 @@ const SearchBoostsSection = ({
             <Box
               className="layout-row d-flex items-center justify-between w-full"
               wrap="wrap">
-              <Box className="layout-column tw:block d-flex items-center gap-4">
+              <Box className="layout-column d-flex items-center gap-4">
                 <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.field-value-boost')}
                 </Typography>
@@ -162,7 +162,7 @@ const SearchBoostsSection = ({
                   {searchConfig?.globalSettings?.fieldValueBoosts?.length ?? 0}
                 </span>
               </Box>
-              <Box className="layout-column tw:block d-flex items-center gap-2">
+              <Box className="layout-column d-flex items-center gap-2">
                 <Button
                   className="field-value-boost-add-btn"
                   data-testid="add-field-value-boost-btn"
@@ -670,7 +670,7 @@ const SearchSettingsPage = () => {
                   wrap="wrap">
                   <Box
                     className="layout-column tw:block"
-                    style={{ flex: `0 0 ${'100px'}` }}>
+                    style={{ flex: '0 0 100px' }}>
                     <Typography>
                       {t('label.keyword')}:{' '}
                       {(
@@ -711,7 +711,7 @@ const SearchSettingsPage = () => {
                   </Box>
                   <Box
                     className="layout-column tw:block"
-                    style={{ flex: `0 0 ${'100px'}` }}>
+                    style={{ flex: '0 0 100px' }}>
                     <Typography>
                       {t('label.semantic')}:{' '}
                       {(

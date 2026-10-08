@@ -91,11 +91,11 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
             stored(subject.getType(), subject.getId()), entity -> of(entity, destination));
   }
 
-  private Recipients of(EntityInterface entity, SubscriptionDestination destination) {
+  private Recipients of(EntityInterface<?> entity, SubscriptionDestination destination) {
     return Principals.of(entity.getOwners(), users, teams, destination);
   }
 
-  private static Lookup<EntityInterface> stored(String entityType, UUID entityId) {
+  private static Lookup<EntityInterface<?>> stored(String entityType, UUID entityId) {
     return Lookup.of(
         entityType + " " + entityId,
         () -> Entity.getEntity(entityType, entityId, "owners", Include.NON_DELETED));

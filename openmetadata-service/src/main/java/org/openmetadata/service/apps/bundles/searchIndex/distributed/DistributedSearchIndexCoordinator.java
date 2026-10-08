@@ -292,7 +292,7 @@ public class DistributedSearchIndexCoordinator {
    * make the {@code name > :afterName} predicate evaluate to NULL/false and return zero
    * rows.
    */
-  private <T extends org.openmetadata.schema.EntityInterface> void walkAndRecord(
+  private <T extends org.openmetadata.schema.EntityInterface<?>> void walkAndRecord(
       EntityRepository<T> repo, List<Long> sortedTargets, Map<Long, String> result) {
     ListFilter filter = repo.getReindexFilter();
     String afterName = "";
@@ -338,7 +338,7 @@ public class DistributedSearchIndexCoordinator {
     }
   }
 
-  private <T extends org.openmetadata.schema.EntityInterface> Object deserializeLast(
+  private <T extends org.openmetadata.schema.EntityInterface<?>> Object deserializeLast(
       EntityRepository<T> repo, List<String> batch) {
     return JsonUtils.readValue(batch.get(batch.size() - 1), repo.getEntityClass());
   }

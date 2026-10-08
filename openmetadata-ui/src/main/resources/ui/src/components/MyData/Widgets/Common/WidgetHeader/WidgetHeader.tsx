@@ -89,12 +89,12 @@ const WidgetHeader = ({
 
   return (
     <Box
-      className={`layout-row ${`widget-header ${className}`}`}
+      className={`layout-row widget-header ${className}`}
       data-testid="widget-header"
       justify="between"
       wrap="wrap">
       <Box
-        className="layout-column tw:block d-flex items-center h-full min-h-8 widget-header-left-col"
+        className="layout-column d-flex items-center h-full min-h-8 widget-header-left-col"
         style={{ flex: '1 1 auto' }}>
         {icon && (
           <div className="d-flex h-6 w-6 m-r-xs header-title-icon">{icon}</div>

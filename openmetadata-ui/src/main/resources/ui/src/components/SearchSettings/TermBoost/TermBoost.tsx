@@ -150,7 +150,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             onChange={handleTagChange}
           />
         </Box>
-        <Box className="layout-column tw:block d-flex flex-column gap-1">
+        <Box className="layout-column d-flex flex-column gap-1">
           <div className="d-flex items-center justify-between p-x-xss">
             <Typography data-testid="term-boost-impact-label">
               {t('label.boost')}
@@ -173,7 +173,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
           </div>
           <Divider className="m-b-md m-t-0" />
         </Box>
-        <Box className="layout-column tw:block d-flex items-center justify-end gap-2">
+        <Box className="layout-column d-flex items-center justify-end gap-2">
           <Button
             className="delete-term-boost"
             data-testid="delete-term-boost"

@@ -365,14 +365,14 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  protected void applyInheritance(APIEndpoint entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(APIEndpoint entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
     inheritTags(entity, fields, parent);
   }
 
   @Override
-  public EntityInterface getParentEntity(APIEndpoint entity, String fields) {
+  public EntityInterface<?> getParentEntity(APIEndpoint entity, String fields) {
     return Entity.getEntity(entity.getApiCollection(), fields, Include.ALL);
   }
 
@@ -525,7 +525,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     APIEndpoint apiEndpoint = (APIEndpoint) entity;
     EntityUtil.mergeTags(allTags, apiEndpoint.getTags());
