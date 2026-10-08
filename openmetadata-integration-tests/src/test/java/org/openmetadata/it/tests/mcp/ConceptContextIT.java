@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -29,34 +31,51 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.schema.api.context.CreateContextMemory;
+import org.openmetadata.schema.api.data.CreateDashboard;
+import org.openmetadata.schema.api.data.CreateDashboardDataModel;
+import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
+import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.services.CreateDashboardService;
+import org.openmetadata.schema.api.services.CreateMessagingService;
+import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyAttributeDataType;
+import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
@@ -123,6 +142,7 @@ class ConceptContextIT extends McpTestBase {
     assertThat(binding.path("column").asText())
         .isEqualTo(orders.getFullyQualifiedName() + "." + COLUMN);
     assertThat(binding.path("dataType").asText()).isEqualToIgnoringCase("BIGINT");
+    assertThat(binding.path("rowCount").asDouble()).isEqualTo(3.0);
     assertThat(binding.at("/profile/distinctCount").asDouble()).isEqualTo(3.0);
     assertThat(binding.path("sampleValues").size()).isEqualTo(3);
     assertThat(context.at("/attributes/0/unit").asText()).isEqualTo("cents");
@@ -164,6 +184,7 @@ class ConceptContextIT extends McpTestBase {
     assertThat(binding.path("column").asText())
         .isEqualTo(orders.getFullyQualifiedName() + "." + COLUMN);
     assertThat(binding.hasNonNull("profile")).isFalse();
+    assertThat(binding.hasNonNull("rowCount")).isFalse();
     assertThat(binding.hasNonNull("sampleValues")).isFalse();
   }
 
@@ -273,6 +294,275 @@ class ConceptContextIT extends McpTestBase {
     assertThat(termContext(evidenceTerm).path("evidence").size()).isZero();
   }
 
+  @Test
+  void metricMemoryIsEvidenceNotABinding() throws Exception {
+    Metric attached = createMetric("memory_metric", EXPRESSION, orders);
+    Query query = createQuery("SELECT SUM(amount_cents) / 100 AS metric_revenue FROM orders");
+    createMemory(
+        "metric_memory_" + suffix,
+        EntityStatus.APPROVED,
+        reference(attached.getId(), "metric"),
+        query);
+    JsonNode context = metricContext(attached);
+    JsonNode concept = context.at("/assetContext/conceptContext");
+    assertThat(bindingKeys(concept))
+        .containsExactly(
+            orders.getFullyQualifiedName(), orders.getFullyQualifiedName() + "." + COLUMN);
+    assertThat(concept.path("totalAssets").asInt()).isEqualTo(1);
+    assertThat(concept.path("totalBindings").asInt()).isEqualTo(2);
+    assertThat(concept.at("/evidence/0/id").asText()).isEqualTo(query.getId().toString());
+    assertThat(context.at("/assetContext/generic/sourceAssets").size()).isEqualTo(1);
+  }
+
+  @Test
+  void conceptsBindDashboardsDataModelsAndTopicFields() throws Exception {
+    GlossaryTerm kpi = createTerm("BoardKpi");
+    DashboardService dashboards =
+        post(
+            "services/dashboardServices",
+            new CreateDashboardService()
+                .withName("concept_dash_" + suffix)
+                .withServiceType(DashboardServiceType.CustomDashboard),
+            DashboardService.class);
+    Dashboard dashboard =
+        post(
+            "dashboards",
+            new CreateDashboard()
+                .withName("board_" + suffix)
+                .withService(dashboards.getFullyQualifiedName())
+                .withTags(List.of(glossaryTag(kpi))),
+            Dashboard.class);
+    DashboardDataModel model =
+        post(
+            "dashboard/datamodels",
+            new CreateDashboardDataModel()
+                .withName("model_" + suffix)
+                .withService(dashboards.getFullyQualifiedName())
+                .withDataModelType(DataModelType.SupersetDataModel)
+                .withColumns(
+                    List.of(
+                        new Column()
+                            .withName(COLUMN)
+                            .withDataType(ColumnDataType.BIGINT)
+                            .withTags(List.of(glossaryTag(kpi))))),
+            DashboardDataModel.class);
+    Topic topic = createTopic(kpi);
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(() -> assertThat(termContext(kpi).path("totalAssets").asInt()).isEqualTo(3));
+    JsonNode concept = termContext(kpi);
+    assertThat(bindingKeys(concept))
+        .containsExactlyInAnyOrder(
+            dashboard.getFullyQualifiedName(),
+            model.getFullyQualifiedName() + "." + COLUMN,
+            topic.getFullyQualifiedName() + ".payload.amount");
+    assertThat(concept.findValuesAsText("assetType"))
+        .containsExactlyInAnyOrder("dashboard", "dashboardDataModel", "topic");
+    assertThat(concept.findParents("sampleValues")).isEmpty();
+
+    Metric modelMetric =
+        createMetric(
+            "model_metric",
+            "SUM(" + COLUMN + ") / 100",
+            List.of(
+                reference(dashboard.getId(), "dashboard"),
+                reference(model.getId(), "dashboardDataModel"),
+                reference(topic.getId(), "topic")));
+    assertThat(bindingKeys(metricContext(modelMetric).at("/assetContext/conceptContext")))
+        .containsExactlyInAnyOrder(
+            dashboard.getFullyQualifiedName(),
+            model.getFullyQualifiedName(),
+            model.getFullyQualifiedName() + "." + COLUMN,
+            topic.getFullyQualifiedName());
+  }
+
+  @Test
+  void assetLevelAndNestedColumnBindingsStayDistinct() throws Exception {
+    GlossaryTerm key = createTerm("CustomerKey");
+    Table customers =
+        createTable(
+            "customers_" + suffix,
+            List.of(
+                new Column()
+                    .withName("id")
+                    .withDataType(ColumnDataType.BIGINT)
+                    .withTags(List.of(glossaryTag(key)))),
+            List.of(glossaryTag(key)));
+    Table nested =
+        createTable(
+            "nested_" + suffix,
+            List.of(
+                new Column()
+                    .withName("customer")
+                    .withDataType(ColumnDataType.STRUCT)
+                    .withDataTypeDisplay("struct<customer_id:bigint>")
+                    .withChildren(
+                        List.of(
+                            new Column()
+                                .withName("customer_id")
+                                .withDataType(ColumnDataType.BIGINT)
+                                .withTags(List.of(glossaryTag(key)))))),
+            List.of());
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(() -> assertThat(termContext(key).path("totalAssets").asInt()).isEqualTo(2));
+    JsonNode concept = termContext(key);
+    assertThat(bindingKeys(concept))
+        .containsExactlyInAnyOrder(
+            customers.getFullyQualifiedName(),
+            customers.getFullyQualifiedName() + ".id",
+            nested.getFullyQualifiedName() + ".customer.customer_id");
+    assertThat(concept.path("totalBindings").asInt()).isEqualTo(3);
+    JsonNode customersContext = tableContext(customers);
+    assertThat(customersContext.at("/glossaryTerms/0/fullyQualifiedName").asText())
+        .isEqualTo(key.getFullyQualifiedName());
+    JsonNode nestedField = tableContext(nested).at("/assetContext/table/columns/1");
+    assertThat(nestedField.path("name").asText()).isEqualTo("customer.customer_id");
+    assertThat(nestedField.at("/glossaryTerms/0/fullyQualifiedName").asText())
+        .isEqualTo(key.getFullyQualifiedName());
+  }
+
+  @Test
+  void perAssetCapKeepsActualBindingCount() throws Exception {
+    GlossaryTerm wide = createTerm("Wide");
+    createBoundTable(orders, wide, "wide_" + suffix, 30, false);
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              JsonNode context = termContext(wide);
+              assertThat(context.path("totalAssets").asInt()).isEqualTo(1);
+              assertThat(context.path("totalBindings").asInt()).isEqualTo(30);
+              assertThat(context.path("bindings").size()).isEqualTo(25);
+              assertThat(context.path("truncated").asBoolean()).isTrue();
+            });
+    String markdown =
+        getResponse("glossaryTerms/name/" + wide.getFullyQualifiedName() + "/context", authToken)
+            .body();
+    assertThat(markdown).contains("Bindings capped: showing 25 of 30 bindings across 1");
+  }
+
+  @Test
+  void metricColumnsResolveThroughAliasesButNeverAcrossAmbiguousTables() throws Exception {
+    Table payments =
+        createTable(
+            "payments_" + suffix,
+            List.of(
+                new Column().withName(COLUMN).withDataType(ColumnDataType.BIGINT),
+                new Column()
+                    .withName("status")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(16)),
+            List.of());
+    Metric aliased =
+        createMetric(
+            "aliased",
+            "SELECT SUM(p.amount_cents) / 100 AS revenue FROM "
+                + payments.getName()
+                + " p WHERE p.status = 'paid'",
+            payments);
+    JsonNode concept = metricContext(aliased).at("/assetContext/conceptContext");
+    assertThat(bindingKeys(concept))
+        .containsExactly(
+            payments.getFullyQualifiedName(),
+            payments.getFullyQualifiedName() + "." + COLUMN,
+            payments.getFullyQualifiedName() + ".status");
+    Metric ambiguous = createMetric("ambiguous", "SUM(amount_cents)", orders, payments);
+    JsonNode context = metricContext(ambiguous);
+    assertThat(bindingKeys(context.at("/assetContext/conceptContext")))
+        .containsExactlyInAnyOrder(
+            orders.getFullyQualifiedName(), payments.getFullyQualifiedName());
+    assertThat(context.at("/assetContext/generic/sourceAssets").size()).isEqualTo(2);
+  }
+
+  @Test
+  void relatedMetricsAreListedOnBothConcepts() throws Exception {
+    Metric base = createMetric("base", EXPRESSION, orders);
+    Metric derived =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("derived_" + suffix)
+                .withMetricExpression(new MetricExpression().withCode("SUM(amount_cents)"))
+                .withRelatedMetrics(List.of(base.getFullyQualifiedName())),
+            Metric.class);
+    assertThat(metricNames(metricContext(derived))).contains(base.getFullyQualifiedName());
+    assertThat(metricNames(metricContext(base))).contains(derived.getFullyQualifiedName());
+  }
+
+  @Test
+  void evidenceSkipsUnapprovedMemoriesAndExcerptsLongQueries() throws Exception {
+    GlossaryTerm evidenceTerm = createTerm("LongEvidence");
+    String longSql = "SELECT SUM(amount_cents) FROM orders -- " + "x".repeat(4500);
+    Query approved = createQuery(longSql);
+    Query draft = createQuery("SELECT 'draft' FROM orders");
+    EntityReference primary = reference(evidenceTerm.getId(), "glossaryTerm");
+    createMemory("long_" + suffix, EntityStatus.APPROVED, primary, approved);
+    createMemory("draft_" + suffix, EntityStatus.DRAFT, primary, draft);
+    JsonNode evidence = termContext(evidenceTerm).path("evidence");
+    assertThat(evidence.size()).isEqualTo(1);
+    assertThat(evidence.at("/0/id").asText()).isEqualTo(approved.getId().toString());
+    assertThat(evidence.at("/0/queryTruncated").asBoolean()).isTrue();
+    assertThat(evidence.at("/0/query").asText())
+        .hasSize(4000)
+        .isEqualTo(longSql.substring(0, 4000));
+    String markdown =
+        getResponse(
+                "glossaryTerms/name/" + evidenceTerm.getFullyQualifiedName() + "/context",
+                authToken)
+            .body();
+    assertThat(markdown)
+        .contains("Saved Query Evidence", "Query excerpt;")
+        .doesNotContain("SELECT 'draft'");
+  }
+
+  @Test
+  void termMarkdownRendersEveryConceptSection() throws Exception {
+    String markdown =
+        getResponse("glossaryTerms/name/" + term.getFullyQualifiedName() + "/context", authToken)
+            .body();
+    assertThat(markdown)
+        .contains(
+            "Concept Definition",
+            DEFINITION,
+            "Ontology Attributes",
+            "| amount | INTEGER | cents |",
+            "Concept Bindings",
+            "| "
+                + orders.getFullyQualifiedName()
+                + " | table | "
+                + orders.getFullyQualifiedName()
+                + "."
+                + COLUMN,
+            "Bound Profiles",
+            "Stored samples for `"
+                + orders.getFullyQualifiedName()
+                + "."
+                + COLUMN
+                + "`: 100, 200, 700");
+  }
+
+  @Test
+  void mcpRejectsNonConceptTypesAndUnknownConcepts() throws Exception {
+    JsonNode wrongType =
+        executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "get_concept_context",
+                Map.of("entityType", "table", "fqn", orders.getFullyQualifiedName())));
+    assertThat(wrongType.at("/result/isError").asBoolean(false)).isTrue();
+    assertThat(wrongType.at("/result/content/0/text").asText()).contains("glossaryTerm or metric");
+    JsonNode missing =
+        executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "get_concept_context",
+                Map.of("entityType", "glossaryTerm", "fqn", "missing_" + suffix + ".Term")));
+    assertThat(missing.at("/result/isError").asBoolean(false)).isTrue();
+    assertThat(
+            getResponse("glossaryTerms/name/missing_" + suffix + ".Term/context", authToken)
+                .statusCode())
+        .isEqualTo(404);
+  }
+
   private static GlossaryTerm createTerm(String name) throws Exception {
     return post(
         "glossaryTerms",
@@ -318,6 +608,122 @@ class ConceptContextIT extends McpTestBase {
             .withDatabaseSchema(anchor.getDatabaseSchema().getFullyQualifiedName())
             .withColumns(columns),
         Table.class);
+  }
+
+  private static Table createTable(String name, List<Column> columns, List<TagLabel> tags)
+      throws Exception {
+    return post(
+        "tables",
+        new CreateTable()
+            .withName(name)
+            .withDatabaseSchema(orders.getDatabaseSchema().getFullyQualifiedName())
+            .withColumns(columns)
+            .withTags(tags),
+        Table.class);
+  }
+
+  private static Topic createTopic(GlossaryTerm term) throws Exception {
+    MessagingService messaging =
+        post(
+            "services/messagingServices",
+            new CreateMessagingService()
+                .withName("concept_kafka_" + suffix)
+                .withServiceType(MessagingServiceType.CustomMessaging),
+            MessagingService.class);
+    Field amount =
+        new Field()
+            .withName("amount")
+            .withDataType(FieldDataType.LONG)
+            .withTags(List.of(glossaryTag(term)));
+    return post(
+        "topics",
+        new CreateTopic()
+            .withName("events_" + suffix)
+            .withService(messaging.getFullyQualifiedName())
+            .withPartitions(1)
+            .withMessageSchema(
+                new MessageSchema()
+                    .withSchemaType(SchemaType.Avro)
+                    .withSchemaFields(
+                        List.of(
+                            new Field()
+                                .withName("payload")
+                                .withDataType(FieldDataType.RECORD)
+                                .withChildren(List.of(amount))))),
+        Topic.class);
+  }
+
+  private static Metric createMetric(String name, String expression, Table... tables)
+      throws Exception {
+    return createMetric(
+        name,
+        expression,
+        Stream.of(tables).map(table -> reference(table.getId(), "table")).toList());
+  }
+
+  private static Metric createMetric(String name, String expression, List<EntityReference> assets)
+      throws Exception {
+    Metric created =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName(name + "_" + suffix)
+                .withMetricExpression(new MetricExpression().withCode(expression)),
+            Metric.class);
+    put(
+        "metrics/" + created.getName() + "/assets/add",
+        new BulkAssets().withAssets(assets),
+        BulkOperationResult.class);
+    return created;
+  }
+
+  private static Query createQuery(String sql) throws Exception {
+    return post(
+        "queries",
+        new CreateQuery().withService(orders.getService().getFullyQualifiedName()).withQuery(sql),
+        Query.class);
+  }
+
+  private static void createMemory(
+      String name, EntityStatus status, EntityReference primary, Query query) throws Exception {
+    post(
+        "contextCenter/memories",
+        new CreateContextMemory()
+            .withName(name)
+            .withDescription("Revenue is stored in cents.")
+            .withQuestion("How is revenue encoded?")
+            .withAnswer("Revenue is stored in cents.")
+            .withEntityStatus(status)
+            .withPrimaryEntity(primary)
+            .withRelatedEntities(List.of(reference(query.getId(), "query"))),
+        ContextMemory.class);
+  }
+
+  private static List<String> bindingKeys(JsonNode concept) {
+    return StreamSupport.stream(concept.path("bindings").spliterator(), false)
+        .map(
+            binding ->
+                binding.hasNonNull("column")
+                    ? binding.path("column").asText()
+                    : binding.path("assetFqn").asText())
+        .toList();
+  }
+
+  private static List<String> metricNames(JsonNode context) {
+    return StreamSupport.stream(
+            context.at("/assetContext/conceptContext/metrics").spliterator(), false)
+        .map(metric -> metric.path("fullyQualifiedName").asText())
+        .toList();
+  }
+
+  private static JsonNode metricContext(Metric metric) throws Exception {
+    return get(
+        "metrics/name/" + metric.getFullyQualifiedName() + "/context?format=json", JsonNode.class);
+  }
+
+  private static JsonNode tableContext(Table table) throws Exception {
+    return get(
+        "tables/name/" + table.getFullyQualifiedName() + "/context?format=json", JsonNode.class);
   }
 
   private static TagLabel glossaryTag(GlossaryTerm term) {

@@ -439,6 +439,10 @@
                 "dataType": {
                     "type": "string"
                 },
+                "rowCount": {
+                    "description": "Latest profiled row count of the bound table, repeated on each of its bindings. Present only for tables whose data profile the caller may view.",
+                    "type": "number"
+                },
                 "profile": {
                     "$ref": "#/definitions/columnProfileSummary"
                 },

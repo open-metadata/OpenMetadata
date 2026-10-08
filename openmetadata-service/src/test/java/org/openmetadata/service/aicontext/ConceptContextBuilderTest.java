@@ -28,14 +28,20 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.TableData;
@@ -55,7 +61,7 @@ class ConceptContextBuilderTest {
     Table table = table("orders", column("amount_cents", TERM), column("other", "Other.Amount"));
     table.withTags(List.of(tag(TERM)));
     table.getColumns().getFirst().withChildren(List.of(column("nested", TERM)));
-    catalog.tables.add(table);
+    catalog.assets.add(table);
 
     ConceptContext context = build(catalog, term());
 
@@ -72,8 +78,8 @@ class ConceptContextBuilderTest {
   @Test
   void deniedAssetsAreExcludedFromBindingsAndCounts() {
     Catalog catalog = new Catalog();
-    catalog.tables.add(table("visible", column("amount", TERM)));
-    catalog.tables.add(table("secret", column("amount", TERM)));
+    catalog.assets.add(table("visible", column("amount", TERM)));
+    catalog.assets.add(table("secret", column("amount", TERM)));
     catalog.hidden = Set.of("svc.db.schema.secret");
 
     ConceptContext context = build(catalog, term());
@@ -87,7 +93,7 @@ class ConceptContextBuilderTest {
   void countsOverflowAcrossCandidatePagesWithoutRetainingUnboundedBindings() {
     Catalog catalog = new Catalog();
     IntStream.range(0, 112)
-        .forEach(index -> catalog.tables.add(table("orders" + index, column("amount", TERM))));
+        .forEach(index -> catalog.assets.add(table("orders" + index, column("amount", TERM))));
 
     ConceptContext context = build(catalog, term());
 
@@ -104,7 +110,7 @@ class ConceptContextBuilderTest {
         IntStream.range(0, 30)
             .mapToObj(index -> column("amount" + index, TERM))
             .toArray(Column[]::new);
-    catalog.tables.add(table("wide", columns));
+    catalog.assets.add(table("wide", columns));
 
     ConceptContext context = build(catalog, term());
 
@@ -116,7 +122,7 @@ class ConceptContextBuilderTest {
   @Test
   void bindsOnlyPermissionMaskedProfilesAndSamplesReturnedByCatalog() {
     Catalog catalog = new Catalog();
-    catalog.tables.add(table("orders", column("amount", TERM)));
+    catalog.assets.add(table("orders", column("amount", TERM)));
     catalog.profile =
         new Observability()
             .withColumnProfiles(
@@ -140,7 +146,7 @@ class ConceptContextBuilderTest {
   @Test
   void quotedColumnNamesStillResolveTheirProfilesAndSamples() {
     Catalog catalog = new Catalog();
-    catalog.tables.add(table("orders", column("amount.cents", TERM)));
+    catalog.assets.add(table("orders", column("amount.cents", TERM)));
     catalog.profile =
         new Observability()
             .withColumnProfiles(
@@ -185,8 +191,8 @@ class ConceptContextBuilderTest {
   @Test
   void metricResolvesExpressionReferencesButIgnoresLiteralsAndAmbiguousColumns() {
     Catalog catalog = new Catalog();
-    catalog.tables.add(table("orders", column("amount_cents", null), column("status", null)));
-    catalog.tables.add(table("refunds", column("status", null)));
+    catalog.assets.add(table("orders", column("amount_cents", null), column("status", null)));
+    catalog.assets.add(table("refunds", column("status", null)));
     Metric metric =
         new Metric()
             .withMetricExpression(
@@ -209,7 +215,7 @@ class ConceptContextBuilderTest {
   @Test
   void metricResolvesSqlAliasesAndQuotedColumns() {
     Catalog catalog = new Catalog();
-    catalog.tables.add(table("orders", column("amount_cents", null), column("revenue", null)));
+    catalog.assets.add(table("orders", column("amount_cents", null), column("revenue", null)));
     Metric metric =
         new Metric()
             .withMetricExpression(
@@ -234,8 +240,8 @@ class ConceptContextBuilderTest {
   @Test
   void metricDoesNotGuessBindingsAcrossSubqueryScopes() {
     Catalog catalog = new Catalog();
-    catalog.tables.add(table("orders", column("amount_cents", null)));
-    catalog.tables.add(table("refunds", column("amount_cents", null)));
+    catalog.assets.add(table("orders", column("amount_cents", null)));
+    catalog.assets.add(table("refunds", column("amount_cents", null)));
     Metric metric =
         new Metric()
             .withMetricExpression(
@@ -252,8 +258,8 @@ class ConceptContextBuilderTest {
   @Test
   void metricDoesNotUseAliasesFromDerivedTables() {
     Catalog catalog = new Catalog();
-    catalog.tables.add(table("orders", column("amount_cents", null)));
-    catalog.tables.add(table("refunds", column("amount_cents", null)));
+    catalog.assets.add(table("orders", column("amount_cents", null)));
+    catalog.assets.add(table("refunds", column("amount_cents", null)));
     Metric metric =
         new Metric()
             .withMetricExpression(
@@ -265,6 +271,98 @@ class ConceptContextBuilderTest {
 
     assertEquals(2, context.getTotalBindings());
     assertTrue(context.getBindings().stream().allMatch(binding -> binding.getColumn() == null));
+  }
+
+  @Test
+  void bindsTaggedAssetsOfEveryTypeAtAssetAndFieldLevel() {
+    Catalog catalog = new Catalog();
+    catalog.assets.add(
+        new Dashboard()
+            .withId(UUID.randomUUID())
+            .withName("revenue")
+            .withFullyQualifiedName("looker.revenue")
+            .withTags(List.of(tag(TERM))));
+    catalog.assets.add(
+        topic(
+            "orders",
+            new Field()
+                .withName("payload")
+                .withDataType(FieldDataType.RECORD)
+                .withChildren(
+                    List.of(
+                        new Field()
+                            .withName("amount")
+                            .withDataType(FieldDataType.LONG)
+                            .withTags(List.of(tag(TERM)))))));
+    catalog.assets.add(dataModel("revenue_model", column("amount", TERM)));
+    catalog.profile =
+        new Observability()
+            .withRowCount(1200.0)
+            .withColumnProfiles(List.of(new ColumnProfileSummary().withName("amount")));
+
+    ConceptContext context = build(catalog, term());
+
+    assertEquals(3, context.getTotalAssets());
+    assertEquals(3, context.getTotalBindings());
+    assertEquals(
+        List.of(
+            List.of(Entity.DASHBOARD, "looker.revenue", ""),
+            List.of(Entity.TOPIC, "kafka.orders", "kafka.orders.payload.amount"),
+            List.of(
+                Entity.DASHBOARD_DATA_MODEL,
+                "looker.model.revenue_model",
+                "looker.model.revenue_model.amount")),
+        context.getBindings().stream()
+            .map(
+                binding ->
+                    List.of(
+                        binding.getAssetType(),
+                        binding.getAssetFqn(),
+                        binding.getColumn() == null ? "" : binding.getColumn()))
+            .toList());
+    assertEquals("LONG", context.getBindings().get(1).getDataType());
+    assertTrue(context.getBindings().stream().allMatch(binding -> binding.getProfile() == null));
+    assertTrue(context.getBindings().stream().allMatch(binding -> binding.getRowCount() == null));
+    assertTrue(
+        context.getBindings().stream().allMatch(binding -> binding.getSampleValues() == null));
+  }
+
+  @Test
+  void tableRowCountReachesAssetAndColumnBindings() {
+    Catalog catalog = new Catalog();
+    catalog.assets.add(table("customers").withTags(List.of(tag(TERM))));
+    catalog.assets.add(table("orders", column("amount", TERM)));
+    catalog.profile = new Observability().withRowCount(1200.0);
+
+    ConceptContext context = build(catalog, term());
+
+    assertEquals(
+        List.of(1200.0, 1200.0),
+        context.getBindings().stream().map(binding -> binding.getRowCount()).toList());
+    assertNull(context.getBindings().getFirst().getColumn());
+    catalog.profile = null;
+    assertNull(build(catalog, term()).getBindings().getFirst().getRowCount());
+  }
+
+  @Test
+  void metricResolvesTabularColumnsOfAnyAssetButNotSchemaFields() {
+    Catalog catalog = new Catalog();
+    catalog.assets.add(dataModel("revenue_model", column("amount_cents", null)));
+    catalog.assets.add(
+        topic("orders", new Field().withName("amount_cents").withDataType(FieldDataType.LONG)));
+    Metric metric =
+        new Metric()
+            .withMetricExpression(new MetricExpression().withCode("SUM(amount_cents) / 100"));
+
+    ConceptContext context = build(catalog, metric);
+
+    assertEquals(2, context.getTotalAssets());
+    assertEquals(
+        List.of("looker.model.revenue_model.amount_cents"),
+        context.getBindings().stream()
+            .filter(binding -> binding.getColumn() != null)
+            .map(binding -> binding.getColumn())
+            .toList());
   }
 
   @Test
@@ -320,6 +418,22 @@ class ConceptContextBuilderTest {
         .withColumns(List.of(columns));
   }
 
+  private static Topic topic(String name, Field... fields) {
+    return new Topic()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName("kafka." + name)
+        .withMessageSchema(new MessageSchema().withSchemaFields(List.of(fields)));
+  }
+
+  private static DashboardDataModel dataModel(String name, Column... columns) {
+    return new DashboardDataModel()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName("looker.model." + name)
+        .withColumns(List.of(columns));
+  }
+
   private static Column column(String name, String term) {
     return new Column()
         .withName(name)
@@ -332,7 +446,7 @@ class ConceptContextBuilderTest {
   }
 
   private static final class Catalog implements ConceptContextBuilder.Catalog {
-    private final List<Table> tables = new ArrayList<>();
+    private final List<EntityInterface> assets = new ArrayList<>();
     private final Map<UUID, ContextMemory> memories = new HashMap<>();
     private final Map<UUID, Query> queries = new HashMap<>();
     private Set<String> hidden = Set.of();
@@ -342,21 +456,31 @@ class ConceptContextBuilderTest {
     @Override
     public ConceptContextBuilder.CandidatePage candidates(EntityInterface concept, int offset) {
       List<EntityReference> refs =
-          tables.stream()
+          assets.stream()
               .skip(offset)
               .limit(ConceptContextBuilder.CANDIDATE_PAGE_SIZE)
-              .map(table -> table.getEntityReference().withType(Entity.TABLE))
+              .map(asset -> asset.getEntityReference().withType(typeOf(asset)))
               .toList();
       return new ConceptContextBuilder.CandidatePage(
-          refs, offset + refs.size(), offset + refs.size() < tables.size());
+          refs, offset + refs.size(), offset + refs.size() < assets.size());
     }
 
     @Override
-    public Table table(EntityReference reference) {
-      return tables.stream()
-          .filter(table -> table.getFullyQualifiedName().equals(reference.getFullyQualifiedName()))
+    public EntityInterface asset(EntityReference reference) {
+      return assets.stream()
+          .filter(asset -> asset.getFullyQualifiedName().equals(reference.getFullyQualifiedName()))
           .findFirst()
           .orElseThrow();
+    }
+
+    private static String typeOf(EntityInterface asset) {
+      return switch (asset) {
+        case Table table -> Entity.TABLE;
+        case Topic topic -> Entity.TOPIC;
+        case Dashboard dashboard -> Entity.DASHBOARD;
+        case DashboardDataModel model -> Entity.DASHBOARD_DATA_MODEL;
+        default -> throw new IllegalArgumentException(asset.getClass().getSimpleName());
+      };
     }
 
     @Override

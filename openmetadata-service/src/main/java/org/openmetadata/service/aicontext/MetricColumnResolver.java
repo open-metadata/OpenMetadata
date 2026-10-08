@@ -33,7 +33,7 @@ import org.apache.calcite.sql.SqlSelect;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
-import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.aicontext.ConceptContextBuilder.ColumnField;
 
 /** Resolves SQL identifiers conservatively against applied tables, excluding ambiguous columns. */
@@ -141,18 +141,18 @@ final class MetricColumnResolver extends SqlBasicVisitor<Void> {
     }
   }
 
-  void accept(Table table) {
-    ConceptContextBuilder.columnFields(table)
+  void accept(String type, EntityInterface asset) {
+    ConceptContextBuilder.columnFields(type, asset)
         .forEach(
             field ->
                 identifiers.replaceAll(
-                    (names, resolution) -> resolve(table, field, names, resolution)));
+                    (names, resolution) -> resolve(asset, field, names, resolution)));
   }
 
   private Resolution resolve(
-      Table table, ColumnField field, List<String> names, Resolution current) {
+      EntityInterface asset, ColumnField field, List<String> names, Resolution current) {
     Resolution result = current;
-    if (matches(table, field, names) && !current.ambiguous()) {
+    if (matches(asset, field, names) && !current.ambiguous()) {
       result =
           new Resolution(
               field.fqn(), current.columnFqn() != null && !current.columnFqn().equals(field.fqn()));
@@ -160,12 +160,12 @@ final class MetricColumnResolver extends SqlBasicVisitor<Void> {
     return result;
   }
 
-  private boolean matches(Table table, ColumnField field, List<String> names) {
+  private boolean matches(EntityInterface asset, ColumnField field, List<String> names) {
     List<String> expanded = expandAlias(names);
     String requested = String.join(".", expanded);
     String column = field.name().toLowerCase(Locale.ROOT);
     return requested.equals(column)
-        || requested.equals(table.getName().toLowerCase(Locale.ROOT) + "." + column)
+        || requested.equals(asset.getName().toLowerCase(Locale.ROOT) + "." + column)
         || field.fqn().toLowerCase(Locale.ROOT).endsWith("." + requested);
   }
 

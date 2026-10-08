@@ -395,6 +395,11 @@ export interface ConceptBinding {
     dataType?: string;
     profile?:  ColumnProfileSummary;
     /**
+     * Latest profiled row count of the bound table, repeated on each of its bindings. Present
+     * only for tables whose data profile the caller may view.
+     */
+    rowCount?: number;
+    /**
      * Up to ten stored sample values for this column, available only with VIEW_SAMPLE_DATA and
      * existing PII masking. These are representative samples, not the complete value set.
      */

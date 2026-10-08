@@ -25,6 +25,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
@@ -33,6 +34,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
@@ -43,6 +46,7 @@ import org.openmetadata.schema.type.aicontext.ConceptEvidence;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Bounded concept resolution shared by the entity context REST surface and MCP. */
@@ -55,7 +59,7 @@ final class ConceptContextBuilder {
   interface Catalog {
     CandidatePage candidates(EntityInterface concept, int offset);
 
-    Table table(EntityReference reference);
+    EntityInterface asset(EntityReference reference);
 
     boolean canView(String type, String fqn);
 
@@ -68,7 +72,9 @@ final class ConceptContextBuilder {
     TableData sampleData(Table table);
   }
 
-  record ColumnField(Column column, String fqn, String name) {}
+  record ColumnField(FieldInterface field, String fqn, String name) {}
+
+  private record BoundAsset(EntityReference reference, EntityInterface entity) {}
 
   record CandidatePage(List<EntityReference> references, int nextOffset, boolean hasMore) {}
 
@@ -131,36 +137,36 @@ final class ConceptContextBuilder {
 
   private void addTermBindings(
       ConceptContext context, GlossaryTerm term, EntityReference reference, BindingTotals totals) {
-    Table table = catalog.table(reference);
-    if (table != null) {
-      long columns = termFields(table, term).count();
-      int total =
-          Math.toIntExact(columns)
-              + (hasTerm(table.getTags(), term.getFullyQualifiedName()) ? 1 : 0);
+    EntityInterface asset = catalog.asset(reference);
+    if (asset != null) {
+      boolean assetTagged = hasTerm(asset.getTags(), term.getFullyQualifiedName());
+      List<ColumnField> fields = termFields(reference.getType(), asset, term);
+      int total = fields.size() + (assetTagged ? 1 : 0);
       if (total > 0) {
         totals.addAsset(total);
         if (totals.assets <= MAX_ASSETS) {
-          List<ConceptBinding> bindings = termBindings(table, term);
-          enrichBindings(table, bindings);
+          List<ConceptBinding> bindings = termBindings(reference, assetTagged, fields);
+          enrichBindings(asset, bindings);
           context.getBindings().addAll(bindings);
         }
       }
     }
   }
 
-  private static List<ConceptBinding> termBindings(Table table, GlossaryTerm term) {
+  private static List<ConceptBinding> termBindings(
+      EntityReference reference, boolean assetTagged, List<ColumnField> fields) {
     Stream<ConceptBinding> asset =
-        hasTerm(table.getTags(), term.getFullyQualifiedName())
-            ? Stream.of(assetBinding(table.getEntityReference()))
-            : Stream.empty();
-    return Stream.concat(asset, termFields(table, term).map(field -> columnBinding(table, field)))
+        assetTagged ? Stream.of(assetBinding(reference)) : Stream.empty();
+    return Stream.concat(asset, fields.stream().map(field -> columnBinding(reference, field)))
         .limit(MAX_BINDINGS_PER_ASSET)
         .toList();
   }
 
-  private static Stream<ColumnField> termFields(Table table, GlossaryTerm term) {
-    return columnFields(table)
-        .filter(field -> hasTerm(field.column().getTags(), term.getFullyQualifiedName()));
+  private static List<ColumnField> termFields(
+      String type, EntityInterface asset, GlossaryTerm term) {
+    return columnFields(type, asset)
+        .filter(field -> hasTerm(field.field().getTags(), term.getFullyQualifiedName()))
+        .toList();
   }
 
   private static boolean hasTerm(List<TagLabel> tags, String termFqn) {
@@ -172,45 +178,48 @@ final class ConceptContextBuilder {
 
   private void bindMetric(ConceptContext context, Metric metric) {
     MetricColumnResolver resolver = MetricColumnResolver.parse(expression(metric));
-    List<EntityReference> retained = new ArrayList<>();
+    List<BoundAsset> retained = new ArrayList<>();
     BindingTotals totals = new BindingTotals();
     scanCandidates(metric, reference -> collectMetricAsset(reference, retained, resolver, totals));
     List<String> columns = resolver.resolvedColumns();
-    retained.forEach(reference -> addMetricBindings(context, reference, columns));
+    retained.forEach(asset -> addMetricBindings(context, asset, columns));
     finishCounts(context, totals.assets, Math.addExact(totals.bindings, columns.size()));
   }
 
   private void collectMetricAsset(
       EntityReference reference,
-      List<EntityReference> retained,
+      List<BoundAsset> retained,
       MetricColumnResolver resolver,
       BindingTotals totals) {
-    if (Entity.TABLE.equals(reference.getType())) {
-      Table table = catalog.table(reference);
-      if (table != null) {
-        resolver.accept(table);
-      }
+    EntityInterface asset = hasSqlColumns(reference.getType()) ? catalog.asset(reference) : null;
+    if (asset != null) {
+      resolver.accept(reference.getType(), asset);
     }
     totals.addAsset(1);
     if (retained.size() < MAX_ASSETS) {
-      retained.add(reference);
+      retained.add(new BoundAsset(reference, asset));
     }
   }
 
-  private void addMetricBindings(
-      ConceptContext context, EntityReference reference, List<String> columns) {
+  /**
+   * SQL identifiers are only matched against tabular columns. Schema fields, ML features and
+   * pipeline tasks share the child-field registry but are not what a metric expression names.
+   */
+  private static boolean hasSqlColumns(String type) {
+    return ChildFieldResolver.supports(type)
+        && ChildFieldResolver.specFor(type).childClass() == Column.class;
+  }
+
+  private void addMetricBindings(ConceptContext context, BoundAsset asset, List<String> columns) {
     List<ConceptBinding> bindings = new ArrayList<>();
-    bindings.add(assetBinding(reference));
-    if (Entity.TABLE.equals(reference.getType())) {
-      Table table = catalog.table(reference);
-      if (table != null) {
-        columnFields(table)
-            .filter(field -> columns.contains(field.fqn()))
-            .limit(MAX_BINDINGS_PER_ASSET - 1)
-            .map(field -> columnBinding(table, field))
-            .forEach(bindings::add);
-        enrichBindings(table, bindings);
-      }
+    bindings.add(assetBinding(asset.reference()));
+    if (asset.entity() != null) {
+      columnFields(asset.reference().getType(), asset.entity())
+          .filter(field -> columns.contains(field.fqn()))
+          .limit(MAX_BINDINGS_PER_ASSET - 1)
+          .map(field -> columnBinding(asset.reference(), field))
+          .forEach(bindings::add);
+      enrichBindings(asset.entity(), bindings);
     }
     context.getBindings().addAll(bindings);
   }
@@ -239,44 +248,72 @@ final class ConceptContextBuilder {
         .withTruncated(context.getBindings().size() < bindings);
   }
 
+  /** Samples default to an empty list; null keeps "not applicable" distinct from "none stored". */
   private static ConceptBinding assetBinding(EntityReference reference) {
     return new ConceptBinding()
         .withAssetFqn(reference.getFullyQualifiedName())
-        .withAssetType(reference.getType());
+        .withAssetType(reference.getType())
+        .withSampleValues(null);
   }
 
-  private static ConceptBinding columnBinding(Table table, ColumnField field) {
-    return assetBinding(table.getEntityReference().withType(Entity.TABLE))
-        .withColumn(field.fqn())
-        .withDataType(AIContextBuilder.columnType(field.column()));
+  private static ConceptBinding columnBinding(EntityReference reference, ColumnField field) {
+    return assetBinding(reference).withColumn(field.fqn()).withDataType(dataType(field.field()));
   }
 
-  static Stream<ColumnField> columnFields(Table table) {
-    return columnFields(table.getColumns(), table.getFullyQualifiedName(), "");
+  private static String dataType(FieldInterface field) {
+    return switch (field) {
+      case Column column -> AIContextBuilder.columnType(column);
+      case Field schemaField -> displayOrType(
+          schemaField.getDataTypeDisplay(), schemaField.getDataType());
+      case SearchIndexField indexField -> displayOrType(
+          indexField.getDataTypeDisplay(), indexField.getDataType());
+      default -> field.getDataTypeDisplay();
+    };
+  }
+
+  private static String displayOrType(String display, Object type) {
+    return nullOrEmpty(display) && type != null ? type.toString() : display;
+  }
+
+  /** Columns, schema fields, ML features or tasks of any asset type in the child-field registry. */
+  static Stream<ColumnField> columnFields(String type, EntityInterface asset) {
+    return ChildFieldResolver.supports(type)
+        ? columnFields(
+            ChildFieldResolver.childrenOf(asset, type), asset.getFullyQualifiedName(), "")
+        : Stream.empty();
   }
 
   private static Stream<ColumnField> columnFields(
-      List<Column> columns, String parentFqn, String parentName) {
-    return listOrEmpty(columns).stream()
+      List<? extends FieldInterface> fields, String parentFqn, String parentName) {
+    return listOrEmpty(fields).stream()
         .flatMap(
-            column -> {
+            field -> {
               String fqn =
-                  nullOrEmpty(column.getFullyQualifiedName())
-                      ? FullyQualifiedName.add(parentFqn, column.getName())
-                      : column.getFullyQualifiedName();
+                  nullOrEmpty(field.getFullyQualifiedName())
+                      ? FullyQualifiedName.add(parentFqn, field.getName())
+                      : field.getFullyQualifiedName();
               String name =
-                  parentName.isEmpty() ? column.getName() : parentName + "." + column.getName();
+                  parentName.isEmpty() ? field.getName() : parentName + "." + field.getName();
               return Stream.concat(
-                  Stream.of(new ColumnField(column, fqn, name)),
-                  columnFields(column.getChildren(), fqn, name));
+                  Stream.of(new ColumnField(field, fqn, name)),
+                  columnFields(field.getChildren(), fqn, name));
             });
   }
 
-  private void enrichBindings(Table table, List<ConceptBinding> bindings) {
+  /** Profiles and stored samples exist only for tables; other bindings carry the field alone. */
+  private void enrichBindings(EntityInterface asset, List<ConceptBinding> bindings) {
+    if (asset instanceof Table table) {
+      Observability profile = catalog.profile(table);
+      Double rowCount = profile == null ? null : profile.getRowCount();
+      bindings.forEach(binding -> binding.withRowCount(rowCount));
+      enrichColumns(table, bindings, profile);
+    }
+  }
+
+  private void enrichColumns(Table table, List<ConceptBinding> bindings, Observability profile) {
     if (bindings.stream().noneMatch(binding -> binding.getColumn() != null)) {
       return;
     }
-    Observability profile = catalog.profile(table);
     TableData samples = catalog.sampleData(table);
     for (ConceptBinding binding : bindings) {
       if (binding.getColumn() != null) {

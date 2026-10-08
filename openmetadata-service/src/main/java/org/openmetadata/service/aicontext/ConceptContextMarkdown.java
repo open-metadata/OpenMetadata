@@ -18,6 +18,7 @@ import static org.openmetadata.service.aicontext.AIContextMarkdown.appendHeading
 import static org.openmetadata.service.aicontext.AIContextMarkdown.cell;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.OntologyAttribute;
@@ -161,24 +162,28 @@ final class ConceptContextMarkdown {
 
   private static void appendProfiles(
       StringBuilder markdown, ConceptContext concept, String prefix) {
-    boolean hasProfiles =
+    List<ConceptBinding> profiled =
         listOrEmpty(concept.getBindings()).stream()
-            .anyMatch(binding -> binding.getProfile() != null);
-    if (hasProfiles) {
-      appendHeading(markdown, prefix, "Bound Column Profiles");
-      markdown.append("\n| Column | Null % | Distinct | Min | Max |\n|---|---|---|---|---|\n");
-      for (ConceptBinding binding : concept.getBindings()) {
-        if (binding.getProfile() != null) {
-          appendProfile(markdown, binding);
-        }
-      }
+            .filter(binding -> binding.getProfile() != null || binding.getRowCount() != null)
+            .toList();
+    if (!profiled.isEmpty()) {
+      appendHeading(markdown, prefix, "Bound Profiles");
+      markdown.append(
+          "\n| Asset | Rows | Column | Null % | Distinct | Min | Max |\n"
+              + "|---|---|---|---|---|---|---|\n");
+      profiled.forEach(binding -> appendProfile(markdown, binding));
     }
   }
 
   private static void appendProfile(StringBuilder markdown, ConceptBinding binding) {
-    ColumnProfileSummary profile = binding.getProfile();
+    ColumnProfileSummary profile =
+        binding.getProfile() == null ? new ColumnProfileSummary() : binding.getProfile();
     markdown
         .append("| ")
+        .append(cell(binding.getAssetFqn()))
+        .append(" | ")
+        .append(count(binding.getRowCount()))
+        .append(" | ")
         .append(cell(binding.getColumn()))
         .append(" | ")
         .append(
@@ -186,12 +191,16 @@ final class ConceptContextMarkdown {
                 ? ""
                 : Math.round(profile.getNullProportion() * 100) + "%")
         .append(" | ")
-        .append(profile.getDistinctCount() == null ? "" : profile.getDistinctCount())
+        .append(count(profile.getDistinctCount()))
         .append(" | ")
         .append(cell(profile.getMin()))
         .append(" | ")
         .append(cell(profile.getMax()))
         .append(" |\n");
+  }
+
+  private static String count(Double value) {
+    return value == null ? "" : String.valueOf(Math.round(value));
   }
 
   private static void appendEvidence(

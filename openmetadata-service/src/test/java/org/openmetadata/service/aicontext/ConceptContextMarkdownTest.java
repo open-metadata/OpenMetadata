@@ -72,6 +72,26 @@ class ConceptContextMarkdownTest {
   }
 
   @Test
+  void rendersTableRowCountsForAssetAndColumnBindings() {
+    ConceptContext concept =
+        concept()
+            .withBindings(
+                List.of(
+                    new ConceptBinding()
+                        .withAssetFqn("svc.db.schema.customers")
+                        .withAssetType(Entity.TABLE)
+                        .withRowCount(1200.0),
+                    concept().getBindings().getFirst().withRowCount(40.0)));
+
+    String markdown = AIContextMarkdown.render(context(concept));
+
+    assertTrue(markdown.contains("| svc.db.schema.customers | 1200 |  |  |  |  |  |"));
+    assertTrue(
+        markdown.contains(
+            "| svc.db.schema.orders | 40 | svc.db.schema.orders.amount | 25% | 3 | 0 | 500 |"));
+  }
+
+  @Test
   void honorsRequestedSectionsWhenRenderingAConcept() {
     StringBuilder markdown = new StringBuilder();
 
@@ -83,7 +103,7 @@ class ConceptContextMarkdownTest {
     assertTrue(rendered.contains("Ontology Attributes"));
     assertTrue(rendered.contains("Concept Bindings"));
     assertFalse(rendered.contains("Related Terms"));
-    assertFalse(rendered.contains("Bound Column Profiles"));
+    assertFalse(rendered.contains("Bound Profiles"));
     assertFalse(rendered.contains("Saved Query Evidence"));
   }
 

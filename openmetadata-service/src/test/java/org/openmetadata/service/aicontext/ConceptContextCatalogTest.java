@@ -20,14 +20,18 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +52,7 @@ class ConceptContextCatalogTest {
   void setUp() {
     previousSearch = Entity.getSearchRepository();
     Entity.setSearchRepository(search);
-    when(search.getIndexOrAliasName(Entity.TABLE)).thenReturn("table_search_index");
+    when(search.getIndexOrAliasName(DATA_ASSET_SEARCH_ALIAS)).thenReturn(DATA_ASSET_SEARCH_ALIAS);
   }
 
   @AfterEach
@@ -82,6 +86,27 @@ class ConceptContextCatalogTest {
     assertEquals(101, second.nextOffset());
     assertFalse(second.hasMore());
     assertEquals("svc.db.schema.table100", second.references().getFirst().getFullyQualifiedName());
+  }
+
+  @Test
+  void searchesEveryDataAssetTypeExceptColumnsAndKnowledge() throws IOException {
+    List<SearchRequest> requests = new ArrayList<>();
+    when(search.search(any(SearchRequest.class), isNull()))
+        .thenAnswer(
+            invocation -> {
+              requests.add(invocation.getArgument(0));
+              return response(List.of(hit(1, true)));
+            });
+
+    catalog().candidates(term, 0);
+
+    SearchRequest request = requests.getFirst();
+    assertEquals(DATA_ASSET_SEARCH_ALIAS, request.getIndex());
+    JsonNode excluded =
+        JsonUtils.readTree(request.getQueryFilter()).at("/query/bool/must_not/terms/entityType");
+    assertEquals(
+        Set.of(Entity.TABLE_COLUMN, Entity.GLOSSARY_TERM, Entity.TAG, Entity.PAGE),
+        Set.copyOf(JsonUtils.convertValue(excluded, List.class)));
   }
 
   @Test

@@ -13,6 +13,7 @@
 package org.openmetadata.service.aicontext;
 
 import static org.openmetadata.service.aicontext.ConceptContextBuilder.CANDIDATE_PAGE_SIZE;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.ForbiddenException;
@@ -21,9 +22,14 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -46,10 +52,27 @@ import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ChildFieldResolver;
 
 /** Catalog boundary for concept resolution; cursor and page storage are request-local and bounded. */
 @Slf4j
 final class ConceptContextCatalog implements ConceptContextBuilder.Catalog {
+  /**
+   * Members of the data-asset alias that are not assets realizing a concept: a column document
+   * duplicates its parent table's column binding, and terms, tags and articles are vocabulary or
+   * knowledge rather than data.
+   */
+  private static final List<String> NON_ASSET_TYPES =
+      List.of(Entity.TABLE_COLUMN, Entity.GLOSSARY_TERM, Entity.TAG, Entity.PAGE);
+
+  private static final String ASSETS_ONLY_FILTER =
+      JsonUtils.pojoToJson(
+          Map.of(
+              "query",
+              Map.of(
+                  "bool",
+                  Map.of("must_not", Map.of("terms", Map.of("entityType", NON_ASSET_TYPES))))));
+
   private final Authorizer authorizer;
   private final SecurityContext securityContext;
   private final Function<Table, Observability> profileLoader;
@@ -70,16 +93,17 @@ final class ConceptContextCatalog implements ConceptContextBuilder.Catalog {
   @Override
   public CandidatePage candidates(EntityInterface concept, int offset) {
     return concept instanceof GlossaryTerm term
-        ? taggedTables(term, offset)
+        ? taggedAssets(term, offset)
         : metricAssets(concept, offset);
   }
 
-  private CandidatePage taggedTables(GlossaryTerm term, int offset) {
+  private CandidatePage taggedAssets(GlossaryTerm term, int offset) {
     SearchRequest request =
         AIContextFinder.tagSearchRequest(
                 term.getFullyQualifiedName(),
-                Entity.getSearchRepository().getIndexOrAliasName(Entity.TABLE),
+                Entity.getSearchRepository().getIndexOrAliasName(DATA_ASSET_SEARCH_ALIAS),
                 CANDIDATE_PAGE_SIZE)
+            .withQueryFilter(ASSETS_ONLY_FILTER)
             .withSortFieldParam("id.keyword")
             .withSortOrder("asc")
             .withSearchAfter(searchAfter)
@@ -98,7 +122,7 @@ final class ConceptContextCatalog implements ConceptContextBuilder.Catalog {
           references, offset + hits.size(), hits.size() == CANDIDATE_PAGE_SIZE);
     } catch (IOException e) {
       throw new UncheckedIOException(
-          "Failed to resolve bound tables for " + term.getFullyQualifiedName(), e);
+          "Failed to resolve bound assets for " + term.getFullyQualifiedName(), e);
     }
   }
 
@@ -126,23 +150,41 @@ final class ConceptContextCatalog implements ConceptContextBuilder.Catalog {
                 List.of(Relationship.APPLIED_TO.ordinal()),
                 offset,
                 CANDIDATE_PAGE_SIZE);
+    // A memory whose primaryEntity is this metric shares the metric --APPLIED_TO--> edge; it is
+    // knowledge about the metric, not an asset that supplies it.
+    List<EntityRelationshipRecord> assets =
+        records.stream().filter(record -> !Entity.CONTEXT_MEMORY.equals(record.getType())).toList();
     List<EntityReference> references =
-        Entity.getEntityRelationshipRepository().getEntityReferences(records, Include.NON_DELETED);
+        Entity.getEntityRelationshipRepository().getEntityReferences(assets, Include.NON_DELETED);
     return new CandidatePage(
         references, offset + records.size(), records.size() == CANDIDATE_PAGE_SIZE);
   }
 
   @Override
-  public Table table(EntityReference reference) {
-    Table table = null;
+  public EntityInterface asset(EntityReference reference) {
+    EntityInterface asset = null;
     try {
-      table = Entity.getEntity(reference, "columns,tags", Include.NON_DELETED);
+      asset = Entity.getEntity(reference, assetFields(reference.getType()), Include.NON_DELETED);
     } catch (EntityNotFoundException e) {
       LOG.debug(
-          "Concept context: table {} disappeared during resolution",
+          "Concept context: {} {} disappeared during resolution",
+          reference.getType(),
           reference.getFullyQualifiedName());
     }
-    return table;
+    return asset;
+  }
+
+  /** Tags plus the type's child-field containers, limited to fields the repository can load. */
+  static String assetFields(String type) {
+    Set<String> allowed = Entity.getEntityRepository(type).getAllowedFields();
+    Stream<String> containers =
+        ChildFieldResolver.supports(type)
+            ? Arrays.stream(ChildFieldResolver.containerFields(type).split(","))
+            : Stream.empty();
+    return Stream.concat(Stream.of(Entity.FIELD_TAGS), containers)
+        .filter(allowed::contains)
+        .distinct()
+        .collect(Collectors.joining(","));
   }
 
   @Override
