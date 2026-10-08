@@ -4,9 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 
 /**
@@ -211,6 +215,66 @@ class InferenceRuleValidatorTest {
       List<String> errors = validate(r);
       assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
     }
+  }
+
+  @Nested
+  @DisplayName("Fixed-point safety")
+  class FixedPointSafety {
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource(
+        "org.openmetadata.service.rdf.inference.InferenceRuleValidatorTest#unsafeRuleBodies")
+    @DisplayName("Rules that could keep deriving new facts or retract facts are rejected")
+    void unsafeRulesAreRejected(
+        final String description, final String body, final String expectedError) {
+      final List<String> errors = validate(rule("unsafe-rule", body));
+
+      assertTrue(
+          errors.stream().anyMatch(error -> error.contains(expectedError)),
+          description + " should report '" + expectedError + "' but got: " + errors);
+    }
+
+    @Test
+    @DisplayName("Template variables bound to fixed VALUES constants are accepted")
+    void valuesConstantsAreAccepted() {
+      final String body =
+          "CONSTRUCT { ?s <urn:p> ?tag } WHERE { VALUES ?tag { <urn:a> <urn:b> } ?s <urn:q> ?o }";
+
+      final List<String> errors = validate(rule("constant-rule", body));
+
+      assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
+    }
+  }
+
+  static Stream<Arguments> unsafeRuleBodies() {
+    final String head = "CONSTRUCT { ?s <urn:p> ?o } WHERE { ?s <urn:q> ?o ";
+    return Stream.of(
+        Arguments.of(
+            "blank node in the template",
+            "CONSTRUCT { ?s <urn:p> [] } WHERE { ?s <urn:q> ?o }",
+            "blank node"),
+        Arguments.of(
+            "template variable minted by BIND",
+            "CONSTRUCT { ?s <urn:p> ?id } WHERE { ?s <urn:q> ?o "
+                + "BIND(IRI(CONCAT(STR(?s), \"/derived\")) AS ?id) }",
+            "triple pattern"),
+        Arguments.of("OPTIONAL", head + "OPTIONAL { ?s <urn:r> ?x } }", "OPTIONAL"),
+        Arguments.of("MINUS", head + "MINUS { ?s <urn:r> ?o } }", "MINUS"),
+        Arguments.of("NOT EXISTS", head + "FILTER NOT EXISTS { ?s <urn:r> ?o } }", "NOT EXISTS"),
+        Arguments.of("BOUND", head + "FILTER(!BOUND(?o)) }", "BOUND"),
+        Arguments.of(
+            "subquery",
+            "CONSTRUCT { ?s <urn:p> ?o } WHERE { { SELECT ?s ?o WHERE { ?s <urn:q> ?o } } }",
+            "subquer"),
+        Arguments.of("RAND", head + "FILTER(RAND() < 0.5) }", "nondeterministic"),
+        Arguments.of(
+            "NOW",
+            head
+                + "FILTER(NOW() > \"2020-01-01T00:00:00Z\"^^<http://www.w3.org/2001/XMLSchema#dateTime>) }",
+            "nondeterministic"),
+        Arguments.of("BNODE", head + "BIND(BNODE() AS ?b) }", "nondeterministic"),
+        Arguments.of("UUID", head + "BIND(UUID() AS ?u) }", "nondeterministic"),
+        Arguments.of("STRUUID", head + "BIND(STRUUID() AS ?u) }", "nondeterministic"));
   }
 
   @Nested

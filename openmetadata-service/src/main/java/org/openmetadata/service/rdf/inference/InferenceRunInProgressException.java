@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Scheduled RDF inference materialization configuration.
- */
-export interface RDFInferenceAppConfig {
-    /**
-     * Recompute every rule even when no rule is dirty.
-     */
-    force?: boolean;
-    /**
-     * Optional rule that must exist. The run still computes every rule, because rules read each
-     * other's conclusions.
-     */
-    ruleName?: string;
+
+package org.openmetadata.service.rdf.inference;
+
+import jakarta.ws.rs.ClientErrorException;
+import jakarta.ws.rs.core.Response;
+
+/** Another materialization run, on this server or another, holds the run lock. */
+public final class InferenceRunInProgressException extends ClientErrorException {
+  public InferenceRunInProgressException() {
+    super(
+        "Another inference materialization run is in progress. Try again once it finishes.",
+        Response.Status.CONFLICT);
+  }
 }
