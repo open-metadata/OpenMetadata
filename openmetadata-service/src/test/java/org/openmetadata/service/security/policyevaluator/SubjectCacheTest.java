@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -32,6 +33,10 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +69,7 @@ public class SubjectCacheTest {
   private static Team team1;
   private static Team team11;
   private static UserRepository userRepository;
+  private static PolicyRepository policyRepository;
 
   @BeforeAll
   public static void setup() {
@@ -103,7 +109,7 @@ public class SubjectCacheTest {
                         new ImmutablePair<>(Entity.ROLE, i.getArgument(1))),
                     Role.class));
 
-    PolicyRepository policyRepository = mock(PolicyRepository.class);
+    policyRepository = mock(PolicyRepository.class);
     Entity.registerEntity(Policy.class, Entity.POLICY, policyRepository);
     Mockito.when(
             policyRepository.get(
@@ -473,6 +479,94 @@ public class SubjectCacheTest {
     }
 
     assertEquals(expectedPolicyCount, botPolicies.size());
+  }
+
+  /**
+   * A policy load that has read the pre-edit rules when the edit commits and the caches are
+   * invalidated must not become what the next authorization decision is made from.
+   */
+  @Test
+  void testPolicyLoadCrossingInvalidationDoesNotServeTheRemovedRule() throws Exception {
+    Policy policy = twoRulePolicy();
+    putUserWithPolicy("racingUser", policy);
+    CountDownLatch loadReadOldRules = new CountDownLatch(1);
+    CountDownLatch invalidationDone = new CountDownLatch(1);
+    pauseFirstReadOf(policy, loadReadOldRules, invalidationDone);
+
+    try {
+      CompletableFuture<List<PolicyContext>> inFlight =
+          CompletableFuture.supplyAsync(() -> SubjectCache.getPolicies("racingUser"));
+      assertTrue(loadReadOldRules.await(10, TimeUnit.SECONDS));
+
+      EntityRepository.CACHE_WITH_ID.put(
+          new ImmutablePair<>(Entity.POLICY, policy.getId()),
+          JsonUtils.pojoToJson(policy.withRules(List.of(policy.getRules().getFirst()))));
+      SubjectCache.invalidateAll();
+      invalidationDone.countDown();
+      inFlight.get(10, TimeUnit.SECONDS);
+    } finally {
+      invalidationDone.countDown();
+      restorePolicyReads();
+    }
+
+    List<PolicyContext> afterEdit = SubjectCache.getPolicies("racingUser");
+    assertEquals(1, afterEdit.size());
+    assertEquals(1, afterEdit.getFirst().getRules().size());
+  }
+
+  private static Policy twoRulePolicy() {
+    Policy policy =
+        new Policy()
+            .withName("racing_policy")
+            .withId(UUID.randomUUID())
+            .withRules(getRules("racing_policy").subList(0, 2));
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.POLICY, policy.getId()), JsonUtils.pojoToJson(policy));
+    return policy;
+  }
+
+  private static void putUserWithPolicy(String userName, Policy policy) {
+    Role role =
+        new Role()
+            .withName(userName + "_role")
+            .withId(UUID.randomUUID())
+            .withPolicies(toEntityReferences(List.of(policy)));
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.ROLE, role.getId()), JsonUtils.pojoToJson(role));
+    User racingUser = new User().withName(userName).withRoles(toEntityReferences(List.of(role)));
+    EntityRepository.CACHE_WITH_NAME.put(
+        new ImmutablePair<>(Entity.USER, userName), JsonUtils.pojoToJson(racingUser));
+  }
+
+  private static void pauseFirstReadOf(
+      Policy policy, CountDownLatch readOldRules, CountDownLatch resume) {
+    AtomicBoolean paused = new AtomicBoolean();
+    doAnswer(
+            invocation -> {
+              Policy loaded =
+                  JsonUtils.readValue(
+                      EntityRepository.CACHE_WITH_ID.get(
+                          new ImmutablePair<>(Entity.POLICY, invocation.getArgument(1))),
+                      Policy.class);
+              if (policy.getId().equals(loaded.getId()) && paused.compareAndSet(false, true)) {
+                readOldRules.countDown();
+                assertTrue(resume.await(10, TimeUnit.SECONDS));
+              }
+              return loaded;
+            })
+        .when(policyRepository)
+        .get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean());
+  }
+
+  private static void restorePolicyReads() {
+    doAnswer(
+            invocation ->
+                JsonUtils.readValue(
+                    EntityRepository.CACHE_WITH_ID.get(
+                        new ImmutablePair<>(Entity.POLICY, invocation.getArgument(1))),
+                    Policy.class))
+        .when(policyRepository)
+        .get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean());
   }
 
   private static List<Role> getRoles(String prefix) {
