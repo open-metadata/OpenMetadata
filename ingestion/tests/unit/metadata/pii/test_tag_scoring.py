@@ -732,50 +732,33 @@ class TestBuildRecognizerMetadata:
         assert meta.recognizerName in {"ARecognizer", "BRecognizer"}
         assert meta.score == 0.9
 
-    def test_predefined_runtime_wrapper_resolves_to_configured_name(self):
-        """Bug 2: a predefined recognizer is instantiated as a subclass at runtime
-        (e.g. DateRecognizer → ValidatedDateRecognizer). The configured name must
-        be resolved so recognizer_id and recognizer_name are not absent."""
-        tag = self._predefined_tag(Name.DateRecognizer)
-        configured_id = tag.recognizers[0].id
-        # Simulate the runtime wrapper name stored in recognition_metadata
-        analysis = TagAnalysis(
-            tag=tag,
-            score=1.0,
-            explanation=None,
-            recognizer_results=[self._make_result("ValidatedDateRecognizer", 1.0)],
-            target=None,
+    @pytest.mark.parametrize(
+        "predefined_name, value",
+        [
+            pytest.param(Name.DateRecognizer, "1980-04-03", id="ValidatedDateRecognizer"),
+            pytest.param(Name.CreditCardRecognizer, "4111 1111 1111 1111", id="SanitizedCreditCardRecognizer"),
+        ],
+    )
+    def test_predefined_runtime_subclass_resolves_to_configured_recognizer(self, predefined_name: Name, value: str):
+        """Bug 2: a predefined recognizer is built as a subclass at runtime
+        (e.g. DateRecognizer -> ValidatedDateRecognizer). Its results must still be
+        attributed to the configured recognizer."""
+        tag = self._predefined_tag(predefined_name)
+        column = Column(
+            name=ColumnName(root="analyze_column"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="test.table.analyze_column",
         )
-        meta = self._scorer()._build_recognizer_metadata(analysis)
-        assert meta is not None, (
-            "_build_recognizer_metadata returned None — runtime wrapper name was not "
-            "resolved to the configured DateRecognizer"
-        )
-        assert meta.recognizerId == configured_id
-        assert meta.recognizerName == Name.DateRecognizer.value
-        assert meta.score == 1.0
+        analysis = TagAnalyzer(tag=tag, column=column, nlp_engine=load_nlp_engine()).analyze(str_values=[value])
 
-    def test_credit_card_runtime_wrapper_resolves_to_configured_name(self):
-        """Verify the suffix-match also covers SanitizedCreditCardRecognizer →
-        CreditCardRecognizer, another factory-wrapped predefined recognizer."""
-        tag = self._predefined_tag(Name.CreditCardRecognizer)
-        configured_id = tag.recognizers[0].id
-        analysis = TagAnalysis(
-            tag=tag,
-            score=0.95,
-            explanation=None,
-            recognizer_results=[self._make_result("SanitizedCreditCardRecognizer", 0.95)],
-            target=None,
-        )
         meta = self._scorer()._build_recognizer_metadata(analysis)
         assert meta is not None
-        assert meta.recognizerId == configured_id
-        assert meta.recognizerName == Name.CreditCardRecognizer.value
+        assert meta.recognizerId == tag.recognizers[0].id
+        assert meta.recognizerName == predefined_name.value
 
-    def test_custom_recognizer_not_stolen_by_predefined_suffix_match(self):
-        """Custom recognizer named 'CustomEmailRecognizer' must NOT be mis-attributed
-        to a predefined 'EmailRecognizer' via the suffix fallback when the exact
-        custom name should match first."""
+    def test_custom_recognizer_not_attributed_to_similarly_named_predefined(self):
+        """A custom recognizer named 'CustomEmailRecognizer' must not be attributed
+        to a predefined 'EmailRecognizer' listed before it on the same tag."""
         # Build a tag with a predefined EmailRecognizer first, then a custom one
         pred_rec = RecognizerFactory.create(
             name=Name.EmailRecognizer.value,

@@ -125,31 +125,15 @@ class TagScorer:
         ]
 
         recognizer_id = None
-        configs = analysis.tag.recognizers or []
+        for recognizer_config in analysis.tag.recognizers or []:
+            if isinstance(recognizer_config.recognizerConfig.root, PredefinedRecognizer):
+                name = recognizer_config.recognizerConfig.root.name.value
+            else:
+                name = recognizer_config.name.root
 
-        def _config_name(cfg) -> str:
-            if isinstance(cfg.recognizerConfig.root, PredefinedRecognizer):
-                return cfg.recognizerConfig.root.name.value
-            return cfg.name.root
-
-        # Pass 1: exact match across all configs (prevents custom recognizers named
-        # like "CustomEmailRecognizer" from being stolen by a predefined "EmailRecognizer"
-        # via the suffix fallback in pass 2).
-        for recognizer_config in configs:
-            if _config_name(recognizer_config) == recognizer_name:
+            if name == recognizer_name:
                 recognizer_id = recognizer_config.id
                 break
-
-        # Pass 2: suffix match for predefined recognizers only (handles runtime subclasses
-        # like DateRecognizer → ValidatedDateRecognizer that prepend a qualifier).
-        if not recognizer_id:
-            for recognizer_config in configs:
-                if isinstance(recognizer_config.recognizerConfig.root, PredefinedRecognizer):
-                    config_name = recognizer_config.recognizerConfig.root.name.value
-                    if recognizer_name.endswith(config_name):
-                        recognizer_id = recognizer_config.id
-                        recognizer_name = config_name
-                        break
 
         if not recognizer_id:
             return None
