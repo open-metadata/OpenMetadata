@@ -311,6 +311,8 @@ def test_full_shipped_recognizer_interactions(value, expected_entities, expected
         ("ip_address", "10.0.0.5:8080/health", None, "10.0.0.5", ["PII.Sensitive"]),
         ("ip_address", "src_ip:10.0.0.1", None, "10.0.0.1", ["PII.Sensitive"]),
         ("ip_address", "ftp://user@10.0.0.1/123", None, "10.0.0.1", ["PII.Sensitive"]),
+        ("ip_address", "ftp://@10.0.0.1/123", None, "10.0.0.1", ["PII.Sensitive"]),
+        ("ip_address", "smb://@10.0.0.1:8080/123", None, "10.0.0.1", ["PII.Sensitive"]),
         ("ip_address", "ftp://" + "u" * 1000 + "@10.0.0.1/123", None, "10.0.0.1", ["PII.Sensitive"]),
         ("ip_address", "smb://user:pass@10.0.0.1:8080/123", None, "10.0.0.1", ["PII.Sensitive"]),
         ("ip_address", "client_ip:10.0.0.1", None, "10.0.0.1", ["PII.Sensitive"]),

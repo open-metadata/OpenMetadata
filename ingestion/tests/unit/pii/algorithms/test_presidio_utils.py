@@ -164,6 +164,8 @@ def test_card_rejects_invalid_enclosing_candidate(text):
         (UrlRecognizer, "URL", "<https://example.com#part,>", "https://example.com#part,", 0.6),
         (IpRecognizer, "IP_ADDRESS", "ftp://10.0.0.1/123", "10.0.0.1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "ftp://user@10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://@10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://@10.0.0.1:8080/123", "10.0.0.1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "ftp://" + "u" * 1000 + "@10.0.0.1/123", "10.0.0.1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "smb://user:pass@10.0.0.1:8080/123", "10.0.0.1", 0.6),
         (IpRecognizer, "IP_ADDRESS", "ftp://user%40name@10.0.0.1/123", "10.0.0.1", 0.6),

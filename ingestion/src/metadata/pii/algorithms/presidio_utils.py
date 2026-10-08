@@ -369,7 +369,7 @@ class IpRecognizer(PresidioIpRecognizer):
             in_url_authority = bool(
                 re.search(
                     r"(?<![\w.+-])[a-zA-Z][a-zA-Z0-9+.-]*://"
-                    r"(?:(?:[a-zA-Z0-9._~!$&'()*+,;=:-]|%[0-9a-fA-F]{2})+@)?\[?$",
+                    r"(?:(?:[a-zA-Z0-9._~!$&'()*+,;=:-]|%[0-9a-fA-F]{2})*@)?\[?$",
                     text[max(0, start - 5000) : start],
                 )
             )
