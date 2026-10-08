@@ -484,4 +484,86 @@ test.describe('AI Profile Team Detail', () => {
 
     await expect(page.getByTestId('confirm-import')).toBeVisible();
   });
+
+  // The Custom Properties tab is native to MembersTeamDetail (it renders the
+  // shared CustomPropertyTable). These cover that it is reachable and that a
+  // property defined for the `team` entity actually shows up there.
+  test('Should show the Custom Properties tab on a team', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const team = await makeTeam(apiContext);
+
+    await openCreatedTeam(page, team);
+
+    const tab = page.getByRole('tab', { name: /Custom Properties/ });
+
+    await expect(tab).toBeVisible();
+
+    await openTeamTab(page, /Custom Properties/);
+
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('Should render a team custom property in the tab', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const propertyName = `pwTeamCp${uuid().replace(/-/g, '')}`;
+
+    // Defined through the metadata type API rather than the settings UI: this
+    // test is about the tab rendering the property, not about creating one.
+    const typeResponse = await apiContext.get(
+      '/api/v1/metadata/types/name/team'
+    );
+    const teamType = await typeResponse.json();
+    const stringTypeResponse = await apiContext.get(
+      '/api/v1/metadata/types?category=field&limit=50'
+    );
+    const stringType = (await stringTypeResponse.json()).data.find(
+      (item: { name: string }) => item.name === 'string'
+    );
+
+    await apiContext.put(`/api/v1/metadata/types/${teamType.id}`, {
+      data: {
+        name: propertyName,
+        description: propertyName,
+        propertyType: { id: stringType.id, type: 'type' },
+      },
+    });
+
+    try {
+      const team = await makeTeam(apiContext);
+      await openCreatedTeam(page, team);
+      await openTeamTab(page, /Custom Properties/);
+
+      await expect(page.getByTestId('custom-properties-card')).toBeVisible();
+      await expect(
+        page.getByTestId(`custom-property-${propertyName}-card`)
+      ).toBeVisible();
+    } finally {
+      // Leaving the property behind would alter every later team's tab. There
+      // is no REST delete for a single custom property, so remove it from the
+      // type's array by index.
+      const current = await (
+        await apiContext.get(
+          '/api/v1/metadata/types/name/team?fields=customProperties'
+        )
+      ).json();
+      const index = (current.customProperties as { name: string }[]).findIndex(
+        (property) => property.name === propertyName
+      );
+
+      if (index >= 0) {
+        await apiContext
+          .patch(`/api/v1/metadata/types/${teamType.id}`, {
+            headers: { 'Content-Type': 'application/json-patch+json' },
+            data: [{ op: 'remove', path: `/customProperties/${index}` }],
+          })
+          .catch(() => undefined);
+      }
+    }
+  });
 });
