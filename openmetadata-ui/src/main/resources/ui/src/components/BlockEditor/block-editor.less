@@ -13,16 +13,16 @@
 @import (reference) '../../styles/variables.less';
 
 @border-radius: var(--om-radius-md);
-@border-color: var(--om-color-border-subtle);
+@border-color: var(--tw-color-border-subtle);
 // Semantic surface so inline code, table headers and callouts follow dark mode
 // (the legacy #f8f8fa alias has no dark value).
 @markdown-bg-color: var(--om-color-bg-secondary);
-@hover-bg: var(--om-color-interactive-hover);
+@hover-bg: var(--tw-color-bg-primary_hover);
 @callout-bg: var(--om-color-bg-secondary);
-@callout-warning-bg: var(--om-color-bg-warning);
-@callout-info-bg: var(--om-color-bg-brand);
-@callout-danger-bg: var(--om-color-bg-error);
-@callout-border: var(--om-color-border-subtle);
+@callout-warning-bg: var(--tw-color-bg-warning-primary);
+@callout-info-bg: var(--tw-color-bg-brand-primary);
+@callout-danger-bg: var(--tw-color-bg-error-primary);
+@callout-border: var(--tw-color-border-subtle);
 
 .block-editor-wrapper {
   .om-block-editor > p:last-child {
@@ -94,7 +94,7 @@
     }
 
     a {
-      color: var(--om-color-link);
+      color: var(--tw-color-text-link);
       text-decoration: none;
       line-height: 24px;
 
@@ -245,8 +245,8 @@
   }
 
   &.block-editor-wrapper--bar-menu {
-    background: var(--om-color-bg-surface);
-    border: 1px solid var(--om-color-border-subtle);
+    background: var(--tw-color-bg-surface);
+    border: 1px solid var(--tw-color-border-subtle);
     border-radius: var(--om-radius-sm);
 
     &:focus-within {
@@ -287,7 +287,7 @@
 }
 
 .menu-wrapper {
-  background-color: var(--om-color-bg-surface);
+  background-color: var(--tw-color-bg-surface);
   display: flex;
   gap: var(--om-space-8);
   align-items: center;
@@ -305,7 +305,7 @@
 .slash-menu-wrapper {
   max-height: 300px;
   padding: var(--om-space-12) 0;
-  background-color: var(--om-color-bg-overlay-surface);
+  background-color: var(--tw-color-bg-overlay-surface);
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;
@@ -330,7 +330,7 @@
   max-height: 300px;
   max-width: 300px;
   padding: var(--om-space-12) 0;
-  background-color: var(--om-color-bg-overlay-surface);
+  background-color: var(--tw-color-bg-overlay-surface);
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;
@@ -450,11 +450,11 @@
 .is-format-active {
   .ant-typography,
   .format-label {
-    color: var(--om-color-link);
+    color: var(--tw-color-text-link);
   }
   svg {
     // Toolbar paths use currentColor, so the active state must set the foreground.
-    color: var(--om-color-link);
+    color: var(--tw-color-text-link);
     fill: currentColor;
   }
 }

@@ -76,7 +76,7 @@ const CodeEditor = ({
   return (
     <Card
       className={classNames(
-        'tw:overflow-visible tw:border-subtle tw:shadow-card tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums',
+        'tw:overflow-visible tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums',
         className,
         'code-editor-new-style'
       )}

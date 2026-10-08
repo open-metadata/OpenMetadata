@@ -137,7 +137,7 @@ export const CustomPropertyCard = ({
 
   return (
     <Card
-      className={classNames('tw:bg-surface tw:shadow-card', styles.card)}
+      className={styles.card}
       data-testid={`custom-property-${property.name}-card`}>
       <Box
         className="tw:h-full"
