@@ -46,21 +46,25 @@ const DimensionDeleteDialog = ({
   const isImpactUnknown =
     isUndefined(testCaseCount) || isUndefined(testDefinitionCount);
 
+  // A delete in flight can't be cancelled, so nothing may close the dialog.
+  const close = () => !isDeleting && onCancel();
+
   return (
     <ModalOverlay
       isDismissable={!isDeleting}
+      isKeyboardDismissDisabled={isDeleting}
       isOpen={Boolean(dimension)}
-      onOpenChange={(open) => !open && onCancel()}>
+      onOpenChange={(open) => !open && close()}>
       <Modal>
         <Dialog
-          showCloseButton
           data-testid="delete-dimension-dialog"
           dividers="scroll"
+          showCloseButton={!isDeleting}
           title={t('label.delete-entity', {
             entity: getEntityName(dimension),
           })}
           width={520}
-          onClose={onCancel}>
+          onClose={close}>
           <Dialog.Content>
             <Box direction="col" gap={3}>
               <Typography className="tw:text-tertiary" size="text-sm">

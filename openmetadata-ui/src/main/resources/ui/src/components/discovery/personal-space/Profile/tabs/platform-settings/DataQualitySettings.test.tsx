@@ -185,6 +185,45 @@ describe('Data Quality settings', () => {
     expect(getDataQualityDimensions).toHaveBeenCalledTimes(2);
   });
 
+  it('cannot be closed while the delete is in flight', async () => {
+    let finishDelete: () => void = () => undefined;
+    (deleteDataQualityDimension as jest.Mock).mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDelete = resolve;
+        })
+    );
+    await renderList();
+    fireEvent.click(screen.getByTestId('delete-freshness'));
+    await screen.findByTestId('delete-dimension-dialog');
+
+    expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-delete-dimension'));
+    });
+
+    expect(
+      screen.queryByRole('button', { name: /close/i })
+    ).not.toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByTestId('delete-dimension-dialog'), {
+      key: 'Escape',
+    });
+
+    expect(screen.getByTestId('delete-dimension-dialog')).toBeInTheDocument();
+
+    await act(async () => {
+      finishDelete();
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-dimension-dialog')
+      ).not.toBeInTheDocument()
+    );
+  });
+
   it('creates a dimension with its colour and returns to the list', async () => {
     render(<DimensionSettingsForm showHint={false} onNavigate={onNavigate} />);
     await screen.findByTestId('dimension-form');

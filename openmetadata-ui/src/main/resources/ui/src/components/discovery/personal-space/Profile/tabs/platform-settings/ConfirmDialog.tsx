@@ -45,19 +45,23 @@ const ConfirmDialog = ({
 }: ConfirmDialogProps) => {
   const { t } = useTranslation();
 
+  // The confirmed action can't be cancelled mid-flight, so nothing may close the dialog.
+  const close = () => !isLoading && onCancel();
+
   return (
     <ModalOverlay
       isDismissable={!isLoading}
+      isKeyboardDismissDisabled={isLoading}
       isOpen={isOpen}
-      onOpenChange={(open) => !open && onCancel()}>
+      onOpenChange={(open) => !open && close()}>
       <Modal>
         <Dialog
-          showCloseButton
           data-testid={testId}
           dividers="scroll"
+          showCloseButton={!isLoading}
           title={title}
           width={480}
-          onClose={onCancel}>
+          onClose={close}>
           <Dialog.Content>
             <Typography className="tw:text-tertiary" size="text-sm">
               {message}
