@@ -35,6 +35,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.EntityStatusAdapter;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -72,7 +73,7 @@ public class RollbackEntityImpl implements JavaDelegate {
 
   private void rejectEntity(String entityLinkValue, String updatedBy) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkValue);
-    EntityInterface entity = Entity.getEntity(entityLink, "", Include.ALL);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, "", Include.ALL);
     applyRejection(Entity.getEntityRepository(entityLink.getEntityType()), entity, updatedBy);
   }
 
@@ -90,7 +91,7 @@ public class RollbackEntityImpl implements JavaDelegate {
   }
 
   RejectionOutcome applyRejection(
-      EntityRepository<?> repository, EntityInterface currentEntity, String updatedBy) {
+      EntityRepository<?> repository, EntityInterface<?> currentEntity, String updatedBy) {
     Optional<ApprovedVersion> approvedVersion =
         findMostRecentApprovedVersion(currentEntity, repository);
     RejectionOutcome outcome;
@@ -106,11 +107,11 @@ public class RollbackEntityImpl implements JavaDelegate {
   }
 
   Optional<ApprovedVersion> findMostRecentApprovedVersion(
-      EntityInterface currentEntity, EntityRepository<?> repository) {
+      EntityInterface<?> currentEntity, EntityRepository<?> repository) {
     List<Double> earlierVersions = earlierVersions(currentEntity, repository);
     Optional<ApprovedVersion> approvedVersion = Optional.empty();
     for (Double version : earlierVersions) {
-      EntityInterface versionEntity =
+      EntityInterface<?> versionEntity =
           repository.getVersion(currentEntity.getId(), version.toString());
       if (isApprovedBaseline(versionEntity)) {
         approvedVersion = Optional.of(new ApprovedVersion(version, versionEntity));
@@ -124,7 +125,7 @@ public class RollbackEntityImpl implements JavaDelegate {
     WorkflowVariableHandler variableHandler = new WorkflowVariableHandler(execution);
     InputNamespaces namespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
     MessageParser.EntityLink entityLink = relatedEntityLink(variableHandler, namespaces);
-    EntityInterface entity = variableHandler.getRelatedEntity(entityLink, "", Include.ALL);
+    EntityInterface<?> entity = variableHandler.getRelatedEntity(entityLink, "", Include.ALL);
     String updatedBy = updatedBy(variableHandler, namespaces);
     String entityType = entityLink.getEntityType();
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
@@ -146,7 +147,7 @@ public class RollbackEntityImpl implements JavaDelegate {
   }
 
   private List<Double> earlierVersions(
-      EntityInterface currentEntity, EntityRepository<?> repository) {
+      EntityInterface<?> currentEntity, EntityRepository<?> repository) {
     EntityHistory history = repository.listVersions(currentEntity.getId());
     List<Double> versions = new ArrayList<>();
     for (Object serializedVersion : history.getVersions()) {
@@ -158,14 +159,15 @@ public class RollbackEntityImpl implements JavaDelegate {
     return versions;
   }
 
-  private Optional<Double> parsedVersion(Object serializedVersion, EntityInterface currentEntity) {
+  private Optional<Double> parsedVersion(
+      Object serializedVersion, EntityInterface<?> currentEntity) {
     Optional<Double> version;
     try {
       String json =
           serializedVersion instanceof String serialized
               ? serialized
               : JsonUtils.pojoToJson(serializedVersion);
-      EntityInterface entity = JsonUtils.readValue(json, currentEntity.getClass());
+      EntityInterface<?> entity = JsonUtils.readValue(json, currentEntity.getClass());
       version = Optional.ofNullable(entity.getVersion());
     } catch (RuntimeException exception) {
       LOG.warn("[RollbackEntity] Ignoring an unreadable entity version", exception);
@@ -174,10 +176,13 @@ public class RollbackEntityImpl implements JavaDelegate {
     return version;
   }
 
-  private boolean isApprovedBaseline(EntityInterface entity) {
+  private boolean isApprovedBaseline(EntityInterface<?> entity) {
     // A non-reviewer edit inherits Approved until its asynchronous workflow marks it In Review.
     // Only an actual approval event (or reviewer-authored change) is safe to restore later.
-    boolean isApproved = entity.getEntityStatus() == EntityStatus.APPROVED;
+    boolean isApproved =
+        EntityStatus.APPROVED
+            .value()
+            .equals(EntityStatusAdapter.forEntityType(entity.getClass()).read(entity));
     boolean hasDurableApproval =
         nullOrEmpty(entity.getReviewers())
             || recordsApprovalTransition(entity)
@@ -185,7 +190,7 @@ public class RollbackEntityImpl implements JavaDelegate {
     return isApproved && hasDurableApproval;
   }
 
-  private boolean recordsApprovalTransition(EntityInterface entity) {
+  private boolean recordsApprovalTransition(EntityInterface<?> entity) {
     ChangeDescription change = entity.getIncrementalChangeDescription();
     if (change == null) {
       change = entity.getChangeDescription();
@@ -199,7 +204,7 @@ public class RollbackEntityImpl implements JavaDelegate {
         && EntityStatus.APPROVED.value().equals(String.valueOf(change.getNewValue()));
   }
 
-  private boolean wasUpdatedByReviewer(EntityInterface entity) {
+  private boolean wasUpdatedByReviewer(EntityInterface<?> entity) {
     List<EntityReference> reviewers = entity.getReviewers();
     String updatedBy = entity.getUpdatedBy();
     boolean isReviewer = false;
@@ -233,38 +238,42 @@ public class RollbackEntityImpl implements JavaDelegate {
 
   private void restoreToApprovedVersion(
       EntityRepository<?> repository,
-      EntityInterface currentEntity,
-      EntityInterface approvedEntity,
+      EntityInterface<?> currentEntity,
+      EntityInterface<?> approvedEntity,
       String updatedBy) {
-    EntityInterface persistedCurrent = persistedCurrentVersion(repository, currentEntity);
+    EntityInterface<?> persistedCurrent = persistedCurrentVersion(repository, currentEntity);
     applyPatch(repository, persistedCurrent, approvedEntity, updatedBy);
   }
 
   private void rejectCurrentVersion(
-      EntityRepository<?> repository, EntityInterface currentEntity, String updatedBy) {
-    EntityInterface persistedCurrent = persistedCurrentVersion(repository, currentEntity);
+      EntityRepository<?> repository, EntityInterface<?> currentEntity, String updatedBy) {
+    EntityInterface<?> persistedCurrent = persistedCurrentVersion(repository, currentEntity);
     String currentJson = JsonUtils.pojoToJson(persistedCurrent);
-    EntityInterface rejectedEntity = JsonUtils.readValue(currentJson, persistedCurrent.getClass());
+    EntityInterface<?> rejectedEntity =
+        JsonUtils.readValue(currentJson, persistedCurrent.getClass());
     setRejectedStatus(rejectedEntity);
     applyPatch(repository, persistedCurrent, rejectedEntity, updatedBy);
   }
 
-  private EntityInterface persistedCurrentVersion(
-      EntityRepository<?> repository, EntityInterface currentEntity) {
+  private EntityInterface<?> persistedCurrentVersion(
+      EntityRepository<?> repository, EntityInterface<?> currentEntity) {
     return repository.getVersion(currentEntity.getId(), currentEntity.getVersion().toString());
   }
 
-  private void setRejectedStatus(EntityInterface entity) {
-    entity.setEntityStatus(EntityStatus.REJECTED);
-    if (entity.getEntityStatus() != EntityStatus.REJECTED) {
+  private void setRejectedStatus(EntityInterface<?> entity) {
+    EntityStatusAdapter.forEntityType(entity.getClass())
+        .write(entity, EntityStatus.REJECTED.value());
+    if (!EntityStatus.REJECTED
+        .value()
+        .equals(EntityStatusAdapter.forEntityType(entity.getClass()).read(entity))) {
       throw new IllegalStateException("Entity does not support a rejected approval status");
     }
   }
 
   private void applyPatch(
       EntityRepository<?> repository,
-      EntityInterface currentEntity,
-      EntityInterface targetEntity,
+      EntityInterface<?> currentEntity,
+      EntityInterface<?> targetEntity,
       String updatedBy) {
     JsonPatch patch =
         JsonUtils.getJsonPatch(
@@ -286,7 +295,7 @@ public class RollbackEntityImpl implements JavaDelegate {
     execution.setVariable(ROLLBACK_ENTITY_TYPE_VARIABLE, context.entityType());
   }
 
-  record ApprovedVersion(Double version, EntityInterface entity) {}
+  record ApprovedVersion(Double version, EntityInterface<?> entity) {}
 
   record RejectionOutcome(String action, Double fromVersion, Double toVersion) {
     private static RejectionOutcome rolledBack(Double fromVersion, Double toVersion) {
@@ -299,7 +308,7 @@ public class RollbackEntityImpl implements JavaDelegate {
   }
 
   private record RollbackContext(
-      EntityInterface currentEntity,
+      EntityInterface<?> currentEntity,
       EntityRepository<?> repository,
       String entityType,
       String updatedBy) {}

@@ -13,11 +13,11 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { listMyVisibleTasks, TaskStatusGroup } from '../../../../rest/tasksAPI';
-import { InboxDateRange, InboxScope } from './inbox.utils';
+import { ActivityFilter, InboxCount, InboxDateRange } from './inbox.utils';
 import { useInboxActivity } from './useInboxActivity';
 
 export interface InboxCounts {
-  activityCount: number;
+  activityCount: InboxCount;
   taskCount: number;
   isLoading: boolean;
 }
@@ -33,15 +33,15 @@ const INBOX_COUNTS_STALE_TIME = 30 * 1000;
  * queue and the sidebar bubble it must agree with — keyed on
  * `INBOX_COUNTS_QUERY_KEY` so a mutation elsewhere can invalidate it.
  */
-export const useInboxCounts = (
-  scope: InboxScope,
-  dateRange?: InboxDateRange
-): InboxCounts => {
-  const { total: activityCount, isLoading: isActivityLoading } =
-    useInboxActivity(scope, dateRange);
+export const useInboxCounts = (dateRange?: InboxDateRange): InboxCounts => {
+  const {
+    total,
+    isCapped,
+    isLoading: isActivityLoading,
+  } = useInboxActivity(ActivityFilter.All, dateRange);
 
   const { data: taskCount = 0, isFetching: isTaskFetching } = useQuery({
-    queryKey: [INBOX_COUNTS_QUERY_KEY, scope],
+    queryKey: [INBOX_COUNTS_QUERY_KEY],
     // Only Open tasks, so the badge matches the sidebar red bubble.
     queryFn: () =>
       listMyVisibleTasks({
@@ -54,7 +54,7 @@ export const useInboxCounts = (
   });
 
   return {
-    activityCount,
+    activityCount: { total, isCapped },
     taskCount,
     isLoading: isActivityLoading || isTaskFetching,
   };

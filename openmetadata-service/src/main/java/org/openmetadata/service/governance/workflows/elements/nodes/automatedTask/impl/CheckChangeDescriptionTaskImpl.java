@@ -82,7 +82,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
   private boolean checkChangeDescription(ChangeRules changeRules, String entityLinkStr) {
     // Parse entity
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-    EntityInterface entity = Entity.getEntity(entityLink, "", Include.ALL);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, "", Include.ALL);
 
     // No changeDescription means it's a create event - return true
     ChangeDescription changeDescription = entity.getChangeDescription();

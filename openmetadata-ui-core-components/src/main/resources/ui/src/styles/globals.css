@@ -1824,6 +1824,12 @@ Badge's own default neutral border/background instead of the tint. */
   color: var(--tag-color);
 }
 
+.tag-tinted:hover,
+.tag-tinted:focus {
+  outline: none;
+  text-decoration: none;
+}
+
 .tag-accent {
   outline: none;
   border: 1px solid color-mix(in srgb, var(--tag-color) 16%, transparent);
@@ -1833,6 +1839,12 @@ Badge's own default neutral border/background instead of the tint. */
   of stylesheet load order. */
   background-color: transparent !important;
   color: var(--tag-color);
+}
+
+.tag-accent:hover,
+.tag-accent:focus {
+  outline: none;
+  text-decoration: none;
 }
 
 .tag-tinted__close-icon button,
@@ -1869,6 +1881,27 @@ white the same way the label is lifted, so the chip keeps a visible edge. */
 .dark-mode .tag-accent {
   border-left-color: var(--tag-color);
 }
+/* A raw 6% tint disappears against dark cards. Lift the custom hue for the
+chip surface and label, including dark user-selected colours, while retaining
+the light-theme tint and the existing accent-tag treatment. */
+.dark-mode .tag-tinted {
+  background-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--tag-color) 30%, white) 16%,
+    transparent
+  );
+}
+
+.dark-mode .tag-tinted .tag-color-text {
+  color: color-mix(in srgb, var(--tag-color) 30%, white) !important;
+}
+/* Browser autofill paints its own background over inputs; keep autofilled
+fields on the dark surface. */
+.dark-mode input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--tw-color-bg-primary) inset;
+  -webkit-text-fill-color: var(--tw-color-text-primary);
+}
+
 /* Let the consumer generate utilities for classes used inside the packaged
 core-components bundle. */
 @source "../../dist/**/*.{js,mjs,cjs}";

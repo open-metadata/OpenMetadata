@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -243,22 +244,25 @@ test.describe('FeedWidget on landing page', () => {
 
     await expect(sortDropdown).toBeVisible();
 
-    // Test dropdown options
+    // Core popovers render outside the widget; use the selected sort label.
+    const sortMenu = page.getByRole('menu', { name: 'All Activity' });
     await sortDropdown.click();
-    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
 
     await expect(
-      page.getByRole('menuitem', { name: 'All Activity' })
+      sortMenu.getByRole('menuitem', { name: 'All Activity' })
     ).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: 'My Data' })).toBeVisible();
     await expect(
-      page.getByRole('menuitem', { name: 'Following' })
+      sortMenu.getByRole('menuitem', { name: 'My Data' })
+    ).toBeVisible();
+    await expect(
+      sortMenu.getByRole('menuitem', { name: 'Following' })
     ).toBeVisible();
 
-    // Close dropdown by clicking outside
-    await widget.click();
+    // Escape rather than a click on the widget: the click can land on a feed
+    // card, which opens the activity drawer.
+    await page.keyboard.press('Escape');
 
-    await expect(page.locator('.ant-dropdown')).not.toBeVisible();
+    await expect(sortMenu).toBeHidden();
   });
 
   test('clicking title navigates to explore page', async ({ page }) => {
@@ -421,11 +425,11 @@ test.describe('FeedWidget on landing page', () => {
     );
 
     // Pin the card by its marker: the list re-renders after every reaction, so
-    // an index would not resolve to the same card on the toggle-off pass.
-    const seededCard = widget
-      .getByTestId('message-container')
-      .filter({ hasText: ownedActivityMarker })
-      .first();
+    // an index would not resolve to the same card on the toggle-off pass. The
+    // newest event is always on the widget's first page.
+    const seededCard = widget.getByTestId('message-container').filter({
+      hasText: `${ownedActivityMarker} ${SEEDED_OWNED_ACTIVITY_COUNT - 1}`,
+    });
 
     await expect(seededCard).toBeVisible();
 
@@ -591,7 +595,7 @@ test.describe('Mention notifications in Notification Box', () => {
         // open thread panel, which is the one carrying the reply composer.
         .filter({ hasNot: user1Page.getByTestId('comments-input-field') });
 
-      await expect(seededThread).toBeVisible({ timeout: 30_000 });
+      await expect(seededThread).toBeVisible({ timeout: ACTION_TIMEOUT });
       await seededThread.click();
 
       await waitForAllLoadersToDisappear(user1Page);
@@ -878,7 +882,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       .filter({ hasText: CHINESE_MENTION_THREAD_MESSAGE })
       .first();
 
-    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await expect(seededThread).toBeVisible({ timeout: ACTION_TIMEOUT });
     await seededThread.click();
     await waitForAllLoadersToDisappear(page);
 

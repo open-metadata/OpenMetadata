@@ -62,7 +62,7 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
                 varHandler.getNamespacedVariable(
                     inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
                     RELATED_ENTITY_VARIABLE));
-    EntityInterface entity = varHandler.getRelatedEntity(entityLink, "*", Include.ALL);
+    EntityInterface<?> entity = varHandler.getRelatedEntity(entityLink, "*", Include.ALL);
     return checkAttributes(entityLink, entity, rules);
   }
 
@@ -72,7 +72,7 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
   }
 
   private Boolean checkAttributes(
-      MessageParser.EntityLink entityLink, EntityInterface entity, String rules) {
+      MessageParser.EntityLink entityLink, EntityInterface<?> entity, String rules) {
     Map<String, Object> entityMap = JsonUtils.getMap(entity);
     enrichTransientCounts(entityLink.getEntityType(), entity, entityMap);
 
@@ -86,7 +86,7 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
   }
 
   private void enrichTransientCounts(
-      String entityType, EntityInterface entity, Map<String, Object> entityMap) {
+      String entityType, EntityInterface<?> entity, Map<String, Object> entityMap) {
     if (!DATA_PRODUCT.equals(entityType)) {
       return;
     }

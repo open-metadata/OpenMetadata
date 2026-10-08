@@ -110,7 +110,7 @@ public interface WorkflowDocStoreDAOs {
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String workflowType = filter.getQueryParam("workflowType");
       String workflowStatus = filter.getQueryParam("workflowStatus");
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
 
       if (workflowType == null && workflowStatus == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
@@ -140,7 +140,7 @@ public interface WorkflowDocStoreDAOs {
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String workflowType = filter.getQueryParam("workflowType");
       String workflowStatus = filter.getQueryParam("workflowStatus");
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
 
       if (workflowType == null && workflowStatus == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
@@ -170,7 +170,7 @@ public interface WorkflowDocStoreDAOs {
     default int listCount(ListFilter filter) {
       String workflowType = filter.getQueryParam("workflowType");
       String workflowStatus = filter.getQueryParam("workflowStatus");
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
 
       if (workflowType == null && workflowStatus == null) {
         return EntityDAO.super.listCount(filter);
@@ -279,7 +279,7 @@ public interface WorkflowDocStoreDAOs {
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
       String excludedEntityType =
           filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
-      String cond = filter.getCondition();
+      String cond = filter.getConditionForEntity(getTableName());
       if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
@@ -320,7 +320,7 @@ public interface WorkflowDocStoreDAOs {
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
       String excludedEntityType =
           filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
-      String cond = filter.getCondition();
+      String cond = filter.getConditionForEntity(getTableName());
 
       if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
@@ -361,7 +361,7 @@ public interface WorkflowDocStoreDAOs {
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
       String excludedEntityType =
           filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
-      String cond = filter.getCondition();
+      String cond = filter.getConditionForEntity(getTableName());
 
       if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listCount(filter);

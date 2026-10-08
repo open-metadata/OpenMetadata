@@ -23,6 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Copy01,
   Edit01 as Edit,
   Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
@@ -50,6 +51,7 @@ import {
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getPolicyByName,
   getRoleByName,
@@ -73,6 +75,8 @@ import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import CopyLinkButton from '../../../../../CopyLinkButton/CopyLinkButton.component';
+import { profileHash } from '../members/profileHash.utils';
 import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
@@ -772,6 +776,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   } = usePolicyDetail(fqn);
 
   const [activeTab, setActiveTab] = useState<PolicyTab>('rules');
+  const { goTo } = useSettingsHash();
 
   useEffect(() => {
     if (policy) {
@@ -841,22 +846,30 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       />
     ) : undefined;
 
-    const renameButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <ButtonUtility
-        color="tertiary"
-        data-testid="rename-policy-btn"
-        icon={Edit}
-        isDisabled={!canEditAll}
-        size="xs"
-        tooltip={String(
-          canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
-        )}
-        tooltipPlacement="right"
-        onPress={() => {
-          setRenameValue(policy.displayName || policy.name || '');
-          setIsRenameOpen(true);
-        }}
-      />
+    const titleSuffixNode: React.ReactNode = isRenameOpen ? undefined : (
+      <Box align="center" direction="row" gap={1}>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="rename-policy-btn"
+          icon={Edit}
+          isDisabled={!canEditAll}
+          size="xs"
+          tooltip={String(
+            canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
+          )}
+          tooltipPlacement="right"
+          onPress={() => {
+            setRenameValue(policy.displayName || policy.name || '');
+            setIsRenameOpen(true);
+          }}
+        />
+        <CopyLinkButton
+          testId="copy-link-btn"
+          tooltip={String(t('label.copy'))}
+          url={window.location.href}>
+          <Copy01 className="tw:size-3" />
+        </CopyLinkButton>
+      </Box>
     );
 
     const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
@@ -874,7 +887,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       />
     );
 
-    onSetHeaderTitleSuffix?.(renameButtonNode);
+    onSetHeaderTitleSuffix?.(titleSuffixNode);
     onSetHeaderActions?.(deleteButtonNode);
     onSetHeaderTitleInput?.(titleInputNode);
   }, [
@@ -1068,10 +1081,21 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         kind="team"
         label={t('label.team-plural')}
         t={t}
+        onNavigateToDetail={(item) =>
+          goTo(profileHash.team(item.fullyQualifiedName ?? item.name ?? ''))
+        }
         onRemove={handleEntityRemove}
       />
     ),
-    [detailColumns, handleEntityRemove, isAdminUser, isLoadingOnSave, policy, t]
+    [
+      detailColumns,
+      goTo,
+      handleEntityRemove,
+      isAdminUser,
+      isLoadingOnSave,
+      policy,
+      t,
+    ]
   );
 
   if (isLoading) {

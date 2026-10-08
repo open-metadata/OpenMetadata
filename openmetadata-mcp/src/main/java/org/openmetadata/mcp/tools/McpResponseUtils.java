@@ -41,7 +41,7 @@ public final class McpResponseUtils {
    * definitions hold sink credentials in a free-form {@code sinkConfig} that the generic entity read
    * returns in clear; every other entity type is returned as is.
    */
-  public static EntityInterface maskSecrets(EntityInterface entity) {
+  public static EntityInterface<?> maskSecrets(EntityInterface<?> entity) {
     // MCP tools read and write entities by a runtime entityType string, so the concrete type is
     // only known from the instance.
     return entity instanceof WorkflowDefinition definition
@@ -49,7 +49,7 @@ public final class McpResponseUtils {
         : entity;
   }
 
-  public static Map<String, Object> compact(EntityInterface entity, EventType changeType) {
+  public static Map<String, Object> compact(EntityInterface<?> entity, EventType changeType) {
     Map<String, Object> doc = JsonUtils.getMap(maskSecrets(entity));
     NOISE_FIELDS.forEach(doc::remove);
     if (Boolean.FALSE.equals(doc.get(DELETED_KEY))) {
@@ -68,7 +68,7 @@ public final class McpResponseUtils {
    * field names are kept: the full object carries old and new values for every field, far more than
    * "did my change land" needs.
    */
-  public static Map<String, Object> compactPatch(EntityInterface entity, EventType changeType) {
+  public static Map<String, Object> compactPatch(EntityInterface<?> entity, EventType changeType) {
     Map<String, Object> doc = compact(entity, changeType);
     doc.put(VERSION_KEY, entity.getVersion());
     List<String> changed = changedFields(entity.getChangeDescription());

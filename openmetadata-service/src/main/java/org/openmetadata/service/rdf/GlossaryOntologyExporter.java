@@ -528,13 +528,19 @@ public final class GlossaryOntologyExporter {
 
   private static String predicateIri(
       final EntityReference reference, final List<RelationshipType> allTypes) {
+    final String referenceFqn = reference.getFullyQualifiedName();
     return allTypes.stream()
-        .filter(type -> type.getId().equals(reference.getId()))
+        .filter(
+            type ->
+                (reference.getId() != null && type.getId().equals(reference.getId()))
+                    || (referenceFqn != null && referenceFqn.equals(type.getFullyQualifiedName())))
         .findFirst()
         .orElseThrow(
             () ->
                 new IllegalArgumentException(
-                    "Relationship type '" + reference.getId() + "' is not registered"))
+                    "Relationship type '"
+                        + (reference.getId() != null ? reference.getId() : referenceFqn)
+                        + "' is not registered"))
         .getRdfPredicate()
         .toString();
   }

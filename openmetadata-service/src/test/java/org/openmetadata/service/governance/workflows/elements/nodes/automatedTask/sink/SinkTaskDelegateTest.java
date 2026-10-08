@@ -124,7 +124,7 @@ class SinkTaskDelegateTest {
     List<String> entityList = List.of("<#E::table::test.fqn>");
     setupVariableAccess(entityList, true);
 
-    EntityInterface batchEntity = mock(EntityInterface.class);
+    EntityInterface<?> batchEntity = mock(EntityInterface.class);
     when(batchEntity.getFullyQualifiedName()).thenReturn("test.fqn");
 
     delegate.entityLoader = link -> batchEntity;
@@ -151,7 +151,7 @@ class SinkTaskDelegateTest {
     List<String> entityList = List.of("<#E::table::test.fqn>");
     setupVariableAccess(entityList, false);
 
-    EntityInterface batchEntity = mock(EntityInterface.class);
+    EntityInterface<?> batchEntity = mock(EntityInterface.class);
     when(batchEntity.getFullyQualifiedName()).thenReturn("test.fqn");
 
     delegate.entityLoader = link -> batchEntity;
@@ -213,7 +213,7 @@ class SinkTaskDelegateTest {
       when(inputNamespaceMapExpr.getValue(execution))
           .thenReturn(JsonUtils.pojoToJson(Map.of(ENTITY_LIST_VARIABLE, GLOBAL_NAMESPACE)));
       setupVariableAccess(List.of("<#E::table::test.fqn>"), false);
-      EntityInterface batchEntity = mock(EntityInterface.class);
+      EntityInterface<?> batchEntity = mock(EntityInterface.class);
       when(batchEntity.getFullyQualifiedName()).thenReturn("test.fqn");
       delegate.entityLoader = link -> batchEntity;
 
@@ -325,7 +325,7 @@ class SinkTaskDelegateTest {
     SinkProvider skippingOne =
         new TestSinkProvider() {
           @Override
-          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
             return SinkResult.builder()
                 .success(true)
                 .syncedCount(entities.size() - 1)
@@ -391,10 +391,10 @@ class SinkTaskDelegateTest {
   }
 
   private static TestSinkProvider singleEntityProvider(
-      Function<EntityInterface, SinkResult> behavior) {
+      Function<EntityInterface<?>, SinkResult> behavior) {
     return new TestSinkProvider() {
       @Override
-      public SinkResult write(SinkContext context, EntityInterface entity) {
+      public SinkResult write(SinkContext context, EntityInterface<?> entity) {
         super.write(context, entity);
         return behavior.apply(entity);
       }
@@ -489,12 +489,12 @@ class SinkTaskDelegateTest {
             .build();
 
     // Create mock entities
-    EntityInterface entity1 = mock(EntityInterface.class);
-    EntityInterface entity2 = mock(EntityInterface.class);
+    EntityInterface<?> entity1 = mock(EntityInterface.class);
+    EntityInterface<?> entity2 = mock(EntityInterface.class);
     when(entity1.getFullyQualifiedName()).thenReturn("test.entity1");
     when(entity2.getFullyQualifiedName()).thenReturn("test.entity2");
 
-    List<EntityInterface> entities = List.of(entity1, entity2);
+    List<EntityInterface<?>> entities = List.of(entity1, entity2);
 
     SinkResult result = provider.writeBatch(context, entities);
 
@@ -518,7 +518,7 @@ class SinkTaskDelegateTest {
             .workflowName("TestWorkflow")
             .build();
 
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getFullyQualifiedName()).thenReturn("test.entity");
 
     SinkResult result = provider.write(context, entity);
@@ -541,7 +541,7 @@ class SinkTaskDelegateTest {
             .batchMode(false)
             .build();
 
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getFullyQualifiedName()).thenReturn("test.entity");
 
     assertThrows(RuntimeException.class, () -> provider.write(context, entity));
@@ -699,7 +699,7 @@ class SinkTaskDelegateTest {
     SinkProvider staging =
         new TestSinkProvider() {
           @Override
-          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
             calls.incrementAndGet();
             staged.add(entities.size() - 1);
             return SinkResult.builder()
@@ -758,7 +758,7 @@ class SinkTaskDelegateTest {
     SinkProvider sized =
         new TestSinkProvider() {
           @Override
-          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
             sizes.add(entities.size());
             return SinkResult.builder().success(true).syncedCount(entities.size()).build();
           }
@@ -849,7 +849,7 @@ class SinkTaskDelegateTest {
     SinkProvider recording =
         new TestSinkProvider() {
           @Override
-          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
             entities.forEach(entity -> written.add(entity.getFullyQualifiedName()));
             return SinkResult.builder().success(true).syncedCount(entities.size()).build();
           }
@@ -886,7 +886,7 @@ class SinkTaskDelegateTest {
     SinkProvider holdingBack =
         new TestSinkProvider() {
           @Override
-          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
             heldBack.add(entities.size());
             return SinkResult.builder().success(true).build();
           }
@@ -916,7 +916,7 @@ class SinkTaskDelegateTest {
     SinkProvider down =
         new TestSinkProvider() {
           @Override
-          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
             writes.incrementAndGet();
             return failedWrite(entities);
           }
@@ -945,7 +945,7 @@ class SinkTaskDelegateTest {
     SinkProvider counting =
         new TestSinkProvider() {
           @Override
-          public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+          public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
             writes.incrementAndGet();
             return SinkResult.builder().success(true).syncedCount(entities.size()).build();
           }
@@ -1012,13 +1012,13 @@ class SinkTaskDelegateTest {
     return released;
   }
 
-  private static EntityInterface namedEntity(String link) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private static EntityInterface<?> namedEntity(String link) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getFullyQualifiedName()).thenReturn(link);
     return entity;
   }
 
-  private static SinkResult failedWrite(List<EntityInterface> entities) {
+  private static SinkResult failedWrite(List<EntityInterface<?>> entities) {
     RuntimeException cause = new RuntimeException("GitHub request failed with status 499");
     return SinkResult.builder()
         .success(false)
@@ -1037,10 +1037,10 @@ class SinkTaskDelegateTest {
         .build();
   }
 
-  private static SinkProvider scripted(Function<List<EntityInterface>, SinkResult> behavior) {
+  private static SinkProvider scripted(Function<List<EntityInterface<?>>, SinkResult> behavior) {
     return new TestSinkProvider() {
       @Override
-      public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+      public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
         return behavior.apply(entities);
       }
     };
@@ -1055,7 +1055,7 @@ class SinkTaskDelegateTest {
     List<String> links =
         IntStream.range(0, entityCount).mapToObj("<#E::table::svc.db.sch.t%d>"::formatted).toList();
     setupVariableAccess(links, false);
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getFullyQualifiedName()).thenReturn("svc.db.sch.t");
 
     delegate.entityLoader = link -> entity;
@@ -1107,8 +1107,8 @@ class SinkTaskDelegateTest {
   }
 
   static class TestSinkProvider implements SinkProvider {
-    private final List<EntityInterface> writtenEntities = new ArrayList<>();
-    private final List<List<EntityInterface>> batchWrites = new ArrayList<>();
+    private final List<EntityInterface<?>> writtenEntities = new ArrayList<>();
+    private final List<List<EntityInterface<?>>> batchWrites = new ArrayList<>();
     private boolean shouldFail = false;
 
     @Override
@@ -1117,7 +1117,7 @@ class SinkTaskDelegateTest {
     }
 
     @Override
-    public SinkResult write(SinkContext context, EntityInterface entity) {
+    public SinkResult write(SinkContext context, EntityInterface<?> entity) {
       if (shouldFail) {
         throw new RuntimeException("Simulated failure");
       }
@@ -1130,12 +1130,12 @@ class SinkTaskDelegateTest {
     }
 
     @Override
-    public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+    public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
       if (shouldFail) {
         throw new RuntimeException("Simulated failure");
       }
       batchWrites.add(new ArrayList<>(entities));
-      List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+      List<String> fqns = entities.stream().map(EntityInterface<?>::getFullyQualifiedName).toList();
       return SinkResult.builder()
           .success(true)
           .syncedCount(entities.size())
@@ -1159,11 +1159,11 @@ class SinkTaskDelegateTest {
       return batchWrites.size();
     }
 
-    public List<EntityInterface> getWrittenEntities() {
+    public List<EntityInterface<?>> getWrittenEntities() {
       return writtenEntities;
     }
 
-    public List<EntityInterface> getLastBatchEntities() {
+    public List<EntityInterface<?>> getLastBatchEntities() {
       return batchWrites.isEmpty() ? List.of() : batchWrites.get(batchWrites.size() - 1);
     }
 

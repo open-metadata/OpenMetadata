@@ -83,10 +83,18 @@ const hasArea = ({ height, width }: TooltipSize) => height > 0 && width > 0;
 // Room past the newest and oldest runs, so their dots and the selection halo
 // are not cut at the plot edge.
 const X_AXIS_EDGE_GAP: [string, string] = ['2%', '2%'];
+// Runs at a single instant have no span, and ECharts stretches the time axis
+// to two years around them; a day centred on them keeps the axis readable.
+const SINGLE_INSTANT_X_PADDING = 12 * 60 * 60 * 1000;
 // Share of the data span left above and below the extremes, for the same
-// reason; a flat series gets a fixed step instead.
+// reason. A flat series has no span, so it gets a share of its value instead:
+// a fixed step of 1 on 10,000 made every compact tick read "10K".
 const Y_AXIS_EDGE_SHARE = 0.04;
-const FLAT_SERIES_PADDING = 1;
+const FLAT_SERIES_SHARE = 0.1;
+const FLAT_SERIES_MIN_PADDING = 1;
+// The padded extremes are padding, not data: a label there printed values like
+// "10.58K" on top of the "10K" tick.
+const Y_AXIS_LABEL = { showMinLabel: false, showMaxLabel: false };
 
 interface AxisExtent {
   min: number;
@@ -94,7 +102,9 @@ interface AxisExtent {
 }
 
 const yAxisPadding = ({ min, max }: AxisExtent) =>
-  max === min ? FLAT_SERIES_PADDING : (max - min) * Y_AXIS_EDGE_SHARE;
+  max === min
+    ? Math.max(Math.abs(max) * FLAT_SERIES_SHARE, FLAT_SERIES_MIN_PADDING)
+    : (max - min) * Y_AXIS_EDGE_SHARE;
 const paddedYAxisMin = (extent: AxisExtent) =>
   extent.min - yAxisPadding(extent);
 const paddedYAxisMax = (extent: AxisExtent) =>
@@ -308,8 +318,8 @@ function TestSummaryGraph({
     () =>
       getThresholdReference(
         testCaseParameterValue ?? [],
-        // Dimension results carry no learned bound, so the fallback simply
-        // finds nothing for them.
+        // Dimension results report the bounds they were evaluated against
+        // too, so a learned bound falls back the same way for them.
         testCaseResults[0] as Pick<TestCaseResult, 'maxBound'> | undefined
       ),
     [testCaseParameterValue, testCaseResults]
@@ -434,6 +444,8 @@ function TestSummaryGraph({
               label: t(thresholdReference.labelKey, {
                 value: thresholdReference.labelValue,
               }),
+              // The selection guide opens on the newest run, at the right end.
+              labelPosition: 'start' as const,
             },
           ]
         : []),
@@ -445,16 +457,22 @@ function TestSummaryGraph({
     [thresholdReference, activeRunTimestamp, t]
   );
 
-  const xAxis = useMemo<ChartXAxisProps>(
-    () => ({
+  const xAxis = useMemo<ChartXAxisProps>(() => {
+    const instants = new Set(plottedData.map((point) => Number(point.name)));
+    const [onlyInstant] = instants;
+
+    return {
       type: 'time',
       formatter: (value) =>
         formatDateTimeLong(Number(value), DATE_TIME_12_HOUR_FORMAT),
       axisLabel: { rotate: 45 },
       boundaryGap: X_AXIS_EDGE_GAP,
-    }),
-    []
-  );
+      ...(instants.size === 1 && {
+        min: onlyInstant - SINGLE_INSTANT_X_PADDING,
+        max: onlyInstant + SINGLE_INSTANT_X_PADDING,
+      }),
+    };
+  }, [plottedData]);
 
   const yAxis = useMemo<ChartYAxisProps>(
     () => ({
@@ -462,6 +480,7 @@ function TestSummaryGraph({
         paddedYAxisMin(includeInExtent(extent, thresholdReference?.y)),
       max: (extent: AxisExtent) =>
         paddedYAxisMax(includeInExtent(extent, thresholdReference?.y)),
+      axisLabel: Y_AXIS_LABEL,
       formatter: (value) => formatYAxis(Number(value)),
     }),
     [formatYAxis, thresholdReference]

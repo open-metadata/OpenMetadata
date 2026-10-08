@@ -14,7 +14,6 @@
 import { DragOutlined } from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Button, Col, Row } from 'antd';
-import { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -60,10 +59,6 @@ const WidgetHeader = ({
   title,
   widgetKey,
 }: WidgetHeaderProps) => {
-  const handleSortByClick = (e: MenuInfo) => {
-    onSortChange?.(e.key);
-  };
-
   const handleSizeChange = (value: number) => {
     if (handleLayoutUpdate) {
       const updatedLayout = currentLayout?.map((layout: WidgetConfig) =>
@@ -74,12 +69,12 @@ const WidgetHeader = ({
     }
   };
 
-  const handleMoreClick = (e: MenuInfo) => {
-    if (e.key === 'remove') {
+  const handleMoreClick = (key: string) => {
+    if (key === 'remove') {
       handleRemoveWidget?.(widgetKey);
-    } else if (e.key === 'half_size') {
+    } else if (key === 'half_size') {
       handleSizeChange(1);
-    } else if (e.key === 'full_size') {
+    } else if (key === 'full_size') {
       handleSizeChange(2);
     }
   };
@@ -88,7 +83,7 @@ const WidgetHeader = ({
     <WidgetSortFilter
       selectedSortBy={selectedSortBy}
       sortOptions={sortOptions}
-      onSortChange={handleSortByClick}
+      onSortChange={(key) => onSortChange?.(key)}
     />
   );
 

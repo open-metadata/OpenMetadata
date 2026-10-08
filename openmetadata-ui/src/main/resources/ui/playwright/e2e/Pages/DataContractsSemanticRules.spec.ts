@@ -31,6 +31,7 @@ import {
 import {
   clickEditContractButton,
   performInitialStepForRules,
+  reloadContractPage,
   saveAndTriggerDataContractValidation,
   triggerContractValidation,
 } from '../../utils/dataContracts';
@@ -146,9 +147,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -247,9 +246,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -348,9 +345,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -448,9 +443,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -528,9 +521,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -607,9 +598,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -695,9 +684,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -781,9 +768,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await waitForAllLoadersToDisappear(page);
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -841,8 +826,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       )?.id;
 
       await expect(async () => {
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
+        await reloadContractPage(page);
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
         ).toContainText('Passed', { timeout: 5_000 });
@@ -865,8 +849,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await waitForAllLoadersToDisappear(page);
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -946,9 +929,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1074,9 +1055,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1156,9 +1135,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1239,9 +1216,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1320,9 +1295,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1394,9 +1367,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1467,9 +1438,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1588,9 +1557,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1710,9 +1677,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2156,9 +2121,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2251,9 +2214,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2345,9 +2306,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2438,9 +2397,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2472,9 +2429,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2557,9 +2512,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2642,9 +2595,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2731,9 +2682,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2818,9 +2767,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2903,9 +2850,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2989,9 +2934,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3069,9 +3012,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3150,9 +3091,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await triggerContractValidation(page, contractId);
 
-      await page.reload();
-
-      await waitForAllLoadersToDisappear(page);
+      await reloadContractPage(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')

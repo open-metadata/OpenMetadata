@@ -188,7 +188,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Database entity, String fields) {
+  public EntityInterface<?> getParentEntity(Database entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -225,7 +225,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         schemaRepository.listAllForCSV(
             schemaRepository.getFields("owners,tags,domains,extension"),
             database.getFullyQualifiedName());
-    schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    schemas.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
 
     // Export schemas and all their child entities
     return new DatabaseCsv(database, user, recursive).exportAllCsv(schemas, recursive, callback);
@@ -578,8 +578,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
@@ -680,7 +683,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     /**
      * Add entity to CSV file with entity type
      */
-    public <E extends EntityInterface> void addEntityToCSV(
+    public <E extends EntityInterface<?>> void addEntityToCSV(
         CsvFile csvFile, E entity, String entityType) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());

@@ -196,6 +196,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     Alert,
     Badge,
+    BadgeWithButton: actual.BadgeWithButton,
     Box,
     Button,
     Card,

@@ -85,12 +85,12 @@ public class SetEntityAttributeImpl implements JavaDelegate {
     return new FieldUpdate(fieldName, fieldValue, actualUser);
   }
 
-  private static EntityInterface entityOf(String entityLink) {
+  private static EntityInterface<?> entityOf(String entityLink) {
     return Entity.getEntity(MessageParser.EntityLink.parse(entityLink), "*", Include.ALL);
   }
 
   private static void setEntityField(
-      EntityInterface entity, String entityLinkValue, FieldUpdate update) {
+      EntityInterface<?> entity, String entityLinkValue, FieldUpdate update) {
     String entityType = MessageParser.EntityLink.parse(entityLinkValue).getEntityType();
     // fieldValue==null clears the field. When we have an acting user, preserve it and mark
     // governance-bot as impersonator; otherwise attribute the write to governance-bot directly.

@@ -68,7 +68,7 @@ public class SinkTaskDelegate implements JavaDelegate {
   static final String STOP_REQUESTED_REASON = "the workflow instance was terminated by an admin";
 
   /** Loads one entity of a batch from its entity link, on the prefetch thread; replaced in tests. */
-  Function<String, EntityInterface> entityLoader = SinkTaskDelegate::loadEntity;
+  Function<String, EntityInterface<?>> entityLoader = SinkTaskDelegate::loadEntity;
 
   /** Whether the WorkflowInstance of a business key was asked to stop; replaced in tests. */
   Predicate<String> isStopRequested = WorkflowStopRequests::isStopRequested;
@@ -276,7 +276,7 @@ public class SinkTaskDelegate implements JavaDelegate {
 
   private SubBatchOutcome writeSubBatch(
       SinkContext context, SinkProvider sinkProvider, FetchedSubBatch subBatch) {
-    List<EntityInterface> entities = subBatch.entities();
+    List<EntityInterface<?>> entities = subBatch.entities();
     LOG.debug(
         "[{}] Processing sub-batch of {} entities", context.getWorkflowName(), entities.size());
     SinkResult written =
@@ -292,7 +292,7 @@ public class SinkTaskDelegate implements JavaDelegate {
   }
 
   private static SinkResult writeEntities(
-      SinkContext context, SinkProvider sinkProvider, List<EntityInterface> entities) {
+      SinkContext context, SinkProvider sinkProvider, List<EntityInterface<?>> entities) {
     return sinkProvider.supportsBatch()
         ? sinkProvider.writeBatch(context, entities)
         : writeEachEntity(context, sinkProvider, entities);
@@ -303,7 +303,7 @@ public class SinkTaskDelegate implements JavaDelegate {
    * its entity only, as a failed entity of a batch write does, and the sub-batch goes on.
    */
   private static SinkResult writeEachEntity(
-      SinkContext context, SinkProvider sinkProvider, List<EntityInterface> entities) {
+      SinkContext context, SinkProvider sinkProvider, List<EntityInterface<?>> entities) {
     SinkResultTotals totals = new SinkResultTotals();
     entities.forEach(entity -> writeEntity(context, sinkProvider, entity, totals));
     return totals.toResult();
@@ -312,7 +312,7 @@ public class SinkTaskDelegate implements JavaDelegate {
   private static void writeEntity(
       SinkContext context,
       SinkProvider sinkProvider,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       SinkResultTotals totals) {
     try {
       totals.add(sinkProvider.write(context, entity));
@@ -342,7 +342,7 @@ public class SinkTaskDelegate implements JavaDelegate {
         && written.getFailedCount() >= entityCount;
   }
 
-  private static EntityInterface loadEntity(String entityLinkStr) {
+  private static EntityInterface<?> loadEntity(String entityLinkStr) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     String fields =
         String.join(",", ReindexingUtil.getSearchIndexFields(entityLink.getEntityType()));
@@ -463,7 +463,7 @@ public class SinkTaskDelegate implements JavaDelegate {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(relatedEntityValue);
     String fields =
         String.join(",", ReindexingUtil.getSearchIndexFields(entityLink.getEntityType()));
-    EntityInterface entity = Entity.getEntity(entityLink, fields, Include.ALL);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, fields, Include.ALL);
 
     LOG.info(
         "[{}] Executing single entity sink for: {}",

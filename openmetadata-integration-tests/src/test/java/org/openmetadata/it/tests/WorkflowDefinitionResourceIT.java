@@ -3856,12 +3856,12 @@ public class WorkflowDefinitionResourceIT {
     }
 
     @Override
-    public SinkResult write(SinkContext context, EntityInterface entity) {
+    public SinkResult write(SinkContext context, EntityInterface<?> entity) {
       return writeBatch(context, List.of(entity));
     }
 
     @Override
-    public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+    public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
       List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
       written.addAll(fqns);
       return SinkResult.builder()
@@ -3911,12 +3911,12 @@ public class WorkflowDefinitionResourceIT {
     }
 
     @Override
-    public SinkResult write(SinkContext context, EntityInterface entity) {
+    public SinkResult write(SinkContext context, EntityInterface<?> entity) {
       return writeBatch(context, List.of(entity));
     }
 
     @Override
-    public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+    public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
       writing.countDown();
       try {
         released.await(MAX_BLOCK.toMillis(), TimeUnit.MILLISECONDS);
@@ -4207,7 +4207,7 @@ public class WorkflowDefinitionResourceIT {
     createdWorkflows.values().remove(workflowId);
   }
 
-  private static Set<String> fullyQualifiedNames(List<? extends EntityInterface> entities) {
+  private static Set<String> fullyQualifiedNames(List<? extends EntityInterface<?>> entities) {
     return entities.stream()
         .map(EntityInterface::getFullyQualifiedName)
         .collect(Collectors.toSet());
@@ -4239,12 +4239,12 @@ public class WorkflowDefinitionResourceIT {
     }
 
     @Override
-    public SinkResult write(SinkContext context, EntityInterface entity) {
+    public SinkResult write(SinkContext context, EntityInterface<?> entity) {
       return writeBatch(context, List.of(entity));
     }
 
     @Override
-    public SinkResult writeBatch(SinkContext context, List<EntityInterface> entities) {
+    public SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities) {
       List<String> fqns = entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
       attempted.addAll(fqns);
       return SinkResult.builder()

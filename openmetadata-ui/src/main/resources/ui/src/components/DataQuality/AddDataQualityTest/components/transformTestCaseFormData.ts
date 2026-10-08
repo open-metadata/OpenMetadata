@@ -32,6 +32,7 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
+import { omitDimensionFailurePolicy } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import {
   getParamPrefillKind,
   normalizeParamsForPayload,
@@ -166,9 +167,14 @@ export const transformTestCaseFormData = (
 
   const entityLink = resolveEntityLink(ctx);
 
+  const isDimensionalTest = values.testLevel === TestLevel.COLUMN_DIMENSION;
   const normalizedValues = normalizeFormValuesForPayload(
     values,
     ctx.selectedDefinition
+  );
+  normalizedValues.params = omitDimensionFailurePolicy(
+    normalizedValues.params,
+    isDimensionalTest
   );
 
   return {
@@ -177,14 +183,10 @@ export const transformTestCaseFormData = (
     computePassedFailedRowCount: values.computePassedFailedRowCount,
     entityLink,
     testDefinition: unwrapSelectValue(values.testTypeId) ?? '',
-    dimensionColumns:
-      values.testLevel === TestLevel.COLUMN_DIMENSION
-        ? unwrapSelectValues(values.dimensionColumns)
-        : undefined,
-    topDimensions:
-      values.testLevel === TestLevel.COLUMN_DIMENSION
-        ? values.topDimensions
-        : undefined,
+    dimensionColumns: isDimensionalTest
+      ? unwrapSelectValues(values.dimensionColumns)
+      : undefined,
+    topDimensions: isDimensionalTest ? values.topDimensions : undefined,
     description: isEmpty(values.description) ? undefined : values.description,
     // Left out when untouched so the API falls back to the test definition's
     // dimension, which is what the field is prefilled with anyway.

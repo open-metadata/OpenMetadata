@@ -12,7 +12,7 @@ import org.openmetadata.service.formatter.util.FormatterUtil;
 public final class McpChangeEventUtil {
   private McpChangeEventUtil() {}
 
-  public static <T extends EntityInterface> void publishChangeEvent(
+  public static <T extends EntityInterface<?>> void publishChangeEvent(
       T entity, EventType changeType, String userName) {
     if (entity == null || changeType == null || changeType.equals(EventType.ENTITY_NO_CHANGE)) {
       return;

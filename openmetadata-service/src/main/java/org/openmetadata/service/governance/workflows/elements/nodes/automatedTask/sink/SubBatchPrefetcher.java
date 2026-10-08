@@ -38,11 +38,11 @@ final class SubBatchPrefetcher implements AutoCloseable {
   static final int FETCH_THREADS = 4;
 
   private final ExecutorService executor;
-  private final Function<String, EntityInterface> entityLoader;
+  private final Function<String, EntityInterface<?>> entityLoader;
   private List<String> pendingLinks;
   private List<Future<FetchedSubBatch>> pendingSlices;
 
-  SubBatchPrefetcher(String workflowName, Function<String, EntityInterface> entityLoader) {
+  SubBatchPrefetcher(String workflowName, Function<String, EntityInterface<?>> entityLoader) {
     this.entityLoader = entityLoader;
     AtomicInteger threadNumber = new AtomicInteger();
     this.executor =
@@ -92,7 +92,7 @@ final class SubBatchPrefetcher implements AutoCloseable {
     List<String> links = pendingLinks;
     pendingSlices = null;
     pendingLinks = null;
-    List<EntityInterface> entities = new ArrayList<>();
+    List<EntityInterface<?>> entities = new ArrayList<>();
     List<SinkResult.SinkError> fetchErrors = new ArrayList<>();
     for (Future<FetchedSubBatch> slice : slices) {
       FetchedSubBatch fetched = await(slice);
@@ -115,7 +115,7 @@ final class SubBatchPrefetcher implements AutoCloseable {
   }
 
   private FetchedSubBatch fetch(List<String> entityLinks) {
-    List<EntityInterface> entities = new ArrayList<>();
+    List<EntityInterface<?>> entities = new ArrayList<>();
     List<SinkResult.SinkError> fetchErrors = new ArrayList<>();
     for (String entityLink : entityLinks) {
       try {
@@ -150,6 +150,6 @@ final class SubBatchPrefetcher implements AutoCloseable {
   /** The entities loaded for one sub-batch and the links that could not be loaded. */
   record FetchedSubBatch(
       List<String> entityLinks,
-      List<EntityInterface> entities,
+      List<EntityInterface<?>> entities,
       List<SinkResult.SinkError> fetchErrors) {}
 }

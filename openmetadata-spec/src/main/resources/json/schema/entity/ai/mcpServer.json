@@ -6,7 +6,7 @@
   "description": "MCP (Model Context Protocol) Server entity representing an MCP server deployment for AI governance. MCP servers expose tools, resources, and prompts that can be used by AI applications. This entity enables comprehensive governance including risk assessment, compliance, shadow AI detection, and data access tracking.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.ai.McpServer",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "serverType": {
       "javaType": "org.openmetadata.schema.entity.ai.McpServerType",

@@ -40,7 +40,7 @@ class McpChangeEventUtilTest {
 
   @Test
   void publishChangeEvent_nullChangeType_doesNothing() {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     assertThatNoException()
         .isThrownBy(() -> McpChangeEventUtil.publishChangeEvent(entity, null, "admin"));
     verify(entity, never()).getId();
@@ -48,7 +48,7 @@ class McpChangeEventUtilTest {
 
   @Test
   void publishChangeEvent_entityNoChange_doesNothing() {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     assertThatNoException()
         .isThrownBy(
             () ->
@@ -58,7 +58,7 @@ class McpChangeEventUtilTest {
 
   @Test
   void publishChangeEvent_success_insertsChangeEventToDao() {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
     ChangeEvent changeEvent = mock(ChangeEvent.class);
@@ -98,7 +98,7 @@ class McpChangeEventUtilTest {
 
   @Test
   void publishChangeEvent_daoException_isSwallowedAndDoesNotPropagate() {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
     try (MockedStatic<FormatterUtil> formatterMock = mockStatic(FormatterUtil.class)) {
@@ -115,7 +115,7 @@ class McpChangeEventUtilTest {
 
   @Test
   void publishChangeEvent_setsUserNameOnChangeEvent() {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
     ChangeEvent changeEvent = mock(ChangeEvent.class);

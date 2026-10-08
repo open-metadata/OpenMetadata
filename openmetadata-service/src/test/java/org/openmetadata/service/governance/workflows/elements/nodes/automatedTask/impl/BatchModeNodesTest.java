@@ -62,7 +62,7 @@ class BatchModeNodesTest {
   private static final String GOLD_RULE = "{\"==\":[{\"var\":\"description\"},\"gold\"]}";
 
   private final Map<String, Object> variables = new HashMap<>();
-  private final Map<String, EntityInterface> entities = new LinkedHashMap<>();
+  private final Map<String, EntityInterface<?>> entities = new LinkedHashMap<>();
   private final List<String> missing = new ArrayList<>();
   private DelegateExecution execution;
   private MockedStatic<Entity> entityStatics;
@@ -250,7 +250,7 @@ class BatchModeNodesTest {
                       any(), anyString(), anyString(), anyString(), any(), eq(true), isNull()))
           .thenAnswer(
               invocation -> {
-                EntityInterface entity = invocation.getArgument(0);
+                EntityInterface<?> entity = invocation.getArgument(0);
                 if (fqnOf(1).equals(entity.getFullyQualifiedName())) {
                   throw new IllegalStateException("patch rejected");
                 }
@@ -342,7 +342,7 @@ class BatchModeNodesTest {
 
     certify.execute(execution);
 
-    for (EntityInterface table : entities.values()) {
+    for (EntityInterface<?> table : entities.values()) {
       verify(repository).patch(isNull(), eq(table.getId()), eq("governance-bot"), any());
     }
     assertNull(variables.get("global_failure"));
@@ -480,11 +480,11 @@ class BatchModeNodesTest {
     return "svc.db.schema.t%d".formatted(index);
   }
 
-  private static String linkOf(String entityType, EntityInterface entity) {
+  private static String linkOf(String entityType, EntityInterface<?> entity) {
     return "<#E::%s::%s>".formatted(entityType, entity.getFullyQualifiedName());
   }
 
-  private EntityInterface entityFor(MessageParser.EntityLink link) {
+  private EntityInterface<?> entityFor(MessageParser.EntityLink link) {
     if (missing.contains(link.getEntityFQN())) {
       throw EntityNotFoundException.byName(link.getEntityFQN());
     }

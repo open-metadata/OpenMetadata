@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -10,10 +11,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.BulkApi;
@@ -22,6 +26,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -31,8 +36,10 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Integration tests for the {@code overrideMetadata} flag on the bulk path ({@code PUT
@@ -50,6 +57,10 @@ public class BulkOverrideMetadataIT {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String CERTIFICATION_GOLD = "Certification.Gold";
+  private static final String BLANK_DESCRIPTIONS =
+      """
+      [{"op":"remove","path":"/description"},
+       {"op":"replace","path":"/columns/0/description","value":""}]""";
 
   @Test
   void test_botCannotOverwriteDescription_withoutOverride(TestNamespace ns) throws Exception {
@@ -255,6 +266,48 @@ public class BulkOverrideMetadataIT {
         "overrideMetadata=true must not blank a column description when none is supplied");
   }
 
+  /**
+   * Pre-2.0 ingestion clients still PATCH existing tables with the source's empty column comments
+   * under overrideMetadata; the PUT guard alone let that blank curated descriptions.
+   */
+  @Test
+  void test_ingestionBotPatchCannotBlankDescriptions(TestNamespace ns) throws Exception {
+    Table table = curatedDescriptions(ns, "patch_blank");
+
+    patchAs(table, BLANK_DESCRIPTIONS, BulkApi.botToken());
+
+    Table after = getTable(table.getFullyQualifiedName());
+    assertEquals("curated description", after.getDescription());
+    assertEquals("curated column", columnDescription(after));
+  }
+
+  @Test
+  void test_ingestionBotPatchStillReplacesDescriptions(TestNamespace ns) throws Exception {
+    Table table = curatedDescriptions(ns, "patch_replace");
+
+    patchAs(
+        table,
+        """
+        [{"op":"replace","path":"/description","value":"from dbt"},
+         {"op":"replace","path":"/columns/0/description","value":"column from dbt"}]""",
+        BulkApi.botToken());
+
+    Table after = getTable(table.getFullyQualifiedName());
+    assertEquals("from dbt", after.getDescription());
+    assertEquals("column from dbt", columnDescription(after));
+  }
+
+  @Test
+  void test_userPatchCanBlankDescriptions(TestNamespace ns) throws Exception {
+    Table table = curatedDescriptions(ns, "patch_user_blank");
+
+    patchAs(table, BLANK_DESCRIPTIONS, SdkClients.getAdminToken());
+
+    Table after = getTable(table.getFullyQualifiedName());
+    assertTrue(nullOrEmpty(after.getDescription()));
+    assertTrue(nullOrEmpty(columnDescription(after)));
+  }
+
   @Test
   void test_columnDisplayNamePreserved_evenWithOverride(TestNamespace ns) throws Exception {
     String schemaFqn = setupSchema(ns);
@@ -307,6 +360,44 @@ public class BulkOverrideMetadataIT {
     assertEquals(
         List.of(tags.getLast().getTagFQN()),
         tagFqns(getTable(fqn).getColumns().getFirst().getTags()));
+  }
+
+  @Test
+  void test_overrideKeepsTableTagsFromClassificationsNotSent(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<TagLabel> sourceTags = createMutuallyExclusiveTags(ns, "ovr_keep_table_src");
+    TagLabel curatedTag = createMutuallyExclusiveTags(ns, "ovr_keep_table_curated").getFirst();
+    CreateTable original = table(ns, schemaFqn, "ovr_keep_table", "desc", "hash-v1");
+    original.setTags(List.of(sourceTags.getFirst(), curatedTag));
+    BulkApi.upsert("tables", List.of(original), false, BulkApi.botToken());
+
+    CreateTable changed = table(ns, schemaFqn, "ovr_keep_table", "desc", "hash-v2");
+    changed.setTags(List.of(sourceTags.getLast()));
+    BulkApi.upsert("tables", List.of(changed), true, BulkApi.botToken());
+
+    String fqn = schemaFqn + "." + original.getName();
+    assertEquals(
+        Set.of(sourceTags.getLast().getTagFQN(), curatedTag.getTagFQN()),
+        Set.copyOf(tagFqns(getTable(fqn).getTags())));
+  }
+
+  @Test
+  void test_overrideKeepsColumnTagsFromClassificationsNotSent(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<TagLabel> sourceTags = createMutuallyExclusiveTags(ns, "ovr_keep_col_src");
+    TagLabel curatedTag = createMutuallyExclusiveTags(ns, "ovr_keep_col_curated").getFirst();
+    CreateTable original = table(ns, schemaFqn, "ovr_keep_col", "desc", "hash-v1");
+    original.getColumns().getFirst().setTags(List.of(sourceTags.getFirst(), curatedTag));
+    BulkApi.upsert("tables", List.of(original), false, BulkApi.botToken());
+
+    CreateTable changed = table(ns, schemaFqn, "ovr_keep_col", "desc", "hash-v2");
+    changed.getColumns().getFirst().setTags(List.of(sourceTags.getLast()));
+    BulkApi.upsert("tables", List.of(changed), true, BulkApi.botToken());
+
+    String fqn = schemaFqn + "." + original.getName();
+    assertEquals(
+        Set.of(sourceTags.getLast().getTagFQN(), curatedTag.getTagFQN()),
+        Set.copyOf(tagFqns(getTable(fqn).getColumns().getFirst().getTags())));
   }
 
   @Test
@@ -392,6 +483,120 @@ public class BulkOverrideMetadataIT {
     assertEquals(List.of("c1"), constraints.getFirst().getColumns());
   }
 
+  @Test
+  void test_botKeepsUserOwners_withoutOverride(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    assertEquals(
+        List.of(shared.USER1.getId()),
+        ownerIdsAfterSourceSendsOwner(ns, "own_keep", shared.USER1_REF, false),
+        "owners from the source (ownerConfig/includeOwners) must not replace a user's owners");
+  }
+
+  @Test
+  void test_botReplacesUserOwners_withOverride(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    assertEquals(
+        List.of(shared.USER2.getId()),
+        ownerIdsAfterSourceSendsOwner(ns, "own_override", shared.USER1_REF, true),
+        "overrideMetadata=true lets the source's owners replace the stored ones");
+  }
+
+  @Test
+  void test_botFillsOwners_whenEntityHasNone(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    assertEquals(
+        List.of(shared.USER2.getId()),
+        ownerIdsAfterSourceSendsOwner(ns, "own_fill", null, false),
+        "a source owner still lands on an entity that has none");
+  }
+
+  /** A user (admin) creates the table with {@code userOwner}; ingestion re-syncs it as owned by USER2. */
+  private List<UUID> ownerIdsAfterSourceSendsOwner(
+      TestNamespace ns, String baseName, EntityReference userOwner, boolean overrideMetadata)
+      throws Exception {
+    String schemaFqn = setupSchema(ns);
+    CreateTable curated = table(ns, schemaFqn, baseName, "desc", "hash-v1");
+    if (userOwner != null) {
+      curated.setOwners(List.of(userOwner));
+    }
+    BulkApi.upsert("tables", List.of(curated), false, SdkClients.getAdminToken());
+
+    CreateTable fromSource = table(ns, schemaFqn, baseName, "desc", "hash-v2");
+    fromSource.setOwners(List.of(SharedEntities.get().USER2_REF));
+    BulkApi.upsert("tables", List.of(fromSource), overrideMetadata, BulkApi.botToken());
+
+    return getTable(schemaFqn + "." + curated.getName()).getOwners().stream()
+        .map(EntityReference::getId)
+        .toList();
+  }
+
+  @Test
+  void test_botKeepsTableRetentionPeriod_withoutOverride(TestNamespace ns) throws Exception {
+    assertTableRetentionPeriodKept(ns, "ret_off", false);
+  }
+
+  @Test
+  void test_botKeepsTableRetentionPeriod_withOverride(TestNamespace ns) throws Exception {
+    assertTableRetentionPeriodKept(ns, "ret_on", true);
+  }
+
+  private void assertTableRetentionPeriodKept(
+      TestNamespace ns, String baseName, boolean overrideMetadata) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    CreateTable curated = table(ns, schemaFqn, baseName, "desc", "hash-v1");
+    curated.setRetentionPeriod("P30D");
+    BulkApi.upsert("tables", List.of(curated), false, SdkClients.getAdminToken());
+
+    CreateTable fromSource = table(ns, schemaFqn, baseName, "desc", "hash-v2");
+    BulkApi.upsert("tables", List.of(fromSource), overrideMetadata, BulkApi.botToken());
+
+    assertEquals(
+        "P30D",
+        getTable(schemaFqn + "." + curated.getName()).getRetentionPeriod(),
+        "no source sends retentionPeriod, so a bot PUT must not blank it");
+  }
+
+  @Test
+  void test_botKeepsSchemaRetentionPeriod_withOverride(TestNamespace ns) throws Exception {
+    String databaseFqn = FullyQualifiedName.getParentFQN(setupSchema(ns));
+    CreateDatabaseSchema curated =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("ret_schema"))
+            .withDatabase(databaseFqn)
+            .withRetentionPeriod("P30D");
+    curated.setSourceHash("hash-v1");
+    BulkApi.upsert("databaseSchemas", List.of(curated), false, SdkClients.getAdminToken());
+
+    CreateDatabaseSchema fromSource =
+        new CreateDatabaseSchema().withName(curated.getName()).withDatabase(databaseFqn);
+    fromSource.setSourceHash("hash-v2");
+    BulkApi.upsert("databaseSchemas", List.of(fromSource), true, BulkApi.botToken());
+
+    DatabaseSchema schema =
+        SdkClients.adminClient().databaseSchemas().getByName(databaseFqn + "." + curated.getName());
+    assertEquals("P30D", schema.getRetentionPeriod());
+  }
+
+  private Table curatedDescriptions(TestNamespace ns, String baseName) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    CreateTable curated = table(ns, schemaFqn, baseName, "curated description", "hash-v1");
+    setColumnDescription(curated, "curated column");
+    BulkApi.upsert("tables", List.of(curated), false, SdkClients.getAdminToken());
+    return getTable(schemaFqn + "." + curated.getName());
+  }
+
+  private void patchAs(Table table, String jsonPatch, String token) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/tables/" + table.getId()))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json-patch+json")
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(jsonPatch))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), "patch table: " + response.body());
+  }
+
   private TableConstraint primaryKey(String column) {
     return new TableConstraint()
         .withConstraintType(TableConstraint.ConstraintType.PRIMARY_KEY)
@@ -466,7 +671,7 @@ public class BulkOverrideMetadataIT {
                     SdkClients.getServerUrl()
                         + "/v1/tables/name/"
                         + fqn
-                        + "?fields=columns,tags,certification,tableConstraints"))
+                        + "?fields=columns,tags,owners,certification,tableConstraints"))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .GET()
             .build();

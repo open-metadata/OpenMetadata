@@ -13,109 +13,80 @@
 
 package org.openmetadata.service.notifications.recipients.strategy.impl;
 
-import java.util.Collections;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
+import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
+import java.util.function.Supplier;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.notifications.recipients.Lookup;
+import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
 /**
  * Resolves users by name or ID.
  *
- * This resolver supports two modes:
- * 1. By name: looks up users from the action's receivers list by their usernames
- * 2. By ID: directly resolves users from a list of UUIDs (useful for relationship-based resolution)
- *
- * In both cases, it converts users to recipients with appropriate contact information.
+ * <p>By name, it looks up the users the action's receivers list names. By ID, it resolves the
+ * users of relationship-based resolvers. A user that does not exist, or has no address on
+ * the destination's channel, reaches nobody; one that could not be read is a failure; neither
+ * costs the other users their message.
  */
-@Slf4j
 public class UserRecipientResolver implements RecipientResolutionStrategy {
 
   private static final String USER_FIELDS = "id,profile,email";
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-    return resolveUsersByName(action, destination);
+    return byName(action, destination);
   }
 
   @Override
-  public Set<Recipient> resolve(
+  public Recipients resolve(
       UUID entityId,
       String entityType,
       SubscriptionAction action,
       SubscriptionDestination destination) {
-    return resolveUsersByName(action, destination);
+    return byName(action, destination);
   }
 
-  private Set<Recipient> resolveUsersByName(
-      SubscriptionAction action, SubscriptionDestination destination) {
-    if (action.getReceivers() == null || action.getReceivers().isEmpty()) {
-      return Collections.emptySet();
-    }
-
-    SubscriptionDestination.SubscriptionType notificationType = destination.getType();
-    return action.getReceivers().stream()
-        .map(userName -> resolveUserByName(userName, notificationType))
-        .filter(Objects::nonNull)
-        .collect(Collectors.toUnmodifiableSet());
+  public Recipients resolve(List<UUID> userIds, SubscriptionDestination destination) {
+    return listOrEmpty(userIds).stream()
+        .map(
+            id ->
+                reached(
+                    "user " + id,
+                    () -> Entity.<User>getEntity(Entity.USER, id, USER_FIELDS, Include.NON_DELETED),
+                    destination))
+        .collect(Recipients.combined());
   }
 
-  private Recipient resolveUserByName(
-      String userName, SubscriptionDestination.SubscriptionType notificationType) {
-    try {
-      User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, Include.NON_DELETED);
-      return Recipient.fromUser(user, notificationType);
-    } catch (Exception e) {
-      LOG.error("Failed to resolve user recipient for user {}", userName, e);
-      return null;
-    }
+  private Recipients byName(SubscriptionAction action, SubscriptionDestination destination) {
+    Collection<String> names =
+        action == null || action.getReceivers() == null ? List.of() : action.getReceivers();
+    return names.stream()
+        .map(
+            name ->
+                reached(
+                    "user " + name,
+                    () ->
+                        Entity.<User>getEntityByName(
+                            Entity.USER, name, USER_FIELDS, Include.NON_DELETED),
+                    destination))
+        .collect(Recipients.combined());
   }
 
-  /**
-   * Resolve users by their IDs.
-   *
-   * This method is used by relationship-based resolvers (OwnerRecipientResolver,
-   * FollowerRecipientResolver) to convert EntityReferences (which have IDs) to Recipients.
-   *
-   * Users that cannot be resolved, or that have no contact information for the destination type,
-   * are skipped without discarding the remaining users.
-   *
-   * @param userIds list of user IDs to resolve
-   * @param destination the subscription destination
-   * @return set of resolved user recipients
-   */
-  public Set<Recipient> resolve(List<UUID> userIds, SubscriptionDestination destination) {
-    if (userIds == null || userIds.isEmpty()) {
-      return Collections.emptySet();
-    }
-
-    SubscriptionDestination.SubscriptionType notificationType = destination.getType();
-    return userIds.stream()
-        .map(userId -> resolveUserById(userId, notificationType))
-        .filter(Objects::nonNull)
-        .collect(Collectors.toUnmodifiableSet());
-  }
-
-  private Recipient resolveUserById(
-      UUID userId, SubscriptionDestination.SubscriptionType notificationType) {
-    try {
-      User user = Entity.getEntity(Entity.USER, userId, USER_FIELDS, Include.NON_DELETED);
-      return Recipient.fromUser(user, notificationType);
-    } catch (Exception e) {
-      LOG.error("Failed to resolve user recipient for user {}", userId, e);
-      return null;
-    }
+  private static Recipients reached(
+      String what, Supplier<User> read, SubscriptionDestination destination) {
+    return Recipients.from(
+        Lookup.of(what, () -> Recipient.fromUser(read.get(), destination)), Recipients::of);
   }
 
   @Override

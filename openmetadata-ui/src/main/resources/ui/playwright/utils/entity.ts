@@ -13,6 +13,7 @@
 import { expect, Locator, Page, type Response } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   BIG_ENTITY_DELETE_TIMEOUT,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
@@ -40,6 +41,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
+import { pickDateInCorePicker } from './datePicker';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -54,7 +56,7 @@ import {
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
-import { clickUntilVisible } from './waitHelpers';
+import { clickUntilVisible, waitForResponseWithStatus } from './waitHelpers';
 
 /**
  * Waits until no loader is left in `scope`: the whole page, or a widget's
@@ -65,7 +67,7 @@ import { clickUntilVisible } from './waitHelpers';
 export const waitForAllLoadersToDisappear = async (
   scope: Page | Locator,
   dataTestId = 'loader',
-  timeout = 30000
+  timeout = ACTION_TIMEOUT
 ) => {
   const loaders = scope.locator(`[data-testid="${dataTestId}"]`);
 
@@ -84,7 +86,10 @@ export const waitForAllLoadersToDisappear = async (
  * — `request-entity-tags`, for one — is simply absent until this clears, so the
  * click waits out the whole test timeout rather than racing by a few frames.
  */
-export const waitForWidgetsToRender = async (page: Page, timeout = 30000) => {
+export const waitForWidgetsToRender = async (
+  page: Page,
+  timeout = ACTION_TIMEOUT
+) => {
   await expect(
     page.locator('[data-testid="entity-detail-widget-skeleton"]')
   ).toHaveCount(0, { timeout });
@@ -159,7 +164,7 @@ export const visitEntityPage = async (data: {
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=dataAsset') &&
       response.url().includes('exclude_source_fields'),
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
   await page.getByTestId('searchBox').fill(searchTerm);
   await searchResponse;
@@ -692,7 +697,7 @@ export const assignTier = async (
   // saw 18 resolutions to the previous value across the 15 s default,
   // then passed on retry #1. 30 s covers the observed p99.
   await expect(page.getByTestId('Tier')).toContainText(tier, {
-    timeout: 30_000,
+    timeout: ACTION_TIMEOUT,
   });
 };
 
@@ -1494,7 +1499,7 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
     await expect(page.getByTestId('entity-follow-button')).toContainText(
       expectedText,
-      { timeout: 30_000 }
+      { timeout: ACTION_TIMEOUT }
     );
   }
 };
@@ -1588,14 +1593,9 @@ const announcementForm = async (
 ) => {
   await page.fill('#title', data.title);
 
-  // `fill` alone is enough for a native `<input type="date">`. The old
-  // click-then-Enter dance is left over from the antd DatePicker and is now
-  // actively harmful: the picker indicator is stretched across the whole
-  // control so a click opens the native picker, and the Enter then commits
-  // whatever date that picker has highlighted — today — silently overwriting
-  // the end date that was just filled.
-  await page.fill('#startTime', data.startDate);
-  await page.fill('#endTime', data.endDate);
+  // Announcement dates are core DatePickers (segmented, not a text input).
+  await pickDateInCorePicker(page, page.locator('#startTime'), data.startDate);
+  await pickDateInCorePicker(page, page.locator('#endTime'), data.endDate);
 
   // Scoped to the announcement dialog, not the page: this form opens over an
   // entity page that has description editors of its own, and an unscoped
@@ -1962,10 +1962,16 @@ export const updateDisplayNameForEntityChildren = async (
   rowId: string,
   rowSelector = 'data-row-key'
 ) => {
-  await page
-    .locator(`[${rowSelector}="${rowId}"]`)
-    .getByTestId('edit-displayName-button')
-    .click();
+  const row = page.locator(`[${rowSelector}="${rowId}"]`);
+
+  // Rows reflow for about a second after first paint (nested rows auto-expand,
+  // description previews clamp). A mouse click can straddle that shift, so
+  // `click` fires on the name cell instead of the button and the cell handler
+  // opens the column detail panel rather than this modal. Enter is no better:
+  // the react-aria grid row handles Enter itself and cancels the button's
+  // default activation while the table is still mounting. Dispatching the
+  // click on the button runs its own handler wherever the row has moved.
+  await row.getByTestId('edit-displayName-button').dispatchEvent('click');
 
   await expect(page.locator('#name')).toBeDisabled();
 
@@ -1977,27 +1983,23 @@ export const updateDisplayNameForEntityChildren = async (
 
   await page.locator('#displayName').fill(displayName.newDisplayName);
 
-  const updateRequest = page.waitForResponse(
-    (req) =>
-      ['PUT', 'PATCH'].includes(req.request().method()) &&
-      !req.url().includes('api/v1/analytics/web/events/collect')
+  const updateRequest = waitForResponseWithStatus(
+    page,
+    (response) =>
+      ['PUT', 'PATCH'].includes(response.request().method()) &&
+      !response.url().includes('api/v1/analytics/web/events/collect'),
+    200
   );
 
-  await page.click('[data-testid="save-button"]');
+  await page.getByTestId('save-button').click();
   await updateRequest;
 
   if (displayName.newDisplayName === '') {
-    await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('column-display-name')
-    ).not.toBeAttached();
+    await expect(row.getByTestId('column-display-name')).not.toBeAttached();
   } else {
-    await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('column-display-name')
-    ).toHaveText(displayName.newDisplayName);
+    await expect(row.getByTestId('column-display-name')).toHaveText(
+      displayName.newDisplayName
+    );
   }
 };
 
@@ -2006,39 +2008,13 @@ export const removeDisplayNameForEntityChildren = async (
   displayName: string,
   rowId: string,
   rowSelector = 'data-row-key'
-) => {
-  await page
-    .locator(`[${rowSelector}="${rowId}"]`)
-    .getByTestId('edit-displayName-button')
-    .click();
-
-  await expect(page.locator('#name')).toBeDisabled();
-
-  await expect(page.locator('#displayName')).toBeVisible();
-
-  await expect(page.locator('#displayName')).toHaveValue(displayName);
-
-  await page.locator('#displayName').fill('');
-
-  const updateRequest = page.waitForResponse((response) => {
-    const method = response.request().method();
-    const url = response.url();
-
-    // Check Analytics Api Does Not Intterupt With PUT CAll
-    return (
-      (method === 'PUT' || method === 'PATCH') &&
-      !url.includes('api/v1/analytics/web/events/collect')
-    );
-  });
-  await page.click('[data-testid="save-button"]');
-  await updateRequest;
-
-  await expect(
-    page
-      .locator(`[${rowSelector}="${rowId}"]`)
-      .getByTestId('column-display-name')
-  ).not.toBeVisible();
-};
+) =>
+  updateDisplayNameForEntityChildren(
+    page,
+    { oldDisplayName: displayName, newDisplayName: '' },
+    rowId,
+    rowSelector
+  );
 
 export const checkForEditActions = async ({
   page,
@@ -2597,7 +2573,7 @@ export const checkExploreSearchFilter = async (
         );
       }
     },
-    { timeout: 30_000 }
+    { timeout: ACTION_TIMEOUT }
   );
 
   // Arm the wait before selecting: immediate-apply fires the query on the

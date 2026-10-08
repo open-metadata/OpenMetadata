@@ -63,7 +63,9 @@ export const fetchNextTestCaseRunTimestamp = async (
     )
   ).filter((nextRun): nextRun is number => nextRun !== undefined);
 
-  return nextRuns.length ? Math.min(...nextRuns) : undefined;
+  // Null, not undefined, when nothing is scheduled: React Query fails a query
+  // that resolves to undefined, and the banner reads undefined as not known yet.
+  return nextRuns.length ? Math.min(...nextRuns) : null;
 };
 
 export const getTestSuiteFqns = (testCase?: TestCase) => {
