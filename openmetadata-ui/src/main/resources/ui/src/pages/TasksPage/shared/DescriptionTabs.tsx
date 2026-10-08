@@ -76,7 +76,7 @@ export const DescriptionTabs = ({
         <Tabs.Item data-testid="new-tab" id="3" label="New" />
       </Tabs.List>
       <Tabs.Panel id="1">
-        <div className="border border-main rounded-4 p-sm m-t-sm">
+        <div className="tw:rounded-lg tw:border tw:border-subtle tw:bg-surface tw:p-3 tw:mt-3">
           {description?.trim() ? (
             <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
@@ -91,7 +91,7 @@ export const DescriptionTabs = ({
       </Tabs.Panel>
       <Tabs.Panel id="2">
         <DiffView
-          className="border border-main rounded-4 p-sm m-t-sm"
+          className="tw:rounded-lg tw:border tw:border-subtle tw:bg-surface tw:p-3 tw:mt-3"
           diffArr={diffs}
         />
       </Tabs.Panel>

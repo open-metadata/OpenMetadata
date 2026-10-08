@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Select, SelectProps } from 'antd';
+import {
+  Autocomplete,
+  Select,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
+import { User01, Users01 } from '@openmetadata/ui-core-components/icons';
+import { SelectProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 
-import { debounce, groupBy, isArray, isUndefined } from 'lodash';
-import { FC, useMemo } from 'react';
+import { debounce } from 'lodash';
+import { FC, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
-import { UserTag } from '../../../components/common/UserTag/UserTag.component';
-import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';
 import { OwnerType } from '../../../enums/user.enum';
 import { Option } from '../TasksPage.interface';
 import './Assignee.less';
@@ -45,99 +47,103 @@ const Assignees: FC<Props> = ({
   options,
   disabled,
   isSingleSelect = false,
-  ...rest
+  className,
+  placeholder,
+  status,
 }) => {
   const { t } = useTranslation();
-  const handleOnChange = (
-    _values: Option[],
-    newOptions?: DefaultOptionType | DefaultOptionType[]
-  ) => {
-    if (isUndefined(newOptions)) {
-      onChange(newOptions as unknown as Option[]);
+  const search = useMemo(() => debounce(onSearch, 300), [onSearch]);
+  useEffect(() => () => search.cancel(), [search]);
 
-      return;
-    }
+  const toItem = (option: Option): SelectItemType => ({
+    id: option.value,
+    label: option['data-label'] ?? option.label,
+    icon: option.type === OwnerType.TEAM ? Users01 : User01,
+    supportingText: t(
+      option.type === OwnerType.TEAM ? 'label.team' : 'label.user'
+    ),
+  });
 
-    const normalizedOptions = isArray(newOptions) ? newOptions : [newOptions];
-    const newValues = normalizedOptions.map((option) => ({
-      label: option['data-label'],
-      value: option.value,
-      type: option.type,
-      name: option.name,
-      displayName: option.displayName,
-    }));
+  // Selected options retain their metadata when async search replaces the list.
+  const selectedItems = assignees.map(toItem);
+  const items = options.map(toItem);
+  const searchPlaceholder =
+    typeof placeholder === 'string' ? placeholder : t('label.select-to-search');
 
-    onChange(newValues as Option[]);
-  };
+  if (isSingleSelect) {
+    const singleItems = [
+      ...selectedItems,
+      ...items.filter(
+        (item) => !selectedItems.some((selected) => selected.id === item.id)
+      ),
+    ];
 
-  const updatedOption = useMemo(() => {
-    const groupByType = groupBy(options, (d) => d.type);
-    const groupOptions = [];
-    if (!isUndefined(groupByType.team)) {
-      groupOptions.push({
-        type: 'group',
-        label: 'Teams',
-        value: OwnerType.TEAM,
-        options: groupByType.team.map((team) => ({
-          ...team,
-          label: (
-            <div
-              className="d-flex items-center"
-              data-testid={team.name}
-              key={team.value}>
-              <TeamIcon
-                className="vertical-middle m-r-xs"
-                height={16}
-                width={16}
-              />
-              <Typography>{team.label}</Typography>
-            </div>
-          ),
-        })),
-      });
-    }
-    if (!isUndefined(groupByType.user)) {
-      groupOptions.push({
-        type: 'group',
-        label: 'Users',
-        value: OwnerType.USER,
-        options: groupByType.user.map((user) => ({
-          ...user,
-          label: (
-            <div data-testid={user.name}>
-              <UserTag
-                className="assignee-item"
-                id={user.name ?? ''}
-                name={user.label}
-                size={UserTagSize.small}
-              />
-            </div>
-          ),
-        })),
-      });
-    }
-
-    return groupOptions;
-  }, [options]);
+    return (
+      <div className={className} data-testid="select-assignee">
+        <Select.ComboBox
+          aria-label={t('label.assignee')}
+          isDisabled={disabled}
+          isInvalid={status === 'error'}
+          items={singleItems}
+          placeholder={searchPlaceholder}
+          selectedKey={assignees[0]?.value ?? null}
+          shortcut={false}
+          showSearchIcon={false}
+          onInputChange={search}
+          onSelectionChange={(key) => {
+            const option = [...assignees, ...options].find(
+              (item) => item.value === String(key)
+            );
+            onChange(
+              option
+                ? [{ ...option, label: option['data-label'] ?? option.label }]
+                : []
+            );
+          }}>
+          {(item) => <Select.Item {...item} key={item.id} />}
+        </Select.ComboBox>
+      </div>
+    );
+  }
 
   return (
-    <Select
-      showSearch
-      className="ant-select-custom select-assignee"
-      data-testid="select-assignee"
-      defaultActiveFirstOption={false}
-      disabled={disabled}
-      filterOption={false}
-      mode={isSingleSelect ? undefined : 'multiple'}
-      notFoundContent={null}
-      options={updatedOption}
-      placeholder={t('label.select-to-search')}
-      suffixIcon={null}
-      value={assignees.length ? assignees : undefined}
-      onChange={handleOnChange}
-      onSearch={debounce(onSearch, 300)}
-      {...rest}
-    />
+    <div className={className} data-testid="select-assignee">
+      <Autocomplete
+        aria-label={t('label.assignee-plural')}
+        filterOption={() => true}
+        isDisabled={disabled}
+        isInvalid={status === 'error'}
+        items={items}
+        placeholder={searchPlaceholder}
+        selectedItems={selectedItems}
+        onItemCleared={(key) =>
+          onChange(assignees.filter((option) => option.value !== String(key)))
+        }
+        onItemInserted={(key) => {
+          const option = options.find((item) => item.value === String(key));
+          if (option) {
+            const selected = {
+              ...option,
+              label: option['data-label'] ?? option.label,
+            };
+            onChange([...assignees, selected]);
+          }
+        }}
+        onSearchChange={search}>
+        {(item) => (
+          <Autocomplete.Item
+            data-testid={
+              options.find((option) => option.value === item.id)?.name
+            }
+            icon={item.icon}
+            id={item.id}
+            key={item.id}
+            label={item.label}
+            supportingText={item.supportingText}
+          />
+        )}
+      </Autocomplete>
+    </div>
   );
 };
 

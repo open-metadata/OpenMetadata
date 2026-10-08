@@ -49,6 +49,7 @@ const EntityCardView = <T extends { id: string }>({
       data-testid="card-view-container">
       {entities.map((entity) => (
         <Card
+          className="tw:shadow-card"
           data-testid="entity-card"
           isClickable={Boolean(onEntityClick)}
           key={entity.id}

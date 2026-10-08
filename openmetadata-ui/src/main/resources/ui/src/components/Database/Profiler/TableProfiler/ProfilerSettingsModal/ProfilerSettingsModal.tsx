@@ -13,16 +13,13 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import {
-  Button,
-  Drawer,
-  Input,
-  InputNumber,
-  Select,
-  Space,
-  TreeSelect,
-} from 'antd';
+  Button as CoreButton,
+  SlideoutMenu,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Input, InputNumber, Select, Space, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
@@ -39,7 +36,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../../../assets/svg/close.svg';
 import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import {
   DEFAULT_INCLUDE_PROFILE,
@@ -476,16 +472,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   const drawerFooter = (
     <div className="drawer-footer-actions">
       <Space size={16}>
-        <Button type="link" onClick={handleCancel}>
+        <CoreButton color="secondary" onPress={handleCancel}>
           {t('label.cancel')}
-        </Button>
-        <Button
+        </CoreButton>
+        <CoreButton
           form="profiler-setting-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          isLoading={isLoading}
+          type="submit">
           {t('label.save')}
-        </Button>
+        </CoreButton>
       </Space>
     </div>
   );
@@ -979,28 +974,25 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   );
 
   return (
-    <Drawer
-      destroyOnClose
-      className="custom-drawer-style profiler-settings-drawer"
-      closable={false}
+    <SlideoutMenu
+      aria-label={t('label.setting-plural')}
+      className="profiler-settings-drawer tw:min-w-96"
       data-testid="profiler-settings-modal"
-      extra={
-        <Button
-          className="drawer-close-icon flex-center"
-          icon={<CloseIcon />}
-          type="link"
-          onClick={handleCancel}
-        />
-      }
-      footer={drawerFooter}
-      maskClosable={false}
-      open={visible}
-      placement="right"
-      title={t('label.setting-plural')}
+      dialogClassName="tw:gap-0"
+      isDismissable={false}
+      isOpen={visible}
       width="40%"
-      onClose={handleCancel}>
-      {renderContent}
-    </Drawer>
+      onOpenChange={(isOpen) => !isOpen && handleCancel()}>
+      <SlideoutMenu.Header onClose={handleCancel}>
+        <Typography size="text-md" weight="semibold">
+          {t('label.setting-plural')}
+        </Typography>
+      </SlideoutMenu.Header>
+      <SlideoutMenu.Content className="tw:py-6">
+        {renderContent}
+      </SlideoutMenu.Content>
+      <SlideoutMenu.Footer>{drawerFooter}</SlideoutMenu.Footer>
+    </SlideoutMenu>
   );
 };
 

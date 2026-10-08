@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Input, Space } from 'antd';
+import { Button, Input, Typography } from '@openmetadata/ui-core-components';
+import { Form, FormProps, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -243,7 +243,10 @@ const RequestDescription = () => {
                   })}:`}
                   name="title">
                   <Input
-                    disabled
+                    isDisabled
+                    aria-label={t('label.task-entity', {
+                      entity: t('label.title'),
+                    })}
                     placeholder={t('label.task-entity', {
                       entity: t('label.title'),
                     })}
@@ -280,14 +283,16 @@ const RequestDescription = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button data-testid="cancel-btn" type="link" onClick={back}>
+                    <Button
+                      color="link-color"
+                      data-testid="cancel-btn"
+                      onPress={back}>
                       {t('label.back')}
                     </Button>
                     <Button
                       data-testid="submit-btn"
-                      htmlType="submit"
-                      loading={isLoading}
-                      type="primary">
+                      isLoading={isLoading}
+                      type="submit">
                       {payload.newDescription
                         ? t('label.suggest')
                         : t('label.save')}
