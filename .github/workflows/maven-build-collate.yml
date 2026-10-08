@@ -107,4 +107,7 @@ jobs:
           # was watching went on to pass.
           wait-timeout-seconds: 5700
           wait-interval-seconds: 60
-          inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ github.event_name }}" }'
+          # `pr` lets Collate cancel the run for this PR's previous push; that push's wait above
+          # is already cancelled, so its run would hold a Collate runner for nothing. Every
+          # Collate branch this dispatches to must declare `pr`, or GitHub rejects the dispatch.
+          inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ github.event_name }}", "pr": "${{ github.event.pull_request.number }}" }'
