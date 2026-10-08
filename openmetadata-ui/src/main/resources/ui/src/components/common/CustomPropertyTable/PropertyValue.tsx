@@ -957,7 +957,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           />
         );
       case 'entityReferenceList': {
-        const entityReferences = (value as EntityReference[]) ?? [];
+        const entityReferences: EntityReference[] = (
+          isArray(value) ? value : [value]
+        ).filter(Boolean);
 
         return (
           <div className="entity-list-body">
