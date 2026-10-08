@@ -630,3 +630,27 @@ def test_prune_workflow_only_deletes_caches_on_dead_queue_refs() -> None:
     # an empty list must never read as "every queue ref is dead".
     listing = prune.split("live=$(gh api", 1)[0]
     assert "set -euo pipefail" in listing
+
+
+def test_shards_restore_the_node_modules_tree_that_only_main_writes() -> None:
+    """A drifted key is a cache nobody restores; a shard-side save is a budget leak."""
+    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    warm = (ROOT / ".github/workflows/populate-playwright-caches.yml").read_text()
+    key_line = next(
+        line.strip()
+        for line in workflow.splitlines()
+        if line.strip().startswith("key: playwright-node-modules-")
+    )
+    assert "steps.setup-node.outputs.node-version" in key_line
+    assert "hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock')" in key_line
+    assert workflow.count(key_line) == 1
+    assert warm.count(key_line) == 2
+
+    save_step = warm.split("- name: Save node_modules cache (main-scoped writer)", 1)[1].split("- name:", 1)[0]
+    assert "steps.warm-yarn.outcome == 'success'" in save_step
+    assert "uses: actions/cache/save@" in save_step
+
+    shard_job = workflow.split("  playwright-ci:", 1)[1].split("  slack-notify:", 1)[0]
+    install_step = shard_job.split("- name: Install dependencies", 1)[1].split("- name:", 1)[0]
+    assert "yarn check --integrity --ignore-scripts" in install_step
+    assert "yarn --ignore-scripts --frozen-lockfile" in install_step
