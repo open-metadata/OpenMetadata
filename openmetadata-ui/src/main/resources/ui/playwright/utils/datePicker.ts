@@ -33,8 +33,9 @@ export const pickDateInCorePicker = async (
     .filter({ has: page.getByRole('grid') });
   await expect(calendar).toBeVisible();
 
-  // React Aria marks the calendar's month heading aria-hidden.
-  const heading = calendar.getByRole('heading', { includeHidden: true });
+  // The calendar renders the month twice: an aria-hidden visual <h2> and an
+  // accessible one. The default (hidden-excluded) role query picks the latter.
+  const heading = calendar.getByRole('heading');
   const targetMonth = year * 12 + (month - 1);
   const MAX_MONTH_STEPS = 240;
   for (let step = 0; step < MAX_MONTH_STEPS; step++) {
