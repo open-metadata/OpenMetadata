@@ -112,7 +112,7 @@ const IncidentDetails = ({
           iconTrailing={ArrowUpRight}
           size="xs"
           onClick={() => navigate(incidentLink.path)}>
-          {t('label.view-entity', { entity: t('label.incident') })}
+          {t('label.view-incident')}
         </Button>
       </div>
     </div>
