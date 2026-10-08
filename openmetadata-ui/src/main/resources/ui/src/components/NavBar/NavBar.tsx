@@ -630,6 +630,7 @@ const NavBar = () => {
               <Dropdown.Popover className="tw:w-auto" placement="bottom end">
                 <Dropdown.Menu
                   aria-label={t('label.language')}
+                  className="tw:max-h-80 tw:overflow-y-auto"
                   items={languageSelectOptions}
                   selectionMode="none"
                   onAction={handleLanguageChange}>

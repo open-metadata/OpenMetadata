@@ -293,7 +293,7 @@ export const UserProfileIcon = () => {
         placement="bottom end">
         <Dropdown.Menu
           aria-label={getEntityName(currentUser)}
-          className="profile-dropdown"
+          className="profile-dropdown tw:max-h-72 tw:overflow-y-auto"
           selectionMode="none">
           <Dropdown.Item
             data-testid="user-name"
