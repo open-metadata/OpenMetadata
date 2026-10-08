@@ -1630,8 +1630,7 @@ class TestGlueDeltaDetection:
 
     These run the real detection through GlueSource.get_tables_name_and_type, so they exercise
     production code rather than reimplementing the condition on mocks. The Parameters fed in are the
-    exact shapes seeded into the moto Glue emulator for the live run (see
-    docs/delta-lake-detection-evidence/live-glue-delta-detection.md)."""
+    exact shapes used in the live Glue ingestion run."""
 
     @staticmethod
     def _table(params: dict | None, table_type: str = "EXTERNAL_TABLE", **extra) -> GlueTable:
