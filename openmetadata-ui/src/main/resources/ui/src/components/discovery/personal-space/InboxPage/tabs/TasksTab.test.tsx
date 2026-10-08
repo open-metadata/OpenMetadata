@@ -14,6 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import type { Task } from '../../../../../generated/entity/tasks/task';
+import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
 
 const mockListTasks = jest.fn();
 const mockListVisibleTasks = jest.fn();
@@ -45,10 +46,6 @@ let mockCurrentUserIds: ReadonlySet<string> = new Set();
 
 jest.mock('../useCurrentUserIds', () => ({
   useCurrentUserIds: () => mockCurrentUserIds,
-}));
-
-jest.mock('../useInboxCounts', () => ({
-  INBOX_COUNTS_QUERY_KEY: 'inbox-counts',
 }));
 
 jest.mock('../useInboxInfiniteList', () => ({
@@ -539,10 +536,10 @@ describe('TasksTab', () => {
       refetchType: 'active',
     });
     expect(mockSetTotal).not.toHaveBeenCalled();
-    // Both the tab-badge and the All/Open/Closed status-count caches are
-    // invalidated so their React Query fetches re-run.
+    // Both the open-task badge and the All/Open/Closed status-count caches
+    // are invalidated so their React Query fetches re-run.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-counts'],
+      queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-task-status-counts'],
@@ -565,9 +562,9 @@ describe('TasksTab', () => {
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-task-status-counts'],
     });
-    // ...and the tab-badge react-query cache.
+    // ...and the open-task badge the Triage tab and sidebar share.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-counts'],
+      queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
     // The other status lists may now hold or miss this task; they re-read on
     // their next visit while the showing list keeps its in-place edit.

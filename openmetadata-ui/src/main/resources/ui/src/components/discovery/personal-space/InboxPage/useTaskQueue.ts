@@ -36,7 +36,6 @@ import {
   splitTaskTitleSearch,
 } from './taskTitle.utils';
 import { useCurrentUserIds } from './useCurrentUserIds';
-import { INBOX_COUNTS_QUERY_KEY } from './useInboxCounts';
 import { useInboxInfiniteList } from './useInboxInfiniteList';
 
 /**
@@ -396,12 +395,11 @@ export const useTaskQueue = ({
     );
   }, [visibleTasks, firstTaskId]);
 
-  // The Activity/Tasks tab badges and the sidebar inbox bubble are separate
-  // react-query fetches under their own keys, so a mutation here would otherwise
-  // sit behind their stale windows — and the sidebar never unmounts, so it would
-  // not refetch at all until a navigation or a tab refocus.
+  // The Triage tab badge and the sidebar inbox bubble read one open-task query,
+  // so a mutation here would otherwise sit behind its stale window — and the
+  // sidebar never unmounts, so it would not refetch until a navigation or a tab
+  // refocus.
   const syncInboxCountBadge = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: [INBOX_COUNTS_QUERY_KEY] });
     queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });

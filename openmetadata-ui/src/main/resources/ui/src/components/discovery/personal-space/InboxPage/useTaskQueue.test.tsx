@@ -42,10 +42,6 @@ jest.mock('./useCurrentUserIds', () => ({
   useCurrentUserIds: () => new Set(),
 }));
 
-jest.mock('./useInboxCounts', () => ({
-  INBOX_COUNTS_QUERY_KEY: 'inbox-counts',
-}));
-
 jest.mock('./useInboxInfiniteList', () => ({
   useInboxInfiniteList: (
     queryKey: unknown[],
