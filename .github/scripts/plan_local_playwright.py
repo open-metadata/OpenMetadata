@@ -133,19 +133,13 @@ def build_plan(repo_root: Path, changed_files: list[str]) -> LocalPlan:
     impact_map = json.loads((repo_root / IMPACT_MAP).read_text(encoding="utf-8"))
     delegated = impact_map.get("delegatedSpecs", [])
     plan = run_selector(repo_root, changed_files)
-    unmapped_code_files: list[str] = []
-    add_canaries = False
 
-    # CI escalates unmapped code paths to the full suite. Locally that is not
-    # practical, so plan the targeted set for everything else, add one canary
-    # per project, and surface the gap so the impact map gets extended.
-    if plan["mode"] == "full":
-        unmapped_code_files = plan.get("unmappedCodeFiles", [])
-        plan = run_selector(
-            repo_root,
-            [path for path in changed_files if path not in unmapped_code_files],
-        )
-        add_canaries = True
+    # A PR with unmapped code paths stays on the targeted plan (smoke, the
+    # canary slice and whatever it did map); the merge queue runs the full
+    # suite. Add the canaries here too and surface the gap so the impact map
+    # gets extended.
+    unmapped_code_files: list[str] = plan.get("unmappedCodeFiles", [])
+    add_canaries = bool(unmapped_code_files)
 
     selected = {selector["spec"] for selector in plan["selectors"]}
     canary_specs = resolve_entries(impact_map["canary"], repo_root)

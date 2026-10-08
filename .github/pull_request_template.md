@@ -96,8 +96,9 @@ Without `gh`, drop `--update-pr` and paste `target/java-tests/local-pr-results.m
 - [ ] Not applicable (no UI changes).
 - Files added/updated:
 
-PR checks do not run Playwright; the merge queue runs the full suite. Before requesting review, run
-the specs impacted by this PR locally (selected from `.github/playwright/impact-map.json`):
+PR checks run a targeted Playwright subset (smoke + changed + impact-mapped specs, never the full
+suite); the merge queue runs the full suite. Before requesting review, run the specs impacted by this
+PR locally (selected from `.github/playwright/impact-map.json`):
 
   make playwright_affected                            # list the impacted specs + the command
   make playwright_affected_run ARGS="--update-pr"     # run them and fill the block below

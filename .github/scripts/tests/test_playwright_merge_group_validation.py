@@ -175,6 +175,8 @@ def test_merge_groups_upload_only_the_trace_report():
             continue
         if "github.event_name == 'merge_group'" in condition:
             continue  # queue-only Slack alerts: inline
+        if "github.event_name == 'pull_request'" in condition:
+            continue  # PR-only: never runs in the queue
         assert "github.event_name != 'merge_group'" in condition, step["name"]
     # Traces ship on every queue run so retry passes stay debuggable; the other
     # uploads still leave evidence only when the shard failed or was cancelled.

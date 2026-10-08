@@ -11,6 +11,10 @@
 
 # Dispatcher for the postgresql Playwright E2E PR gate.
 #
+# Pull requests run a targeted plan (smoke + changed specs + impact-mapped
+# specs, capped so a PR never escalates to the full suite); the merge queue
+# and the nightly schedule run the full suite.
+#
 # The heavy lifting (gate → build → shard) lives in
 # `playwright-e2e-reusable.yml`; this file adds two top-level jobs that
 # MUST stay in the caller so branch protection can find them by their
@@ -62,10 +66,12 @@ on:
         required: true
         type: boolean
         default: true
-  # Playwright runs only in the merge queue. PRs still trigger the workflow
-  # because `playwright-summary` is a required check: every job is skipped by
-  # its `if:` (no runner starts), and GitHub counts a skipped required check
-  # as passing. With no PR trigger the check would hang at "Expected — waiting".
+  # PRs run a TARGETED plan (smoke + changed specs + impact-mapped specs); the
+  # merge queue runs the full suite. `playwright-summary` is a required check,
+  # so it must report on every PR: fork PRs, drafts and PRs with no `e2e` path
+  # change start no test runners and the summary reports green (see the gate
+  # and check-changes jobs in the reusable). pull_request_target stays off on
+  # purpose (#34740): fork PRs rely on the queue.
   pull_request:
     types:
       - opened
@@ -80,7 +86,6 @@ permissions:
 
 jobs:
   playwright:
-    if: ${{ github.event_name != 'pull_request' }}
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
     # reusable without re-listing each one; the reusable only reads what it
@@ -108,7 +113,7 @@ jobs:
 
   playwright-summary:
     name: playwright-summary
-    if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}
+    if: ${{ always() && !cancelled() }}
     needs: [playwright]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -630,8 +635,22 @@ jobs:
           echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
           exit 1
 
+      # A PR whose diff matches no `e2e` path skips every job after
+      # check-changes, and the renderer below would count each skipped job as
+      # a CI failure. Match the exact 'success' / 'false' strings so a failed
+      # or unset change detection still falls through to the renderer and
+      # fails loudly instead of reporting a synthetic green.
+      - name: Report a PR without E2E-relevant changes as green
+        id: no-e2e-changes
+        if: ${{ github.event_name == 'pull_request' && needs.playwright.outputs.check_changes_result == 'success' && needs.playwright.outputs.check_changes_e2e == 'false' }}
+        run: |
+          {
+            echo "No path in this PR matches the e2e filter in playwright-e2e-reusable.yml, so Playwright did not run."
+            echo "The merge queue still runs the full suite before merge."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Render consolidated job summary and gate on results
-        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' }}
+        if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' && steps.no-e2e-changes.outcome != 'success' }}
         uses: actions/github-script@v9
         env:
           CHECK_CHANGES_RESULT: ${{ needs.playwright.outputs.check_changes_result }}

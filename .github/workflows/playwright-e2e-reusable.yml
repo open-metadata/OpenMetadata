@@ -160,16 +160,23 @@ env:
 concurrency:
   # PR and manual runs for the same branch supersede stale commits. This also
   # lets a manually dispatched full-suite run replace the automatic PR subset.
-  # Include event_name AND database in the group so pull_request vs
-  # pull_request_target runs for the same PR don't cancel each other, and so
-  # a postgres run and a mysql run for the same ref don't fight — the caller
-  # workflows drive different events/schedules and share this reusable.
-  group: playwright-ci-${{ inputs.database }}-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  # Include event_name AND database in the group so a postgres run and a
+  # mysql run for the same ref don't fight — the caller workflows drive
+  # different events/schedules and share this reusable. PRs key on the PR
+  # number, not the head branch name, so a fork PR's skipped run cannot cancel
+  # a same-repo PR that happens to use the same branch name.
+  group: playwright-ci-${{ inputs.database }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
-  # Playwright runs only in the merge queue (plus schedule / dispatch / main
-  # cache-warm pushes); callers skip this workflow on PR events.
+  # The merge queue, schedule, dispatch and main cache-warm pushes always run.
+  # Same-repo, non-draft PRs run a TARGETED plan (smoke + changed specs +
+  # impact-mapped specs; see select_playwright_tests.py) so a PR that breaks
+  # the specs it touches fails on the PR, not as a queue ejection that also
+  # rebuilds every entry behind it. Fork PRs and drafts skip: PR events carry
+  # no secrets on forks (pull_request_target was removed on purpose), and the
+  # queue runs the full suite on them before merge. A skip still reports
+  # `playwright-summary` green from the caller.
   gate:
     runs-on: ubuntu-latest
     permissions: {}
@@ -180,11 +187,20 @@ jobs:
         id: gate
         env:
           EVENT: ${{ github.event_name }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
         run: |
+          should_run=false
           case "$EVENT" in
-            merge_group|schedule|workflow_dispatch|push) echo "should_run=true" >> "$GITHUB_OUTPUT" ;;
-            *) echo "should_run=false" >> "$GITHUB_OUTPUT" ;;
+            merge_group|schedule|workflow_dispatch|push) should_run=true ;;
+            pull_request)
+              if [[ "$IS_DRAFT" != "true" && "$HEAD_REPO" == "$BASE_REPO" ]]; then
+                should_run=true
+              fi
+              ;;
           esac
+          echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
 
   check-changes:
     needs: gate
@@ -260,11 +276,16 @@ jobs:
               - 'docker/development/docker-compose.yml'
               - 'docker/development/docker-compose-postgres.yml'
 
+  # On a PR whose diff matches no `e2e` path above (docs, unrelated workflows
+  # and scripts, other skills), cache-keys and detect-changes skip and every
+  # heavy job after them skips with them; the caller's playwright-summary
+  # reports that as green. The queue ignores the filter and runs everything.
   cache-keys:
     needs: check-changes
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
+      (github.event_name != 'pull_request' || needs.check-changes.outputs.e2e == 'true') &&
       (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
       bundle_mode: ${{ steps.fingerprints.outputs.bundle_mode }}
@@ -514,6 +535,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
+      (github.event_name != 'pull_request' || needs.check-changes.outputs.e2e == 'true') &&
       (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
       mode: ${{ steps.select.outputs.mode }}
@@ -553,6 +575,12 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
           jq '{mode, reason, selected: (.selectors | length)}' \
             "$RUNNER_TEMP/playwright-selection/selection.json"
+          # A capped PR plan is green on less than the full suite; say so on
+          # the run so a reviewer knows the queue is where the rest runs.
+          if jq -e '.escalationCapped == true' "$RUNNER_TEMP/playwright-selection/selection.json" >/dev/null; then
+            count=$(jq '.unmappedCodeFiles | length' "$RUNNER_TEMP/playwright-selection/selection.json")
+            echo "::notice title=Targeted Playwright plan::$count changed code file(s) map to no spec; this PR runs smoke, canary and mapped specs only, and the merge queue runs the full suite."
+          fi
 
       - name: Upload Playwright selection
         uses: actions/upload-artifact@v6

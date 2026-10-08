@@ -127,8 +127,9 @@ cd openmetadata-ui/src/main/resources/ui
 yarn test <ChangedComponent> --coverage
 ```
 
-**Playwright (UI E2E):** PR checks no longer run Playwright (the merge queue runs the full suite),
-so run the impact-mapped specs locally and record the results in the PR body:
+**Playwright (UI E2E):** PR checks run only a targeted subset (smoke, changed specs and
+impact-mapped specs; never the full suite, and nothing for fork PRs), and the merge queue runs the
+full suite. So run the impact-mapped specs locally and record the results in the PR body:
 ```bash
 make playwright_affected                          # specs selected from .github/playwright/impact-map.json
 make playwright_affected_run ARGS="--update-pr"   # run them; writes the results block into the PR body
@@ -162,8 +163,8 @@ If the user can't attach the recording yet, mark the section `TODO: attach recor
 
 Fill in `.github/pull_request_template.md` with everything gathered above. Show the user the full draft for review before creating.
 
-- **List every test run locally.** CI on the PR no longer runs the integration tests or Playwright,
-  so the description is the only record of what ran before review. The Java block names each class
+- **List every test run locally.** CI on the PR no longer runs the integration tests and runs only a
+  targeted Playwright subset, so the description is the only record of what ran before review. The Java block names each class
   it ran with its counts, and gives a module run in full as counts. Under the other Tests sections, list everything else you ran — pytest
   files, Jest specs, Playwright specs, manual checks — with pass/fail counts, and say what you did
   not run and why.

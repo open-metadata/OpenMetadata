@@ -17,6 +17,13 @@ RUNNABLE_SPEC_PREFIX = f"{UI_ROOT}playwright/e2e/"
 # playwright/utils/entityMatrix.ts); the nightly schedule and manual dispatches
 # keep every entity.
 REPRESENTATIVE_ENTITY_EVENTS = {"pull_request", "pull_request_target", "merge_group"}
+# Events whose escalation to the full suite is capped at the targeted plan. A
+# full run costs ~8.5 runner-hours, and every Java or other non-UI change is
+# unmapped, so escalating on PRs would put most PRs back on the full suite. The
+# merge queue runs the full suite before merge anyway, so a capped PR runs
+# smoke, the canary slice and whatever it did map, and records the unmapped
+# code files it could not route.
+CAPPED_ESCALATION_EVENTS = {"pull_request"}
 
 # Path prefixes that always mean "product/test code" — a change here that is
 # also unmapped by the impact-map is treated as "we don't know what to run,
@@ -225,7 +232,13 @@ def main() -> None:
         # "run everything," which is strictly a coverage widening — every
         # mapping added later demotes its own paths from full back to
         # targeted, so this rule never blocks the map from shrinking again.
-        if unmapped_code_files:
+        # Pull requests are the exception (CAPPED_ESCALATION_EVENTS): they
+        # stay targeted and record the unmapped files, and the merge queue's
+        # full run is where that coverage lands.
+        escalation_capped = (
+            bool(unmapped_code_files) and args.event_name in CAPPED_ESCALATION_EVENTS
+        )
+        if unmapped_code_files and not escalation_capped:
             plan = {
                 "version": 1,
                 "mode": "full",
@@ -248,7 +261,14 @@ def main() -> None:
             plan = {
                 "version": 1,
                 "mode": "targeted",
-                "reason": "pull requests run smoke, changed specs, and impact-mapped coverage",
+                "reason": (
+                    "unmapped code paths changed; pull requests stay targeted and "
+                    "the merge queue runs the full suite"
+                    if escalation_capped
+                    else "pull requests run smoke, changed specs, and impact-mapped coverage"
+                ),
+                "escalationCapped": escalation_capped,
+                "unmappedCodeFiles": sorted(unmapped_code_files),
                 "sharedInfrastructureChanged": shared_infrastructure_changed,
                 "unmappedChange": unmapped_change,
                 "unmappedFiles": unmapped_files,
