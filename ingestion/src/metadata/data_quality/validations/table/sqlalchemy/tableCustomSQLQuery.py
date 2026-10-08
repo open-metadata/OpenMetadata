@@ -39,6 +39,7 @@ from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
     Strategy,
 )
+from metadata.data_quality.validations.thresholds import ThresholdUnit
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.profiler.metrics.registry import Metrics
@@ -335,6 +336,11 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
                 return self.runner.session.execute(stmt).scalar()
 
         self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
+        if self.get_threshold_unit() is ThresholdUnit.PERCENTAGE:
+            # The verdict divides by this count, so it cannot come from the catalog: MySQL's
+            # information_schema TABLE_ROWS is a cached estimate that can read 0 on a full table.
+            return self.runner.session.execute(select(func.count()).select_from(self.runner.table)).scalar()
+
         dialect = self.runner._session.get_bind().dialect.name
         table_metric_computer: TableMetricComputer = TableMetricComputer(
             dialect,

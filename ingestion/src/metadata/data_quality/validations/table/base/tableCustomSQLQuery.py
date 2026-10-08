@@ -19,6 +19,8 @@ from enum import Enum
 from typing import cast
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.result_messages import format_count, format_value
+from metadata.data_quality.validations.thresholds import ThresholdUnit
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -65,10 +67,14 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             "<=",  # type: ignore
         )
 
+        is_percentage = self.get_threshold_unit() is ThresholdUnit.PERCENTAGE
+
+        # A row count is whole, a percentage is not: an ABSOLUTE threshold keeps being read
+        # exactly as it always was.
         threshold = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "threshold",
-            int,
+            float if is_percentage else int,
             default=0,
         )
 
@@ -80,39 +86,44 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
 
         operator = cast(str, operator)  # satisfy mypy  # noqa: TC006
         sql_expression = cast(str, sql_expression)  # satisfy mypy  # noqa: TC006
-        threshold = cast(int, threshold)  # satisfy mypy  # noqa: TC006
+        threshold = cast(float, threshold)  # satisfy mypy  # noqa: TC006
         strategy = cast(Strategy, strategy)  # satisfy mypy  # noqa: TC006
 
+        row_count = None
         try:
             rows = self._run_results(sql_expression, strategy)
+            if is_percentage:
+                row_count = self._get_total_row_count_if_needed()
         except Exception as exc:
-            msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.error(msg)
-            return self.get_test_case_result_object(
-                self.execution_date,
-                TestCaseStatus.Aborted,
-                msg,
-                [TestResultValue(name=RESULT_ROW_COUNT, value=None)],
-            )
+            return self._aborted(f"Error computing {self.test_case.fullyQualifiedName}: {exc}")
         len_rows = rows if isinstance(rows, int) else len(rows)
-        test_passed = evaluate_threshold(
-            threshold,
-            operator,
-            len_rows,
-        )
 
-        if test_passed:
-            status = TestCaseStatus.Success
-            result_value = len_rows
+        if is_percentage:
+            percentage = self._percentage_of_row_count(len_rows, row_count)
+            if percentage is None:
+                return self._aborted(
+                    f"Found {len_rows} row(s), but no row count to compute a percentage against. "
+                    f"Test query is expected to return {operator} {format_value(threshold)}% of the row count."
+                )
+            test_passed = evaluate_threshold(threshold, operator, percentage)  # type: ignore
+            threshold_rows = round(threshold * (row_count or 0) / 100)
+            message = (
+                f"Found {len_rows} row(s), {format_value(percentage)}% of the {format_count(row_count)} row(s) "
+                f"counted. Test query is expected to return {operator} {format_value(threshold)}% of the row count."
+            )
         else:
-            status = TestCaseStatus.Failed
-            result_value = len_rows
+            test_passed = evaluate_threshold(threshold, operator, len_rows)  # type: ignore
+            threshold_rows = int(threshold)
+            message = f"Found {len_rows} row(s). Test query is expected to return {operator} {threshold} row(s)."
+
+        status = TestCaseStatus.Success if test_passed else TestCaseStatus.Failed
 
         if self.test_case.computePassedFailedRowCount:
-            row_count = self._get_total_row_count_if_needed()
+            if row_count is None:
+                row_count = self._get_total_row_count_if_needed()
             passed_rows, failed_rows = self._calculate_passed_failed_rows(
-                test_passed, operator, threshold, len_rows, row_count
+                test_passed, operator, threshold_rows, len_rows, row_count
             )
         else:
             passed_rows = None
@@ -122,12 +133,35 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         return self.get_test_case_result_object(
             self.execution_date,
             status,
-            f"Found {result_value} row(s). Test query is expected to return {operator} {threshold} row(s).",
-            [TestResultValue(name=RESULT_ROW_COUNT, value=str(result_value))],
+            message,
+            [TestResultValue(name=RESULT_ROW_COUNT, value=str(len_rows))],
             row_count=row_count,
             failed_rows=failed_rows,
             passed_rows=passed_rows,
         )
+
+    def _aborted(self, msg: str) -> TestCaseResult:
+        logger.error(msg)
+        return self.get_test_case_result_object(
+            self.execution_date,
+            TestCaseStatus.Aborted,
+            msg,
+            [TestResultValue(name=RESULT_ROW_COUNT, value=None)],
+        )
+
+    @staticmethod
+    def _percentage_of_row_count(len_rows: int, row_count: int | None) -> float | None:
+        """Share of the row count the query returned, or None when it cannot be computed
+
+        A query can legitimately return more rows than the table holds (a join, an unnest), so the
+        share is not capped at 100. An empty result is 0% of any row count, including one that
+        could not be computed; any other result against no rows has nothing to be a share of.
+        """
+        if len_rows == 0:
+            return 0.0
+        if row_count:
+            return len_rows / row_count * 100
+        return None
 
     @abstractmethod
     def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
