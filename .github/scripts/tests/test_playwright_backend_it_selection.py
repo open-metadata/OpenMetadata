@@ -59,5 +59,8 @@ def test_backend_integration_test_changes_still_run_the_smoke_net(tmp_path):
 
 def test_an_unmapped_backend_path_alongside_it_changes_still_escalates(tmp_path):
     # The mapping must not be a blanket "backend changes are safe" switch: a service change in the
-    # same PR is still an unmapped code path and must take the whole suite with it.
-    assert _select(tmp_path, BACKEND_IT, UNMAPPED_SERVICE)["mode"] == "full"
+    # same PR is still an unmapped code path. PRs cap that escalation at the targeted plan (the
+    # merge queue runs the full suite), so the selection records it as capped.
+    selection = _select(tmp_path, BACKEND_IT, UNMAPPED_SERVICE)
+    assert selection["escalationCapped"] is True
+    assert selection["unmappedCodeFiles"] == [UNMAPPED_SERVICE]

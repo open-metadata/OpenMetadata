@@ -4235,6 +4235,89 @@ def test_unmapped_code_escalation_records_all_unmapped_code_files_together(
     ]
 
 
+def _select_for_pull_request(tmp_path, monkeypatch, changed_files, event_name):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text("\n".join(changed_files) + "\n")
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            event_name,
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+    selector.main()
+    return json.loads(output.read_text())
+
+
+def test_pull_request_escalation_is_capped_at_the_targeted_plan(
+    tmp_path, monkeypatch
+):
+    """
+    A PR with unmapped code runs smoke, the canary slice and its mapped specs
+    instead of the full suite: the merge queue runs the full suite before
+    merge, and a full run per PR push costs ~8.5 runner-hours.
+    """
+    java = "openmetadata-service/src/main/java/org/openmetadata/service/Foo.java"
+    selection = _select_for_pull_request(
+        tmp_path,
+        monkeypatch,
+        [
+            "openmetadata-ui/src/main/resources/ui/src/components/Lineage/Lineage.tsx",
+            java,
+        ],
+        "pull_request",
+    )
+
+    assert selection["mode"] == "targeted"
+    assert selection["escalationCapped"] is True
+    assert selection["unmappedCodeFiles"] == [java]
+    selected_specs = {entry["spec"] for entry in selection["selectors"]}
+    # Mapped coverage survives the cap, and so do smoke and the canaries.
+    assert any(
+        spec.startswith("playwright/e2e/Pages/Lineage/") for spec in selected_specs
+    )
+    assert "playwright/e2e/Pages/HealthCheck.spec.ts" in selected_specs
+
+
+def test_mapped_pull_request_is_not_marked_capped(tmp_path, monkeypatch):
+    selection = _select_for_pull_request(
+        tmp_path,
+        monkeypatch,
+        ["openmetadata-ui/src/main/resources/ui/src/components/Lineage/Lineage.tsx"],
+        "pull_request",
+    )
+
+    assert selection["mode"] == "targeted"
+    assert selection["escalationCapped"] is False
+    assert selection["unmappedCodeFiles"] == []
+
+
+@pytest.mark.parametrize("event_name", ["workflow_dispatch", "pull_request_target"])
+def test_escalation_cap_applies_only_to_pull_request_events(
+    tmp_path, monkeypatch, event_name
+):
+    selection = _select_for_pull_request(
+        tmp_path,
+        monkeypatch,
+        ["openmetadata-service/src/main/java/org/openmetadata/service/Foo.java"],
+        event_name,
+    )
+
+    assert selection["mode"] == "full"
+    assert selection["selectors"] == []
+
+
 def test_is_code_path_covers_every_root_the_e2e_filter_matches():
     """
     Kept in lock-step with the `e2e` paths in playwright-e2e-reusable.yml.
