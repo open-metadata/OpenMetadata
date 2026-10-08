@@ -262,6 +262,14 @@ const reassignIncidentTask = async (
   const assigneeInput = assigneeSelect.getByRole('combobox');
   const assigneeOption = page.getByTestId(assignee.name.toLowerCase());
 
+  // Single-select core Autocomplete hides its input while an item is selected.
+  const selectedAssignee = assigneeSelect.getByTestId(
+    'autocomplete-selected-item'
+  );
+  if (await selectedAssignee.isVisible()) {
+    await selectedAssignee.getByRole('button').click();
+  }
+
   await expect(assigneeInput).toBeVisible();
   await assigneeInput.click();
   await assigneeInput.fill(assignee.displayName);

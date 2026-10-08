@@ -196,6 +196,15 @@ export const addAssigneeFromPopoverWidget = async (data: {
       .first();
 
     await expect(assigneeModal).toBeVisible();
+
+    // Single-select core Autocomplete hides its input while an item is selected.
+    const selectedAssignee = assigneeSelect.getByTestId(
+      'autocomplete-selected-item'
+    );
+    if (await selectedAssignee.isVisible()) {
+      await selectedAssignee.getByRole('button').click();
+    }
+
     await expect(assigneeInput).toBeVisible();
 
     await assigneeInput.click();
