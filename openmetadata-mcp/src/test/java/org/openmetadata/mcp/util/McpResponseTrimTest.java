@@ -22,6 +22,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * Pins the shared trimming primitives the MCP tools delegate to. The two truncate conventions are
@@ -29,6 +31,21 @@ import org.junit.jupiter.api.Test;
  * being accidentally unified, which would silently change tool output.
  */
 class McpResponseTrimTest {
+
+  @Test
+  void maxResponseCharsFollowsTheMcpSettingAndFallsBackToTheDefault() {
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    MCPConfiguration previous = SecurityConfigurationManager.getCurrentMcpConfig();
+    try {
+      manager.setCurrentMcpConfig(null);
+      assertEquals(McpResponseTrim.MAX_RESPONSE_CHARS, McpResponseTrim.maxResponseChars());
+
+      manager.setCurrentMcpConfig(new MCPConfiguration().withMaxResponseChars(50_000));
+      assertEquals(50_000, McpResponseTrim.maxResponseChars());
+    } finally {
+      manager.setCurrentMcpConfig(previous);
+    }
+  }
 
   @Test
   void truncateCutsAtMaxAndAppendsEllipsis() {
