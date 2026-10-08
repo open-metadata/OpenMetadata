@@ -2365,7 +2365,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/isolatedUser.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/PersonaOverviewCardWidgets.spec.ts"
+        "playwright/e2e/Features/PersonaOverviewCardWidgets.spec.ts",
+        "playwright/e2e/Pages/DataInsight.spec.ts"
       ]
     },
     {
@@ -5489,7 +5490,8 @@
         "playwright/e2e/Features/AppMode/AppModePreferenceRoundTrip.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
-        "playwright/e2e/Features/PersonaAppLayout.spec.ts"
+        "playwright/e2e/Features/PersonaAppLayout.spec.ts",
+        "playwright/e2e/Pages/DataInsight.spec.ts"
       ]
     },
     {
