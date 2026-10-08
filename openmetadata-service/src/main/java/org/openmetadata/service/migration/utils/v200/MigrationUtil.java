@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -82,6 +81,7 @@ import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationTableUtil;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.migration.utils.v200.LegacyThreadTask.Details;
 import org.openmetadata.service.migration.utils.v200.LegacyThreadTask.TaskStatus;
@@ -3082,20 +3082,7 @@ public class MigrationUtil {
     }
 
     private boolean tableExists(String tableName) {
-      try (ResultSet tables =
-          handle
-              .getConnection()
-              .getMetaData()
-              .getTables(null, null, tableName, new String[] {"TABLE"})) {
-        while (tables.next()) {
-          if (tableName.equalsIgnoreCase(tables.getString("TABLE_NAME"))) {
-            return true;
-          }
-        }
-        return false;
-      } catch (Exception e) {
-        return false;
-      }
+      return MigrationTableUtil.tableExists(handle, tableName);
     }
 
     private String getLegacyThreadSourceTable() {
