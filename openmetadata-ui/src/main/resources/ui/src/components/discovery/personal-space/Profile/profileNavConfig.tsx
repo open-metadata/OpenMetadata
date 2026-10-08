@@ -20,6 +20,7 @@ import {
   Policy as GovernanceTabIcon,
   Settings02,
   ShieldTick,
+  Sliders02,
   User01,
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
@@ -38,6 +39,7 @@ import GovernancePanel from './tabs/governance/GovernancePanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 import PersonasPanel from './tabs/personas/PersonasPanel';
+import PlatformSettingsPanel from './tabs/platform-settings/PlatformSettingsPanel';
 
 export type ProfileNavId =
   | 'profile'
@@ -197,6 +199,18 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <BotsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'platform-settings',
+    group: 'administration',
+    label: 'label.platform-setting-plural',
+    description: 'message.customize-brand-description',
+    icon: Sliders02,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
     ),
   },
   // The "My Connections" tab is contributed by the Query Runner plugin through

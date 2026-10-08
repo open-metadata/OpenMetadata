@@ -28,6 +28,7 @@ export const PROFILE_NAV_ID_LIST = [
   'members',
   'governance',
   'billing',
+  'platform-settings',
 ] as const;
 
 export type ProfileNavId = (typeof PROFILE_NAV_ID_LIST)[number];

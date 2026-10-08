@@ -36,6 +36,12 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 @Slf4j
 public final class AlertBacklogMigration {
 
+  /**
+   * Run once per version through {@code DataMigrationStep}; a re-run would skip again what such an
+   * alert has not sent yet since the upgrade.
+   */
+  public static final String STEP_NAME = "alert-backlog-skip";
+
   private AlertBacklogMigration() {}
 
   public static void skipBacklogOfAlertsThePreviousReleaseCouldNotSend(CollectionDAO dao) {
