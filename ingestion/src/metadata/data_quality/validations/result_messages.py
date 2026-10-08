@@ -352,3 +352,44 @@ def _threshold_caveat(threshold: FailureThreshold | None) -> str | None:
             "carry over to the full table."
         )
     return None
+
+
+def dimension_rollup_sentence(failed_groups: list[str], listed: int = 5) -> str:
+    """Why a test case whose aggregate passed is reported as failed under `ANY_DIMENSION`.
+
+    The aggregate verdict earlier in the message still says the test passed, so without this the
+    message contradicts the status it is attached to.
+
+    Args:
+        failed_groups: dimension keys of the failing groups, e.g. "country=Spain"
+        listed: how many of them to name before summarising the rest
+
+    Returns:
+        str: e.g. "1 dimension group failed (country=Spain), and the ANY_DIMENSION policy fails
+             the test case when any group fails."
+    """
+    named = ", ".join(failed_groups[:listed])
+    if len(failed_groups) > listed:
+        named = f"{named} and {len(failed_groups) - listed} more"
+    groups = "dimension group" if len(failed_groups) == 1 else "dimension groups"
+
+    return (
+        f"{len(failed_groups)} {groups} failed ({named}), and the ANY_DIMENSION policy fails the "
+        "test case when any group fails."
+    )
+
+
+def unevaluated_dimensions_sentence(dimension_columns: list[str]) -> str:
+    """Name the dimension columns whose grouped query did not run.
+
+    Args:
+        dimension_columns: dimension columns that reported an aborted row
+
+    Returns:
+        str: e.g. "Dimension region could not be evaluated, so its groups are not part of this
+             result."
+    """
+    named = ", ".join(dimension_columns)
+    if len(dimension_columns) == 1:
+        return f"Dimension {named} could not be evaluated, so its groups are not part of this result."
+    return f"Dimensions {named} could not be evaluated, so their groups are not part of this result."

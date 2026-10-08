@@ -1464,7 +1464,7 @@ public class LineageResource {
     }
 
     @Override
-    public EntityInterface getEntity() {
+    public EntityInterface<?> getEntity() {
       return null;
     }
 

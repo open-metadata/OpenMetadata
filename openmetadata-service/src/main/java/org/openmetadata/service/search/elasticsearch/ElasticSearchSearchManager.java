@@ -64,10 +64,10 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
@@ -418,7 +418,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String q,
       String queryString,
       SubjectContext subjectContext,
-      List<EntityStatus> statuses)
+      List<ContextMemoryStatus> statuses)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -651,7 +651,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private void applyRbacCondition(
       SubjectContext subjectContext,
       ElasticSearchRequestBuilder requestBuilder,
-      List<EntityStatus> statuses) {
+      List<ContextMemoryStatus> statuses) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQueryBuilder != null) {
@@ -705,7 +705,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private void applyContextMemoryVisibility(
       SubjectContext subjectContext,
       ElasticSearchRequestBuilder requestBuilder,
-      List<EntityStatus> statuses) {
+      List<ContextMemoryStatus> statuses) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses);
     if (visibilityBuilder != null) {

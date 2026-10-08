@@ -19,6 +19,7 @@ import {
   GridComponent,
   LegendComponent,
   MarkLineComponent,
+  MarkPointComponent,
   TooltipComponent,
   VisualMapComponent,
 } from 'echarts/components';
@@ -48,6 +49,7 @@ echarts.use([
   LegendComponent,
   DataZoomComponent,
   MarkLineComponent,
+  MarkPointComponent,
   AriaComponent,
   MapChart,
   PieChart,
@@ -106,6 +108,38 @@ const modelOf = (chart: echarts.ECharts) => chart.getOption() as Model;
 
 afterEach(() => {
   charts.splice(0).forEach((chart) => chart.dispose());
+});
+
+describe('the selection ring on a real chart', () => {
+  const ringed = (day?: string) =>
+    buildLineOption(
+      input({
+        series: [
+          {
+            key: 'a',
+            name: 'A',
+            pointStyle: (row) => ({ selected: row.day === day }),
+          },
+        ],
+      }),
+      LIGHT_CHART_THEME
+    );
+  const ringsIn = (chart: echarts.ECharts) =>
+    chart.renderToSVGString().match(/stroke-opacity="0\.3"/g)?.length ?? 0;
+
+  it('moves with the selection and goes when it is cleared', () => {
+    const chart = mount(ringed('d3'));
+
+    expect(ringsIn(chart)).toBe(1);
+
+    chart.setOption(ringed('d7'), MERGE);
+
+    expect(ringsIn(chart)).toBe(1);
+
+    chart.setOption(ringed(), MERGE);
+
+    expect(ringsIn(chart)).toBe(0);
+  });
 });
 
 describe('reference lines on a real chart', () => {
@@ -525,5 +559,30 @@ describe('band series on a real chart', () => {
 
     expect(span.get(stacked, 0)).toBe(2);
     expect(span.get(stacked, 1)).toBe(4);
+  });
+});
+
+describe('axis labels on a real chart', () => {
+  const PALE_LINE = '#e9eaeb';
+  // The fill of the label that reads `text`.
+  const labelFill = (chart: echarts.ECharts, text: string) =>
+    chart
+      .renderToSVGString()
+      .match(new RegExp(`<text[^>]*fill="([^"]+)"[^>]*>${text}</text>`))?.[1];
+
+  it('keep their own colour when the caller themes the axis line', () => {
+    const chart = mount(
+      buildLineOption(
+        input({
+          xAxis: { axisLine: { lineStyle: { color: PALE_LINE } } },
+          yAxis: { axisLine: { show: true, lineStyle: { color: PALE_LINE } } },
+        }),
+        LIGHT_CHART_THEME
+      )
+    );
+
+    expect(labelFill(chart, 'd0')).toBeDefined();
+    expect(labelFill(chart, 'd0')).not.toBe(PALE_LINE);
+    expect(labelFill(chart, '0')).not.toBe(PALE_LINE);
   });
 });

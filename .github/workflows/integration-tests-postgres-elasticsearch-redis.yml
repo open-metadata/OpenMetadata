@@ -13,14 +13,9 @@
 # redis), via the cache-tests Maven profile. Catches cache-invalidation and stale-data bugs that
 # only surface when every test path goes through the cache layer.
 #
-# Security note (CodeQL "pull_request_target + checkout untrusted code"):
-# This workflow uses `pull_request_target` so PRs from forks can produce a required check.
-# CodeQL flags the pattern as risky because it checks out PR-controlled code while having
-# access to secrets. The mitigation is the explicit `safe to test` label gate below — the
-# verify-pr-label step rejects the workflow run before any PR code is checked out unless a
-# maintainer has applied the label. This matches the mitigation used by every other
-# integration-tests-*.yml workflow in this repo. If you remove the label gate, you reopen
-# the vulnerability.
+# Runs in the merge queue (plus main pushes and manual dispatch), never on PRs: before review,
+# `make java_affected_run` runs the ITs a PR impacts on the author's machine. Not a required
+# check, so unlike the MySQL and OpenSearch workflows it needs no PR trigger to report.
 name: Integration Tests - PostgreSQL + Elasticsearch + Redis
 
 on:
@@ -44,20 +39,15 @@ on:
       - "bootstrap/**"
       - ".github/scripts/classify_test_outcome.py"
       - ".github/workflows/integration-tests-postgres-elasticsearch-redis.yml"
-  # `pull_request_target` is intentional and required so the workflow runs against PRs from
-  # forks (which `pull_request` cannot for security reasons). The `safe to test` label gate
-  # below is what makes this safe — see security note in the file header.
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
-  pull-requests: read
   checks: write
 
 concurrency:
-  group: integration-tests-pg-es-redis-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  # Merge-queue, push and dispatch runs key on the run id, so they never cancel each other.
+  group: integration-tests-pg-es-redis-${{ github.run_id }}
+  cancel-in-progress: true
 jobs:
   # Detect whether relevant paths changed. When no matching files are modified
   # the downstream job is skipped via its `if` condition.
@@ -66,9 +56,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
-    # pull_request_target uses the GitHub API and does not require a checkout. Merge
-    # queue runs check out the merge-queue commit so dorny can diff against
+    # Merge queue runs check out the merge-queue commit so dorny can diff against
     # merge_group.base_sha and skip the heavy work when nothing backend-relevant
     # changed. Push and workflow_dispatch remain force-true — push is already
     # gated by the trigger paths above, and workflow_dispatch is an explicit
@@ -85,7 +73,7 @@ jobs:
           persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+        if: ${{ github.event_name == 'merge_group' }}
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
@@ -112,31 +100,9 @@ jobs:
     timeout-minutes: 60
     if: ${{ needs.changes.outputs.backend == 'true' }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true
-
-      # SECURITY: this step checks out PR-controlled code while the workflow runs with
-      # `pull_request_target` privileges. The label verification above must succeed first.
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
         uses: actions/cache@v6
@@ -155,7 +121,7 @@ jobs:
       - name: Build and Bundle Integration Test Runtime
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           project_version="$(mvn --quiet --non-recursive help:evaluate \
             -Dexpression=project.version -DforceStdout -Dstyle.color=never)"
@@ -253,12 +219,9 @@ jobs:
           docker-images: false
           swap-storage: true
 
-      # The required build job verifies `safe to test` before this fan-out can run.
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
         uses: actions/cache@v6
@@ -499,7 +462,7 @@ jobs:
     needs: [changes, integration-test-build, integration-test-lanes]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ always() }}
     steps:
       - name: Verify Maven Integration Test Lanes
         env:

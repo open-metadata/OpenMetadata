@@ -911,6 +911,105 @@ describe('useTestSuiteDetailsPage', () => {
     );
   });
 
+  it('should keep refreshing after a removal until the index drops the removed rows', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    (getTestSuiteByName as jest.Mock).mockResolvedValue({
+      ...mockTestSuite,
+      tests: [],
+    });
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-1', name: 'tc_1' }],
+        paging: { total: 1 },
+      })
+      .mockResolvedValue({ data: [], paging: { total: 0 } });
+
+    const setTimeoutSpy = runTimeoutsImmediately();
+
+    try {
+      await act(async () => {
+        await result.current.handleTestCasesRemoved();
+      });
+
+      expect(
+        setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 500)
+      ).toHaveLength(1);
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+
+    expect(result.current.testCaseResult).toEqual([]);
+    expect(result.current.pagingData.paging.total).toBe(0);
+    expect(result.current.isTestCaseLoading).toBe(false);
+  });
+
+  it('should report a failure to reload the suite after a removal', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    const error = new Error('suite fetch failed');
+    (getTestSuiteByName as jest.Mock).mockRejectedValueOnce(error);
+
+    await act(async () => {
+      await result.current.handleTestCasesRemoved();
+    });
+
+    expect(showErrorToast).toHaveBeenCalledWith(error);
+  });
+
+  it('should step back a page when the current page past the first comes back empty', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockImplementation(
+      async ({ offset }: { offset?: number }) =>
+        offset
+          ? { data: [], paging: { total: 1 } }
+          : { data: [{ id: 'tc-1', name: 'tc_1' }], paging: { total: 1 } }
+    );
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.pagingData.pagingHandler({ currentPage: 2 });
+    });
+
+    await waitFor(() => {
+      expect(result.current.pagingData.currentPage).toBe(1);
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 0 }),
+      expect.any(Object)
+    );
+  });
+
+  it('should stay on the first page when it comes back empty', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
+    });
+
+    expect(result.current.pagingData.currentPage).toBe(1);
+    expect(result.current.testCaseResult).toEqual([]);
+  });
+
   it('should surface suite fetch errors via toast', async () => {
     (getTestSuiteByName as jest.Mock).mockRejectedValueOnce(new Error('boom'));
 

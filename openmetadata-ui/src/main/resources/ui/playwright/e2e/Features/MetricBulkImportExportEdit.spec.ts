@@ -33,6 +33,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { verifyPageAccess } from '../../utils/testCases';
+import { clickUntilVisible } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 interface EntityReference {
@@ -1095,11 +1096,9 @@ test.describe(
           timeout: ACTION_TIMEOUT,
         });
 
-        if (await trayLauncher.isVisible()) {
-          await trayLauncher.click();
-        }
-
-        await expect(trayPopover).toBeVisible();
+        // The job can finish between a visibility check and the click, unmounting
+        // the launcher mid-click; retry until the popover is open either way.
+        await clickUntilVisible(trayLauncher, trayPopover);
         // Verify the export job appears in the tray. Each test uses a dedicated
         // user session so only this test's own job is visible — checking the
         // label is sufficient.

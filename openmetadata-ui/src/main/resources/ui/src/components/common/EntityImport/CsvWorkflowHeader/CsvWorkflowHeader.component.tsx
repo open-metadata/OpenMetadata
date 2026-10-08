@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { Check } from '@openmetadata/ui-core-components/icons';
-import { Fragment, useMemo } from 'react';
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Breadcrumbs,
+  ProgressSteps,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import type { TitleBreadcrumbProps } from '../../TitleBreadcrumb/TitleBreadcrumb.interface';
 import type { CsvWorkflowHeaderProps } from './CsvWorkflowHeader.interface';
 
 const CsvWorkflowHeader = ({
@@ -28,116 +32,66 @@ const CsvWorkflowHeader = ({
 }: CsvWorkflowHeaderProps) => {
   const { t } = useTranslation();
 
-  const workflowBreadcrumbs = useMemo<
-    TitleBreadcrumbProps['titleLinks']
-  >(() => {
+  const breadcrumbItems = useMemo<BreadcrumbItemType[]>(() => {
     const hasCurrentBreadcrumb = breadcrumbList.some(
       (breadcrumb) => breadcrumb.activeTitle || breadcrumb.name === currentLabel
     );
-
-    return [
-      {
-        name: t('label.governance'),
-        url: '',
-      },
+    const links = [
+      { name: t('label.governance'), url: '' },
       ...breadcrumbList,
-      ...(hasCurrentBreadcrumb
-        ? []
-        : [
-            {
-              activeTitle: true,
-              name: currentLabel,
-              url: '',
-            },
-          ]),
+      ...(hasCurrentBreadcrumb ? [] : [{ name: currentLabel, url: '' }]),
     ];
+
+    return links.map(({ name, url }) => ({
+      id: name,
+      label: name,
+      href: typeof url === 'string' && url ? url : undefined,
+    }));
   }, [breadcrumbList, currentLabel, t]);
 
-  return (
-    <div className="csv-workflow-header">
-      <div className="csv-workflow-title-block">
-        <nav
-          aria-label={t('label.navigation')}
-          className="csv-workflow-breadcrumb"
-          data-testid="title-breadcrumb">
-          {workflowBreadcrumbs.map((breadcrumb, index) => {
-            const isLast = index === workflowBreadcrumbs.length - 1;
-            const content = (
-              <span className={isLast ? 'active' : undefined}>
-                {breadcrumb.name}
-              </span>
-            );
+  const progressSteps = useMemo(
+    () => steps.map(({ name, step }) => ({ id: String(step), title: name })),
+    [steps]
+  );
 
-            return (
-              <span
-                className="csv-workflow-breadcrumb-item"
-                data-testid="breadcrumb-item"
-                key={breadcrumb.name}>
-                {!isLast && breadcrumb.url ? (
-                  <Link to={breadcrumb.url}>{content}</Link>
-                ) : (
-                  content
-                )}
-                {!isLast && (
-                  <span
-                    aria-hidden="true"
-                    className="csv-workflow-breadcrumb-separator">
-                    /
-                  </span>
-                )}
-              </span>
-            );
-          })}
-        </nav>
-        <div className="csv-workflow-title-row">
-          <h1 className="csv-workflow-title">{title}</h1>
-          <span className="csv-workflow-description">{description}</span>
-        </div>
-      </div>
-      <div
-        className="csv-workflow-inline-stepper"
-        data-testid="stepper-container">
+  return (
+    <Box
+      align="center"
+      className="csv-workflow-header tw:-mx-6 tw:border-b tw:border-secondary tw:bg-surface tw:px-8 tw:py-3"
+      gap={4}
+      justify="between">
+      <Box className="tw:min-w-0 tw:flex-auto" direction="col" gap={1}>
+        <Breadcrumbs
+          data-testid="title-breadcrumb"
+          divider="slash"
+          items={breadcrumbItems}
+          size="xs"
+          type="text"
+        />
+        <Box align="baseline" gap={2} wrap="wrap">
+          {/* A native heading avoids the prose wrapper that enlarges and wraps this inline title. */}
+          <h1 className="tw:m-0 tw:text-md tw:font-semibold tw:text-primary">
+            {title}
+          </h1>
+          <Typography as="span" color="secondary" size="text-sm">
+            {description}
+          </Typography>
+        </Box>
+      </Box>
+      <Box data-testid="stepper-container">
         <span hidden data-testid="stepper" />
         <span hidden data-testid="active-step">
           {activeStep}
         </span>
-        {steps.map((step, index) => {
-          const isActive = step.step === activeStep;
-          const isDone = step.step < activeStep;
-
-          return (
-            <Fragment key={step.step}>
-              <div
-                className={[
-                  'csv-workflow-step',
-                  isActive ? 'active' : '',
-                  isDone ? 'done' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                data-active={isActive}
-                data-testid={`csv-workflow-step-${step.step}`}>
-                <span className="csv-workflow-step-circle">
-                  {isDone ? <Check size={10} strokeWidth={2.5} /> : index + 1}
-                </span>
-                <span className="csv-workflow-step-label">{step.name}</span>
-              </div>
-              {index < steps.length - 1 && (
-                <span
-                  aria-hidden="true"
-                  className={[
-                    'csv-workflow-step-connector',
-                    isDone ? 'done' : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                />
-              )}
-            </Fragment>
-          );
-        })}
-      </div>
-    </div>
+        <ProgressSteps
+          currentStep={steps.findIndex(({ step }) => step === activeStep)}
+          labelPlacement="attach"
+          size="sm"
+          steps={progressSteps}
+          type="number"
+        />
+      </Box>
+    </Box>
   );
 };
 

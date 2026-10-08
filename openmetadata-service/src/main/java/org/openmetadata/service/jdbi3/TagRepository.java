@@ -540,7 +540,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
 
       try {
@@ -695,7 +695,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
       // Skip the destructive tag_usage delete + ES update on dryRun so the preview

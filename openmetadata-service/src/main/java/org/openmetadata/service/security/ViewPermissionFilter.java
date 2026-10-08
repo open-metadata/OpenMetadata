@@ -69,7 +69,7 @@ public class ViewPermissionFilter {
   }
 
   /** One batch load and one hydrator per entity type, so cost scales with types, not references. */
-  private <T extends EntityInterface> void addViewableFromBucket(
+  private <T extends EntityInterface<?>> void addViewableFromBucket(
       SecurityContext securityContext,
       String entityType,
       List<EntityReference> refs,
@@ -88,14 +88,14 @@ public class ViewPermissionFilter {
     }
   }
 
-  private <T extends EntityInterface> BulkFieldHydrator tagHydrator(
+  private <T extends EntityInterface<?>> BulkFieldHydrator tagHydrator(
       EntityRepository<T> repository, List<T> entities) {
     return new BulkFieldHydrator(
         Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(entities))));
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends EntityInterface> EntityRepository<T> repositoryOrNull(String entityType) {
+  private <T extends EntityInterface<?>> EntityRepository<T> repositoryOrNull(String entityType) {
     EntityRepository<T> repository = null;
     try {
       repository = (EntityRepository<T>) Entity.getEntityRepository(entityType);
@@ -106,7 +106,7 @@ public class ViewPermissionFilter {
     return repository;
   }
 
-  private <T extends EntityInterface> List<T> loadForAuthorization(
+  private <T extends EntityInterface<?>> List<T> loadForAuthorization(
       EntityRepository<T> repository, String entityType, List<EntityReference> refs) {
     List<T> entities = List.of();
     List<UUID> ids = refs.stream().map(EntityReference::getId).filter(Objects::nonNull).toList();
