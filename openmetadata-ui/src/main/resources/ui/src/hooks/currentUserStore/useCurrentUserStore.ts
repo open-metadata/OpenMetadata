@@ -41,10 +41,9 @@ export interface UserPreferences {
    */
   isNLPActive?: boolean;
   /**
-   * Boot-time app-mode preference — the "open in this mode when I log in"
-   * checkbox in the app-mode switcher. `null` means "no explicit preference,
-   * fall back to persona/app-default/constant at boot." Only the switcher's
-   * checkbox writes this field; runtime mode-switching does NOT touch it.
+   * Boot-time app-mode preference — "open in this mode when I log in".
+   * `null` means "no explicit preference, fall back to persona/app-default/
+   * constant at boot." Runtime mode-switching does NOT touch it.
    */
   appMode: string | null;
 }

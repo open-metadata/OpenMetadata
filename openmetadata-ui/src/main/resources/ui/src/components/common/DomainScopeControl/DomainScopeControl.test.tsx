@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { DomainSelectableListProps } from '../DomainSelectableList/DomainSelectableList.interface';
 import DomainScopeControl from './DomainScopeControl';
@@ -70,26 +69,29 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  ButtonUtility: ({
-    icon: Icon,
-    isDisabled,
-    tooltip,
-    tooltipPlacement: _tooltipPlacement,
-    color: _color,
-    size: _size,
-    ...props
-  }: {
-    icon: React.ComponentType;
-    isDisabled?: boolean;
-    tooltip?: string;
-    tooltipPlacement?: string;
-    color?: string;
-    size?: string;
-  }) => (
-    <button {...props} disabled={isDisabled} title={tooltip} type="button">
-      <Icon />
-    </button>
-  ),
+  Dropdown: {
+    Item: ({
+      children,
+      isDisabled,
+      onAction,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      isDisabled?: boolean;
+      onAction?: () => void;
+      'data-testid'?: string;
+    }) => (
+      <div
+        aria-disabled={isDisabled}
+        data-testid={testId}
+        role="menuitem"
+        tabIndex={-1}
+        onClick={onAction}
+        onKeyDown={onAction}>
+        {children}
+      </div>
+    ),
+  },
   Tooltip: ({
     children,
     title,
@@ -97,12 +99,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     title?: string;
   }) => <div title={title}>{children}</div>,
-}));
-
-jest.mock('../../AppRouter/withSuspenseFallback', () => ({
-  __esModule: true,
-  default: (Component: React.ComponentType<DomainSelectableListProps>) =>
-    Component,
 }));
 
 jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
@@ -125,8 +121,12 @@ jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
 
 // The menu is a `React.lazy` wrapper, so the first render suspends until the
 // (mocked) module resolves — await the list before asserting.
-const renderControl = async (variant?: 'card' | 'icon' | 'pill') => {
-  const utils = render(<DomainScopeControl variant={variant} />);
+const renderControl = async (variant?: 'menu' | 'pill') => {
+  const utils = render(
+    <DomainScopeControl variant={variant}>
+      <span data-testid="row">row</span>
+    </DomainScopeControl>
+  );
   await screen.findByTestId('domain-selectable-list');
 
   return utils;
@@ -149,33 +149,22 @@ describe('DomainScopeControl', () => {
     };
   });
 
-  it('renders the panel card with caption and the active domain name', async () => {
+  it('renders the given row as the picker trigger inside a menu item', async () => {
     await renderControl();
 
-    expect(screen.getByTestId('ask-domain-scope-card')).toBeInTheDocument();
-    expect(screen.getByText('label.domain-scope')).toBeInTheDocument();
-    expect(screen.getByTestId('ask-domain-scope-name')).toHaveTextContent(
-      'Compliance'
+    expect(screen.getByTestId('ask-domain-scope')).toContainElement(
+      screen.getByTestId('row')
     );
   });
 
-  it('shows the active status dot when a domain is scoped', async () => {
+  it('opens the picker when the menu item is activated', async () => {
     await renderControl();
 
-    expect(screen.getByTestId('ask-domain-scope-dot')).toBeInTheDocument();
-  });
+    expect(lastMenuProps().popoverProps?.open).toBe(false);
 
-  it('hides the status dot when scope is the default (all domains)', async () => {
-    storeState = {
-      ...storeState,
-      activeDomain: DEFAULT_DOMAIN_VALUE,
-      activeDomainEntityRef: undefined as unknown as EntityReference,
-    };
-    await renderControl();
+    fireEvent.click(screen.getByTestId('ask-domain-scope'));
 
-    expect(
-      screen.queryByTestId('ask-domain-scope-dot')
-    ).not.toBeInTheDocument();
+    expect(lastMenuProps().popoverProps?.open).toBe(true);
   });
 
   it('updates the global domain scope and reloads on selection', async () => {
@@ -196,18 +185,28 @@ describe('DomainScopeControl', () => {
     expect(props.restrictedDomains).toBeUndefined();
   });
 
-  it('renders a disabled, menu-less affordance for a single-domain user', () => {
+  it('opens the menu-row picker beside the row', async () => {
+    await renderControl();
+
+    expect(lastMenuProps().placement).toBe('right top');
+  });
+
+  it('renders a disabled, picker-less row for a single-domain user', () => {
     storeState = {
       ...storeState,
       isDomainRestricted: true,
       userDomains: [complianceDomain],
     };
-    render(<DomainScopeControl />);
+    render(
+      <DomainScopeControl>
+        <span data-testid="row">row</span>
+      </DomainScopeControl>
+    );
 
-    const card = screen.getByTestId('ask-domain-scope-card');
+    const item = screen.getByTestId('ask-domain-scope');
 
-    expect(card).toHaveAttribute('aria-disabled');
-    expect(card.closest('[title]')).toHaveAttribute(
+    expect(item).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByTestId('row').closest('[title]')).toHaveAttribute(
       'title',
       'message.domain-access-restricted'
     );
@@ -228,26 +227,17 @@ describe('DomainScopeControl', () => {
     expect(props.restrictedDomains).toEqual([complianceDomain, demoDomain]);
   });
 
-  it('renders the rail variant as an icon-only trigger', async () => {
-    await renderControl('icon');
-
-    expect(screen.getByTestId('ask-domain-scope-icon')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('ask-domain-scope-card')
-    ).not.toBeInTheDocument();
-  });
-
   describe('landing variant', () => {
-    it('renders the landing pill, not the AI-sidebar card', async () => {
+    it('renders the landing pill, not the menu row', async () => {
       await renderControl('pill');
 
       expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('ask-domain-scope-card')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('ask-domain-scope')).not.toBeInTheDocument();
+      // The pill keeps the picker's default below-the-trigger placement.
+      expect(lastMenuProps().placement).toBeUndefined();
     });
 
-    it('keeps the pill for a single-domain user instead of the card', async () => {
+    it('keeps the pill for a single-domain user instead of the menu row', async () => {
       storeState = {
         ...storeState,
         isDomainRestricted: true,
@@ -258,9 +248,7 @@ describe('DomainScopeControl', () => {
 
       // The restricted branch must not pre-empt the landing variant.
       expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('ask-domain-scope-card')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('ask-domain-scope')).not.toBeInTheDocument();
     });
 
     it('disables the pill for a single-domain user, who has nothing to switch to', async () => {

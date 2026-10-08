@@ -11,66 +11,51 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Card, Divider } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import React, { useRef } from 'react';
-import AppModeSwitcher from '../../../AppModeSwitcher/AppModeSwitcher';
+import React from 'react';
 import AIUserMenu from '../../../discovery/personal-space/AIUserMenu/AIUserMenu';
 import InboxIconButton from '../../../discovery/personal-space/InboxIconButton/InboxIconButton';
 
 export interface UserProfileCardProps {
-  /**
-   * `true` in the collapsed 32px rail: show only the avatar and drop the
-   * full-width mode switcher (its label can't fit the rail — the switcher is
-   * reachable once the panel is expanded).
-   */
+  /** `true` in the collapsed rail: inbox stacked over the avatar. */
   compact?: boolean;
 }
 
 /**
- * User chrome for the AI sidebar footer — the AI user menu (avatar,
- * name, profile dropdown), the inbox launcher, and the Classic/AI
- * `AppModeSwitcher`. `cardRef` lets the switcher popover treat clicks inside
- * the card as "inside" and not self-close. In the collapsed rail the card
- * mirrors the compact profile: inbox, user menu, mode switcher — no full-width
- * wrapper.
+ * User chrome for the AI sidebar footer — the AI user menu (avatar, name,
+ * domain scope, profile dropdown) and the inbox launcher. The card border
+ * highlights while the profile menu it opens is showing.
  */
 const UserProfileCard: React.FC<UserProfileCardProps> = ({
   compact = false,
-}) => {
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  return (
-    <div
-      className={classNames('ask-user-card', {
-        'tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:py-2 tw:bg-surface tw:rounded-md':
-          !compact,
-        // Collapsed rail: no card box — `.ask-rail__profile` already stacks and
-        // centers inbox / avatar / switcher. `display: contents` lets them be
-        // its direct flex children (matching the old SidebarRailProfile).
-        'ask-user-card--compact': compact,
-      })}
-      data-testid="ask-user-card"
-      ref={cardRef}>
+}) => (
+  <Card
+    className={classNames(
+      'tw:w-full tw:has-[[aria-expanded=true]]:border-brand-subtle',
+      compact ? 'tw:p-2' : 'tw:py-2 tw:pr-2 tw:pl-3'
+    )}
+    data-testid="ask-user-card">
+    <Box
+      align="center"
+      direction={compact ? 'col' : 'row'}
+      gap={compact ? 3 : 2}>
       {compact ? (
         <>
           <InboxIconButton />
+          <Divider />
           <AIUserMenu collapsed />
-          <AppModeSwitcher compact />
         </>
       ) : (
         <>
-          <Box>
-            <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
-              <AIUserMenu />
-            </div>
+          <AIUserMenu />
+          <Box className="tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-1 tw:shadow-xs">
             <InboxIconButton />
           </Box>
-          <AppModeSwitcher cardRef={cardRef} />
         </>
       )}
-    </div>
-  );
-};
+    </Box>
+  </Card>
+);
 
 export default UserProfileCard;

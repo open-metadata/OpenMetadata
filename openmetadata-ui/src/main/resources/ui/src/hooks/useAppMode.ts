@@ -433,8 +433,7 @@ export const translateWireMode = (
  * `["ai", "classic", null]` — see
  * `openmetadata-spec/.../api/teams/preferences/appModePreference.json`).
  * Single source of truth for both directions of this translation;
- * {@link PREFERENCE_MODE_TO_RUNTIME} below is its inverse. Consumed by
- * `AppModeSwitcher`'s remember checkbox.
+ * {@link PREFERENCE_MODE_TO_RUNTIME} below is its inverse.
  */
 export const RUNTIME_TO_PREFERENCE_WIRE: Record<string, string> = {
   [DEFAULT_APP_MODE]: 'classic',

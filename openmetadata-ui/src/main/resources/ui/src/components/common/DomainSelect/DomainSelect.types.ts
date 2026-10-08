@@ -53,6 +53,10 @@ export interface DomainSelectProps {
   triggerClassName?: string;
   /** Let a custom trigger stretch to its container. @see TreeSelectProps */
   fullWidthTrigger?: boolean;
+  /** Fixed dropdown placement. @see TreeSelectProps */
+  placement?: TreeSelectProps['placement'];
+  /** Gap between trigger and dropdown, in px. @see TreeSelectProps */
+  offset?: TreeSelectProps['offset'];
   bordered?: boolean;
   /**
    * Buffer selection until Apply (`staged`) or report every toggle

@@ -27,10 +27,6 @@ jest.mock('../../../../hooks/authHooks', () => ({
     onLogoutHandler: jest.fn(),
   }),
 }));
-jest.mock('../../../AppModeSwitcher/AppModeSwitcher', () => ({
-  __esModule: true,
-  default: () => <span>app-mode-switcher</span>,
-}));
 jest.mock('../../../../utils/NavbarUtilClassBase', () => ({
   __esModule: true,
   default: {
