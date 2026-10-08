@@ -1360,8 +1360,8 @@ class TestBigqueryDeltaLakeDetection:
         self.bq_source.client.get_table.side_effect = get_table
 
     def _listed_types(self):
-        """Drive the full producer path, so the tableFilterPattern pre-check is covered too."""
-        return [(t.name, t.type_) for t in self.bq_source.query_table_names_and_types(MOCK_SCHEMA_NAME)]
+        """Drive the full producer path, so the tableFilterPattern runs before the narrowing."""
+        return list(self.bq_source.get_tables_name_and_type())
 
     def _external_payload(self, source_format):
         # The real DELTA_LAKE payload is unpartitioned; every other format reuses the real
@@ -1466,51 +1466,15 @@ class TestBigqueryDeltaLakeDetection:
 
         assert self._listed_types() == [("formatless", TableType.External)]
 
-    def test_filtered_out_external_table_costs_no_tables_get(self):
-        """A table tableFilterPattern will drop must not pay for the narrowing `tables.get`.
-
-        It is still yielded -- the base class owns the filtering and its `status.filter`
-        bookkeeping -- but it is yielded as plain External, unnarrowed.
-        """
-        self._stub_client({"delta_sales": ("EXTERNAL", self._external_payload("DELTA_LAKE"))})
-        self.bq_source.source_config.tableFilterPattern = FilterPattern(excludes=["delta_sales"])
-
-        assert self._listed_types() == [("delta_sales", TableType.External)]
-        self.bq_source.client.get_table.assert_not_called()
-
-    def test_kept_external_table_still_narrows_under_a_filter(self):
-        """The pre-check must not starve a table the filter keeps."""
-        self._stub_client({"delta_sales": ("EXTERNAL", self._external_payload("DELTA_LAKE"))})
-        self.bq_source.source_config.tableFilterPattern = FilterPattern(excludes=["something_else"])
-
-        assert self._listed_types() == [("delta_sales", TableType.DeltaLake)]
-
-    @pytest.mark.parametrize("use_fqn", [False, True])
-    def test_pre_check_agrees_with_the_base_filter(self, use_fqn):
-        """The pre-check only pays off if it decides exactly what the base decides.
-
-        Asserted end-to-end: the base drops the table, and the pre-check had already
-        stopped the `tables.get` for it.
-        """
+    def test_only_kept_tables_pay_a_tables_get(self):
+        """The narrowing runs after the base tableFilterPattern, so a dropped table costs no call."""
         self._stub_client(
             {
                 "delta_drop": ("EXTERNAL", self._external_payload("DELTA_LAKE")),
                 "delta_keep": ("EXTERNAL", self._external_payload("DELTA_LAKE")),
             }
         )
-        self.bq_source.source_config.useFqnForFiltering = use_fqn
-        self.bq_source.source_config.tableFilterPattern = FilterPattern(
-            excludes=[".*delta_drop$" if use_fqn else "delta_drop"]
-        )
+        self.bq_source.source_config.tableFilterPattern = FilterPattern(excludes=["delta_drop"])
 
-        assert list(self.bq_source.get_tables_name_and_type()) == [("delta_keep", TableType.DeltaLake)]
+        assert self._listed_types() == [("delta_keep", TableType.DeltaLake)]
         assert self.bq_source.client.get_table.call_args_list == [call(f"{MOCK_DB_NAME}.{MOCK_SCHEMA_NAME}.delta_keep")]
-
-    def test_fqn_filtering_pre_check_matches_on_the_fqn(self):
-        """With useFqnForFiltering the pre-check must build the same FQN the base does."""
-        self._stub_client({"delta_sales": ("EXTERNAL", self._external_payload("DELTA_LAKE"))})
-        self.bq_source.source_config.useFqnForFiltering = True
-        self.bq_source.source_config.tableFilterPattern = FilterPattern(excludes=[f".*{MOCK_SCHEMA_NAME}.delta_sales$"])
-
-        assert self._listed_types() == [("delta_sales", TableType.External)]
-        self.bq_source.client.get_table.assert_not_called()
