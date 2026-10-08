@@ -48,6 +48,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.findEntityByNameOrNull;
@@ -9946,16 +9947,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Default implementation. Override this to add any entity specific field updates
     }
 
+    /**
+     * Whether a bot write must keep a non-empty description. A bot PUT never changes it without
+     * overrideMetadata; with it (a bulk force-sync) a real source value may replace it, but an empty
+     * one must not blank it - a connector that finds no comment omits the field, and that absence
+     * is not "delete the description". An ingestion-bot PATCH follows the same rule: pre-2.0
+     * clients still patch existing tables with the source's empty column comments under
+     * overrideMetadata. App bots are exempt, since some (the Automator's remove-description action)
+     * clear descriptions on purpose.
+     */
+    protected final boolean keepsStoredDescription(String stored, String incoming) {
+      boolean botPut =
+          operation.isPut() && updatedByBot() && (!overrideMetadata || nullOrEmpty(incoming));
+      boolean ingestionPatchBlanking =
+          operation.isPatch()
+              && INGESTION_BOT_NAME.equals(updatingUser.getName())
+              && nullOrEmpty(incoming);
+      return !nullOrEmpty(stored) && (botPut || ingestionPatchBlanking);
+    }
+
     private void updateDescription() {
-      if (operation.isPut()
-          && !nullOrEmpty(original.getDescription())
-          && updatedByBot()
-          && (!overrideMetadata || nullOrEmpty(updated.getDescription()))) {
-        // Revert change to non-empty description if it is being updated by a bot
-        // This is to prevent bots from overwriting the description. Description need to be
-        // updated with a PATCH request, or via the bulk path with overrideMetadata=true. Even
-        // then an empty value never blanks it: a source with no comment omits the field, and an
-        // override run must not read that absence as "delete the description".
+      if (keepsStoredDescription(original.getDescription(), updated.getDescription())) {
         updated.setDescription(original.getDescription());
         return;
       }
@@ -11606,14 +11618,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateColumnDescription(
         String fieldPrefix, Column origColumn, Column updatedColumn) {
-      // A bot PUT preserves a non-empty column description. A bulk force-sync
-      // (overrideMetadata=true) may replace it with a real source comment, but must never blank
-      // it: a connector that finds no comment on the column omits the field entirely, and an
-      // override run must not read that absence as "delete the description".
-      if (operation.isPut()
-          && !nullOrEmpty(origColumn.getDescription())
-          && updatedByBot()
-          && (!overrideMetadata || nullOrEmpty(updatedColumn.getDescription()))) {
+      if (keepsStoredDescription(origColumn.getDescription(), updatedColumn.getDescription())) {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
