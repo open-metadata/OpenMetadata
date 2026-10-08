@@ -1,0 +1,70 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Daily CI health report in the job summary: merge-queue Playwright runs,
+# distinct PRs, entries per PR and fail rate (24h and 7d), runner-hours per
+# workflow, and the most frequent flaky tests in the queue.
+#
+# Read-only and posts nowhere. Runner-hours are measured for the last 24h; the
+# 7d column sums this workflow's own earlier `ci-health-report` artifacts,
+# because measuring a week of job durations would exceed GITHUB_TOKEN's hourly
+# API budget (see the cost notes in .github/scripts/ci_health_report.py). Keep
+# the artifact retention above 7 days or the 7d column loses days.
+name: CI Health Daily Report
+
+on:
+  schedule:
+    # 05:30 UTC, after the 02:30 nightly Playwright run has finished.
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  # Naming any permission sets every other one to none:
+  #   actions  — list runs and artifacts, download earlier reports and the
+  #              playwright-flaky-tests artifacts
+  #   checks   — job durations, read from each run's check suite over GraphQL
+  #   contents — checkout
+  actions: read
+  checks: read
+  contents: read
+
+concurrency:
+  group: ci-health-daily-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Summarise CI health
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build the report
+        run: |
+          python3 .github/scripts/ci_health_report.py \
+            --owner "${GITHUB_REPOSITORY%%/*}" \
+            --repo "${GITHUB_REPOSITORY#*/}" \
+            --summary "$GITHUB_STEP_SUMMARY" \
+            --json-output "$RUNNER_TEMP/ci-health/ci-health.json"
+
+      # Also the input of tomorrow's 7d runner-hours column.
+      - name: Upload the report
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-health-report
+          path: ${{ runner.temp }}/ci-health/ci-health.json
+          retention-days: 10
