@@ -42,7 +42,7 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   private final String entityType;
   private final UUID id;
   private final String name;
-  private EntityInterface
+  private EntityInterface<?>
       entity; // Will be lazily initialized to the entity that has this test case
 
   @Override
@@ -63,7 +63,7 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityInterface getEntity() {
+  public EntityInterface<?> getEntity() {
     return resolveEntity();
   }
 
@@ -73,7 +73,7 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     return entity == null ? null : entity.getDomains();
   }
 
-  private EntityInterface resolveEntity() {
+  private EntityInterface<?> resolveEntity() {
     if (entity == null) {
       if (entityLink != null) {
         entity = resolveEntityByEntityLink(entityLink);
@@ -90,13 +90,13 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     return entity;
   }
 
-  private static EntityInterface resolveTestSuiteById(UUID id) {
+  private static EntityInterface<?> resolveTestSuiteById(UUID id) {
     TestSuiteRepository dao = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     return dao.get(null, id, dao.getFields("owners,tags,domains"), Include.ALL, true);
   }
 
-  private static EntityInterface resolveEntityByEntityLink(EntityLink entityLink) {
-    EntityRepository<? extends EntityInterface> entityRepository =
+  private static EntityInterface<?> resolveEntityByEntityLink(EntityLink entityLink) {
+    EntityRepository<? extends EntityInterface<?>> entityRepository =
         Entity.getEntityRepository(entityLink.getEntityType());
     String fields = "";
     if (entityRepository.isSupportsOwners()) {
@@ -112,21 +112,21 @@ public class TestCaseResourceContext implements ResourceContextInterface {
         null, entityLink.getEntityFQN(), entityRepository.getFields(fields));
   }
 
-  private static EntityInterface resolveEntityById(UUID id) {
+  private static EntityInterface<?> resolveEntityById(UUID id) {
     TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TestCase testCase = dao.get(null, id, dao.getFields("entityLink"), Include.ALL, true);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
   }
 
-  private static EntityInterface resolveEntityByName(String fqn) {
+  private static EntityInterface<?> resolveEntityByName(String fqn) {
     if (fqn == null) return null;
     TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TestCase testCase = dao.getByName(null, fqn, dao.getFields("entityLink"), Include.ALL, true);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
   }
 
-  private static EntityInterface resolveEntityFQN(String entityFQN, String entityType) {
-    EntityRepository<? extends EntityInterface> dao = Entity.getEntityRepository(entityType);
+  private static EntityInterface<?> resolveEntityFQN(String entityFQN, String entityType) {
+    EntityRepository<? extends EntityInterface<?>> dao = Entity.getEntityRepository(entityType);
     return dao.getByName(null, entityFQN, dao.getFields("owners,tags,domains"));
   }
 }

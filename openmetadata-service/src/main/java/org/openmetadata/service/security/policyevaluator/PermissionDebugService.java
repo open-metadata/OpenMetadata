@@ -320,7 +320,7 @@ public class PermissionDebugService {
     debugInfo.setOperation(operation);
 
     // Get the resource if resourceIdOrFqn is provided
-    EntityInterface resource = null;
+    EntityInterface<?> resource = null;
     if (resourceIdOrFqn != null) {
       try {
         EntityRepository<?> repository = Entity.getEntityRepository(resourceType);
