@@ -30,7 +30,10 @@ import {
   updateSettingsConfig,
 } from '../../../../../../../rest/settingConfigAPI';
 import tagClassBase from '../../../../../../../utils/TagClassBase';
-import { showSuccessToast } from '../../../../../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../../utils/ToastUtils';
 import EntitySearchSettings from './EntitySearchSettings';
 
 jest.mock('react-i18next', () => ({
@@ -450,6 +453,21 @@ describe('EntitySearchSettings', () => {
 
     expect(restoreSettingsConfig).toHaveBeenCalled();
     expect(getSettingsByType).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports no success when the settings cannot be reloaded after restoring', async () => {
+    await renderPage();
+    (getSettingsByType as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    renderHeader();
+    fireEvent.click(screen.getByTestId('restore-defaults-btn'));
+    fireEvent.click(
+      await screen.findByTestId('restore-defaults-dialog-confirm')
+    );
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+    expect(restoreSettingsConfig).toHaveBeenCalled();
+    expect(showSuccessToast).not.toHaveBeenCalled();
   });
 
   it('returns to the entity list for an unknown entity', async () => {

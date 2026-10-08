@@ -89,14 +89,19 @@ const SearchSettingsView = ({
     [setAppPreferences]
   );
 
-  const fetchConfig = useCallback(async () => {
+  /** Resolves to whether the settings loaded; failures are already toasted. */
+  const fetchConfig = useCallback(async (): Promise<boolean> => {
     setIsLoading(true);
     try {
       applyConfig(
         (await getSettingsByType(SettingType.SearchSettings)) as SearchSettings
       );
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -155,12 +160,13 @@ const SearchSettingsView = ({
     setIsUpdating(true);
     try {
       await restoreSettingsConfig(SettingType.SearchSettings);
-      await fetchConfig();
-      showSuccessToast(
-        t('server.update-entity-success', {
-          entity: t('label.search-setting-plural'),
-        })
-      );
+      if (await fetchConfig()) {
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: t('label.search-setting-plural'),
+          })
+        );
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

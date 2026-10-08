@@ -120,13 +120,18 @@ const EntitySearchSettings = ({
     [entityType, setAppPreferences]
   );
 
-  const fetchConfig = useCallback(async () => {
+  /** Resolves to whether the settings loaded; failures are already toasted. */
+  const fetchConfig = useCallback(async (): Promise<boolean> => {
     try {
       applyConfig(
         (await getSettingsByType(SettingType.SearchSettings)) as SearchSettings
       );
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     }
   }, [applyConfig]);
 
@@ -193,12 +198,13 @@ const EntitySearchSettings = ({
     setIsSaving(true);
     try {
       await restoreSettingsConfig(SettingType.SearchSettings);
-      await fetchConfig();
-      showSuccessToast(
-        t('server.restore-entity-success', {
-          entity: t('label.search-setting-plural'),
-        })
-      );
+      if (await fetchConfig()) {
+        showSuccessToast(
+          t('server.restore-entity-success', {
+            entity: t('label.search-setting-plural'),
+          })
+        );
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

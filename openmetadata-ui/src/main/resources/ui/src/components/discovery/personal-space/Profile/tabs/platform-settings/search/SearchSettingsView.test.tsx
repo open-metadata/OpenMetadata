@@ -426,6 +426,21 @@ describe('SearchSettingsView', () => {
     expect(restoreSettingsConfig).not.toHaveBeenCalled();
   });
 
+  it('reports no success when the settings cannot be reloaded after a reset', async () => {
+    await renderView();
+    (getSettingsByType as jest.Mock).mockRejectedValueOnce(new Error('boom'));
+    render(<>{headerActions}</>);
+    fireEvent.click(screen.getByTestId('reset-search-settings-btn'));
+    fireEvent.click(
+      await screen.findByTestId('reset-search-settings-dialog-confirm')
+    );
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+    expect(restoreSettingsConfig).toHaveBeenCalled();
+    expect(showSuccessToast).not.toHaveBeenCalled();
+  });
+
   it('offers no reset to non-admins', async () => {
     mockIsAdmin = false;
     await renderView();
