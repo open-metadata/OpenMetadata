@@ -10,76 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Locator, Page } from '@playwright/test';
+import { Locator, mergeTests, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DataProduct } from '../../support/domain/DataProduct';
-import { expect, test as base } from '../../support/fixtures/base';
+import { test as isolatedUserTest } from '../../support/fixtures/isolatedUser';
+import {
+  expect,
+  test as userPagesTest,
+} from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
-import { AdminClass } from '../../support/user/AdminClass';
-import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { scrollIntoViewAndSettle, toastNotification } from '../../utils/common';
+import {
+  getWorkerAdminAPIContext,
+  scrollIntoViewAndSettle,
+  toastNotification,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
-const overviewCardPersona = new PersonaClass();
-const adminUser = new AdminClass();
-const overviewCardUser = new UserClass();
+// `adminPage` customizes the persona; `freshUserPage` is an account of its own
+// that the entity-page check gives the persona to.
+const test = mergeTests(userPagesTest, isolatedUserTest);
 
-const test = base.extend<{
-  adminPage: Page;
-  overviewCardUserPage: Page;
-}>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.signIn(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-  overviewCardUserPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await overviewCardUser.signIn(page);
-    await use(page);
-    await page.close();
-  },
-});
+const overviewCardPersona = new PersonaClass();
 
 test.beforeAll('Setup Overview card tests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
-
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await overviewCardUser.create(apiContext);
-  await overviewCardUser.setAdminRole(apiContext);
-
   await overviewCardPersona.create(apiContext);
-
-  const overviewCardPersonaReference = {
-    id: overviewCardPersona.responseData.id,
-    name: overviewCardPersona.responseData.name,
-    displayName: overviewCardPersona.responseData.displayName,
-    fullyQualifiedName: overviewCardPersona.responseData.fullyQualifiedName,
-    type: 'persona',
-  };
-  await overviewCardUser.patch({
-    apiContext,
-    patchData: [
-      { op: 'add', path: '/personas/0', value: overviewCardPersonaReference },
-      {
-        op: 'add',
-        path: '/defaultPersona',
-        value: overviewCardPersonaReference,
-      },
-    ],
-  });
-
   await afterAction();
 });
 
 test.afterAll('Cleanup Overview card tests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await overviewCardUser.delete(apiContext);
   await overviewCardPersona.delete(apiContext);
   await afterAction();
 });
@@ -220,7 +182,7 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test('moves a side widget into the Overview card and back out', async ({
     adminPage,
-    overviewCardUserPage,
+    freshUserPage,
   }) => {
     test.slow();
 
@@ -300,7 +262,8 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('shows it below Description on the entity page', async () => {
-      const entityCard = overviewCardUserPage.locator(OVERVIEW_CARD);
+      const { page: userPage, user } = freshUserPage;
+      const entityCard = userPage.locator(OVERVIEW_CARD);
       const entityDomain = entityCard.locator(byId('KnowledgePanel.Domain'));
       const entityDescription = entityCard.locator(
         byId('KnowledgePanel.Description')
@@ -308,8 +271,25 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const dataProductFqn =
         dataProduct.responseData.fullyQualifiedName ?? dataProduct.data.name;
 
+      // The page shows the layout of the user's default persona, read when
+      // the page loads below.
+      const personaReference = {
+        id: overviewCardPersona.responseData.id,
+        name: overviewCardPersona.responseData.name,
+        displayName: overviewCardPersona.responseData.displayName,
+        fullyQualifiedName: overviewCardPersona.responseData.fullyQualifiedName,
+        type: 'persona',
+      };
+      await user.patch({
+        apiContext: await getWorkerAdminAPIContext(),
+        patchData: [
+          { op: 'add', path: '/personas/0', value: personaReference },
+          { op: 'add', path: '/defaultPersona', value: personaReference },
+        ],
+      });
+
       const dataProductResponse = waitForResponseWithStatus(
-        overviewCardUserPage,
+        userPage,
         (response) =>
           response.request().method() === 'GET' &&
           decodeURIComponent(new URL(response.url()).pathname).endsWith(
@@ -317,12 +297,12 @@ test.describe('Persona Overview card', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           ),
         200
       );
-      await overviewCardUserPage.goto(
+      await userPage.goto(
         `/dataProduct/${encodeURIComponent(dataProductFqn)}`,
         { waitUntil: 'domcontentloaded' }
       );
       await dataProductResponse;
-      await waitForAllLoadersToDisappear(overviewCardUserPage);
+      await waitForAllLoadersToDisappear(userPage);
 
       await expect(entityDescription).toBeVisible();
       await expect(entityDomain).toBeVisible();
