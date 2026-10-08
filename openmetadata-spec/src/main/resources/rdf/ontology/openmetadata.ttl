@@ -716,28 +716,25 @@ om:mappedTo a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:hasPrimaryStore a owl:ObjectProperty, owl:FunctionalProperty ;
-    om:projectionStatus om:InferenceOnly ;
-    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
+    om:projectionStatus om:Stored ;
     rdfs:label "has primary store" ;
-    rdfs:comment "Data asset holding the instances of record for this concept. A concept has at most one." ;
+    rdfs:comment "Data asset holding the instances of record for this concept. A concept has at most one. Projected for each realization with the PRIMARY_STORE role, alongside om:mappedTo." ;
     rdfs:subPropertyOf om:mappedTo ;
     rdfs:domain om:GlossaryTerm ;
     rdfs:range om:DataAsset .
 
 om:hasDerivedAsset a owl:ObjectProperty ;
-    om:projectionStatus om:InferenceOnly ;
-    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
+    om:projectionStatus om:Stored ;
     rdfs:label "has derived asset" ;
-    rdfs:comment "Data asset deriving this concept's instances from another asset." ;
+    rdfs:comment "Data asset deriving this concept's instances from another asset. Projected for each realization with the DERIVED role, alongside om:mappedTo." ;
     rdfs:subPropertyOf om:mappedTo ;
     rdfs:domain om:GlossaryTerm ;
     rdfs:range om:DataAsset .
 
 om:hasReplica a owl:ObjectProperty ;
-    om:projectionStatus om:InferenceOnly ;
-    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
+    om:projectionStatus om:Stored ;
     rdfs:label "has replica" ;
-    rdfs:comment "Data asset replicating this concept's instances from another asset." ;
+    rdfs:comment "Data asset replicating this concept's instances from another asset. Projected for each realization with the REPLICA role, alongside om:mappedTo." ;
     rdfs:subPropertyOf om:mappedTo ;
     rdfs:domain om:GlossaryTerm ;
     rdfs:range om:DataAsset .
@@ -1427,12 +1424,16 @@ om:transformationFunction a owl:DatatypeProperty ;
     rdfs:domain om:DataAsset ;
     rdfs:range xsd:string .
 
+om:ColumnLineage a owl:Class ;
+    rdfs:label "Column lineage" ;
+    rdfs:comment "One column-level mapping of a lineage edge: the source columns and the target column it produces." .
+
 om:fromColumn a owl:ObjectProperty ;
     om:projectionStatus om:Stored ;
     rdfs:label "from column" ;
     rdfs:subPropertyOf prov:used ;
     rdfs:comment "Source column used in transformation" ;
-    rdfs:domain om:Column ;
+    rdfs:domain om:ColumnLineage ;
     rdfs:range om:Column .
 
 om:toColumn a owl:ObjectProperty ;
@@ -1440,7 +1441,7 @@ om:toColumn a owl:ObjectProperty ;
     rdfs:label "to column" ;
     rdfs:subPropertyOf prov:wasGeneratedBy ;
     rdfs:comment "Target column created by transformation" ;
-    rdfs:domain om:Column ;
+    rdfs:domain om:ColumnLineage ;
     rdfs:range om:Column .
 
 om:lineageCreatedBy a owl:ObjectProperty ;
@@ -2588,8 +2589,10 @@ om:domainType a rdf:Property ;
     rdfs:label "domainType" .
 
 om:domains a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "domains" .
+    om:projectionStatus om:InferenceOnly ;
+    owl:deprecated true ;
+    rdfs:label "domains" ;
+    rdfs:comment "Not emitted by the metadata projection. Legacy predicate for asset domains, now projected as om:belongsToDomain. Each entity's next projection removes it; a full RDF rebuild removes it everywhere." .
 
 om:downloadLink a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -2752,9 +2755,9 @@ om:framework a rdf:Property ;
     rdfs:label "framework" .
 
 om:fromColumnFqn a rdf:Property ;
-    om:projectionStatus om:InferenceOnly ;
+    om:projectionStatus om:Stored ;
     rdfs:label "fromColumnFqn" ;
-    rdfs:comment "Not emitted by the metadata projection for current entity schemas. Available to explicit graph exports or custom projections using the structured mapper." .
+    rdfs:comment "Fully qualified name of the source column in a column-level lineage edge, written alongside the column IRI in om:fromColumn for string matching." .
 
 om:fullPath a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -2817,9 +2820,9 @@ om:hasChild a rdf:Property ;
     rdfs:label "hasChild" .
 
 om:hasChildColumn a rdf:Property ;
-    om:projectionStatus om:InferenceOnly ;
+    om:projectionStatus om:Stored ;
     rdfs:label "hasChildColumn" ;
-    rdfs:comment "Not emitted by the metadata projection for current entity schemas. Available to explicit graph exports or custom projections using the structured mapper." .
+    rdfs:comment "Nested column of a struct, map or union column. The projection links each child that has a fully qualified name to its parent column." .
 
 om:hasCleanupPolicy a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3584,8 +3587,10 @@ om:rdfPredicate a rdf:Property ;
     rdfs:label "rdfPredicate" .
 
 om:realizedIn a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "realizedIn" .
+    om:projectionStatus om:InferenceOnly ;
+    owl:deprecated true ;
+    rdfs:label "realizedIn" ;
+    rdfs:comment "Not emitted by the metadata projection. Realizations are projected as om:mappedTo plus om:hasPrimaryStore, om:hasDerivedAsset, or om:hasReplica. Graphs written by earlier releases hold this as a JSON literal until the term is next written or the graph is rebuilt." .
 
 om:recognizers a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3940,9 +3945,9 @@ om:timezone a rdf:Property ;
     rdfs:label "timezone" .
 
 om:toColumnFqn a rdf:Property ;
-    om:projectionStatus om:InferenceOnly ;
+    om:projectionStatus om:Stored ;
     rdfs:label "toColumnFqn" ;
-    rdfs:comment "Not emitted by the metadata projection for current entity schemas. Available to explicit graph exports or custom projections using the structured mapper." .
+    rdfs:comment "Fully qualified name of the target column in a column-level lineage edge, written alongside the column IRI in om:toColumn for string matching." .
 
 om:totalSize a rdf:Property ;
     om:projectionStatus om:Stored ;
