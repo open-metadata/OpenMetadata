@@ -4040,6 +4040,7 @@
     "dimension-delete-test-definition-fallback": "Boyut bunlardan temizlenir, böylece bunlardan oluşturulan yeni test senaryoları boyutsuz başlar.",
     "dimension-description-placeholder": "Bu boyutun neyi ölçtüğünü ve ne zaman kullanılacağını açıklayın",
     "dimension-display-name-help": "Test kütüphanesinde, panolarda ve boyut seçicide gösterilir.",
+    "dimension-failure-policy-helper": "Grup sonuçlarının test durumunu nasıl belirlediği. \"eşiği aşan herhangi bir grup testi başarısız yapar\" seçildiğinde, genel sonuç veya herhangi bir grup eşiği aştığında test başarısız olur. İlk boyutların dışındaki gruplar \"Others\" altında birleştirilir ve yalnızca birlikte kontrol edilir; bu nedenle sorunlu küçük bir grup çevresindeki sağlıklı gruplar tarafından gizlenebilir.",
     "dimension-impact-unknown": "Bu boyuta neyin başvurduğunu kontrol edemedik, bu nedenle etkisi bilinmiyor.",
     "dimension-in-use-count": "{{count}} test senaryosu şu anda bunu kullanıyor",
     "dimension-in-use-test-definition-count": "{{count}} test tanımı bu boyut altında sınıflandırılmış",

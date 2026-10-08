@@ -4040,6 +4040,7 @@
     "dimension-delete-test-definition-fallback": "维度会从它们中清除，因此由它们创建的新测试用例将没有维度。",
     "dimension-description-placeholder": "描述该维度衡量什么以及何时使用",
     "dimension-display-name-help": "显示在测试库、仪表板和维度选择器中。",
+    "dimension-failure-policy-helper": "分组结果如何决定测试状态。选择“任一超限分组即判定测试失败”时，整体结果或任一分组超出阈值都会使测试失败。排在前几个维度值之外的分组会合并为“Others”，只作为整体检查，因此一个有问题的小分组可能被周围正常的分组掩盖。",
     "dimension-impact-unknown": "无法检查哪些内容引用了该维度，因此影响范围未知。",
     "dimension-in-use-count": "当前有 {{count}} 个测试用例在使用它",
     "dimension-in-use-test-definition-count": "有 {{count}} 个测试定义归类在该维度下",

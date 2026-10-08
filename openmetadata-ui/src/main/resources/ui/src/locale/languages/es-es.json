@@ -4040,6 +4040,7 @@
     "dimension-delete-test-definition-fallback": "La dimensión se borra de ellas, por lo que los nuevos casos de prueba creados a partir de ellas empiezan sin dimensión.",
     "dimension-description-placeholder": "Describe qué mide esta dimensión y cuándo utilizarla",
     "dimension-display-name-help": "Se muestra en la biblioteca de pruebas, en los paneles y en el selector de dimensiones.",
+    "dimension-failure-policy-helper": "Cómo deciden los resultados de los grupos el estado de la prueba. Con \"cualquier grupo que incumpla hace fallar la prueba\", la prueba falla cuando el resultado global o cualquier grupo supera el umbral. Los grupos fuera de las dimensiones principales se combinan en \"Others\" y solo se comprueban en conjunto, por lo que un grupo pequeño defectuoso puede quedar oculto por los grupos sanos que lo rodean.",
     "dimension-impact-unknown": "No hemos podido comprobar qué referencia esta dimensión, por lo que su impacto es desconocido.",
     "dimension-in-use-count": "{{count}} casos de prueba la utilizan actualmente",
     "dimension-in-use-test-definition-count": "{{count}} definiciones de prueba están clasificadas bajo ella",

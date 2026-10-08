@@ -4040,6 +4040,7 @@
     "dimension-delete-test-definition-fallback": "La dimension y est effacée : les nouveaux cas de test créés à partir d'elles démarrent sans dimension.",
     "dimension-description-placeholder": "Décrivez ce que mesure cette dimension et quand l’utiliser",
     "dimension-display-name-help": "Affiché dans la bibliothèque de tests, les tableaux de bord et le sélecteur de dimensions.",
+    "dimension-failure-policy-helper": "Comment les résultats des groupes déterminent le statut du test. Avec \"tout groupe en infraction fait échouer le test\", le test échoue lorsque le résultat global ou n'importe quel groupe dépasse le seuil. Les groupes au-delà des dimensions principales sont regroupés dans \"Others\" et ne sont vérifiés qu'ensemble : un petit groupe défaillant peut donc être masqué par les groupes sains qui l'entourent.",
     "dimension-impact-unknown": "Nous n'avons pas pu vérifier ce qui référence cette dimension ; son impact est donc inconnu.",
     "dimension-in-use-count": "{{count}} cas de test l'utilisent actuellement",
     "dimension-in-use-test-definition-count": "{{count}} définitions de test sont classées sous cette dimension",
