@@ -27,16 +27,6 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 /** Executes bounded, read-only SPARQL queries for MCP clients. */
 public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
 
-  /**
-   * Default and ceiling both come from the dispatch-level budget rather than a standalone megabyte
-   * figure. The previous 1 MiB default and 16 MiB ceiling were 10x and 160x the dispatch cap, so a
-   * large SELECT was executed and paid for in full, then discarded wholesale by {@code
-   * DefaultToolContext.applyBudget} and replaced with a data-less truncation stub. See {@link
-   * RdfBody}. {@code maxBytes} can therefore only narrow the response, never widen it.
-   */
-  private static final int DEFAULT_MAX_BYTES = RdfBody.MAX_BYTES;
-
-  private static final int HARD_MAX_BYTES = RdfBody.MAX_BYTES;
   private static final int MIN_MAX_BYTES = RdfBody.MIN_BYTES;
   private final GuardedQueryExecutor guardedQueryExecutor;
 
@@ -80,9 +70,16 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
     RdfSparqlService.ReadQuery query = RdfSparqlService.ReadQuery.parse(sparql);
     RdfRepository repository = repository();
     String inferenceLevel = parameters.optionalString("inferenceLevel");
+    // Default and ceiling both come from the dispatch-level budget rather than a standalone
+    // megabyte
+    // figure. The previous 1 MiB default and 16 MiB ceiling were 10x and 160x the dispatch cap, so
+    // a
+    // large SELECT was executed and paid for in full, then discarded wholesale by
+    // DefaultToolContext.applyBudget and replaced with a data-less truncation stub. See RdfBody.
+    // maxBytes can therefore only narrow the response, never widen it.
+    int budgetBytes = RdfBody.maxBytes();
     int maxBytes =
-        RdfBody.clamp(
-            parameters.integer("maxBytes", DEFAULT_MAX_BYTES), MIN_MAX_BYTES, HARD_MAX_BYTES);
+        RdfBody.clamp(parameters.integer("maxBytes", budgetBytes), MIN_MAX_BYTES, budgetBytes);
     RdfSparqlService sparqlService =
         new RdfSparqlService(repository, new SparqlFederationGuard(repository.getConfig()));
     RdfSparqlService.QueryResult queryResult =

@@ -10,19 +10,16 @@
 #  limitations under the License.
 
 # Full run of the UI integration suite (*UIIT.java) — lives inside
-# openmetadata-integration-tests under the `ui-it` Maven profile. Runs the
-# external-mode matrix (ES + OS). Tracks EPIC #3731 / tickets #3767, #3792.
+# openmetadata-integration-tests under the `ui-it` Maven profile — and of the destructive search
+# ITs (`search-it` profile), in embedded mode on both engines. Tracks EPIC #3731 / tickets #3767,
+# #3792.
 #
-# The schedule trigger is intentionally disabled while the suite stabilises. Run it
-# on demand via workflow_dispatch (pick the branch to test as the ref); it also runs
-# automatically on any PR that touches search-indexing code (see the `changes` job's
-# paths-filter), exercising this whole suite (both engines + search-it) against the PR head
-# in embedded mode. Re-add `schedule: - cron: '0 2 * * *'` once green on main.
+# Not run on PRs or in the merge queue. The scheduled runs live in openmetadata-nightly:
+# k8s-java-it.yml runs these suites against an ephemeral cluster, plus the embedded jobs this
+# workflow used to run on PRs (both engines, including the @Tag("search-direct") UIITs). Dispatch it
+# here to test a branch on demand (pick the branch as the ref).
 #
 # Topology:
-#   - changes: dorny/paths-filter deciding whether the search-indexing paths were touched;
-#     everything below is skipped when they were not, so the required `java-ui-it` gate still
-#     reports green on unrelated PRs.
 #   - ui-it-nightly (x4): matrix over [opensearch, elasticsearch] x [shard 0, 1]. Each leg
 #     builds the openmetadata-dist tarball and bakes openmetadata-server:jpw-snapshot itself
 #     (BuildKit + shared GHA layer cache), then runs `mvn verify -P ui-it` with OM_TEST_IMAGE
@@ -32,14 +29,13 @@
 #   - search-it-nightly (x3): server-global destructive search ITs (tests/search/*IT.java) via
 #     `mvn verify -P search-it`, sharded across runners. They run on the embedded bootstrap
 #     (testcontainers), not the baked image, so they need no image build at all.
-#   - java-ui-it: the required status check. Aggregates the jobs above under `always()`.
 #
 # Both suites are serial *within* a runner — they mutate cluster-global search state — so the
 # shard matrix is the only parallelism available. Each job deals itself a slice with
 # `find | sort | awk 'NR % total == index'` and passes it as -Dit.test. Shard counts live in
 # `env` and MUST match the matrix list lengths.
 
-name: JavaUIIT Integration Tests Running on PRs
+name: JavaUIIT Integration Tests
 
 on:
   workflow_dispatch:
@@ -79,30 +75,14 @@ on:
         required: false
         type: string
         default: '60'
-  # Auto-run on PRs that modify search-indexing code: the full suite runs against the PR head in
-  # embedded mode (testcontainers), NOT the external cluster — so a change to the reindex app,
-  # search clients, or index mappings is validated before merge without anyone remembering a label.
-  # Uses `pull_request` (NOT pull_request_target) on purpose: fork PRs run WITHOUT secrets, so
-  # untrusted code never executes with credentials; same-repo branch PRs (the common case here)
-  # still get secrets and full check reporting.
-  #
-  # `java-ui-it` is a REQUIRED status check on main, so there is deliberately no `paths:` filter
-  # here: a path-filtered workflow never reports on PRs that miss the filter, and the required
-  # context would hang at "Expected — waiting for status" forever. Path selection lives in the
-  # `changes` job below instead (dorny/paths-filter), which skips the expensive jobs while the
-  # gate still reports green. `merge_group` is required for the same reason — without it the
-  # merge queue waits out `check_response_timeout_minutes` and fails.
-  pull_request:
-  merge_group:
 
 permissions:
   contents: read
   checks: write
-  pull-requests: read
 
 concurrency:
-  # One run per PR (or per ref for dispatch/cron); a new push cancels the prior in-flight run.
-  group: java-playwright-nightly-${{ github.event.pull_request.number || github.ref }}
+  # One run per ref; a new dispatch cancels the prior in-flight run.
+  group: java-playwright-nightly-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -114,51 +94,7 @@ env:
   SEARCH_IT_SHARDS: 3
 
 jobs:
-  # Path selection for the required `java-ui-it` check. The workflow itself has no `paths:`
-  # filter (see the trigger comment); this job decides whether the 90-minute matrix actually
-  # runs. Keep this filter list as the single source of truth for "search-indexing code".
-  changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    outputs:
-      search: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.search }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        if: ${{ github.event_name == 'merge_group' }}
-        with:
-          fetch-depth: 0
-          filter: blob:none
-          persist-credentials: false
-      - uses: dorny/paths-filter@v4
-        id: filter
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
-        with:
-          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
-          filters: |
-            search:
-              # --- Production search-indexing code (openmetadata-service) ---
-              - 'openmetadata-service/src/main/java/org/openmetadata/service/search/**'
-              - 'openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/**'
-              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/searchindex/**'
-              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/search/**'
-              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/testsupport/**'
-              - 'openmetadata-service/src/main/java/org/openmetadata/service/events/lifecycle/handlers/SearchIndexHandler.java'
-              # --- Index mappings + loader (canonical source lives in the spec module) ---
-              - 'openmetadata-spec/src/main/resources/elasticsearch/**'
-              - 'openmetadata-spec/src/main/java/org/openmetadata/search/**'
-              # --- The search ITs / UIITs, their test harness, and the Maven profiles that run them ---
-              - 'openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/search/**'
-              - 'openmetadata-integration-tests/src/test/java/org/openmetadata/it/search/**'
-              - 'openmetadata-integration-tests/src/test/java/org/openmetadata/playwright/scenarios/search/**'
-              - 'openmetadata-integration-tests/pom.xml'
-              # --- This workflow itself ---
-              - '.github/workflows/java-playwright-nightly.yml'
-
   ui-it-nightly:
-    needs: changes
-    if: ${{ needs.changes.outputs.search == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -184,8 +120,6 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || github.sha) }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -405,8 +339,6 @@ jobs:
     # the default PR profiles exclude them; here the `search-it` Maven profile runs them
     # serially on their own embedded-bootstrap server (testcontainers). That bootstrap needs no
     # server image, which is why this job skips the dist + docker build the ui-it legs pay for.
-    needs: changes
-    if: ${{ needs.changes.outputs.search == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -428,8 +360,6 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || github.sha) }}
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
@@ -502,31 +432,3 @@ jobs:
             text: ":fire: Java Search ITs Nightly (shard ${{ matrix.shard }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         env:
           SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
-
-  # Required status check on main (ruleset `merge-rules`). Named to match the context exactly.
-  # `always()` so it reports on every PR: when nothing search-related changed the upstream jobs
-  # are skipped and this exits 0; otherwise every job must have succeeded.
-  java-ui-it:
-    name: java-ui-it
-    needs: [changes, ui-it-nightly, search-it-nightly]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    if: ${{ always() }}
-    steps:
-      - name: Verify JavaUIIT suite
-        env:
-          CHANGES_RESULT: ${{ needs.changes.result }}
-          SEARCH_CHANGED: ${{ needs.changes.outputs.search }}
-          UI_IT_RESULT: ${{ needs.ui-it-nightly.result }}
-          SEARCH_IT_RESULT: ${{ needs.search-it-nightly.result }}
-        run: |
-          if [[ "$CHANGES_RESULT" == "success" && "$SEARCH_CHANGED" != "true" ]]; then
-            echo "No search-indexing paths changed."
-            exit 0
-          fi
-
-          if [[ "$CHANGES_RESULT" != "success" \
-                || "$UI_IT_RESULT" != "success" || "$SEARCH_IT_RESULT" != "success" ]]; then
-            echo "JavaUIIT jobs did not complete successfully: changes=${CHANGES_RESULT}, ui-it=${UI_IT_RESULT}, search-it=${SEARCH_IT_RESULT}"
-            exit 1
-          fi

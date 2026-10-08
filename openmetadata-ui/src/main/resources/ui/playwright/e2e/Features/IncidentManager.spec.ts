@@ -105,6 +105,9 @@ const waitForIncidentTask = async (page: Page, testCaseFqn?: string) => {
           const response = await apiContext.get('/api/v1/tasks', {
             params: {
               category: 'Incident',
+              // The test case's own task: the list is oldest first, so a
+              // database with more than 100 incidents never shows a new one.
+              ...(testCaseFqn ? { aboutEntity: testCaseFqn } : {}),
               limit: 100,
               fields: 'about,payload,assignees',
             },

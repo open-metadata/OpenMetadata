@@ -131,6 +131,10 @@ mvn -B verify -pl :openmetadata-integration-tests -am -Dspring-boot.repackage.sk
 - Without a lane, `-Dit.test` runs the class twice, once in each failsafe execution.
 - `mvn test -pl openmetadata-integration-tests -Dtest=…IT` tests the `openmetadata-service` jar
   in `~/.m2`, which another checkout may have overwritten. Use `-am` as above.
+- After a pull, merge or branch switch that changes a JSON schema, run
+  `mvn -B -q clean -pl openmetadata-spec` first. jsonschema2pojo keeps the `javaType` classes it
+  already compiled, so an incremental build tests the old models. `make java_affected` warns
+  when this applies, and `--run` cleans for you.
 - `mvn test … -am` cannot compile the service. The relocated search clients only exist after
   `package`, which is why unit steps run `mvn -B package -pl <module> -am -Dtest=…`.
 - Check the evidence: a `Tests run: N` line with N > 0, and
