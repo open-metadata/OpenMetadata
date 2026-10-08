@@ -14,9 +14,11 @@ Test datalake utils
 
 import json
 import os
+import random
 from unittest import TestCase
 
 import pandas as pd
+import pytest
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.readers.dataframe.dsv import DSVDataFrameReader
@@ -28,6 +30,7 @@ from metadata.utils.datalake.datalake_utils import (
     ParquetDataFrameColumnParser,
     get_file_format_type,
 )
+from metadata.utils.schema_inference import InferenceLimits, InferenceReport
 
 STRUCTURE = {
     "a": "w",
@@ -1223,3 +1226,161 @@ class TestCSVQuotedHeaderFix(TestCase):
         """Test that empty chunk list returns empty list"""
         result = self.csv_reader._fix_malformed_quoted_chunk([], ",")
         self.assertEqual(result, [])
+
+
+class TestSchemaInferenceLimits:
+    """Issue #29832: children inferred from sampled JSON stay within maxSchemaInferenceDepth
+    and maxChildrenPerColumn. A bounded tree is the unbounded tree with nodes removed, never
+    reordered or retyped, and the kept children do not depend on the order of the records.
+    """
+
+    @staticmethod
+    def _records(seed: int = 0) -> list[dict]:
+        rng = random.Random(seed)
+        records = []
+        for idx in range(6):
+            keys = [f"k{n:02d}" for n in range(12)]
+            rng.shuffle(keys)
+            deep = {"leaf": idx}
+            for level in range(5, 0, -1):
+                deep = {f"l{level}": deep}
+            records.append(
+                {
+                    "id": idx,
+                    "payload": {key: {"x": idx, "y": idx} for key in keys[: 8 + idx % 4]},
+                    "deep": deep,
+                    "items": [{f"f{n:02d}": n for n in range(6)}, {"g": idx}],
+                    "meta": {"lines": [{f"c{n:02d}": n for n in range(idx, idx + 5)}]},
+                }
+            )
+        rng.shuffle(records)
+        return records
+
+    @staticmethod
+    def _columns(records, file_type=SupportedTypes.JSONL, report=None, **limits) -> list[Column]:
+        parser = DataFrameColumnParser.create(
+            pd.DataFrame.from_records(records), file_type, limits=InferenceLimits(**limits), report=report
+        )
+        return parser.get_columns()
+
+    @classmethod
+    def _shape(cls, columns) -> dict:
+        return {
+            col.name.root: (col.dataType, col.arrayDataType, cls._shape(col.children or [])) for col in columns or []
+        }
+
+    @classmethod
+    def _depth(cls, column) -> int:
+        return max((1 + cls._depth(child) for child in column.children or []), default=0)
+
+    @classmethod
+    def _widest(cls, column) -> int:
+        children = column.children or []
+        return max([len(children), *(cls._widest(child) for child in children)])
+
+    @classmethod
+    def _assert_pruned_copy(cls, bounded, unbounded):
+        source_by_name = {col.name.root: col for col in unbounded or []}
+        kept = [col.name.root for col in bounded or []]
+        assert kept == [name for name in source_by_name if name in set(kept)]
+        for col in bounded or []:
+            source = source_by_name[col.name.root]
+            assert (col.dataType, col.arrayDataType) == (source.dataType, source.arrayDataType)
+            cls._assert_pruned_copy(col.children, source.children)
+
+    @staticmethod
+    def _by_name(columns) -> dict[str, Column]:
+        return {col.name.root: col for col in columns}
+
+    def test_limits_that_are_not_reached_keep_the_unbounded_output(self):
+        records = self._records()
+        unbounded = self._columns(records)
+
+        assert self._columns(records, max_depth=100, max_children=100) == unbounded
+        payload = self._by_name(unbounded)["payload"]
+        assert len(payload.children) == 12
+        assert self._depth(self._by_name(unbounded)["deep"]) == 6
+
+    def test_children_limit_keeps_the_smallest_names_at_every_level(self):
+        columns = self._by_name(self._columns(self._records(), max_children=3))
+
+        assert {child.name.root for child in columns["payload"].children} == {"k00", "k01", "k02"}
+        assert {child.name.root for child in columns["items"].children} == {"f00", "f01", "f02"}
+        lines = columns["meta"].children[0]
+        assert lines.arrayDataType == DataType.STRUCT
+        assert {child.name.root for child in lines.children} == {"c00", "c01", "c02"}
+        assert all(self._widest(col) <= 3 for col in columns.values())
+
+    def test_kept_children_do_not_depend_on_record_order(self):
+        records = self._records()
+        orders = [records, list(reversed(records))]
+        for seed in (1, 2):
+            shuffled = list(records)
+            random.Random(seed).shuffle(shuffled)
+            orders.append(shuffled)
+
+        shapes = [self._shape(self._columns(order, max_children=4, max_depth=3)) for order in orders]
+
+        assert all(shape == shapes[0] for shape in shapes)
+        assert set(shapes[0]["payload"][2]) == {"k00", "k01", "k02", "k03"}
+
+    def test_depth_limit_cuts_deeper_children_and_keeps_types(self):
+        columns = self._by_name(self._columns(self._records(), max_depth=2))
+
+        assert self._depth(columns["deep"]) == 2
+        level_two = columns["deep"].children[0].children[0]
+        assert (level_two.name.root, level_two.dataType, level_two.children) == ("l2", DataType.JSON, [])
+        assert self._depth(columns["payload"]) == 2
+        assert self._depth(columns["meta"]) == 2
+
+    @pytest.mark.parametrize("limits", [{"max_depth": 0}, {"max_children": 0}])
+    def test_zero_keeps_no_inferred_children(self, limits):
+        columns = self._by_name(self._columns(self._records(), **limits))
+
+        assert (columns["payload"].dataType, columns["payload"].children) == (DataType.JSON, [])
+        assert (columns["deep"].dataType, columns["deep"].children) == (DataType.JSON, [])
+        items = columns["items"]
+        assert (items.dataType, items.arrayDataType, items.children) == (DataType.ARRAY, DataType.STRUCT, [])
+
+    def test_both_limits_apply_together(self):
+        records = self._records()
+        bounded = self._columns(records, max_depth=2, max_children=2)
+
+        self._assert_pruned_copy(bounded, self._columns(records))
+        assert all(self._depth(col) <= 2 and self._widest(col) <= 2 for col in bounded)
+
+    @pytest.mark.parametrize("file_type", [SupportedTypes.JSON, SupportedTypes.JSONL, SupportedTypes.CSV])
+    def test_every_dataframe_format_is_bounded(self, file_type):
+        records = [{"payload": json.dumps(record["payload"])} for record in self._records()]
+        if file_type != SupportedTypes.CSV:
+            records = self._records()
+
+        payload = self._by_name(self._columns(records, file_type, max_children=2))["payload"]
+
+        assert payload.dataType == DataType.JSON
+        assert [child.name.root for child in payload.children] in (["k00", "k01"], ["k01", "k00"])
+
+    def test_declared_json_schema_is_not_limited(self):
+        schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "order",
+            "type": "object",
+            "properties": {f"p{n}": {"type": "string"} for n in range(5)},
+        }
+        parser = DataFrameColumnParser.create(
+            pd.DataFrame(), SupportedTypes.JSON, raw_data=json.dumps(schema), limits=InferenceLimits(max_children=1)
+        )
+
+        assert len(parser.get_columns()[0].children) == 5
+
+    def test_report_names_the_cut_columns(self):
+        report = InferenceReport()
+        limits = InferenceLimits(max_depth=2, max_children=3)
+
+        self._columns(self._records(), report=report, max_depth=2, max_children=3)
+
+        assert report.warning(limits) == (
+            "Schema inference limits dropped nested columns. "
+            "maxSchemaInferenceDepth=2 cut the children of 1 column(s): deep.l1.l2. "
+            "maxChildrenPerColumn=3 cut the children of 3 column(s): items, meta.lines, payload."
+        )

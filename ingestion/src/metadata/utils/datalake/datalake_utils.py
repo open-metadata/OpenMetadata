@@ -19,7 +19,7 @@ import json
 import random
 import traceback
 from collections import Counter
-from typing import Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -30,6 +30,16 @@ from metadata.readers.dataframe.models import (
 )
 from metadata.readers.dataframe.reader_factory import SupportedTypes, get_df_reader
 from metadata.utils.logger import utils_logger
+from metadata.utils.schema_inference import (
+    NO_LIMITS,
+    InferenceLimit,
+    InferenceLimits,
+    InferenceReport,
+    InferredStruct,
+)
+
+if TYPE_CHECKING:
+    from pandas import DataFrame as PandasDataFrame
 
 logger = utils_logger()
 
@@ -78,7 +88,7 @@ class _ArrayOfStruct:
 
     __slots__ = ("struct",)
 
-    def __init__(self, struct: dict):
+    def __init__(self, struct: InferredStruct):
         self.struct = struct
 
 
@@ -233,6 +243,8 @@ class DataFrameColumnParser:
         sample: bool = True,
         shuffle: bool = False,
         raw_data: Any = None,
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
     ):
         """Instantiate a column parser object with the appropriate parser
 
@@ -243,6 +255,9 @@ class DataFrameColumnParser:
                 If sample is False, we will concatenate the dataframes, which can be cause OOM error for large dataset.
                 (default: True)
             shuffle: whether to shuffle the dataframe list or not if sample is True. (default: False)
+            limits: bounds for children inferred from sampled JSON values. Declared schemas
+                (Parquet, JSON Schema documents, Iceberg/Delta metadata) are not bounded.
+            report: collects the columns whose inferred children the limits cut.
         """
         data_frame = cls._get_data_frame(data_frame, sample, shuffle)
         if file_type in {
@@ -258,9 +273,9 @@ class DataFrameColumnParser:
             SupportedTypes.JSONGZ,
             SupportedTypes.JSONZIP,
         }:
-            parser = JsonDataFrameColumnParser(data_frame, raw_data=raw_data)
+            parser = JsonDataFrameColumnParser(data_frame, raw_data=raw_data, limits=limits, report=report)
         else:
-            parser = GenericDataFrameColumnParser(data_frame)
+            parser = GenericDataFrameColumnParser(data_frame, limits=limits, report=report)
         return cls(parser)
 
     @staticmethod
@@ -310,18 +325,31 @@ class GenericDataFrameColumnParser:
         "bytes": DataType.BYTES,
     }
 
-    def __init__(self, data_frame: "DataFrame", raw_data: Any = None):  # noqa: F821
+    def __init__(
+        self,
+        data_frame: "PandasDataFrame",
+        raw_data: Any = None,
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
+    ):
         self.data_frame = data_frame
         self.raw_data = raw_data
+        self.limits = limits
+        self.report = report
 
     def get_columns(self):
         """
         method to process column details
         """
-        return self._get_columns(self.data_frame)
+        return self._get_columns(self.data_frame, limits=self.limits, report=self.report)
 
     @classmethod
-    def _get_columns(cls, data_frame: "DataFrame"):  # noqa: F821
+    def _get_columns(
+        cls,
+        data_frame: "PandasDataFrame",
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
+    ):
         """
         method to process column details.
 
@@ -346,13 +374,17 @@ class GenericDataFrameColumnParser:
                     }
                     if data_type == DataType.ARRAY:
                         parsed_string["arrayDataType"] = DataType.UNKNOWN
-                        struct_children = cls._get_array_struct_children(data_frame[column].dropna()[:100])
-                        if struct_children:
+                        struct_children = cls._get_array_struct_children(
+                            data_frame[column].dropna()[:100], limits=limits, report=report, path=column
+                        )
+                        if struct_children is not None:
                             parsed_string["arrayDataType"] = DataType.STRUCT
                             parsed_string["children"] = struct_children
 
                     if data_type == DataType.JSON:
-                        parsed_string["children"] = cls.get_children(data_frame[column].dropna()[:100])
+                        parsed_string["children"] = cls.get_children(
+                            data_frame[column].dropna()[:100], limits=limits, report=report, path=column
+                        )
 
                     cols.append(Column(**parsed_string))
                 except Exception as exc:
@@ -438,42 +470,68 @@ class GenericDataFrameColumnParser:
         return data_type or DataType.STRING
 
     @classmethod
-    def unique_json_structure(cls, dicts: list[dict]) -> dict:
+    def unique_json_structure(
+        cls,
+        dicts: list[dict],
+        limits: InferenceLimits = NO_LIMITS,
+        depth: int = 0,
+    ) -> InferredStruct:
         """Given a sample of `n` json objects, return a json object that represents the unique
         structure of all `n` objects. Note that the type of the key will be that of
         the last object seen in the sample.
 
         Args:
             dicts: list of json objects
+            limits: applied while merging, so a dropped key or level is never explored
+            depth: levels between the merged object and its top-level column
         """
-        result = {}
+        result = InferredStruct()
         for dict_ in dicts:
+            result.cut_by = result.cut_by or getattr(dict_, "cut_by", None)
+            if not limits.allows_children(depth):
+                if dict_:
+                    result.cut_by = InferenceLimit.DEPTH
+                continue
             for key, value in dict_.items():
+                if not limits.admit(result, key):
+                    continue
                 if isinstance(value, dict):
                     nested_json = result.get(key, {})
                     # `isinstance(nested_json, dict)` if for a key we first see a non dict value
                     # but then see a dict value later, we will consider the key to be a dict.
                     result[key] = cls.unique_json_structure(
-                        [nested_json if isinstance(nested_json, dict) else {}, value]
+                        [nested_json if isinstance(nested_json, dict) else {}, value], limits, depth + 1
                     )
                 elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
-                    merged_struct = cls.unique_json_structure(value)
+                    merged_struct = cls.unique_json_structure(value, limits, depth + 1)
                     existing = result.get(key)
                     existing_struct = existing.struct if isinstance(existing, _ArrayOfStruct) else {}
-                    result[key] = _ArrayOfStruct(cls.unique_json_structure([existing_struct, merged_struct]))
+                    result[key] = _ArrayOfStruct(
+                        cls.unique_json_structure([existing_struct, merged_struct], limits, depth + 1)
+                    )
                 else:
                     result[key] = value
         return result
 
     @classmethod
-    def construct_json_column_children(cls, json_column: dict) -> list[dict]:
+    def construct_json_column_children(
+        cls,
+        json_column: dict,
+        report: InferenceReport | None = None,
+        path: str = "",
+    ) -> list[dict]:
         """Construt a dict representation of a Column object
 
         Args:
             json_column: unique json structure of a column
+            report: collects the columns whose inferred children the limits cut
+            path: dotted path of the column that holds `json_column`
         """
+        if report is not None:
+            report.record(json_column, path)
         children = []
         for key, value in json_column.items():
+            child_path = f"{path}.{key}" if path else str(key)
             column = {}
             column["name"] = truncate_column_name(key)
             column["displayName"] = key
@@ -481,24 +539,33 @@ class GenericDataFrameColumnParser:
                 column["dataType"] = DataType.ARRAY.value
                 column["dataTypeDisplay"] = DataType.ARRAY.value
                 column["arrayDataType"] = DataType.STRUCT
-                column["children"] = cls.construct_json_column_children(value.struct)
+                column["children"] = cls.construct_json_column_children(value.struct, report, child_path)
             else:
-                type_ = type(value).__name__.lower()
+                type_ = "dict" if isinstance(value, dict) else type(value).__name__.lower()
                 column["dataTypeDisplay"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
                 column["dataType"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
                 if isinstance(value, dict):
-                    column["children"] = cls.construct_json_column_children(value)
+                    column["children"] = cls.construct_json_column_children(value, report, child_path)
             children.append(column)
 
         return children
 
     @classmethod
-    def get_children(cls, json_column) -> list[dict]:
+    def get_children(
+        cls,
+        json_column: Any,
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
+        path: str = "",
+    ) -> list[dict]:
         """Get children of json column.
 
         Args:
             json_column (pandas.Series): column with 100 sample rows.
                 Sample rows will be used to infer children.
+            limits: bounds for the inferred children
+            report: collects the columns whose inferred children the limits cut
+            path: name of the column, used to report it
         """
         from pandas import Series  # pylint: disable=import-outside-toplevel
 
@@ -529,13 +596,20 @@ class GenericDataFrameColumnParser:
         if not dict_values:
             return []
 
-        json_structure = cls.unique_json_structure(dict_values)
-        return cls.construct_json_column_children(json_structure)
+        json_structure = cls.unique_json_structure(dict_values, limits)
+        return cls.construct_json_column_children(json_structure, report, path)
 
     @classmethod
-    def _get_array_struct_children(cls, array_column: Any) -> list[dict]:
+    def _get_array_struct_children(
+        cls,
+        array_column: Any,
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
+        path: str = "",
+    ) -> list[dict] | None:
         """For an ARRAY column whose elements are dicts, infer the merged struct shape and
-        return it as children. Returns an empty list when elements are not dicts.
+        return it as children. Returns None when no element is a non-empty dict, and an
+        empty list when the limits cut every child of a struct element.
         """
         flattened = []
         for value in array_column.values.tolist():
@@ -549,9 +623,11 @@ class GenericDataFrameColumnParser:
             elif isinstance(value, list):
                 flattened.extend(item for item in value if isinstance(item, dict))
         if not flattened:
-            return []
-        merged_struct = cls.unique_json_structure(flattened)
-        return cls.construct_json_column_children(merged_struct)
+            return None
+        merged_struct = cls.unique_json_structure(flattened, limits)
+        if not merged_struct and merged_struct.cut_by is None:
+            return None
+        return cls.construct_json_column_children(merged_struct, report, path)
 
 
 # pylint: disable=import-outside-toplevel
@@ -716,7 +792,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
             except Exception as exc:
                 logger.warning(f"Unable to parse the json schema: {exc}")
                 logger.debug(traceback.format_exc())
-        return self._get_columns(self.data_frame)
+        return self._get_columns(self.data_frame, limits=self.limits, report=self.report)
 
     def _is_iceberg_delta_metadata(self, data: dict) -> bool:
         """
