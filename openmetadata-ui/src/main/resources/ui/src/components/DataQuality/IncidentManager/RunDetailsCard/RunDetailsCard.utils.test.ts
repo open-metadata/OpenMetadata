@@ -276,6 +276,16 @@ describe('RunDetailsCard utils', () => {
       'Snowflake connection timed out after 300 seconds',
       true,
     ],
+    ['OperationalError', 'canceling statement due to statement timeout', true],
+    [
+      'ProgrammingError',
+      'Statement reached its statement or warehouse timeout of 3600 second(s)',
+      true,
+    ],
+    // Other errors whose words only look like a timeout.
+    ['DataError', 'time out of range', false],
+    ['OperationalError', 'runtime out of memory', false],
+    ['DataError', 'datetime out of range', false],
     [undefined, undefined, false],
   ])('treats %s (%s) as a timeout: %s', (errorType, message, expected) => {
     expect(isTimeoutError(errorType, message)).toBe(expected);

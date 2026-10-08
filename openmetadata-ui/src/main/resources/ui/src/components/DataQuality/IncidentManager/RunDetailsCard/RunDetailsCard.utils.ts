@@ -40,6 +40,11 @@ const COMPLETED_STATUSES = new Set<TestCaseStatus | undefined>([
 
 const TIMEOUT_ERROR = /time(d)?[\s_-]?out/i;
 
+// A timeout as a message words it, the words standing alone: "runtime out of
+// memory" is not one, nor is PostgreSQL's "time out of range".
+const TIMEOUT_MESSAGE =
+  /(?<![a-z])(?:timed[\s_-]?out|time[_-]?out|time\s+out(?!\s+of\b))/i;
+
 /**
  * errorType is the driver's exception when a query failed (ingestion follows
  * SQLAlchemy's wrapper down to it), and a statement timeout surfaces there
@@ -220,10 +225,11 @@ export const formatRunDuration = (milliseconds: number) => {
 };
 
 /**
- * A driver can raise a timeout under its catch-all type (SQLAlchemy's
- * `OperationalError`, say), so the message counts too.
+ * A driver can raise a timeout under a type that does not name it (SQLAlchemy's
+ * `OperationalError`, or Snowflake's `ProgrammingError` for a statement
+ * timeout), so the message counts too.
  */
 export const isTimeoutError = (errorType?: string, message?: string) =>
   TIMEOUT_ERROR_TYPES.has(errorType ?? '') ||
   TIMEOUT_ERROR.test(errorType ?? '') ||
-  TIMEOUT_ERROR.test(message ?? '');
+  TIMEOUT_MESSAGE.test(message ?? '');
