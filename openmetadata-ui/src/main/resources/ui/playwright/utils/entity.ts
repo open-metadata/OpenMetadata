@@ -961,6 +961,48 @@ export const openClassificationTagPicker = async (
   );
 };
 
+// Rows are keyed by FQN; callers that only know a display name match its exact text.
+export const classificationTagPickerRow = (page: Page, tag: string) => {
+  const popover = page.getByTestId('classification-tag-picker-popover');
+
+  return tag.includes('.')
+    ? popover.getByTestId(`tree-node-${tag}`)
+    : popover
+        .locator('[data-testid^="tree-node-"]')
+        .filter({ has: page.getByText(tag, { exact: true }) });
+};
+
+// The search is debounced and a freshly created tag may not be indexed yet, so
+// the search is re-typed until the row shows up.
+export const searchClassificationTagPicker = async (
+  page: Page,
+  tag: string
+) => {
+  const searchBox = page.getByTestId('classification-tag-picker-search');
+  const row = classificationTagPickerRow(page, tag);
+
+  await expect
+    .poll(
+      async () => {
+        // Refilling the same value is a no-op for the debounced search.
+        await searchBox.clear();
+        await searchBox.fill(tag);
+
+        return row
+          .waitFor({ state: 'visible', timeout: 5_000 })
+          .then(() => true)
+          .catch(() => false);
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(true);
+
+  return row;
+};
+
+export const isClassificationTagSelected = async (row: Locator) =>
+  (await row.getAttribute('data-selected')) === 'true';
+
 export const assignTag = async (
   page: Page,
   tag: string,

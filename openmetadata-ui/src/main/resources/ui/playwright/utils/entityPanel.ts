@@ -25,7 +25,12 @@ import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 import { ENTITY_PATH } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { getApiContext } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  isClassificationTagSelected,
+  openClassificationTagPicker,
+  searchClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { waitForSearchIndexed } from './polling';
 
 export const getEntityFqn = (
@@ -297,45 +302,18 @@ export const editTags = async (page: Page, tagName: string) => {
     })
     .toBeGreaterThan(0);
 
-  if (await editIcon.isVisible()) {
-    await editIcon.click();
-  } else {
-    await addTagChip.click();
-  }
-
-  await page
-    .locator('[data-testid="selectable-list"]')
-    .waitFor({ state: 'visible' });
-
-  await page
-    .locator('[data-testid="selectable-list"]')
-    .scrollIntoViewIfNeeded();
-
-  const searchTagResponsePromise = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(`q=`) &&
-      response.url().includes('index=tag')
+  await openClassificationTagPicker(
+    page,
+    (await editIcon.isVisible()) ? editIcon : addTagChip
   );
-  const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
-  await searchBar.fill(tagName);
 
-  const searchTagResponse = await searchTagResponsePromise;
-  expect(searchTagResponse.status()).toBe(200);
-
-  await waitForAllLoadersToDisappear(page);
-
-  const tagOption = page
-    .locator('.selectable-list-item')
-    .filter({ hasText: tagName });
-  // Wait for tag option to be visible before clicking
-  await tagOption.waitFor({ state: 'visible' });
+  const tagOption = await searchClassificationTagPicker(page, tagName);
+  await expect(tagOption).toBeVisible();
   await tagOption.click();
 
-  const updateBtn = page.getByRole('button', { name: 'Update' });
-  await updateBtn.waitFor({ state: 'visible' });
-  await updateBtn.click();
-  await waitForPatchResponse(page);
+  const patchPromise = waitForPatchResponse(page);
+  await page.getByTestId('update-btn').click();
+  await patchPromise;
 
   await expect(page.getByText(/Tags updated successfully/i)).toBeVisible();
 };
@@ -438,24 +416,19 @@ export const removeTagsFromPanel = async (
   page: Page,
   tagDisplayNames: string[]
 ) => {
-  await page.getByTestId('edit-icon-tags').click();
-
-  await page
-    .locator('[data-testid="selectable-list"]')
-    .waitFor({ state: 'visible' });
-
-  await waitForAllLoadersToDisappear(page);
+  await openClassificationTagPicker(page, page.getByTestId('edit-icon-tags'));
 
   for (const tagName of tagDisplayNames) {
-    const tagOption = page
-      .locator('.selectable-list-item')
-      .filter({ hasText: tagName });
-    await tagOption.waitFor({ state: 'visible' });
-    await tagOption.click();
+    const tagOption = await searchClassificationTagPicker(page, tagName);
+    await expect(tagOption).toBeVisible();
+
+    if (await isClassificationTagSelected(tagOption)) {
+      await tagOption.click();
+    }
   }
 
   const patchPromise = waitForPatchResponse(page);
-  await page.getByRole('button', { name: 'Update' }).click();
+  await page.getByTestId('update-btn').click();
   await patchPromise;
 };
 
