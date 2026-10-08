@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-07T03:33:28Z",
+  "generatedAt": "2026-10-08T03:48:55Z",
   "window": 10,
   "threshold": 2,
   "runs": [
@@ -43,6 +43,11 @@
       "runId": "37564201661",
       "sourceSha": "2df41a00f37449606a076ee057fd5b8dca1ef82f",
       "recordedAt": "2026-10-07T03:33:28Z"
+    },
+    {
+      "runId": "37720017171",
+      "sourceSha": "278e4abf6fb0c3027d5f1878bac92839995ef75c",
+      "recordedAt": "2026-10-08T03:48:55Z"
     }
   ],
   "entries": {
@@ -114,6 +119,16 @@
       "file": "Features/RestoreEntityInheritedFields.spec.ts",
       "title": "DashboardDataModel \u203a Validate restore with Inherited domain and data products assigned",
       "lastSeenSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
+      "hardFailure": false
+    },
+    "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Add and update Security and SLA tabs": {
+      "observations": [
+        "37720017171"
+      ],
+      "project": "chromium",
+      "file": "Pages/DataContracts.spec.ts",
+      "title": "Data Contracts \u203a Add and update Security and SLA tabs",
+      "lastSeenSha": "278e4abf6fb0c3027d5f1878bac92839995ef75c",
       "hardFailure": false
     },
     "chromium :: Pages/DomainAdvanced.spec.ts :: Domain Description Editing \u203a Admin can edit domain description": {
