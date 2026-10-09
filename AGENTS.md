@@ -1,15 +1,13 @@
 # AGENTS.md
 
-Always-loaded guidance for every session, whatever the harness. **This is the only instruction file:**
-`CLAUDE.md` and `.github/copilot-instructions.md` are symlinks to it (as each nested `CLAUDE.md` is to
-the `AGENTS.md` beside it), so Claude Code, Codex, Cursor and Copilot read the same text — edit this
-file, never a copy. **Language- and path-specific rules live in `.claude/rules/*.md` (Claude Code
-auto-loads them on matching files; other harnesses read the matching one before editing); procedures
-live in skills (loaded on invoke).** This file is the map — see the pointer index at the bottom. Read
-[ARCHITECTURE.md](ARCHITECTURE.md) for the **system map** (modules, the request/ingestion/search paths,
-the invariants that hold); read [DEVELOPER.md](DEVELOPER.md) for **how to build, test, and add an entity
-or connector** (deep dives + end-to-end checklists). Consult [docs/index.md](docs/index.md) — the **knowledge index** — to
-**find existing design, plan, and reference docs** for whatever area you're working on.
+Always-loaded guidance for every session, whatever the harness — **the only instruction file:** every `CLAUDE.md` and
+`.github/copilot-instructions.md` is a symlink to the `AGENTS.md` beside it, so edit this file, never a copy.
+**Language- and path-specific rules live in `.claude/rules/*.md` (Claude Code auto-loads them on matching files; other
+harnesses read the matching one before editing); procedures live in skills (loaded on invoke).** This file is the map
+— see the pointer index at the bottom. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the **system map** (modules, the
+request/ingestion/search paths, the invariants that hold); read [DEVELOPER.md](DEVELOPER.md) for **how to build, test,
+and add an entity or connector** (deep dives + end-to-end checklists). Consult [docs/index.md](docs/index.md) — the
+**knowledge index** — to **find existing design, plan, and reference docs** for whatever area you're working on.
 
 ## About OpenMetadata
 
@@ -152,6 +150,9 @@ on functionality over education. Do not add unnecessary blank lines between pros
   top-level (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`) and are grouped inside by
   `domain/feature/`; new files use one stem with a role suffix (`GlossaryList.tsx`, `.types.ts`,
   `.utils.ts`, `.test.tsx`). Legacy `.component.tsx`/`.interface.ts` files stay as they are.
+- `docs/decisions/` — dated records of the choices that shape the code. **When a choice looks
+  arbitrary, find its record before re-deciding it; a PR that makes a durable decision adds the
+  record in the same PR.** Cite as `ADR:<date>-<slug>`; format and triggers in its `README.md`.
 - `openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md` — what a review of a UI pull request checks.
 
 ### Skills (`skills/<name>/`, linked into `.claude/skills/` and `.agents/skills/`; invoke by name)
@@ -180,20 +181,19 @@ on functionality over education. Do not add unnecessary blank lines between pros
 
 ### Harness integrity (CI, warnings-only)
 
-A CI workflow (harness-integrity.yml) runs `scripts/harness/check_harness.py` on PRs — also
-`make harness-check` locally. It **warns, never blocks** (promote to a gate only with maintainer
-sign-off) when the agent-facing config decays:
+A CI workflow (harness-integrity.yml) runs `scripts/harness/check_harness.py` on PRs — also `make harness-check` locally.
+It **warns, never blocks** (promote to a gate only with maintainer sign-off) when the agent-facing config decays:
 
 - **dead references** — a path, `make`/`yarn` target, or `mvn` goal named in this file,
   ARCHITECTURE.md, `docs/index.md`, `.claude/rules/**`, or a SKILL.md that no longer resolves;
-- **one instruction file** — each `CLAUDE.md` (and `.github/copilot-instructions.md`) a symlink to its
-  `AGENTS.md`, no harness file of its own (`GEMINI.md`, `.cursorrules`, …), every rule named in the
-  index above, and no root-to-leaf chain of `AGENTS.md` past the 32,768 bytes Codex reads;
+- **one instruction file** — a `CLAUDE.md` or `copilot-instructions.md` that is not a link to its `AGENTS.md`, another
+  harness's own file (`GEMINI.md`, `.cursorrules`, …), a rule missing from the index, a chain over Codex's 32,768 bytes;
 - **skill symlinks** — a real file where a symlink into `skills/` is expected (`.claude/skills`,
   `.agents/skills`), a skill missing from either of them, or two same-named SKILL.md that differ;
 - **doc-size budgets** — this file > 200 lines, ARCHITECTURE.md > 300, any single rule > 100;
 - **rule globs** — a `.claude/rules/**` `paths:` glob matching zero files;
-- **generated-doc freshness** — `docs/generated/**` out of date with its source.
+- **generated-doc freshness** — `docs/generated/**` out of date with its source;
+- **decision records** — a malformed record or a dangling `ADR:` citation (also a pre-commit hook).
 
 ## Git commit conventions
 - Never add "Co-Authored-By" lines or any AI-attribution trailers to commit messages. 

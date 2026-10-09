@@ -45,6 +45,10 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   that a hand-rolled widget must at least be accessible: `jsx-a11y` blocks an invalid `role`, missing
   required ARIA props, and unusable tab order. Using the library component is how you satisfy that
   without writing the ARIA yourself.
+- **Modals: always `<Dialog dividers="scroll">`.** Dividers show only when the modal scrolls: no
+  line under the title, and the footer line appears only while `Dialog.Content` overflows. Do not
+  draw your own `border-t`/`border-b` or `<Divider>` around a dialog's header or footer. The
+  default (`always`) exists only for legacy modals. Spec: `specs/untitled/modal.md` → Dividers.
 - **Legacy**: Ant Design components remain in existing code but should be replaced with
   `openmetadata-ui-core-components` equivalents when refactoring. For forms, do not use the legacy
   Ant Design `getField`/`generateFormFields` (see `frontend-react.md` → Forms).

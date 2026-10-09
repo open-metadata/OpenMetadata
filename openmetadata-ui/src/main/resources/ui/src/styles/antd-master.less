@@ -14,6 +14,8 @@
 @import 'antd/dist/antd.variable.less';
 @import './variables.less';
 @import './position.less';
+// Before spacing.less so padding utilities win ties with layout column rules.
+@import './layout.less';
 @import './spacing.less';
 @import './components/table.less';
 @import './components/form.less';
@@ -21,6 +23,5 @@
 @import './components/toggle-switch.less';
 @import './components/button.less';
 @import './components/card.less';
-@import './layout.less';
 @import './border.less';
 @import './animation.less';

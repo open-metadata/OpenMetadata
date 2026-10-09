@@ -41,6 +41,16 @@ verdict cites an artifact that was checked to still exist):
 | `docs/perf/lineage-scale-validation.md` | Lineage scene p95 + first-render benchmark: what each scenario measures, why cold vs warm differs, the `jpw.lineage.*` knobs, and how to compare two releases | Running or reading the lineage scale benchmark — `LineageScenePerformanceScaleIT`, `scripts/lineage-scale-benchmark.sh`, `compare_benchmark_metrics.py`; evaluating #32050 | 2026-09-23 | CURRENT (no numbers published yet) |
 | `docs/perf/cdn-deployment-guide.md` | AWS design proposal: per-customer/per-release UI bundles from one CloudFront + S3 via an embedded CloudFront Function router (no Lambda@Edge) | Planning/reviewing CDN delivery of the UI bundle + per-customer version pinning — infra design, not existing code | 2026-05-25 | CURRENT (unimplemented proposal) |
 
+## Decision records (`docs/decisions/`)
+
+Dated, append-only records of the choices that shape the code. `ls docs/decisions/` is their
+index, so only the entry point is listed here. A comment citing `ADR:<date>-<slug>` points at
+`docs/decisions/<date>-<slug>.md`; read it before re-deciding what it settled.
+
+| Doc | Purpose | Read when | Modified | Freshness |
+|---|---|---|---|---|
+| `docs/decisions/README.md` | When a PR needs a record, the record format, `ADR:` citations (also into Collate's repos), and what checks them | Writing or citing a record; a choice in the code looks arbitrary | 2026-10-08 | CURRENT |
+
 ## Plans & specs (`docs/plans/`, `docs/superpowers/`)
 
 | Doc | Purpose | Read when | Modified | Freshness |
