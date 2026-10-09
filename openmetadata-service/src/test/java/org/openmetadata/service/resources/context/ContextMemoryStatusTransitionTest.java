@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.service.governance.EntityLifecycle;
@@ -86,9 +87,17 @@ class ContextMemoryStatusTransitionTest {
   }
 
   @Test
-  void resolvedMemoriesNeverGoBackToDraft() {
-    assertFalse(MEMORY.allows(ContextMemoryStatus.APPROVED, ContextMemoryStatus.DRAFT));
-    assertFalse(MEMORY.allows(ContextMemoryStatus.ARCHIVED, ContextMemoryStatus.DRAFT));
+  void anApprovedMemoryCanReturnToReview() {
+    // Revalidation sends an Approved memory a newer one may contradict to a person, not a guess.
+    assertTrue(MEMORY.allows(ContextMemoryStatus.APPROVED, ContextMemoryStatus.DRAFT));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"ARCHIVED", "DEPRECATED", "INVALIDATED", "REJECTED", "SUPERSEDED"})
+  void retiredMemoriesNeverGoBackToDraft(ContextMemoryStatus retired) {
+    assertFalse(MEMORY.allows(retired, ContextMemoryStatus.DRAFT));
   }
 
   @Test

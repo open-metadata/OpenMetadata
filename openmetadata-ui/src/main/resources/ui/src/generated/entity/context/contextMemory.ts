@@ -76,6 +76,12 @@ export interface ContextMemory {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * When this memory was last confirmed to hold: set whenever it becomes Approved, and each
+     * time Memory Reconciliation revalidates it. An Approved memory with no value predates the
+     * field.
+     */
+    lastReviewedAt?:        number;
+    /**
      * Last time the memory was used by AI-assisted retrieval.
      */
     lastUsedAt?:            number;

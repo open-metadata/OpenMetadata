@@ -112,6 +112,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
                       ContextMemoryStatus.UNPROCESSED),
               ContextMemoryStatus.APPROVED,
                   Set.of(
+                      ContextMemoryStatus.DRAFT,
                       ContextMemoryStatus.ARCHIVED,
                       ContextMemoryStatus.DEPRECATED,
                       ContextMemoryStatus.REJECTED,
@@ -807,6 +808,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
     private void updateLifecycle(boolean consolidatingChanges) {
       if (operation == Operation.PUT) {
+        updated.setLastReviewedAt(original.getLastReviewedAt());
         updated.setStatusReason(original.getStatusReason());
         updated.setSupersededBy(original.getSupersededBy());
         updated.setDisputes(original.getDisputes());
@@ -818,6 +820,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
             (reference, field) -> resolveLiveMemory(reference, field, updated.getUpdatedBy()));
       }
       recordChange("statusReason", original.getStatusReason(), updated.getStatusReason());
+      recordChange("lastReviewedAt", original.getLastReviewedAt(), updated.getLastReviewedAt());
       recordChange(
           ContextMemoryLifecycle.FIELD_SUPERSEDED_BY,
           original.getSupersededBy(),

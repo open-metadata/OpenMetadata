@@ -46,6 +46,10 @@ public final class ContextMemoryLifecycle {
 
   static void applyCreate(ContextMemory memory, MemoryResolver resolver) {
     validateSupersession(memory);
+    if (memory.getEntityStatus() == ContextMemoryStatus.APPROVED
+        && memory.getLastReviewedAt() == null) {
+      memory.setLastReviewedAt(memory.getUpdatedAt());
+    }
     resolveReferences(null, memory, resolver);
   }
 
@@ -58,6 +62,20 @@ public final class ContextMemoryLifecycle {
         && updated.getEntityStatus() != ContextMemoryStatus.DRAFT
         && Objects.equals(original.getStatusReason(), updated.getStatusReason())) {
       updated.setStatusReason(null);
+    }
+    stampReviewOnApproval(original, updated, statusChanged);
+  }
+
+  /**
+   * Becoming Approved is a review, whoever approves: a person through the API or Memory
+   * Reconciliation. A caller that supplies its own {@code lastReviewedAt} keeps it.
+   */
+  private static void stampReviewOnApproval(
+      ContextMemory original, ContextMemory updated, boolean statusChanged) {
+    boolean approvedNow =
+        statusChanged && updated.getEntityStatus() == ContextMemoryStatus.APPROVED;
+    if (approvedNow && Objects.equals(original.getLastReviewedAt(), updated.getLastReviewedAt())) {
+      updated.setLastReviewedAt(updated.getUpdatedAt());
     }
   }
 
