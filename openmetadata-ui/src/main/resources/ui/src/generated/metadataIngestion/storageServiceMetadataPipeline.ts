@@ -34,7 +34,9 @@ export interface StorageServiceMetadataPipeline {
      * are deleted. Also, if the topic is deleted, all the associated entities with that
      * containers will be deleted
      */
-    markDeletedContainers?: boolean;
+    markDeletedContainers?:   boolean;
+    maxChildrenPerColumn?:    number;
+    maxSchemaInferenceDepth?: number;
     /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is

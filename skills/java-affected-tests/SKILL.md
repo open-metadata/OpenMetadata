@@ -42,6 +42,7 @@ make java_affected                # what runs, why, and the exact commands
 | `Impacted, but not run locally` | List them in the PR with where they run (nightly, external cluster); don't run |
 | `Changed classes no unit test references` | Add a unit test (see `test-enforcement`), or say in the PR why none applies |
 | `Impact-map gaps` | Add the file's directory to the area that owns that code in `.github/java-tests/impact-map.json`, in this PR, then re-plan. Until then the full suite runs |
+| `Fix .github/java-tests/impact-map.json in this branch before you raise the PR` | Do what each line says: add the named glob to an area's `sources`, a pattern for the new IT to its `tests`, or remove a pattern your deletions emptied. `git push` and `gh pr create` stay blocked until it's clean (rule `java-impact-map.md`) |
 
 ### Ground rules for adding tests
 
