@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TFunction } from 'i18next';
 import { TestCase } from '../../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../../generated/tests/testDefinition';
 import {
@@ -35,10 +36,7 @@ function mockTranslate(key: string, options?: Record<string, unknown>) {
   );
 }
 
-jest.mock('../../../../../utils/i18next/LocalUtil', () => ({
-  t: (key: string, options?: Record<string, unknown>) =>
-    mockTranslate(key, options),
-}));
+const translate = mockTranslate as TFunction;
 
 const baseArgs = {
   testCaseData: {} as TestCase,
@@ -198,7 +196,8 @@ describe('getConfiguredThresholdSentence', () => {
             { name: 'thresholdUnit', value: 'PERCENTAGE' },
           ],
         } as TestCase,
-        thresholdDefinition('columnValuesToMatchRegex')
+        thresholdDefinition('columnValuesToMatchRegex'),
+        translate
       )
     ).toBe(
       'Fail when more than 1% of non-null values in email fail this test.'
@@ -217,7 +216,8 @@ describe('getConfiguredThresholdSentence', () => {
             { name: 'thresholdUnit', value: 'PERCENTAGE' },
           ],
         } as TestCase,
-        thresholdDefinition('tableRowCountToBeBetween')
+        thresholdDefinition('tableRowCountToBeBetween'),
+        translate
       )
     ).toBe(
       'Fail when the measured value falls outside 90 – 110, allowing a deviation of 5% (effective range 85.5 – 115.5).'
@@ -231,7 +231,8 @@ describe('getConfiguredThresholdSentence', () => {
           entityLink: '<#E::table::svc.db.schema.users::columns::email>',
           parameterValues: [],
         } as unknown as TestCase,
-        thresholdDefinition('columnValuesToBeNotNull')
+        thresholdDefinition('columnValuesToBeNotNull'),
+        translate
       )
     ).toBe('Fail when more than 0 row(s) in email fail this test.');
   });
@@ -243,7 +244,8 @@ describe('getConfiguredThresholdSentence', () => {
         {
           name: 'tableColumnNameToExist',
           parameterDefinition: [],
-        } as unknown as TestDefinition
+        } as unknown as TestDefinition,
+        translate
       )
     ).toBeUndefined();
   });

@@ -173,7 +173,12 @@ function ThresholdSentence({
 }: Readonly<
   Pick<TestCaseConfigurationCardProps, 'testCaseData' | 'testDefinition'>
 >) {
-  const sentence = getConfiguredThresholdSentence(testCaseData, testDefinition);
+  const { t } = useTranslation();
+  const sentence = getConfiguredThresholdSentence(
+    testCaseData,
+    testDefinition,
+    t
+  );
 
   return sentence ? (
     <Typography

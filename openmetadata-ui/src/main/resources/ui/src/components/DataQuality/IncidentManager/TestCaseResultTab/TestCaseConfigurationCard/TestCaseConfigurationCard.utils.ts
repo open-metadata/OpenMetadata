@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TFunction } from 'i18next';
 import startCase from 'lodash/startCase';
 import { TestCase } from '../../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../../generated/tests/testDefinition';
@@ -100,7 +101,8 @@ export const getCategoryTranslation = (
  */
 export const getConfiguredThresholdSentence = (
   testCase: TestCase | undefined,
-  testDefinition: TestDefinition | undefined
+  testDefinition: TestDefinition | undefined,
+  t: TFunction
 ): string | undefined => {
   if (!testCase || !testDefinition) {
     return undefined;
@@ -115,7 +117,7 @@ export const getConfiguredThresholdSentence = (
       getNameFromFQN(EntityLink.getEntityFqn(entityLink)),
   });
 
-  return data && formatThresholdSentence(data);
+  return data && formatThresholdSentence(data, t);
 };
 
 /**

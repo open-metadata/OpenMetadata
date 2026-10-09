@@ -341,7 +341,7 @@ const RunThreshold = ({
       testId: 'run-details-threshold',
       value:
         threshold > 0
-          ? formatThresholdAmount(threshold, isPercentage, noun)
+          ? formatThresholdAmount(threshold, isPercentage, noun, t)
           : t('label.no-tolerance'),
     },
     ...(semantic === ThresholdTestSemantic.RowCountable

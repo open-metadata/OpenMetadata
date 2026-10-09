@@ -15,7 +15,6 @@ import { Alert, FormItemLabel } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { t } from '../../../../utils/i18next/LocalUtil';
 import { getThresholdPreviewData } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { ThresholdPreviewProps } from './ThresholdPreview.types';
 import {
@@ -35,11 +34,7 @@ const ThresholdPreview: FC<ThresholdPreviewProps> = ({
   target,
   profilerConfig,
 }) => {
-  // The sentence is composed by `ThresholdPreview.utils`, which translates through
-  // `LocalUtil`'s `t` like the rest of `utils/`. The hook is still called so
-  // the component re-renders — and the sentence is rebuilt — on a language
-  // change.
-  useTranslation();
+  const { t } = useTranslation();
   const params = useWatch({ control: form.control, name: 'params' });
 
   const data = useMemo(
@@ -57,8 +52,8 @@ const ThresholdPreview: FC<ThresholdPreviewProps> = ({
     return null;
   }
 
-  const sentence = formatThresholdSentence(data);
-  const samplingNote = formatSamplingNote(data.sampling);
+  const sentence = formatThresholdSentence(data, t);
+  const samplingNote = formatSamplingNote(data.sampling, t);
 
   return (
     <div

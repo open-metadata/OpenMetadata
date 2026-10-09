@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { t } from '../../../../utils/i18next/LocalUtil';
+import type { TFunction } from 'i18next';
 import {
   CustomSqlStrategy,
   ThresholdNoun,
@@ -32,7 +32,8 @@ import {
 export const formatThresholdAmount = (
   threshold: number,
   isPercentage: boolean,
-  noun: ThresholdNoun
+  noun: ThresholdNoun,
+  t: TFunction
 ): string =>
   isPercentage
     ? t('message.threshold-amount-percentage', {
@@ -46,7 +47,8 @@ export const formatThresholdAmount = (
       });
 
 export const formatSamplingNote = (
-  sampling: ThresholdSampling | undefined
+  sampling: ThresholdSampling | undefined,
+  t: TFunction
 ): string | undefined => {
   if (!sampling) {
     return undefined;
@@ -74,7 +76,10 @@ export const formatSamplingNote = (
  * 85.5 – 115.5)" — the effective range is the number users reason about, and
  * showing it is what makes the zero-bound degenerate case visible.
  */
-const formatStatisticalSentence = (data: ThresholdPreviewData): string => {
+const formatStatisticalSentence = (
+  data: ThresholdPreviewData,
+  t: TFunction
+): string => {
   const { bound, effectiveRange, isPercentage, threshold } = data;
 
   if (!effectiveRange) {
@@ -98,7 +103,8 @@ const formatStatisticalSentence = (data: ThresholdPreviewData): string => {
 /** `tableCustomSQLQuery` compares its own result through its own operator. */
 const formatCustomSqlSentence = (
   data: ThresholdPreviewData,
-  amount: string
+  amount: string,
+  t: TFunction
 ): string => {
   const { operator, operatorLabelKey, strategy, threshold } = data;
   const operatorText = operatorLabelKey ? t(operatorLabelKey) : operator;
@@ -121,7 +127,8 @@ const formatCustomSqlSentence = (
  * reads yet gets no sentence at all, only the warning beside it.
  */
 export const formatThresholdSentence = (
-  data: ThresholdPreviewData
+  data: ThresholdPreviewData,
+  t: TFunction
 ): string | undefined => {
   const { semantic, threshold, isPercentage, noun, target, isUnitIgnored } =
     data;
@@ -131,15 +138,16 @@ export const formatThresholdSentence = (
   const amount = formatThresholdAmount(
     threshold,
     isUnitIgnored ? false : isPercentage,
-    isUnitIgnored ? ThresholdNoun.Rows : noun
+    isUnitIgnored ? ThresholdNoun.Rows : noun,
+    t
   );
 
   switch (semantic) {
     case ThresholdTestSemantic.Statistical:
-      return formatStatisticalSentence(data);
+      return formatStatisticalSentence(data, t);
 
     case ThresholdTestSemantic.CustomSql:
-      return formatCustomSqlSentence(data, amount);
+      return formatCustomSqlSentence(data, amount, t);
 
     case ThresholdTestSemantic.RowCountable:
       return t('message.dq-threshold-preview-row-countable', {

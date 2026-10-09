@@ -147,7 +147,7 @@ const STATISTICAL_BOUND_PARAMS: Record<string, BoundParamNames> = {
 
 /**
  * The denominator a PERCENTAGE threshold is read against, per row-countable
- * test. Membership *is* the row-countable classification: these six are the
+ * test. Membership *is* the row-countable classification: these are the
  * validators that call `_apply_row_threshold`, and the value is the metric
  * they pass as its denominator — `valuesCount` (the column's non-null values)
  * or `rowCount` (every row). Getting this wrong misnames the very quantity the
@@ -155,6 +155,8 @@ const STATISTICAL_BOUND_PARAMS: Record<string, BoundParamNames> = {
  * predicate.
  */
 const ROW_COUNTABLE_DENOMINATORS: Record<string, ThresholdNoun> = {
+  columnValueLengthsToBeBetween: ThresholdNoun.Rows,
+  columnValuesToBeBetween: ThresholdNoun.Rows,
   columnValuesToMatchRegex: ThresholdNoun.NonNullValues,
   columnValuesToBeUnique: ThresholdNoun.NonNullValues,
   columnValuesToBeInSet: ThresholdNoun.Rows,

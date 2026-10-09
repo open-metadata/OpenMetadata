@@ -71,8 +71,8 @@ describe('getThresholdTestSemantic', () => {
     ['columnValuesToBeUnique', ThresholdTestSemantic.RowCountable],
     ['tableCustomSQLQuery', ThresholdTestSemantic.CustomSql],
     // Declares the threshold params, but no validator reads them yet.
-    ['columnValuesToBeBetween', ThresholdTestSemantic.NotEnforced],
-    ['columnValueLengthsToBeBetween', ThresholdTestSemantic.NotEnforced],
+    ['columnValuesToBeBetween', ThresholdTestSemantic.RowCountable],
+    ['columnValueLengthsToBeBetween', ThresholdTestSemantic.RowCountable],
     ['columnValuesToBeAtExpectedLocation', ThresholdTestSemantic.NotEnforced],
   ])('classifies %s as %s', (name, expected) => {
     expect(getThresholdTestSemantic(name)).toBe(expected);
@@ -608,7 +608,7 @@ describe('getThresholdPreviewData', () => {
     expect(data?.needsMatchEnum).toBe(false);
   });
 
-  it('flags a test whose threshold no validator reads yet', () => {
+  it('reads a values-between threshold as a row tolerance', () => {
     const data = getThresholdPreviewData({
       definition: definitionOf('columnValuesToBeBetween', [
         { name: 'minValue' },
@@ -618,8 +618,26 @@ describe('getThresholdPreviewData', () => {
     });
 
     expect(data).toMatchObject({
-      semantic: ThresholdTestSemantic.NotEnforced,
-      isThresholdIgnored: true,
+      semantic: ThresholdTestSemantic.RowCountable,
+      isThresholdIgnored: false,
+      noun: ThresholdNoun.Rows,
+    });
+    expect(data?.effectiveRange).toBeUndefined();
+  });
+
+  it('reads a value-length threshold as a row tolerance', () => {
+    const data = getThresholdPreviewData({
+      definition: definitionOf('columnValueLengthsToBeBetween', [
+        { name: 'minLength' },
+        { name: 'maxLength' },
+      ]),
+      params: { minLength: 1, maxLength: 10, threshold: 5 },
+    });
+
+    expect(data).toMatchObject({
+      semantic: ThresholdTestSemantic.RowCountable,
+      isThresholdIgnored: false,
+      noun: ThresholdNoun.Rows,
     });
     expect(data?.effectiveRange).toBeUndefined();
   });
@@ -692,6 +710,33 @@ describe('getRunThresholdData', () => {
     expect(data?.evaluatedRows).toBeUndefined();
     expect(data?.failedPercentage).toBeUndefined();
   });
+
+  it.each(['columnValuesToBeBetween', 'columnValueLengthsToBeBetween'])(
+    'shows the recorded row result for %s',
+    (definitionName) => {
+      const data = getRunThresholdData(
+        testCaseOf(definitionName, [
+          { name: 'threshold', value: '5' },
+          { name: 'thresholdUnit', value: 'PERCENTAGE' },
+        ]),
+        {
+          testCaseStatus: TestCaseStatus.Failed,
+          passedRows: 90,
+          failedRows: 10,
+        }
+      );
+
+      expect(data).toMatchObject({
+        semantic: ThresholdTestSemantic.RowCountable,
+        threshold: 5,
+        isPercentage: true,
+        failedRows: 10,
+        failedPercentage: 10,
+        evaluatedRows: 100,
+        populationNoun: ThresholdNoun.Rows,
+      });
+    }
+  );
 
   it('sets the configured range beside the range the run reports', () => {
     const data = getRunThresholdData(
