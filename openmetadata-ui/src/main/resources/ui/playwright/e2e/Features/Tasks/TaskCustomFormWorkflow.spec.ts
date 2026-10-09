@@ -70,7 +70,7 @@ test.describe.serial(
       let taskId: string | undefined;
       let workflowId: string | undefined;
       let schemaToRestore: TaskFormSchema | undefined;
-      let createdSchemaId: string | undefined;
+      let createdSchema: TaskFormSchema | undefined;
 
       await authenticateAdminPage(page);
 
@@ -382,8 +382,7 @@ test.describe.serial(
             }
           );
           expect(createSchemaResponse.ok()).toBeTruthy();
-          const createdSchema = await createSchemaResponse.json();
-          createdSchemaId = createdSchema.id;
+          createdSchema = await createSchemaResponse.json();
         }
 
         await expect
@@ -474,16 +473,12 @@ test.describe.serial(
 
         const visibleModal = page.getByRole('dialog').first();
         await expect(visibleModal).toBeVisible();
-        const proposedTextField = visibleModal
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Proposed Text' })
-          .getByRole('textbox')
-          .first();
-        const reviewNotesField = visibleModal
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Review Notes' })
-          .getByRole('textbox')
-          .first();
+        const proposedTextField = visibleModal.getByRole('textbox', {
+          name: /Proposed Text/,
+        });
+        const reviewNotesField = visibleModal.getByRole('textbox', {
+          name: /Review Notes/,
+        });
 
         await proposedTextField.fill(updatedDescription);
         await reviewNotesField.fill(updatedReviewNotes);
@@ -547,10 +542,23 @@ test.describe.serial(
               data: schemaToRestore,
             })
             .catch(() => null);
-        } else if (createdSchemaId) {
+        } else if (createdSchema?.id) {
+          // The server caches each task type's form schema and refreshes it
+          // only on a create or update, not a delete: relax the schema first,
+          // so whatever stays cached cannot reject the Custom tasks later
+          // specs create.
+          await apiContext
+            .put('/api/v1/taskFormSchemas', {
+              data: {
+                ...createdSchema,
+                formSchema: { type: 'object' },
+                workflowDefinitionRef: null,
+              },
+            })
+            .catch(() => null);
           await apiContext
             .delete(
-              `/api/v1/taskFormSchemas/${createdSchemaId}?hardDelete=true&recursive=true`
+              `/api/v1/taskFormSchemas/${createdSchema.id}?hardDelete=true&recursive=true`
             )
             .catch(() => null);
         }

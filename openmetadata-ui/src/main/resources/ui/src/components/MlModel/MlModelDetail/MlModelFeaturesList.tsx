@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Card, Col, Row, Space } from 'antd';
+import {
+  Box,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
@@ -29,6 +34,7 @@ import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { TagSource } from '../../../generated/type/schema';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { createTagObject } from '../../../utils/TagsPureUtils';
@@ -167,11 +173,11 @@ const MlModelFeaturesList = () => {
   if (!isEmpty(mlFeatures)) {
     return (
       <Fragment>
-        <Row data-testid="feature-list">
-          <Col span={24}>
+        <Grid className="layout-row layout-grid" data-testid="feature-list">
+          <Grid.Item className="layout-column" span={24}>
             <Divider className="m-y-md" />
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <Typography
               as="h5"
               className="tw:mb-2!"
@@ -179,17 +185,22 @@ const MlModelFeaturesList = () => {
               weight="semibold">
               {t('label.feature-plural-used')}
             </Typography>
-          </Col>
+          </Grid.Item>
 
           {mlFeatures?.map((feature: MlFeature, index) => {
             return (
-              <Col key={feature.fullyQualifiedName} span={24}>
+              <Grid.Item
+                className="layout-column"
+                key={feature.fullyQualifiedName}
+                span={24}>
                 <Card
                   className="m-b-lg shadow-none"
                   data-testid={`feature-card-${feature.name ?? ''}`}
                   key={feature.fullyQualifiedName}>
-                  <Row gutter={[0, 8]}>
-                    <Col span={24}>
+                  <Grid
+                    className="layout-row layout-grid"
+                    style={{ ...getLayoutGutter(0, 8) }}>
+                    <Grid.Item className="layout-column" span={24}>
                       <Typography
                         className="font-semibold"
                         data-testid="column-name"
@@ -199,39 +210,61 @@ const MlModelFeaturesList = () => {
                         onClick={(event) => handleColumnClick(feature, event)}>
                         {feature.name}
                       </Typography>
-                    </Col>
-                    <Col span={24}>
-                      <Space align="start">
-                        <Space>
+                    </Grid.Item>
+                    <Grid.Item className="layout-column" span={24}>
+                      <Box
+                        inline
+                        align="start"
+                        className="layout-space layout-space-horizontal"
+                        gap={2}
+                        itemClassName="layout-space-item">
+                        <Box
+                          inline
+                          align="center"
+                          className="layout-space layout-space-horizontal"
+                          gap={2}
+                          itemClassName="layout-space-item">
                           <Typography color="secondary">
                             {`${t('label.type')} :`}
                           </Typography>{' '}
                           <Typography>{feature.dataType || '--'}</Typography>
-                        </Space>
+                        </Box>
                         <Divider
                           className="tw:mx-2 tw:mt-1 tw:h-[0.9em] tw:min-h-0"
                           orientation="vertical"
                         />
-                        <Space>
+                        <Box
+                          inline
+                          align="center"
+                          className="layout-space layout-space-horizontal"
+                          gap={2}
+                          itemClassName="layout-space-item">
                           <Typography color="secondary">
                             {`${t('label.algorithm')} :`}
                           </Typography>{' '}
                           <Typography>
                             {feature.featureAlgorithm || '--'}
                           </Typography>
-                        </Space>
-                      </Space>
-                    </Col>
+                        </Box>
+                      </Box>
+                    </Grid.Item>
 
-                    <Col span={24}>
-                      <Row gutter={8} wrap={false}>
-                        <Col flex="130px">
+                    <Grid.Item className="layout-column" span={24}>
+                      <Box
+                        className="layout-row"
+                        style={{ ...getLayoutGutter(8) }}
+                        wrap="nowrap">
+                        <Box
+                          className="layout-column tw:block"
+                          style={{ flex: '0 0 130px' }}>
                           <Typography color="secondary">
                             {`${t('label.glossary-term-plural')} :`}
                           </Typography>
-                        </Col>
+                        </Box>
 
-                        <Col flex="auto">
+                        <Box
+                          className="layout-column tw:block"
+                          style={{ flex: 'auto' }}>
                           <TableTags<MlFeature>
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
@@ -243,18 +276,25 @@ const MlModelFeaturesList = () => {
                             tags={feature.tags ?? []}
                             type={TagSource.Glossary}
                           />
-                        </Col>
-                      </Row>
-                    </Col>
+                        </Box>
+                      </Box>
+                    </Grid.Item>
 
-                    <Col span={24}>
-                      <Row gutter={8} wrap={false}>
-                        <Col flex="130px">
+                    <Grid.Item className="layout-column" span={24}>
+                      <Box
+                        className="layout-row"
+                        style={{ ...getLayoutGutter(8) }}
+                        wrap="nowrap">
+                        <Box
+                          className="layout-column tw:block"
+                          style={{ flex: '0 0 130px' }}>
                           <Typography color="secondary">
                             {`${t('label.tag-plural')} :`}
                           </Typography>
-                        </Col>
-                        <Col flex="auto">
+                        </Box>
+                        <Box
+                          className="layout-column tw:block"
+                          style={{ flex: 'auto' }}>
                           <TableTags<MlFeature>
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
@@ -266,18 +306,25 @@ const MlModelFeaturesList = () => {
                             tags={feature.tags ?? []}
                             type={TagSource.Classification}
                           />
-                        </Col>
-                      </Row>
-                    </Col>
+                        </Box>
+                      </Box>
+                    </Grid.Item>
 
-                    <Col className="m-t-xs" span={24}>
-                      <Row gutter={8} wrap={false}>
-                        <Col flex="130px">
+                    <Grid.Item className="layout-column m-t-xs" span={24}>
+                      <Box
+                        className="layout-row"
+                        style={{ ...getLayoutGutter(8) }}
+                        wrap="nowrap">
+                        <Box
+                          className="layout-column tw:block"
+                          style={{ flex: '0 0 130px' }}>
                           <Typography color="secondary">
                             {`${t('label.description')} :`}
                           </Typography>
-                        </Col>
-                        <Col flex="auto">
+                        </Box>
+                        <Box
+                          className="layout-column tw:block"
+                          style={{ flex: 'auto' }}>
                           <TableDescription
                             columnData={{
                               fqn: feature.fullyQualifiedName ?? '',
@@ -293,18 +340,18 @@ const MlModelFeaturesList = () => {
                               setEditDescription(true);
                             }}
                           />
-                        </Col>
-                      </Row>
-                    </Col>
-                    <Col span={24}>
+                        </Box>
+                      </Box>
+                    </Grid.Item>
+                    <Grid.Item className="layout-column" span={24}>
                       <SourceList feature={feature} />
-                    </Col>
-                  </Row>
+                    </Grid.Item>
+                  </Grid>
                 </Card>
-              </Col>
+              </Grid.Item>
             );
           })}
-        </Row>
+        </Grid>
         {!isEmpty(selectedFeature) && (
           <EntityAttachmentProvider
             entityFqn={selectedFeature.fullyQualifiedName}

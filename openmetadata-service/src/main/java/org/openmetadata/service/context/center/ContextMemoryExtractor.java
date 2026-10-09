@@ -10,11 +10,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
@@ -183,7 +183,7 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         .withSummary(pill.summary())
         .withMemoryType(parseType(pill.memoryType()))
         .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
-        .withEntityStatus(EntityStatus.APPROVED)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withSourceType(sourceType)
         .withSourceEntity(sourceRef)
         .withPrimaryEntity(sourceRef)

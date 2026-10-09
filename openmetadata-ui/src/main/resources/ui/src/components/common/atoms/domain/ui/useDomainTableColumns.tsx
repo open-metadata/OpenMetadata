@@ -14,6 +14,7 @@
 import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import domainClassBase from '../../../../../utils/Domain/DomainClassBase';
 import { ColumnDef } from '../../../EntityListingTable/EntityListingTable.interface';
 import {
   renderDomainClassificationTagsCell,
@@ -33,6 +34,7 @@ export const useDomainTableColumns = ({
   onEntityClick,
 }: UseDomainTableColumnsOptions = {}) => {
   const { t } = useTranslation();
+  const extraColumns = domainClassBase.getListingExtraColumns();
 
   const columns: ColumnDef[] = useMemo(
     () => [
@@ -41,8 +43,9 @@ export const useDomainTableColumns = ({
       { id: 'glossaryTerms', label: t('label.glossary-term-plural') },
       { id: 'domainType', label: t('label.domain-type') },
       { id: 'tags', label: t('label.tag-plural') },
+      ...extraColumns.map(({ id, labelKey }) => ({ id, label: t(labelKey) })),
     ],
-    [t, nameLabelKey]
+    [t, nameLabelKey, extraColumns]
   );
 
   const renderCell = useCallback(
@@ -64,10 +67,14 @@ export const useDomainTableColumns = ({
         case 'tags':
           return renderDomainClassificationTagsCell(entity);
         default:
-          return null;
+          return (
+            extraColumns
+              .find((column) => column.id === columnId)
+              ?.render(entity) ?? null
+          );
       }
     },
-    [onEntityClick]
+    [onEntityClick, extraColumns]
   );
 
   return { columns, renderCell };

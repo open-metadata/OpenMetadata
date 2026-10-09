@@ -10,5 +10,5 @@ public interface StageOwnership {
   List<String> owningStageOf(String entityType);
 
   /** The workflow that owns this entity's stage, honouring each workflow's trigger filter. */
-  Optional<String> owningStageOf(String entityType, EntityInterface entity);
+  Optional<String> owningStageOf(String entityType, EntityInterface<?> entity);
 }

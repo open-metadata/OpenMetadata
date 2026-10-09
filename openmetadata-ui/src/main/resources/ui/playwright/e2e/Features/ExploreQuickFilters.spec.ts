@@ -22,7 +22,6 @@ import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
-  getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -217,16 +216,20 @@ test('should search for empty or null filters', async ({ page }) => {
 test('should show correct count for tier filter options from aggregation', async ({
   page,
 }) => {
-  const { apiContext } = await getApiContext(page);
-  const res = await apiContext.get(
-    '/api/v1/search/query?q=&index=dataAsset&from=0&size=0&deleted=false'
-  );
-  const data = await res.json();
+  // Read the expected counts from the aggregation the dropdown itself renders:
+  // a separate API call is a second snapshot, and other workers tagging assets
+  // with a tier in between shift the counts.
+  const tierAggregation = waitForAggregation(page, {
+    field: 'tier.tagFQN',
+    value: null,
+  });
+  await page.getByTestId('search-dropdown-Tier').click();
+  const data = await (await tierAggregation).json();
+  await waitForAllLoadersToDisappear(page);
   const buckets: { key: string; doc_count: number }[] =
     data.aggregations['sterms#tier.tagFQN']?.buckets ?? [];
 
-  await page.getByTestId('search-dropdown-Tier').click();
-  await waitForAllLoadersToDisappear(page);
+  expect(buckets.length).toBeGreaterThan(0);
 
   for (const bucket of buckets) {
     await expect(

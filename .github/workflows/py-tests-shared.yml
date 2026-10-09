@@ -85,6 +85,7 @@ jobs:
               - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'
               - '.github/workflows/py-cli-e2e-tests-v2.yml'
+              - '.github/workflows/py-cli-e2e-tests.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
               - 'openmetadata-spec/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
@@ -100,6 +101,7 @@ jobs:
               - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'
               - '.github/workflows/py-cli-e2e-tests-v2.yml'
+              - '.github/workflows/py-cli-e2e-tests.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
 
       - name: Wait for the labeler
@@ -620,7 +622,10 @@ jobs:
         run: |
           cd ingestion
           shopt -s nullglob
-          [ -f coverage-data/coverage-unit/.coverage ] && mv coverage-data/coverage-unit/.coverage .coverage.unit
+          # download-artifact extracts a lone match (unit-only PR runs) straight into path, not path/<name>/
+          for f in coverage-data/coverage-unit/.coverage coverage-data/.coverage; do
+            [ -f "$f" ] && mv "$f" .coverage.unit
+          done
           for dir in coverage-data/coverage-integration-*/; do
             shard=$(basename "$dir" | sed 's/coverage-integration-//')
             [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.integration-$shard"

@@ -57,6 +57,11 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+// The URL sync has its own test; here it only needs a router to read.
+jest.mock('./useSelectedRunInUrl', () => ({
+  useSelectedRunInUrl: jest.fn(),
+}));
+
 const mockUseRequiredParams = jest.fn().mockReturnValue({});
 
 jest.mock('../../../../utils/useRequiredParams', () => ({
@@ -261,6 +266,9 @@ describe('TestSummary component', () => {
     render(<TestSummary {...mockProps} />);
 
     expect(screen.getByText('Loader.component')).toBeInTheDocument();
+    // Only the body waits: the header and its date picker stay, so nothing shifts.
+    expect(screen.getByText('Result history')).toBeInTheDocument();
+    expect(screen.getByText('DqDateRangeFilter')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText('TestSummaryGraph')).toBeInTheDocument();
@@ -470,6 +478,43 @@ describe('TestSummary component', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should show a uniqueness run its duplicates against the expected 0', async () => {
+    const run = {
+      timestamp: 1,
+      testCaseStatus: 'Failed',
+      testResultValue: [
+        { name: 'valueCount', value: '100' },
+        { name: 'uniqueCount', value: '63' },
+      ],
+    };
+    mockGetListTestCaseResults.mockResolvedValueOnce({ data: [run] });
+
+    render(
+      <TestSummary
+        data={
+          {
+            ...mockProps.data,
+            parameterValues: [],
+            testCaseResult: run,
+            testDefinition: {
+              ...mockProps.data.testDefinition,
+              name: 'columnValuesToBeUnique',
+            },
+          } as TestCase
+        }
+      />
+    );
+
+    // 100 values, 63 unique: the reader no longer works out the 37.
+    expect(await screen.findByTestId('run-details-found')).toHaveTextContent(
+      '37'
+    );
+    expect(screen.getByTestId('run-details-expected')).toHaveTextContent('0');
+    expect(screen.getByTestId('run-details-difference')).toHaveTextContent(
+      '+37'
+    );
+  });
+
   it('should not reload the results when the test case changes but its latest run does not', async () => {
     const testCase = {
       ...mockProps.data,
@@ -561,8 +606,25 @@ describe('TestSummary component', () => {
       ),
     ],
     [
-      'Values vs. learned range (auto)',
-      shape('columnValuesToBeBetween', {}, { useDynamicAssertion: true }),
+      'customer_id values vs. learned range (auto)',
+      shape(
+        'columnValuesToBeBetween',
+        {},
+        {
+          entityLink: '<#E::table::svc.db.schema.orders::columns::customer_id>',
+          useDynamicAssertion: true,
+        }
+      ),
+    ],
+    [
+      'customer_id values vs. allowed range 1–3,489',
+      shape(
+        'columnValuesToBeBetween',
+        { minValue: '1', maxValue: '3489' },
+        {
+          entityLink: '<#E::table::svc.db.schema.orders::columns::customer_id>',
+        }
+      ),
     ],
     [
       'Query result vs. threshold 0',

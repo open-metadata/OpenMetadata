@@ -12,9 +12,9 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Grid, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
-import { Button, Col, Form, FormListFieldData, Input, Row } from 'antd';
+import { Button, Form, FormListFieldData, Input } from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
@@ -272,8 +272,8 @@ export const ContractSemanticFormTab: React.FC<{
                     key={field.name}>
                     {editingKey === field.name ? (
                       <>
-                        <Row className="semantic-form-item-content">
-                          <Col span={24}>
+                        <Grid className="layout-row layout-grid semantic-form-item-content">
+                          <Grid.Item className="layout-column" span={24}>
                             <Form.Item
                               {...field}
                               label={t('label.name')}
@@ -292,8 +292,8 @@ export const ContractSemanticFormTab: React.FC<{
                                 )}
                               />
                             </Form.Item>
-                          </Col>
-                          <Col span={24}>
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={24}>
                             <Form.Item
                               {...field}
                               label={t('label.description')}
@@ -310,8 +310,8 @@ export const ContractSemanticFormTab: React.FC<{
                                 rows={4}
                               />
                             </Form.Item>
-                          </Col>
-                          <Col span={24}>
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={24}>
                             <Form.Item
                               {...field}
                               label={t('label.rule')}
@@ -340,8 +340,8 @@ export const ContractSemanticFormTab: React.FC<{
                                 }
                               />
                             </Form.Item>
-                          </Col>
-                        </Row>
+                          </Grid.Item>
+                        </Grid>
 
                         <div className="semantic-form-item-actions">
                           <Button

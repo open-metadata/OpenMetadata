@@ -79,10 +79,10 @@ const INPUT_CONTAINER_CLASS = classNames(
 );
 
 const NLP_TOGGLE_BASE_CLASS =
-  'tw:flex tw:size-6 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-brand-600 tw:transition-none';
+  'tw:flex tw:size-6 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-utility-brand-600 tw:transition-none';
 
 const NLP_TOGGLE_INACTIVE_CLASS =
-  'tw:border-[0.5px] tw:border-utility-blue-light-200 tw:bg-utility-brand-50 tw:p-1 tw:hover:bg-[rgba(21,112,239,0.06)] tw:hover:text-brand-600';
+  'tw:border tw:border-utility-blue-light-200 tw:bg-utility-brand-50 tw:p-1 tw:hover:bg-utility-brand-100';
 
 const NLP_TOGGLE_ACTIVE_CLASS = 'tw:border-0 tw:bg-transparent tw:p-0';
 
@@ -91,7 +91,7 @@ const SUGGESTIONS_CONTAINER_CLASS =
 
 const SEARCH_POPOVER_CLASS = classNames(
   'tw:max-h-96! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point)',
-  'tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-primary',
+  'tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-overlay-surface',
   'tw:px-0! tw:py-4! tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
   'tw:will-change-transform'
 );
@@ -243,7 +243,7 @@ export const ExploreSearchInput = ({
             data-testid="explore-search-input"
             fontSize="xs"
             icon={Search}
-            iconClassName="tw:size-4 tw:text-brand-600"
+            iconClassName="tw:size-4 tw:text-utility-brand-600"
             inputClassName={INPUT_CLASS}
             placeholder={placeholderText}
             value={searchValue}
@@ -284,7 +284,6 @@ export const ExploreSearchInput = ({
           containerPadding={0}
           data-testid="explore-search-popover"
           isOpen={isSearchPopoverOpen}
-          offset={12}
           placement="bottom"
           size="sm"
           style={{

@@ -164,7 +164,7 @@ public class RdfRepository {
   private final RdfStorageInterface materializationStorageService;
   private final JsonLdTranslator translator;
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
-  private final BiFunction<String, UUID, EntityInterface> projectionEntityLoader;
+  private final BiFunction<String, UUID, EntityInterface<?>> projectionEntityLoader;
   private final Cache<String, String> entityGraphCache =
       Caffeine.newBuilder()
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
@@ -255,7 +255,7 @@ public class RdfRepository {
       final RdfStorageInterface storageService,
       final JsonLdTranslator translator,
       final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier,
-      final BiFunction<String, UUID, EntityInterface> projectionEntityLoader) {
+      final BiFunction<String, UUID, EntityInterface<?>> projectionEntityLoader) {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.datasetManager = null;
@@ -491,7 +491,7 @@ public class RdfRepository {
   }
 
   public void refreshEntity(final String entityType, final UUID entityId) {
-    final EntityInterface entity;
+    final EntityInterface<?> entity;
     try {
       entity = projectionEntityLoader.apply(entityType, entityId);
     } catch (EntityNotFoundException exception) {
@@ -503,7 +503,7 @@ public class RdfRepository {
     createOrUpdate(entity);
   }
 
-  private static EntityInterface loadProjectionEntity(
+  private static EntityInterface<?> loadProjectionEntity(
       final String entityType, final UUID entityId) {
     return Entity.getEntity(
         entityType,
@@ -513,7 +513,7 @@ public class RdfRepository {
         false);
   }
 
-  public void createOrUpdate(EntityInterface entity) {
+  public void createOrUpdate(EntityInterface<?> entity) {
     if (!isEnabled()) {
       return;
     }
@@ -562,11 +562,12 @@ public class RdfRepository {
    * The per-entity fallback in {@code RdfBatchProcessor.processEntities} keeps
    * row-level failure attribution when a chunk fails.
    */
-  public void bulkCreateOrUpdate(List<? extends EntityInterface> entities) {
+  public void bulkCreateOrUpdate(List<? extends EntityInterface<?>> entities) {
     bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
   }
 
-  public void bulkCreateOrUpdate(List<? extends EntityInterface> entities, RdfWriteMode writeMode) {
+  public void bulkCreateOrUpdate(
+      List<? extends EntityInterface<?>> entities, RdfWriteMode writeMode) {
     if (!isEnabled() || entities == null || entities.isEmpty()) {
       return;
     }
@@ -587,10 +588,10 @@ public class RdfRepository {
    * thread turns translate time into overlap instead of writer-lock idle time.
    */
   public List<RdfStorageInterface.EntityWriteRequest> translateEntities(
-      List<? extends EntityInterface> entities) {
+      List<? extends EntityInterface<?>> entities) {
     List<RdfStorageInterface.EntityWriteRequest> requests = new ArrayList<>(entities.size());
     if (isEnabled()) {
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         // Per-entity isolation: mapEntityToRdf propagates mapping failures, and the sink
         // translates a whole batch in one task, so an unguarded throw here would record
         // every entity in the batch as failed instead of the one that is actually bad.
@@ -1554,7 +1555,7 @@ public class RdfRepository {
 
     try {
       // Get entity to convert to JSON-LD directly
-      EntityInterface entity = Entity.getEntity(entityType, entityId, "*", null);
+      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
 
       // Convert directly to JSON-LD without going through RDF model
       return translator.toJsonLdString(entity, true);
@@ -1574,7 +1575,7 @@ public class RdfRepository {
 
     try {
       // Get the entity and convert to RDF
-      EntityInterface entity = Entity.getEntity(entityType, entityId, "*", null);
+      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
       Model rdfModel = translator.toRdf(entity);
 
       // Convert model to requested format
@@ -3046,11 +3047,11 @@ public class RdfRepository {
    */
   private void enhanceNodesWithEntityDetails(
       Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap) {
-    Map<String, EntityInterface> entitiesById = fetchEntitiesForNodes(nodeMap.values());
+    Map<String, EntityInterface<?>> entitiesById = fetchEntitiesForNodes(nodeMap.values());
     for (com.fasterxml.jackson.databind.node.ObjectNode node : nodeMap.values()) {
       String entityId = node.get("entityId").asText();
       String entityType = node.get("type").asText();
-      EntityInterface entity = entitiesById.get(entityId);
+      EntityInterface<?> entity = entitiesById.get(entityId);
       if (entity != null) {
         populateNodeFromEntity(node, entity);
       } else {
@@ -3059,7 +3060,7 @@ public class RdfRepository {
     }
   }
 
-  private Map<String, EntityInterface> fetchEntitiesForNodes(
+  private Map<String, EntityInterface<?>> fetchEntitiesForNodes(
       Collection<com.fasterxml.jackson.databind.node.ObjectNode> nodes) {
     Map<String, List<EntityReference>> refsByType = new HashMap<>();
     for (com.fasterxml.jackson.databind.node.ObjectNode node : nodes) {
@@ -3070,7 +3071,7 @@ public class RdfRepository {
       }
     }
 
-    Map<String, EntityInterface> entitiesById = new HashMap<>();
+    Map<String, EntityInterface<?>> entitiesById = new HashMap<>();
     refsByType.forEach((entityType, refs) -> fetchEntityBatch(entityType, refs, entitiesById));
     return entitiesById;
   }
@@ -3086,12 +3087,12 @@ public class RdfRepository {
   }
 
   private void fetchEntityBatch(
-      String entityType, List<EntityReference> refs, Map<String, EntityInterface> target) {
+      String entityType, List<EntityReference> refs, Map<String, EntityInterface<?>> target) {
     String fields = "";
     try {
       fields = graphNodeFields(entityType);
-      List<EntityInterface> entities = Entity.getEntities(refs, fields, Include.ALL);
-      for (EntityInterface entity : entities) {
+      List<EntityInterface<?>> entities = Entity.getEntities(refs, fields, Include.ALL);
+      for (EntityInterface<?> entity : entities) {
         target.put(entity.getId().toString(), entity);
       }
     } catch (RuntimeException e) {
@@ -3112,11 +3113,11 @@ public class RdfRepository {
   private void fetchEntitiesIndividually(
       String entityType,
       List<EntityReference> refs,
-      Map<String, EntityInterface> target,
+      Map<String, EntityInterface<?>> target,
       String fields) {
     for (EntityReference ref : refs) {
       try {
-        EntityInterface entity = Entity.getEntity(entityType, ref.getId(), fields, Include.ALL);
+        EntityInterface<?> entity = Entity.getEntity(entityType, ref.getId(), fields, Include.ALL);
         target.put(entity.getId().toString(), entity);
       } catch (RuntimeException e) {
         LOG.warn(
@@ -3133,7 +3134,7 @@ public class RdfRepository {
   }
 
   private void populateNodeFromEntity(
-      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface entity) {
+      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface<?> entity) {
     String displayLabel =
         entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName();
     node.put("label", displayLabel);
@@ -3146,7 +3147,7 @@ public class RdfRepository {
   }
 
   private void applyNodeTags(
-      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface entity) {
+      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface<?> entity) {
     if (!nullOrEmpty(entity.getTags())) {
       com.fasterxml.jackson.databind.node.ArrayNode tagsArray =
           JsonUtils.getObjectMapper().createArrayNode();
@@ -3963,7 +3964,7 @@ public class RdfRepository {
         config.getStorageType().toString());
   }
 
-  public void bulkSyncEntities(String entityType, List<? extends EntityInterface> entities) {
+  public void bulkSyncEntities(String entityType, List<? extends EntityInterface<?>> entities) {
     if (!isEnabled()) {
       return;
     }
@@ -3972,7 +3973,7 @@ public class RdfRepository {
       LOG.info(
           "Starting bulk sync for entity type: {} with {} entities", entityType, entities.size());
 
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         try {
           createOrUpdate(entity);
         } catch (Exception e) {
