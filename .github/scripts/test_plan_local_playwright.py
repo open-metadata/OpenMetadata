@@ -140,7 +140,7 @@ def test_render_block_fails_when_a_selected_spec_did_not_run() -> None:
     }
 
     block = PLANNER.render_block(
-        plan, per_file, {"stats": {}}, ["npx"], "a" * 40, "origin/main", dirty=True
+        plan, per_file, {"stats": {}}, [["npx"]], "a" * 40, "origin/main", dirty=True
     )
 
     assert block.startswith(PLANNER.BLOCK_START)
@@ -161,7 +161,7 @@ def test_render_block_does_not_pass_when_every_test_was_skipped() -> None:
     }
 
     block = PLANNER.render_block(
-        plan, per_file, {"stats": {}}, ["npx"], "a" * 40, "origin/main", dirty=False
+        plan, per_file, {"stats": {}}, [["npx"]], "a" * 40, "origin/main", dirty=False
     )
 
     assert "**Local Playwright run: NO TESTS EXECUTED**" in block
@@ -201,3 +201,91 @@ def test_missing_base_ref_exits_with_fetch_hint() -> None:
         assert "git fetch origin main" in str(error.code)
     else:
         raise AssertionError("expected SystemExit for an unknown base ref")
+
+
+CHROMIUM_SUITE = {f"playwright/e2e/Suite{index}.spec.ts" for index in range(50)}
+FIXTURES = {"playwright/e2e/auth.setup.ts", "playwright/e2e/entity-data.setup.ts"}
+INTAKE = "playwright/e2e/Pages/IntakeForm.spec.ts"
+RULES_ENABLED = "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts"
+RULES_DISABLED = "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts"
+DEDICATED = {"IntakeForm", "DataAssetRulesEnabled", "DataAssetRulesDisabled"}
+PROJECT = {
+    INTAKE: "IntakeForm",
+    RULES_ENABLED: "DataAssetRulesEnabled",
+    RULES_DISABLED: "DataAssetRulesDisabled",
+}
+
+
+def fake_lister(specs: list[str]) -> PLANNER.Listing:
+    """Mimics playwright.config.ts: IntakeForm depends on all of chromium, and
+    DataAssetRulesDisabled depends on DataAssetRulesEnabled."""
+    listed = {spec: {PROJECT.get(spec, "chromium")} for spec in specs}
+    listed.update({fixture: {"setup"} for fixture in FIXTURES})
+    if INTAKE in specs:
+        listed.update({spec: {"chromium"} for spec in CHROMIUM_SUITE})
+    if RULES_DISABLED in specs:
+        listed[RULES_ENABLED] = {"DataAssetRulesEnabled"}
+    return PLANNER.Listing(listed, DEDICATED)
+
+
+def test_dependency_expanding_specs_are_split_into_a_no_deps_pass() -> None:
+    specs = [
+        INTAKE,
+        "playwright/e2e/Pages/Policies.spec.ts",
+        RULES_DISABLED,
+        RULES_ENABLED,
+    ]
+
+    main_specs, isolated, extra = PLANNER.split_dependency_expanders(specs, fake_lister)
+
+    # DataAssetRulesDisabled only pulls in a spec that is already planned, so it stays.
+    assert main_specs == [
+        "playwright/e2e/Pages/Policies.spec.ts",
+        RULES_DISABLED,
+        RULES_ENABLED,
+    ]
+    assert isolated == [INTAKE]
+    assert extra == len(CHROMIUM_SUITE)
+
+
+def test_plan_without_expansion_runs_as_one_command() -> None:
+    specs = ["playwright/e2e/Pages/Policies.spec.ts", RULES_DISABLED, RULES_ENABLED]
+
+    assert PLANNER.split_dependency_expanders(specs, fake_lister) == (specs, [], 0)
+
+
+def test_refuses_to_run_when_the_main_pass_still_expands() -> None:
+    specs = ["playwright/e2e/A.spec.ts", "playwright/e2e/B.spec.ts"]
+
+    def catch_all_expands(listed_specs: list[str]) -> PLANNER.Listing:
+        # An expansion through a catch-all project cannot be isolated by spec.
+        projects = {spec: {"chromium"} for spec in [*listed_specs, *CHROMIUM_SUITE]}
+        return PLANNER.Listing(projects, DEDICATED)
+
+    try:
+        PLANNER.split_dependency_expanders(specs, catch_all_expands)
+    except SystemExit as error:
+        assert "Refusing to run" in str(error)
+    else:
+        raise AssertionError("expected the planner to refuse a full-suite run")
+
+
+def test_merge_reports_keeps_both_passes() -> None:
+    first = {
+        "config": {"rootDir": "/e2e"},
+        "suites": [{"file": "A.spec.ts"}],
+        "errors": [],
+        "stats": {"startTime": "t0", "duration": 1000},
+    }
+    second = {
+        "suites": [{"file": "B.spec.ts"}],
+        "errors": ["boom"],
+        "stats": {"startTime": "t1", "duration": 500},
+    }
+
+    merged = PLANNER.merge_reports(first, second)
+
+    assert [suite["file"] for suite in merged["suites"]] == ["A.spec.ts", "B.spec.ts"]
+    assert merged["errors"] == ["boom"]
+    assert merged["stats"] == {"startTime": "t0", "duration": 1500.0}
+    assert merged["config"] == first["config"]
