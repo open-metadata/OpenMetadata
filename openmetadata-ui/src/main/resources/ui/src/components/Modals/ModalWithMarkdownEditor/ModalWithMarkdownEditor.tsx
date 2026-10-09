@@ -59,6 +59,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<
 
   return (
     <ModalOverlay
+      data-testid="markdown-editor"
       isDismissable={false}
       isOpen={visible}
       onOpenChange={(isOpen) => !isOpen && onCancel?.()}>
@@ -66,7 +67,6 @@ export const ModalWithMarkdownEditor: FunctionComponent<
         <Dialog
           aria-label={header}
           className="description-markdown-editor"
-          data-testid="markdown-editor"
           panelClassName="tw:max-w-[90vw]!">
           <Dialog.Header className="tw:border-b tw:border-subtle tw:pb-5">
             <Typography

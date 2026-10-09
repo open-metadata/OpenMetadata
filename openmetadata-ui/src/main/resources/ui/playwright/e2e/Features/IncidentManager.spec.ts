@@ -1094,13 +1094,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       testCaseFqn: table1.testCasesResponseData[2]?.['fullyQualifiedName'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
-    const incidentDetailsRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
-    );
-    await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-    await incidentDetailsRes;
-
     const assignmentStartedAt = Date.now();
+    // assignIncident navigates to Incident Manager itself; a second sidebar
+    // click while already there lands on the half-open Observability submenu.
     await assignIncident({
       page,
       testCaseName: assigneeTestCase.testCaseName,
@@ -1147,6 +1143,13 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       page,
       assigneeTestCase.userDisplayName
     );
+
+    // A multi Autocomplete stays open after a pick, and its popover aria-hides
+    // the chip's remove button from getByRole until it closes.
+    await page
+      .getByTestId('select-assignee')
+      .getByRole('combobox')
+      .press('Escape');
 
     const nonAssigneeFilterRes = page.waitForResponse(
       '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'

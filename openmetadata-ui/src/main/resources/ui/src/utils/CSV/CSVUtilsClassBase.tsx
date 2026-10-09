@@ -2090,6 +2090,20 @@ const getCsvOwnerEditor: CSVEditorFactory = ({
   };
 };
 
+// The modal's focus scope restores focus to the cell node rdg replaced while
+// editing, which leaves focus on <body> and breaks arrow-key navigation.
+// Focus the cell right away, so the next key press is not lost, and again once
+// the scope's own restore has run.
+const focusActiveGridCell = () => {
+  const focusCell = () =>
+    document
+      .querySelector<HTMLElement>('.rdg-cell[aria-selected="true"]')
+      ?.focus();
+
+  focusCell();
+  requestAnimationFrame(() => requestAnimationFrame(focusCell));
+};
+
 const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
   if (options.usePlainTextEditor) {
     return ({
@@ -2129,6 +2143,11 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
     const value = row[column.key];
     const handleSave = async (description: string) => {
       onRowChange({ ...row, [column.key]: description }, true);
+      focusActiveGridCell();
+    };
+    const handleCancel = () => {
+      onClose(false);
+      focusActiveGridCell();
     };
 
     return (
@@ -2139,7 +2158,7 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
           header="Edit Description"
           placeholder="Description"
           value={value}
-          onCancel={() => onClose(false)}
+          onCancel={handleCancel}
           onSave={handleSave}
         />
       </>

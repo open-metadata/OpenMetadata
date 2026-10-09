@@ -151,7 +151,7 @@ const DescriptionSourceBadge = ({
     return (
       <>
         {config.iconOnly ? (
-          <Tooltip excludeTriggerFromTabOrder title={t(config.tooltipKey)}>
+          <Tooltip title={t(config.tooltipKey)}>
             <output
               aria-live="polite"
               className="description-source-icon"
@@ -160,10 +160,7 @@ const DescriptionSourceBadge = ({
             </output>
           </Tooltip>
         ) : (
-          <Tooltip
-            excludeTriggerFromTabOrder
-            isDisabled={!tooltipContent}
-            title={tooltipContent}>
+          <Tooltip title={tooltipContent}>
             <div
               className={classNames(
                 'description-source-badge',

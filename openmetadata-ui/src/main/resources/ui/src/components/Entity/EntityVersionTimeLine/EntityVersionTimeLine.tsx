@@ -103,8 +103,10 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
 
   return (
     <aside
+      aria-label={t('label.version-plural-history')}
       className="versions-list-container"
-      data-testid="versions-list-container">
+      data-testid="versions-list-container"
+      role="dialog">
       <div className="versions-list-header">
         <Box align="center" className="p-b-xss" justify="between">
           <Typography className="font-medium tw:text-primary">
