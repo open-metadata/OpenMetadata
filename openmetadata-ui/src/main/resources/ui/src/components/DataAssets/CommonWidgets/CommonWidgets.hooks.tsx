@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { getGlossarySettings } from '../../../rest/settingConfigAPI';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getEntityVersionByField,
@@ -23,6 +25,7 @@ import {
 } from '../../../utils/EntityVersionUtilsPure';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback, {
   TAB_CONTENT_FALLBACK,
 } from '../../AppRouter/withSuspenseFallback';
@@ -103,7 +106,7 @@ interface TagsUpdateHandler {
  * Wraps the "user changed tags on a tag/glossary widget" flow.
  *
  * For any non-glossary entity, the selected tags are combined with the
- * current tier and pushed straight through onUpdate. For a glossary term the
+ * current tier and pushed straight through onUpdate. When glossary tag propagation is enabled, the
  * selection is captured in local state and a confirmation modal is rendered;
  * onUpdate only fires once the user confirms. Both TagsWidget and
  * GlossaryWidget need this exact flow, so the state and the modal live here
@@ -122,9 +125,18 @@ export const useTagsUpdateHandler = (
       const updatedTags = createTagObject(selectedTags);
 
       if (type === EntityType.GLOSSARY_TERM) {
-        setTagsUpdating(updatedTags);
+        try {
+          const settings = await getGlossarySettings();
+          if (settings.enableTagPropagation !== false) {
+            setTagsUpdating(updatedTags);
 
-        return;
+            return;
+          }
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          return;
+        }
       }
 
       if (updatedTags && data) {

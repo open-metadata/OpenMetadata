@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
+import { GlossarySettings } from '../generated/configuration/glossarySettings';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
@@ -60,6 +61,25 @@ export const updateSettingsConfig = async (payload: Settings) => {
   const response = await axiosClient.put<Settings>(`/system/settings`, payload);
 
   return response;
+};
+
+export const getGlossarySettings = async (): Promise<GlossarySettings> => {
+  const response = await getSettingsConfigFromConfigType(
+    SettingType.GlossarySettings
+  );
+
+  return response.data.config_value as GlossarySettings;
+};
+
+export const updateGlossarySettings = async (
+  config: GlossarySettings
+): Promise<GlossarySettings> => {
+  const response = await updateSettingsConfig({
+    config_type: SettingType.GlossarySettings,
+    config_value: config,
+  });
+
+  return response.data.config_value as GlossarySettings;
 };
 
 export const getCustomUiThemePreference = async () => {

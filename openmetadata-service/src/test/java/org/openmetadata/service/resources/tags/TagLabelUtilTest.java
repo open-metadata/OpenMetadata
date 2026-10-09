@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
 
 import java.util.ArrayList;
@@ -14,15 +15,80 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 class TagLabelUtilTest {
+
+  @Test
+  void disabledGlossaryPropagationSkipsLookupsAndRemovesStaleDerivedLabels() {
+    TagLabel term = new TagLabel().withTagFQN("Glossary.Customer").withSource(TagSource.GLOSSARY);
+    TagLabel direct = new TagLabel().withTagFQN("Classification.Direct");
+    TagLabel derived =
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.DERIVED);
+    List<TagLabel> tags = List.of(direct, term, derived);
+    try (MockedStatic<SettingsCache> settings =
+            mockStatic(SettingsCache.class, CALLS_REAL_METHODS);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      settings
+          .when(
+              () ->
+                  SettingsCache.getSettingOrDefault(
+                      eq(SettingsType.GLOSSARY_SETTINGS),
+                      any(GlossarySettings.class),
+                      eq(GlossarySettings.class)))
+          .thenReturn(new GlossarySettings().withEnableTagPropagation(false));
+      entity
+          .when(Entity::getCollectionDAO)
+          .thenThrow(new AssertionError("Disabled propagation must not fetch glossary tags"));
+
+      assertEquals(Map.of(), TagLabelUtil.batchFetchDerivedTags(tags));
+      assertEquals(List.of(direct, term), TagLabelUtil.addDerivedTags(tags));
+      assertEquals(List.of(direct, term), TagLabelUtil.addDerivedTagsGracefully(tags));
+      assertEquals(
+          List.of(direct, term),
+          TagLabelUtil.addDerivedTagsWithPreFetched(
+              tags, Map.of(FullyQualifiedName.buildHash(term.getTagFQN()), List.of(derived))));
+    }
+  }
+
+  @Test
+  void enabledGlossaryPropagationPreservesDirectAssignments() {
+    TagLabel term = new TagLabel().withTagFQN("Glossary.Customer").withSource(TagSource.GLOSSARY);
+    TagLabel direct = new TagLabel().withTagFQN("PII.Sensitive");
+    TagLabel derived =
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.DERIVED);
+    try (MockedStatic<SettingsCache> settings =
+        mockStatic(SettingsCache.class, CALLS_REAL_METHODS)) {
+      settings
+          .when(
+              () ->
+                  SettingsCache.getSettingOrDefault(
+                      eq(SettingsType.GLOSSARY_SETTINGS),
+                      any(GlossarySettings.class),
+                      eq(GlossarySettings.class)))
+          .thenReturn(new GlossarySettings());
+      assertEquals(
+          List.of(term, direct),
+          TagLabelUtil.addDerivedTagsWithPreFetched(
+              List.of(term, direct),
+              Map.of(FullyQualifiedName.buildHash(term.getTagFQN()), List.of(derived))));
+      assertEquals(
+          List.of(term, derived),
+          TagLabelUtil.addDerivedTagsWithPreFetched(
+              List.of(term),
+              Map.of(FullyQualifiedName.buildHash(term.getTagFQN()), List.of(derived))));
+    }
+  }
 
   @Test
   void populateTagLabel_preservesAppliedByAndAppliedAt() {

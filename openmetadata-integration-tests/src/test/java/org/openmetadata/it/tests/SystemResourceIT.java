@@ -13,6 +13,7 @@
 
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -36,6 +37,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -56,13 +58,19 @@ import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.MetricConfigurationDefinition;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -80,8 +88,15 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.profiler.MetricType;
@@ -96,11 +111,14 @@ import org.openmetadata.schema.system.TestLoginSession;
 import org.openmetadata.schema.system.TestLoginStage;
 import org.openmetadata.schema.system.TestLoginStartRequest;
 import org.openmetadata.schema.system.TestLoginTokenRequest;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -127,6 +145,212 @@ import org.openmetadata.service.util.EntityUtil;
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class SystemResourceIT {
+
+  @Test
+  void testGlossaryTagPropagationPreference(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String settingsPath = "/v1/system/settings/" + SettingsType.GLOSSARY_SETTINGS.value();
+    String original =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, settingsPath, null, RequestOptions.builder().build());
+    String userSettings =
+        SdkClients.user1Client()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, settingsPath, null, RequestOptions.builder().build());
+    assertEquals(MAPPER.readTree(original), MAPPER.readTree(userSettings));
+    assertEquals(
+        403,
+        statusOf(
+            () ->
+                SdkClients.user1Client()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/system/settings",
+                        original,
+                        RequestOptions.builder().build())));
+    assertEquals(
+        400,
+        statusOf(
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/system/settings",
+                        "{\"config_type\":\"glossarySettings\",\"config_value\":{\"enableTagPropagation\":\"invalid\"}}",
+                        RequestOptions.builder().build())));
+
+    try {
+      setGlossaryTagPropagation(true);
+      Classification classification =
+          ns.trackRoot(
+              Entity.CLASSIFICATION,
+              client
+                  .classifications()
+                  .create(
+                      new CreateClassification()
+                          .withName(ns.shortPrefix("propagation"))
+                          .withDescription("Propagation test")));
+      Tag propagated =
+          client
+              .tags()
+              .create(
+                  new CreateTag()
+                      .withName("propagated")
+                      .withClassification(classification.getFullyQualifiedName())
+                      .withDescription("Derived tag"));
+      Tag direct =
+          client
+              .tags()
+              .create(
+                  new CreateTag()
+                      .withName("direct")
+                      .withClassification(classification.getFullyQualifiedName())
+                      .withDescription("Direct tag"));
+      TagLabel propagatedLabel = new TagLabel().withTagFQN(propagated.getFullyQualifiedName());
+      TagLabel directLabel = new TagLabel().withTagFQN(direct.getFullyQualifiedName());
+      Glossary glossary = GlossaryTestFactory.createSimple(ns);
+      GlossaryTerm term =
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName(ns.shortPrefix("term"))
+                      .withGlossary(glossary.getFullyQualifiedName())
+                      .withDescription("Propagation test")
+                      .withTags(List.of(propagatedLabel, directLabel)));
+      TagLabel termLabel =
+          new TagLabel()
+              .withTagFQN(term.getFullyQualifiedName())
+              .withSource(TagLabel.TagSource.GLOSSARY);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+      Table created =
+          client
+              .tables()
+              .create(
+                  new CreateTable()
+                      .withName(ns.shortPrefix("table"))
+                      .withDatabaseSchema(schema.getFullyQualifiedName())
+                      .withTags(List.of(termLabel, directLabel))
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("customer")
+                                  .withDataType(ColumnDataType.STRING)
+                                  .withTags(List.of(termLabel, directLabel)))));
+
+      for (boolean enabled : List.of(true, false, true)) {
+        setGlossaryTagPropagation(enabled);
+        for (int read = 0; read < 2; read++) {
+          Table table = client.tables().get(created.getId().toString(), "tags,columns");
+          assertGlossaryPropagation(
+              table.getTags(), termLabel, directLabel, propagatedLabel, enabled);
+          assertGlossaryPropagation(
+              table.getColumns().getFirst().getTags(),
+              termLabel,
+              directLabel,
+              propagatedLabel,
+              enabled);
+        }
+        Table listed =
+            client
+                .tables()
+                .list(
+                    new ListParams()
+                        .setFields("tags,columns")
+                        .addQueryParam("databaseSchema", schema.getFullyQualifiedName()))
+                .getData()
+                .stream()
+                .filter(table -> table.getId().equals(created.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertGlossaryPropagation(
+            listed.getTags(), termLabel, directLabel, propagatedLabel, enabled);
+        assertGlossaryPropagation(
+            listed.getColumns().getFirst().getTags(),
+            termLabel,
+            directLabel,
+            propagatedLabel,
+            enabled);
+
+        // Reindexing must use the current preference, including after caches were populated.
+        Entity.getSearchRepository()
+            .createEntityIndex(client.tables().get(created.getId().toString(), "*"));
+        await()
+            .atMost(Duration.ofSeconds(30))
+            .untilAsserted(
+                () -> {
+                  JsonNode hits =
+                      MAPPER
+                          .readTree(
+                              client
+                                  .search()
+                                  .query("id:" + created.getId())
+                                  .index("table_search_index")
+                                  .execute())
+                          .path("hits")
+                          .path("hits");
+                  assertEquals(1, hits.size());
+                  JsonNode source = hits.get(0).path("_source");
+                  assertGlossaryPropagation(
+                      JsonUtils.readObjects(source.path("tags").toString(), TagLabel.class),
+                      termLabel,
+                      directLabel,
+                      propagatedLabel,
+                      enabled);
+                  assertGlossaryPropagation(
+                      JsonUtils.readObjects(
+                          source.path("columns").get(0).path("tags").toString(), TagLabel.class),
+                      termLabel,
+                      directLabel,
+                      propagatedLabel,
+                      enabled);
+                });
+      }
+    } finally {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT, "/v1/system/settings", original, RequestOptions.builder().build());
+    }
+  }
+
+  private void setGlossaryTagPropagation(boolean enabled) throws Exception {
+    Settings settings =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_SETTINGS)
+            .withConfigValue(new GlossarySettings().withEnableTagPropagation(enabled));
+    String saved =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                "/v1/system/settings",
+                JsonUtils.pojoToJson(settings),
+                RequestOptions.builder().build());
+    assertEquals(
+        enabled,
+        MAPPER.readTree(saved).path("config_value").path("enableTagPropagation").asBoolean());
+  }
+
+  private void assertGlossaryPropagation(
+      List<TagLabel> tags, TagLabel term, TagLabel direct, TagLabel propagated, boolean enabled) {
+    assertTrue(tags.stream().anyMatch(tag -> tag.getTagFQN().equals(term.getTagFQN())));
+    assertTrue(
+        tags.stream()
+            .anyMatch(
+                tag ->
+                    tag.getTagFQN().equals(direct.getTagFQN())
+                        && tag.getLabelType() == TagLabel.LabelType.MANUAL));
+    List<TagLabel> derived =
+        tags.stream().filter(tag -> tag.getTagFQN().equals(propagated.getTagFQN())).toList();
+    assertEquals(enabled ? 1 : 0, derived.size());
+    if (enabled) {
+      assertEquals(TagLabel.LabelType.DERIVED, derived.getFirst().getLabelType());
+    }
+  }
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String TEST_LOGIN_PATH = "/v1/system/security/test-login";

@@ -57,6 +57,7 @@ import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.LLMConfiguration;
@@ -578,6 +579,14 @@ public class SystemRepository {
       JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
     } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
       JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
+    } else if (setting.getConfigType() == SettingsType.GLOSSARY_SETTINGS) {
+      try {
+        JsonUtils.validateJsonSchema(setting.getConfigValue(), GlossarySettings.class);
+        setting.setConfigValue(
+            JsonUtils.convertValue(setting.getConfigValue(), GlossarySettings.class));
+      } catch (IllegalArgumentException ex) {
+        throw new BadRequestException("Invalid glossary settings", ex);
+      }
     } else if (setting.getConfigType() == SettingsType.SCIM_CONFIGURATION) {
       ScimConfiguration scimConfig =
           JsonUtils.convertValue(setting.getConfigValue(), ScimConfiguration.class);

@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.settings;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
@@ -28,6 +30,34 @@ class SettingsCacheDefaultCaseTest {
   @AfterEach
   void cleanup() {
     SettingsCache.CACHE.invalidate(SettingsType.MCP_CONFIGURATION.toString());
+    SettingsCache.CACHE.invalidate(SettingsType.GLOSSARY_SETTINGS.toString());
+  }
+
+  @Test
+  void glossaryPropagationDefaultsOnAndReflectsSettingsUpdates() {
+    String key = SettingsType.GLOSSARY_SETTINGS.value();
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      SystemRepository repository = mock(SystemRepository.class);
+      entity.when(Entity::getSystemRepository).thenReturn(repository);
+      SettingsCache.CACHE.invalidate(key);
+      assertTrue(SettingsCache.isGlossaryTagPropagationEnabled());
+
+      when(repository.getConfigWithKey(key))
+          .thenReturn(
+              new Settings()
+                  .withConfigType(SettingsType.GLOSSARY_SETTINGS)
+                  .withConfigValue(new GlossarySettings().withEnableTagPropagation(false)));
+      SettingsCache.invalidateSettings(key);
+      assertFalse(SettingsCache.isGlossaryTagPropagationEnabled());
+
+      when(repository.getConfigWithKey(key))
+          .thenReturn(
+              new Settings()
+                  .withConfigType(SettingsType.GLOSSARY_SETTINGS)
+                  .withConfigValue(new GlossarySettings()));
+      SettingsCache.invalidateSettings(key);
+      assertTrue(SettingsCache.isGlossaryTagPropagationEnabled());
+    }
   }
 
   @Test

@@ -20,6 +20,7 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURA
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ENTITY_RULES_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
@@ -64,6 +65,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
@@ -378,6 +380,14 @@ public class SettingsCache {
       Entity.getSystemRepository().createNewSetting(setting);
     }
 
+    if (Entity.getSystemRepository().getConfigWithKey(GLOSSARY_SETTINGS.toString()) == null) {
+      Entity.getSystemRepository()
+          .createNewSetting(
+              new Settings()
+                  .withConfigType(GLOSSARY_SETTINGS)
+                  .withConfigValue(new GlossarySettings()));
+    }
+
     // Initialize Glossary Term Relation Settings with default relation types
     Settings glossaryTermRelationSettings =
         Entity.getSystemRepository().getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.toString());
@@ -630,6 +640,12 @@ public class SettingsCache {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
     }
     return result;
+  }
+
+  public static boolean isGlossaryTagPropagationEnabled() {
+    GlossarySettings settings =
+        getSettingOrDefault(GLOSSARY_SETTINGS, new GlossarySettings(), GlossarySettings.class);
+    return settings == null || !Boolean.FALSE.equals(settings.getEnableTagPropagation());
   }
 
   private static Settings currentSettings(String settingsName) throws ExecutionException {

@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -350,8 +351,8 @@ public class TagLabelUtil {
   }
 
   private static List<TagLabel> getDerivedTags(TagLabel tagLabel) {
-    if (tagLabel.getSource()
-        == TagLabel.TagSource.GLOSSARY) { // Related tags are only supported for Glossary
+    if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY
+        && SettingsCache.isGlossaryTagPropagationEnabled()) {
       List<TagLabel> derivedTags =
           Entity.getCollectionDAO().tagUsageDAO().getTags(tagLabel.getTagFQN());
       derivedTags.forEach(tag -> tag.setLabelType(TagLabel.LabelType.DERIVED));
@@ -362,7 +363,7 @@ public class TagLabelUtil {
 
   /** Batch fetch derived tags for all glossary terms in the list. Returns map of termFQNHash → derived tags. */
   public static Map<String, List<TagLabel>> batchFetchDerivedTags(List<TagLabel> tagLabels) {
-    if (nullOrEmpty(tagLabels)) {
+    if (nullOrEmpty(tagLabels) || !SettingsCache.isGlossaryTagPropagationEnabled()) {
       return Collections.emptyMap();
     }
 
@@ -408,7 +409,9 @@ public class TagLabelUtil {
     EntityUtil.mergeTags(updatedTagLabels, filteredTags);
 
     for (TagLabel tagLabel : tagLabels) {
-      if (tagLabel != null && tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
+      if (tagLabel != null
+          && tagLabel.getSource() == TagLabel.TagSource.GLOSSARY
+          && SettingsCache.isGlossaryTagPropagationEnabled()) {
         List<TagLabel> derivedTags =
             derivedTagsMap.getOrDefault(
                 FullyQualifiedName.buildHash(tagLabel.getTagFQN()), Collections.emptyList());

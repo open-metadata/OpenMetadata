@@ -83,6 +83,18 @@ class SystemResourceSettingsAuthorizationTest {
   }
 
   @Test
+  void nonAdminReadsGlossarySettingsButCannotUpdateThem() {
+    String name = SettingsType.GLOSSARY_SETTINGS.value();
+    Settings stored = new Settings().withConfigType(SettingsType.GLOSSARY_SETTINGS);
+    when(systemRepository.getConfigWithKey(name)).thenReturn(stored);
+
+    assertSame(stored, systemResource.getSettingByName(null, securityContext, name));
+    assertThrows(
+        AuthorizationException.class,
+        () -> systemResource.createOrUpdateSetting(null, securityContext, stored));
+  }
+
+  @Test
   void nonAdminReadsGlossaryTermRelationSettings() {
     Settings stored = storedRelationSettings();
     when(systemRepository.getConfigWithKey(GLOSSARY_RELATION_SETTINGS)).thenReturn(stored);

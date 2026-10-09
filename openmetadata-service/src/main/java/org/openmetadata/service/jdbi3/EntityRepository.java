@@ -6841,7 +6841,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     Optional<List<TagLabel>> bundleTags = getTagsFromReadBundle(entity);
     if (bundleTags.isPresent()) {
-      return bundleTags.get();
+      return addDerivedTagsGracefully(bundleTags.get());
     }
 
     // Try to get from cache first
@@ -6850,7 +6850,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       List<TagLabel> cached = cachedTagUsageDao.getTags(entityType, entity.getId());
       if (cached != null) {
         LOG.debug("CACHE HIT: Retrieved tags from cache for {} {}", entityType, entity.getId());
-        return cached;
+        return addDerivedTagsGracefully(cached);
       }
     }
 

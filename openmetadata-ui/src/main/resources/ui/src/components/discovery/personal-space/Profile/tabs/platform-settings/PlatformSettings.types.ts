@@ -28,7 +28,8 @@ export type PlatformSettingsPageId =
   | 'learning-resources'
   | 'search'
   | 'table-schema'
-  | 'app-mode';
+  | 'app-mode'
+  | 'glossary';
 
 export type PlatformSettingsView =
   | { type: 'landing' }

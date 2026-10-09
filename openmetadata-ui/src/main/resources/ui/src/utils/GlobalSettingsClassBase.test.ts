@@ -80,6 +80,19 @@ describe('GlobalSettingsClassBase', () => {
       ?.items?.find((item) => item.key === 'preferences.loginConfiguration');
 
   describe('getGlobalSettingsMenuWithPermission', () => {
+    it.each([true, false])(
+      'requires admin access for glossary preferences (admin=%s)',
+      (isAdmin) => {
+        const item = globalSettingsClassBase
+          .getGlobalSettingsMenuWithPermission(mockNoPermissions, isAdmin)
+          .find((entry) => entry.key === 'preferences')
+          ?.items?.find((entry) => entry.key === 'preferences.glossary');
+
+        expect(item?.label).toBe('label.glossary');
+        expect(item?.isProtected).toBe(isAdmin);
+      }
+    );
+
     it.each([
       { isAdmin: false, auditLogs: false, expected: false },
       { isAdmin: false, auditLogs: true, expected: true },
