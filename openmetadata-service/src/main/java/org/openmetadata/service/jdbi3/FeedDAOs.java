@@ -352,6 +352,88 @@ public interface FeedDAOs {
 
     @SqlQuery("SELECT count(*) FROM task_entity <cond>")
     int listTasksByCreatedAtCount(@Define("cond") String cond, @BindMap Map<String, ?> params);
+
+    String TASK_SEARCH_PARAM = "taskSearch";
+
+    // A free-text search can't narrow the rows through an index, so filter first and sort only
+    // the matches (e.g. one entity's tasks); paging the name index would check every task.
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
+        return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
+      }
+      return listSearchAfter(
+          filter.getCondition(), filter.getQueryParams(), limit, afterName, afterId);
+    }
+
+    @Override
+    default List<String> listBefore(
+        ListFilter filter, int limit, String beforeName, String beforeId) {
+      if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
+        return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
+      }
+      return listSearchBefore(
+          filter.getCondition(), filter.getQueryParams(), limit, beforeName, beforeId);
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT task_entity.id FROM task_entity "
+                + "IGNORE INDEX (task_entity_name_index) <cond> AND "
+                + "(task_entity.name > :afterName "
+                + "OR (task_entity.name = :afterName AND task_entity.id > :afterId)) "
+                + "ORDER BY task_entity.name, task_entity.id LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.name, task_entity.id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH matched AS MATERIALIZED ("
+                + "SELECT task_entity.id, task_entity.name FROM task_entity <cond> AND "
+                + "(task_entity.name > :afterName "
+                + "OR (task_entity.name = :afterName AND task_entity.id > :afterId))) "
+                + "SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT matched.id FROM matched ORDER BY matched.name, matched.id LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.name, task_entity.id",
+        connectionType = POSTGRES)
+    List<String> listSearchAfter(
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params,
+        @Bind("limit") int limit,
+        @Bind("afterName") String afterName,
+        @Bind("afterId") String afterId);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT task_entity.id FROM task_entity "
+                + "IGNORE INDEX (task_entity_name_index) <cond> AND "
+                + "(task_entity.name < :beforeName "
+                + "OR (task_entity.name = :beforeName AND task_entity.id < :beforeId)) "
+                + "ORDER BY task_entity.name DESC, task_entity.id DESC LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.name, task_entity.id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "WITH matched AS MATERIALIZED ("
+                + "SELECT task_entity.id, task_entity.name FROM task_entity <cond> AND "
+                + "(task_entity.name < :beforeName "
+                + "OR (task_entity.name = :beforeName AND task_entity.id < :beforeId))) "
+                + "SELECT task_entity.json FROM task_entity INNER JOIN ("
+                + "SELECT matched.id FROM matched "
+                + "ORDER BY matched.name DESC, matched.id DESC LIMIT :limit"
+                + ") page_rows ON task_entity.id = page_rows.id "
+                + "ORDER BY task_entity.name, task_entity.id",
+        connectionType = POSTGRES)
+    List<String> listSearchBefore(
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params,
+        @Bind("limit") int limit,
+        @Bind("beforeName") String beforeName,
+        @Bind("beforeId") String beforeId);
   }
 
   interface AnnouncementDAO extends EntityDAO<Announcement> {

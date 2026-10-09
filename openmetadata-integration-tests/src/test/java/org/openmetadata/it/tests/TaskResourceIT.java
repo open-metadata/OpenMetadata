@@ -2363,6 +2363,56 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         "Without q the entity's tasks are all listed");
   }
 
+  @Test
+  void testListEndpointSearchPagesBothWays(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "list-search-paging-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    String about = table.getFullyQualifiedName();
+    String text = "Reconcile ledgers " + ns.prefix("paging");
+    List<UUID> matching = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      matching.add(createTaskWithDisplayName(ns, "list-search-page-" + i, table, text).getId());
+    }
+    createTaskWithDisplayName(ns, "list-search-page-other", table, "Unrelated work");
+
+    JsonNode first = searchPage(about, text, "after", null);
+    JsonNode second = searchPage(about, text, "after", first.path("paging").path("after").asText());
+    JsonNode third = searchPage(about, text, "after", second.path("paging").path("after").asText());
+    List<UUID> forward = new ArrayList<>(pageIds(first));
+    forward.addAll(pageIds(second));
+    forward.addAll(pageIds(third));
+
+    assertEquals(3, forward.size(), "Each page holds one match");
+    assertTrue(forward.containsAll(matching), "Paging forward visits every match once");
+    assertEquals(
+        pageIds(second),
+        pageIds(searchPage(about, text, "before", third.path("paging").path("before").asText())),
+        "Paging back returns the previous page");
+  }
+
+  private JsonNode searchPage(String aboutEntity, String query, String cursorParam, String cursor)
+      throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("aboutEntity", aboutEntity)
+            .queryParam("q", query)
+            .queryParam("limit", "1");
+    if (cursor != null) {
+      options.queryParam(cursorParam, cursor);
+    }
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks", null, options.build());
+    return JsonUtils.readTree(response);
+  }
+
+  private static List<UUID> pageIds(JsonNode page) {
+    List<UUID> ids = new ArrayList<>();
+    page.path("data").forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
   private Task createTaskWithDisplayName(
       TestNamespace ns, String name, Table table, String displayName) {
     return SdkClients.adminClient()

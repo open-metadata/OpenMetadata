@@ -498,3 +498,8 @@ ALTER TABLE storage_container_entity
 -- invalid entry, then re-run the migration.
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_storage_container_entity_parent_children
   ON storage_container_entity (parentFqnHash, deleted, name, id);
+
+-- aboutEntity task lists match `aboutfqnhash LIKE 'hash.%'`, which a plain btree can't serve under a
+-- non-C collation (seq scan); text_pattern_ops as for the 1.13.0 *_fqnhash_pattern indexes.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_about_fqn_hash_pattern
+  ON task_entity (aboutfqnhash text_pattern_ops);
