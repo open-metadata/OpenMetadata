@@ -151,10 +151,8 @@ const ConnectionsPage: React.FC = () => {
 
   const viewToggle = (
     <ButtonGroup
-      className="tw:h-10"
       selectedKeys={[viewMode]}
       selectionMode="single"
-      size="sm"
       onSelectionChange={(keys) => {
         const selected = [...keys][0] as 'grid' | 'list';
         if (selected) {
@@ -162,13 +160,13 @@ const ConnectionsPage: React.FC = () => {
         }
       }}>
       <ButtonGroupItem
-        className="tw:size-10! tw:justify-center tw:p-0! tw:selected:bg-brand-50 tw:selected:text-brand-600"
+        className="tw:selected:bg-brand-primary tw:selected:text-brand-secondary"
         data-testid="grid-view-toggle"
         iconLeading={<LayoutGrid01 height={18} width={18} />}
         id="grid"
       />
       <ButtonGroupItem
-        className="tw:size-10! tw:justify-center tw:p-0! tw:selected:bg-brand-50 tw:selected:text-brand-600"
+        className="tw:selected:bg-brand-primary tw:selected:text-brand-secondary"
         data-testid="list-view-toggle"
         iconLeading={<List height={18} width={18} />}
         id="list"

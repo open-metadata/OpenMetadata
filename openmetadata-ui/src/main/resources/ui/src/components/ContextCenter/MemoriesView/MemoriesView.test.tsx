@@ -13,7 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import {
   ContextMemory,
-  EntityStatus,
+  ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
 
@@ -140,13 +140,18 @@ describe('MemoriesView', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows a retired memory status and its reason', () => {
+  it.each<[ContextMemoryStatus, string]>([
+    [ContextMemoryStatus.Deprecated, 'label.deprecated'],
+    [ContextMemoryStatus.Rejected, 'label.rejected'],
+    [ContextMemoryStatus.Superseded, 'label.superseded'],
+    [ContextMemoryStatus.Invalidated, 'label.invalidated'],
+  ])('shows the %s memory status and its reason', (status, label) => {
     render(
       <MemoriesView
         data={[
           {
             ...mockMemories[0],
-            entityStatus: EntityStatus.Deprecated,
+            entityStatus: status,
             statusReason: 'The replacement has the corrected definition.',
           },
         ]}
@@ -154,7 +159,7 @@ describe('MemoriesView', () => {
       />
     );
 
-    expect(screen.getByText('label.deprecated')).toBeInTheDocument();
+    expect(screen.getByText(label)).toBeInTheDocument();
     expect(
       screen.getByText(/The replacement has the corrected definition/)
     ).toBeInTheDocument();

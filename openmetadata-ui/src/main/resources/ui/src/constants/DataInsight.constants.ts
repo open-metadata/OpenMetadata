@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { RowProps } from 'antd/lib/grid/row';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
@@ -40,10 +39,10 @@ export const BAR_CHART_MARGIN: ChartMargin = {
 };
 
 export const DI_STRUCTURE = {
-  rowContainerGutter: 32 as RowProps['gutter'],
+  rowContainerGutter: 32,
   leftContainerSpan: 16,
   rightContainerSpan: 8,
-  rightRowGutter: [8, 0] as RowProps['gutter'],
+  rightRowGutter: [8, 0] satisfies [number, number],
 };
 
 export const GRAPH_HEIGHT = 500;

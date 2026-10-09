@@ -12,17 +12,19 @@
  */
 
 import { Table, Typography } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ClientErrors } from '../../../../enums/Axios.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -116,7 +118,7 @@ const FailedTestCaseSampleData = ({
     setIsDeleteModalOpen((prev) => !prev);
   };
 
-  const manageButtonContent: ItemType[] = [
+  const manageButtonContent: ManageMenuItem[] = [
     {
       label: (
         <ManageButtonItemLabel
@@ -250,7 +252,13 @@ const FailedTestCaseSampleData = ({
   return (
     <div className="w-full">
       <Space className="m-b-md justify-between w-full">
-        <Typography className="right-panel-label" size="text-sm">
+        {/* not-prose: Typography wraps a heading in .prose, whose h2 style
+            (24px, margins) would otherwise outrank the size classes. */}
+        <Typography
+          as="h2"
+          className="not-prose tw:m-0 tw:text-primary"
+          size="text-md"
+          weight="bold">
           {t('label.sample-data')}
         </Typography>
         <div className="d-flex gap-4">
@@ -266,29 +274,15 @@ const FailedTestCaseSampleData = ({
             </Link>
           )}
           {hasEditPermission && (
-            <Dropdown
-              menu={{
-                items: manageButtonContent,
-              }}
-              open={showActions}
-              overlayClassName="manage-dropdown-list-container"
-              overlayStyle={{ width: '350px' }}
-              placement="bottomRight"
-              trigger={['click']}
-              onOpenChange={setShowActions}>
-              <Tooltip
-                placement="topLeft"
-                title={t('label.manage-entity', {
-                  entity: t('label.sample-data'),
-                })}>
-                <Button
-                  className="flex-center px-1.5"
-                  data-testid="sample-data-manage-button"
-                  onClick={() => setShowActions(true)}>
-                  <IconDropdown className="anticon self-center " />
-                </Button>
-              </Tooltip>
-            </Dropdown>
+            <ManageMenu
+              data-testid="sample-data-manage-button"
+              isOpen={showActions}
+              items={manageButtonContent}
+              label={t('label.manage-entity', {
+                entity: t('label.sample-data'),
+              })}
+              onOpenChange={setShowActions}
+            />
           )}
         </div>
       </Space>

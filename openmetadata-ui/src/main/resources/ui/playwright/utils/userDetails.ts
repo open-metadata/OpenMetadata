@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { clickOutside, redirectToHomePage } from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
 
@@ -50,7 +51,7 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
   await teamSelect.click();
 
   const teamDropdown = page.locator('.ant-tree-select-dropdown').last();
-  await expect(teamDropdown).toBeVisible({ timeout: 30000 });
+  await expect(teamDropdown).toBeVisible({ timeout: ACTION_TIMEOUT });
 
   const directTeamOption = teamDropdown
     .locator('.ant-select-tree-title')
@@ -67,13 +68,15 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
   await teamSelect.locator('input:not([disabled])').first().click();
   await page.keyboard.type(teamName);
 
-  await expect(teamDropdown).toContainText(teamName, { timeout: 30000 });
+  await expect(teamDropdown).toContainText(teamName, {
+    timeout: ACTION_TIMEOUT,
+  });
 
   const teamOption = teamDropdown.getByText(teamName, {
     exact: true,
   });
 
-  await expect(teamOption).toBeVisible({ timeout: 30000 });
+  await expect(teamOption).toBeVisible({ timeout: ACTION_TIMEOUT });
   // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
   await teamOption.click({ force: true });
 };

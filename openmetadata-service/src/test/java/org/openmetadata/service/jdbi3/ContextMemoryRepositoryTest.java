@@ -118,7 +118,7 @@ class ContextMemoryRepositoryTest {
     // A type with no registered repository (index-only / time-series sub-entities such as
     // pipelineStatus) must default to indexable instead of throwing EntityNotFoundException, so the
     // live index paths keep working for it.
-    EntityInterface repoLess = mock(EntityInterface.class);
+    EntityInterface<?> repoLess = mock(EntityInterface.class);
     when(repoLess.getEntityReference())
         .thenReturn(new EntityReference().withType("typeWithoutRepository"));
 
@@ -143,7 +143,7 @@ class ContextMemoryRepositoryTest {
     repositories.put(entityType, mock(EntityTimeSeriesRepository.class));
 
     try {
-      EntityInterface timeSeriesEntity = mock(EntityInterface.class);
+      EntityInterface<?> timeSeriesEntity = mock(EntityInterface.class);
       when(timeSeriesEntity.getEntityReference())
           .thenReturn(new EntityReference().withType(entityType));
 

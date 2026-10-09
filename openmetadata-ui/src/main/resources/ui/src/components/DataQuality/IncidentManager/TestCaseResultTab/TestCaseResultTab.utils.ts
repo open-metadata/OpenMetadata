@@ -14,6 +14,33 @@
 import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { TestDataType } from '../../../../generated/tests/testDefinition';
+import { toFiniteNumber } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
+import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
+
+const NUMERIC_PARAMETER_TYPES = new Set<TestDataType | undefined>([
+  TestDataType.Decimal,
+  TestDataType.Double,
+  TestDataType.Float,
+  TestDataType.Int,
+  TestDataType.Number,
+]);
+
+/**
+ * A number parameter reads like the page's other numbers, thousands grouped.
+ * Only the definition's type says it is a number: a regex or a column name
+ * can look like one.
+ */
+export const formatParameterValue = (
+  value: string | undefined,
+  dataType: TestDataType | undefined
+) => {
+  const number = NUMERIC_PARAMETER_TYPES.has(dataType)
+    ? toFiniteNumber(value)
+    : undefined;
+
+  return isUndefined(number) ? value ?? '' : formatNumber(number);
+};
 
 export const shouldShowEditParameterButton = (
   hasEditPermission: boolean | undefined,
@@ -58,8 +85,13 @@ export const canEditTestCaseParameters = (
   isParameterEdit: boolean
 ): boolean => Boolean(hasEditPermission && isParameterEdit);
 
-export const getSidePanelColSpanClass = (isSidePanelVisible: boolean): string =>
-  isSidePanelVisible ? 'tw:col-span-8' : 'tw:col-span-12';
+// The rail keeps the mock's 320 px where the tab has room (30% of it, at least
+// 260 px), and stacks under the results below 48rem instead of shrinking to a
+// third of the tab, where its rows broke a word per line.
+export const getResultTabGridClass = (isSidePanelVisible: boolean): string =>
+  isSidePanelVisible
+    ? 'tw:grid-cols-1 tw:@3xl:grid-cols-[minmax(0,1fr)_clamp(260px,30%,320px)]'
+    : 'tw:grid-cols-1';
 
 export const resolveIsSidePanelVisible = (
   showSidePanel: boolean | undefined,

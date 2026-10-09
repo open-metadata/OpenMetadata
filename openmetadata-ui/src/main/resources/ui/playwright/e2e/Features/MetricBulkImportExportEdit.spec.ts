@@ -18,6 +18,7 @@ import {
   Page,
 } from '@playwright/test';
 import * as fs from 'fs';
+import { ACTION_TIMEOUT, EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { VIEW_ONLY_RULE } from '../../constant/permission';
@@ -32,6 +33,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { verifyPageAccess } from '../../utils/testCases';
+import { clickUntilVisible } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 interface EntityReference {
@@ -1038,7 +1040,7 @@ test.describe(
     });
 
     test.afterAll(async () => {
-      test.setTimeout(120_000);
+      test.setTimeout(EXTENDED_TEST_TIMEOUT);
       await Promise.allSettled([
         viewOnlyUser?.delete(apiContext),
         viewOnlyRole?.delete(apiContext),
@@ -1091,14 +1093,12 @@ test.describe(
         const trayPopover = page.locator('.csv-jobs-tray-popover');
 
         await expect(trayLauncher.or(trayPopover)).toBeVisible({
-          timeout: 30000,
+          timeout: ACTION_TIMEOUT,
         });
 
-        if (await trayLauncher.isVisible()) {
-          await trayLauncher.click();
-        }
-
-        await expect(trayPopover).toBeVisible();
+        // The job can finish between a visibility check and the click, unmounting
+        // the launcher mid-click; retry until the popover is open either way.
+        await clickUntilVisible(trayLauncher, trayPopover);
         // Verify the export job appears in the tray. Each test uses a dedicated
         // user session so only this test's own job is visible — checking the
         // label is sufficient.
@@ -1788,7 +1788,7 @@ test.describe(
 
       // Wait for STARTED WebSocket event → button becomes enabled
       const cancelBtn = page.getByRole('button', { name: /Cancel Import/i });
-      await expect(cancelBtn).toBeEnabled({ timeout: 30_000 });
+      await expect(cancelBtn).toBeEnabled({ timeout: ACTION_TIMEOUT });
       await cancelBtn.click();
 
       await expect.poll(() => cancelApiCalled, { timeout: 15_000 }).toBe(true);

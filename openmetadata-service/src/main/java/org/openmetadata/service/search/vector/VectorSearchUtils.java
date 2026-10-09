@@ -10,13 +10,13 @@ import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 public final class VectorSearchUtils {
   private VectorSearchUtils() {}
 
-  public static void updateVectorEmbeddingsForOpenSearch(EntityInterface entity) {
+  public static void updateVectorEmbeddingsForOpenSearch(EntityInterface<?> entity) {
     String entityType = entity.getEntityReference().getType();
     updateVectorEmbeddingsForOpenSearch(entity, entityType);
   }
 
   public static void updateVectorEmbeddingsForOpenSearch(
-      EntityInterface entity, String entityType) {
+      EntityInterface<?> entity, String entityType) {
     if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
       return;
     }

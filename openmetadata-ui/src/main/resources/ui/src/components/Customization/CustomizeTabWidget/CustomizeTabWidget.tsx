@@ -12,7 +12,13 @@
  */
 
 import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Dropdown, Input, Modal, Space } from 'antd';
+import {
+  Button as CoreButton,
+  Dropdown,
+  Grid,
+} from '@openmetadata/ui-core-components';
+import { Button, Card, Input, Modal } from 'antd';
+import classNames from 'classnames';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
@@ -26,6 +32,7 @@ import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Page, Tab } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
+import { useLeftPanelCrossDrop } from '../../../hooks/platform/useLeftPanelCrossDrop';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import {
   WidgetCommonProps,
@@ -47,8 +54,13 @@ import {
   getAddWidgetHandler,
   mergeGridLayout,
 } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
-import { getColumnLockedDragHandlers } from '../../../utils/CustomizePage/GridLayoutDragUtils';
+import {
+  getLeftPanelHeight,
+  placeWidgetBesideLeftPanel,
+  placeWidgetInLeftPanel,
+} from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { showInfoToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { CustomPropertiesTabLayoutSection } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesTabLayoutSection';
 import { CustomPropertyLayoutItem } from '../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidget.interface';
@@ -95,10 +107,6 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayout.ReactGridLayoutProps & { children?: React.ReactNode }
 >;
 
-// Side-panel widgets stay in their column and only reorder vertically.
-const COLUMN_LOCKED_DRAG_HANDLERS =
-  getColumnLockedDragHandlers(TAB_GRID_MAX_COLUMNS);
-
 export type CustomizeTabWidgetProps = WidgetCommonProps;
 
 type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
@@ -138,6 +146,31 @@ export const CustomizeTabWidget = () => {
       ? layout
       : getLayoutWithEmptyWidgetPlaceholder(layout, 2, 3);
   }, [items, activeKey]);
+
+  const leftPanelWidget = useMemo(() => {
+    return tabLayouts.find((layout) =>
+      layout.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+    );
+  }, [tabLayouts]);
+
+  const handleLastPanelWidgetKept = useCallback(
+    () => showInfoToast(t('message.at-least-one-widget-in-panel')),
+    [t]
+  );
+
+  const {
+    panelRef,
+    dropTarget,
+    takeDrop,
+    handleTabDrag,
+    handleTabDragStop,
+    handlePanelDrag,
+    handlePanelDragStop,
+  } = useLeftPanelCrossDrop({
+    leftPanelWidget,
+    tabLayout: tabLayouts,
+    onLastPanelWidgetKept: handleLastPanelWidgetKept,
+  });
 
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>('');
@@ -241,6 +274,7 @@ export const CustomizeTabWidget = () => {
 
   const handleSideLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
+      const drop = takeDrop();
       if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
         const newLayout = cloneDeep(tabLayouts);
         const sidePanelLayout = newLayout.find((layout) =>
@@ -256,12 +290,25 @@ export const CustomizeTabWidget = () => {
         updateCurrentPage({
           ...currentPage,
           tabs: items.map((item) =>
-            item.id === activeKey ? { ...item, layout: newLayout } : item
+            item.id === activeKey
+              ? {
+                  ...item,
+                  layout:
+                    drop?.kind === 'out'
+                      ? placeWidgetBesideLeftPanel(
+                          newLayout,
+                          drop.widget,
+                          drop.row,
+                          TAB_GRID_MAX_COLUMNS
+                        )
+                      : newLayout,
+                }
+              : item
           ),
         } as Page);
       }
     },
-    [tabLayouts]
+    [tabLayouts, takeDrop, currentPage, items, activeKey, updateCurrentPage]
   );
 
   const handleWidgetConfigChange = (
@@ -323,12 +370,6 @@ export const CustomizeTabWidget = () => {
     } as Page);
   };
 
-  const leftPanelWidget = useMemo(() => {
-    return tabLayouts.find((layout) =>
-      layout.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
-    );
-  }, [tabLayouts]);
-
   const getWidgetFromLayout = (layout: WidgetConfig[]) => {
     return layout.map((widget) => {
       let widgetComponent = null;
@@ -350,13 +391,29 @@ export const CustomizeTabWidget = () => {
         );
       } else if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
         widgetComponent = (
-          <LeftPanelContainer
-            isEditView
-            key={widget.i}
-            layout={leftPanelWidget?.children ?? ([] as WidgetConfig[])}
-            type={currentPageType as PageType}
-            onUpdate={handleSideLayoutUpdate}
-          />
+          <div
+            className={classNames('tw:rounded-xl', {
+              'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-solid':
+                dropTarget === 'panel',
+              // Dropped here the widget leaves the panel, so the panel's grid
+              // shows no slot for it.
+              'tw:[&_.react-grid-placeholder]:invisible':
+                dropTarget === 'beside',
+            })}
+            data-drop-target={dropTarget ?? undefined}
+            data-testid="left-panel-drop-target"
+            ref={panelRef}>
+            <LeftPanelContainer
+              isEditView
+              editColumns={widget.w}
+              key={widget.i}
+              layout={widget.children ?? ([] as WidgetConfig[])}
+              type={currentPageType as PageType}
+              onDrag={handlePanelDrag}
+              onDragStop={handlePanelDragStop}
+              onUpdate={handleSideLayoutUpdate}
+            />
+          </div>
         );
       } else {
         widgetComponent = (
@@ -371,8 +428,14 @@ export const CustomizeTabWidget = () => {
         );
       }
 
+      // The panel's height comes from the widgets inside it, for the grid only,
+      // so it is not saved over the stored one.
+      const gridItem = widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+        ? { ...widget, h: getLeftPanelHeight(widget.children) }
+        : widget;
+
       return (
-        <div data-grid={widget} id={widget.i} key={widget.i}>
+        <div data-grid={gridItem} id={widget.i} key={widget.i}>
           {widgetComponent}
         </div>
       );
@@ -385,9 +448,14 @@ export const CustomizeTabWidget = () => {
    * during drag operations
    */
   const widgets = useMemo(
-    // Re-render upon leftPanelWidget change
     () => getWidgetFromLayout(tabLayouts),
-    [tabLayouts, leftPanelWidget]
+    [
+      tabLayouts,
+      dropTarget,
+      handlePanelDrag,
+      handlePanelDragStop,
+      handleSideLayoutUpdate,
+    ]
   );
 
   /**
@@ -396,24 +464,43 @@ export const CustomizeTabWidget = () => {
    */
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
+      const drop = takeDrop();
       if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
+        // The grid sizes the panel to its widgets; keep the stored height.
+        const layout = mergeGridLayout(
+          getUniqueFilteredLayout(updatedLayout),
+          tabLayouts
+        ).map((widget) =>
+          widget.i === leftPanelWidget?.i
+            ? { ...widget, h: leftPanelWidget.h }
+            : widget
+        );
+
         updateCurrentPage({
           ...currentPage,
           tabs: items.map((item) =>
             item.id === activeKey
               ? {
                   ...item,
-                  layout: mergeGridLayout(
-                    getUniqueFilteredLayout(updatedLayout),
-                    tabLayouts
-                  ),
+                  layout:
+                    drop?.kind === 'in'
+                      ? placeWidgetInLeftPanel(layout, drop.widget, drop)
+                      : layout,
                 }
               : item
           ),
         } as Page);
       }
     },
-    [tabLayouts]
+    [
+      tabLayouts,
+      leftPanelWidget,
+      takeDrop,
+      currentPage,
+      items,
+      activeKey,
+      updateCurrentPage,
+    ]
   );
 
   const handleMainPanelAddWidget = useCallback(
@@ -440,7 +527,14 @@ export const CustomizeTabWidget = () => {
 
       setIsWidgetModalOpen(false);
     },
-    [tabLayouts]
+    [
+      tabLayouts,
+      currentPageType,
+      currentPage,
+      items,
+      activeKey,
+      updateCurrentPage,
+    ]
   );
 
   // call the hook to set the direction of the grid layout
@@ -470,7 +564,7 @@ export const CustomizeTabWidget = () => {
 
   return (
     <>
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <Card
           bordered={false}
           data-testid="customize-tab-card"
@@ -504,33 +598,34 @@ export const CustomizeTabWidget = () => {
               />
             ))}
             {hiddenTabs.map((item) => (
-              <Dropdown
-                key={item.id}
-                menu={{
-                  items: [
-                    {
-                      label: t('label.show'),
-                      key: 'show',
-                      icon: <EyeFilled />,
-                    },
-                  ],
-                  onClick: () => add(item),
-                }}
-                trigger={['click']}>
-                <Button
+              <Dropdown.Root key={item.id}>
+                <CoreButton
                   className="draggable-hidden-tab-item bg-grey"
-                  data-testid={`tab-${item.name}`}>
-                  <Space>
-                    {getTabDisplayName(item)}
-                    <MoreOutlined />
-                  </Space>
-                </Button>
-              </Dropdown>
+                  color="secondary"
+                  data-testid={`tab-${item.name}`}
+                  iconTrailing={MoreOutlined}>
+                  {getTabDisplayName(item)}
+                </CoreButton>
+                <Dropdown.Popover
+                  className="tw:w-auto"
+                  placement="bottom start">
+                  <Dropdown.Menu
+                    aria-label={getTabDisplayName(item)}
+                    selectionMode="none"
+                    onAction={() => add(item)}>
+                    <Dropdown.Item
+                      icon={EyeFilled}
+                      id="show"
+                      label={t('label.show')}
+                    />
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             ))}
           </div>
         </Card>
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <Card
           bodyStyle={{ padding: 0, paddingBottom: '20px' }}
           bordered={false}
@@ -573,13 +668,14 @@ export const CustomizeTabWidget = () => {
               margin={[16, 16]}
               preventCollision={false}
               rowHeight={100}
-              onLayoutChange={handleLayoutUpdate}
-              {...COLUMN_LOCKED_DRAG_HANDLERS}>
+              onDrag={handleTabDrag}
+              onDragStop={handleTabDragStop}
+              onLayoutChange={handleLayoutUpdate}>
               {widgets}
             </ReactGridLayout>
           )}
         </Card>
-      </Col>
+      </Grid.Item>
 
       {currentPageType && (
         <AddDetailsPageWidgetModal

@@ -15,10 +15,12 @@ Base class for ingesting dashboard services
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from contextlib import closing
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
+from metadata.domain.tags import TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -54,16 +56,17 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
-from metadata.ingestion.api.models import Either, Entity
+from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest, OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -221,6 +224,76 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     dashboard_source_state: set = set()  # noqa: RUF012
     datamodel_source_state: set = set()  # noqa: RUF012
     chart_source_state: set = set()  # noqa: RUF012
+
+    @property
+    def tags_registry(self) -> TagRegistry:
+        """Per-source registry for native dashboard tags."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tags_registry")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
+
+    def yield_tag_definitions(
+        self,
+        *,
+        tags: Iterable[str],
+        classification_name: str,
+        classification_description: str,
+        tag_description: str,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Publish native tag definitions, yielding individual registration failures."""
+        if not self.source_config.includeTags:
+            return
+        for tag in tags:
+            if not tag or not tag.strip():
+                continue
+            try:
+                if not (fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag)):
+                    logger.warning("Skipping invalid tag %r in classification %r", tag, classification_name)
+                    continue
+                self.tags_registry.define(
+                    TagDefinition(classification_name, tag, classification_description, tag_description)
+                )
+            except Exception as exc:
+                yield Either(
+                    right=None,
+                    left=StackTraceError(
+                        name=tag,
+                        error=f"Error registering tag [{tag}]: [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                )
+        if registry := vars(self).get("tags_registry"):
+            with closing(registry.drain()) as definitions:
+                for definition in definitions:
+                    yield Either(right=definition, left=None)
+
+    def get_tag_labels(
+        self, *, entity_fqn: str, tags: Iterable[str] | None, classification_name: str
+    ) -> list[TagLabel] | None:
+        """Copy existing native labels and release the asset's attachments."""
+        if not self.source_config.includeTags or not tags:
+            return None
+        try:
+            for tag in tags:
+                if not tag or not tag.strip():
+                    continue
+                try:
+                    if not (fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag)):
+                        continue
+                    self.tags_registry.attach(
+                        entity_fqn=entity_fqn,
+                        tag=TagDefinition(classification_name, tag, "", ""),
+                    )
+                except Exception as exc:
+                    logger.warning("Unable to attach tag %r to %s: %s", tag, entity_fqn, exc)
+            if registry := vars(self).get("tags_registry"):
+                return registry.labels_for(entity_fqn) or None
+            return None
+        finally:
+            if registry := vars(self).get("tags_registry"):
+                registry.clear_scope(entity_fqn)
 
     def _declare_progress_groups(self, label: str, total: int | None) -> None:
         """Declare the grouping axis (e.g. workspaces) as a global counter.
@@ -413,7 +486,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_lineage_request(
         self,
-        lineage: Either[AddLineageRequest] | None = None,
+        lineage: Either[AddLineageRequest] | Either[OMetaFQNLineageRequest] | None = None,
     ) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Method to yield lineage request

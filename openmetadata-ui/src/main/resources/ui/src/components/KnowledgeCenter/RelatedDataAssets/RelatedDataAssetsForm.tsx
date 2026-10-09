@@ -136,7 +136,10 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
                         <div className="tw:max-w-28">
                           <Typography
                             className="tw:whitespace-nowrap"
-                            ellipsis={{ tooltip: item.label }}
+                            ellipsis={{
+                              tooltip: item.label,
+                              excludeTriggerFromTabOrder: true,
+                            }}
                             size="text-xs">
                             {item.label}
                           </Typography>

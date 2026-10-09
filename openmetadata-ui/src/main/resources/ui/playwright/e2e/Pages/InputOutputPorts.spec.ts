@@ -927,7 +927,9 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-        await expect(page.getByRole('dialog')).toBeVisible();
+        await expect(
+          page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+        ).toBeVisible();
         await expect(
           page.getByText('Are you sure you want to remove')
         ).toBeVisible();

@@ -358,7 +358,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   @Override
   protected String getCsvImportContainerName(
-      TestNamespace ns, org.openmetadata.schema.EntityInterface entity) {
+      TestNamespace ns, org.openmetadata.schema.EntityInterface<?> entity) {
     return entity.getFullyQualifiedName();
   }
 
@@ -1423,6 +1423,29 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table updated = patchEntity(table.getId().toString(), table);
     assertEquals(TableType.Regular, updated.getTableType());
     assertEquals(1, updated.getTableConstraints().size());
+  }
+
+  @Test
+  void put_tableTypeRegularToDeltaLake_keepsSameEntity(TestNamespace ns) {
+    // Connectors re-ingest through PUT, so that is how a Regular table becomes Delta. The type must
+    // flip on the same entity: no new id, no new FQN. The version bump is what proves the server
+    // diffed tableType rather than ignoring the field.
+    CreateTable request = createMinimalRequest(ns);
+    request.setName(ns.prefix("delta_lake_table"));
+    request.setTableType(TableType.Regular);
+
+    Table table = createEntity(request);
+    assertEquals(TableType.Regular, table.getTableType());
+
+    request.setTableType(TableType.DeltaLake);
+    Table updated = SdkClients.adminClient().tables().createOrUpdate(request);
+
+    assertEquals(table.getId(), updated.getId());
+    assertEquals(table.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    assertEquals(TableType.DeltaLake, updated.getTableType());
+    assertTrue(
+        updated.getVersion() > table.getVersion(),
+        "tableType flip must bump the version, otherwise the server never diffed the field");
   }
 
   @Test

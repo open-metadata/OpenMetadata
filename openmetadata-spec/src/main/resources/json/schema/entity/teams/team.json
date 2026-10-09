@@ -3,10 +3,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Team",
   "description": "This schema defines the Team entity. A `Team` is a group of zero or more users and/or other teams. Teams can own zero or more data assets. Hierarchical teams are supported `Organization` -> `BusinessUnit` -> `Division` -> `Department`.",
+  "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.teams.Team",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
     "org.openmetadata.schema.CreationAudited"
   ],
   "definitions": {
@@ -158,6 +159,10 @@
     "domains" : {
       "description": "Domain the Team belongs to.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["id", "name"],
