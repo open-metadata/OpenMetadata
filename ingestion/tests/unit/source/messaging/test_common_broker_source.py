@@ -20,6 +20,7 @@ from cachetools import LRUCache
 from metadata.generated.schema.type.schema import SchemaType
 from metadata.ingestion.source.messaging.common_broker_source import (
     AVRO_DESERIALIZER_CACHE_SIZE,
+    PROTOBUF_DECODER_CACHE_SIZE,
     CommonBrokerSource,
     strip_confluent_framing,
 )
@@ -31,6 +32,7 @@ def _source():
     return SimpleNamespace(
         schema_registry_client=object(),
         _avro_deserializers=LRUCache(maxsize=AVRO_DESERIALIZER_CACHE_SIZE),
+        _protobuf_decoders=LRUCache(maxsize=PROTOBUF_DECODER_CACHE_SIZE),
     )
 
 
@@ -88,8 +90,27 @@ def test_decode_message_strips_confluent_framing_from_json():
     assert result == body.decode("utf-8")
 
 
-def test_decode_message_protobuf_is_not_supported():
-    assert CommonBrokerSource.decode_message(_source(), b"anything", "", SchemaType.Protobuf) == ""
+def test_decode_message_protobuf_decodes_bytes_payload():
+    schema = 'syntax = "proto3";\nmessage Loan { string id = 1; int32 amount = 2; }'
+    # Confluent framing: magic byte, schema id 1, message index [0]; then id="L-1", amount=5.
+    payload = b"\x00\x00\x00\x00\x01\x00" + b"\x0a\x03L-1\x10\x05"
+
+    result = CommonBrokerSource.decode_message(_source(), payload, schema, SchemaType.Protobuf, topic_name="loan")
+
+    assert json.loads(result) == {"id": "L-1", "amount": 5}
+
+
+def test_protobuf_decoder_is_built_once_per_schema():
+    source = _source()
+
+    with patch("metadata.ingestion.source.messaging.common_broker_source.ProtobufMessageDecoder") as mock_decoder:
+        mock_decoder.return_value.return_value = "{}"
+        for _ in range(5):
+            CommonBrokerSource.decode_message(source, b"payload", "schema", SchemaType.Protobuf, topic_name="t")
+        CommonBrokerSource.decode_message(source, b"payload", "other-schema", SchemaType.Protobuf, topic_name="t")
+
+    assert mock_decoder.call_count == 2
+    mock_decoder.assert_any_call("t", "schema")
 
 
 def test_decode_message_non_avro_handles_bytes_and_decoded_values():
