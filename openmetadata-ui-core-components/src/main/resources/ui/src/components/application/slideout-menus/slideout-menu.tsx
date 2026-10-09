@@ -27,7 +27,7 @@ export const ModalOverlay = (props: ModalOverlayProps) => {
       {...props}
       className={(state) =>
         cx(
-          'tw:fixed tw:inset-0 tw:z-50 tw:flex tw:min-h-dvh tw:w-full tw:items-center tw:justify-end tw:bg-overlay/70 tw:pl-6 tw:outline-hidden tw:ease-linear tw:md:pl-10',
+          'tw:fixed tw:inset-0 tw:flex tw:min-h-dvh tw:w-full tw:items-center tw:justify-end tw:bg-overlay/70 tw:pl-6 tw:outline-hidden tw:ease-linear tw:md:pl-10',
           state.isEntering && 'tw:duration-300 tw:animate-in tw:fade-in',
           state.isExiting && 'tw:duration-500 tw:animate-out tw:fade-out',
           typeof props.className === 'function'
