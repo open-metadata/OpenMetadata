@@ -68,6 +68,7 @@ jest.mock('../../../common/DomainLabel/DomainLabel.component', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
   TooltipTrigger: jest
     .fn()

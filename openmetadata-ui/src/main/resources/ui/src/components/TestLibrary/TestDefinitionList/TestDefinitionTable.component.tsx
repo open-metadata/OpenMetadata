@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@openmetadata/ui-core-components/icons';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -199,7 +199,12 @@ const TestDefinitionTable = ({
     }
 
     return (
-      <Space size={0}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={0}
+        itemClassName="layout-space-item">
         <Tooltip title={editTooltip}>
           <Button
             data-testid={`edit-test-definition-${record.name}`}
@@ -219,7 +224,7 @@ const TestDefinitionTable = ({
             onClick={() => onDelete(record)}
           />
         </Tooltip>
-      </Space>
+      </Box>
     );
   };
 
