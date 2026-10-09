@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Alert, Col, Row } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Alert } from 'antd';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,7 @@ import { ReactComponent as AnnouncementsEmptyIcon } from '../../../assets/svg/an
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -70,12 +71,16 @@ function AnnouncementsWidget({
 
     return (
       <div className="announcement-container-list">
-        <Row gutter={[8, 8]}>
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(8, 8)}>
           {announcements.map((item) => {
             const fqn = getEntityFQN(item.entityLink ?? '');
 
             return (
-              <Col data-testid={`announcement-${fqn}`} key={item.id} span={24}>
+              <Grid.Item
+                className="layout-column"
+                data-testid={`announcement-${fqn}`}
+                key={item.id}
+                span={24}>
                 <Alert
                   className="right-panel-announcement"
                   description={
@@ -106,10 +111,10 @@ function AnnouncementsWidget({
                   }
                   type="info"
                 />
-              </Col>
+              </Grid.Item>
             );
           })}
-        </Row>
+        </Grid>
       </div>
     );
   }, [isAnnouncementLoading, announcements]);
@@ -118,13 +123,13 @@ function AnnouncementsWidget({
     <div
       className="announcement-container card-widget h-full"
       data-testid="announcement-container">
-      <Row justify="space-between">
-        <Col>
+      <Box className="layout-row" justify="between" wrap="wrap">
+        <Box className="layout-column tw:block">
           <Typography as="p" className="font-medium m-b-sm">
             {t('label.recent-announcement-plural')}
           </Typography>
-        </Col>
-      </Row>
+        </Box>
+      </Box>
       {announcement}
     </div>
   );
