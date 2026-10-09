@@ -1295,7 +1295,9 @@ export const createDescriptionTaskForGlossary = async (
       page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
-    const assigneeField = page.getByTestId('select-assignee').getByRole('combobox');
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
@@ -1346,7 +1348,9 @@ export const createTagTaskForGlossary = async (
     ).toBeDisabled();
   } else {
     // select assignee
-    const assigneeField = page.getByTestId('select-assignee').getByRole('combobox');
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${value.assignee}**&index=user%2Cteam*`

@@ -125,7 +125,9 @@ export const createDescriptionTask = async (
       page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
-    const assigneeField = page.getByTestId('select-assignee').getByRole('combobox');
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     await assigneeField.fill(value.assignee);
 
@@ -167,7 +169,9 @@ export const createTagTask = async (
     ).toBeDisabled();
   } else {
     // select assignee
-    const assigneeField = page.getByTestId('select-assignee').getByRole('combobox');
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     await assigneeField.fill(value.assignee);
 
