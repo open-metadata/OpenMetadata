@@ -19,8 +19,8 @@
   user-select: none;
   box-shadow: var(--om-shadow-xs);
   border-radius: var(--om-radius-10);
-  background-color: var(--om-color-bg-primary);
-  border: var(--om-space-1) solid var(--om-color-border-primary);
+  background-color: var(--tw-background-color-surface);
+  border: var(--om-space-1) solid var(--tw-border-color-primary);
   box-sizing: border-box;
   width: 100%;
   height: 100%;
@@ -50,7 +50,7 @@
       content: '';
       position: absolute;
       inset: calc(-1 * var(--om-space-4)) var(--om-space-4) 0;
-      border: var(--om-space-1) solid var(--om-color-border-secondary);
+      border: var(--om-space-1) solid var(--tw-border-color-secondary);
       border-radius: var(--om-radius-10);
       z-index: -1;
     }
@@ -62,12 +62,12 @@
   // Design: the subject card carries a brand border with a soft brand halo so
   // it reads as the centre of the graph at any zoom.
   &.kg-node-root {
-    border-color: var(--om-color-brand-500);
-    box-shadow: 0 0 0 var(--om-space-4) var(--om-color-brand-100),
+    border-color: var(--tw-color-fg-brand-primary);
+    box-shadow: 0 0 0 var(--om-space-4) var(--tw-color-utility-brand-100),
       var(--om-shadow-md);
   }
   &.kg-node-gap {
-    border-color: var(--om-color-orange-dark-600);
+    border-color: var(--tw-color-fg-warning-primary);
     border-style: dashed;
   }
 
@@ -85,7 +85,7 @@
     flex-shrink: 0;
     width: var(--om-space-28);
     height: var(--om-space-28);
-    color: var(--om-color-text-tertiary);
+    color: var(--tw-text-color-tertiary);
   }
 
   // Design typography: 13.5/11 on cards, 15.5 on the subject; the closest
@@ -95,7 +95,7 @@
     font-size: var(--om-font-size-13);
     font-weight: var(--om-font-weight-semibold);
     line-height: var(--om-line-height-tight);
-    color: var(--om-color-text-primary);
+    color: var(--tw-text-color-primary);
   }
 
   .kg-node-type {
@@ -103,7 +103,7 @@
     font-size: var(--om-font-size-11);
     font-weight: var(--om-font-weight-medium);
     line-height: var(--om-line-height-snug);
-    color: var(--om-color-text-tertiary);
+    color: var(--tw-text-color-tertiary);
   }
 
   .kg-node-count {
@@ -122,13 +122,13 @@
     display: block;
     font-size: var(--om-font-size-xs);
     line-height: var(--om-line-height-relaxed);
-    color: var(--om-color-text-secondary);
+    color: var(--tw-text-color-secondary);
   }
 
   .kg-node-more {
     font-size: var(--om-font-size-11);
     font-weight: var(--om-font-weight-medium);
-    color: var(--om-color-text-quaternary);
+    color: var(--tw-text-color-quaternary);
   }
 
   &.kg-node-root .kg-node-name {
@@ -145,13 +145,13 @@
     border-radius: var(--om-radius-sm);
     border-width: var(--om-space-1);
     border-style: solid;
-    border-color: var(--om-color-border-primary);
+    border-color: var(--tw-border-color-primary);
     white-space: nowrap;
   }
 
   &.highlighted {
     box-shadow: var(--om-shadow-md);
-    border-color: var(--om-color-border-brand);
+    border-color: var(--tw-border-color-brand);
   }
 
   // Non-focused nodes stay visible as context but stop competing with the
@@ -161,7 +161,7 @@
   }
 
   &:focus-visible {
-    outline: var(--om-space-2) solid var(--om-color-border-brand);
+    outline: var(--om-space-2) solid var(--tw-border-color-brand);
     outline-offset: var(--om-space-2);
   }
 

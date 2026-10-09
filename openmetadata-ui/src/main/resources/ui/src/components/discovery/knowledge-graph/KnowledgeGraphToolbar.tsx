@@ -11,192 +11,230 @@
  *  limitations under the License.
  */
 
+import type {
+  TreeSelectDataResponse,
+  TreeSelectNode,
+} from '@openmetadata/ui-core-components';
 import {
   Box,
   Button,
   ButtonGroup,
   ButtonGroupItem,
   Checkbox,
-  Dropdown,
-  Input,
   Popover,
   PopoverTrigger,
   Select,
+  TreeSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   BookClosed,
-  ChevronDown,
   Dataflow02,
   Expand01,
-  FilterLines,
   Minimize01,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
-import { useMemo, useState } from 'react';
-import type { Selection } from 'react-aria-components';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Heading } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { GraphFilterOption } from '../../../types/knowledgeGraph.types';
 import { normalizeGraphLevel } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import {
+  groupEntityTypeChoices,
+  KnowledgeGraphEntityGroupSection,
+} from '../../../utils/discovery/knowledge-graph/knowledgeGraphEntityGroups';
+import {
+  groupRelationshipTypeChoices,
+  KnowledgeGraphRelationshipGroupSection,
+} from '../../../utils/discovery/knowledge-graph/knowledgeGraphRelationshipGroups';
 import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
 import ExportGraphPanel from '../../OntologyExplorer/ExportGraphPanel';
 import { ExportFormat } from '../../OntologyExplorer/ExportGraphPanel.interface';
 import { KnowledgeGraphToolbarProps } from './KnowledgeGraph.interface';
-import {
-  getRelationStyle,
-  RELATION_CATEGORIES,
-} from './KnowledgeGraph.relations';
 
 type GraphControl = 'level' | 'find' | 'view';
 
-const GraphFilterControls = ({
+/**
+ * Sentinel prefix for parent (group) TreeSelect node ids. Cascade selection
+ * will add the parent's own value when a group is picked; filtering it out by
+ * prefix prevents it from leaking into `filters.{entityTypes|relationshipTypes}`.
+ * Kept colon-free so the id is a well-formed `data-testid` suffix.
+ */
+const GROUP_ID_PREFIX = '__group__';
+
+const isGroupId = (value: string) => value.startsWith(GROUP_ID_PREFIX);
+
+interface GroupedSection<T extends string> {
+  key: T;
+  labelKey: string;
+  choices: GraphFilterOption[];
+}
+
+/** Build a TreeSelect root list from grouped sections — each group becomes a
+ *  parent node (sentinel id, aggregated count), each choice becomes a leaf. */
+const sectionsToTreeNodes = <T extends string>(
+  sections: GroupedSection<T>[],
+  t: (key: string) => string
+): TreeSelectNode[] =>
+  sections.map((section) => ({
+    id: GROUP_ID_PREFIX + section.key,
+    value: GROUP_ID_PREFIX + section.key,
+    label: t(section.labelKey),
+    isLeaf: false,
+    count: section.choices.reduce((sum, item) => sum + item.count, 0),
+    children: section.choices.map((choice) => ({
+      id: choice.id,
+      value: choice.id,
+      label: choice.label,
+      isLeaf: true,
+      count: choice.count,
+    })),
+  }));
+
+/** Index every leaf node in a tree by its id for value-array round-tripping. */
+const indexLeaves = (roots: TreeSelectNode[]): Map<string, TreeSelectNode> => {
+  const index = new Map<string, TreeSelectNode>();
+  const visit = (nodes: TreeSelectNode[]) =>
+    nodes.forEach((node) => {
+      if (node.isLeaf) {
+        index.set(node.id, node);
+      }
+      if (node.children?.length) {
+        visit(node.children);
+      }
+    });
+  visit(roots);
+
+  return index;
+};
+
+interface PickerProps {
+  filters: KnowledgeGraphToolbarProps['filters'];
+  filterOptions: KnowledgeGraphToolbarProps['filterOptions'];
+  onFiltersChange: KnowledgeGraphToolbarProps['onFiltersChange'];
+}
+
+const toLeafIds = (
+  selected: TreeSelectNode | TreeSelectNode[] | null
+): string[] => {
+  if (!selected) {
+    return [];
+  }
+  const list = Array.isArray(selected) ? selected : [selected];
+
+  return list.map((node) => node.value).filter((id) => !isGroupId(id));
+};
+
+/**
+ * Entity Type picker — tree view (expandable groups, cascade selection) using
+ * the shared core TreeSelect, so it reads like the glossary-term filter
+ * (Databases → Table / Schema / Column, …). Selection writes only leaf ids
+ * into `filters.entityTypes`; the parent sentinel is filtered out.
+ */
+const EntityTypePicker = ({
   filters,
   filterOptions,
-  excludedFamilies,
-  familyCounts,
-  onToggleFamily,
-  onClearFilters,
   onFiltersChange,
-}: Pick<
-  KnowledgeGraphToolbarProps,
-  | 'filters'
-  | 'filterOptions'
-  | 'excludedFamilies'
-  | 'familyCounts'
-  | 'onToggleFamily'
-  | 'onClearFilters'
-  | 'onFiltersChange'
->) => {
+}: PickerProps) => {
   const { t } = useTranslation();
-  const [entitySearch, setEntitySearch] = useState('');
-  const [relationshipSearch, setRelationshipSearch] = useState('');
-  const selectFilter = (
-    field: 'entityTypes' | 'relationshipTypes',
-    keys: Selection
-  ) => {
-    onFiltersChange({
-      ...filters,
-      [field]:
-        keys === 'all'
-          ? (filterOptions?.[field] ?? []).map((item) => item.id)
-          : Array.from(keys, String),
-    });
-  };
+  const roots = useMemo<TreeSelectNode[]>(() => {
+    const sections: KnowledgeGraphEntityGroupSection[] = groupEntityTypeChoices(
+      filterOptions?.entityTypes ?? []
+    );
+
+    return sectionsToTreeNodes(sections, t);
+  }, [filterOptions?.entityTypes, t]);
+  const leafById = useMemo(() => indexLeaves(roots), [roots]);
+  const value = useMemo<TreeSelectNode[]>(
+    () =>
+      filters.entityTypes
+        .map((id) => leafById.get(id))
+        .filter((node): node is TreeSelectNode => node !== undefined),
+    [filters.entityTypes, leafById]
+  );
+  // TreeSelect fetches once on mount and does not re-call fetchData when its
+  // identity changes (eslint-disabled dep on `useTreeSelectData`). The scene
+  // aggregation that populates filterOptions is async, so on first paint
+  // roots is empty — remount the picker once real data arrives.
+  const rootsRef = useRef(roots);
+  rootsRef.current = roots;
+  const fetchData = useCallback(
+    async (): Promise<TreeSelectDataResponse> => ({ nodes: rootsRef.current }),
+    []
+  );
 
   return (
-    <Box align="center" gap={3} wrap="wrap">
-      {RELATION_CATEGORIES.filter((family) => familyCounts[family] > 0).map(
-        (family) => (
-          <Button
-            aria-pressed={!excludedFamilies.includes(family)}
-            className="tw:rounded-full"
-            color="secondary"
-            data-testid={'graph-filter-family-' + family}
-            key={family}
-            size="xs"
-            onPress={() => onToggleFamily(family)}>
-            <Box align="center" gap={1}>
-              <svg aria-hidden="true" height="10" width="10">
-                <circle
-                  cx="5"
-                  cy="5"
-                  fill={getRelationStyle(family).color}
-                  r="4"
-                />
-              </svg>
-              {t(getRelationStyle(family).labelKey)} {familyCounts[family]}
-            </Box>
-          </Button>
-        )
-      )}
-      <Dropdown.Root onOpenChange={() => setEntitySearch('')}>
-        <Button
-          color="secondary"
-          iconTrailing={ChevronDown}
-          isDisabled={!filterOptions?.entityTypes.length}
-          size="sm">
-          {t('label.entity-type')}
-          {filters.entityTypes.length > 0
-            ? ' (' + filters.entityTypes.length + ')'
-            : ''}
-        </Button>
-        <Dropdown.Popover>
-          <Box className="tw:px-3 tw:py-2">
-            <Input
-              aria-label={t('label.entity-type')}
-              placeholder={t('label.search')}
-              size="sm"
-              value={entitySearch}
-              onChange={setEntitySearch}
-              onKeyDown={(event) => event.stopPropagation()}
-            />
-          </Box>
-          <Dropdown.Menu
-            disallowEmptySelection={false}
-            items={(filterOptions?.entityTypes ?? []).filter((item) =>
-              item.label.toLowerCase().includes(entitySearch.toLowerCase())
-            )}
-            selectedKeys={new Set(filters.entityTypes)}
-            selectionMode="multiple"
-            onSelectionChange={(keys) => selectFilter('entityTypes', keys)}>
-            {(item) => (
-              <Dropdown.Item
-                showCheckbox
-                id={item.id}
-                label={item.label + ' (' + item.count + ')'}
-              />
-            )}
-          </Dropdown.Menu>
-        </Dropdown.Popover>
-      </Dropdown.Root>
-      <Dropdown.Root onOpenChange={() => setRelationshipSearch('')}>
-        <Button
-          color="secondary"
-          iconTrailing={ChevronDown}
-          isDisabled={!filterOptions?.relationshipTypes.length}
-          size="sm">
-          {t('label.relationship-type')}
-          {filters.relationshipTypes.length > 0
-            ? ' (' + filters.relationshipTypes.length + ')'
-            : ''}
-        </Button>
-        <Dropdown.Popover>
-          <Box className="tw:px-3 tw:py-2">
-            <Input
-              aria-label={t('label.relationship-type')}
-              placeholder={t('label.search')}
-              size="sm"
-              value={relationshipSearch}
-              onChange={setRelationshipSearch}
-              onKeyDown={(event) => event.stopPropagation()}
-            />
-          </Box>
-          <Dropdown.Menu
-            disallowEmptySelection={false}
-            items={(filterOptions?.relationshipTypes ?? []).filter((item) =>
-              item.label
-                .toLowerCase()
-                .includes(relationshipSearch.toLowerCase())
-            )}
-            selectedKeys={new Set(filters.relationshipTypes)}
-            selectionMode="multiple"
-            onSelectionChange={(keys) =>
-              selectFilter('relationshipTypes', keys)
-            }>
-            {(item) => (
-              <Dropdown.Item
-                showCheckbox
-                id={item.id}
-                label={item.label + ' (' + item.count + ')'}
-              />
-            )}
-          </Dropdown.Menu>
-        </Dropdown.Popover>
-      </Dropdown.Root>
-      <Button color="link-gray" size="sm" onPress={onClearFilters}>
-        {t('label.clear-filter-plural')}
-      </Button>
-    </Box>
+    <TreeSelect
+      bordered
+      cascadeSelection
+      multiple
+      searchable
+      showSelectAll
+      data-testid="graph-entity-type-filter"
+      disabled={roots.length === 0}
+      fetchData={fetchData}
+      key={roots.length === 0 ? 'empty' : 'ready'}
+      label={t('label.entity-type')}
+      triggerVariant="button"
+      value={value}
+      onChange={(selected) =>
+        onFiltersChange({ ...filters, entityTypes: toLeafIds(selected) })
+      }
+    />
+  );
+};
+
+/**
+ * Relationship Type picker — same TreeSelect shell, parents are
+ * RelationCategory families (Lineage, Structure, Ontology, …) and leaves are
+ * the individual predicates that classify under each.
+ */
+const RelationshipTypePicker = ({
+  filters,
+  filterOptions,
+  onFiltersChange,
+}: PickerProps) => {
+  const { t } = useTranslation();
+  const roots = useMemo<TreeSelectNode[]>(() => {
+    const sections: KnowledgeGraphRelationshipGroupSection[] =
+      groupRelationshipTypeChoices(filterOptions?.relationshipTypes ?? []);
+
+    return sectionsToTreeNodes(sections, t);
+  }, [filterOptions?.relationshipTypes, t]);
+  const leafById = useMemo(() => indexLeaves(roots), [roots]);
+  const value = useMemo<TreeSelectNode[]>(
+    () =>
+      filters.relationshipTypes
+        .map((id) => leafById.get(id))
+        .filter((node): node is TreeSelectNode => node !== undefined),
+    [filters.relationshipTypes, leafById]
+  );
+  // Same mount-once caveat as the Entity Type picker; see the comment there.
+  const rootsRef = useRef(roots);
+  rootsRef.current = roots;
+  const fetchData = useCallback(
+    async (): Promise<TreeSelectDataResponse> => ({ nodes: rootsRef.current }),
+    []
+  );
+
+  return (
+    <TreeSelect
+      bordered
+      cascadeSelection
+      multiple
+      searchable
+      showSelectAll
+      data-testid="graph-relationship-type-filter"
+      disabled={roots.length === 0}
+      fetchData={fetchData}
+      key={roots.length === 0 ? 'empty' : 'ready'}
+      label={t('label.relationship-type')}
+      triggerVariant="button"
+      value={value}
+      onChange={(selected) =>
+        onFiltersChange({ ...filters, relationshipTypes: toLeafIds(selected) })
+      }
+    />
   );
 };
 
@@ -210,15 +248,10 @@ const KnowledgeGraphToolbar = ({
   filterOptions,
   presentation,
   showBands,
-  excludedFamilies,
-  familyCounts,
   ontology,
   viewport,
   onPresentationChange,
   onToggleBands,
-  onToggleFamily,
-  onClearFilters,
-  hasFilters = false,
   onFindNode,
   onLevelChange,
   onLayoutChange,
@@ -231,7 +264,6 @@ const KnowledgeGraphToolbar = ({
   onExportCsv,
 }: KnowledgeGraphToolbarProps) => {
   const { t } = useTranslation();
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [findText, setFindText] = useState('');
   const [openControl, setOpenControl] = useState<GraphControl | null>(null);
   const changeOpenControl = (control: GraphControl, open: boolean) => {
@@ -243,10 +275,6 @@ const KnowledgeGraphToolbar = ({
       return current === control ? null : current;
     });
   };
-  const filterCount =
-    filters.entityTypes.length +
-    filters.relationshipTypes.length +
-    excludedFamilies.length;
   const levels = [
     {
       id: '1',
@@ -383,16 +411,16 @@ const KnowledgeGraphToolbar = ({
           }}>
           {(item) => <Select.Item {...item} />}
         </Select.ComboBox>
-        <Button
-          aria-expanded={filtersOpen}
-          color="secondary"
-          data-testid="graph-filters-toggle"
-          iconLeading={FilterLines}
-          size="sm"
-          onPress={() => setFiltersOpen((open) => !open)}>
-          {t('label.filter-plural')}
-          {filterCount > 0 ? ' (' + filterCount + ')' : ''}
-        </Button>
+        <EntityTypePicker
+          filterOptions={filterOptions}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+        />
+        <RelationshipTypePicker
+          filterOptions={filterOptions}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+        />
         <Box align="center" className="tw:ml-auto" gap={2}>
           <PopoverTrigger
             isOpen={openControl === 'view'}
@@ -492,6 +520,7 @@ const KnowledgeGraphToolbar = ({
               </Box>
             </Popover>
           </PopoverTrigger>
+
           <Button
             aria-label={t(
               viewport.isFullscreen
@@ -508,17 +537,6 @@ const KnowledgeGraphToolbar = ({
           />
         </Box>
       </Box>
-      {(filtersOpen || hasFilters) && (
-        <GraphFilterControls
-          excludedFamilies={excludedFamilies}
-          familyCounts={familyCounts}
-          filterOptions={filterOptions}
-          filters={filters}
-          onClearFilters={onClearFilters}
-          onFiltersChange={onFiltersChange}
-          onToggleFamily={onToggleFamily}
-        />
-      )}
     </Box>
   );
 };

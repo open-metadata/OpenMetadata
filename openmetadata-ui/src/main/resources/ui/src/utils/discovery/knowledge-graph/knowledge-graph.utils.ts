@@ -121,7 +121,7 @@ export const getColorSetForType = (
           NODE_NEUTRAL_COLOR.token,
           NODE_NEUTRAL_COLOR.fallback
         ),
-        light: resolveCssColor('var(--om-color-gray-50)', '#fafafa'),
+        light: resolveCssColor('var(--color-utility-gray-50)', '#fafafa'),
       };
 };
 
@@ -877,8 +877,8 @@ const radialPort = (
   key,
   placement,
   r: RADIAL_PORT_RADIUS,
-  fill: WHITE_COLOR,
-  stroke: LITE_GRAY_COLOR,
+  fill: resolveCssColor('var(--color-bg-primary)', WHITE_COLOR),
+  stroke: resolveCssColor('var(--color-border-secondary)', LITE_GRAY_COLOR),
   lineWidth: RADIAL_PORT_LINE_WIDTH,
 });
 
@@ -1024,12 +1024,9 @@ export const buildEdgeBaseStyle = (
     labelText: showLabels ? labelText : '',
     labelFontSize: EDGE_LABEL_FONT_SIZE,
     labelFontWeight: 500,
-    labelFill: resolveCssColor('var(--om-color-text-secondary)', '#414651'),
+    labelFill: resolveCssColor('var(--color-text-secondary)', '#414651'),
     labelBackground: showLabels,
-    labelBackgroundFill: resolveCssColor(
-      'var(--om-color-bg-primary)',
-      '#ffffff'
-    ),
+    labelBackgroundFill: resolveCssColor('var(--color-bg-primary)', '#ffffff'),
     labelBackgroundOpacity: 1,
     // Design: a white pill outlined in the family colour, so the label reads as
     // an annotation of its edge rather than as a second line of card text.

@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Input,
-  Select,
   Table,
   Tabs,
   Typography,
@@ -62,10 +61,8 @@ interface DetailsProps {
     partial: boolean;
   };
   coverage: Map<string, MappingCoverage>;
-  coverageMode: string;
   relationshipScope?: { label: string; edgeIds: string[] } | null;
   onClearRelationshipScope?: () => void;
-  onCoverageMode: (mode: 'all' | 'mapped' | 'unmapped' | 'highlight') => void;
   onDrawerChange: (drawer: KnowledgeGraphDrawer) => void;
   onSelect: (kind: 'node' | 'edge', id: string) => void;
   onClose: () => void;
@@ -91,7 +88,14 @@ interface DetailRow {
 
 /** Rows revealed per "Show more", matching the design's paging of the list. */
 const PAGE_SIZE = 40;
-const COVERAGE_STATUSES: MappingCoverage[] = ['mapped', 'unmapped', 'unknown'];
+const NOT_EXPLORED: MappingCoverage = 'not-explored';
+const COVERAGE_STATUSES: MappingCoverage[] = [
+  'mapped',
+  'unmapped',
+  NOT_EXPLORED,
+];
+/** Gaps surfaces only the actionable statuses — mapped rows aren't a gap. */
+const GAPS_STATUSES: MappingCoverage[] = ['unmapped', NOT_EXPLORED];
 
 const CELL_TONES: Record<CellTone, string> = {
   mono: 'tw:font-mono tw:text-primary',
@@ -110,10 +114,10 @@ const getColumnCoverage = (
     return 'mapped';
   }
   if (node) {
-    return coverage.get(node.id) ?? 'unknown';
+    return coverage.get(node.id) ?? NOT_EXPLORED;
   }
 
-  return 'unknown';
+  return NOT_EXPLORED;
 };
 
 const DETAIL_LABELS = {
@@ -157,10 +161,45 @@ const coverageCell = (
     return { text: t('label.kg-mapped'), tone: 'success' };
   }
   if (status === 'unmapped') {
-    return { text: t('label.kg-no-glossary-term'), tone: 'warning' };
+    // Name the actual missing thing per the designer's review — the row is
+    // in Gaps because this field is empty, so the cell says what to add.
+    return { text: t('label.kg-missing-glossary-term'), tone: 'warning' };
   }
 
-  return { text: t('label.kg-unknown'), tone: 'muted' };
+  // "not-explored" means the node sits outside the current traversal depth.
+  // Name that explicitly so the user understands the row needs level-bumping,
+  // not a mapping action.
+  return { text: t('label.kg-outside-current-level'), tone: 'muted' };
+};
+
+/**
+ * Suggested fix per coverage status — the real editors (glossary-term picker,
+ * owner picker, etc.) already live on the asset page, so we just route the
+ * user there with the right action label. Owner-missing isn't a client-known
+ * signal yet; when backend coverage surfaces it we'll add an "Assign owner"
+ * branch here.
+ */
+const suggestedFixCell = (
+  status: MappingCoverage,
+  node: GraphNode,
+  t: (key: string) => string
+): DetailCell => {
+  const href = getGraphNodeHref(node);
+  if (status === 'unmapped' && href) {
+    return { text: t('label.kg-map-glossary-term'), tone: 'brand', href };
+  }
+  if (status === NOT_EXPLORED) {
+    // Not-explored stubs don't always have a fullyQualifiedName (they're
+    // placeholder rows for assets outside the current depth), so we may not
+    // have an asset page to link to. Show the hint as muted text — the
+    // Missing cell already says "Outside current level" and the user bumps
+    // the Levels dropdown to reveal them.
+    return href
+      ? { text: t('label.kg-explore'), tone: 'brand', href }
+      : { text: t('label.kg-explore'), tone: 'muted' };
+  }
+
+  return { text: '—', tone: 'muted' };
 };
 
 /** Search narrows every list; the chips then split what is left by family or coverage. */
@@ -179,13 +218,15 @@ const filterRows = (
       .includes(search.toLowerCase())
   );
   const facet = drawer === 'relationships' ? 'family' : 'coverage';
+  const coverageOptions =
+    drawer === 'coverage' ? GAPS_STATUSES : COVERAGE_STATUSES;
   const options =
     drawer === 'relationships'
       ? RELATION_CATEGORIES.map((family) => ({
           id: family as string,
           label: t(getRelationStyle(family).labelKey),
         }))
-      : COVERAGE_STATUSES.map((status) => ({
+      : coverageOptions.map((status) => ({
           id: status as string,
           label: t('label.kg-' + status),
         }));
@@ -194,7 +235,12 @@ const filterRows = (
       ...chip,
       count: searched.filter((row) => row[facet] === chip.id).length,
     }))
-    .filter((chip) => chip.count > 0);
+    // Gaps always surfaces both Unmapped + Not explored so the user can see
+    // the current filter even at count 0 (otherwise the "Unmapped 0" chip
+    // disappears, the default filter has no visible pill, and the user cannot
+    // tell why the table is empty). Other drawers keep the count>0 behaviour
+    // so irrelevant family chips stay hidden.
+    .filter((chip) => drawer === 'coverage' || chip.count > 0);
 
   return {
     searched,
@@ -222,10 +268,8 @@ const KnowledgeGraphDetails = ({
   columns,
   concepts,
   coverage,
-  coverageMode,
   relationshipScope,
   onClearRelationshipScope,
-  onCoverageMode,
   onDrawerChange,
   onSelect,
   onClose,
@@ -250,14 +294,14 @@ const KnowledgeGraphDetails = ({
       }
     };
   }, []);
-  const hasGaps = [...coverage.values()].includes('unmapped');
   useEffect(() => {
     setSearch('');
-    // The gaps list opens on the gaps themselves when there are any; the other
-    // lists open on everything.
-    setFilter(drawer === 'coverage' && hasGaps ? 'unmapped' : 'all');
+    // Gaps surfaces actionable rows only, so it always opens on Unmapped —
+    // the user still toggles the Not explored chip to see the deeper set.
+    // Columns and Relationships keep the "All" default.
+    setFilter(drawer === 'coverage' ? 'unmapped' : 'all');
     setLimit(PAGE_SIZE);
-  }, [drawer, mode, relationshipScope, hasGaps]);
+  }, [drawer, mode, relationshipScope]);
   const titles = {
     columns: t(DETAIL_LABELS[mode].columns),
     relationships: t(DETAIL_LABELS[mode].relationships),
@@ -311,28 +355,27 @@ const KnowledgeGraphDetails = ({
           t('label.kg-suggested-fix'),
         ],
         hint: t('message.kg-coverage-scope'),
-        rows: data.nodes.filter(isCoverageNode).map((node) => {
-          const status = coverage.get(node.id) ?? 'unknown';
+        // Gaps surfaces actionable rows only — mapped assets are already fine
+        // and don't belong here. The Columns tab still shows the full set.
+        rows: data.nodes
+          .filter(isCoverageNode)
+          .filter((node) => coverage.get(node.id) !== 'mapped')
+          .map((node) => {
+            const status = coverage.get(node.id) ?? NOT_EXPLORED;
 
-          return {
-            id: node.id,
-            kind: 'node',
-            target: node.id,
-            coverage: status,
-            cells: [
-              { text: node.label, tone: 'mono' },
-              { text: describeLocation(node), tone: 'muted' },
-              coverageCell(status, t),
-              status === 'unmapped' && getGraphNodeHref(node)
-                ? {
-                    text: t('label.kg-map-glossary-term'),
-                    tone: 'brand',
-                    href: getGraphNodeHref(node),
-                  }
-                : { text: '—', tone: 'muted' },
-            ],
-          };
-        }),
+            return {
+              id: node.id,
+              kind: 'node',
+              target: node.id,
+              coverage: status,
+              cells: [
+                { text: node.label, tone: 'mono' },
+                { text: describeLocation(node), tone: 'muted' },
+                coverageCell(status, t),
+                suggestedFixCell(status, node, t),
+              ],
+            };
+          }),
       };
     }
     if (mode === 'ontology') {
@@ -454,7 +497,7 @@ const KnowledgeGraphDetails = ({
   return (
     <Box
       aria-label={titles[drawer]}
-      className="kg-details tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary"
+      className="kg-details tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface"
       data-testid="graph-details"
       direction="col"
       role="region"
@@ -544,10 +587,17 @@ const KnowledgeGraphDetails = ({
               className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-3.5 tw:py-1.5"
               gap={2}
               wrap="wrap">
-              {[
-                { id: 'all', label: t('label.all'), count: searched.length },
-                ...chips,
-              ].map((chip) => (
+              {(drawer === 'coverage'
+                ? chips
+                : [
+                    {
+                      id: 'all',
+                      label: t('label.all'),
+                      count: searched.length,
+                    },
+                    ...chips,
+                  ]
+              ).map((chip) => (
                 <Button
                   aria-pressed={filter === chip.id}
                   className="tw:rounded-full"
@@ -570,31 +620,10 @@ const KnowledgeGraphDetails = ({
                   </Box>
                 </Button>
               ))}
-              {drawer === 'coverage' && (
-                <Select
-                  aria-label={t('label.kg-show-on-canvas')}
-                  className="tw:ml-auto tw:w-52 tw:max-w-full"
-                  selectedKey={coverageMode}
-                  size="sm"
-                  onSelectionChange={(key) => {
-                    if (
-                      key === 'all' ||
-                      key === 'mapped' ||
-                      key === 'unmapped' ||
-                      key === 'highlight'
-                    ) {
-                      onCoverageMode(key);
-                    }
-                  }}>
-                  <Select.Item id="all" label={t('label.kg-every-entity')} />
-                  <Select.Item
-                    id="highlight"
-                    label={t('label.kg-highlight-gaps')}
-                  />
-                  <Select.Item id="mapped" label={t('label.kg-mapped')} />
-                  <Select.Item id="unmapped" label={t('label.kg-unmapped')} />
-                </Select>
-              )}
+              {/* Designer removed the Every entity / Highlight gaps dropdown
+                  (5.d): its semantics live in the Gaps subtabs now. The
+                  coverageMode state still rides along for the canvas highlight
+                  behaviour until B lands and the state can be dropped. */}
             </Box>
           )}
           {view.error ? (

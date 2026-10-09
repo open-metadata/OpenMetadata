@@ -35,7 +35,7 @@ export type KnowledgeGraphLabelMode = 'auto' | 'all' | 'none';
 export type KnowledgeGraphMode = 'knowledge-graph' | 'ontology';
 export type KnowledgeGraphPresentation = 'balanced' | 'all';
 export type KnowledgeGraphDrawer = 'columns' | 'relationships' | 'coverage';
-export type MappingCoverage = 'mapped' | 'unmapped' | 'unknown';
+export type MappingCoverage = 'mapped' | 'unmapped' | 'not-explored';
 
 export interface GraphNodePresentation {
   level: number;

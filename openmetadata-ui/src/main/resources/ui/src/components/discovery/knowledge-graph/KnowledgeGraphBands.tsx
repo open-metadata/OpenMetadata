@@ -81,7 +81,7 @@ const KnowledgeGraphBands = ({
                   fill="none"
                   rx={ring.radiusX}
                   ry={ring.radiusY}
-                  stroke="var(--om-color-border-secondary)"
+                  stroke="var(--tw-border-color-secondary)"
                   strokeDasharray="4 6"
                 />
               )}

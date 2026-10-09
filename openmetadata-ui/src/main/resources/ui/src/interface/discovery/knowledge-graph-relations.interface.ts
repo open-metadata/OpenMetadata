@@ -65,7 +65,7 @@ const RELATION_CATEGORY_STYLES: Record<
   RelationCategoryStyle
 > = {
   other: {
-    color: 'var(--om-color-gray-600)',
+    color: 'gray',
     colorFallback: '#535862',
     labelBg: 'var(--om-color-gray-50)',
     labelBgFallback: '#fafafa',
@@ -73,7 +73,7 @@ const RELATION_CATEGORY_STYLES: Record<
     labelKey: 'label.kg-other',
   },
   lineage: {
-    color: 'var(--om-color-blue-dark-600)',
+    color: 'blue-dark',
     colorFallback: '#155eef',
     labelBg: 'var(--om-color-blue-dark-50)',
     labelBgFallback: '#eff4ff',
@@ -81,7 +81,7 @@ const RELATION_CATEGORY_STYLES: Record<
     labelKey: 'label.lineage',
   },
   structure: {
-    color: 'var(--om-color-gray-blue-500)',
+    color: 'gray-blue',
     colorFallback: '#4e5ba6',
     labelBg: 'var(--om-color-gray-blue-50)',
     labelBgFallback: '#f8f9fc',
@@ -89,7 +89,7 @@ const RELATION_CATEGORY_STYLES: Record<
     labelKey: 'label.structure',
   },
   ontology: {
-    color: 'var(--om-color-purple-600)',
+    color: 'purple',
     colorFallback: '#6938ef',
     labelBg: 'var(--om-color-purple-50)',
     labelBgFallback: '#f4f3ff',
@@ -97,7 +97,7 @@ const RELATION_CATEGORY_STYLES: Record<
     labelKey: 'label.ontology',
   },
   governance: {
-    color: 'var(--om-color-teal-600)',
+    color: 'blue-light',
     colorFallback: '#0e9384',
     labelBg: 'var(--om-color-teal-50)',
     labelBgFallback: '#f0fdf9',
@@ -105,7 +105,7 @@ const RELATION_CATEGORY_STYLES: Record<
     labelKey: 'label.governance',
   },
   ownership: {
-    color: 'var(--om-color-orange-dark-600)',
+    color: 'orange',
     colorFallback: '#e62e05',
     labelBg: 'var(--om-color-orange-dark-50)',
     labelBgFallback: '#fff4ed',
@@ -113,7 +113,7 @@ const RELATION_CATEGORY_STYLES: Record<
     labelKey: 'label.ownership',
   },
   quality: {
-    color: 'var(--om-color-pink-600)',
+    color: 'pink',
     colorFallback: '#dd2590',
     labelBg: 'var(--om-color-pink-50)',
     labelBgFallback: '#fdf2fa',

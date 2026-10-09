@@ -209,6 +209,9 @@ export default defineConfig(async ({ mode }) => {
           bypass: (req) => (isTestLoginCallback(req.url) ? undefined : req.url),
         },
       },
+      // Opt-in via env for personal Cloudflare tunnels, ngrok, etc.
+      // Example: `VITE_ALLOWED_HOSTS=my-tunnel.trycloudflare.com yarn start`.
+      allowedHosts: env.VITE_ALLOWED_HOSTS?.split(',').filter(Boolean),
       watch: {
         ignored: [
           '**/node_modules/**',

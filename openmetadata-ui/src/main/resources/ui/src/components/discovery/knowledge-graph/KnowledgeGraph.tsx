@@ -251,7 +251,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     setExpanded([]);
     setDrawer(null);
     setRelationshipScope(null);
-  }, [entity?.id, entityType]);
+  }, [entity?.id, entityType, mode]);
 
   const handleRefresh = useCallback(() => setRefresh((value) => value + 1), []);
   const handleModeChange = useCallback(
@@ -334,10 +334,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     }
     try {
       const url = await toPng(container, {
-        backgroundColor: resolveCssColor(
-          'var(--om-color-bg-primary)',
-          '#ffffff'
-        ),
+        backgroundColor: resolveCssColor('var(--color-bg-primary)', '#ffffff'),
         pixelRatio: 2,
         filter: (node) =>
           !(node instanceof HTMLElement) ||
@@ -486,14 +483,12 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                   columns={columns}
                   concepts={concepts}
                   coverage={coverage}
-                  coverageMode={coverageMode}
                   data={displayData}
                   drawer={drawer}
                   mode={mode}
                   relationshipScope={relationshipScope}
                   onClearRelationshipScope={() => setRelationshipScope(null)}
                   onClose={() => setDrawer(null)}
-                  onCoverageMode={setCoverageMode}
                   onDrawerChange={setDrawer}
                   onRetry={handleRefresh}
                   onSelect={(kind, id) =>
@@ -502,10 +497,10 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 />
               )}
               <KnowledgeGraphOverlays
+                coverage={coverage}
                 edges={scene.edges}
                 key={entityType + ':' + entity.id}
                 nodes={scene.nodes}
-                rootId={rootEntityId}
                 selection={selection}
                 tooltip={canvas.tooltip}
                 onExpandGroup={expandGroup}
