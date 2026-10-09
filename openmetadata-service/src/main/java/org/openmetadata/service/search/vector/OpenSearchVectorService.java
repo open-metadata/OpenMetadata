@@ -194,12 +194,12 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   @Override
-  public Map<String, Object> generateEmbeddingFields(EntityInterface entity) {
+  public Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity) {
     return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
   }
 
   @Override
-  public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
+  public void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
     if (!embeddingClient.isAvailable()) {
       LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
       return;
@@ -244,7 +244,7 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   @Override
-  public void updateEntityEmbeddingChunks(EntityInterface entity) {
+  public void updateEntityEmbeddingChunks(EntityInterface<?> entity) {
     requireChunkIndexForWrite();
     updateEntityEmbeddingChunks(entity, getChunkIndexName());
   }
@@ -256,7 +256,7 @@ public class OpenSearchVectorService implements VectorIndexService {
    * comes from the sink's own ReindexContext, so writers of normal (non-recreate) runs never
    * consult generation discovery and can never land in a crashed run's orphan.
    */
-  public void backfillEntityChunks(EntityInterface entity, String stagedChunkTarget) {
+  public void backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget) {
     if (stagedChunkTarget == null) {
       updateEntityEmbeddingChunks(entity);
     } else {
@@ -271,7 +271,7 @@ public class OpenSearchVectorService implements VectorIndexService {
    * re-embed the whole catalog. Nothing is skipped — the staged generation starts empty, so every
    * entity passes through exactly once ({@code stagedHeader} short-circuits retries).
    */
-  private void backfillChunksToStagedGeneration(EntityInterface entity, String staged) {
+  private void backfillChunksToStagedGeneration(EntityInterface<?> entity, String staged) {
     try {
       String parentId = entity.getId().toString();
       String fingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
@@ -306,7 +306,7 @@ public class OpenSearchVectorService implements VectorIndexService {
    * fingerprint-based staleness check.
    */
   @Override
-  public void updateEntityEmbeddings(EntityInterface entity, String entityIndexName) {
+  public void updateEntityEmbeddings(EntityInterface<?> entity, String entityIndexName) {
     if (!embeddingClient.isAvailable()) {
       LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
       return;
@@ -1113,7 +1113,7 @@ public class OpenSearchVectorService implements VectorIndexService {
    * bulk-deleting the trailing stale ids in the same request — no delete-by-query and no forced
    * refresh on this hot path; visibility follows the index refresh interval.
    */
-  public void updateEntityEmbeddingChunks(EntityInterface entity, String chunkIndexName) {
+  public void updateEntityEmbeddingChunks(EntityInterface<?> entity, String chunkIndexName) {
     try {
       String parentId = entity.getId().toString();
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
@@ -1143,7 +1143,7 @@ public class OpenSearchVectorService implements VectorIndexService {
    * chunk set) or the re-chunk disagrees with the cached count.
    */
   private List<Map<String, Object>> rebuildChunksReusingEmbeddings(
-      EntityInterface entity, String chunkIndexName, String parentId, ChunkHeader header) {
+      EntityInterface<?> entity, String chunkIndexName, String parentId, ChunkHeader header) {
     Map<Integer, float[]> vectors =
         fetchExistingChunkVectors(chunkIndexName, parentId, header.chunkCount());
     if (vectors.size() != header.chunkCount()) {
@@ -1235,7 +1235,8 @@ public class OpenSearchVectorService implements VectorIndexService {
     REEMBED
   }
 
-  static ChunkRefresh chunkRefresh(EntityInterface entity, String fingerprint, ChunkHeader header) {
+  static ChunkRefresh chunkRefresh(
+      EntityInterface<?> entity, String fingerprint, ChunkHeader header) {
     ChunkRefresh refresh = ChunkRefresh.NONE;
     if (header == null || !fingerprint.equals(header.fingerprint())) {
       refresh = ChunkRefresh.REEMBED;
@@ -1247,7 +1248,7 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   // Status and anchor gate memory visibility but are not embedded text, so the fingerprint
   // cannot see them change.
-  private static boolean memoryFilterChanged(EntityInterface entity, ChunkHeader header) {
+  private static boolean memoryFilterChanged(EntityInterface<?> entity, ChunkHeader header) {
     return entity instanceof ContextMemory memory
         && (!Objects.equals(ContextMemoryIndex.statusValue(memory), header.status())
             || !ContextMemoryIndex.anchorId(memory).equals(header.anchorId()));

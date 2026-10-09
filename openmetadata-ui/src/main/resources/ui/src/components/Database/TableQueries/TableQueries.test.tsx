@@ -31,6 +31,7 @@ import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.requireActual('@openmetadata/ui-core-components').Box,
   Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
   Button: jest
     .fn()

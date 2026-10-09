@@ -266,11 +266,10 @@ test.describe(
       await expect(page.getByTestId('viewer-container')).toContainText(
         restoreTestCaseDescription
       );
+      // The row is keyed on the parameter's name; its label is the
+      // definition's display name ("Count").
       await expect(
-        page.getByTestId('test-case-configuration-card')
-      ).toContainText('columnCount');
-      await expect(
-        page.getByTestId('test-case-configuration-card')
+        page.getByTestId('configuration-parameter-columnCount')
       ).toContainText('4');
       await expect(
         page.getByTestId('tags-container').getByTestId('tag-PII.Sensitive')

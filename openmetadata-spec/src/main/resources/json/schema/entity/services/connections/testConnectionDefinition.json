@@ -5,7 +5,7 @@
   "description": "TestConnection is the definition that will encapsulate the steps required to test a connection to a specific service.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionDefinition",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "testConnectionStep": {
       "description": "Function that tests one specific element of the service. E.g., listing schemas, lineage, or tags.",

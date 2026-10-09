@@ -19,7 +19,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class ChangeSummarizer<T extends EntityInterface> {
+public class ChangeSummarizer<T extends EntityInterface<?>> {
   private final Set<String> fields;
   Class<T> clazz;
 

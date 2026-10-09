@@ -173,7 +173,7 @@ final class PersonaContextMarkdown {
     if (!nullOrEmpty(item.getFullyQualifiedName())) {
       markdown.append('`').append(item.getFullyQualifiedName()).append("`\n");
     }
-    EntityInterface entity = selected.knowledgeEntity();
+    EntityInterface<?> entity = selected.knowledgeEntity();
     if (entity == null) {
       String content = PromptText.forPrompt(item.getContent());
       if (!nullOrEmpty(content)) {
@@ -187,7 +187,7 @@ final class PersonaContextMarkdown {
 
   private static void appendKnowledgeSections(
       StringBuilder markdown,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Set<ContextSection> sections,
       boolean fullyRendered) {
     if (entity instanceof Page page) {
