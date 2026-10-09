@@ -58,6 +58,7 @@ import { Conversation } from '../../../generated/entity/feed/conversation';
 import { ConversationFilterType } from '../../../generated/type/conversationFilterType';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
@@ -74,6 +75,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getFeedTotalCount } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { useEntityFeedLink } from '../../activity-feed/ActivityFeed/useEntityFeedLink';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
@@ -92,6 +94,9 @@ import {
   ActivityFeedTabs,
   TaskFilterBarProps,
 } from './ActivityFeedTab.interface';
+const ActivityFeedEntityTab = withSuspenseFallback(
+  lazy(() => import('../../activity-feed/ActivityFeed/ActivityFeedEntityTab'))
+);
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
     import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
@@ -431,7 +436,7 @@ const ActivityFeedTabRightPanel = ({
   );
 };
 
-export const ActivityFeedTab = ({
+const ClassicActivityFeedTab = ({
   owners = [],
   columns,
   entityType,
@@ -1147,5 +1152,25 @@ export const ActivityFeedTab = ({
         placeholder={getRightPanelPlaceholder}
       />
     </div>
+  );
+};
+
+/**
+ * An entity page's Activity Feeds & Tasks tab: in AI mode, where the new Inbox
+ * lives, the Inbox's Activity and Tasks for the entity; the existing tab
+ * otherwise, and always on a user's profile.
+ */
+export const ActivityFeedTab = (props: ActivityFeedTabProps) => {
+  const isAiMode = useIsAiMode();
+  const entityLink = useEntityFeedLink(props.entityType, props.urlFqn);
+
+  return isAiMode && entityLink ? (
+    <ActivityFeedEntityTab
+      entityLink={entityLink}
+      onFeedUpdate={props.onFeedUpdate}
+      onUpdateEntityDetails={props.onUpdateEntityDetails}
+    />
+  ) : (
+    <ClassicActivityFeedTab {...props} />
   );
 };

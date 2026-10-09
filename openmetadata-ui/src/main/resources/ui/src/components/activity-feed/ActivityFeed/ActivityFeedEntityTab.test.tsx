@@ -11,17 +11,11 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { EntityType } from '../../../enums/entity.enum';
 import ActivityFeedEntityTab from './ActivityFeedEntityTab';
 
 const TABLE_LINK = '<#E::table::svc.db.schema.customers>';
-let mockIsAiMode = true;
 let mockSubTab: string | undefined;
 const mockNavigate = jest.fn();
-
-jest.mock('../../../hooks/useAppMode', () => ({
-  useIsAiMode: () => mockIsAiMode,
-}));
 
 const mockSetTaskStatus = jest.fn();
 
@@ -42,13 +36,6 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
       `/${type}/${fqn}/${tab}/${subTab}`,
   },
 }));
-
-jest.mock(
-  '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
-  () => ({
-    ActivityFeedTab: () => <div data-testid="legacy-tab" />,
-  })
-);
 
 jest.mock('./ActivityFeed', () => ({
   __esModule: true,
@@ -79,10 +66,9 @@ jest.mock('./ActivityFeed', () => ({
   ),
 }));
 
-const renderTab = (entityLink = TABLE_LINK) => {
+const renderTab = () => {
   const props = {
-    entityLink,
-    entityType: EntityType.TABLE as const,
+    entityLink: TABLE_LINK,
     onFeedUpdate: jest.fn(),
     onUpdateEntityDetails: jest.fn(),
   };
@@ -93,33 +79,17 @@ const renderTab = (entityLink = TABLE_LINK) => {
 
 describe('ActivityFeedEntityTab', () => {
   beforeEach(() => {
-    mockIsAiMode = true;
     mockSubTab = undefined;
     mockNavigate.mockClear();
   });
 
-  it("shows the Inbox's feed for the entity in AI mode", () => {
+  it("shows the Inbox's feed for the entity", () => {
     renderTab();
 
     expect(screen.getByTestId('activity-feed')).toHaveAttribute(
       'data-link',
       TABLE_LINK
     );
-    expect(screen.queryByTestId('legacy-tab')).not.toBeInTheDocument();
-  });
-
-  it('keeps the existing tab outside AI mode', () => {
-    mockIsAiMode = false;
-    renderTab();
-
-    expect(screen.getByTestId('legacy-tab')).toBeInTheDocument();
-  });
-
-  // The page has not read its entity yet.
-  it('keeps the existing tab until there is a link', () => {
-    renderTab('');
-
-    expect(screen.getByTestId('legacy-tab')).toBeInTheDocument();
   });
 
   it('opens on Tasks from the tasks route', () => {

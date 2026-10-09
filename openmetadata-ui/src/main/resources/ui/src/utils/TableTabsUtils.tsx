@@ -33,7 +33,6 @@ import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getEntityFeedLink } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 import type { TableDetailPageTabProps } from './TableClassBase';
 
@@ -47,10 +46,11 @@ const ActivityFeedTabLabel = withSuspenseFallback(
       import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
   )
 );
-const ActivityFeedEntityTab = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../components/activity-feed/ActivityFeed/ActivityFeedEntityTab')
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
   ),
   TAB_CONTENT_FALLBACK
 );
@@ -289,11 +289,6 @@ export const getTableDetailPageBaseTabs = ({
   isViewTableType,
   labelMap,
 }: TableDetailPageTabProps): TabProps[] => {
-  const entityFeedLink = getEntityFeedLink(
-    EntityType.TABLE,
-    tableDetails?.fullyQualifiedName
-  );
-
   return [
     {
       label: (
@@ -311,7 +306,7 @@ export const getTableDetailPageBaseTabs = ({
       label: (
         <ActivityFeedTabLabel
           count={feedCount.totalCount}
-          entityLink={entityFeedLink}
+          entityType={EntityType.TABLE}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={get(
@@ -323,11 +318,10 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.ACTIVITY_FEED,
       children: (
-        <ActivityFeedEntityTab
+        <ActivityFeedTab
           refetchFeed
           columns={tableDetails?.columns}
           entityFeedTotalCount={feedCount.totalCount}
-          entityLink={entityFeedLink}
           entityType={EntityType.TABLE}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}

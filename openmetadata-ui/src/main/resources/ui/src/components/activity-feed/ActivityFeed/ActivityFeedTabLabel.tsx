@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 import React, { useMemo } from 'react';
+import { EntityType } from '../../../enums/entity.enum';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../common/TabsLabel/TabsLabel.interface';
 import { getDefaultInboxDateRange } from '../../discovery/personal-space/InboxPage/inbox.utils';
 import { useActivityFeedCounts } from './useActivityFeedCounts';
+import { useEntityFeedLink } from './useEntityFeedLink';
 import { useTaskStatusParam } from './useTaskStatusParam';
 
 export type ActivityFeedTabLabelProps = TabsLabelProps & {
-  // The entity the page shows, e.g. `<#E::table::fqn>`.
-  entityLink: string;
+  // The entity the page shows; its FQN comes from the route, else `fqn`.
+  entityType: EntityType;
+  fqn?: string;
 };
 
 // A capped Activity fetch holds only the newest events, so its total is a
@@ -28,10 +31,9 @@ export type ActivityFeedTabLabelProps = TabsLabelProps & {
 const getTabCount = (total: number, isCapped: boolean) =>
   isCapped ? `${total}+` : total;
 
-const ActivityFeedCountLabel: React.FC<ActivityFeedTabLabelProps> = ({
-  entityLink,
-  ...labelProps
-}) => {
+const ActivityFeedCountLabel: React.FC<
+  TabsLabelProps & { entityLink: string }
+> = ({ entityLink, ...labelProps }) => {
   // The window the feed opens on, so this reads the queries the feed will.
   const dateRange = useMemo(getDefaultInboxDateRange, []);
   const [taskStatus] = useTaskStatusParam();
@@ -61,10 +63,12 @@ const ActivityFeedCountLabel: React.FC<ActivityFeedTabLabelProps> = ({
  * tasks of the chosen Status. Otherwise `count`.
  */
 const ActivityFeedTabLabel: React.FC<ActivityFeedTabLabelProps> = ({
-  entityLink,
+  entityType,
+  fqn,
   ...labelProps
 }) => {
   const isAiMode = useIsAiMode();
+  const entityLink = useEntityFeedLink(entityType, fqn);
 
   return isAiMode && entityLink ? (
     <ActivityFeedCountLabel entityLink={entityLink} {...labelProps} />

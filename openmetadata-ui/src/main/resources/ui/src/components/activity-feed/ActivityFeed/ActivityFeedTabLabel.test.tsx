@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { EntityType } from '../../../enums/entity.enum';
 import ActivityFeedTabLabel from './ActivityFeedTabLabel';
 
 const TABLE_LINK = '<#E::table::svc.db.schema.customers>';
 let mockIsAiMode = true;
+let mockEntityLink = TABLE_LINK;
 const mockUseActivityFeedCounts = jest.fn();
+const mockUseEntityFeedLink = jest.fn();
 
 jest.mock('../../../hooks/useAppMode', () => ({
   useIsAiMode: () => mockIsAiMode,
@@ -25,6 +28,14 @@ let mockTaskStatus = 'open';
 
 jest.mock('./useTaskStatusParam', () => ({
   useTaskStatusParam: () => [mockTaskStatus, jest.fn()],
+}));
+
+jest.mock('./useEntityFeedLink', () => ({
+  useEntityFeedLink: (...args: unknown[]) => {
+    mockUseEntityFeedLink(...args);
+
+    return mockEntityLink;
+  },
 }));
 
 jest.mock('./useActivityFeedCounts', () => ({
@@ -39,15 +50,19 @@ jest.mock('../../common/TabsLabel/TabsLabel.component', () => ({
   ),
 }));
 
-const renderLabel = (entityLink = TABLE_LINK) =>
-  render(
+const renderLabel = (entityLink = TABLE_LINK) => {
+  mockEntityLink = entityLink;
+
+  return render(
     <ActivityFeedTabLabel
       count={40}
-      entityLink={entityLink}
+      entityType={EntityType.TABLE}
+      fqn="svc.db.schema.customers"
       id="activity_feed"
       name="Activity"
     />
   );
+};
 
 describe('ActivityFeedTabLabel', () => {
   beforeEach(() => {
@@ -63,6 +78,10 @@ describe('ActivityFeedTabLabel', () => {
     renderLabel();
 
     expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:39');
+    expect(mockUseEntityFeedLink).toHaveBeenCalledWith(
+      EntityType.TABLE,
+      'svc.db.schema.customers'
+    );
     expect(mockUseActivityFeedCounts).toHaveBeenCalledWith(
       TABLE_LINK,
       expect.objectContaining({
@@ -109,7 +128,8 @@ describe('ActivityFeedTabLabel', () => {
     expect(mockUseActivityFeedCounts).not.toHaveBeenCalled();
   });
 
-  it("keeps the page's count until the entity is read", () => {
+  // No link for a user's profile, or before the route names the entity.
+  it("keeps the page's count without an entity link", () => {
     renderLabel('');
 
     expect(screen.getByTestId('tab-label')).toHaveTextContent('Activity:40');

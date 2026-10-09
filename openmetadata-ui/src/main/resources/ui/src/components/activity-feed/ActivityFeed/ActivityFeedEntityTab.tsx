@@ -13,10 +13,8 @@
 import React, { useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
-import { useIsAiMode } from '../../../hooks/useAppMode';
 import EntityLink from '../../../utils/EntityLink';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
@@ -24,26 +22,28 @@ import {
 import ActivityFeed, { ActivityFeedView } from './ActivityFeed';
 import { useTaskStatusParam } from './useTaskStatusParam';
 
-export type ActivityFeedEntityTabProps = ActivityFeedTabProps & {
+export type ActivityFeedEntityTabProps = Pick<
+  ActivityFeedTabProps,
+  'onFeedUpdate' | 'onUpdateEntityDetails'
+> & {
   // The entity the page shows, e.g. `<#E::table::fqn>`.
   entityLink: string;
 };
 
 /**
- * An entity page's Activity Feeds & Tasks tab: the Inbox's Activity and Tasks
- * in AI mode, where the new Inbox lives; the existing tab otherwise.
+ * An entity page's Activity Feeds & Tasks tab in AI mode, where the new Inbox
+ * lives: the Inbox's Activity and Tasks for the entity.
  */
 const ActivityFeedEntityTab: React.FC<ActivityFeedEntityTabProps> = ({
   entityLink,
-  ...tabProps
+  onFeedUpdate,
+  onUpdateEntityDetails,
 }) => {
-  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const { search } = useLocation();
   const { subTab } = useParams<{ subTab?: string }>();
   // In the URL, so the page's tab label counts the same Status.
   const [taskStatus, setTaskStatus] = useTaskStatusParam();
-  const { onUpdateEntityDetails, onFeedUpdate } = tabProps;
   // The route names the view, as it does for today's tab, so a link to
   // …/activity_feed/tasks opens on Tasks and a switch can be shared.
   const view: ActivityFeedView =
@@ -74,8 +74,7 @@ const ActivityFeedEntityTab: React.FC<ActivityFeedEntityTabProps> = ({
     onFeedUpdate();
   }, [onUpdateEntityDetails, onFeedUpdate]);
 
-  // The link is empty until the page has read its entity.
-  return isAiMode && entityLink ? (
+  return (
     <ActivityFeed
       entityLink={entityLink}
       taskStatus={taskStatus}
@@ -84,8 +83,6 @@ const ActivityFeedEntityTab: React.FC<ActivityFeedEntityTabProps> = ({
       onTaskStatusChange={setTaskStatus}
       onViewChange={handleViewChange}
     />
-  ) : (
-    <ActivityFeedTab {...tabProps} />
   );
 };
 

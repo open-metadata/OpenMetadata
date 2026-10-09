@@ -43,6 +43,7 @@ let mockLoading = false;
 let mockTasks: { id: string }[] = [];
 let mockEntityPaging: { after?: string } = {};
 let mockIsInView = false;
+let mockIsAiMode = false;
 let mockLocation: { pathname: string; key: string; state: unknown } = {
   pathname: '/',
   key: 'initial',
@@ -69,6 +70,17 @@ jest.mock('../../../hooks/authHooks', () => ({
 jest.mock('../../../hooks/useDomainStore', () => ({
   useDomainStore: (selector: (s: { activeDomain: string }) => string) =>
     selector({ activeDomain: 'All Domains' }),
+}));
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode,
+}));
+
+jest.mock('../../activity-feed/ActivityFeed/ActivityFeedEntityTab', () => ({
+  __esModule: true,
+  default: ({ entityLink }: { entityLink: string }) => (
+    <div data-link={entityLink} data-testid="entity-activity-feed" />
+  ),
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
@@ -216,6 +228,7 @@ describe('ActivityFeedTab', () => {
     mockTasks = [];
     mockEntityPaging = {};
     mockIsInView = false;
+    mockIsAiMode = false;
     mockLocation = { pathname: '/', key: 'initial', state: null };
     mockGetTaskCounts.mockResolvedValue({
       open: 0,
@@ -601,6 +614,34 @@ describe('ActivityFeedTab', () => {
           )
         ).toHaveLength(1)
       );
+    });
+  });
+
+  // AI mode, where the new Inbox lives, shows the Inbox's feed for the entity.
+  describe('AI mode', () => {
+    beforeEach(() => {
+      mockIsAiMode = true;
+    });
+
+    it("shows the Inbox's feed for the entity the route names", async () => {
+      renderComponent();
+
+      expect(await screen.findByTestId('entity-activity-feed')).toHaveAttribute(
+        'data-link',
+        '<#E::table::test.db.table>'
+      );
+      expect(mockGetTaskCounts).not.toHaveBeenCalled();
+    });
+
+    // A profile's tab is the user's own feed, not one about them.
+    it("keeps the existing tab on a user's profile", async () => {
+      renderUserComponent();
+
+      await waitFor(() => expect(mockGetTaskCounts).toHaveBeenCalled());
+
+      expect(
+        screen.queryByTestId('entity-activity-feed')
+      ).not.toBeInTheDocument();
     });
   });
 });
