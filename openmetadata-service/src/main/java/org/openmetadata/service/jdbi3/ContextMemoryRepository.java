@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
@@ -601,6 +602,25 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   @Override
+  protected void storeEntityWithVersion(
+      ContextMemory entity, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    int updatedRows =
+        daoCollection
+            .contextMemoryDAO()
+            .updateWithVersionAndTimestamp(
+                entity.getId(),
+                entity.getFullyQualifiedName(),
+                serializeForStorage(entity),
+                expectedVersion.toString(),
+                expectedUpdatedAt);
+    if (updatedRows == 0) {
+      throw new PreconditionFailedException(
+          "The memory has been modified. Please refresh and retry.");
+    }
+    invalidate(entity);
+  }
+
+  @Override
   public void storeRelationships(ContextMemory entity) {
     // Add-only: addRelationship upserts, so re-running on update is idempotent. Stale-edge
     // cleanup on update is handled in ContextMemoryUpdater via updateFromRelationship(s),
@@ -673,6 +693,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     public ContextMemoryUpdater(
         ContextMemory original, ContextMemory updated, Operation operation) {
       super(original, updated, operation);
+      // Consolidated edits still need distinct timestamps for conditional lifecycle writes.
+      if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
+        updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
+      }
     }
 
     @Override
