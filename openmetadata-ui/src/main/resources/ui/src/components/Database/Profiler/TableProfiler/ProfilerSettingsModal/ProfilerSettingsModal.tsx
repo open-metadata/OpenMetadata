@@ -19,15 +19,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  ConfigProvider,
-  Input,
-  InputNumber,
-  Select,
-  Space,
-  TreeSelect,
-} from 'antd';
+import { Button, Input, InputNumber, Select, Space, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
@@ -50,8 +42,8 @@ import {
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
   MIN_PROFILE_SAMPLE,
-  PROFILE_SAMPLE_OPTIONS,
   PROFILER_MODAL_LABEL_STYLE,
+  PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
   TIME_BASED_PARTITION,
 } from '../../../../../constants/profiler.constant';
@@ -85,6 +77,10 @@ import {
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../SchemaEditor/SchemaEditor'))
 );
+
+// Legacy dropdowns must stay inside the modal's focus and accessibility boundary.
+const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement ?? document.body;
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
@@ -522,6 +518,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 autoFocus
                 className="w-full"
                 data-testid="profile-sample"
+                getPopupContainer={getPopupContainer}
                 options={PROFILE_SAMPLE_OPTIONS}
                 placeholder={t('label.please-select-entity', {
                   entity: t('label.profile-sample-type', {
@@ -603,6 +600,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             className="w-full"
             data-testid="exclude-column-select"
             dropdownStyle={{ maxHeight: 200, overflowY: 'auto' }}
+            getPopupContainer={getPopupContainer}
             mode="multiple"
             options={columnOptions}
             placeholder={t('label.select-column-plural-to-exclude')}
@@ -659,6 +657,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               showSearch
                               className="w-full"
                               data-testid="include-column-select"
+                              getPopupContainer={getPopupContainer}
                               options={columnWithAllOption}
                               placeholder={t(
                                 'label.select-column-plural-to-include'
@@ -675,6 +674,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             <TreeSelect
                               treeCheckable
                               className="w-full"
+                              getPopupContainer={getPopupContainer}
                               maxTagCount={2}
                               placeholder={t('label.please-select')}
                               showCheckedStrategy="SHOW_PARENT"
@@ -735,6 +735,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     className="w-full"
                     data-testid="interval-type"
                     disabled={!state?.enablePartition}
+                    getPopupContainer={getPopupContainer}
                     options={INTERVAL_TYPE_OPTIONS}
                     placeholder={t('message.select-interval-type')}
                     size="middle"
@@ -769,6 +770,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     className="w-full"
                     data-testid="column-name"
                     disabled={!state?.enablePartition}
+                    getPopupContainer={getPopupContainer}
                     options={partitionColumnOptions}
                     placeholder={t('message.select-column-name')}
                     size="middle"
@@ -826,6 +828,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         className="w-full"
                         data-testid="select-interval-unit"
                         disabled={!state?.enablePartition}
+                        getPopupContainer={getPopupContainer}
                         options={INTERVAL_UNIT_OPTIONS}
                         placeholder={t('message.select-interval-unit')}
                         size="middle"
@@ -998,13 +1001,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         </Typography>
       </SlideoutMenu.Header>
       <SlideoutMenu.Content className="tw:py-6">
-        {/* Legacy dropdowns must stay inside the modal's focus and accessibility boundary. */}
-        <ConfigProvider
-          getPopupContainer={(triggerNode) =>
-            triggerNode?.parentElement ?? document.body
-          }>
-          {renderContent}
-        </ConfigProvider>
+        {renderContent}
       </SlideoutMenu.Content>
       <SlideoutMenu.Footer>{drawerFooter}</SlideoutMenu.Footer>
     </SlideoutMenu>
