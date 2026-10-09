@@ -372,40 +372,48 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     );
   }
 
-  // Grouping the splitter + details ReflexElement under one conditional keeps
-  // the main return's cyclomatic complexity in budget — react-reflex flattens
-  // the fragment internally via React.Children.
-  const detailsPane =
+  // Splitter + details ReflexElement must be direct sibling children of
+  // ReflexContainer — a fragment around them silently breaks react-reflex's
+  // prop injection (it uses React.Children.map/cloneElement to pass
+  // `events`/`index` into each child). Returning the pair from a helper also
+  // keeps the main return's cyclomatic complexity within budget.
+  const renderDetailsSplitter = () =>
     drawer && displayData ? (
-      <>
-        <ReflexSplitter
-          aria-label={t('label.kg-resize-details')}
-          className="kg-stage-splitter"
-          propagate={false}
-        />
-        <ReflexElement
-          className="kg-stage-details-pane"
-          flex={0.36}
-          minSize={220}>
-          <KnowledgeGraphDetails
-            columns={columns}
-            concepts={concepts}
-            coverage={coverage}
-            data={displayData}
-            drawer={drawer}
-            mode={mode}
-            relationshipScope={relationshipScope}
-            onClearRelationshipScope={() => setRelationshipScope(null)}
-            onClose={() => setDrawer(null)}
-            onDrawerChange={setDrawer}
-            onRetry={handleRefresh}
-            onSelect={(kind, id) =>
-              kind === 'node' ? findNode(id) : setSelection({ kind, id })
-            }
-          />
-        </ReflexElement>
-      </>
+      <ReflexSplitter
+        aria-label={t('label.kg-resize-details')}
+        className="kg-stage-splitter"
+        propagate={false}
+      />
     ) : null;
+  const renderDetailsElement = () => {
+    if (!drawer || !displayData) {
+      return null;
+    }
+
+    return (
+      <ReflexElement
+        className="kg-stage-details-pane"
+        flex={0.36}
+        minSize={220}>
+        <KnowledgeGraphDetails
+          columns={columns}
+          concepts={concepts}
+          coverage={coverage}
+          data={displayData}
+          drawer={drawer}
+          mode={mode}
+          relationshipScope={relationshipScope}
+          onClearRelationshipScope={() => setRelationshipScope(null)}
+          onClose={() => setDrawer(null)}
+          onDrawerChange={setDrawer}
+          onRetry={handleRefresh}
+          onSelect={(kind, id) =>
+            kind === 'node' ? findNode(id) : setSelection({ kind, id })
+          }
+        />
+      </ReflexElement>
+    );
+  };
 
   return (
     <FocusScope contain={isFullscreen}>
@@ -523,7 +531,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                     />
                   </Card.Content>
                 </ReflexElement>
-                {detailsPane}
+                {renderDetailsSplitter()}
+                {renderDetailsElement()}
               </ReflexContainer>
               <KnowledgeGraphOverlays
                 coverage={coverage}
