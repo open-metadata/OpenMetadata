@@ -14,7 +14,7 @@
 import { FormProps } from '@rjsf/core';
 import { LoadingState } from 'Models';
 
-export interface FormBuilderV1Props extends Omit<FormProps, 'validator'> {
+export interface FormBuilderV1Props extends FormProps {
   okText?: string;
   cancelText?: string;
   isLoading?: boolean;
