@@ -53,7 +53,7 @@ public class VectorDocBuilder {
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
-  public static final int CHUNK_DOC_VERSION = 7;
+  public static final int CHUNK_DOC_VERSION = 8;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
@@ -401,9 +401,19 @@ public class VectorDocBuilder {
     putIfPresent(fields, "customUnitOfMeasurement", metric.getCustomUnitOfMeasurement());
   }
 
+  /**
+   * Besides the privacy and lifecycle fields every memory query filters on, a memory chunk carries
+   * its kind — scope, type and pin — so a caller that asks for some kinds (Collate's per-question
+   * recall: UserGlobal, not Preference, not pinned) is answered by the vector leg too (v8).
+   */
   private static void addContextMemoryFields(Map<String, Object> fields, ContextMemory memory) {
     fields.putAll(ContextMemoryIndex.shareConfigFields(memory));
     putIfPresent(fields, ContextMemoryIndex.FIELD_STATUS, ContextMemoryIndex.statusValue(memory));
+    putIfPresent(
+        fields, ContextMemoryIndex.FIELD_MEMORY_SCOPE, ContextMemoryIndex.memoryScopeValue(memory));
+    putIfPresent(
+        fields, ContextMemoryIndex.FIELD_MEMORY_TYPE, ContextMemoryIndex.memoryTypeValue(memory));
+    fields.put(ContextMemoryIndex.FIELD_PINNED, Boolean.TRUE.equals(memory.getPinned()));
   }
 
   /**

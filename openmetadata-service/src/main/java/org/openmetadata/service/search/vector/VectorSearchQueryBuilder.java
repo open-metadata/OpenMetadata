@@ -409,17 +409,17 @@ public class VectorSearchQueryBuilder {
             // A user's own memories by kind: Collate's per-question recall asks for the
             // UserGlobal, non-Preference, unpinned ones its preference block does not carry.
             // Dropped here, a Preference would reach that recall through the semantic leg alone.
-          case "memoryScope" -> {
+          case ContextMemoryIndex.FIELD_MEMORY_SCOPE -> {
             sb.append(',');
-            appendFlat(sb, "memoryScope", values);
+            appendFlat(sb, ContextMemoryIndex.FIELD_MEMORY_SCOPE, values);
           }
-          case "memoryType" -> {
+          case ContextMemoryIndex.FIELD_MEMORY_TYPE -> {
             sb.append(',');
-            appendFlat(sb, "memoryType", values);
+            appendFlat(sb, ContextMemoryIndex.FIELD_MEMORY_TYPE, values);
           }
-          case "pinned" -> {
+          case ContextMemoryIndex.FIELD_PINNED -> {
             sb.append(',');
-            appendFlat(sb, "pinned", values);
+            appendFlat(sb, ContextMemoryIndex.FIELD_PINNED, values);
           }
             // Metric facets: semantic_search returns these on every metric result, so a caller
             // that sees "granularity": "MONTH" will reasonably filter by it.
