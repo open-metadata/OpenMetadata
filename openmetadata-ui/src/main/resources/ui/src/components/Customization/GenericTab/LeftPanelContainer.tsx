@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { isUndefined, orderBy } from 'lodash';
 import { lazy, useMemo } from 'react';
 import type {
@@ -158,9 +160,13 @@ export const LeftPanelContainer = ({
     // they sit, so view mode lays them out by row and then column.
     return orderBy(layout, ['y', 'x']).map((widget: WidgetConfig) => {
       return (
-        <Col id={widget.i} key={widget.i} span={Math.round(widget.w * 24)}>
+        <Grid.Item
+          className="layout-column"
+          id={widget.i}
+          key={widget.i}
+          span={Math.round(widget.w * 24)}>
           {getWidgetsFromKey(type, widget)}
-        </Col>
+        </Grid.Item>
       );
     });
   }, [layout, type, isEditView]);
@@ -192,8 +198,10 @@ export const LeftPanelContainer = ({
   }
 
   return (
-    <Row className="left-panel-content" gutter={[16, 16]}>
+    <Grid
+      className="layout-row layout-grid left-panel-content"
+      style={getLayoutGutter(16, 16)}>
       {widgets}
-    </Row>
+    </Grid>
   );
 };

@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Owner, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,15 +42,17 @@ const DataProductSummary = ({
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <div className="d-flex flex-col gap-5">
-        <Row className="p-md border-radius-card" gutter={[0, 8]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid p-md border-radius-card"
+          style={getLayoutGutter(0, 8)}>
+          <Grid.Item className="layout-column" span={24}>
             <Typography
               className="summary-panel-section-title"
               data-testid="domain-header">
               {t('label.domain-plural')}
             </Typography>
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <DomainLabel
               domains={entityDetails.domains ?? []}
               entityFqn={entityDetails.fullyQualifiedName ?? ''}
@@ -58,8 +61,8 @@ const DataProductSummary = ({
               hasPermission={false}
               showDomainHeading={false}
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
@@ -69,32 +72,36 @@ const DataProductSummary = ({
           )}
         />
 
-        <Row className="p-md border-radius-card" gutter={[0, 8]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid p-md border-radius-card"
+          style={getLayoutGutter(0, 8)}>
+          <Grid.Item className="layout-column" span={24}>
             <Typography
               className="summary-panel-section-title"
               data-testid="owner-header">
               {t('label.owner-plural')}
             </Typography>
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <Owner
               isCompactView={false}
               owners={entityDetails.owners ?? []}
               showLabel={false}
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
 
-        <Row className="p-md border-radius-card" gutter={[0, 8]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid p-md border-radius-card"
+          style={getLayoutGutter(0, 8)}>
+          <Grid.Item className="layout-column" span={24}>
             <Typography
               className="summary-panel-section-title"
               data-testid="expert-header">
               {t('label.expert-plural')}
             </Typography>
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             {experts.length > 0 ? (
               <Owner isCompactView={false} owners={experts} showLabel={false} />
             ) : (
@@ -106,8 +113,8 @@ const DataProductSummary = ({
                 })}
               </Typography>
             )}
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       </div>
     </SummaryPanelSkeleton>
   );
