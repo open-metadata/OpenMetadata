@@ -20,8 +20,10 @@ from metadata.generated.schema.api.classification.createTag import CreateTagRequ
 from metadata.generated.schema.entity.classification.classification import Classification
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.container import Container
+from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -131,3 +133,39 @@ def test_s3_native_tags_persist_through_workflow(metadata, request, tagged_s3, c
             expected_assets[f"{service}.{bucket}"] = [f"{classification}.Shared"]
             expected_assets[f'{service}.{bucket}."my_file.txt"'] = [] if case == "denied" else [f"{classification}.New"]
         _assert_workflow(metadata, config, Container, expected_assets, expected_failures=2 if case == "denied" else 0)
+
+
+@pytest.mark.parametrize("case", ["fresh", "existing", "denied"])
+def test_prefect_pipeline_and_task_tags_persist_in_their_own_scopes(
+    metadata, request, tagged_prefect, monkeypatch, case
+):
+    connection, names = tagged_prefect
+    with _tag_catalog(metadata, request, case, PipelineService) as (config, classification):
+        monkeypatch.setattr("metadata.ingestion.source.pipeline.prefect.metadata.PREFECT_TAG_CATEGORY", classification)
+        config["source"].update(
+            {
+                "type": "prefect",
+                "serviceConnection": {"config": connection},
+                "sourceConfig": {
+                    "config": {
+                        "type": "PipelineMetadata",
+                        "includeTags": True,
+                        "includeLineage": False,
+                        "markDeletedPipelines": False,
+                        "pipelineFilterPattern": {"includes": names},
+                    }
+                },
+            }
+        )
+        service = config["source"]["serviceName"]
+        expected_assets = {
+            f"{service}.{names[0]}": [f"{classification}.Shared"],
+            f"{service}.{names[1]}": [] if case == "denied" else [f"{classification}.New"],
+        }
+        _assert_workflow(metadata, config, Pipeline, expected_assets, expected_failures=2 if case == "denied" else 0)
+        for index, task_tag in ((0, "New"), (1, "Shared")):
+            pipeline = metadata.get_by_name(entity=Pipeline, fqn=f"{service}.{names[index]}", fields=["tasks", "tags"])
+            assert [task.name for task in pipeline.tasks] == ["extract"]
+            assert [label.tagFQN.root for label in pipeline.tasks[0].tags or []] == (
+                [] if case == "denied" and task_tag == "New" else [f"{classification}.{task_tag}"]
+            )

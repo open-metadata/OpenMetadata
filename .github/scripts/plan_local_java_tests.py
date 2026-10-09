@@ -45,6 +45,12 @@ RESULTS_MARKDOWN = f"{RESULTS_DIR}/local-pr-results.md"
 BLOCK_START = "<!-- local-java-test-results:start -->"
 BLOCK_END = "<!-- local-java-test-results:end -->"
 DEFAULT_PR_HEADING = "#### Backend integration tests"
+# The summary each surefire/failsafe execution prints when it finishes. Per-class lines end in
+# "Time elapsed: … -- in <class>", so only the summaries match in full.
+MAVEN_TOTALS = re.compile(
+    r"\[(?:INFO|WARNING|ERROR)\] Tests run: (\d+), Failures: (\d+), Errors: (\d+), "
+    r"Skipped: (\d+)(?:, Flakes: \d+)?"
+)
 
 # Surefire's default includes; openmetadata-service overrides them with the same four.
 UNIT_TEST_CLASS = re.compile(r"^(Test\w+|\w+Test|\w+Tests|\w+TestCase)$")
@@ -1281,6 +1287,12 @@ def audit_impact_map(repo: Repo, impact_map: dict[str, Any]) -> list[str]:
         for name, suite in maven["suites"].items()
         if f"<id>{suite['profile']}</id>" not in repo.pom
     ]
+    problems += [
+        f"generatedSources '{source['module']}': '{path}' does not exist"
+        for source in maven.get("generatedSources", [])
+        for path in (source["module"], *source["inputs"])
+        if not (repo.root / path).exists()
+    ]
 
     def check_tests(owner: str, patterns: list[str]) -> None:
         for pattern in patterns:
@@ -1450,6 +1462,13 @@ class StepResult:
     class_dirs: dict[str, str] = field(default_factory=dict)
     # Set when a passed CI run of the full suite on this engine stands in for the step.
     ci_url: str = ""
+    # The totals are Maven's own summary rather than the reports' sum (see run_commands).
+    exact_totals: bool = False
+
+    @property
+    def class_total(self) -> int:
+        """Test classes that reported; a nested class's tests belong to its outer classes."""
+        return sum(1 for name in self.classes_run if "$" not in name)
 
     @property
     def missing_classes(self) -> list[str]:
@@ -1508,6 +1527,81 @@ def collect_reports(
                     ):
                         owner = case.get("classname", "").rsplit(".", 1)[-1]
                         result.failed_tests.append(f"{owner}#{case.get('name')}")
+
+
+def newest_file(repo_root: Path, paths: list[str]) -> tuple[float, str]:
+    """The most recently modified file at or under `paths`, with its modification time."""
+    newest = (0.0, "")
+    for path in paths:
+        root = repo_root / path
+        candidates = (
+            [root] if root.is_file() else root.rglob("*") if root.is_dir() else []
+        )
+        for candidate in candidates:
+            if not candidate.is_file():
+                continue
+            modified = candidate.stat().st_mtime
+            if modified > newest[0]:
+                newest = (modified, candidate.relative_to(repo_root).as_posix())
+    return newest
+
+
+def stale_generated_modules(
+    repo_root: Path, sources: list[dict[str, Any]]
+) -> dict[str, str]:
+    """Modules whose generated code predates a change to its inputs, with the newest input.
+
+    jsonschema2pojo reuses a `javaType` class it finds compiled in the module's target/classes
+    instead of generating it, so after a pull or branch switch that changes a schema, an
+    incremental build keeps the old class: a merge that added TableType.DeltaLake left
+    TableResourceIT failing to compile. A clean generation writes every file in one go, so
+    the oldest generated file dates the last one.
+    """
+    stale: dict[str, str] = {}
+    for source in sources:
+        output = repo_root / source["output"]
+        generated = (
+            [f.stat().st_mtime for f in output.rglob("*") if f.is_file()]
+            if output.is_dir()
+            else []
+        )
+        changed_at, changed = newest_file(repo_root, source["inputs"])
+        if generated and changed_at > min(generated):
+            stale[source["module"]] = changed
+    return stale
+
+
+def clean_command(modules: list[str]) -> list[str]:
+    return ["mvn", "-B", "-q", "clean", "-pl", ",".join(modules)]
+
+
+def run_step(argv: list[str], repo_root: Path) -> tuple[int, list[int] | None]:
+    """Run a step with its output shown, returning the exit code and Maven's totals.
+
+    The totals (tests, failures, errors, skipped) add up the summary each surefire or
+    failsafe execution prints; None when the build printed none.
+    """
+    totals: list[int] | None = None
+    with subprocess.Popen(
+        argv,
+        cwd=repo_root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        errors="replace",
+    ) as process:
+        for line in process.stdout or []:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            summary = MAVEN_TOTALS.fullmatch(line.strip())
+            if summary:
+                counts = [int(group) for group in summary.groups()]
+                totals = (
+                    counts
+                    if totals is None
+                    else [a + b for a, b in zip(totals, counts)]
+                )
+    return process.returncode, totals
 
 
 def docker_ready(repo_root: Path) -> str | None:
@@ -1627,11 +1721,16 @@ def run_commands(
             shutil.rmtree(repo_root / directory, ignore_errors=True)
         print(f"\n$ {shlex.join(command.argv)}\n", flush=True)
         started = time.monotonic()
-        exit_code = subprocess.run(command.argv, cwd=repo_root, check=False).returncode
+        exit_code, totals = run_step(command.argv, repo_root)
         result = StepResult(
             command, exit_code, round((time.monotonic() - started) / 60, 1)
         )
         collect_reports(repo_root, command.report_dirs, result)
+        if totals:
+            # The reports undercount: failsafe writes one per class name, so a nested class
+            # several ITs inherit (BaseEntityIT$…) keeps only its last run.
+            result.tests, result.failures, result.errors, result.skipped = totals
+            result.exact_totals = True
         results.append(result)
         if not result.passed and not keep_going:
             print(
@@ -1652,10 +1751,15 @@ def describe_class(name: str, counts: list[int]) -> str:
 
 
 def count_classes(result: StepResult, names: list[str]) -> str:
-    executed = sum(
-        result.class_counts[name][0] - result.class_counts[name][1] for name in names
-    )
-    return f"{plural(len(names), 'class')}, {plural(executed, 'test')} executed"
+    classes = sum(1 for name in names if "$" not in name)
+    if result.exact_totals and set(names) == set(result.class_counts):
+        executed = result.tests - result.skipped
+    else:
+        executed = sum(
+            result.class_counts[name][0] - result.class_counts[name][1]
+            for name in names
+        )
+    return f"{plural(classes, 'class')}, {plural(executed, 'test')} executed"
 
 
 def split_full_suites(result: StepResult) -> tuple[dict[str, list[str]], list[str]]:
@@ -1696,7 +1800,7 @@ def render_tests_run(results: list[StepResult]) -> list[str]:
 
     lines = ["", "**Tests run locally**", ""]
     collapsed: list[str] = []
-    concurrent = False
+    concurrent = nested = False
     for index, (result, (suites, named)) in enumerate(zip(results, splits)):
         title = f"{result.command.kind} · {result.command.label}"
         if result.ci_url:
@@ -1726,11 +1830,20 @@ def render_tests_run(results: list[StepResult]) -> list[str]:
             parts.append(listings[index])
         lines.append(f"- {title}: {'; '.join(parts) or 'no test reports'}")
         concurrent |= result.command.kind == "integration" and len(named) > 1
-    if concurrent:
+        nested |= any("$" in name for name in result.class_counts)
+    if concurrent or nested:
+        exact = all(result.exact_totals for result in results if not result.ci_url)
         lines += [
             "",
-            "_Per-class counts come from failsafe's reports, which can credit a test to the wrong "
-            "class when classes run concurrently; the step totals above are exact._",
+            "_Per-class counts come from the test reports, which can credit a test to the wrong "
+            "class when classes run concurrently, and keep only the last run of a nested class "
+            "that several test classes inherit. "
+            + (
+                "The step totals above are Maven's own counts._"
+                if exact
+                else "The step totals above are Maven's own counts where it printed them, "
+                "and the reports' sum where it did not._"
+            ),
         ]
     return lines + collapsed
 
@@ -1792,18 +1905,27 @@ def render_block(
         else:
             verdict = "FAILED"
         lines.append(
-            f"| {result.command.kind} | {result.command.label} | {len(result.classes_run)} | {result.tests} | "
+            f"| {result.command.kind} | {result.command.label} | {result.class_total} | {result.tests} | "
             f"{result.failures + result.errors} | {result.skipped} | {result.minutes} | {verdict} |"
         )
     for command in plan.commands[len(results) :]:
         lines.append(f"| {command.kind} | {command.label} | | | | | | not run |")
 
     failed = [name for r in results for name in r.failed_tests]
+    # Failures Maven counted in a report a later run of the same nested class overwrote.
+    unnamed = sum(
+        max(0, r.failures + r.errors - len(r.failed_tests))
+        for r in results
+        if r.exact_totals
+    )
     missing = [
         f"{name} ({r.command.label})" for r in results for name in r.missing_classes
     ]
-    if failed:
-        lines += ["", f"Failed: {', '.join(f'`{name}`' for name in failed[:30])}"]
+    if failed or unnamed:
+        named = [f"`{name}`" for name in failed[:30]]
+        if unnamed:
+            named.append(f"{unnamed} more the reports lost (see the Maven output)")
+        lines += ["", f"Failed: {', '.join(named)}"]
     if missing:
         lines += [
             "",
@@ -2073,6 +2195,20 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(plan.to_json(), indent=2))
         return 0
     print_plan(plan, planner)
+    stale = (
+        stale_generated_modules(repo_root, planner.maven.get("generatedSources", []))
+        if plan.commands
+        else {}
+    )
+    why_clean = "; ".join(
+        f"{module} predates {changed}" for module, changed in sorted(stale.items())
+    )
+    if stale and not args.run:
+        print(
+            f"\nGenerated code is older than its inputs ({why_clean}), so an incremental build "
+            "would compile the old classes. --run cleans it first; by hand, start with:\n"
+            f"  {shlex.join(clean_command(sorted(stale)))}"
+        )
     if not args.run:
         return 0
 
@@ -2101,6 +2237,16 @@ def main(argv: list[str] | None = None) -> int:
                     "or pass --allow-concurrent:\n  " + "\n  ".join(others),
                     file=sys.stderr,
                 )
+                return 1
+        if stale and any(not ci_url(ci, command) for command in plan.commands):
+            clean = clean_command(sorted(stale))
+            print(
+                f"\nCleaning first: generated code is older than its inputs ({why_clean}).\n"
+                f"$ {shlex.join(clean)}",
+                flush=True,
+            )
+            if subprocess.run(clean, cwd=repo_root, check=False).returncode:
+                print(f"\n{shlex.join(clean)} failed.", file=sys.stderr)
                 return 1
         results = run_commands(repo_root, plan, args.keep_going, ci)
         block = render_block(plan, planner, results, commit, args.base, dirty)

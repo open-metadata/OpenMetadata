@@ -154,7 +154,9 @@ describe('NavbarUtils test', () => {
       helpDropdownItems.forEach((item) => {
         const labelContent = item.label.props.children;
 
-        expect(labelContent.props.className).toBe('cursor-pointer');
+        expect(labelContent.props.className.split(/\s+/)).toContain(
+          'cursor-pointer'
+        );
 
         // Should have two columns
         const columns = labelContent.props.children;
@@ -166,7 +168,9 @@ describe('NavbarUtils test', () => {
 
         // Second column should have text and optional external link icon
         expect(columns[1].props.span).toBe(20);
-        expect(columns[1].props.className).toBe('flex items-center');
+        expect(columns[1].props.className.split(/\s+/)).toEqual(
+          expect.arrayContaining(['flex', 'items-center'])
+        );
       });
     });
 

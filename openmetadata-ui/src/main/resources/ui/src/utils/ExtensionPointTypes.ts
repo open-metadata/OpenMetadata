@@ -16,7 +16,7 @@ import {
   TaskDetailDescriptor,
   TaskStatTilesProps,
 } from '../components/discovery/personal-space/InboxPage/taskDetail.types';
-import { ProfileHeaderOverride } from '../components/discovery/personal-space/Profile/profileNavConfig';
+import type { ProfileHeaderOverride } from '../components/discovery/personal-space/Profile/profileNavConfig';
 import { PluginRouteProps } from '../components/Settings/Applications/plugins/AppPlugin';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';

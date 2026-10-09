@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Harness-integrity checks — keep the agent-facing config from silently decaying.
 
-Eight checks, all emitting GitHub Actions **warning** annotations (never failing) unless
+Nine checks, all emitting GitHub Actions **warning** annotations (never failing) unless
 run with ``--strict``:
 
   1. dead-reference       — a path / make target / yarn script / maven goal named in the
@@ -19,6 +19,9 @@ run with ``--strict``:
   8. java-impact-map      — an integration test no bucket of .github/java-tests/impact-map.json
                             reaches (so `make java_affected` never runs it before a PR), a
                             bucket pattern matching nothing, or an engine the IT pom lacks
+  9. decision-records     — a docs/decisions/ record breaking the format, or an ADR citation
+                            anywhere in the tree that resolves to no record (the same check
+                            fails standalone and as a pre-commit hook)
 
 Run locally with ``make harness-check`` or ``python3 scripts/harness/check_harness.py``.
 Stdlib only; deterministic; safe to run anywhere in the tree.
@@ -551,6 +554,19 @@ def check_java_impact_map():
     return [Warn("java-impact-map", JAVA_IMPACT_MAP, 1, problem) for problem in problems]
 
 
+# ------------------------------------------------------------------------- check 9
+
+DECISION_RECORDS = "scripts/harness/check_decision_records.py"
+
+
+def check_decision_records():
+    spec = importlib.util.spec_from_file_location("check_decision_records", rp(DECISION_RECORDS))
+    guard = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(guard)
+    return [Warn("decision-records", file, line, message)
+            for file, line, message in guard.check(pathlib.Path(REPO))]
+
+
 # ------------------------------------------------------------------------------ main
 
 
@@ -563,6 +579,7 @@ CHECKS = [
     check_generated_fresh,
     check_baseline_freshness,
     check_java_impact_map,
+    check_decision_records,
 ]
 
 

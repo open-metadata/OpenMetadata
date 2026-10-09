@@ -100,12 +100,12 @@ const FORMAT_MEDIA_TYPE: Record<OntologyExportFormat, string> = {
   turtle: 'text/turtle',
 };
 
-const PREVIEW_BG = 'var(--color-bg-primary-solid)';
+const PREVIEW_BG = 'var(--tw-color-bg-primary-solid)';
 const SYNTAX_COLOR = {
-  default: 'var(--color-text-secondary_on-brand)',
-  keyword: 'var(--color-utility-blue-400)',
-  string: 'var(--color-utility-success-400)',
-  term: 'var(--color-utility-orange-400)',
+  default: 'var(--tw-color-text-secondary_on-brand)',
+  keyword: 'var(--tw-color-utility-blue-400)',
+  string: 'var(--tw-color-utility-success-400)',
+  term: 'var(--tw-color-utility-orange-400)',
 };
 const SYNTAX_TOKEN =
   /("(?:[^"\\]|\\.)*"(?:@[\w-]+)?)|(<[^>\s]*>)|(\b[A-Za-z][\w-]*:[\w/#.-]*)|(\ba\b)/g;
