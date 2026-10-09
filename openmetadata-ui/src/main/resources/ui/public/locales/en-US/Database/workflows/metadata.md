@@ -165,7 +165,7 @@ $$section
 
 Maximum nesting depth of the column children that ingestion infers from sampled JSON values. The direct children of a column are depth 1.
 
-Deeper children are not ingested. A column at the limit keeps its data type (`JSON`, or `ARRAY` of `STRUCT`) without children. `0` keeps no inferred children at all. Leave the field empty for no limit.
+Deeper children are not ingested. A column at the limit keeps its data type (such as `JSON` or `ARRAY`) without children. `0` keeps no inferred children at all. Leave the field empty for no limit.
 
 Applies to JSON objects sampled from Datalake files (JSON, JSON Lines, and CSV or TSV cells that hold JSON objects), to NoSQL documents (MongoDB, Couchbase, DynamoDB, Bigtable), and to JSON columns read with `Extract JSON Schema`, where the stored JSON schema is bounded the same way. Declared schemas (JSON Schema files, Avro, Parquet, Iceberg or Delta metadata) are never limited.
 
