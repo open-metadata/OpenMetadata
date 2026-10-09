@@ -113,6 +113,7 @@ export interface FieldPropsMap {
   onSelect?: (files: FileList | null) => void;
   onSelectionChange?: (key: Key | null) => void;
   options?: FormSelectItem[];
+  popoverClassName?: string;
   coverImageLabels?: CoverImageUploadLabels;
   maxDimensions?: { width: number; height: number };
   /** Autocomplete: selected tags drawn before collapsing the rest into a +N badge. */

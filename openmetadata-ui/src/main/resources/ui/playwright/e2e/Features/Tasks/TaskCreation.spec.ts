@@ -175,9 +175,14 @@ test.describe('Task Creation - Request Description', () => {
     await expect(page.getByTestId('form-container')).toBeVisible();
 
     // Assignee field - search and select user
-    const assigneeInput = page.getByTestId('select-assignee').getByRole('combobox');
-    await expect(assigneeInput).toHaveAccessibleName('Assignees');
-    await page.getByText('Assignees', { exact: true }).click();
+    const assigneeInput = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
+    await expect(assigneeInput).toHaveAccessibleName(/^Assignees\b/);
+    await page
+      .locator('label')
+      .filter({ hasText: /^Assignees\b/ })
+      .click();
     await expect(assigneeInput).toBeFocused();
     await assigneeInput.click();
 
