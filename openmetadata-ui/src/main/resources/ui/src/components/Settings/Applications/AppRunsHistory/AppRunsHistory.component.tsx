@@ -12,7 +12,6 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import validator from '@rjsf/validator-ajv8';
 import { Button, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
@@ -32,7 +31,6 @@ import {
 } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
-import { ServiceCategory } from '../../../../enums/service.enum';
 import { AppType } from '../../../../generated/entity/applications/app';
 import {
   AppRunRecord,
@@ -57,7 +55,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -73,7 +71,6 @@ import {
   AppRunRecordWithId,
   AppRunsHistoryProps,
 } from './AppRunsHistory.interface';
-import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 
 // Statuses in which an app run has already finished, so it can no longer be stopped.
 const TERMINAL_APP_RUN_STATUSES: Status[] = [

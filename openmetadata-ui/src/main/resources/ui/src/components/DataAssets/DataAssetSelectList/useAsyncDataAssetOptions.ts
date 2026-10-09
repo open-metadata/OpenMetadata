@@ -15,8 +15,12 @@ import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/entity/type';
+import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
+import {
+  SearchHitBody,
+  TableSearchSource,
+} from '../../../interface/search.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
@@ -26,12 +30,6 @@ import {
   FetchOptionsResponse,
 } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { UseAsyncDataAssetOptionsParams } from './DataAssetPicker.interface';
-import {
-  SearchHitBody,
-  SearchResponse,
-  TableSearchSource,
-} from '../../../interface/search.interface';
-import { SearchIndex } from '../../../enums/search.enum';
 
 export const useAsyncDataAssetOptions = ({
   isOpen,
