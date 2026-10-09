@@ -31,6 +31,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -77,6 +78,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.EntityIndexWrite;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -298,6 +300,11 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void deleteIndex(String indexName) {
     indexManager.deleteIndex(indexName);
+  }
+
+  @Override
+  public void refreshIndices(Collection<String> indices) throws IOException {
+    indexManager.refreshIndices(indices);
   }
 
   @Override
@@ -715,6 +722,11 @@ public class ElasticSearchClient implements SearchClient {
   public void updateEntity(
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
     entityManager.updateEntity(indexName, docId, doc, scriptTxt);
+  }
+
+  @Override
+  public Set<String> updateEntities(List<EntityIndexWrite> writes) throws IOException {
+    return entityManager.updateEntities(writes);
   }
 
   @Override

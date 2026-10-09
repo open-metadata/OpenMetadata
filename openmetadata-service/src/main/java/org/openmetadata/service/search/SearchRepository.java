@@ -79,6 +79,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -94,7 +95,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -129,7 +129,6 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
@@ -1937,61 +1936,11 @@ public class SearchRepository {
 
     try {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
-      String scriptTxt = DEFAULT_UPDATE_SCRIPT;
-      Map<String, Object> doc = new HashMap<>();
-
       ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
-
-      if (relationshipRevision != null) {
-        RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
-        if (revisionSpec == null) {
-          throw new IllegalArgumentException(
-              "Relationship revisions can only update test cases and logical test suites");
-        }
-        SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
-        doc =
-            new HashMap<>(
-                searchIndex.buildSearchIndexDoc(
-                    DocBuildContext.withRelationshipRevision(relationshipRevision)));
-        doc =
-            SearchIndexUtils.stripDocMapIfOversized(
-                doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
-        applyRelationshipRevision(entity, doc, relationshipRevision);
-        scriptTxt = revisionSpec.replacementScript();
-      } else {
-        boolean isNonVersionedUpdate =
-            changeDescription != null
-                && entity.getChangeDescription() != null
-                && Objects.equals(
-                    entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
-        ScriptedPartialUpdate partialUpdate =
-            buildScriptedPartialUpdate(entity, changeDescription, isNonVersionedUpdate);
-        if (partialUpdate != null) {
-          scriptTxt = partialUpdate.script();
-          doc = partialUpdate.parameters();
-        } else {
-          if (isNonVersionedUpdate && changeDescription != null) {
-            LOG.debug(
-                "Falling back to full document indexing for non-versioned update. entityType={}, entityId={}, changedFields={}",
-                entityType,
-                entityId,
-                getChangedFieldNames(changeDescription));
-          }
-          SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
-          doc = searchIndex.buildSearchIndexDoc();
-          doc =
-              SearchIndexUtils.stripDocMapIfOversized(
-                  doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
-          ScriptedPartialUpdate relationshipDocumentUpdate =
-              buildRelationshipDocumentUpdate(entity, doc);
-          if (relationshipDocumentUpdate != null) {
-            scriptTxt = relationshipDocumentUpdate.script();
-            doc = relationshipDocumentUpdate.parametersForIndexing();
-          }
-        }
-      }
-
-      searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
+      EntityIndexWrite write =
+          buildEntityIndexWrite(
+              entity, changeDescription, relationshipRevision, DocBuildContext.empty());
+      searchClient.updateEntity(write.index(), write.docId(), write.params(), write.script());
 
       if (Entity.TABLE.equals(entityType)) {
         try {
@@ -2054,6 +2003,76 @@ public class SearchRepository {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
     }
+  }
+
+  /**
+   * What a live write sends for {@code entity}: its index (the staged copy while a reindex builds
+   * one), its document id, and the scripted upsert. The single write and the bulk one both use it,
+   * so an entity is indexed alike by either. {@code prefetched} carries what a batch loaded for all
+   * its documents at once; a single write passes {@link DocBuildContext#empty()}.
+   */
+  EntityIndexWrite buildEntityIndexWrite(
+      EntityInterface<?> entity,
+      ChangeDescription changeDescription,
+      Long relationshipRevision,
+      DocBuildContext prefetched) {
+    String entityType = entity.getEntityReference().getType();
+    String entityId = entity.getId().toString();
+    String scriptTxt = DEFAULT_UPDATE_SCRIPT;
+    Map<String, Object> doc;
+    if (relationshipRevision != null) {
+      RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+      if (revisionSpec == null) {
+        throw new IllegalArgumentException(
+            "Relationship revisions can only update test cases and logical test suites");
+      }
+      SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
+      doc =
+          new HashMap<>(
+              searchIndex.buildSearchIndexDoc(
+                  DocBuildContext.of(
+                      prefetched.prefetchedUpstreamLineage(),
+                      prefetched.serviceStylePrefetch(),
+                      relationshipRevision)));
+      doc =
+          SearchIndexUtils.stripDocMapIfOversized(
+              doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
+      applyRelationshipRevision(entity, doc, relationshipRevision);
+      scriptTxt = revisionSpec.replacementScript();
+    } else {
+      boolean isNonVersionedUpdate =
+          changeDescription != null
+              && entity.getChangeDescription() != null
+              && Objects.equals(
+                  entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
+      ScriptedPartialUpdate partialUpdate =
+          buildScriptedPartialUpdate(entity, changeDescription, isNonVersionedUpdate);
+      if (partialUpdate != null) {
+        scriptTxt = partialUpdate.script();
+        doc = partialUpdate.parameters();
+      } else {
+        if (isNonVersionedUpdate && changeDescription != null) {
+          LOG.debug(
+              "Falling back to full document indexing for non-versioned update. entityType={}, entityId={}, changedFields={}",
+              entityType,
+              entityId,
+              getChangedFieldNames(changeDescription));
+        }
+        SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
+        doc = searchIndex.buildSearchIndexDoc(prefetched);
+        doc =
+            SearchIndexUtils.stripDocMapIfOversized(
+                doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
+        ScriptedPartialUpdate relationshipDocumentUpdate =
+            buildRelationshipDocumentUpdate(entity, doc);
+        if (relationshipDocumentUpdate != null) {
+          scriptTxt = relationshipDocumentUpdate.script();
+          doc = relationshipDocumentUpdate.parametersForIndexing();
+        }
+      }
+    }
+    return new EntityIndexWrite(
+        getWriteIndexName(entityIndexMap.get(entityType)), entityId, scriptTxt, doc);
   }
 
   public void bulkIndexPipelineExecutions(
@@ -2253,12 +2272,8 @@ public class SearchRepository {
       entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
     }
 
-    int batchSize = 100;
-    int maxConcurrentRequests = 5;
-    long maxPayloadSizeBytes = SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
     List<EntityInterface<?>> propagationCandidates = new ArrayList<>();
-
-    // Process each entity type separately to ensure correct index routing
+    Set<String> writtenIndices = new LinkedHashSet<>();
     for (Map.Entry<String, List<EntityInterface<?>>> entry : entitiesByType.entrySet()) {
       String entityType = entry.getKey();
       List<EntityInterface<?>> typeEntities = new ArrayList<>();
@@ -2274,174 +2289,122 @@ public class SearchRepository {
       if (typeEntities.isEmpty()) {
         continue;
       }
-      Map<String, EntityInterface<?>> typeEntitiesById =
-          typeEntities.stream()
-              .collect(
-                  Collectors.toUnmodifiableMap(
-                      entity -> entity.getId().toString(), Function.identity()));
-      Map<String, EntityInterface<?>> typeEntitiesByFqn =
-          typeEntities.stream()
-              .filter(entity -> !nullOrEmpty(entity.getFullyQualifiedName()))
-              .collect(
-                  Collectors.toUnmodifiableMap(
-                      EntityInterface<?>::getFullyQualifiedName,
-                      Function.identity(),
-                      (first, ignored) -> first));
-
       if (!getSearchClient().isClientAvailable()) {
         for (EntityInterface<?> entity : typeEntities) {
           enqueueEntityRetry(entity, "updateEntitiesBulk: Search client unavailable");
         }
         continue;
       }
-
-      BulkSink bulkSink = null;
-      boolean bulkWriteAttempted = false;
-      boolean bulkWriteReturned = false;
-      Set<String> failedEntityIds = ConcurrentHashMap.newKeySet();
-      Set<String> failedEntityFqns = ConcurrentHashMap.newKeySet();
-      AtomicInteger recordedBulkFailures = new AtomicInteger();
-      try {
-        bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
-        bulkSink.setFailureCallback(
-            (failedEntityType, failedEntityId, failedEntityFqn, errorMessage, stage) -> {
-              recordedBulkFailures.incrementAndGet();
-              if (!nullOrEmpty(failedEntityId)) {
-                failedEntityIds.add(failedEntityId);
-              }
-              if (!nullOrEmpty(failedEntityFqn)) {
-                failedEntityFqns.add(failedEntityFqn);
-              }
-              EntityInterface<?> failedEntity =
-                  !nullOrEmpty(failedEntityId) ? typeEntitiesById.get(failedEntityId) : null;
-              if (failedEntity == null && !nullOrEmpty(failedEntityFqn)) {
-                failedEntity = typeEntitiesByFqn.get(failedEntityFqn);
-              }
-              String failureReason = "updateEntitiesBulk " + stage + ": " + errorMessage;
-              if (failedEntity != null) {
-                enqueueEntityRetry(failedEntity, failureReason);
-              } else {
-                SearchIndexRetryQueue.enqueue(
-                    failedEntityId, failedEntityFqn, failedEntityType, failureReason);
-              }
-            });
-        Map<String, Object> contextData = new HashMap<>();
-        contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
-        contextData.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
-        if (!relationshipRevisions.isEmpty()) {
-          contextData.put(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, relationshipRevisions);
-        }
-        ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
-        bulkWriteAttempted = true;
-        bulkSink.write(typeEntities, contextData);
-        bulkWriteReturned = true;
-        boolean completed = bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
-        StepStats sinkStats = bulkSink.getStats();
-        if (!completed
-            || recordedBulkFailures.get() > 0
-            || (sinkStats != null
-                && Optional.ofNullable(sinkStats.getFailedRecords()).orElse(0) > 0)) {
-          throw new IOException(
-              "Bulk entity update did not complete successfully for type " + entityType);
-        }
-        propagationCandidates.addAll(typeEntities);
-      } catch (Exception e) {
-        LOG.error("Error during bulk entity update in search index for type {}", entityType, e);
-        boolean bulkSinkQuiescent = false;
-        StepStats finalSinkStats = null;
-        if (bulkSink != null) {
-          bulkSinkQuiescent = closeBulkSinkAndCheckQuiescent(bulkSink);
-          finalSinkStats = bulkSink.getStats();
-          bulkSink = null;
-        }
-        if (!bulkWriteAttempted) {
-          for (EntityInterface<?> entity : typeEntities) {
-            try {
-              Long relationshipRevision = relationshipRevisions.get(entity.getId());
-              if (relationshipRevision == null) {
-                updateEntityIndex(entity);
-              } else {
-                updateEntityIndex(entity, relationshipRevision);
-              }
-            } catch (Exception ex) {
-              LOG.error(
-                  "Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
-            }
-          }
-        } else {
-          Set<String> confirmedEntityIds = new HashSet<>();
-          if (bulkWriteReturned && bulkSinkQuiescent && finalSinkStats != null) {
-            addConfirmedPropagationCandidates(
-                typeEntities,
-                finalSinkStats,
-                recordedBulkFailures.get(),
-                failedEntityIds,
-                failedEntityFqns,
-                propagationCandidates,
-                confirmedEntityIds);
-          }
-          for (EntityInterface<?> entity : typeEntities) {
-            String entityId = entity.getId().toString();
-            String entityFqn = entity.getFullyQualifiedName();
-            if (confirmedEntityIds.contains(entityId)
-                || failedEntityIds.contains(entityId)
-                || (entityFqn != null && failedEntityFqns.contains(entityFqn))) {
-              continue;
-            }
-            enqueueEntityRetry(
-                entity,
-                "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback",
-                e);
-          }
-        }
-      } finally {
-        if (bulkSink != null) {
-          closeBulkSinkAndCheckQuiescent(bulkSink);
-        }
-      }
+      propagationCandidates.addAll(
+          writeLive(entityType, typeEntities, relationshipRevisions, writtenIndices));
     }
 
+    refreshLiveIndices(writtenIndices);
     propagateEntitiesAfterBulkFlush(propagationCandidates);
   }
 
-  private boolean closeBulkSinkAndCheckQuiescent(BulkSink bulkSink) {
-    try {
-      bulkSink.close();
-      return bulkSink.getActiveBulkRequestCount() == 0;
-    } catch (Exception e) {
-      LOG.warn("Error closing bulk sink", e);
-      return false;
+  /**
+   * Sends the entities' documents as bulk live writes, built as a single write builds them, and
+   * returns the entities written. A write that fails goes to the retry queue, which rebuilds the
+   * document from the stored entity. See
+   * ADR:2026-10-09-live-search-writes-are-refreshed-and-reindex-safe.
+   */
+  private List<EntityInterface<?>> writeLive(
+      String entityType,
+      List<EntityInterface<?>> entities,
+      Map<UUID, Long> relationshipRevisions,
+      Set<String> writtenIndices) {
+    Map<String, EntityInterface<?>> entitiesByDocId = new LinkedHashMap<>();
+    List<EntityIndexWrite> writes = new ArrayList<>();
+    Map<UUID, DocBuildContext> prefetched =
+        prefetchDocBuildContexts(entityType, entities, relationshipRevisions);
+    for (EntityInterface<?> entity : entities) {
+      String entityId = entity.getId().toString();
+      if (shouldSkipStreamingIndexing(
+          entityType, entityId, entity.getFullyQualifiedName(), "updateEntitiesIndex")) {
+        continue;
+      }
+      try {
+        EntityIndexWrite write =
+            buildEntityIndexWrite(
+                entity,
+                getEffectiveChangeDescription(entity),
+                relationshipRevisions.get(entity.getId()),
+                prefetched.getOrDefault(entity.getId(), DocBuildContext.empty()));
+        writes.add(write);
+        entitiesByDocId.put(write.docId(), entity);
+      } catch (Exception e) {
+        enqueueEntityRetry(entity, "updateEntitiesIndex: build", e);
+      }
     }
+    Set<String> failedDocIds;
+    try {
+      failedDocIds = getSearchClient().updateEntities(writes);
+    } catch (Exception e) {
+      LOG.error("Bulk live write failed for {} entities of type {}", writes.size(), entityType, e);
+      entitiesByDocId
+          .values()
+          .forEach(entity -> enqueueEntityRetry(entity, "updateEntitiesIndex", e));
+      return List.of();
+    }
+    writes.forEach(write -> writtenIndices.add(write.index()));
+    List<EntityInterface<?>> written = new ArrayList<>();
+    entitiesByDocId.forEach(
+        (docId, entity) -> {
+          if (failedDocIds.contains(docId)) {
+            enqueueEntityRetry(entity, "updateEntitiesIndex: bulk item failed");
+          } else {
+            written.add(entity);
+          }
+        });
+    if (Entity.TABLE.equals(entityType)) {
+      rebuildColumnEntries(written);
+    }
+    return written;
   }
 
-  private void addConfirmedPropagationCandidates(
-      List<EntityInterface<?>> entities,
-      StepStats sinkStats,
-      int recordedFailures,
-      Set<String> failedEntityIds,
-      Set<String> failedEntityFqns,
-      List<EntityInterface<?>> propagationCandidates,
-      Set<String> confirmedEntityIds) {
-    int failedRecords = Optional.ofNullable(sinkStats.getFailedRecords()).orElse(0);
-    if (failedRecords == 0 && recordedFailures == 0) {
-      propagationCandidates.addAll(entities);
-      entities.forEach(entity -> confirmedEntityIds.add(entity.getId().toString()));
-      return;
-    }
-    if (recordedFailures < failedRecords) {
-      LOG.warn(
-          "Skipping bulk propagation because only {} of {} failed records were identified",
-          recordedFailures,
-          failedRecords);
-      return;
-    }
-    for (EntityInterface<?> entity : entities) {
-      if (!failedEntityIds.contains(entity.getId().toString())
-          && (entity.getFullyQualifiedName() == null
-              || !failedEntityFqns.contains(entity.getFullyQualifiedName()))) {
-        propagationCandidates.add(entity);
-        confirmedEntityIds.add(entity.getId().toString());
+  // What the batch's documents read from the database (lineage, service styles, test relationship
+  // revisions), loaded once for the batch as the reindex does, instead of once per document.
+  private static Map<UUID, DocBuildContext> prefetchDocBuildContexts(
+      String entityType, List<EntityInterface<?>> entities, Map<UUID, Long> relationshipRevisions) {
+    Map<String, Object> contextData = new HashMap<>();
+    contextData.put(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, relationshipRevisions);
+    ReindexingUtil.populateDocBuildContext(contextData, entityType, entities);
+    @SuppressWarnings("unchecked")
+    Map<UUID, DocBuildContext> prefetched =
+        (Map<UUID, DocBuildContext>)
+            contextData.getOrDefault(BulkSink.DOC_BUILD_CONTEXT_KEY, Map.of());
+    return prefetched;
+  }
+
+  // A table whose columns changed loses its old column entries first, so a removed column leaves
+  // none behind; then every written table's entries are rebuilt in bulk.
+  private void rebuildColumnEntries(List<EntityInterface<?>> tables) {
+    for (EntityInterface<?> table : tables) {
+      if (hasColumnsChanged(getEffectiveChangeDescription(table))) {
+        try {
+          deleteTableColumns((Table) table);
+        } catch (Exception e) {
+          LOG.error("Issue deleting old column entries of [{}]", table.getFullyQualifiedName(), e);
+        }
       }
+    }
+    indexColumnsForTables(tables);
+  }
+
+  // One refresh of the live indices written, so the writes are searchable on return. A staged copy
+  // that a reindex is building is left alone: it is refreshed when promoted.
+  private void refreshLiveIndices(Set<String> writtenIndices) {
+    List<String> liveIndices =
+        writtenIndices.stream().filter(index -> !activeStagedIndices.containsValue(index)).toList();
+    if (liveIndices.isEmpty()) {
+      return;
+    }
+    try {
+      getSearchClient().refreshIndices(liveIndices);
+    } catch (Exception e) {
+      LOG.warn(
+          "Refreshing {} after live writes failed; they become searchable later", liveIndices, e);
     }
   }
 

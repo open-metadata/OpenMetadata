@@ -24,11 +24,13 @@ import es.co.elastic.clients.elasticsearch._types.ErrorCause;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.Result;
+import es.co.elastic.clients.elasticsearch._types.Script;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch._types.SlicesCalculation;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import es.co.elastic.clients.elasticsearch.core.BulkRequest;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
@@ -45,9 +47,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -73,8 +77,10 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ColumnLineageReconciler;
+import org.openmetadata.service.search.EntityIndexWrite;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchPropagationLimits;
@@ -454,7 +460,6 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
   UpdateRequest<Map, Map> buildUpdateEntityRequest(
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
-    Map<String, JsonData> params = convertToJsonDataMap(doc);
     return UpdateRequest.of(
         u ->
             u.index(indexName)
@@ -463,11 +468,65 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                 .retryOnConflict(3)
                 .scriptedUpsert(true)
                 .upsert(SearchIndexUtils.toUpsertDocument(doc))
-                .script(
-                    s ->
-                        s.source(ss -> ss.scriptString(scriptTxt))
-                            .lang(ScriptLanguage.Painless)
-                            .params(params)));
+                .script(liveWriteScript(scriptTxt, doc)));
+  }
+
+  @Override
+  public Set<String> updateEntities(List<EntityIndexWrite> writes) throws IOException {
+    Set<String> failed = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot update entities.");
+      writes.forEach(write -> failed.add(write.docId()));
+      return failed;
+    }
+    for (List<EntityIndexWrite> request :
+        EntityIndexWrite.bulkRequests(
+            writes, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES)) {
+      BulkResponse response = client.bulk(buildUpdateEntitiesRequest(request));
+      if (response.errors()) {
+        response.items().stream()
+            .filter(item -> item.error() != null)
+            .forEach(item -> failed.add(item.id()));
+      }
+    }
+    return failed;
+  }
+
+  // The bulk form of buildUpdateEntityRequest: the same scripted upsert per item, unrefreshed.
+  BulkRequest buildUpdateEntitiesRequest(List<EntityIndexWrite> writes) {
+    List<BulkOperation> operations =
+        writes.stream()
+            .map(
+                write ->
+                    BulkOperation.of(
+                        op ->
+                            op.update(
+                                update ->
+                                    update
+                                        .index(write.index())
+                                        .id(write.docId())
+                                        .retryOnConflict(3)
+                                        .action(
+                                            action ->
+                                                action
+                                                    .scriptedUpsert(true)
+                                                    .upsert(
+                                                        SearchIndexUtils.toUpsertDocument(
+                                                            write.params()))
+                                                    .script(
+                                                        liveWriteScript(
+                                                            write.script(), write.params()))))))
+            .toList();
+    return BulkRequest.of(b -> b.operations(operations).refresh(Refresh.False));
+  }
+
+  private Script liveWriteScript(String scriptTxt, Map<String, Object> doc) {
+    Map<String, JsonData> params = convertToJsonDataMap(doc);
+    return Script.of(
+        s ->
+            s.source(ss -> ss.scriptString(scriptTxt))
+                .lang(ScriptLanguage.Painless)
+                .params(params));
   }
 
   @Override

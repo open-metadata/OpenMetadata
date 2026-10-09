@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -204,6 +205,15 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
     client.indices().create(request);
     LOG.info("Successfully created index: {}", indexName);
+  }
+
+  @Override
+  public void refreshIndices(Collection<String> indices) throws IOException {
+    if (!isClientAvailable || indices.isEmpty()) {
+      return;
+    }
+    List<String> names = new ArrayList<>(indices);
+    client.indices().refresh(r -> r.index(names));
   }
 
   @Override

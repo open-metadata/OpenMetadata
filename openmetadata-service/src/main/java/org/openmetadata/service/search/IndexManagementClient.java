@@ -1,6 +1,7 @@
 package org.openmetadata.service.search;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.openmetadata.search.IndexMapping;
@@ -233,4 +234,7 @@ public interface IndexManagementClient {
     }
     return 0;
   }
+
+  /** Refreshes {@code indices}, making their latest writes searchable. */
+  void refreshIndices(Collection<String> indices) throws IOException;
 }

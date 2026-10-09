@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
@@ -110,6 +111,15 @@ public interface EntityManagementClient {
    * @param scriptTxt the script text for the update
    */
   void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);
+
+  /**
+   * Sends live writes in bulk, each the scripted upsert {@link #updateEntity} sends on its own, in
+   * requests of at most {@link EntityIndexWrite#BULK_ITEMS} items or the bulk payload cap. Nothing
+   * is refreshed: the caller refreshes the indices it wrote once all of them are sent.
+   *
+   * @return the document ids whose write failed
+   */
+  Set<String> updateEntities(List<EntityIndexWrite> writes) throws IOException;
 
   /**
    * Updates child entities matching field and value with a script.
