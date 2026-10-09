@@ -22,6 +22,18 @@ jest.mock('../../../../../../rest/rolesAPIV1', () => ({
   searchRoles: jest.fn().mockResolvedValue([]),
 }));
 
+const baseProps = (props: Partial<WidgetProps>) =>
+  ({
+    id: 'root/authenticationConfiguration/ldapConfiguration/authRolesMapping',
+    label: 'Auth Roles Mapping',
+    schema: {},
+    options: { help: 'Map LDAP groups to roles.' },
+    registry: {},
+    onBlur: jest.fn(),
+    onFocus: jest.fn(),
+    ...props,
+  } as unknown as WidgetProps);
+
 const renderWidget = (props: Partial<WidgetProps> = {}) => {
   const onChange = jest.fn();
   render(
@@ -93,6 +105,46 @@ describe('SsoLdapRoleMappingWidget', () => {
     fireEvent.click(screen.getAllByTestId(/^remove-mapping-btn-/)[0]);
 
     expect(onChange).toHaveBeenLastCalledWith(JSON.stringify({ 'cn=eng': [] }));
+  });
+
+  it('shows the restored rows when the form discards its edits', () => {
+    const saved = JSON.stringify({ 'cn=admins': ['Admin'] });
+    const onChange = jest.fn();
+    const { rerender } = render(
+      <SsoLdapRoleMappingWidget {...baseProps({ value: saved, onChange })} />
+    );
+
+    fireEvent.change(groupInputs()[0], { target: { value: 'cn=typo' } });
+    const edited = onChange.mock.calls[0][0];
+    rerender(
+      <SsoLdapRoleMappingWidget {...baseProps({ value: edited, onChange })} />
+    );
+
+    expect(groupInputs()[0]).toHaveValue('cn=typo');
+
+    rerender(
+      <SsoLdapRoleMappingWidget {...baseProps({ value: saved, onChange })} />
+    );
+
+    expect(groupInputs()[0]).toHaveValue('cn=admins');
+  });
+
+  it('keeps a row that is still being filled in when its own edit comes back', () => {
+    const onChange = jest.fn();
+    const { rerender } = render(
+      <SsoLdapRoleMappingWidget {...baseProps({ onChange })} />
+    );
+
+    fireEvent.click(screen.getByTestId('add-mapping-btn'));
+    fireEvent.click(screen.getByTestId('add-mapping-btn'));
+    fireEvent.change(groupInputs()[0], { target: { value: 'cn=eng' } });
+    rerender(
+      <SsoLdapRoleMappingWidget
+        {...baseProps({ value: onChange.mock.calls[0][0], onChange })}
+      />
+    );
+
+    expect(groupInputs()).toHaveLength(2);
   });
 
   it('is read-only without add or remove controls', () => {

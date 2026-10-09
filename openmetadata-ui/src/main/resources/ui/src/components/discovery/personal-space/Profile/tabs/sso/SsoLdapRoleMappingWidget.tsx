@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { WidgetProps } from '@rjsf/utils';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getWidgetHint,
@@ -63,11 +63,24 @@ const SsoLdapRoleMappingWidget = ({
     parseLdapRoleMappings(value, createMappingId)
   );
   const duplicates = findDuplicateLdapGroups(mappings);
+  const lastEmitted = useRef<unknown>(value);
+
+  // Rebuild the rows only when the value changes from outside (e.g. the form
+  // discards its edits). Our own edits echo back unchanged, and rebuilding on
+  // those would drop rows that have no group DN yet.
+  useEffect(() => {
+    if (value !== lastEmitted.current) {
+      lastEmitted.current = value;
+      setMappings(parseLdapRoleMappings(value, createMappingId));
+    }
+  }, [value]);
 
   const update = (next: LdapRoleMapping[]) => {
     setMappings(next);
     if (findDuplicateLdapGroups(next).size === 0) {
-      onChange(serializeLdapRoleMappings(next));
+      const serialized = serializeLdapRoleMappings(next);
+      lastEmitted.current = serialized;
+      onChange(serialized);
     }
   };
 
