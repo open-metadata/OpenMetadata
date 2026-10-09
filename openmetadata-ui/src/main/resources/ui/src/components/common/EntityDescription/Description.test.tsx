@@ -15,6 +15,7 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ChangeSource } from '../../../generated/type/changeSummaryMap';
@@ -218,18 +219,16 @@ describe('Description', () => {
     expect(screen.getByTestId('edit-description')).toBeInTheDocument();
   });
 
-  it('should use the shared edit-new svg asset for the edit icon', () => {
+  it('should use the core Edit01 icon for the edit button', () => {
     render(<Description {...defaultProps} />);
 
     const editButtonProps = (Button as unknown as jest.Mock).mock.calls
       .map(([props]) => props)
       .find((props) => props['data-testid'] === 'edit-description');
 
-    // Every *.svg resolves to the string 'svg-mock' under jest (see src/test/unit/mocks/svg.mock),
-    // so an asset import is distinguishable from untitled's `Edit02`, which is a function
-    // component. Guards the regression where this button used a visibly different pencil than the
-    // edit-new.svg one every other edit affordance on an entity page uses.
-    expect(editButtonProps?.iconLeading).toBe('svg-mock');
+    // Same pencil as WidgetEditButton, which the widgets beside the description on entity
+    // detail pages use. Other edit buttons still use edit-new.svg until they move to Edit01.
+    expect(editButtonProps?.iconLeading).toBe(Edit01);
   });
 
   it('should hide the edit button when edit access is not granted', () => {

@@ -17,14 +17,13 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Copy01, Star01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
-import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -194,7 +193,7 @@ const EntityHeaderTitle = ({
           color="tertiary"
           data-testid="entity-follow-button"
           iconLeading={
-            <StarFilledIcon className="tw:size-3.5 tw:text-utility-brand-600" />
+            <Star01 className="tw:size-3.5 tw:text-utility-brand-600" />
           }
           isDisabled={deleted}
           isLoading={isFollowingLoading}
