@@ -51,8 +51,8 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // language switch targets the core language selector by test id, and the
     // core assignee/schema-field selectors in the task and incident specs
     // remove three more. Scoping the Policies rule description to its rule
-    // card removes one more.
-    'om-playwright/no-positional-locator': 594,
+    // card removes one more; task dialog titles now use a stable test id.
+    'om-playwright/no-positional-locator': 593,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
