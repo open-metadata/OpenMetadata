@@ -88,6 +88,7 @@ export { CloudLightning } from './CloudLightning';
 export { Code01 } from './Code01';
 export { CodeSquare01 } from './CodeSquare01';
 export { CodeSquare02 } from './CodeSquare02';
+export { ColumnCustomize } from './ColumnCustomize';
 export { Column } from './Column';
 export { Columns01 } from './Columns01';
 export { Columns03 } from './Columns03';

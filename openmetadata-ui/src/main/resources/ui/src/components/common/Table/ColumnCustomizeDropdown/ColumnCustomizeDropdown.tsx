@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
+import { ColumnCustomize } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column-customize.svg';
 import DraggableMenuItemV2 from '../DraggableMenu/DraggableMenuItemV2.component';
 import { ColumnCustomizeDropdownProps } from './ColumnCustomizeDropdown.interface';
 
@@ -33,7 +33,7 @@ const ColumnCustomizeDropdown = ({
       <Button
         color="tertiary"
         data-testid="column-dropdown"
-        iconLeading={ColumnIcon}
+        iconLeading={ColumnCustomize}
         size="sm"
         title={t('label.show-or-hide-column-plural')}>
         {t('label.customize')}
