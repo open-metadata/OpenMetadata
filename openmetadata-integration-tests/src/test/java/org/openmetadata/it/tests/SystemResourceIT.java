@@ -34,9 +34,11 @@ import com.unboundid.ldif.LDIFException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,6 +77,7 @@ import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -122,6 +125,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -300,6 +304,9 @@ public class SystemResourceIT {
                             glossaryTagsPatch(field, List.of(nonSensitive, classifiedTermLabel)))));
       }
 
+      assertDisabledGlossaryCsvValidation(client, table, termLabel, classifiedTermLabel);
+      assertDisabledGlossaryColumnValidation(client, table, nonSensitive, classifiedTermLabel);
+
       setGlossaryTagPropagation(true);
       Table updated =
           client
@@ -326,6 +333,46 @@ public class SystemResourceIT {
 
   private JsonNode glossaryTagsPatch(String path, List<TagLabel> tags) {
     return MAPPER.valueToTree(List.of(Map.of("op", "add", "path", path, "value", tags)));
+  }
+
+  private void assertDisabledGlossaryCsvValidation(
+      OpenMetadataClient client, Table table, TagLabel term, TagLabel classifiedTerm)
+      throws Exception {
+    String csv = client.tables().exportCsv(table.getFullyQualifiedName());
+    assertTrue(csv.contains(term.getTagFQN()));
+    String conflictingCsv = csv.replace(term.getTagFQN(), classifiedTerm.getTagFQN());
+    for (boolean dryRun : List.of(true, false)) {
+      CsvImportResult result =
+          MAPPER.readValue(
+              client.tables().importCsv(table.getFullyQualifiedName(), conflictingCsv, dryRun),
+              CsvImportResult.class);
+      assertEquals(ApiStatus.FAILURE, result.getStatus(), result.getImportResultsCsv());
+      assertEquals(1, result.getNumberOfRowsFailed());
+      assertTrue(result.getImportResultsCsv().contains("mutually exclusive"));
+      assertEquals(csv, client.tables().exportCsv(table.getFullyQualifiedName()));
+    }
+  }
+
+  private void assertDisabledGlossaryColumnValidation(
+      OpenMetadataClient client, Table table, TagLabel direct, TagLabel classifiedTerm) {
+    Table before = client.tables().get(table.getId().toString(), "tags,columns");
+    String columnFqn = table.getColumns().getFirst().getFullyQualifiedName();
+    assertEquals(
+        400,
+        statusOf(
+            () ->
+                client
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT,
+                        "/v1/columns/name/"
+                            + URLEncoder.encode(columnFqn, StandardCharsets.UTF_8)
+                            + "?entityType=table",
+                        new UpdateColumn().withTags(List.of(direct, classifiedTerm)),
+                        Column.class)));
+    Table unchanged = client.tables().get(table.getId().toString(), "tags,columns");
+    assertEquals(
+        before.getColumns().getFirst().getTags(), unchanged.getColumns().getFirst().getTags());
   }
 
   @Test

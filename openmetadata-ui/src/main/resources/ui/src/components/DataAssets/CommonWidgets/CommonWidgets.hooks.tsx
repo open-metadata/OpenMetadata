@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
 import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { SettingType } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getGlossarySettings } from '../../../rest/settingConfigAPI';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
@@ -118,6 +120,7 @@ export const useTagsUpdateHandler = (
   updatedData: GenericEntity
 ): TagsUpdateHandler => {
   const { type, onUpdate } = useGenericContext<GenericEntity>();
+  const queryClient = useQueryClient();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
 
   const onTagsChange = useCallback(
@@ -126,7 +129,12 @@ export const useTagsUpdateHandler = (
 
       if (type === EntityType.GLOSSARY_TERM) {
         try {
-          const settings = await getGlossarySettings();
+          const settings = await queryClient.fetchQuery({
+            queryKey: ['settings', SettingType.GlossarySettings],
+            queryFn: getGlossarySettings,
+            staleTime: 60_000,
+            retry: false,
+          });
           if (settings.enableTagPropagation !== false) {
             setTagsUpdating(updatedTags);
 
@@ -134,6 +142,7 @@ export const useTagsUpdateHandler = (
           }
         } catch (error) {
           showErrorToast(error as AxiosError);
+          setTagsUpdating(updatedTags);
 
           return;
         }
@@ -146,7 +155,7 @@ export const useTagsUpdateHandler = (
         });
       }
     },
-    [data, tier, type, onUpdate]
+    [data, tier, type, onUpdate, queryClient]
   );
 
   const handleConfirm = useCallback(async () => {

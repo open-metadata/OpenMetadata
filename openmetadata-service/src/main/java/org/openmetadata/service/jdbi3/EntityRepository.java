@@ -6847,18 +6847,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           cachedTagUsageDao.getTags(entityType, entity.getId(), propagationEnabled);
       if (cached != null) {
         LOG.debug("CACHE HIT: Retrieved tags from cache for {} {}", entityType, entity.getId());
-        return propagationEnabled
-            ? cached
-            : cached.stream()
-                .filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED)
-                .toList();
+        return cached;
       }
     }
 
     List<TagLabel> tags =
         getTagsFromReadBundle(entity)
-            .map(TagLabelUtil::addDerivedTagsGracefully)
-            .orElseGet(() -> getTags(entity.getFullyQualifiedName()));
+            .map(bundleTags -> addDerivedTagsGracefully(bundleTags, propagationEnabled))
+            .orElseGet(() -> getTags(entity.getFullyQualifiedName(), propagationEnabled));
 
     // Cache the result for next time
     if (cachedTagUsageDao != null
@@ -6872,11 +6868,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected List<TagLabel> getTags(String fqn) {
+    return getTags(fqn, SettingsCache.isGlossaryTagPropagationEnabled());
+  }
+
+  private List<TagLabel> getTags(String fqn, boolean propagationEnabled) {
     if (!supportsTags) {
       return null;
     }
 
-    List<TagLabel> tags = addDerivedTagsGracefully(daoCollection.tagUsageDAO().getTags(fqn));
+    List<TagLabel> tags =
+        addDerivedTagsGracefully(daoCollection.tagUsageDAO().getTags(fqn), propagationEnabled);
     String certClassification = getCertificationClassification();
     if (certClassification != null && tags != null) {
       tags = new ArrayList<>(tags);

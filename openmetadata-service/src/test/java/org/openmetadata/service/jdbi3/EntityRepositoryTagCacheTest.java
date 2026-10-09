@@ -89,7 +89,10 @@ class EntityRepositoryTagCacheTest {
     for (boolean enabled : List.of(true, false)) {
       propagation.set(enabled);
       cache.putTags(
-          Entity.TABLE, table.getId(), JsonUtils.pojoToJson(List.of(term, derived)), enabled);
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(enabled ? List.of(term, derived) : List.of(term)),
+          enabled);
       assertEquals(enabled ? List.of(term, derived) : List.of(term), repository.getTags(table));
     }
   }
@@ -126,6 +129,22 @@ class EntityRepositoryTagCacheTest {
       propagation.set(enabled);
       assertNull(cache.getTags(Entity.TABLE, table.getId(), enabled));
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void preferenceFlipsDuringLoadCannotCacheSuppressedTagsAsEnabled(boolean withBundle) {
+    if (withBundle) {
+      useReadBundle();
+    }
+    when(tagUsage.getTags(table.getFullyQualifiedName())).thenReturn(List.of(term));
+    when(tagUsage.getDerivedTagsBatch(anyList()))
+        .thenReturn(Map.of(FullyQualifiedName.buildHash(term.getTagFQN()), List.of(derived)));
+    settings.when(SettingsCache::isGlossaryTagPropagationEnabled).thenReturn(true, false, true);
+
+    assertEquals(List.of(term, derived), repository.getTags(table));
+    assertEquals(List.of(term, derived), repository.getTags(table));
+    assertEquals(List.of(term, derived), cache.getTags(Entity.TABLE, table.getId(), true));
   }
 
   @Test

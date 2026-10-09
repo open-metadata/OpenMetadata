@@ -342,11 +342,20 @@ public class TagLabelUtil {
 
   /** Add derived tags using a single batch query. Falls back to non-derived tags on failure. */
   public static List<TagLabel> addDerivedTagsGracefully(List<TagLabel> tagLabels) {
+    return nullOrEmpty(tagLabels)
+        ? tagLabels
+        : addDerivedTagsGracefully(tagLabels, SettingsCache.isGlossaryTagPropagationEnabled());
+  }
+
+  /** Use the caller's preference snapshot so a toggle during a load cannot change its cache variant. */
+  public static List<TagLabel> addDerivedTagsGracefully(
+      List<TagLabel> tagLabels, boolean propagationEnabled) {
     if (nullOrEmpty(tagLabels)) {
       return tagLabels;
     }
     try {
-      Map<String, List<TagLabel>> derivedTagsMap = batchFetchDerivedTags(tagLabels);
+      Map<String, List<TagLabel>> derivedTagsMap =
+          batchFetchDerivedTags(tagLabels, propagationEnabled);
       return addDerivedTagsWithPreFetched(tagLabels, derivedTagsMap);
     } catch (Exception ex) {
       LOG.warn(
@@ -372,7 +381,14 @@ public class TagLabelUtil {
 
   /** Batch fetch derived tags for all glossary terms in the list. Returns map of termFQNHash → derived tags. */
   public static Map<String, List<TagLabel>> batchFetchDerivedTags(List<TagLabel> tagLabels) {
-    if (nullOrEmpty(tagLabels) || !SettingsCache.isGlossaryTagPropagationEnabled()) {
+    return nullOrEmpty(tagLabels)
+        ? Collections.emptyMap()
+        : batchFetchDerivedTags(tagLabels, SettingsCache.isGlossaryTagPropagationEnabled());
+  }
+
+  private static Map<String, List<TagLabel>> batchFetchDerivedTags(
+      List<TagLabel> tagLabels, boolean propagationEnabled) {
+    if (!propagationEnabled) {
       return Collections.emptyMap();
     }
 
@@ -401,7 +417,7 @@ public class TagLabelUtil {
     return result;
   }
 
-  /** Add derived tags using a pre-fetched map to avoid per-tag DB lookups. */
+  /** Merge the result of batchFetchDerivedTags, which already reflects the propagation preference. */
   public static List<TagLabel> addDerivedTagsWithPreFetched(
       List<TagLabel> tagLabels, Map<String, List<TagLabel>> derivedTagsMap) {
     if (nullOrEmpty(tagLabels)) {
@@ -418,9 +434,7 @@ public class TagLabelUtil {
     EntityUtil.mergeTags(updatedTagLabels, filteredTags);
 
     for (TagLabel tagLabel : tagLabels) {
-      if (tagLabel != null
-          && tagLabel.getSource() == TagLabel.TagSource.GLOSSARY
-          && SettingsCache.isGlossaryTagPropagationEnabled()) {
+      if (tagLabel != null && tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
         List<TagLabel> derivedTags =
             derivedTagsMap.getOrDefault(
                 FullyQualifiedName.buildHash(tagLabel.getTagFQN()), Collections.emptyList());

@@ -60,7 +60,31 @@ class TagLabelUtilTest {
       assertEquals(
           List.of(direct, term),
           TagLabelUtil.addDerivedTagsWithPreFetched(
-              tags, Map.of(FullyQualifiedName.buildHash(term.getTagFQN()), List.of(derived))));
+              tags, TagLabelUtil.batchFetchDerivedTags(tags)));
+    }
+  }
+
+  @Test
+  void prefetchedTagsUseTheFetchedPreferenceSnapshot() {
+    TagLabel customer =
+        new TagLabel().withTagFQN("Glossary.Customer").withSource(TagSource.GLOSSARY);
+    TagLabel account = new TagLabel().withTagFQN("Glossary.Account").withSource(TagSource.GLOSSARY);
+    TagLabel derived =
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.DERIVED);
+    try (MockedStatic<SettingsCache> settings = mockStatic(SettingsCache.class)) {
+      settings
+          .when(SettingsCache::isGlossaryTagPropagationEnabled)
+          .thenThrow(new AssertionError("Merging a prefetched batch must not reload settings"));
+      List<TagLabel> tags = List.of(customer, account, derived);
+      assertEquals(
+          List.of(account, customer, derived),
+          TagLabelUtil.addDerivedTagsWithPreFetched(
+              tags,
+              Map.of(
+                  FullyQualifiedName.buildHash(customer.getTagFQN()), List.of(derived),
+                  FullyQualifiedName.buildHash(account.getTagFQN()), List.of(derived))));
+      assertEquals(
+          List.of(account, customer), TagLabelUtil.addDerivedTagsWithPreFetched(tags, Map.of()));
     }
   }
 
