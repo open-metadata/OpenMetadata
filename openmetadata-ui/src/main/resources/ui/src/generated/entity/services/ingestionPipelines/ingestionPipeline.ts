@@ -1097,7 +1097,9 @@ export interface Pipeline {
      * Any related entities such as test suites or lineage information that were associated with
      * those tables will also be deleted.
      */
-    markDeletedTables?: boolean;
+    markDeletedTables?:       boolean;
+    maxChildrenPerColumn?:    number;
+    maxSchemaInferenceDepth?: number;
     /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
