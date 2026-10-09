@@ -1,11 +1,13 @@
-# ADR: Permissioned read-only SPARQL execution for the 2.1 graph agent tool
+# Agent-authored SPARQL runs read-only through a dedicated, permissioned endpoint
 
 - **Status:** Accepted for a scoped first implementation (2026-09-16, review 3). Code is
   reviewed separately.
-- **Date:** 2026-09-16 (amended 2026-09-29, §2a: default grant through Data Consumer)
+- **Revisions:** v1 2026-09-16 (initial) · v2 2026-09-29 (§2a: default grant through Data
+  Consumer, [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231))
+- **Deciders:** Felipe Maciel Cardoso
+- **Guard:** `AgentSparqlResourceIT`, `AgentSparqlServiceTest`, `AgentSparqlQueryValidatorTest`,
+  `AgentSparqlQueryInspectorTest`, `AgentSparqlTransportTest`
 - **Issue:** [OpenMetadata #33384](https://github.com/open-metadata/OpenMetadata/issues/33384)
-- **Branch:** `fmcardoso/add-permissioned-read-only-sparql-execution-for`
-- **Amended by:** [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231).
 - **Related:** ai-platform epic #224, ai-platform #1299, ai-platform PR #1310 (design, pinned at
   `0056ceb9`); OpenMetadata #33224 (asset-level RBAC — parallel work, explicitly **not** a
   prerequisite and **not** provided here).

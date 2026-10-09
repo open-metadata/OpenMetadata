@@ -14,9 +14,11 @@ import {
   Badge,
   Card,
   Divider,
+  Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -142,8 +144,10 @@ const ContractSecurityCard: React.FC<{
   }, [security?.policies]);
 
   return (
-    <Row className="contract-security-component-container" gutter={[0, 26]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid contract-security-component-container"
+      style={{ ...getLayoutGutter(0, 26) }}>
+      <Grid.Item className="layout-column" span={24}>
         <Card
           className="contract-security-classification-container tw:overflow-visible tw:px-5 tw:py-4 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums"
           data-testid="contract-security-classification">
@@ -166,18 +170,21 @@ const ContractSecurityCard: React.FC<{
                 </Badge>
               ))}
         </Card>
-      </Col>
+      </Grid.Item>
 
       {!isEmpty(security?.policies) && (
-        <Col data-testid="contract-security-policy-container" span={24}>
+        <Grid.Item
+          className="layout-column"
+          data-testid="contract-security-policy-container"
+          span={24}>
           <Typography className="contract-security-policy-label">
             {t('label.policy-plural')}
           </Typography>
 
           {renderSecurityPolicies}
-        </Col>
+        </Grid.Item>
       )}
-    </Row>
+    </Grid>
   );
 };
 
