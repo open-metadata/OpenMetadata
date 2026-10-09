@@ -20,8 +20,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Announcement02 as IconAnnouncementsBlack,
   ChevronDown,
+  Announcement02 as IconAnnouncementsBlack,
 } from '@openmetadata/ui-core-components/icons';
 import { Button, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
