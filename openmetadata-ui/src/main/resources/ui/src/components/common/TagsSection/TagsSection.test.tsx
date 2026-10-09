@@ -125,8 +125,8 @@ jest.mock('../ClassificationTagPicker/ClassificationTagPicker', () => ({
             {renderTrigger({ toggle: () => onOpenChange?.(!isOpen) })}
             {isOpen && (
               <div className="tag-selector" data-testid="async-select-list">
-                {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
                 <input
+                  aria-label="tag-selector-input"
                   data-testid="tag-selector-input"
                   value={inputValue}
                   onChange={(e) => {
