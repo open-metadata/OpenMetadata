@@ -181,7 +181,7 @@ class DashboardServiceTopology(ServiceTopology):
                 store_all_in_context=True,
                 clear_context=True,
             ),
-            NodeStage(
+            NodeStage(  # pyright: ignore[reportCallIssue]
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
