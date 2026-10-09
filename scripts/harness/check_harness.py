@@ -369,7 +369,8 @@ def codex_budget():
 
 
 def check_agents_sync():
-    """AGENTS.md is the one instruction file; everything else a harness reads is a link to it."""
+    """AGENTS.md is the one instruction file; everything else a harness reads is a link to it
+    (ADR:2026-10-09-agents-md-is-the-one-instruction-file)."""
     warnings = []
     # skills/vendor/** ships upstream AGENTS.md files as skill payload, not directory instructions.
     tracked = [f for f in tracked_files() if not f.startswith("skills/vendor/")]

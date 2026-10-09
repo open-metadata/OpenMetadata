@@ -1,13 +1,14 @@
 # AGENTS.md
 
 Always-loaded guidance for every session, whatever the harness — **the only instruction file:** every `CLAUDE.md` and
-`.github/copilot-instructions.md` is a symlink to the `AGENTS.md` beside it, so edit this file, never a copy.
-**Language- and path-specific rules live in `.claude/rules/*.md` (Claude Code auto-loads them on matching files; other
-harnesses read the matching one before editing); procedures live in skills (loaded on invoke).** This file is the map
-— see the pointer index at the bottom. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the **system map** (modules, the
-request/ingestion/search paths, the invariants that hold); read [DEVELOPER.md](DEVELOPER.md) for **how to build, test,
-and add an entity or connector** (deep dives + end-to-end checklists). Consult [docs/index.md](docs/index.md) — the
-**knowledge index** — to **find existing design, plan, and reference docs** for whatever area you're working on.
+`.github/copilot-instructions.md` is a symlink to the `AGENTS.md` beside it
+(ADR:2026-10-09-agents-md-is-the-one-instruction-file), so edit this file, never a copy. **Language- and path-specific
+rules live in `.claude/rules/*.md` (Claude Code auto-loads them on matching files; other harnesses read the matching
+one before editing); procedures live in skills (loaded on invoke).** This file is the map — see the pointer index at
+the bottom. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the **system map** (modules, the request/ingestion/search
+paths, the invariants that hold); read [DEVELOPER.md](DEVELOPER.md) for **how to build, test, and add an entity or
+connector** (deep dives + end-to-end checklists). Consult [docs/index.md](docs/index.md) — the **knowledge index** —
+to **find existing design, plan, and reference docs** for whatever area you're working on.
 
 ## About OpenMetadata
 
@@ -153,7 +154,6 @@ on functionality over education. Do not add unnecessary blank lines between pros
 - `docs/decisions/` — dated records of the choices that shape the code. **When a choice looks
   arbitrary, find its record before re-deciding it; a PR that makes a durable decision adds the
   record in the same PR.** Cite as `ADR:<date>-<slug>`; format and triggers in its `README.md`.
-- `openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md` — what a review of a UI pull request checks.
 
 ### Skills (`skills/<name>/`, linked into `.claude/skills/` and `.agents/skills/`; invoke by name)
 
