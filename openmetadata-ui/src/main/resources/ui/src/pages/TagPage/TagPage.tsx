@@ -19,7 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Space } from 'antd';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -810,10 +810,15 @@ const TagPage = () => {
     }
 
     return (
-      <Space>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={2}
+        itemClassName="layout-space-item">
         {statusBadge}
         {disabledBadge}
-      </Space>
+      </Box>
     );
   }, [tagItem]);
 

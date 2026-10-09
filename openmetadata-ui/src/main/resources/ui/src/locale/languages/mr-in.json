@@ -4121,7 +4121,6 @@
     "dq-threshold-preview-sampling-dynamic": "ही सारणी ज्या गतिशीलपणे ठरवलेल्या आकाराच्या नमुन्यावर प्रोफाइल केली जाते त्यावर मोजले जाते.",
     "dq-threshold-preview-statistical": "मोजलेले मूल्य {{bound}} च्या बाहेर गेल्यास अयशस्वी.",
     "dq-threshold-preview-statistical-deviation": "मोजलेले मूल्य {{bound}} च्या बाहेर गेल्यास अयशस्वी, {{amount}} विचलनास परवानगी ({{range}} ही प्रभावी श्रेणी).",
-    "dq-threshold-preview-unit-not-enforced": "ही चाचणी मर्यादेची तुलना थेट ओळींच्या संख्येशी करते, म्हणून मर्यादेचे एकक लागू होत नाही.",
     "dq-threshold-preview-zero-bound": "0 मर्यादेभोवती टक्केवारीतील विचलन ती मर्यादा 0 वरच ठेवते — त्याऐवजी निरपेक्ष विचलन वापरा.",
     "dq-unresolved-incidents-count": "<0>{{count}} न सुटलेली</0> घटना",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} न सुटलेल्या</0> घटना",

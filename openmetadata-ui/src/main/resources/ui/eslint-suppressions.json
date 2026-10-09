@@ -524,7 +524,7 @@
       "count": 1
     },
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 4
     }
   },
   "playwright/e2e/Pages/GlossaryImportExport.spec.ts": {
@@ -835,7 +835,7 @@
   },
   "playwright/utils/userDetails.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   }
 }
