@@ -13,6 +13,7 @@
 import {
   Alert,
   AlertVariant,
+  Box,
   Button,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -74,7 +75,7 @@ function InlineAlert({
       title={heading}
       variant={type ? ALERT_VARIANT[type] : 'gray'}
       onClose={handleClose}>
-      <div className="tw:flex tw:flex-col tw:gap-2">
+      <Box direction="col" gap={2}>
         <Typography
           as="p"
           className={classNames('tw:m-0 tw:text-sm', {
@@ -99,7 +100,7 @@ function InlineAlert({
             {t(`label.show-${showMore ? 'less' : 'more'}-lowercase`)}
           </Button>
         )}
-      </div>
+      </Box>
     </Alert>
   );
 }

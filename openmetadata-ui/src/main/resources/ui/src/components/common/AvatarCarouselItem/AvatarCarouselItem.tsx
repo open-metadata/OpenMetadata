@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button } from '@openmetadata/ui-core-components';
+import { Badge, Box, Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { RefObject, useCallback, useRef } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
@@ -57,7 +57,7 @@ const AvatarCarouselItem = ({
 
   return (
     <UserPopOverCard key={avatar.id} userName={avatar?.name ?? ''}>
-      <span className="tw:relative tw:inline-flex m-r-xss">
+      <Box inline className="tw:relative m-r-xss">
         <Button
           className={classNames(
             'avatar-item tw:size-7 tw:rounded-full tw:p-0! tw:before:rounded-full',
@@ -78,7 +78,7 @@ const AvatarCarouselItem = ({
             {suggestionsCount > 99 ? '99+' : suggestionsCount}
           </Badge>
         )}
-      </span>
+      </Box>
     </UserPopOverCard>
   );
 };

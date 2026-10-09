@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card } from '@openmetadata/ui-core-components';
+import { Box, Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, KeyboardEvent } from 'react';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/check-colored.svg';
@@ -51,14 +51,20 @@ export const SelectionCard: FC<SelectionCardProps> = ({
       onClick={disabled ? undefined : onClick}
       onKeyDown={handleKeyDown}>
       {option.isBeta && <BetaBadge />}
-      <div className="selection-content">
-        <div className="selection-body">
+      <Box
+        align={layout === 'vertical' ? 'start' : 'stretch'}
+        className="selection-content"
+        justify="between">
+        <Box
+          className="selection-body"
+          direction={layout === 'vertical' ? 'col' : 'row'}
+          gap={3}>
           <span className="selection-icon">{option.icon}</span>
           <div className="selection-header">
             <div className="selection-title">{option.label}</div>
             <div className="selection-description">{option.description}</div>
           </div>
-        </div>
+        </Box>
         {isSelected ? (
           <div className="custom-radio checked">
             <CheckIcon />
@@ -66,7 +72,7 @@ export const SelectionCard: FC<SelectionCardProps> = ({
         ) : (
           <div className="custom-radio unchecked" />
         )}
-      </div>
+      </Box>
     </Card>
   );
 };
@@ -88,10 +94,11 @@ const SelectionCardGroup: FC<SelectionCardGroupProps> = ({
   };
 
   return (
-    <div
+    <Box
       className={classNames('selection-card-group', className, {
         'selection-card-group-disabled': disabled,
       })}
+      gap={5}
       role="radiogroup">
       {options.map((option) => (
         <SelectionCard
@@ -103,7 +110,7 @@ const SelectionCardGroup: FC<SelectionCardGroupProps> = ({
           onClick={() => handleOptionSelect(option.value)}
         />
       ))}
-    </div>
+    </Box>
   );
 };
 

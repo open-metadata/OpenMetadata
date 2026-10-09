@@ -90,7 +90,7 @@ const ConnectionStepStatusBadge = ({
 
   if (success) {
     return (
-      <div className="d-flex gap-2 align-center">
+      <Box align="center" gap={2}>
         <Typography className="success-status">
           {`${t('label.success')}`}
         </Typography>
@@ -100,13 +100,13 @@ const ConnectionStepStatusBadge = ({
           height={20}
           width={20}
         />
-      </div>
+      </Box>
     );
   }
 
   if (isMandatoryStepsFailing) {
     return (
-      <div className="d-flex gap-2 align-center">
+      <Box align="center" gap={2}>
         <Typography className="failure-status">
           {`${t('label.failed')}`}
         </Typography>
@@ -116,13 +116,13 @@ const ConnectionStepStatusBadge = ({
           height={20}
           width={20}
         />
-      </div>
+      </Box>
     );
   }
 
   if (isNonMandatoryStepsFailing) {
     return (
-      <div className="d-flex gap-2 align-center">
+      <Box align="center" gap={2}>
         <Typography className="warning-status">
           {`${t('label.attention')}`}
         </Typography>
@@ -132,7 +132,7 @@ const ConnectionStepStatusBadge = ({
           height={20}
           width={20}
         />
-      </div>
+      </Box>
     );
   }
 
@@ -213,9 +213,9 @@ const ConnectionStepCard = ({
               <AccordionItem
                 className="connection-step-card-content-logs tw:bg-transparent"
                 data-testid="lazy-log">
-                <div className="tw:grid tw:grid-cols-[1fr_auto] tw:items-center tw:gap-3">
+                <Box align="center" gap={3}>
                   <AccordionHeader
-                    className="tw:justify-start tw:p-0 tw:font-normal tw:text-link tw:hover:bg-transparent"
+                    className="tw:min-w-0 tw:flex-1 tw:justify-start tw:p-0 tw:font-normal tw:text-link tw:hover:bg-transparent"
                     showChevron={false}>
                     <ChevronRight
                       aria-hidden="true"
@@ -231,7 +231,7 @@ const ConnectionStepCard = ({
                     tooltip={t('message.copy-to-clipboard')}
                     onPress={() => onCopyToClipBoard()}
                   />
-                </div>
+                </Box>
                 <AccordionPanel className="tw:border-t-0 tw:pt-1 tw:pr-4 tw:pb-0 tw:pl-6">
                   <LazyLog
                     caseInsensitive

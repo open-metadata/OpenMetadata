@@ -276,7 +276,7 @@ test.describe('Task Navigation - Entity Page', () => {
       await taskCard.click();
 
       // Should open drawer with task details
-      const drawer = page.locator('.activity-feed-drawer');
+      const drawer = page.getByTestId('activity-feed-drawer');
 
       if (await drawer.isVisible({ timeout: 5000 })) {
         // Drawer should show task details

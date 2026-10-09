@@ -62,9 +62,9 @@ function ActivityEventFooter({
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isForFeedTab })}>
-      <div className="footer-container tw:w-full">
+      <Box className="footer-container tw:w-full" direction="col">
         <div>
-          <div className="flex items-center gap-2 w-full rounded-8">
+          <Box align="center" className="w-full rounded-8" gap={2}>
             <Button
               aria-label={t('label.comment')}
               className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
@@ -79,9 +79,9 @@ function ActivityEventFooter({
               reactions={activity.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}
             />
-          </div>
+          </Box>
         </div>
-      </div>
+      </Box>
     </Box>
   );
 }

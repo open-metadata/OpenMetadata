@@ -35,12 +35,15 @@ function IngestionStatusCount({
       justify="evenly"
       wrap="nowrap">
       {records.map((record) => (
-        <div
+        <Box
+          align="center"
           className={classNames('status-count', record.type)}
+          direction="col"
+          justify="center"
           key={`${record.label}-${runId}`}>
           <Typography className="record-count">{record.value}</Typography>
           <Typography className="record-label">{record.label}</Typography>
-        </div>
+        </Box>
       ))}
     </Box>
   );

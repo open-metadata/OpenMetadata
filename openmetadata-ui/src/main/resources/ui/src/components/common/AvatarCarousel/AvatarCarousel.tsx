@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
 import {
   ChevronLeft,
   ChevronRight,
@@ -67,7 +67,7 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
   }, [selectedUserSuggestions.combinedData]);
 
   return (
-    <div className="avatar-carousel-container d-flex items-center">
+    <Box align="center" className="avatar-carousel-container">
       {showArrows && (
         <ButtonUtility
           className="carousel-arrow"
@@ -80,7 +80,7 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
         />
       )}
 
-      <div className="tw:flex tw:items-center">
+      <Box align="center">
         {avatarList.map((avatar, index) => (
           <AvatarCarouselItem
             avatar={avatar}
@@ -91,7 +91,7 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
             onAvatarClick={setCurrentSlide}
           />
         ))}
-      </div>
+      </Box>
 
       {showArrows && (
         <ButtonUtility
@@ -106,7 +106,7 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
           onClick={nextSlide}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

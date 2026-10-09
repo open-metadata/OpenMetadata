@@ -156,19 +156,25 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
         isOpen={open}
         width={576}
         onOpenChange={(isOpen) => !isOpen && onClose()}>
-        <header className="tw:flex tw:w-full tw:items-center tw:justify-between tw:border-b tw:border-secondary tw:px-6 tw:py-4">
-          <Typography
-            as="h5"
-            className="tw:m-0 tw:text-primary"
-            size="text-md"
-            weight="semibold">
-            {t('label.entity-resource', { entity: getPageTitle() })}
-          </Typography>
-          <CloseButton data-testid="close-drawer" size="sm" onPress={onClose} />
+        <header className="tw:w-full tw:border-b tw:border-secondary tw:px-6 tw:py-4">
+          <Box align="center" justify="between">
+            <Typography
+              as="h5"
+              className="tw:m-0 tw:text-primary"
+              size="text-md"
+              weight="semibold">
+              {t('label.entity-resource', { entity: getPageTitle() })}
+            </Typography>
+            <CloseButton
+              data-testid="close-drawer"
+              size="sm"
+              onPress={onClose}
+            />
+          </Box>
         </header>
-        <div className="tw:w-full tw:flex-1 tw:overflow-y-auto tw:bg-secondary tw:p-4">
+        <SlideoutMenu.Content className="tw:h-auto tw:min-h-0 tw:flex-1 tw:gap-0 tw:bg-secondary tw:p-4 tw:md:px-4">
           {drawerContent}
-        </div>
+        </SlideoutMenu.Content>
       </SlideoutMenu>
 
       {selectedResource && (

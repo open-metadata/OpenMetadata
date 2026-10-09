@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -46,13 +46,15 @@ const CreateErrorPlaceHolder = ({
   }
 
   return (
-    <div
+    <Box
+      align="center"
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm tw:bg-surface w-full'
+        'h-full border-default border-radius-sm tw:bg-surface w-full'
       )}
-      data-testid={`create-error-placeholder-${heading}`}>
-      <div className="tw:flex tw:w-full tw:flex-col tw:items-center tw:gap-2.5">
+      data-testid={`create-error-placeholder-${heading}`}
+      justify="center">
+      <Box align="center" className="tw:w-full tw:gap-2.5" direction="col">
         <AddPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
@@ -96,8 +98,8 @@ const CreateErrorPlaceHolder = ({
             </Button>
           )}
         </div>
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

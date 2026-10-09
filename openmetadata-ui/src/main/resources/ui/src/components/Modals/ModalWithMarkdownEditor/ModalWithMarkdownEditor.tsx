@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Button,
   Dialog,
   Modal,
@@ -90,7 +91,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<
           </Dialog.Content>
           <Dialog.Footer className="tw:mt-0">
             <KeyDownStopPropagationWrapper>
-              <div className="tw:flex tw:gap-3">
+              <Box gap={3}>
                 <Button
                   color="secondary"
                   data-testid="cancel"
@@ -105,7 +106,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<
                   onPress={handleSaveData}>
                   {t('label.save')}
                 </Button>
-              </div>
+              </Box>
             </KeyDownStopPropagationWrapper>
           </Dialog.Footer>
         </Dialog>

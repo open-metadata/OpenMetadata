@@ -172,7 +172,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
         />
       </div>
       <Box align="center" className="w-full" gap={2} justify="between">
-        <div className="gap-2 flex-center">
+        <Box align="center" gap={2} justify="center">
           <Typography color="secondary">
             {`${t('label.assignee')}: `}
           </Typography>
@@ -181,8 +181,8 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
           ) : (
             <Owner owners={task.assignees} />
           )}
-        </div>
-        <div className="gap-2 flex-center">
+        </Box>
+        <Box align="center" gap={2} justify="center">
           <Typography color="secondary">
             {`${t('label.created-by')}: `}
           </Typography>
@@ -191,23 +191,27 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
           ) : (
             NO_DATA_PLACEHOLDER
           )}
-        </div>
+        </Box>
       </Box>
       <Box align="center" className="w-full" gap={2} justify="between">
-        <div className="gap-2 flex-center">
+        <Box align="center" gap={2} justify="center">
           <Typography color="secondary">
             {`${t('label.severity')}: `}
           </Typography>
           <Severity severity={latestTestCaseResolutionStatus?.severity} />
-        </div>
+        </Box>
         {isResolved && (
-          <div className="gap-2 flex-center" data-testid="failure-reason">
+          <Box
+            align="center"
+            data-testid="failure-reason"
+            gap={2}
+            justify="center">
             <Typography color="secondary">
               {`${t('label.failure-reason')}: `}
             </Typography>
             {latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
               ?.testCaseFailureReason ?? NO_DATA_PLACEHOLDER}
-          </div>
+          </Box>
         )}
       </Box>
       {isResolved && (

@@ -102,12 +102,12 @@ const selectTagSuggestion = async ({
   // away is what closes it for good, but it has to land inside the modal: a
   // click on the body (or a bare blur()) makes the dialog's focus containment
   // hand focus back to the input, and focus re-opens the menu.
-  const containingDialog = tagSelector.locator(
-    'xpath=ancestor::*[@role="dialog"]'
-  );
+  const containingDialog = page.locator(VISIBLE_TASK_MODAL_SELECTOR).filter({
+    has: page.getByTestId('tag-selector'),
+  });
   if (await containingDialog.count()) {
-    // CSS, not getByRole: the open menu aria-hides everything outside it.
-    await containingDialog.locator('h2').first().click();
+    // The open menu aria-hides the title, so locate its test ID.
+    await containingDialog.getByTestId('dialog-title').click();
   } else {
     await clickOutside(page);
   }

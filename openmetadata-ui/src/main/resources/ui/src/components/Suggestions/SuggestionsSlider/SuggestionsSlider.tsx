@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 
@@ -67,7 +67,7 @@ const SuggestionsSlider = () => {
   }, [dataSuggestionType, t]);
 
   return (
-    <div className="d-flex items-center gap-2 m-r-md">
+    <Box align="center" className="m-r-md" gap={2}>
       <Typography className="right-panel-label">{suggestionLabel}</Typography>
       <AvatarCarousel />
       {suggestionPendingCount > 0 && (
@@ -84,7 +84,7 @@ const SuggestionsSlider = () => {
         </Button>
       )}
       {selectedUserSuggestions?.combinedData.length > 0 && (
-        <div className="slider-btn-container m-l-xs tw:flex tw:items-center tw:gap-2">
+        <Box align="center" className="slider-btn-container m-l-xs" gap={2}>
           {hasSuggestionEditAccess && (
             <>
               <Button
@@ -124,9 +124,9 @@ const SuggestionsSlider = () => {
             onPress={() => onUpdateActiveUser()}>
             {t('label.close')}
           </Button>
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 };
 

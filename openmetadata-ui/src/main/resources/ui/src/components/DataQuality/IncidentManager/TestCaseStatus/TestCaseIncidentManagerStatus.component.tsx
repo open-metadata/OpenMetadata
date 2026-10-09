@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Tooltip,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
@@ -111,9 +112,11 @@ const TestCaseIncidentManagerStatus = ({
           isDisabled={!tooltipTitle}
           placement="bottom"
           title={tooltipTitle}>
-          <div
-            className="tw:inline-flex tw:items-center tw:gap-2"
-            data-testid={`${data.testCaseReference?.name}-status`}>
+          <Box
+            inline
+            align="center"
+            data-testid={`${data.testCaseReference?.name}-status`}
+            gap={2}>
             <AppBadge
               className={classNames(
                 'resolution',
@@ -121,7 +124,7 @@ const TestCaseIncidentManagerStatus = ({
               )}
               label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
             />
-          </div>
+          </Box>
         </Tooltip>
 
         {isEditStatus && (
@@ -149,9 +152,11 @@ const TestCaseIncidentManagerStatus = ({
 
   return (
     <>
-      <div
-        className="tw:inline-flex tw:items-center tw:gap-2"
-        data-testid={`${data.testCaseReference?.name}-status`}>
+      <Box
+        inline
+        align="center"
+        data-testid={`${data.testCaseReference?.name}-status`}
+        gap={2}>
         <Tooltip
           excludeTriggerFromTabOrder
           isDisabled={!tooltipTitle}
@@ -181,7 +186,7 @@ const TestCaseIncidentManagerStatus = ({
             onClick={onEditStatus}
           />
         )}
-      </div>
+      </Box>
 
       {isEditStatus && (
         <TestCaseStatusModal

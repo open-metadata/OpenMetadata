@@ -1593,12 +1593,15 @@ export const TaskTabNew = ({
         )}>
         <div className="d-flex gap-2" data-testid="task-assignees">
           <Box className="m-l-0" rowGap={4} wrap="wrap">
-            <div className="flex items-center gap-2 text-grey-muted tw:w-1/3 tw:pr-2">
+            <Box
+              align="center"
+              className="text-grey-muted tw:w-1/3 tw:pr-2"
+              gap={2}>
               <UserIcon height={16} />
               <Typography className="incident-manager-details-label">
                 {t('label.created-by')}
               </Typography>
-            </div>
+            </Box>
             <div className="tw:w-2/3 tw:pr-2 tw:pl-0.5">
               <Link
                 className="no-underline flex items-center gap-2"
@@ -1620,13 +1623,13 @@ export const TaskTabNew = ({
               renderAssigneeEditor()
             ) : (
               <>
-                <div className="flex gap-2 text-grey-muted tw:w-1/3 tw:pr-2">
+                <Box className="text-grey-muted tw:w-1/3 tw:pr-2" gap={2}>
                   <AssigneesIcon height={16} />
                   <Typography className="incident-manager-details-label @grey-8">
                     {t('label.assignee-plural')}
                   </Typography>
-                </div>
-                <div className="flex gap-2 tw:w-2/3 tw:pr-2 tw:pl-0.5">
+                </Box>
+                <Box className="tw:w-2/3 tw:pr-2 tw:pl-0.5" gap={2}>
                   {task?.assignees?.length === 1 ? (
                     <div className="d-flex items-center gap-2">
                       <UserPopOverCard userName={task?.assignees[0].name ?? ''}>
@@ -1651,7 +1654,7 @@ export const TaskTabNew = ({
                       showLabel={false}
                     />
                   )}
-                </div>
+                </Box>
               </>
             )}
           </Box>
@@ -2115,11 +2118,11 @@ export const TaskTabNew = ({
       data-testid="task-tab"
       direction="col"
       gap={5}>
-      <div className="d-flex items-start task-feed-message-container">
+      <Box align="start" className="task-feed-message-container">
         <TaskStatusIcon className="m-r-xs" height={14} width={14} />
 
         {taskLinkTitleElement}
-      </div>
+      </Box>
       <Divider className="m-0" />
       {!darHeaderRows && <div>{taskHeader}</div>}
       {renderProposedChangesSection()}

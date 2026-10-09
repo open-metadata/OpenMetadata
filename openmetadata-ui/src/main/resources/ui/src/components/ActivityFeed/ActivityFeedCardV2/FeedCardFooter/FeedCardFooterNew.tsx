@@ -93,11 +93,12 @@ function FeedCardFooterNew({
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isReply })}>
-      <div
+      <Box
         className="footer-container tw:w-full"
-        data-testid="feed-card-footer">
+        data-testid="feed-card-footer"
+        direction="col">
         <div>
-          <div className="flex items-center gap-2 w-full rounded-8">
+          <Box align="center" className="w-full rounded-8" gap={2}>
             {postLength > 0 && !isReply && (
               <AvatarStack
                 avatarSize={AVATAR_SIZE}
@@ -138,9 +139,9 @@ function FeedCardFooterNew({
               reactions={(reply ?? conversation)?.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}
             />
-          </div>
+          </Box>
         </div>
-      </div>
+      </Box>
     </Box>
   );
 }

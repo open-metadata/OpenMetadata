@@ -123,6 +123,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
     <SlideoutMenu
       isDismissable
       aria-label={t('label.activity-feed')}
+      data-testid="activity-feed-drawer"
       dialogClassName={classNames(
         ACTIVITY_FEED_DRAWER_CLASS,
         'tw:items-stretch tw:gap-0',
@@ -132,9 +133,9 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       width={DRAWER_WIDTH}
       onOpenChange={(isOpen) => !isOpen && hideDrawer()}>
       <div className="activity-feed-drawer-header">{panel.header}</div>
-      <div className="activity-feed-drawer-body">
+      <SlideoutMenu.Content className="activity-feed-drawer-body tw:h-auto tw:gap-0 tw:px-0 tw:md:px-0">
         <div id="feed-panel">{panel.body}</div>
-      </div>
+      </SlideoutMenu.Content>
     </SlideoutMenu>
   );
 };

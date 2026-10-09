@@ -280,7 +280,7 @@ const reassignIncidentTask = async (
 
   await assigneeOption.click();
   // The open combobox popover aria-hides the rest of the dialog, Save included.
-  await reassignModal.locator('h2').click();
+  await reassignModal.getByTestId('dialog-title').click();
   await expect(assigneeOption).toBeHidden();
 
   const updateAssignee = waitForTaskResolveResponse(page);
