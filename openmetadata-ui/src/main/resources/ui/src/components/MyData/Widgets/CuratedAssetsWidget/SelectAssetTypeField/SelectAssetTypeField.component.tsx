@@ -77,7 +77,10 @@ export const SelectAssetTypeField = ({
     };
   }, []);
 
-  const fetchData = useCallback(async () => ({ nodes: [allNode] }), [allNode]);
+  const fetchData = useCallback(
+    () => Promise.resolve({ nodes: [allNode] }),
+    [allNode]
+  );
 
   // `all` stands for every type, so it checks every child in the tree.
   const treeValue = useMemo(

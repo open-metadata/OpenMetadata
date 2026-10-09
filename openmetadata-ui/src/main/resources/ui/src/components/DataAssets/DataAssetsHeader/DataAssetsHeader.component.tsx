@@ -207,14 +207,17 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
-  const fetchDataContract = async (entityId: string) => {
-    try {
-      const contract = await getContractByEntityId(entityId, entityType);
-      setDataContract(contract);
-    } catch {
-      // Do nothing
-    }
-  };
+  const fetchDataContract = useCallback(
+    async (entityId: string) => {
+      try {
+        const contract = await getContractByEntityId(entityId, entityType);
+        setDataContract(contract);
+      } catch {
+        // Do nothing
+      }
+    },
+    [entityType]
+  );
 
   const serviceLogoUrl = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -252,7 +255,7 @@ export const DataAssetsHeader = ({
       deleted: dataAsset.deleted,
       votes: (dataAsset as DataAssetsWithFollowersField).votes,
     }),
-    [dataAsset, USER_ID]
+    [dataAsset, USER_ID, hasFollowers]
   );
 
   const voteStatus = useMemo(
@@ -266,7 +269,7 @@ export const DataAssetsHeader = ({
     AnnouncementEntity[]
   >([]);
 
-  const fetchDQFailureCount = async () => {
+  const fetchDQFailureCount = useCallback(async () => {
     if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
       setDqFailureCount(0);
 
@@ -284,13 +287,13 @@ export const DataAssetsHeader = ({
 
       const updatedNodes =
         data.nodes?.filter(
-          (node) => node?.fullyQualifiedName !== dataAsset?.fullyQualifiedName
+          (node) => node?.fullyQualifiedName !== dataAsset.fullyQualifiedName
         ) ?? [];
       setDqFailureCount(updatedNodes.length);
     } catch {
       setDqFailureCount(0);
     }
-  };
+  }, [isDqAlertSupported, dataAsset.fullyQualifiedName]);
 
   const statusBadge = useMemo(() => {
     const shouldShowStatus =
@@ -341,7 +344,7 @@ export const DataAssetsHeader = ({
     );
   }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, navigate, t]);
 
-  const fetchActiveAnnouncement = async () => {
+  const fetchActiveAnnouncement = useCallback(async () => {
     try {
       const announcements = await getActiveAnnouncements(
         getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
@@ -351,32 +354,43 @@ export const DataAssetsHeader = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  };
+  }, [entityType, dataAsset.fullyQualifiedName]);
 
-  const fetchContainerAncestors = async (fqn: string) => {
-    if (isEmpty(fqn)) {
-      return;
-    }
-    setIsBreadcrumbLoading(true);
-    try {
-      const ancestors = await getContainerAncestors(fqn);
-      setParentContainers(ancestors);
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    } finally {
-      setIsBreadcrumbLoading(false);
-    }
-  };
+  const fetchContainerAncestors = useCallback(
+    async (fqn: string) => {
+      if (isEmpty(fqn)) {
+        return;
+      }
+      setIsBreadcrumbLoading(true);
+      try {
+        const ancestors = await getContainerAncestors(fqn);
+        setParentContainers(ancestors);
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      } finally {
+        setIsBreadcrumbLoading(false);
+      }
+    },
+    [t]
+  );
 
   useEffect(() => {
     if (dataAsset.fullyQualifiedName && !isTourPage && !isCustomizedView) {
-      fetchActiveAnnouncement();
-      fetchDQFailureCount();
+      void fetchActiveAnnouncement();
+      void fetchDQFailureCount();
     }
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
-      fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
+      void fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
-  }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
+  }, [
+    dataAsset.fullyQualifiedName,
+    entityType,
+    isTourPage,
+    isCustomizedView,
+    fetchActiveAnnouncement,
+    fetchDQFailureCount,
+    fetchContainerAncestors,
+  ]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>
@@ -666,7 +680,7 @@ export const DataAssetsHeader = ({
     } finally {
       setIsAutoPilotTriggering(false);
     }
-  }, [serviceCategory, afterTriggerAction]);
+  }, [serviceCategory, afterTriggerAction, dataAsset.fullyQualifiedName]);
 
   const triggerAutoPilotApplicationButton = useMemo(() => {
     if (
@@ -741,9 +755,9 @@ export const DataAssetsHeader = ({
 
   useEffect(() => {
     if (dataAsset.id) {
-      fetchDataContract(dataAsset.id);
+      void fetchDataContract(dataAsset.id);
     }
-  }, [dataAsset?.id]);
+  }, [dataAsset.id, fetchDataContract]);
 
   const hasDisplayName = !isEmpty(dataAsset.displayName);
 

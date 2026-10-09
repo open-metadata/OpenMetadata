@@ -15,7 +15,8 @@ import { Box, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconArticle } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as KnowledgeCenterNoDataPlaceholder } from '../../../assets/svg/no-folder-data.svg';
@@ -37,7 +38,6 @@ import {
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { t } from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePagePath } from '../../../utils/KnowledgePagePureUtils';
 import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -50,20 +50,17 @@ const KnowledgeCenterWidget = ({
   currentLayout,
   handleLayoutUpdate,
 }: WidgetCommonProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [data, setData] = useState<KnowledgePage[]>([]);
 
-  const widgetData = useMemo(() => {
-    return currentLayout?.find((item) => item.i === widgetKey);
-  }, [currentLayout, widgetKey]);
-
   const isFullSizeWidget = useMemo(() => {
     return currentLayout?.find((layout) => layout.i === widgetKey)?.w === 2;
   }, [currentLayout, widgetKey]);
 
-  const fetchUserKnowledgeArticles = async () => {
+  const fetchUserKnowledgeArticles = useCallback(async () => {
     if (!currentUser?.id) {
       return;
     }
@@ -81,7 +78,7 @@ const KnowledgeCenterWidget = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentUser?.id]);
 
   const emptyState = useMemo(() => {
     return (
@@ -102,20 +99,16 @@ const KnowledgeCenterWidget = ({
     );
   }, [t]);
 
-  const getGridTemplateColumns = () => {
-    if (isFullSizeWidget) {
-      return 'repeat(3, 1fr)';
-    }
-
-    return 'repeat(1, 1fr)';
-  };
-
   const articlesContent = useMemo(() => {
     return (
       <div className="entity-list-body">
         <div
           className={classNames('cards-scroll-container')}
-          style={{ gridTemplateColumns: getGridTemplateColumns() }}>
+          style={{
+            gridTemplateColumns: isFullSizeWidget
+              ? 'repeat(3, 1fr)'
+              : 'repeat(1, 1fr)',
+          }}>
           {map(data, (knowledgePage) => {
             const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
             const quickLink = knowledgePage.page as QuickLink;
@@ -180,7 +173,7 @@ const KnowledgeCenterWidget = ({
         showMoreButton={showWidgetFooterMoreButton}
       />
     );
-  }, [isLoading]);
+  }, [showWidgetFooterMoreButton, t]);
 
   const widgetHeader = useMemo(() => {
     return (
@@ -201,13 +194,14 @@ const KnowledgeCenterWidget = ({
     handleLayoutUpdate,
     handleRemoveWidget,
     isEditView,
+    navigate,
+    t,
     widgetKey,
-    widgetData?.w,
   ]);
 
   useEffect(() => {
-    fetchUserKnowledgeArticles();
-  }, [currentUser]);
+    void fetchUserKnowledgeArticles();
+  }, [currentUser, fetchUserKnowledgeArticles]);
 
   return (
     <WidgetWrapper

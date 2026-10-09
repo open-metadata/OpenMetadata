@@ -152,7 +152,7 @@ export const CustomizeTabWidget = () => {
     return hasEmptyWidgetPlaceholder
       ? layout
       : getLayoutWithEmptyWidgetPlaceholder(layout, 2, 3);
-  }, [items, activeKey]);
+  }, [items, activeKey, currentPageType]);
 
   const leftPanelWidget = useMemo(() => {
     return tabLayouts.find((layout) =>
@@ -253,27 +253,30 @@ export const CustomizeTabWidget = () => {
     editableItem && setEditableItem({ ...editableItem, displayName });
   };
 
-  const handleOpenAddWidgetModal = () => {
+  const handleOpenAddWidgetModal = useCallback(() => {
     setIsWidgetModalOpen(true);
-  };
+  }, []);
 
-  const handlePlaceholderWidgetKey = (value: string) => {
+  const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);
-  };
+  }, []);
 
-  const handleRemoveWidget = (widgetKey: string) => {
-    updateCurrentPage({
-      ...currentPage,
-      tabs: items.map((item) =>
-        item.id === activeKey
-          ? {
-              ...item,
-              layout: tabLayouts.filter((widget) => widget.i !== widgetKey),
-            }
-          : item
-      ),
-    } as Page);
-  };
+  const handleRemoveWidget = useCallback(
+    (widgetKey: string) => {
+      updateCurrentPage({
+        ...currentPage,
+        tabs: items.map((item) =>
+          item.id === activeKey
+            ? {
+                ...item,
+                layout: tabLayouts.filter((widget) => widget.i !== widgetKey),
+              }
+            : item
+        ),
+      } as Page);
+    },
+    [currentPage, items, activeKey, tabLayouts, updateCurrentPage]
+  );
 
   const handleSideLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
@@ -314,27 +317,26 @@ export const CustomizeTabWidget = () => {
     [tabLayouts, takeDrop, currentPage, items, activeKey, updateCurrentPage]
   );
 
-  const handleWidgetConfigChange = (
-    widgetKey: string,
-    config: WidgetConfig['config'],
-    width?: number
-  ) => {
-    updateCurrentPage({
-      ...currentPage,
-      tabs: items.map((item) =>
-        item.id === activeKey
-          ? {
-              ...item,
-              layout: tabLayouts.map((widget) =>
-                widget.i === widgetKey
-                  ? { ...widget, config, w: width ?? widget.w }
-                  : widget
-              ),
-            }
-          : item
-      ),
-    } as Page);
-  };
+  const handleWidgetConfigChange = useCallback(
+    (widgetKey: string, config: WidgetConfig['config'], width?: number) => {
+      updateCurrentPage({
+        ...currentPage,
+        tabs: items.map((item) =>
+          item.id === activeKey
+            ? {
+                ...item,
+                layout: tabLayouts.map((widget) =>
+                  widget.i === widgetKey
+                    ? { ...widget, config, w: width ?? widget.w }
+                    : widget
+                ),
+              }
+            : item
+        ),
+      } as Page);
+    },
+    [currentPage, items, activeKey, tabLayouts, updateCurrentPage]
+  );
 
   const customPropertiesTabLayout = useMemo(
     () =>
@@ -373,77 +375,90 @@ export const CustomizeTabWidget = () => {
     } as Page);
   };
 
-  const getWidgetFromLayout = (layout: WidgetConfig[]) => {
-    return layout.map((widget) => {
-      let widgetComponent = null;
+  const getWidgetFromLayout = useCallback(
+    (layout: WidgetConfig[]) =>
+      layout.map((widget) => {
+        let widgetComponent = null;
 
-      if (
-        widget.i.endsWith('.EmptyWidgetPlaceholder') &&
-        !isUndefined(handleOpenAddWidgetModal) &&
-        !isUndefined(handlePlaceholderWidgetKey) &&
-        !isUndefined(handleRemoveWidget)
-      ) {
-        widgetComponent = (
-          <EmptyWidgetPlaceholder
-            handleOpenAddWidgetModal={handleOpenAddWidgetModal}
-            handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
-            handleRemoveWidget={handleRemoveWidget}
-            isEditable={widget.isDraggable}
-            widgetKey={widget.i}
-          />
-        );
-      } else if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
-        widgetComponent = (
-          <div
-            className={classNames('tw:rounded-xl', {
-              'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-solid':
-                dropTarget === 'panel',
-              // Dropped here the widget leaves the panel, so the panel's grid
-              // shows no slot for it.
-              'tw:[&_.react-grid-placeholder]:invisible':
-                dropTarget === 'beside',
-            })}
-            data-drop-target={dropTarget ?? undefined}
-            data-testid="left-panel-drop-target"
-            ref={panelRef}>
-            <LeftPanelContainer
-              isEditView
-              editColumns={widget.w}
-              key={widget.i}
-              layout={widget.children ?? ([] as WidgetConfig[])}
-              type={currentPageType as PageType}
-              onDrag={handlePanelDrag}
-              onDragStop={handlePanelDragStop}
-              onUpdate={handleSideLayoutUpdate}
+        if (
+          widget.i.endsWith('.EmptyWidgetPlaceholder') &&
+          !isUndefined(handleOpenAddWidgetModal) &&
+          !isUndefined(handlePlaceholderWidgetKey) &&
+          !isUndefined(handleRemoveWidget)
+        ) {
+          widgetComponent = (
+            <EmptyWidgetPlaceholder
+              handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+              handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+              handleRemoveWidget={handleRemoveWidget}
+              isEditable={widget.isDraggable}
+              widgetKey={widget.i}
             />
+          );
+        } else if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+          widgetComponent = (
+            <div
+              className={classNames('tw:rounded-xl', {
+                'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-solid':
+                  dropTarget === 'panel',
+                // Dropped here the widget leaves the panel, so the panel's grid
+                // shows no slot for it.
+                'tw:[&_.react-grid-placeholder]:invisible':
+                  dropTarget === 'beside',
+              })}
+              data-drop-target={dropTarget ?? undefined}
+              data-testid="left-panel-drop-target"
+              ref={panelRef}>
+              <LeftPanelContainer
+                isEditView
+                editColumns={widget.w}
+                key={widget.i}
+                layout={widget.children ?? ([] as WidgetConfig[])}
+                type={currentPageType as PageType}
+                onDrag={handlePanelDrag}
+                onDragStop={handlePanelDragStop}
+                onUpdate={handleSideLayoutUpdate}
+              />
+            </div>
+          );
+        } else {
+          widgetComponent = (
+            <GenericWidget
+              isEditView
+              handleRemoveWidget={handleRemoveWidget}
+              handleWidgetConfigChange={handleWidgetConfigChange}
+              selectedGridSize={widget.w}
+              widgetConfig={widget}
+              widgetKey={widget.i}
+            />
+          );
+        }
+
+        // The panel's height comes from the widgets inside it, for the grid only,
+        // so it is not saved over the stored one.
+        const gridItem = widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+          ? { ...widget, h: getLeftPanelHeight(widget.children) }
+          : widget;
+
+        return (
+          <div data-grid={gridItem} id={widget.i} key={widget.i}>
+            {widgetComponent}
           </div>
         );
-      } else {
-        widgetComponent = (
-          <GenericWidget
-            isEditView
-            handleRemoveWidget={handleRemoveWidget}
-            handleWidgetConfigChange={handleWidgetConfigChange}
-            selectedGridSize={widget.w}
-            widgetConfig={widget}
-            widgetKey={widget.i}
-          />
-        );
-      }
-
-      // The panel's height comes from the widgets inside it, for the grid only,
-      // so it is not saved over the stored one.
-      const gridItem = widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
-        ? { ...widget, h: getLeftPanelHeight(widget.children) }
-        : widget;
-
-      return (
-        <div data-grid={gridItem} id={widget.i} key={widget.i}>
-          {widgetComponent}
-        </div>
-      );
-    });
-  };
+      }),
+    [
+      currentPageType,
+      dropTarget,
+      handleOpenAddWidgetModal,
+      handlePanelDrag,
+      handlePanelDragStop,
+      handlePlaceholderWidgetKey,
+      handleRemoveWidget,
+      handleSideLayoutUpdate,
+      handleWidgetConfigChange,
+      panelRef,
+    ]
+  );
 
   /**
    * Memoized widgets array optimized for drag and drop performance
@@ -452,13 +467,7 @@ export const CustomizeTabWidget = () => {
    */
   const widgets = useMemo(
     () => getWidgetFromLayout(tabLayouts),
-    [
-      tabLayouts,
-      dropTarget,
-      handlePanelDrag,
-      handlePanelDragStop,
-      handleSideLayoutUpdate,
-    ]
+    [tabLayouts, getWidgetFromLayout]
   );
 
   /**
