@@ -138,6 +138,20 @@ describe('CoreArrayField', () => {
     expect(screen.getByRole('textbox')).toBeInTheDocument();
   });
 
+  it('uses the ui:placeholder from the uiSchema while empty', () => {
+    render(
+      <CoreArrayField
+        {...baseFieldProps}
+        uiSchema={{ 'ui:placeholder': 'Enter a domain' }}
+      />
+    );
+
+    expect(screen.getByRole('textbox')).toHaveAttribute(
+      'placeholder',
+      'Enter a domain'
+    );
+  });
+
   it('adds a tag on Enter key', () => {
     const onChange = jest.fn();
 

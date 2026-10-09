@@ -15,6 +15,7 @@ import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Bell01,
   Key01,
+  Lock01,
   PermissionDebugger as AccessControlIcon,
   Policy as GovernanceTabIcon,
   Settings02,
@@ -41,6 +42,7 @@ import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 import PlatformSettingsPanel from './tabs/platform-settings/PlatformSettingsPanel';
+import SsoPanel from './tabs/sso/SsoPanel';
 
 // Single source of truth lives in Profile.constants (hook-safe layer); re-exported
 // here so existing imports of `ProfileNavId` from this module keep working.
@@ -204,6 +206,18 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'sso',
+    group: 'administration',
+    label: 'label.sso',
+    description: 'message.sso-configuration-directly-from-the-ui',
+    icon: Lock01,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <SsoPanel onHeaderChange={onHeaderChange} />
     ),
   },
   // The "My Connections" tab is contributed by the Query Runner plugin through

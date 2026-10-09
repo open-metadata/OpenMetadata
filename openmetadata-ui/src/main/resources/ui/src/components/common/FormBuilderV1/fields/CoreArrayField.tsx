@@ -92,12 +92,12 @@ const ArrayValueChip = ({
   return (
     <span
       className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md
-          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-brand-200">
+          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-utility-brand-200">
       {value}
       {!isDisabled && (
         <button
           aria-label={t('label.remove-entity', { entity: value })}
-          className="tw:flex tw:cursor-pointer tw:items-center tw:text-brand-400 hover:tw:text-brand-700"
+          className="tw:flex tw:cursor-pointer tw:items-center tw:text-utility-brand-400 tw:hover:text-utility-brand-700"
           type="button"
           onClick={onRemove}>
           <XClose size={10} strokeWidth={2.5} />
@@ -120,6 +120,7 @@ const CoreArrayField = (props: FieldProps) => {
     rawErrors,
     label,
     required,
+    uiSchema,
   } = props;
 
   const { t } = useTranslation();
@@ -190,9 +191,9 @@ const CoreArrayField = (props: FieldProps) => {
     [commitInput, pasteFromClipboard]
   );
 
-  const placeholder = isFilterPattern
-    ? t('message.filter-pattern-placeholder')
-    : '';
+  const placeholder =
+    (uiSchema?.['ui:placeholder'] as string | undefined) ??
+    (isFilterPattern ? t('message.filter-pattern-placeholder') : '');
 
   const fieldLabel = label || schema.title || getFormDisplayLabel(fieldName);
 
