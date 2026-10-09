@@ -114,6 +114,7 @@ import {
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import { DEFAULT_DATA_PRODUCT_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -125,7 +126,6 @@ import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interfac
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
-import { DEFAULT_DATA_PRODUCT_ICON } from '../../common/IconPicker/IconPicker.constants';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import DataProductMetadataModal from '../DataProductMetadataModal/DataProductMetadataModal.component';
 import ODPSImportModal from '../ODPSImportModal/ODPSImportModal.component';
@@ -1170,7 +1170,6 @@ const DataProductsDetailsPage = ({
       />
 
       <IconColorModal
-
         defaultIcon={DEFAULT_DATA_PRODUCT_ICON}
         open={isStyleEditing}
         style={dataProduct.style}

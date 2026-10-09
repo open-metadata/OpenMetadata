@@ -125,12 +125,12 @@ import {
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import { DEFAULT_DOMAIN_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import { DEFAULT_DOMAIN_ICON } from '../../common/IconPicker/IconPicker.constants';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
