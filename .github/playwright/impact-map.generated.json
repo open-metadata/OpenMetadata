@@ -6474,6 +6474,7 @@
       "specs": [
         "playwright/e2e/Features/AIMode/TestCaseBreadcrumb.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/LandingPageWidgets/LandingPage.spec.ts",
         "playwright/e2e/Features/Table.spec.ts"
       ]
     },
