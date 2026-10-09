@@ -14,6 +14,10 @@
 import { orderProperties, RJSFSchema, UiSchema } from '@rjsf/utils';
 import { omit } from 'lodash';
 import { ADVANCED_PROPERTIES } from '../../../../../../constants/Services.constant';
+import {
+  SSO_AUTHENTICATION_FIELD_GROUPS,
+  SSO_AUTHORIZER_FIELD_GROUPS,
+} from '../../../../../../constants/SSO.constant';
 import { FIELD_MAPPINGS } from '../../../../../SettingsSso/SSODocPanel/SSODocPanel.constants';
 
 /**
@@ -51,44 +55,24 @@ const CARD_CLASS_NAME =
   'tw:flex tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-secondary tw:p-5';
 
 /**
- * The cards each SSO section is split into — the same groups the classic
- * settings page draws (`SSOGroupedFieldTemplate`). Fields not listed here
- * share one last card.
+ * The cards each SSO section is split into, from the groups the classic
+ * settings page uses. Fields in no group share one last card.
  */
 const SECTION_CARDS: Record<string, string[][]> = {
   authenticationConfiguration: [
-    ['providerName'],
-    ['clientType', 'enableSelfSignup', 'clientId', 'callbackUrl'],
-    ['authority', 'domain'],
-    ['publicKeyUrls', 'tokenValidationAlgorithm'],
-    ['secret', 'clientSecret'],
-    ['oidcConfiguration'],
-    ['ldapConfiguration'],
-    ['samlConfiguration'],
-    [
-      'emailClaim',
-      'displayNameClaim',
-      'jwtPrincipalClaims',
-      'jwtPrincipalClaimsMapping',
-      'jwtTeamClaimMapping',
-    ],
+    SSO_AUTHENTICATION_FIELD_GROUPS.basic,
+    SSO_AUTHENTICATION_FIELD_GROUPS.client,
+    SSO_AUTHENTICATION_FIELD_GROUPS.authority,
+    SSO_AUTHENTICATION_FIELD_GROUPS.security,
+    SSO_AUTHENTICATION_FIELD_GROUPS.credentials,
+    ...SSO_AUTHENTICATION_FIELD_GROUPS.providerConfigs.map((name) => [name]),
+    SSO_AUTHENTICATION_FIELD_GROUPS.identity,
   ],
   authorizerConfiguration: [
-    ['adminEmails'],
-    ['allowedEmailDomains', 'botDomain'],
-    [
-      'enableSecureSocketConnection',
-      'className',
-      'containerRequestFilter',
-      'useRolesFromProvider',
-    ],
-    [
-      'adminPrincipals',
-      'principalDomain',
-      'enforcePrincipalDomain',
-      'allowedDomains',
-      'botPrincipals',
-    ],
+    SSO_AUTHORIZER_FIELD_GROUPS.admin,
+    SSO_AUTHORIZER_FIELD_GROUPS.domain,
+    SSO_AUTHORIZER_FIELD_GROUPS.connection,
+    SSO_AUTHORIZER_FIELD_GROUPS.deprecated,
   ],
 };
 

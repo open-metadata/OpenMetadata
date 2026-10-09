@@ -26,6 +26,7 @@ import {
 import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEPRECATED_SSO_PROPERTIES } from '../../../../../../constants/Services.constant';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
 import type { SecurityConfiguration } from '../../../../../../rest/securityConfigAPI';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
@@ -242,6 +243,8 @@ const SsoConfigureForm = ({
     () => ({
       clearFieldError: handleClearFieldError,
       currentProvider,
+      // Several deprecated SSO fields aren't flagged in the schema itself.
+      deprecatedFields: DEPRECATED_SSO_PROPERTIES,
       // Plain sections: no tinted background behind each field group.
       flatPropertyLayout: true,
     }),

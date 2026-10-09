@@ -35,7 +35,7 @@ export const CoreFieldTemplate = ({
   ...props
 }: FieldTemplateProps) => {
   const { t } = useTranslation();
-  const { id, label, schema } = props;
+  const { id, label, schema, formContext } = props;
   const fieldDocs = useContext(FieldDocsContext);
   const uiOptions = getUiOptions(uiSchema);
   const WrapIfAdditionalTemplate = getTemplate(
@@ -44,6 +44,14 @@ export const CoreFieldTemplate = ({
     uiOptions
   );
   const fieldName = id.split('/').pop() ?? '';
+  // A form can mark fields deprecated by name when its schema doesn't flag them.
+  const isDeprecated =
+    Boolean(schema.deprecated) ||
+    Boolean(
+      (formContext?.deprecatedFields as string[] | undefined)?.includes(
+        fieldName
+      )
+    );
   // Object fields only group their children; the leaves carry the docs.
   const doc =
     hidden || schema.type === 'object' ? undefined : fieldDocs?.[fieldName];
@@ -69,13 +77,13 @@ export const CoreFieldTemplate = ({
   // Forms without docs keep their exact DOM (layout and tests rely on direct
   // children). A form that passes `fieldDocs` gets the wrapper from its first
   // render, even before the docs load, so the field never remounts mid-edit.
-  if (!fieldDocs && !schema.deprecated) {
+  if (!fieldDocs && !isDeprecated) {
     return field;
   }
 
   return (
     <div className="tw:relative" {...fieldDoc}>
-      {schema.deprecated && (
+      {isDeprecated && (
         <Badge
           className="tw:absolute tw:top-0 tw:right-0"
           color="warning"

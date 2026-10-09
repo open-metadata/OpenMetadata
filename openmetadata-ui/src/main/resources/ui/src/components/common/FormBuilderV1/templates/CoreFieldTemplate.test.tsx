@@ -55,6 +55,20 @@ describe('CoreFieldTemplate', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('marks fields the form names as deprecated', () => {
+    render(
+      <FormBuilderV1
+        hideFooter
+        formContext={{ deprecatedFields: ['clientId'] }}
+        schema={SCHEMA}
+      />
+    );
+
+    expect(screen.getByTestId('deprecated-badge-clientId')).toHaveTextContent(
+      'label.deprecated'
+    );
+  });
+
   it('shows the focused field doc when the form passes field docs', async () => {
     renderForm({ clientId: 'The client id from your IdP.' });
 
