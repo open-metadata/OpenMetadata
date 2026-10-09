@@ -48,6 +48,7 @@ const Assignees: FC<Props> = ({
   disabled,
   isSingleSelect = false,
   className,
+  id,
   placeholder,
   status,
 }) => {
@@ -82,6 +83,7 @@ const Assignees: FC<Props> = ({
       <div className={className} data-testid="select-assignee">
         <Select.ComboBox
           aria-label={t('label.assignee')}
+          id={id}
           isDisabled={disabled}
           isInvalid={status === 'error'}
           items={singleItems}
@@ -100,7 +102,17 @@ const Assignees: FC<Props> = ({
                 : []
             );
           }}>
-          {(item) => <Select.Item {...item} key={item.id} />}
+          {(item) => (
+            <Select.Item
+              {...item}
+              data-testid={
+                [...assignees, ...options].find(
+                  (option) => option.value === item.id
+                )?.name
+              }
+              key={item.id}
+            />
+          )}
         </Select.ComboBox>
       </div>
     );
@@ -111,6 +123,7 @@ const Assignees: FC<Props> = ({
       <Autocomplete
         aria-label={t('label.assignee-plural')}
         filterOption={() => true}
+        id={id}
         isDisabled={disabled}
         isInvalid={status === 'error'}
         items={items}

@@ -976,7 +976,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   return (
     <SlideoutMenu
       aria-label={t('label.setting-plural')}
-      className="profiler-settings-drawer tw:min-w-96"
+      // Keep the overlay above positioned chart labels without covering form popovers.
+      className="profiler-settings-drawer tw:min-w-96 tw:z-50"
       data-testid="profiler-settings-modal"
       dialogClassName="tw:gap-0"
       isDismissable={false}

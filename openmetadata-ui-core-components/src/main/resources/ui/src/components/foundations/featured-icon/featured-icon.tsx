@@ -40,13 +40,11 @@ const styles = sortCx({
     colors: {
       // Utility tints preserve the light palette and keep this subtle variant
       // from becoming a solid CTA tile when the theme changes.
-      brand: 'tw:bg-utility-brand-100 tw:text-featured-icon-light-fg-brand',
-      error: 'tw:bg-utility-error-100 tw:text-featured-icon-light-fg-error',
-      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray',
-      success:
-        'tw:bg-utility-success-100 tw:text-featured-icon-light-fg-success',
-      warning:
-        'tw:bg-utility-warning-100 tw:text-featured-icon-light-fg-warning',
+      brand: 'tw:bg-utility-brand-100 tw:text-utility-brand-700',
+      error: 'tw:bg-utility-error-100 tw:text-utility-error-700',
+      gray: 'tw:bg-tertiary tw:text-utility-gray-700',
+      success: 'tw:bg-utility-success-100 tw:text-utility-success-700',
+      warning: 'tw:bg-utility-warning-100 tw:text-utility-warning-700',
     },
   },
 
