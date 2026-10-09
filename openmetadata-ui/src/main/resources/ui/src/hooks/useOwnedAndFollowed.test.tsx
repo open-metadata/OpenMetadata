@@ -14,9 +14,11 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { queryClient } from '../queryClient';
 import { searchQuery } from '../rest/searchAPI';
+import { getTermQuery } from '../utils/SearchPureUtils';
 import { CHANGE_WINDOW_DAYS, useOwnedAndFollowed } from './useOwnedAndFollowed';
 
 jest.mock('../rest/searchAPI', () => ({
@@ -152,6 +154,43 @@ describe('useOwnedAndFollowed', () => {
     expect(
       (range as { range: { updatedAt: { gte: number } } }).range.updatedAt.gte
     ).toBeLessThanOrEqual(Date.now() - CHANGE_WINDOW_DAYS * DAY_MS);
+  });
+
+  // Columns inherit their table's owners and followers; counted as assets, a
+  // single followed table filled the list with its own columns.
+  it('excludes column documents from the owned and followed pages', async () => {
+    mockSearches({ followed: [hit('f1')] });
+
+    await renderLoaded();
+
+    expect(getTermQuery).toHaveBeenCalledTimes(2);
+    expect(getTermQuery).toHaveBeenCalledWith(
+      { 'owners.id': [USER_ID] },
+      'must',
+      undefined,
+      { mustNotTerms: { entityType: EntityType.TABLE_COLUMN } }
+    );
+    expect(getTermQuery).toHaveBeenCalledWith(
+      { followers: [USER_ID] },
+      'must',
+      undefined,
+      { mustNotTerms: { entityType: EntityType.TABLE_COLUMN } }
+    );
+  });
+
+  it('excludes column documents from the changed count', async () => {
+    mockSearches({ changed: 1, followed: [hit('f1')] });
+
+    await renderLoaded();
+
+    const countCall = mockSearchQuery.mock.calls
+      .map(([request]) => request)
+      .find((request) => request.pageSize === 0);
+
+    expect(
+      (countCall?.queryFilter as { query: { bool: { must_not: unknown[] } } })
+        .query.bool.must_not
+    ).toEqual([{ term: { entityType: EntityType.TABLE_COLUMN } }]);
   });
 
   it('stays idle until the current user resolves', async () => {

@@ -12,6 +12,7 @@
  */
 
 import { useQueries } from '@tanstack/react-query';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { searchQuery } from '../rest/searchAPI';
 import { getTermQuery } from '../utils/SearchPureUtils';
@@ -21,6 +22,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const CHANGE_WINDOW_DAYS = 7;
 const PAGE_SIZE = 5;
 const TTL_MS = 60_000;
+
+// Column documents inherit their table's owners and followers, so without this
+// one owned or followed table comes back as a row per column — and those rows
+// can crowd the table itself out of the five on screen.
+const EXCLUDE_COLUMNS = { entityType: EntityType.TABLE_COLUMN };
 
 export const OWNED_ASSETS_QUERY_KEY = ['landingPage', 'widgets', 'ownedAssets'];
 export const FOLLOWED_ASSETS_QUERY_KEY = [
@@ -101,7 +107,9 @@ const runSearch = async (
   const response = await searchQuery({
     pageNumber: 1,
     pageSize: PAGE_SIZE,
-    queryFilter: getTermQuery(filter),
+    queryFilter: getTermQuery(filter, 'must', undefined, {
+      mustNotTerms: EXCLUDE_COLUMNS,
+    }),
     searchIndex,
     sortField: 'updatedAt',
     sortOrder: 'desc',
@@ -133,6 +141,7 @@ const countChangedFollowed = async (
             { term: { followers: userId } },
             { range: { updatedAt: { gte: since } } },
           ],
+          must_not: [{ term: EXCLUDE_COLUMNS }],
         },
       },
     },

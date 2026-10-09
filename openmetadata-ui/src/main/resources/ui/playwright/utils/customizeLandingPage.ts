@@ -40,6 +40,8 @@ export const CURATED_ASSETS_WIDGET_KEY = 'KnowledgePanel.CuratedAssets';
 // Root of the live landing page. The old `page-layout-v1` handle came from
 // PageLayoutV1, which the home route only renders for the welcome screen now.
 export const LANDING_PAGE_ROOT = 'home-landing-page';
+// Root of the persona customize page, which is still built on PageLayoutV1.
+const CUSTOMIZE_PAGE_ROOT = 'page-layout-v1';
 
 export type NameableEntityResponse = {
   name?: string;
@@ -320,15 +322,26 @@ export const checkAllDefaultWidgets = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-  // The landing page is built on the core PageLayout now, not PageLayoutV1 —
-  // `page-layout-v1` only wraps the first-login welcome screen.
-  await expect(page.getByTestId(LANDING_PAGE_ROOT)).toBeVisible();
-  await page.evaluate((root) => {
-    window.scrollTo(0, 0);
-    document
-      .querySelector(`[data-testid="${root}"] [class*='overflow-y-auto']`)
-      ?.scrollTo({ top: 0 });
-  }, LANDING_PAGE_ROOT);
+  // Called on both surfaces: the landing page is built on the core PageLayout
+  // now, but the persona customize page still renders inside PageLayoutV1.
+  // Neither renders the other's root, so the union resolves to one element.
+  await expect(
+    page
+      .getByTestId(LANDING_PAGE_ROOT)
+      .or(page.getByTestId(CUSTOMIZE_PAGE_ROOT))
+  ).toBeVisible();
+  await page.evaluate(
+    ([landingRoot, customizeRoot]) => {
+      window.scrollTo(0, 0);
+      document
+        .querySelectorAll(
+          `[data-testid="${landingRoot}"] [class*='overflow-y-auto'], ` +
+            `[data-testid="${customizeRoot}"] .page-layout-v1-vertical-scroll`
+        )
+        .forEach((scroller) => scroller.scrollTo({ top: 0 }));
+    },
+    [LANDING_PAGE_ROOT, CUSTOMIZE_PAGE_ROOT]
+  );
 
   for (const widgetKey of DEFAULT_LANDING_PAGE_WIDGETS) {
     await waitForLandingPageWidget(page, widgetKey);

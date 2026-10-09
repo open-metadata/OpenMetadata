@@ -212,11 +212,14 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
 test.afterAll('Cleanup: delete the seed tables', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
+  // A failed beforeAll can stop before the tables exist; deleting `undefined`
+  // would then replace its error with a TypeError.
   try {
-    await settleAll([
-      activitySeedTable.delete(apiContext),
-      dataQualitySeedTable.delete(apiContext),
-    ]);
+    await settleAll(
+      [activitySeedTable, dataQualitySeedTable]
+        .filter((table) => table !== undefined)
+        .map((table) => table.delete(apiContext))
+    );
   } finally {
     await afterAction();
   }
