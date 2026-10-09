@@ -72,7 +72,7 @@ describe('ActivityFeedDrawer', () => {
 
     const dialog = screen.getByRole('dialog');
 
-    expect(dialog).toHaveClass('activity-feed-drawer');
+    expect(screen.getByTestId('activity-feed-drawer')).toContainElement(dialog);
     expect(screen.getByTestId('closeDrawer')).toBeInTheDocument();
     expect(dialog.querySelector('#feed-panel')).toContainElement(
       screen.getByTestId('feed-panel-body')

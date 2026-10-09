@@ -25,7 +25,8 @@ import TaskPanelHeader from '../ActivityFeedPanel/TaskPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-drawer.less';
 
-const ACTIVITY_FEED_DRAWER_CLASS = 'activity-feed-drawer';
+const PANEL_HEADER_CLASS_NAME =
+  'tw:px-4 tw:shrink-0 tw:text-md tw:font-medium tw:leading-snug tw:text-(color:--om-heading-color)';
 const DRAWER_WIDTH = 576;
 
 const TaskTabNew = withSuspenseFallback(
@@ -62,7 +63,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       return {
         header: (
           <TaskPanelHeader
-            className="p-x-md"
+            className={PANEL_HEADER_CLASS_NAME}
             task={selectedTask}
             onCancel={hideDrawer}
           />
@@ -83,7 +84,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
         header: (
           <ActivityPanelHeader
             activity={selectedActivity}
-            className="p-x-md"
+            className={PANEL_HEADER_CLASS_NAME}
             onCancel={hideDrawer}
           />
         ),
@@ -95,7 +96,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       return {
         header: (
           <FeedPanelHeader
-            className="p-x-md"
+            className={PANEL_HEADER_CLASS_NAME}
             entityLink={selectedThread.about ?? ''}
             feed={selectedThread}
             onCancel={hideDrawer}
@@ -124,16 +125,12 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       isDismissable
       aria-label={t('label.activity-feed')}
       data-testid="activity-feed-drawer"
-      dialogClassName={classNames(
-        ACTIVITY_FEED_DRAWER_CLASS,
-        'tw:items-stretch tw:gap-0',
-        className
-      )}
+      dialogClassName={classNames('tw:items-stretch tw:gap-0', className)}
       isOpen={open}
       width={DRAWER_WIDTH}
       onOpenChange={(isOpen) => !isOpen && hideDrawer()}>
-      <div className="activity-feed-drawer-header">{panel.header}</div>
-      <SlideoutMenu.Content className="activity-feed-drawer-body tw:h-auto tw:gap-0 tw:px-0 tw:md:px-0">
+      {panel.header}
+      <SlideoutMenu.Content className="tw:min-h-0 tw:flex-1 tw:h-auto tw:gap-0 tw:px-0 tw:md:px-0">
         <div id="feed-panel">{panel.body}</div>
       </SlideoutMenu.Content>
     </SlideoutMenu>
