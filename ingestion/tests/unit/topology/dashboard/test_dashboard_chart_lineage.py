@@ -19,6 +19,7 @@ import uuid
 
 import pytest
 
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
@@ -26,6 +27,7 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import TopologyContextManager
@@ -75,8 +77,13 @@ class FakeServer:
         return None
 
 
-def _source(server: FakeServer, dashboard: str | None = "sales", override_lineage: bool = False) -> SsrsSource:
-    source = SsrsSource.__new__(SsrsSource)
+def _source(
+    server: FakeServer,
+    dashboard: str | None = "sales",
+    override_lineage: bool = False,
+    source_class: type[SsrsSource] = SsrsSource,
+) -> SsrsSource:
+    source = source_class.__new__(source_class)
     source.metadata = server
     source.source_config = DashboardServiceMetadataPipeline(overrideLineage=override_lineage)
     source.context = TopologyContextManager(DashboardServiceTopology())
@@ -146,3 +153,43 @@ class TestDashboardChartLineage:
         assert isinstance(records[0].right, Barrier)
         assert [record.left.name for record in records[1:]] == ["sales"]
         assert "server unavailable" in records[1].left.error
+
+    def test_a_dashboard_that_fails_does_not_redraw_the_previous_dashboards_edges(self):
+        """Runs the real dashboard node: `sales` is written, then `broken` fails in the
+        connector before its request is built, so the context must not still name
+        `sales` when the chart lineage stage runs for `broken`."""
+
+        class TwoDashboards(SsrsSource):
+            def get_dashboard(self):
+                yield from ("sales", "broken")
+
+            def yield_dashboard(self, dashboard_details):
+                if dashboard_details == "broken":
+                    yield Either(left=StackTraceError(name="broken", error="cannot build the request"))
+                    return
+                yield Either(right=CreateDashboardRequest(name="sales", service=SERVICE))
+
+            def yield_tags(self, *_):
+                return []
+
+            def yield_dashboard_chart(self, *_):
+                return []
+
+            def yield_datamodel(self, *_):
+                return []
+
+            def yield_dashboard_lineage(self, *_):
+                return []
+
+            def yield_dashboard_usage(self, *_):
+                return []
+
+        source = _source(FakeServer(_dashboard(CHARTS)), dashboard=None, source_class=TwoDashboards)
+        records = []
+        for record in source.process_nodes([source.topology.dashboard]):
+            if isinstance(record.right, Barrier):
+                source.metadata.flushed = True
+            records.append(record)
+
+        assert [to_fqn for _, to_fqn, *_ in _edges(records)] == [f"{SERVICE}.{chart}" for chart in CHARTS]
+        assert [record.left.name for record in records if record.left] == ["broken"]

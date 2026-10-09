@@ -183,6 +183,7 @@ class DashboardServiceTopology(ServiceTopology):
                 context="dashboard",
                 processor="yield_dashboard",
                 consumer=["dashboard_service"],
+                clear_context=True,
             ),
             NodeStage(  # pyright: ignore[reportCallIssue]
                 type_=AddLineageRequest,
