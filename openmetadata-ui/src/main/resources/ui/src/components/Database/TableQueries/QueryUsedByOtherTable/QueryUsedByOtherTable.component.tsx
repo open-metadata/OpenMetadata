@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Col, Row, Space } from 'antd';
+
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -103,7 +104,13 @@ const QueryUsedByOtherTable = ({
                 arrow
                 containerClassName="tw:px-4 tw:py-3"
                 placement="bottom">
-                <Space direction="vertical">
+                <Box
+                  inline
+                  align="stretch"
+                  className="layout-space"
+                  direction="col"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   {remainingTable.map((table) => (
                     <Link
                       key={table.id}
@@ -114,7 +121,7 @@ const QueryUsedByOtherTable = ({
                       {getEntityName(table)}
                     </Link>
                   ))}
-                </Space>
+                </Box>
               </Popover>
             </PopoverTrigger>
           </>
@@ -205,12 +212,14 @@ const QueryUsedByOtherTable = ({
   }, [isEditMode]);
 
   return (
-    <Row wrap data-testid="para-container">
-      <Col flex="200px">
+    <Box className="layout-row" data-testid="para-container" wrap="wrap">
+      <Box className="layout-column tw:block" style={{ flex: '0 0 200px' }}>
         <Typography>{`${t('message.query-used-by-other-tables')}:`}</Typography>
-      </Col>
-      <Col>{isEditMode ? selectList : tableNames}</Col>
-    </Row>
+      </Box>
+      <Box className="layout-column tw:block">
+        {isEditMode ? selectList : tableNames}
+      </Box>
+    </Box>
   );
 };
 

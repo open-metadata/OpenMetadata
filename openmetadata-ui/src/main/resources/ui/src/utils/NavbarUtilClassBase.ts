@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactNode } from 'react';
 import { HELP_ITEMS } from '../constants/Navbar.constants';
 
 class NavbarUtilClassBase {
@@ -18,7 +18,7 @@ class NavbarUtilClassBase {
     return HELP_ITEMS;
   }
 
-  public getUserProfileExtraItems(): ItemType[] {
+  public getUserProfileExtraItems(): ReactNode[] {
     return [];
   }
 }
