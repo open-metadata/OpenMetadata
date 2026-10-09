@@ -30,8 +30,8 @@ import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelp
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
- * Helper to group change events by merging adds/deletes into updates where applicable.
- * Matches FormatterUtil.getFormattedMessages() grouping.
+ * Helper to group change events by merging adds/deletes into updates where applicable: a field
+ * that was both deleted and added in one change reads as one update.
  *
  * Template usage:
  *   {{#with (groupEventChanges event.changeDescription) as |changes|}}

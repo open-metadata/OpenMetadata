@@ -14,65 +14,19 @@
 package org.openmetadata.service.formatter.entity;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.formatter.util.FormatterUtil.transformMessage;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.formatter.util.FormattedMessage;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 
-public class IngestionPipelineFormatter implements EntityFormatter {
-  private static final String PIPELINE_STATUS_FIELD = "pipelineStatus";
-
-  @Override
-  public String format(
-      MessageDecorator<?> messageFormatter,
-      FormattedMessage thread,
-      FieldChange fieldChange,
-      FormatterUtil.CHANGE_TYPE changeType) {
-    if (PIPELINE_STATUS_FIELD.equals(fieldChange.getName())) {
-      return transformIngestionPipelineStatus(messageFormatter, thread, fieldChange);
-    }
-    return transformMessage(messageFormatter, thread, fieldChange, changeType);
-  }
-
-  private String transformIngestionPipelineStatus(
-      MessageDecorator<?> messageFormatter, FormattedMessage thread, FieldChange fieldChange) {
-    EntityInterface<?> entity =
-        Entity.getEntity(
-            thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
-    String ingestionPipelineName = entity.getName();
-    PipelineStatus status = null;
-    try {
-      status = JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);
-    } catch (JsonParsingException ignored) {
-      // Malformed historical payloads should still emit a generic update message.
-    }
-    if (status != null) {
-      // In case of running
-      String date =
-          new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(status.getTimestamp()));
-      return String.format(
-          "Ingestion Pipeline %s %s at %s",
-          messageFormatter.bold(ingestionPipelineName),
-          messageFormatter.bold(String.valueOf(status.getPipelineState())),
-          date);
-    }
-    return String.format(
-        "Ingestion Pipeline %s is updated", messageFormatter.bold(ingestionPipelineName));
-  }
+/** Where a message links for an ingestion pipeline or a data contract. */
+public final class IngestionPipelineFormatter {
+  private IngestionPipelineFormatter() {}
 
   public static String getIngestionPipelineUrl(
       MessageDecorator<?> formatter, String entityType, EntityInterface<?> entityInterface) {

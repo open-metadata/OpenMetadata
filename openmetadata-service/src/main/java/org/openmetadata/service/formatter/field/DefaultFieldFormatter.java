@@ -13,12 +13,9 @@
 
 package org.openmetadata.service.formatter.field;
 
-import static java.lang.String.format;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.formatter.util.FormatterUtil.getEntityLinkForFieldName;
 
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
@@ -28,121 +25,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
-import org.openmetadata.schema.entity.feed.FeedInfo;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.formatter.util.FormattedMessage;
-import org.openmetadata.service.formatter.util.FormatterUtil;
-import org.openmetadata.service.resources.feeds.MessageParser;
 
-public class DefaultFieldFormatter implements FieldFormatter {
-  protected final FormattedMessage thread;
-  protected String fieldChangeName;
-  protected final FieldChange fieldChange;
-  protected final String fieldOldValue;
-  protected final String fieldNewValue;
-  protected final MessageDecorator<?> messageDecorator;
-
-  public DefaultFieldFormatter(
-      MessageDecorator<?> messageDecorator, FormattedMessage thread, FieldChange fieldChange) {
-    this.messageDecorator = messageDecorator;
-    this.fieldChangeName = getFieldNameChange(fieldChange.getName(), thread);
-    this.fieldOldValue = getFieldValue(fieldChange.getOldValue());
-    this.fieldNewValue = getFieldValue(fieldChange.getNewValue());
-    this.thread = thread;
-    this.fieldChange = fieldChange;
-  }
-
-  @Override
-  public String getFieldChangeName() {
-    return fieldChangeName;
-  }
-
-  @Override
-  public String getFieldOldValue() {
-    return fieldOldValue;
-  }
-
-  @Override
-  public String getFieldNewValue() {
-    return fieldNewValue;
-  }
-
-  @Override
-  public String getFormattedMessage(FormatterUtil.CHANGE_TYPE changeType) {
-    String message = "";
-    switch (changeType) {
-      case ADD -> message = formatAddedField();
-      case UPDATE -> message = formatUpdatedField();
-      case DELETE -> message = formatDeletedField();
-    }
-    return message;
-  }
-
-  @Override
-  public MessageDecorator<?> getMessageDecorator() {
-    return messageDecorator;
-  }
-
-  @Override
-  public MessageParser.EntityLink getEntityLink() {
-    return MessageParser.EntityLink.parse(thread.getAbout());
-  }
-
-  public String formatAddedField() {
-    String message =
-        this.messageDecorator.httpAddMarker()
-            + this.fieldNewValue
-            + this.messageDecorator.httpAddMarker();
-    message =
-        String.format(
-            ("Added " + this.messageDecorator.getBold() + ": %s"), this.fieldChangeName, message);
-    String spanAdd = this.messageDecorator.getAddMarker();
-    String spanAddClose = this.messageDecorator.getAddMarkerClose();
-    if (message != null) {
-      message =
-          this.messageDecorator.replaceMarkers(
-              message, this.messageDecorator.httpAddMarker(), spanAdd, spanAddClose);
-    }
-    return message;
-  }
-
-  public String formatUpdatedField() {
-    String message = this.messageDecorator.getPlaintextDiff(this.fieldOldValue, this.fieldNewValue);
-    return String.format(
-        "Updated %s: %s", this.messageDecorator.bold(this.fieldChangeName), message);
-  }
-
-  public String formatDeletedField() {
-    String message =
-        this.messageDecorator.httpRemoveMarker()
-            + this.fieldOldValue
-            + this.messageDecorator.httpRemoveMarker();
-    message =
-        String.format(
-            ("Deleted " + this.messageDecorator.getBold() + ": %s"), this.fieldChangeName, message);
-    String spanRemove = this.messageDecorator.getRemoveMarker();
-    String spanRemoveClose = this.messageDecorator.getRemoveMarkerClose();
-    if (message != null) {
-      message =
-          this.messageDecorator.replaceMarkers(
-              message, this.messageDecorator.httpRemoveMarker(), spanRemove, spanRemoveClose);
-    }
-    return message;
-  }
-
-  public static void populateThreadFeedInfo(
-      FormattedMessage thread,
-      String threadMessage,
-      FormattedMessage.CardStyle cardStyle,
-      FormattedMessage.FieldOperation operation,
-      FeedInfo feedInfo) {
-    thread.withMessage(threadMessage);
-    thread.withCardStyle(cardStyle);
-    thread.withFieldOperation(operation);
-    thread.withFeedInfo(feedInfo);
-  }
+/** How a changed field's value reads in the audit log. */
+public final class DefaultFieldFormatter {
+  private DefaultFieldFormatter() {}
 
   public static String getFieldValue(Object fieldValue) {
     if (nullOrEmpty(fieldValue)) {
@@ -189,22 +76,5 @@ public class DefaultFieldFormatter implements FieldFormatter {
       // If unable to parse json, just return the string
     }
     return fieldValue.toString();
-  }
-
-  public static String getFieldNameChange(String fieldChangeName, FormattedMessage thread) {
-    MessageParser.EntityLink link = getEntityLinkForFieldName(fieldChangeName, thread);
-    String arrayFieldName = link.getArrayFieldName();
-    String arrayFieldValue = link.getArrayFieldValue();
-    String updatedField = fieldChangeName;
-    if (arrayFieldValue != null) {
-      updatedField = format("%s.%s", arrayFieldName, arrayFieldValue);
-    } else if (arrayFieldName != null) {
-      if (arrayFieldName.equals(FIELD_EXTENSION)) {
-        return arrayFieldName;
-      } else {
-        updatedField = format("%s.%s", fieldChangeName, arrayFieldName);
-      }
-    }
-    return updatedField;
   }
 }

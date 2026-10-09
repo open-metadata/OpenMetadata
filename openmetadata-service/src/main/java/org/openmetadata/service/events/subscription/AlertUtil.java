@@ -16,7 +16,6 @@ package org.openmetadata.service.events.subscription;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.CONVERSATION;
-import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -45,7 +44,6 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
-import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
@@ -357,38 +355,6 @@ public final class AlertUtil {
         && shouldTriggerAlert(event, filteringRules)
         && evaluateAlertConditions(event, filteringRules.getRules())
         && evaluateAlertConditions(event, filteringRules.getActions());
-  }
-
-  public static EventSubscriptionOffset getStartingOffset(UUID eventSubscriptionId) {
-    long startingOffset;
-    long currentOffset;
-    String json =
-        Entity.getCollectionDAO()
-            .eventSubscriptionDAO()
-            .getSubscriberExtension(eventSubscriptionId.toString(), OFFSET_EXTENSION);
-    if (json != null) {
-      return JsonUtils.readValue(json, EventSubscriptionOffset.class);
-    }
-    currentOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
-    startingOffset = currentOffset;
-    long now = System.currentTimeMillis();
-    EventSubscriptionOffset offset =
-        new EventSubscriptionOffset()
-            .withCurrentOffset(currentOffset)
-            .withStartingOffset(startingOffset)
-            .withStartingTimestamp(now)
-            .withTimestamp(now);
-    // Persisted here rather than at the first commit. Until a row exists every server restart and
-    // every subscription edit re-derives this, which would drift the watermark forward and silently
-    // suppress executions that failed after the alert was created.
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .upsertSubscriberExtension(
-            eventSubscriptionId.toString(),
-            OFFSET_EXTENSION,
-            "eventSubscriptionOffset",
-            JsonUtils.pojoToJson(offset));
-    return offset;
   }
 
   /**

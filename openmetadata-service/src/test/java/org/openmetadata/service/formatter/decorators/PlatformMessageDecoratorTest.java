@@ -55,16 +55,4 @@ class PlatformMessageDecoratorTest {
     assertEquals(
         "Connection Successful ✅", testMessage.getCards().getFirst().getHeader().getTitle());
   }
-
-  @Test
-  void feedDecoratorUsesRelativeUrlsAndUiDiffMarkers() {
-    FeedMessageDecorator decorator = new FeedMessageDecorator();
-
-    assertEquals(
-        "[service.sales.orders](/table/service.sales.orders/activity_feed/all)",
-        decorator.getEntityUrl("table", "service.sales.orders", "activity_feed/all"));
-    assertEquals("<span data-diff='true' class=\"diff-added\">", decorator.getAddMarker());
-    assertEquals("<span data-diff='true' class=\"diff-removed\">", decorator.getRemoveMarker());
-    assertEquals("**%s**", decorator.getBold());
-  }
 }

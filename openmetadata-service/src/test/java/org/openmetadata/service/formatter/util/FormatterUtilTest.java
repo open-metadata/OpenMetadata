@@ -14,11 +14,8 @@
 package org.openmetadata.service.formatter.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -42,35 +39,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.formatter.entity.EntityFormatter;
-import org.openmetadata.service.formatter.factory.ParserFactory;
-import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.RestUtil;
 
 class FormatterUtilTest {
-
-  private final TestDecorator decorator = new TestDecorator();
-
-  @Test
-  void getEntityLinkForFieldNameParsesNestedAndExtensionPaths() {
-    FormattedMessage message = baseMessage();
-
-    MessageParser.EntityLink nestedLink =
-        FormatterUtil.getEntityLinkForFieldName("columns.comment.description", message);
-    assertEquals(Entity.TABLE, nestedLink.getEntityType());
-    assertEquals("service.sales.orders", nestedLink.getEntityFQN());
-    assertEquals("columns", nestedLink.getFieldName());
-    assertEquals("comment", nestedLink.getArrayFieldName());
-    assertEquals("description", nestedLink.getArrayFieldValue());
-
-    MessageParser.EntityLink extensionLink =
-        FormatterUtil.getEntityLinkForFieldName("extension.customProperty", message);
-    assertEquals("extension", extensionLink.getFieldName());
-    assertEquals("extension", extensionLink.getArrayFieldName());
-    assertNull(extensionLink.getArrayFieldValue());
-  }
 
   @Test
   void getUpdatedFieldNormalizesNestedFieldsAndExtensions() {
@@ -84,89 +55,6 @@ class FormatterUtilTest {
         FormatterUtil.getUpdatedField(new ChangeEvent().withChangeDescription(description));
 
     assertEquals(Set.of("description", Entity.FIELD_EXTENSION, "owners"), updatedFields);
-  }
-
-  @Test
-  void transformMessageChoosesParserKeyFromArrayFieldValueOrResolvedFieldName() {
-    FormattedMessage message = baseMessage();
-
-    DefaultFieldFormatter nestedFormatter = mock(DefaultFieldFormatter.class);
-    when(nestedFormatter.getFormattedMessage(FormatterUtil.CHANGE_TYPE.UPDATE))
-        .thenReturn("nested");
-
-    DefaultFieldFormatter simpleFormatter = mock(DefaultFieldFormatter.class);
-    when(simpleFormatter.getFormattedMessage(FormatterUtil.CHANGE_TYPE.ADD)).thenReturn("simple");
-
-    FieldChange nestedField = new FieldChange().withName("columns.comment.description");
-    FieldChange simpleField = new FieldChange().withName("owners");
-
-    try (MockedStatic<ParserFactory> parserFactory = mockStatic(ParserFactory.class)) {
-      parserFactory
-          .when(
-              () ->
-                  ParserFactory.getFieldParserObject(
-                      decorator, message, nestedField, "description"))
-          .thenReturn(nestedFormatter);
-      parserFactory
-          .when(() -> ParserFactory.getFieldParserObject(decorator, message, simpleField, "owners"))
-          .thenReturn(simpleFormatter);
-
-      assertEquals(
-          "nested",
-          FormatterUtil.transformMessage(
-              decorator, message, nestedField, FormatterUtil.CHANGE_TYPE.UPDATE));
-      assertEquals(
-          "simple",
-          FormatterUtil.transformMessage(
-              decorator, message, simpleField, FormatterUtil.CHANGE_TYPE.ADD));
-    }
-  }
-
-  @Test
-  void getFormattedMessagesHandlesUpdatesAdditionsDeletesAndMergedFieldChanges() {
-    FormattedMessage message = baseMessage();
-    EntityFormatter entityFormatter = mock(EntityFormatter.class);
-    when(entityFormatter.format(any(), any(), any(), any()))
-        .thenAnswer(
-            invocation -> {
-              FieldChange fieldChange = invocation.getArgument(2);
-              FormatterUtil.CHANGE_TYPE changeType = invocation.getArgument(3);
-              return changeType.name() + ":" + fieldChange.getName();
-            });
-
-    ChangeDescription mixedChanges =
-        new ChangeDescription()
-            .withFieldsUpdated(List.of(new FieldChange().withName("owners")))
-            .withFieldsAdded(List.of(new FieldChange().withName("tags")))
-            .withFieldsDeleted(List.of());
-    ChangeDescription mergedChanges =
-        new ChangeDescription()
-            .withFieldsUpdated(List.of())
-            .withFieldsAdded(
-                List.of(
-                    new FieldChange().withName("description").withNewValue("new"),
-                    new FieldChange().withName("displayName").withNewValue("display")))
-            .withFieldsDeleted(
-                List.of(new FieldChange().withName("description").withOldValue("old")));
-
-    try (MockedStatic<ParserFactory> parserFactory = mockStatic(ParserFactory.class)) {
-      parserFactory
-          .when(() -> ParserFactory.getEntityParser(Entity.TABLE))
-          .thenReturn(entityFormatter);
-
-      List<FormattedMessage> mixedMessages =
-          FormatterUtil.getFormattedMessages(decorator, message, mixedChanges);
-      assertEquals(2, mixedMessages.size());
-      assertEquals("UPDATE:owners", mixedMessages.get(0).getMessage());
-      assertEquals("ADD:tags", mixedMessages.get(1).getMessage());
-      assertNotNull(mixedMessages.get(0).getId());
-
-      List<FormattedMessage> mergedMessages =
-          FormatterUtil.getFormattedMessages(decorator, message, mergedChanges);
-      assertEquals(2, mergedMessages.size());
-      assertEquals("UPDATE:description", mergedMessages.get(0).getMessage());
-      assertEquals("ADD:displayName", mergedMessages.get(1).getMessage());
-    }
   }
 
   @Test
@@ -283,63 +171,6 @@ class FormatterUtilTest {
           Entity.DATA_CONTRACT_RESULT,
           changeEvent.getChangeDescription().getFieldsUpdated().getFirst().getName());
       assertEquals(fullEntityReference, contractSpy.getEntity());
-    }
-  }
-
-  private static FormattedMessage baseMessage() {
-    return new FormattedMessage()
-        .withId(UUID.randomUUID())
-        .withAbout("<#E::table::service.sales.orders>")
-        .withEntityRef(
-            new EntityReference()
-                .withType(Entity.TABLE)
-                .withFullyQualifiedName("service.sales.orders"));
-  }
-
-  private static final class TestDecorator implements MessageDecorator<String> {
-    @Override
-    public String getBold() {
-      return "**";
-    }
-
-    @Override
-    public String getBoldWithSpace() {
-      return "** ";
-    }
-
-    @Override
-    public String getLineBreak() {
-      return "\n";
-    }
-
-    @Override
-    public String getAddMarker() {
-      return "<ins>";
-    }
-
-    @Override
-    public String getAddMarkerClose() {
-      return "</ins>";
-    }
-
-    @Override
-    public String getRemoveMarker() {
-      return "<del>";
-    }
-
-    @Override
-    public String getRemoveMarkerClose() {
-      return "</del>";
-    }
-
-    @Override
-    public String getEntityUrl(String prefix, String fqn, String additionalInput) {
-      return prefix + "|" + fqn + "|" + additionalInput;
-    }
-
-    @Override
-    public String buildTestMessage() {
-      return "test";
     }
   }
 }

@@ -3,83 +3,18 @@ package org.openmetadata.service.formatter.entity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mockStatic;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.TestMessageDecorator;
-import org.openmetadata.service.formatter.util.FormattedMessage;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 
 class IngestionPipelineFormatterTest {
-
-  @Test
-  void formatHandlesPipelineStatusAndFallsBackToDefaultFormatting() {
-    IngestionPipeline pipeline = new IngestionPipeline().withName("metadata_daily");
-    FormattedMessage thread = pipelineMessage();
-    IngestionPipelineFormatter formatter = new IngestionPipelineFormatter();
-    long timestamp = 1_700_000_000_000L;
-    String expectedDate = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new Date(timestamp));
-
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(
-              () ->
-                  Entity.getEntity(
-                      thread.getEntityRef().getType(),
-                      thread.getEntityRef().getId(),
-                      "id",
-                      Include.ALL))
-          .thenReturn(pipeline);
-
-      String statusMessage =
-          formatter.format(
-              new TestMessageDecorator(),
-              thread,
-              new FieldChange()
-                  .withName("pipelineStatus")
-                  .withNewValue(
-                      JsonUtils.pojoToJson(
-                          new PipelineStatus()
-                              .withTimestamp(timestamp)
-                              .withPipelineState(PipelineStatusType.RUNNING))),
-              FormatterUtil.CHANGE_TYPE.UPDATE);
-
-      assertEquals(
-          String.format(
-              "Ingestion Pipeline <b>%s</b> <b>%s</b> at %s",
-              "metadata_daily", PipelineStatusType.RUNNING, expectedDate),
-          statusMessage);
-
-      String updatedMessage =
-          formatter.format(
-              new TestMessageDecorator(),
-              thread,
-              new FieldChange().withName("pipelineStatus").withNewValue("not-json"),
-              FormatterUtil.CHANGE_TYPE.UPDATE);
-
-      assertEquals("Ingestion Pipeline <b>metadata_daily</b> is updated", updatedMessage);
-    }
-
-    String defaultMessage =
-        formatter.format(
-            new TestMessageDecorator(),
-            thread.withAbout("<#E::ingestionPipeline::service.ingestion.pipeline>"),
-            new FieldChange().withName("description").withNewValue("new description"),
-            FormatterUtil.CHANGE_TYPE.ADD);
-    assertEquals("Added <b>description</b>: <ins>new description</ins>", defaultMessage);
-  }
 
   @Test
   void getIngestionPipelineUrlHandlesSupportedPipelineTypes() {
@@ -202,15 +137,5 @@ class IngestionPipelineFormatterTest {
 
     assertEquals(
         "", IngestionPipelineFormatter.getDataContractUrl(decorator, Entity.TABLE, contract));
-  }
-
-  private static FormattedMessage pipelineMessage() {
-    return new FormattedMessage()
-        .withId(UUID.randomUUID())
-        .withEntityRef(
-            new EntityReference()
-                .withId(UUID.randomUUID())
-                .withType(Entity.INGESTION_PIPELINE)
-                .withFullyQualifiedName("service.ingestion.pipeline"));
   }
 }
