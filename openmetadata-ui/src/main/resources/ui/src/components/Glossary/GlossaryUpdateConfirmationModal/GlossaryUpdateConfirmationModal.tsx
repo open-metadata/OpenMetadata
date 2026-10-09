@@ -13,6 +13,7 @@
 
 import {
   Alert,
+  Box,
   Button,
   Dialog,
   FeaturedIcon,
@@ -48,7 +49,7 @@ const renderFooter = (
   onCancel: () => void,
   t: (key: string) => string
 ) => (
-  <div className="tw:flex tw:w-full tw:items-center tw:justify-between">
+  <Box align="center" className="tw:w-full" justify="between">
     <Typography color="secondary">
       {failedStatus?.numberOfRowsFailed &&
         `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
@@ -56,7 +57,7 @@ const renderFooter = (
     <Button color="secondary" onPress={onCancel}>
       {t('label.cancel')}
     </Button>
-  </div>
+  </Box>
 );
 
 const renderFailedContent = (
@@ -93,7 +94,7 @@ const renderFailedContent = (
   ];
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-2">
+    <Box direction="col" gap={2}>
       {failedStatus && (
         <>
           <Table
@@ -115,7 +116,7 @@ const renderFailedContent = (
       {tagError?.code === ClientErrors.BAD_REQUEST && (
         <Alert title={tagError.message} variant="warning" />
       )}
-    </div>
+    </Box>
   );
 };
 
@@ -174,9 +175,9 @@ export const GlossaryUpdateConfirmationModal = ({
     const footer = renderFooter(failedStatus, onCancel, t);
 
     const progressBar = (
-      <div className="tw:flex tw:justify-center">
+      <Box justify="center">
         <ProgressBarCircle size="sm" value={progress} />
-      </div>
+      </Box>
     );
 
     switch (updateState) {
@@ -184,7 +185,7 @@ export const GlossaryUpdateConfirmationModal = ({
         return {
           footer: null,
           content: (
-            <div className="tw:flex tw:flex-col tw:items-center tw:gap-2">
+            <Box align="center" direction="col" gap={2}>
               <FeaturedIcon
                 className="tw:mb-4"
                 color="warning"
@@ -197,19 +198,19 @@ export const GlossaryUpdateConfirmationModal = ({
               </Typography>
               <Typography className="tw:text-center">
                 {t('message.glossary-tag-update-description')}{' '}
-                <span className="tw:font-medium">
+                <Typography as="span" weight="medium">
                   {getEntityName(glossaryTerm)}
-                </span>
+                </Typography>
               </Typography>
-              <div className="tw:mt-6 tw:flex tw:items-center tw:gap-2">
+              <Box align="center" className="tw:mt-6" gap={2}>
                 <Button color="secondary" onPress={onCancel}>
                   {t('label.no-comma-cancel')}
                 </Button>
                 <Button color="primary" onPress={handleUpdateConfirmation}>
                   {t('label.yes-comma-confirm')}
                 </Button>
-              </div>
-            </div>
+              </Box>
+            </Box>
           ),
         };
       case UpdateState.VALIDATING:

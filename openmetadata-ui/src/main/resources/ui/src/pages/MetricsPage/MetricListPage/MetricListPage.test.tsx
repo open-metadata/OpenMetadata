@@ -425,6 +425,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       isOpen: boolean;
     }) => (isOpen ? <>{children}</> : null),
     Skeleton: () => <div data-testid="skeleton" />,
+    Dot: () => <span data-testid="dot" />,
     Table,
     FeaturedIcon: ({
       children,
@@ -652,9 +653,15 @@ describe('MetricListPage', () => {
     expect(screen.getByText('label.day')).toHaveClass(
       'tw:font-mono',
       'tw:uppercase',
-      'tw:tracking-wide',
-      'tw:text-xs',
-      'tw:font-semibold'
+      'tw:tracking-wide'
+    );
+    expect(screen.getByText('label.day')).toHaveAttribute(
+      'data-size',
+      'text-xs'
+    );
+    expect(screen.getByText('label.day')).toHaveAttribute(
+      'data-weight',
+      'semibold'
     );
   });
 

@@ -20,6 +20,7 @@ import {
   Card,
   Checkbox,
   Dialog,
+  Dot,
   Dropdown,
   EmptyPlaceholder,
   FeaturedIcon,
@@ -28,6 +29,7 @@ import {
   ModalOverlay,
   PageLayout,
   Skeleton,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -69,6 +71,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import DomainTags from '../../../components/common/DomainTags/DomainTags';
+import NoSearchResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
@@ -227,6 +230,17 @@ const getIsPlaceholderState = ({
   rowCount: number;
 }) => hasError || (!isMetricsPending && !isSearchPending && rowCount === 0);
 
+const MAX_VISIBLE_BADGES = 2;
+
+const hasExpandableMetric = (rows: MetricTableRow[]) =>
+  rows.some(
+    (row) => !isSyntheticRow(row) && hasMetricChildren(row as MetricTreeNode)
+  );
+
+const getIsEmptyListState = (
+  params: Parameters<typeof getIsPlaceholderState>[0]
+) => !params.hasError && getIsPlaceholderState(params);
+
 const MetricListPage = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -353,6 +367,7 @@ const MetricListPage = () => {
     ? treeRows
     : (flatMetrics as MetricTableRow[]);
   const visibleRows = useMemo(() => flattenVisibleMetricRows(rows), [rows]);
+  const hasExpandableRows = useMemo(() => hasExpandableMetric(rows), [rows]);
   const realMetrics = useMemo(() => flattenMetricRows(rows), [rows]);
   const metricsById = useMemo(
     () => new Map(realMetrics.map((metric) => [metric.id, metric])),
@@ -612,12 +627,23 @@ const MetricListPage = () => {
 
   const renderTagBadges = (tags: Array<Pick<TagLabel, 'name' | 'tagFQN'>>) =>
     tags.length ? (
-      <Box className="tw:flex-wrap" gap={1}>
-        {tags.map((tag) => (
+      <Box align="center" gap={1} wrap="nowrap">
+        {tags.slice(0, MAX_VISIBLE_BADGES).map((tag) => (
           <Badge color="blue" key={tag.tagFQN} size="sm">
             {tag.name ?? tag.tagFQN}
           </Badge>
         ))}
+        {tags.length > MAX_VISIBLE_BADGES && (
+          <Tooltip
+            title={tags
+              .slice(MAX_VISIBLE_BADGES)
+              .map((tag) => tag.name ?? tag.tagFQN)
+              .join(', ')}>
+            <Typography as="span" className="tw:text-tertiary" size="text-xs">
+              +{tags.length - MAX_VISIBLE_BADGES}
+            </Typography>
+          </Tooltip>
+        )}
       </Box>
     ) : (
       <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
@@ -630,106 +656,109 @@ const MetricListPage = () => {
           <Avatar initials={getOwnerInitials(owner)} key={owner.id} size="xs" />
         ))}
         {owners.length > 3 && (
-          <span className="tw:text-xs tw:text-tertiary">
+          <Typography as="span" className="tw:text-tertiary" size="text-xs">
             +{owners.length - 3}
-          </span>
+          </Typography>
         )}
       </Box>
     ) : (
       <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
     );
 
-  const renderMetricName = (metric: MetricTreeNode, depth: number) => {
+  const renderExpandToggle = (metric: MetricTreeNode) => {
     const isExpanded = expandedRowKeys.includes(metric.id);
-    const hasChildren = hasMetricChildren(metric);
+
+    if (!hasMetricChildren(metric)) {
+      // Keep names aligned with the header unless some row has a toggle.
+      return hasExpandableRows ? (
+        <Box aria-hidden="true" className="tw:size-6 tw:shrink-0" />
+      ) : null;
+    }
 
     return (
-      <Box
-        align="center"
-        className={`${getDepthClassName(depth)} tw:min-w-0`}
-        data-metric-fqn={metric.fullyQualifiedName}
-        gap={2}>
-        {hasChildren ? (
-          <Button
-            aria-expanded={isExpanded}
-            aria-label={
-              isExpanded ? t('label.collapse-all') : t('label.expand-all')
-            }
-            className="tw:shrink-0"
-            color="tertiary"
-            data-testid={`expand-${metric.id}`}
-            iconLeading={isExpanded ? ChevronDown : ChevronRight}
-            isLoading={loadingParentIds.includes(metric.id)}
-            size="xs"
-            onPress={() => toggleExpand(!isExpanded, metric)}
-          />
-        ) : (
-          <span aria-hidden="true" className="tw:size-6 tw:shrink-0" />
-        )}
-        <FeaturedIcon
-          outlined
-          color="brand"
-          data-testid={`metric-icon-${metric.id}`}
-          icon={BarChart03}
-          shape="square"
-          size="sm"
-          theme="light"
-        />
-        <Box className="tw:min-w-0" direction="col" gap={1}>
-          <Link
-            className="tw:truncate tw:text-sm tw:font-semibold tw:text-brand-secondary hover:tw:text-brand-secondary_hover"
-            data-testid="metric-name"
-            to={getEntityDetailsPath(
-              EntityType.METRIC,
-              metric.fullyQualifiedName ?? ''
-            )}>
-            {getEntityName(metric)}
-          </Link>
-          <Box align="center" className="tw:flex-wrap tw:font-mono" gap={2}>
-            {metric.metricType && (
-              <Badge
-                className={METRIC_TYPE_BADGE_CLASS_NAME}
-                color={getMetricTypeBadgeColor(metric.metricType)}
-                size="xs"
-                type="color">
-                {getMetricEnumLabel(t, metric.metricType)}
-              </Badge>
-            )}
-            {metric.granularity && (
-              <>
-                <span
-                  aria-hidden="true"
-                  className="tw:size-0.5 tw:rounded-full tw:bg-border-primary"
-                />
-                <span
-                  className={`${METRIC_GRANULARITY_CLASS_NAME} tw:text-xs tw:font-semibold`}>
-                  {getMetricEnumLabel(t, metric.granularity)}
-                </span>
-              </>
-            )}
-            {(metric.childrenCount ?? 0) > 0 && (
-              <>
-                <span
-                  aria-hidden="true"
-                  className="tw:size-0.5 tw:rounded-full tw:bg-border-primary"
-                />
-                <span
-                  className="tw:text-xs tw:text-tertiary"
-                  data-testid="metric-variant-count">
-                  {metric.childrenCount}{' '}
-                  <span className="tw:lowercase">
-                    {metric.childrenCount === 1
-                      ? t('label.variant')
-                      : t('label.variant-plural')}
-                  </span>
-                </span>
-              </>
-            )}
-          </Box>
-        </Box>
-      </Box>
+      <Button
+        aria-expanded={isExpanded}
+        aria-label={
+          isExpanded ? t('label.collapse-all') : t('label.expand-all')
+        }
+        className="tw:shrink-0"
+        color="tertiary"
+        data-testid={`expand-${metric.id}`}
+        iconLeading={isExpanded ? ChevronDown : ChevronRight}
+        isLoading={loadingParentIds.includes(metric.id)}
+        size="xs"
+        onPress={() => toggleExpand(!isExpanded, metric)}
+      />
     );
   };
+
+  const renderMetricName = (metric: MetricTreeNode, depth: number) => (
+    <Box
+      align="center"
+      className={`${getDepthClassName(depth)} tw:min-w-0`}
+      data-metric-fqn={metric.fullyQualifiedName}
+      gap={2}>
+      {renderExpandToggle(metric)}
+      <FeaturedIcon
+        outlined
+        color="brand"
+        data-testid={`metric-icon-${metric.id}`}
+        icon={BarChart03}
+        shape="square"
+        size="sm"
+        theme="light"
+      />
+      <Box className="tw:min-w-0" direction="col" gap={1}>
+        <Link
+          className="tw:truncate tw:text-sm tw:font-semibold tw:text-brand-secondary hover:tw:text-brand-secondary_hover"
+          data-testid="metric-name"
+          to={getEntityDetailsPath(
+            EntityType.METRIC,
+            metric.fullyQualifiedName ?? ''
+          )}>
+          {getEntityName(metric)}
+        </Link>
+        <Box align="center" className="tw:font-mono" gap={2} wrap="nowrap">
+          {metric.metricType && (
+            <Badge
+              className={METRIC_TYPE_BADGE_CLASS_NAME}
+              color={getMetricTypeBadgeColor(metric.metricType)}
+              size="xs"
+              type="color">
+              {getMetricEnumLabel(t, metric.metricType)}
+            </Badge>
+          )}
+          {metric.granularity && (
+            <>
+              <Dot aria-hidden className="tw:text-fg-disabled" size="micro" />
+              <Typography
+                as="span"
+                className={METRIC_GRANULARITY_CLASS_NAME}
+                size="text-xs"
+                weight="semibold">
+                {getMetricEnumLabel(t, metric.granularity)}
+              </Typography>
+            </>
+          )}
+          {(metric.childrenCount ?? 0) > 0 && (
+            <>
+              <Dot aria-hidden className="tw:text-fg-disabled" size="micro" />
+              <Typography
+                as="span"
+                className="tw:text-tertiary tw:lowercase"
+                data-testid="metric-variant-count"
+                size="text-xs">
+                {metric.childrenCount}{' '}
+                {metric.childrenCount === 1
+                  ? t('label.variant')
+                  : t('label.variant-plural')}
+              </Typography>
+            </>
+          )}
+        </Box>
+      </Box>
+    </Box>
+  );
 
   const renderGroupName = (
     row: Extract<MetricTableRow, { isGroupRow: true }>
@@ -817,19 +846,28 @@ const MetricListPage = () => {
     {
       key: 'description',
       title: t(METRIC_COLUMN_LABEL_KEYS.description),
-      width: 288,
-      render: (_, { row }) =>
-        (row as MetricTreeNode).description ?? t('label.empty-dash'),
+      width: 320,
+      render: (_, { row }) => {
+        const { description } = row as MetricTreeNode;
+
+        return (
+          <Typography ellipsis as="div" className="tw:max-w-80">
+            {description ?? t('label.empty-dash')}
+          </Typography>
+        );
+      },
     },
     {
       key: 'glossary',
       title: t(METRIC_COLUMN_LABEL_KEYS.glossary),
+      width: 220,
       render: (_, { row }) =>
         renderTagBadges(getGlossaryTerms((row as MetricTreeNode).tags)),
     },
     {
       key: 'entityStatus',
       title: t(METRIC_COLUMN_LABEL_KEYS.entityStatus),
+      width: 130,
       render: (_, { row }) => (
         <MetricStatusPill status={(row as MetricTreeNode).entityStatus} />
       ),
@@ -837,22 +875,26 @@ const MetricListPage = () => {
     {
       key: 'health',
       title: t(METRIC_COLUMN_LABEL_KEYS.health),
+      width: 130,
       render: (_, { row }) => <MetricListHealth metricId={row.id} />,
     },
     {
       key: 'owners',
       title: t(METRIC_COLUMN_LABEL_KEYS.owners),
+      width: 110,
       render: (_, { row }) => renderOwners((row as MetricTreeNode).owners),
     },
     {
       key: 'tags',
       title: t(METRIC_COLUMN_LABEL_KEYS.tags),
+      width: 200,
       render: (_, { row }) =>
         renderTagBadges(getTags((row as MetricTreeNode).tags)),
     },
     {
       key: 'domains',
       title: t(METRIC_COLUMN_LABEL_KEYS.domains),
+      width: 180,
       render: (_, { row }) => {
         const { domains } = row as MetricTreeNode;
 
@@ -866,6 +908,7 @@ const MetricListPage = () => {
     {
       key: 'updatedAt',
       title: t(METRIC_COLUMN_LABEL_KEYS.updatedAt),
+      width: 130,
       render: (_, { row }) => {
         const { updatedAt } = row as MetricTreeNode;
 
@@ -1041,62 +1084,70 @@ const MetricListPage = () => {
     const isUnfiltered = !searchText && !statusFilter;
 
     return (
-      // Anchors the absolute EmptyPlaceholder; TableV2's empty row is only 160px.
+      // Anchors the absolute EmptyPlaceholder and gives it room to lay out.
       <Box
         className="tw:relative tw:flex-1 tw:min-h-110 tw:p-4"
         justify="center">
-        <EmptyPlaceholder
-          actions={
-            isUnfiltered && permission.Create
-              ? [
-                  {
-                    key: 'new-metric',
-                    label: t('label.new-metric'),
-                    color: 'primary',
-                    iconLeading: Plus,
-                    onPress: () => openMetricCreateDrawer(),
-                  },
-                ]
-              : undefined
-          }
-          description={
-            isUnfiltered
-              ? t('message.metric-empty-state-description')
-              : t('message.no-results-for-filters-description')
-          }
-          features={
-            isUnfiltered
-              ? [
-                  {
-                    key: 'define',
-                    icon: <FileCheck03 className="tw:text-fg-brand-primary" />,
-                    title: t('label.define-it'),
-                    description: t('message.metric-define-it-description'),
-                  },
-                  {
-                    key: 'action',
-                    icon: (
-                      <CursorClick01 className="tw:text-fg-warning-primary" />
-                    ),
-                    title: t('label.define-the-action'),
-                    description: t('message.metric-define-action-description'),
-                  },
-                  {
-                    key: 'owner',
-                    icon: <User01 className="tw:text-fg-success-primary" />,
-                    title: t('label.assign-an-owner'),
-                    description: t('message.metric-assign-owner-description'),
-                  },
-                ]
-              : undefined
-          }
-          title={
-            isUnfiltered
-              ? t('message.metric-empty-state-title')
-              : t('label.no-data')
-          }
-          variant={isUnfiltered ? 'features' : 'blank'}
-        />
+        {searchText ? (
+          <NoSearchResultsPlaceholder />
+        ) : (
+          <EmptyPlaceholder
+            actions={
+              isUnfiltered && permission.Create
+                ? [
+                    {
+                      key: 'new-metric',
+                      label: t('label.new-metric'),
+                      color: 'primary',
+                      iconLeading: Plus,
+                      onPress: () => openMetricCreateDrawer(),
+                    },
+                  ]
+                : undefined
+            }
+            description={
+              isUnfiltered
+                ? t('message.metric-empty-state-description')
+                : t('message.no-results-for-filters-description')
+            }
+            features={
+              isUnfiltered
+                ? [
+                    {
+                      key: 'define',
+                      icon: (
+                        <FileCheck03 className="tw:text-fg-brand-primary" />
+                      ),
+                      title: t('label.define-it'),
+                      description: t('message.metric-define-it-description'),
+                    },
+                    {
+                      key: 'action',
+                      icon: (
+                        <CursorClick01 className="tw:text-fg-warning-primary" />
+                      ),
+                      title: t('label.define-the-action'),
+                      description: t(
+                        'message.metric-define-action-description'
+                      ),
+                    },
+                    {
+                      key: 'owner',
+                      icon: <User01 className="tw:text-fg-success-primary" />,
+                      title: t('label.assign-an-owner'),
+                      description: t('message.metric-assign-owner-description'),
+                    },
+                  ]
+                : undefined
+            }
+            title={
+              isUnfiltered
+                ? t('message.metric-empty-state-title')
+                : t('label.no-data')
+            }
+            variant={isUnfiltered ? 'features' : 'blank'}
+          />
+        )}
       </Box>
     );
   };
@@ -1374,14 +1425,19 @@ const MetricListPage = () => {
     rowCount: rows.length,
   });
 
+  const isEmptyList = getIsEmptyListState({
+    hasError: Boolean(listingError),
+    isMetricsPending,
+    isSearchPending: isSearchTextPending,
+    rowCount: rows.length,
+  });
+
   const getTablePlaceholder = () => {
     if (listingError) {
       return renderError();
     }
 
-    return isMetricsPending || isSearchTextPending
-      ? renderLoading()
-      : renderEmpty();
+    return isEmptyList ? renderEmpty() : renderLoading();
   };
 
   const renderTable = () => {
@@ -1391,9 +1447,13 @@ const MetricListPage = () => {
     return (
       <TableV2<VisibleMetricTableRow>
         aria-label={t('label.metric-plural')}
-        cellClassName="tw:px-5 tw:py-3 tw:align-middle"
+        cellClassName="tw:px-2 tw:py-3 tw:align-middle tw:whitespace-nowrap"
+        // Empty: hide the header and stretch the placeholder row to the card.
+        // TableV2 stays mounted so the toolbar's search input keeps focus.
+        className={isEmptyList ? 'tw:h-full tw:[&_thead]:hidden' : undefined}
         columns={metricTableColumns}
-        containerClassName="tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:flex-1 tw:min-h-0"
+        // The empty-state row is not a data row, so it gets no hover fill.
+        containerClassName="tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:[&_th]:whitespace-nowrap tw:[&_tbody[data-empty]_tr:hover_td]:bg-transparent"
         data-testid="metric-list-table"
         dataSource={isPlaceholder ? [] : visibleRows}
         defaultVisibleColumns={DEFAULT_VISIBLE_METRIC_COLUMNS}
@@ -1412,6 +1472,9 @@ const MetricListPage = () => {
               keys.map(String).filter((id) => selectableMetricIds.includes(id))
             ),
         }}
+        // Columns keep their widths as minimums and the table scrolls sideways.
+        scroll={{ x: 'max-content' }}
+        scrollContainerClassName={isEmptyList ? 'tw:flex-1' : undefined}
         size="small"
         staticVisibleColumns={METRIC_STATIC_COLUMNS}
         tableLayout="auto"

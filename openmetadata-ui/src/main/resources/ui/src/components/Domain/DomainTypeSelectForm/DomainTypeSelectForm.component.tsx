@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Select } from '@openmetadata/ui-core-components';
+import { Box, Button, Select } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,8 +37,8 @@ const DomainTypeSelectForm = ({
   };
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-2">
-      <div className="tw:flex tw:justify-end tw:gap-2">
+    <Box direction="col" gap={2}>
+      <Box gap={2} justify="end">
         <Button
           aria-label={t('label.cancel')}
           color="secondary"
@@ -57,7 +57,7 @@ const DomainTypeSelectForm = ({
           size="xs"
           onClick={handleSubmit}
         />
-      </div>
+      </Box>
       <Select
         aria-label={t('label.domain-type')}
         data-testid="domainType-select"
@@ -67,7 +67,7 @@ const DomainTypeSelectForm = ({
         onChange={(key) => setDomainType(key as string)}>
         {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
       </Select>
-    </div>
+    </Box>
   );
 };
 
