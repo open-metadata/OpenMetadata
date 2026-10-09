@@ -119,14 +119,16 @@ const MenuRow = ({
         isDanger ? 'tw:text-utility-error-700' : 'tw:text-fg-tertiary'
       )}
     />
-    <span
+    <Typography
       className={classNames(
         'tw:flex-1 tw:truncate',
         isDanger ? 'tw:text-utility-error-700' : 'tw:text-primary'
       )}>
       {label}
-    </span>
-    {value && <span className="tw:shrink-0 tw:text-primary">{value}</span>}
+    </Typography>
+    {value && (
+      <Typography className="tw:shrink-0 tw:text-primary">{value}</Typography>
+    )}
     {hasSubmenu && <ChevronRight aria-hidden className={CHEVRON_CLASS} />}
   </Box>
 );
@@ -174,13 +176,13 @@ const OptionRow = ({
 }) => (
   <Box align="center" className="tw:min-h-6 tw:gap-2.5">
     {leading}
-    <span
+    <Typography
       className={classNames(
         'tw:flex-1 tw:truncate',
         !isSelected && 'tw:text-primary'
       )}>
       {label}
-    </span>
+    </Typography>
     {isSelected && (
       <Check
         aria-hidden
@@ -338,12 +340,16 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
         placement="right"
         title={
           <span className="tw:flex tw:items-center tw:gap-2 tw:leading-5">
-            <span className="tw:truncate tw:text-[13px] tw:font-medium">
+            <Typography
+              className="tw:truncate tw:text-[13px]"
+              weight="medium">
               {displayName}
-            </span>
-            <span className="tw:truncate tw:font-normal tw:text-tooltip-supporting-text">
+            </Typography>
+            <Typography
+              className="tw:truncate tw:text-tooltip-supporting-text"
+              weight="regular">
               {domainDisplayName}
-            </span>
+            </Typography>
           </span>
         }>
         <Button
