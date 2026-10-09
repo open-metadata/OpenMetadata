@@ -1917,16 +1917,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
 
       try {
-        if (SettingsCache.isGlossaryTagPropagationEnabled()) {
-          Map<String, List<TagLabel>> allAssetTags =
-              daoCollection.tagUsageDAO().getTagsByPrefix(asset.getFullyQualifiedName(), "%", true);
-          checkMutuallyExclusiveForParentAndSubField(
-              asset.getFullyQualifiedName(),
-              FullyQualifiedName.buildHash(asset.getFullyQualifiedName()),
-              allAssetTags,
-              glossary.getTags(),
-              false);
-        }
+        Map<String, List<TagLabel>> allAssetTags =
+            daoCollection.tagUsageDAO().getTagsByPrefix(asset.getFullyQualifiedName(), "%", true);
+        checkMutuallyExclusiveForParentAndSubField(
+            asset.getFullyQualifiedName(),
+            FullyQualifiedName.buildHash(asset.getFullyQualifiedName()),
+            allAssetTags,
+            glossary.getTags(),
+            false);
         success.add(new BulkResponse().withRequest(ref));
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
       } catch (Exception ex) {
@@ -2005,12 +2003,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       throw new IllegalArgumentException("Column not found: " + columnFqn);
     }
 
-    if (SettingsCache.isGlossaryTagPropagationEnabled()) {
-      Map<String, List<TagLabel>> allAssetTags =
-          daoCollection.tagUsageDAO().getTagsByPrefix(columnFqn, "%", true);
-      checkMutuallyExclusiveForParentAndSubField(
-          columnFqn, FullyQualifiedName.buildHash(columnFqn), allAssetTags, glossaryTags, false);
-    }
+    Map<String, List<TagLabel>> allAssetTags =
+        daoCollection.tagUsageDAO().getTagsByPrefix(columnFqn, "%", true);
+    checkMutuallyExclusiveForParentAndSubField(
+        columnFqn, FullyQualifiedName.buildHash(columnFqn), allAssetTags, glossaryTags, false);
 
     if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
       List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
@@ -2056,8 +2052,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
-    if (CommonUtil.nullOrEmpty(glossaryTagsToValidate)
-        || !SettingsCache.isGlossaryTagPropagationEnabled()) {
+    if (CommonUtil.nullOrEmpty(glossaryTagsToValidate)) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
@@ -2835,15 +2830,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
       if (!(origTags.isEmpty() && updatedTags.isEmpty())
           && !validateIfTagsAreEqual(origTags, updatedTags)) {
-        if (SettingsCache.isGlossaryTagPropagationEnabled()) {
-          List<String> targetFQNHashes = daoCollection.tagUsageDAO().getTargetFQNHashForTag(fqn);
-          for (String fqnHash : targetFQNHashes) {
-            Map<String, List<TagLabel>> allAssetTags =
-                daoCollection.tagUsageDAO().getTagsByPrefix(fqnHash, "%", false);
+        List<String> targetFQNHashes = daoCollection.tagUsageDAO().getTargetFQNHashForTag(fqn);
+        for (String fqnHash : targetFQNHashes) {
+          Map<String, List<TagLabel>> allAssetTags =
+              daoCollection.tagUsageDAO().getTagsByPrefix(fqnHash, "%", false);
 
-            checkMutuallyExclusiveForParentAndSubField(
-                "", fqnHash, allAssetTags, updatedTags, true);
-          }
+          checkMutuallyExclusiveForParentAndSubField("", fqnHash, allAssetTags, updatedTags, true);
         }
 
         // Remove current entity tags in the database. It will be added back later from the merged

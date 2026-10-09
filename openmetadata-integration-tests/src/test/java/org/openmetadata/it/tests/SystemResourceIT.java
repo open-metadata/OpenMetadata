@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -64,11 +65,14 @@ import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
+import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.MetricConfigurationDefinition;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.lineage.LineageSettings;
@@ -111,10 +115,13 @@ import org.openmetadata.schema.system.TestLoginSession;
 import org.openmetadata.schema.system.TestLoginStage;
 import org.openmetadata.schema.system.TestLoginStartRequest;
 import org.openmetadata.schema.system.TestLoginTokenRequest;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -145,6 +152,181 @@ import org.openmetadata.service.util.EntityUtil;
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class SystemResourceIT {
+
+  @Test
+  void testDisabledGlossaryPropagationStillValidatesConflicts(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String original =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/settings/glossarySettings",
+                null,
+                RequestOptions.builder().build());
+    try {
+      setGlossaryTagPropagation(false);
+      Classification classification =
+          ns.trackRoot(
+              Entity.CLASSIFICATION,
+              client
+                  .classifications()
+                  .create(
+                      new CreateClassification()
+                          .withName(ns.shortPrefix("exclusive"))
+                          .withDescription("Exclusive glossary tags")
+                          .withMutuallyExclusive(true)));
+      TagLabel sensitive =
+          new TagLabel()
+              .withTagFQN(
+                  client
+                      .tags()
+                      .create(
+                          new CreateTag()
+                              .withName("Sensitive")
+                              .withClassification(classification.getFullyQualifiedName())
+                              .withDescription("Sensitive"))
+                      .getFullyQualifiedName());
+      TagLabel nonSensitive =
+          new TagLabel()
+              .withTagFQN(
+                  client
+                      .tags()
+                      .create(
+                          new CreateTag()
+                              .withName("NonSensitive")
+                              .withClassification(classification.getFullyQualifiedName())
+                              .withDescription("Non-sensitive"))
+                      .getFullyQualifiedName());
+      Glossary classifiedGlossary =
+          ns.trackRoot(
+              Entity.GLOSSARY,
+              client
+                  .glossaries()
+                  .create(
+                      new CreateGlossary()
+                          .withName(ns.shortPrefix("classifiedGlossary"))
+                          .withDescription("Classified glossary")
+                          .withTags(List.of(sensitive))));
+      GlossaryTerm classifiedTerm =
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName("classified")
+                      .withGlossary(classifiedGlossary.getFullyQualifiedName())
+                      .withDescription("Classified term")
+                      .withTags(List.of(sensitive)));
+      Glossary glossary = GlossaryTestFactory.createSimple(ns);
+      GlossaryTerm term =
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName("unclassified")
+                      .withGlossary(glossary.getFullyQualifiedName())
+                      .withDescription("Unclassified term"));
+      TagLabel termLabel =
+          new TagLabel()
+              .withTagFQN(term.getFullyQualifiedName())
+              .withSource(TagLabel.TagSource.GLOSSARY);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+      Table table =
+          client
+              .tables()
+              .create(
+                  new CreateTable()
+                      .withName(ns.shortPrefix("conflict"))
+                      .withDatabaseSchema(schema.getFullyQualifiedName())
+                      .withTags(List.of(nonSensitive, termLabel))
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("customer")
+                                  .withDataType(ColumnDataType.STRING)
+                                  .withTags(List.of(nonSensitive, termLabel)))));
+
+      EntityReference column =
+          new EntityReference()
+              .withId(UUID.randomUUID())
+              .withType(Entity.TABLE_COLUMN)
+              .withFullyQualifiedName(table.getColumns().getFirst().getFullyQualifiedName());
+      for (EntityReference asset : List.of(table.getEntityReference(), column)) {
+        BulkOperationResult result =
+            client
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PUT,
+                    "/v1/glossaryTerms/" + classifiedTerm.getId() + "/assets/add",
+                    new AddGlossaryToAssetsRequest().withDryRun(true).withAssets(List.of(asset)),
+                    BulkOperationResult.class);
+        assertEquals(ApiStatus.FAILURE, result.getStatus(), asset.getType());
+        assertEquals(1, result.getNumberOfRowsFailed());
+        assertTrue(
+            result.getFailedRequest().getFirst().getMessage().contains("mutually exclusive"));
+      }
+
+      BulkOperationResult validation =
+          client
+              .getHttpClient()
+              .execute(
+                  HttpMethod.PUT,
+                  "/v1/glossaryTerms/" + term.getId() + "/tags/validate",
+                  new ValidateGlossaryTagsRequest().withGlossaryTags(List.of(sensitive)),
+                  BulkOperationResult.class);
+      assertEquals(ApiStatus.FAILURE, validation.getStatus());
+      assertTrue(validation.getNumberOfRowsFailed() > 0);
+      assertEquals(
+          400,
+          statusOf(
+              () ->
+                  client
+                      .glossaryTerms()
+                      .patch(term.getId(), glossaryTagsPatch("/tags", List.of(sensitive)))));
+
+      TagLabel classifiedTermLabel =
+          new TagLabel()
+              .withTagFQN(classifiedTerm.getFullyQualifiedName())
+              .withSource(TagLabel.TagSource.GLOSSARY);
+      for (String field : List.of("/tags", "/columns/0/tags")) {
+        assertEquals(
+            400,
+            statusOf(
+                () ->
+                    client
+                        .tables()
+                        .patch(
+                            table.getId(),
+                            glossaryTagsPatch(field, List.of(nonSensitive, classifiedTermLabel)))));
+      }
+
+      setGlossaryTagPropagation(true);
+      Table updated =
+          client
+              .tables()
+              .patch(
+                  table.getId(),
+                  MAPPER.valueToTree(
+                      List.of(
+                          Map.of(
+                              "op",
+                              "add",
+                              "path",
+                              "/description",
+                              "value",
+                              "Writable after re-enabling"))));
+      assertEquals("Writable after re-enabling", updated.getDescription());
+    } finally {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT, "/v1/system/settings", original, RequestOptions.builder().build());
+    }
+  }
+
+  private JsonNode glossaryTagsPatch(String path, List<TagLabel> tags) {
+    return MAPPER.valueToTree(List.of(Map.of("op", "add", "path", path, "value", tags)));
+  }
 
   @Test
   void testGlossaryTagPropagationPreference(TestNamespace ns) throws Exception {

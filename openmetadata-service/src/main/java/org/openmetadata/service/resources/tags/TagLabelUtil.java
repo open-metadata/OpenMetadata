@@ -309,6 +309,16 @@ public class TagLabelUtil {
    * @throws RuntimeException if derived tags cannot be fetched
    */
   public static List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) {
+    List<TagLabel> tags = getTagsForValidation(tagLabels);
+    if (!nullOrEmpty(tags) && !SettingsCache.isGlossaryTagPropagationEnabled()) {
+      // Suppressed tags must still be compatible when propagation is re-enabled.
+      checkMutuallyExclusive(tags);
+      tags.removeIf(tag -> tag.getLabelType() == TagLabel.LabelType.DERIVED);
+    }
+    return tags;
+  }
+
+  private static List<TagLabel> getTagsForValidation(List<TagLabel> tagLabels) {
     if (nullOrEmpty(tagLabels)) {
       return tagLabels;
     }
@@ -351,8 +361,7 @@ public class TagLabelUtil {
   }
 
   private static List<TagLabel> getDerivedTags(TagLabel tagLabel) {
-    if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY
-        && SettingsCache.isGlossaryTagPropagationEnabled()) {
+    if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
       List<TagLabel> derivedTags =
           Entity.getCollectionDAO().tagUsageDAO().getTags(tagLabel.getTagFQN());
       derivedTags.forEach(tag -> tag.setLabelType(TagLabel.LabelType.DERIVED));
@@ -529,7 +538,7 @@ public class TagLabelUtil {
     List<TagLabel> parentTags = filteredTags.remove(assetFqnHash);
 
     if (parentTags != null) {
-      List<TagLabel> tempList = new ArrayList<>(addDerivedTags(parentTags));
+      List<TagLabel> tempList = new ArrayList<>(getTagsForValidation(parentTags));
       tempList.addAll(glossaryTags);
       try {
         checkMutuallyExclusive(getUniqueTags(tempList));
@@ -549,7 +558,8 @@ public class TagLabelUtil {
       // Check SubFields Tags
       Set<TagLabel> subFieldTags =
           filteredTags.values().stream().flatMap(List::stream).collect(Collectors.toSet());
-      List<TagLabel> tempList = new ArrayList<>(addDerivedTags(subFieldTags.stream().toList()));
+      List<TagLabel> tempList =
+          new ArrayList<>(getTagsForValidation(subFieldTags.stream().toList()));
       tempList.addAll(glossaryTags);
       try {
         checkMutuallyExclusive(getUniqueTags(tempList));

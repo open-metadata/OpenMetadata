@@ -6839,28 +6839,33 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return null;
     }
 
-    Optional<List<TagLabel>> bundleTags = getTagsFromReadBundle(entity);
-    if (bundleTags.isPresent()) {
-      return addDerivedTagsGracefully(bundleTags.get());
-    }
-
     // Try to get from cache first
     var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+    boolean propagationEnabled = SettingsCache.isGlossaryTagPropagationEnabled();
     if (cachedTagUsageDao != null) {
-      List<TagLabel> cached = cachedTagUsageDao.getTags(entityType, entity.getId());
+      List<TagLabel> cached =
+          cachedTagUsageDao.getTags(entityType, entity.getId(), propagationEnabled);
       if (cached != null) {
         LOG.debug("CACHE HIT: Retrieved tags from cache for {} {}", entityType, entity.getId());
-        return addDerivedTagsGracefully(cached);
+        return propagationEnabled
+            ? cached
+            : cached.stream()
+                .filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED)
+                .toList();
       }
     }
 
-    // Fall back to database
-    List<TagLabel> tags = getTags(entity.getFullyQualifiedName());
+    List<TagLabel> tags =
+        getTagsFromReadBundle(entity)
+            .map(TagLabelUtil::addDerivedTagsGracefully)
+            .orElseGet(() -> getTags(entity.getFullyQualifiedName()));
 
     // Cache the result for next time
-    if (cachedTagUsageDao != null && tags != null) {
+    if (cachedTagUsageDao != null
+        && tags != null
+        && propagationEnabled == SettingsCache.isGlossaryTagPropagationEnabled()) {
       String tagsJson = JsonUtils.pojoToJson(tags);
-      cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson);
+      cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson, propagationEnabled);
     }
 
     return tags;

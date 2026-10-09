@@ -3,10 +3,13 @@ package org.openmetadata.service.resources.tags;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,6 +19,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.configuration.GlossarySettings;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.settings.SettingsType;
@@ -30,7 +34,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 class TagLabelUtilTest {
 
   @Test
-  void disabledGlossaryPropagationSkipsLookupsAndRemovesStaleDerivedLabels() {
+  void disabledGlossaryPropagationReadsSkipLookupsAndRemoveStaleDerivedLabels() {
     TagLabel term = new TagLabel().withTagFQN("Glossary.Customer").withSource(TagSource.GLOSSARY);
     TagLabel direct = new TagLabel().withTagFQN("Classification.Direct");
     TagLabel derived =
@@ -52,12 +56,34 @@ class TagLabelUtilTest {
           .thenThrow(new AssertionError("Disabled propagation must not fetch glossary tags"));
 
       assertEquals(Map.of(), TagLabelUtil.batchFetchDerivedTags(tags));
-      assertEquals(List.of(direct, term), TagLabelUtil.addDerivedTags(tags));
       assertEquals(List.of(direct, term), TagLabelUtil.addDerivedTagsGracefully(tags));
       assertEquals(
           List.of(direct, term),
           TagLabelUtil.addDerivedTagsWithPreFetched(
               tags, Map.of(FullyQualifiedName.buildHash(term.getTagFQN()), List.of(derived))));
+    }
+  }
+
+  @Test
+  void disabledPropagationStillRejectsConflictingWrites() {
+    TagLabel term = new TagLabel().withTagFQN("Glossary.Customer").withSource(TagSource.GLOSSARY);
+    TagLabel direct = new TagLabel().withTagFQN("PII.NonSensitive");
+    TagLabel derived = new TagLabel().withTagFQN("PII.Sensitive");
+    CollectionDAO collection = mock(CollectionDAO.class);
+    CollectionDAO.TagUsageDAO tags = mock(CollectionDAO.TagUsageDAO.class);
+    when(collection.tagUsageDAO()).thenReturn(tags);
+    when(tags.getTags(term.getTagFQN())).thenReturn(List.of(derived));
+    try (MockedStatic<SettingsCache> settings = mockStatic(SettingsCache.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      settings.when(SettingsCache::isGlossaryTagPropagationEnabled).thenReturn(false);
+      entity.when(Entity::getCollectionDAO).thenReturn(collection);
+      entity
+          .when(() -> Entity.getEntityByName(Entity.CLASSIFICATION, "PII", "", Include.NON_DELETED))
+          .thenReturn(new Classification().withMutuallyExclusive(true));
+
+      assertThrows(
+          IllegalArgumentException.class, () -> TagLabelUtil.addDerivedTags(List.of(term, direct)));
+      assertEquals(List.of(term), TagLabelUtil.addDerivedTags(List.of(term)));
     }
   }
 

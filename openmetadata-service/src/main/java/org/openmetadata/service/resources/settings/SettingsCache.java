@@ -82,6 +82,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
@@ -673,6 +674,12 @@ public class SettingsCache {
       if (SEARCH_SETTINGS.toString().equals(settingsName)) {
         CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
         CACHE.invalidate(SEARCH_SETTINGS_COLUMN_INDEXING);
+      }
+      if (GLOSSARY_SETTINGS.value().equals(settingsName)) {
+        var tagCache = CacheBundle.getCachedTagUsageDao();
+        if (tagCache != null) {
+          tagCache.invalidateAll();
+        }
       }
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for settings {}", settingsName, ex);
