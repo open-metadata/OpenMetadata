@@ -5251,6 +5251,7 @@
     "sso-configuration-test-success": "SSO設定は有効で到達可能です。準備ができたら保存できます。",
     "sso-new-config-save-warning": "新しいSSO設定を保存すると、サインアウトしてログインページにリダイレクトされます。ロックアウトを避けるため、先に設定をテストしてください。",
     "sso-provider-not-supported": "SSOプロバイダー{{provider}}はサポートされていません。",
+    "sso-provider-set-by-deployment": "ユーザーのサインイン方法はデプロイ構成で設定されているため、ここで選択するシングルサインオンプロバイダーはありません。",
     "sso-test-login-checking-configuration": "サインインの前に構成を確認しています…",
     "sso-test-login-configuration-invalid": "構成に問題があるため、ログインのテストはサインイン前に停止しました。問題を修正してから、もう一度ログインをテストしてください。",
     "sso-test-login-credentials-description": "このディレクトリ内のアカウントのメールアドレスとパスワードを入力してください。サインインの確認に一度だけ使用され、保存されることはありません。",

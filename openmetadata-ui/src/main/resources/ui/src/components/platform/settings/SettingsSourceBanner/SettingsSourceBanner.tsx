@@ -91,30 +91,30 @@ const SettingsSourceBanner = ({
   }, [isAdopting]);
 
   // Adopts exactly the fields the admin was shown, so a field that drifted after the banner
-  // loaded is not replaced without being confirmed.
+  // loaded is not replaced without being confirmed. Each setting is adopted on its own: when one
+  // succeeds and another fails, the page still reloads the one that changed.
   const handleAdopt = useCallback(async () => {
     setIsAdopting(true);
-    let isAdopted = false;
-    try {
-      const fieldsBySetting = groupBy(overriddenFields, 'configType');
-      await Promise.all(
-        Object.values(fieldsBySetting).map((fields) =>
-          adoptDeploymentConfig(
-            fields[0].configType,
-            fields.map(({ path }) => path)
-          )
+    const fieldsBySetting = groupBy(overriddenFields, 'configType');
+    const results = await Promise.allSettled(
+      Object.values(fieldsBySetting).map((fields) =>
+        adoptDeploymentConfig(
+          fields[0].configType,
+          fields.map(({ path }) => path)
         )
-      );
-      isAdopted = true;
+      )
+    );
+    const failures = results.filter(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    failures.forEach(({ reason }) => showErrorToast(reason as AxiosError));
+    if (isEmpty(failures)) {
       showSuccessToast(t('message.deployment-values-adopted'));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsAdopting(false);
-      setIsConfirmOpen(false);
     }
+    setIsAdopting(false);
+    setIsConfirmOpen(false);
     await onRefetch();
-    if (isAdopted) {
+    if (failures.length < results.length) {
       onAdopted?.();
     }
   }, [overriddenFields, onRefetch, onAdopted, t]);

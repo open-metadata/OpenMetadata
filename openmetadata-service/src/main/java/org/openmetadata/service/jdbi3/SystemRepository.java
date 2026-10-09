@@ -10,7 +10,6 @@ import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.get
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Suppliers;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.SearchResult;
@@ -36,7 +35,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -99,6 +97,7 @@ import org.openmetadata.service.config.source.ConfigSources;
 import org.openmetadata.service.config.source.DeploymentSettingPreparer;
 import org.openmetadata.service.config.source.DualSourceSetting;
 import org.openmetadata.service.config.source.SettingsChangeAnnouncer;
+import org.openmetadata.service.config.source.SettingsChangeWatcher;
 import org.openmetadata.service.config.source.SettingsSecrets;
 import org.openmetadata.service.config.source.SettingsWriteGuard;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
@@ -172,13 +171,13 @@ public class SystemRepository implements DeploymentSettingPreparer {
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
   private final BotTokenCheck botTokenCheck = BotTokenCheck.forSystemBots();
-  // Built on first use: the security configuration is loaded by then.
-  private final Supplier<JwtFilter> statusJwtFilter =
-      Suppliers.memoize(
-          () ->
-              new JwtFilter(
-                  SecurityConfigurationManager.getCurrentAuthConfig(),
-                  SecurityConfigurationManager.getCurrentAuthzConfig()));
+  private volatile StatusJwtFilter statusJwtFilter;
+
+  /** The health check's JWT filter and the security configuration it was built from. */
+  private record StatusJwtFilter(
+      AuthenticationConfiguration authentication,
+      AuthorizerConfiguration authorizer,
+      JwtFilter filter) {}
 
   private enum ValidationStepDescription {
     DATABASE("Validate that we can properly run a query against the configured database."),
@@ -591,6 +590,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   private void postUpdate(SettingsType settingsType) {
+    SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
     refreshLocalState(settingsType);
     // Rebuilding indexes changes shared state, so only the server that wrote the setting does it.
     if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
@@ -907,7 +907,27 @@ public class SystemRepository implements DeploymentSettingPreparer {
         applicationConfig,
         PipelineServiceClientFactory.createPipelineServiceClient(
             applicationConfig.getPipelineServiceClientConfiguration()),
-        statusJwtFilter.get());
+        statusJwtFilter());
+  }
+
+  /**
+   * Built on first use, when the security configuration is loaded, and rebuilt after a reload
+   * replaces it, so the check validates tokens against the keys the server uses now.
+   */
+  private JwtFilter statusJwtFilter() {
+    AuthenticationConfiguration authentication =
+        SecurityConfigurationManager.getCurrentAuthConfig();
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    StatusJwtFilter cached = statusJwtFilter;
+    if (cached == null
+        || cached.authentication() != authentication
+        || cached.authorizer() != authorizer) {
+      cached =
+          new StatusJwtFilter(
+              authentication, authorizer, new JwtFilter(authentication, authorizer));
+      statusJwtFilter = cached;
+    }
+    return cached.filter();
   }
 
   public ValidationResponse validateSystem(

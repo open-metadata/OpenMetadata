@@ -5251,6 +5251,7 @@
     "sso-configuration-test-success": "您的 SSO 配置有效且可访问。准备就绪后即可保存。",
     "sso-new-config-save-warning": "保存新的 SSO 配置将使您退出登录并跳转到登录页面。请先测试您的配置，以免被锁定。",
     "sso-provider-not-supported": "不支持 SSO 提供程序{{provider}}",
+    "sso-provider-set-by-deployment": "用户的登录方式由部署配置设置，因此此处没有可选择的单点登录提供方。",
     "sso-test-login-checking-configuration": "正在登录前检查配置…",
     "sso-test-login-configuration-invalid": "配置存在问题，因此测试登录在登录前已停止。请修复问题后重新运行测试登录。",
     "sso-test-login-credentials-description": "输入此目录中某个帐户的电子邮件和密码。它们仅用于验证一次登录，绝不会被存储。",

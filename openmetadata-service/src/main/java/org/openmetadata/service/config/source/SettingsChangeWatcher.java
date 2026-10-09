@@ -126,6 +126,18 @@ public final class SettingsChangeWatcher implements Managed {
     }
   }
 
+  /**
+   * Records the stored value of a setting this server wrote and is about to apply itself, so the
+   * next poll does not apply it a second time. Read before the server reads the value, so a change
+   * saved elsewhere in between still differs and is applied at the next poll.
+   */
+  public static void acknowledgeLocalWrite(SettingsType settingsType) {
+    SettingsChangeWatcher watcher = running;
+    if (watcher != null) {
+      watcher.rememberCurrentHash(settingsType);
+    }
+  }
+
   /** Why this server could not apply the latest stored value of a setting, if it could not. */
   public static Optional<String> refreshError(SettingsType settingsType) {
     SettingsChangeWatcher watcher = running;
@@ -136,6 +148,17 @@ public final class SettingsChangeWatcher implements Managed {
     for (SettingsFingerprint fingerprint : fingerprints.list()) {
       settingsTypeOf(fingerprint).ifPresent(type -> onFingerprint(type, fingerprint));
     }
+  }
+
+  private synchronized void rememberCurrentHash(SettingsType settingsType) {
+    fingerprints.list().stream()
+        .filter(fingerprint -> settingsType.value().equals(fingerprint.configType()))
+        .findFirst()
+        .ifPresent(
+            fingerprint -> {
+              seenRows.put(settingsType, SeenRow.of(fingerprint));
+              refreshErrors.remove(settingsType);
+            });
   }
 
   private synchronized Optional<String> errorOf(SettingsType settingsType) {
@@ -150,9 +173,22 @@ public final class SettingsChangeWatcher implements Managed {
   private void onFingerprint(SettingsType settingsType, SettingsFingerprint fingerprint) {
     SeenRow current = SeenRow.of(fingerprint);
     SeenRow previous = seenRows.get(settingsType);
-    if (!needsRefresh(previous, current)
-        || (isRetryDue(settingsType, current) && refresh(settingsType, current))) {
+    if (!needsRefresh(previous, current)) {
+      forgetErrorOfReplacedValue(settingsType, current);
       seenRows.put(settingsType, current);
+    } else if (isRetryDue(settingsType, current) && refresh(settingsType, current)) {
+      seenRows.put(settingsType, current);
+    }
+  }
+
+  /**
+   * The value that failed was replaced, for example reverted to the one this server runs, so its
+   * error no longer describes the setting.
+   */
+  private void forgetErrorOfReplacedValue(SettingsType settingsType, SeenRow row) {
+    RefreshError error = refreshErrors.get(settingsType);
+    if (error != null && !error.jsonHash().equals(row.jsonHash())) {
+      refreshErrors.remove(settingsType);
     }
   }
 

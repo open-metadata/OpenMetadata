@@ -350,6 +350,7 @@ const SettingsSso = () => {
         }
       } catch (error) {
         configFetched.current = false; // Reset on error to allow retry
+        showErrorToast(error as AxiosError);
         applyNoConfigState();
       } finally {
         setIsLoading(false);
@@ -401,7 +402,14 @@ const SettingsSso = () => {
         />
         {sourceBanner}
 
-        {!isProviderManaged && (
+        {isProviderManaged ? (
+          <Typography
+            as="p"
+            className="m-t-md"
+            data-testid="sso-provider-set-by-deployment">
+            {t('message.sso-provider-set-by-deployment')}
+          </Typography>
+        ) : (
           <div className="m-t-lg sso-provider-selection">
             <ProviderSelector
               selectedProvider={currentProvider as AuthProvider | undefined}

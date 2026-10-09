@@ -518,6 +518,7 @@ describe('SettingsSso', () => {
 
       // Should show provider selector on error
       expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      expect(showErrorToast).toHaveBeenCalledWith(mockError);
     });
 
     it('should handle SSO toggle error gracefully', async () => {
@@ -649,6 +650,9 @@ describe('SettingsSso', () => {
       await screen.findByTestId('settings-source-env-alert');
 
       expect(screen.queryByTestId('provider-selector')).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId('sso-provider-set-by-deployment')
+      ).toHaveTextContent('message.sso-provider-set-by-deployment');
     });
 
     it('should not start a new configuration when the deployment sets the provider', async () => {

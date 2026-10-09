@@ -5251,6 +5251,7 @@
     "sso-configuration-test-success": "Su configuración de SSO es válida y accesible. Puede guardarla cuando esté listo.",
     "sso-new-config-save-warning": "Al guardar una nueva configuración de SSO se cerrará su sesión y se le redirigirá a la página de inicio de sesión. Pruebe primero su configuración para evitar quedar bloqueado.",
     "sso-provider-not-supported": "No se admite el proveedor SSO {{provider}}.",
+    "sso-provider-set-by-deployment": "La configuración del despliegue define cómo inician sesión los usuarios, por lo que aquí no hay ningún proveedor de inicio de sesión único que elegir.",
     "sso-test-login-checking-configuration": "Comprobando la configuración antes de iniciar sesión…",
     "sso-test-login-configuration-invalid": "La configuración tiene problemas, por lo que Probar inicio de sesión se detuvo antes de iniciar sesión. Corríjalos y vuelva a ejecutar Probar inicio de sesión.",
     "sso-test-login-credentials-description": "Introduzca el correo electrónico y la contraseña de una cuenta de este directorio. Se usan una sola vez para verificar el inicio de sesión y nunca se almacenan.",

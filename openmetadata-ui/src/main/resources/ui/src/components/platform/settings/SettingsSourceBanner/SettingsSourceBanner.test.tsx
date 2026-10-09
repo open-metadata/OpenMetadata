@@ -264,6 +264,32 @@ describe('SettingsSourceBanner', () => {
     expect(mockOnAdopted).not.toHaveBeenCalled();
   });
 
+  it('should reload the page when one setting is adopted and another fails', async () => {
+    const conflict = {
+      response: { status: 409, data: { message: 'email is ENV-managed' } },
+    };
+    mockAdoptDeploymentConfig.mockImplementation((configType: SettingType) =>
+      configType === SettingType.EmailConfiguration
+        ? Promise.reject(conflict)
+        : Promise.resolve()
+    );
+    renderBanner([OVERRIDDEN_EMAIL, OVERRIDDEN_URL]);
+
+    const dialog = await openConfirmation();
+    await user.click(
+      within(dialog).getByRole('button', {
+        name: 'label.use-deployment-value',
+      })
+    );
+
+    await waitFor(() => expect(mockOnAdopted).toHaveBeenCalledTimes(1));
+
+    expect(mockAdoptDeploymentConfig).toHaveBeenCalledTimes(2);
+    expect(showErrorToast).toHaveBeenCalledWith(conflict);
+    expect(showSuccessToast).not.toHaveBeenCalled();
+    expect(mockOnRefetch).toHaveBeenCalledTimes(1);
+  });
+
   it('should report a setting this server could not apply', () => {
     renderBanner([
       {

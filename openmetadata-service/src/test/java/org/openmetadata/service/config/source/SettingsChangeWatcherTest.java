@@ -120,6 +120,40 @@ class SettingsChangeWatcherTest {
   }
 
   @Test
+  void forgetsTheErrorOfAValueRevertedToTheOneRunning() {
+    failingSetting = AUTHENTICATION_CONFIGURATION;
+    put(AUTHENTICATION_CONFIGURATION, "hash-2", null);
+    watcher.pollNow();
+
+    put(AUTHENTICATION_CONFIGURATION, "hash-1", null);
+    watcher.pollNow();
+
+    assertEquals(1, refreshed.size());
+    assertTrue(SettingsChangeWatcher.refreshError(AUTHENTICATION_CONFIGURATION).isEmpty());
+  }
+
+  @Test
+  void doesNotApplyAgainWhatThisServerWroteAndApplied() {
+    put(AUTHENTICATION_CONFIGURATION, "hash-2", null);
+    SettingsChangeWatcher.acknowledgeLocalWrite(AUTHENTICATION_CONFIGURATION);
+
+    watcher.pollNow();
+
+    assertTrue(refreshed.isEmpty());
+  }
+
+  @Test
+  void followsAChangeSavedElsewhereAfterThisServersWrite() {
+    put(AUTHENTICATION_CONFIGURATION, "hash-2", null);
+    SettingsChangeWatcher.acknowledgeLocalWrite(AUTHENTICATION_CONFIGURATION);
+    put(AUTHENTICATION_CONFIGURATION, "hash-3", null);
+
+    watcher.pollNow();
+
+    assertEquals(List.of(AUTHENTICATION_CONFIGURATION), refreshed);
+  }
+
+  @Test
   void appliesARowCreatedAfterTheStart() {
     put(SettingsType.SCIM_CONFIGURATION, "hash-scim", null);
 

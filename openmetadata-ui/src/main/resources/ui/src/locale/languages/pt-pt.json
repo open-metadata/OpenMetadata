@@ -5251,6 +5251,7 @@
     "sso-configuration-test-success": "A sua configuração de SSO é válida e acessível. Pode guardá-la quando estiver pronto.",
     "sso-new-config-save-warning": "Guardar uma nova configuração de SSO irá terminar a sua sessão e redirecioná-lo para a página de início de sessão. Teste primeiro a sua configuração para evitar ficar bloqueado.",
     "sso-provider-not-supported": "O Provedor de SSO {{provider}} não é suportado.",
+    "sso-provider-set-by-deployment": "A configuração da implementação define como os utilizadores iniciam sessão, por isso não há nenhum fornecedor de início de sessão único para escolher aqui.",
     "sso-test-login-checking-configuration": "A verificar a configuração antes de iniciar sessão…",
     "sso-test-login-configuration-invalid": "A configuração tem problemas, pelo que Testar início de sessão parou antes de iniciar sessão. Corrija-os e execute novamente Testar início de sessão.",
     "sso-test-login-credentials-description": "Introduza o e-mail e a palavra-passe de uma conta neste diretório. São utilizados uma única vez para verificar o início de sessão e nunca são armazenados.",

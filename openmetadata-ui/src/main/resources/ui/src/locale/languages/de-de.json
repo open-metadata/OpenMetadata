@@ -5251,6 +5251,7 @@
     "sso-configuration-test-success": "Ihre SSO-Konfiguration ist gültig und erreichbar. Sie können sie speichern, wenn Sie bereit sind.",
     "sso-new-config-save-warning": "Beim Speichern einer neuen SSO-Konfiguration werden Sie abgemeldet und zur Anmeldeseite weitergeleitet. Testen Sie Ihre Konfiguration zuerst, um eine Aussperrung zu vermeiden.",
     "sso-provider-not-supported": "SSO-Provider {{provider}} wird nicht unterstützt.",
+    "sso-provider-set-by-deployment": "Die Bereitstellungskonfiguration legt fest, wie sich Benutzer anmelden, daher gibt es hier keinen Single-Sign-On-Anbieter zur Auswahl.",
     "sso-test-login-checking-configuration": "Die Konfiguration wird vor der Anmeldung geprüft…",
     "sso-test-login-configuration-invalid": "Die Konfiguration enthält Probleme, daher wurde „Anmeldung testen“ vor der Anmeldung abgebrochen. Beheben Sie sie und führen Sie „Anmeldung testen“ erneut aus.",
     "sso-test-login-credentials-description": "Geben Sie die E-Mail-Adresse und das Passwort eines Kontos in diesem Verzeichnis ein. Sie werden einmalig zur Überprüfung der Anmeldung verwendet und niemals gespeichert.",

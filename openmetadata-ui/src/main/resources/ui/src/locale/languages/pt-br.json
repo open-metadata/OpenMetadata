@@ -5251,6 +5251,7 @@
     "sso-configuration-test-success": "Sua configuração de SSO é válida e acessível. Você pode salvá-la quando estiver pronto.",
     "sso-new-config-save-warning": "Salvar uma nova configuração de SSO irá desconectá-lo e redirecioná-lo para a página de login. Teste sua configuração primeiro para evitar ficar bloqueado.",
     "sso-provider-not-supported": "O Provedor de SSO {{provider}} não é suportado.",
+    "sso-provider-set-by-deployment": "A configuração da implantação define como os usuários fazem login, portanto não há nenhum provedor de login único para escolher aqui.",
     "sso-test-login-checking-configuration": "Verificando a configuração antes de entrar…",
     "sso-test-login-configuration-invalid": "A configuração tem problemas, por isso Testar login parou antes de entrar. Corrija-os e execute Testar login novamente.",
     "sso-test-login-credentials-description": "Insira o e-mail e a senha de uma conta neste diretório. Eles são usados uma única vez para verificar o login e nunca são armazenados.",

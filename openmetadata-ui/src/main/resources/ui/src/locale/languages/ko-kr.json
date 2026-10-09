@@ -5251,6 +5251,7 @@
     "sso-configuration-test-success": "SSO 구성이 유효하며 연결 가능합니다. 준비되면 저장할 수 있습니다.",
     "sso-new-config-save-warning": "새 SSO 구성을 저장하면 로그아웃되어 로그인 페이지로 이동합니다. 잠기는 것을 방지하려면 먼저 구성을 테스트하세요.",
     "sso-provider-not-supported": "SSO 제공자 {{provider}}는 지원되지 않습니다.",
+    "sso-provider-set-by-deployment": "사용자 로그인 방식은 배포 구성에서 설정되므로 여기에서 선택할 싱글 사인온 공급자가 없습니다.",
     "sso-test-login-checking-configuration": "로그인하기 전에 구성을 확인하는 중…",
     "sso-test-login-configuration-invalid": "구성에 문제가 있어 로그인 테스트가 로그인 전에 중지되었습니다. 문제를 해결한 후 로그인 테스트를 다시 실행하세요.",
     "sso-test-login-credentials-description": "이 디렉터리에 있는 계정의 이메일과 비밀번호를 입력하세요. 로그인을 확인하는 데 한 번만 사용되며 저장되지 않습니다.",

@@ -5251,6 +5251,7 @@
     "sso-configuration-test-success": "Uw SSO-configuratie is geldig en bereikbaar. U kunt deze opslaan wanneer u klaar bent.",
     "sso-new-config-save-warning": "Als u een nieuwe SSO-configuratie opslaat, wordt u afgemeld en doorgestuurd naar de aanmeldpagina. Test eerst uw configuratie om te voorkomen dat u buitengesloten raakt.",
     "sso-provider-not-supported": "SSO-provider {{provider}} wordt niet ondersteund.",
+    "sso-provider-set-by-deployment": "De implementatieconfiguratie bepaalt hoe gebruikers zich aanmelden, dus hier valt geen single sign-on-provider te kiezen.",
     "sso-test-login-checking-configuration": "De configuratie wordt gecontroleerd vóór het aanmelden…",
     "sso-test-login-configuration-invalid": "De configuratie bevat problemen, dus Aanmelding testen is gestopt vóór het aanmelden. Los ze op en voer Aanmelding testen opnieuw uit.",
     "sso-test-login-credentials-description": "Voer het e-mailadres en wachtwoord in van een account in deze directory. Ze worden één keer gebruikt om de aanmelding te verifiëren en worden nooit opgeslagen.",

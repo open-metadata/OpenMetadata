@@ -5251,6 +5251,7 @@
     "sso-configuration-test-success": "您的 SSO 設定有效且可連線。準備就緒後即可儲存。",
     "sso-new-config-save-warning": "儲存新的 SSO 設定將使您登出並重新導向至登入頁面。請先測試您的設定，以免遭到鎖定。",
     "sso-provider-not-supported": "不支援 SSO 提供者 {{provider}}。",
+    "sso-provider-set-by-deployment": "使用者的登入方式由部署組態設定，因此這裡沒有可選擇的單一登入提供者。",
     "sso-test-login-checking-configuration": "正在登入前檢查設定…",
     "sso-test-login-configuration-invalid": "設定有問題，因此測試登入在登入前已停止。請修正問題後再次執行測試登入。",
     "sso-test-login-credentials-description": "輸入此目錄中某個帳戶的電子郵件與密碼。它們只會用來驗證一次登入，絕不會被儲存。",
