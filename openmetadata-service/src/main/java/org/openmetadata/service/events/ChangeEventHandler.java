@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.events;
 
+import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getChangeEventFromResponseContext;
 
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -20,6 +21,7 @@ import jakarta.ws.rs.container.ContainerResponseContext;
 import java.util.Optional;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -67,9 +69,7 @@ public class ChangeEventHandler implements EventHandler {
             changeEvent.getEventType(),
             changeEvent.getEntityType());
         if (changeEvent.getEntity() != null) {
-          Object entity = changeEvent.getEntity();
-          changeEvent = copyChangeEvent(changeEvent);
-          changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+          changeEvent = withMaskedEntity(changeEvent);
         }
 
         // Insert ChangeEvents if ENTITY Changed
@@ -85,6 +85,21 @@ public class ChangeEventHandler implements EventHandler {
           e);
     }
     return null;
+  }
+
+  /**
+   * The change event a REST write of {@code entity} records, for a write made outside a request:
+   * the event this filter builds from the response, with the entity masked.
+   */
+  public static ChangeEvent entityChangeEvent(
+      String userName, EventType eventType, EntityInterface<?> entity) {
+    return withMaskedEntity(createChangeEventForEntity(userName, eventType, entity));
+  }
+
+  private static ChangeEvent withMaskedEntity(ChangeEvent changeEvent) {
+    ChangeEvent stored = copyChangeEvent(changeEvent);
+    stored.setEntity(JsonUtils.pojoToMaskedJson(changeEvent.getEntity()));
+    return stored;
   }
 
   public static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {
