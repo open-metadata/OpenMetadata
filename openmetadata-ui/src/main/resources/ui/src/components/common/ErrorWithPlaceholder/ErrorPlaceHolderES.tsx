@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Space } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import Qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -184,12 +185,16 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
 
           <p>{t('message.elasticsearch-setup')}</p>
         </div>
-        <Row gutter={16}>
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(16)}>
           {stepsData.map((data) => (
-            <Col key={data.step} span={6}>
-              <Space
-                className="justify-between h-full border rounded-4 p-sm"
-                direction="vertical">
+            <Grid.Item className="layout-column" key={data.step} span={6}>
+              <Box
+                inline
+                align="stretch"
+                className="layout-space justify-between h-full border rounded-4 p-sm"
+                direction="col"
+                gap={2}
+                itemClassName="layout-space-item">
                 <div>
                   <div className="d-flex m-b-xs">
                     <div className="flex-center rounded-full h-10 w-10 border-2-primary text-primary text-lg font-bold">
@@ -213,10 +218,10 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                     {`${t('label.click-here')} >>`}
                   </a>
                 </p>
-              </Space>
-            </Col>
+              </Box>
+            </Grid.Item>
           ))}
-        </Row>
+        </Grid>
       </div>
     );
   }, [errorMessage]);
