@@ -33,7 +33,7 @@ public sealed interface RdfLiveWrite {
   void apply(RdfRepository repository);
 
   record EntityUpdate(String entityType, UUID entityId) implements RdfLiveWrite {
-    public static EntityUpdate capture(final EntityInterface entity) {
+    public static EntityUpdate capture(final EntityInterface<?> entity) {
       return new EntityUpdate(Entity.getEntityTypeFromObject(entity), entity.getId());
     }
 

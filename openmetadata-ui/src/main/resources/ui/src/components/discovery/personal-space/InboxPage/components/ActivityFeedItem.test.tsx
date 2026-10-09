@@ -12,7 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { ComponentType, ReactNode, SVGProps } from 'react';
 
 const mockSendReaction = jest.fn();
 const mockWriteInboxReactions = jest.fn();
@@ -197,13 +197,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   BadgeWithIcon: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),
+  // Renders an icon component as the core Button does, tagged `data-icon`.
   Button: ({
     children,
     onPress,
+    iconLeading: IconLeading,
     ...props
   }: {
     children?: ReactNode;
     onPress?: () => void;
+    iconLeading?: ComponentType<SVGProps<SVGSVGElement>> | ReactNode;
     'aria-pressed'?: boolean;
     'aria-expanded'?: boolean;
     'data-testid'?: string;
@@ -213,6 +216,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       aria-pressed={props['aria-pressed']}
       data-testid={props['data-testid']}
       onClick={onPress}>
+      {typeof IconLeading === 'function' && (
+        <IconLeading className="icon" data-icon="leading" />
+      )}
       {children}
     </button>
   ),
@@ -241,7 +247,9 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Plus: () => <span />,
   RefreshCcw01: () => <span />,
   Tag01: () => <span />,
-  ThumbsUp: () => <span />,
+  ThumbsUp: (props: SVGProps<SVGSVGElement>) => (
+    <svg data-testid="thumbs-up-icon" {...props} />
+  ),
   Trash01: () => <span />,
   UserCheck01: () => <span />,
 }));
@@ -479,7 +487,7 @@ describe('ActivityFeedItem', () => {
 
     expect(mockSendReaction).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId('activity-like')).toHaveTextContent(
-      'label.like-with-count'
+      'label.liked-with-count'
     );
     expect(screen.getByTestId('react-btn')).toHaveTextContent('r1');
   });
@@ -564,7 +572,7 @@ describe('ActivityFeedItem', () => {
       'add'
     );
     expect(screen.getByTestId('activity-like')).toHaveTextContent(
-      'label.like-with-count'
+      'label.liked-with-count'
     );
     expect(screen.getByTestId('activity-like')).toHaveAttribute(
       'aria-pressed',
@@ -593,6 +601,40 @@ describe('ActivityFeedItem', () => {
       'remove'
     );
     expect(screen.getByTestId('activity-like')).toHaveTextContent('label.like');
+  });
+
+  // The Button sizes and tints its icon by `data-icon`, so the filled thumb
+  // must keep it, or a liked card's icon grows from 16px to 20px.
+  it('fills the thumb once liked and keeps the icon the Button styles', () => {
+    const liked = {
+      ...baseActivity,
+      reactions: [{ reactionType: 'thumbsUp', user: { id: 'u1' } }],
+    } as unknown as ActivityEvent;
+
+    render(<ActivityFeedItem activity={liked} />);
+
+    const icon = screen.getByTestId('thumbs-up-icon');
+
+    expect(icon).toHaveAttribute('data-icon', 'leading');
+    expect(icon).toHaveAttribute('fill', 'currentColor');
+  });
+
+  // Others' likes are counted; only the viewer's own reads "Liked".
+  it("counts others' likes without marking the card liked", () => {
+    const likedByOthers = {
+      ...baseActivity,
+      reactions: [{ reactionType: 'thumbsUp', user: { id: 'u2' } }],
+    } as unknown as ActivityEvent;
+
+    render(<ActivityFeedItem activity={likedByOthers} />);
+
+    expect(screen.getByTestId('activity-like')).toHaveTextContent(
+      'label.like-with-count'
+    );
+    expect(screen.getByTestId('activity-like')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
   });
 
   describe('thread', () => {

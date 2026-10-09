@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Grid } from '@openmetadata/ui-core-components';
 import {
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Button, Card, Col, Row } from 'antd';
+import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import {
   first,
@@ -41,6 +42,7 @@ import {
   INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER,
   NO_OWNER_ADVANCE_SEARCH_FILTER,
 } from '../../constants/explore.constants';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -265,7 +267,7 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
     type === SystemChartType.PercentageOfDataAssetWithDescription;
 
   return (
-    <Col className="d-flex justify-end" span={24}>
+    <Grid.Item className="layout-column d-flex justify-end" span={24}>
       <Link
         data-testid={`explore-asset-with-no-${
           isDescriptionType ? 'description' : 'owner'
@@ -293,7 +295,7 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
           <RightArrowIcon height={12} width={12} />
         </Button>
       </Link>
-    </Col>
+    </Grid.Item>
   );
 };
 
@@ -619,8 +621,10 @@ export const DataInsightChartCard = ({
       className="data-insight-card data-insight-card-chart"
       data-testid={`${type}-graph`}
       id={type}>
-      <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-        <Col span={DI_STRUCTURE.leftContainerSpan}>
+      <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
+        <Grid.Item
+          className="layout-column"
+          span={DI_STRUCTURE.leftContainerSpan}>
           <PageHeader
             data={{
               header,
@@ -640,10 +644,14 @@ export const DataInsightChartCard = ({
               yAxis={yAxis}
             />
           </div>
-        </Col>
-        <Col span={DI_STRUCTURE.rightContainerSpan}>
-          <Row gutter={[8, 16]}>
-            <Col span={24}>
+        </Grid.Item>
+        <Grid.Item
+          className="layout-column"
+          span={DI_STRUCTURE.rightContainerSpan}>
+          <Grid
+            className="layout-row layout-grid"
+            style={getLayoutGutter(8, 16)}>
+            <Grid.Item className="layout-column" span={24}>
               <DataInsightProgressBar
                 changeInValue={changeInValue}
                 duration={selectedDays}
@@ -653,20 +661,24 @@ export const DataInsightChartCard = ({
                 suffix={getProgressBarSuffix(isPercentageGraph, type)}
                 target={targetValue}
               />
-            </Col>
-            <Col span={24}>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
               <Searchbar
                 removeMargin
                 searchValue={searchEntityKeyWord}
                 onSearch={setSearchEntityKeyWord}
               />
-            </Col>
-            <Col className="chart-card-right-panel-container" span={24}>
-              <Row gutter={[8, 8]}>
+            </Grid.Item>
+            <Grid.Item
+              className="layout-column chart-card-right-panel-container"
+              span={24}>
+              <Grid
+                className="layout-row layout-grid"
+                style={getLayoutGutter(8, 8)}>
                 {rightSideEntityList.map((entity) => {
                   return (
-                    <Col
-                      className="entity-summary-container"
+                    <Grid.Item
+                      className="layout-column entity-summary-container"
                       key={entity}
                       span={24}
                       onClick={() => handleLegendClick(entity)}
@@ -694,24 +706,24 @@ export const DataInsightChartCard = ({
                           entity
                         )}
                       />
-                    </Col>
+                    </Grid.Item>
                   );
                 })}
-              </Row>
-            </Col>
+              </Grid>
+            </Grid.Item>
             {activeKeys.length > 0 && (
-              <Col className="flex justify-end" span={24}>
+              <Grid.Item className="layout-column flex justify-end" span={24}>
                 <Button type="link" onClick={() => setActiveKeys([])}>
                   {t('label.clear')}
                 </Button>
-              </Col>
+              </Grid.Item>
             )}
-          </Row>
-        </Col>
+          </Grid>
+        </Grid.Item>
         {listAssets && (
           <ExploreAssetsLink t={t} tabsInfo={tabsInfo} type={type} />
         )}
-      </Row>
+      </Grid>
     </Card>
   );
 };

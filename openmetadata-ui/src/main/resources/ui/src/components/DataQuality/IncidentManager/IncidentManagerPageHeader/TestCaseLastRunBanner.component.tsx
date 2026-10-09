@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import IncidentDetails from './IncidentDetails.component';
 import LastRunBannerLayout from './LastRunBannerLayout.component';
@@ -54,9 +54,13 @@ const TestCaseLastRunBanner = ({
       <LastRunBannerLayout
         config={NO_RUN_CONFIG}
         description={
-          <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-xs tw:leading-normal tw:text-secondary">
+          <Typography
+            as="div"
+            className="tw:mt-1 tw:break-words"
+            color="secondary"
+            size="text-xs">
             {t(getNotRunMessageKey(nextRunTimestamp))}
-          </p>
+          </Typography>
         }
         rightSection={
           <div className="tw:flex tw:min-w-36 tw:shrink-0 tw:flex-col tw:items-start tw:lg:items-end">
@@ -95,15 +99,11 @@ const TestCaseLastRunBanner = ({
     testCaseStatus
   );
   const incidentTitle = incidentTask
-    ? getIncidentTitle(
-        incidentTask,
-        t(TASK_ENTITY_TYPES[incidentTask.type] ?? 'label.task')
-      )
+    ? getIncidentTitle(testCase, t)
     : undefined;
   const incidentMetadata = getIncidentMetadata(
     incidentTitle,
     testCaseStatusData,
-    result,
     incidentLink
   );
 

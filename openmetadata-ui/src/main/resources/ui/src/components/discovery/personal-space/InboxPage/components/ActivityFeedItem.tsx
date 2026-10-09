@@ -33,6 +33,7 @@ import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { uniqBy } from 'lodash';
 import React, {
+  SVGProps,
   useCallback,
   useEffect,
   useMemo,
@@ -44,7 +45,10 @@ import { Link } from 'react-router-dom';
 import Reactions from '../../../../../components/ActivityFeed/Reactions/Reactions';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { ReactionOperation } from '../../../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../../../enums/reactions.enum';
 import {
   ActivityEvent,
   ActivityEventType,
@@ -223,9 +227,55 @@ const getRepliesToggleLabel = (
     : t('label.number-reply-plural', { number: count });
 };
 
-// A toggle (Like, the replies thread) reads brand while it is on.
-const getToggleColor = (isOn: boolean) =>
-  isOn ? ('link-color' as const) : ('tertiary' as const);
+// A toggle (Like, the replies thread) reads brand while it is on: its text and
+// icon, without the link underline a link-colored button draws on hover.
+const TOGGLE_ON_CLASS =
+  'tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-fg-brand-primary tw:hover:*:data-icon:text-fg-brand-primary';
+
+// A liked card fills its thumb. Every prop passes through: the Button sizes
+// and colors its icon by the `data-icon` it sets.
+const FilledThumbsUp = (props: SVGProps<SVGSVGElement>) => (
+  <ThumbsUp {...props} fill="currentColor" />
+);
+
+const getLikeLabel = (
+  likeCount: number,
+  isLiked: boolean,
+  t: TFunction
+): string => {
+  if (isLiked) {
+    return t('label.liked-with-count', { count: likeCount });
+  }
+
+  return likeCount
+    ? t('label.like-with-count', { count: likeCount })
+    : t('label.like');
+};
+
+interface LikeButtonProps {
+  likeCount: number;
+  isLiked: boolean;
+  onToggle: () => void;
+}
+
+// Like is the thumbs-up reaction, toggled from its own button.
+const LikeButton = ({ likeCount, isLiked, onToggle }: LikeButtonProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Button
+      aria-pressed={isLiked}
+      // Its icon lines up with the body above, past the button's padding.
+      className={classNames('tw:-ml-3', isLiked && TOGGLE_ON_CLASS)}
+      color="tertiary"
+      data-testid="activity-like"
+      iconLeading={isLiked ? FilledThumbsUp : ThumbsUp}
+      size="sm"
+      onPress={onToggle}>
+      {getLikeLabel(likeCount, isLiked, t)}
+    </Button>
+  );
+};
 
 interface RepliesToggleProps {
   isOpen: boolean;
@@ -251,14 +301,20 @@ const RepliesToggle = ({
 
   return count > 0 || isOpen ? (
     <Button
-      boxed
       aria-expanded={isOpen}
-      color={getToggleColor(isOpen)}
+      className={classNames(
+        isOpen && TOGGLE_ON_CLASS,
+        isOpen && 'tw:bg-brand-primary tw:hover:bg-brand-primary'
+      )}
+      color="tertiary"
       data-testid="activity-replies-toggle"
       iconLeading={
         <span className="tw:flex tw:items-center tw:-space-x-1">
           {replyFaces.map(({ id, author }) => (
             <ProfilePicture
+              borderless
+              // A white edge parts the overlapping faces.
+              className="tw:outline-2 tw:outline-bg-primary"
               displayName={author?.displayName}
               key={id}
               name={author?.name ?? ''}
@@ -489,7 +545,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             <Box align="center" gap={2}>
               <Typography
                 className="tw:min-w-0 tw:flex-1 tw:text-tertiary"
-                size="text-md">
+                size="text-sm">
                 <AuthorPopover userName={actorName}>
                   <span className="tw:font-semibold tw:text-primary">
                     {authorName}
@@ -517,7 +573,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                   {target.parent}
                   {target.path ? (
                     <Link
-                      className="tw:font-semibold tw:text-primary tw:underline tw:decoration-border-primary tw:underline-offset-3 tw:hover:text-brand-secondary"
+                      // `!`: the Typography's prose styles color its links.
+                      className="tw:font-semibold tw:text-primary! tw:no-underline! tw:hover:text-brand-secondary!"
                       data-testid="activity-entity-link"
                       to={target.path}>
                       {target.leaf}
@@ -545,23 +602,16 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
         </Box>
 
         <Box align="center" className="inbox-feed-actions tw:ml-13 tw:gap-2">
-          <Button
-            boxed
-            aria-pressed={isLiked}
-            color={getToggleColor(isLiked)}
-            data-testid="activity-like"
-            iconLeading={ThumbsUp}
-            size="sm"
-            onPress={() =>
+          <LikeButton
+            isLiked={isLiked}
+            likeCount={likes.length}
+            onToggle={() =>
               handleReactionSelect(
                 ReactionType.ThumbsUp,
                 isLiked ? ReactionOperation.REMOVE : ReactionOperation.ADD
               )
-            }>
-            {likes.length
-              ? t('label.like-with-count', { count: likes.length })
-              : t('label.like')}
-          </Button>
+            }
+          />
           <Reactions
             key={otherReactions
               .map(
@@ -569,6 +619,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               )
               .join('|')}
             reactions={otherReactions}
+            variant={ReactionsVariant.Pill}
             onReactionSelect={handleReactionSelect}
           />
           <Button

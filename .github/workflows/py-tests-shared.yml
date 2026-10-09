@@ -85,6 +85,7 @@ jobs:
               - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'
               - '.github/workflows/py-cli-e2e-tests-v2.yml'
+              - '.github/workflows/py-cli-e2e-tests.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
               - 'openmetadata-spec/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
@@ -100,6 +101,7 @@ jobs:
               - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'
               - '.github/workflows/py-cli-e2e-tests-v2.yml'
+              - '.github/workflows/py-cli-e2e-tests.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
 
       - name: Wait for the labeler

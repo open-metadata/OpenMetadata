@@ -7,7 +7,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.SearchIndex",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"
   ],
   "definitions": {
     "searchIndexSettings": {

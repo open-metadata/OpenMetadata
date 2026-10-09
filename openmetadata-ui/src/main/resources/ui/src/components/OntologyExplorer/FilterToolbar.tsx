@@ -131,7 +131,7 @@ const FilterToolbarActions: React.FC<FilterToolbarActionsProps> = ({
       {showLoadedCount && (
         <Typography
           as="span"
-          className="tw:whitespace-nowrap tw:pr-1 tw:text-(--color-text-tertiary)"
+          className="tw:whitespace-nowrap tw:pr-1 tw:text-tertiary"
           size="text-sm">
           {t('label.loaded-x-of-y-entity', {
             loaded: loadedTermCount,

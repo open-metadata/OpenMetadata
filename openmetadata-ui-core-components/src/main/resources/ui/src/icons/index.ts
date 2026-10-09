@@ -148,6 +148,7 @@ export { Expand01 } from './Expand01';
 export { Expand05 } from './Expand05';
 export { EyeOff } from './EyeOff';
 export { Eye } from './Eye';
+export { FaceSmile } from './FaceSmile';
 export { FailedTests } from './FailedTests';
 export { FileCheck02 } from './FileCheck02';
 export { FileCheck03 } from './FileCheck03';

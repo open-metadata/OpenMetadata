@@ -28,7 +28,10 @@ import Reactions from '../../../../../components/ActivityFeed/Reactions/Reaction
 import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { ReactionOperation } from '../../../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../../../enums/reactions.enum';
 import { ConversationReply } from '../../../../../generated/entity/feed/conversation';
 import { Access } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
 import { ReactionType } from '../../../../../generated/type/reaction';
@@ -156,8 +159,10 @@ const ReplyRow = ({
           size="xs"
         />
       </AuthorPopover>
-      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-        <Box align="center" gap={2}>
+      <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
+        {/* The text's height: the hover actions overflow it rather than push
+            the message down. */}
+        <Box align="center" className="tw:h-5" gap={2}>
           <AuthorPopover userName={authorLogin}>
             <Typography size="text-sm" weight="semibold">
               {authorName}
@@ -223,6 +228,7 @@ const ReplyRow = ({
         <Box className="inbox-feed-actions">
           <Reactions
             reactions={reply.reactions ?? []}
+            variant={ReactionsVariant.Pill}
             onReactionSelect={handleReaction}
           />
         </Box>

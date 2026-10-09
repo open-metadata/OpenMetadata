@@ -163,6 +163,24 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     return SdkClients.adminClient().metrics().getByName(fqn);
   }
 
+  @Test
+  void list_statusFilterUsesTheMetricVocabulary(TestNamespace ns) {
+    Metric metric = createEntity(createMinimalRequest(ns));
+    assertEquals(EntityStatus.APPROVED, metric.getEntityStatus());
+    ListParams approved = new ListParams().addFilter("entityStatus", "Approved").setLimit(1000);
+    assertTrue(
+        SdkClients.adminClient().metrics().list(approved).getData().stream()
+            .anyMatch(candidate -> candidate.getId().equals(metric.getId())));
+    for (String status : List.of("Superseded", "Invalidated")) {
+      assertTrue(
+          SdkClients.adminClient()
+              .metrics()
+              .list(new ListParams().addFilter("entityStatus", status))
+              .getData()
+              .isEmpty());
+    }
+  }
+
   @Override
   protected Metric patchEntity(String id, Metric entity) {
     return SdkClients.adminClient().metrics().update(id, entity);

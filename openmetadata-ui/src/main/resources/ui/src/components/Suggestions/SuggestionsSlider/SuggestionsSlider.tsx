@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { isEmpty } from 'lodash';
 
 import { useMemo } from 'react';
@@ -84,7 +84,12 @@ const SuggestionsSlider = () => {
         </Button>
       )}
       {selectedUserSuggestions?.combinedData.length > 0 && (
-        <Space className="slider-btn-container m-l-xs">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal slider-btn-container m-l-xs"
+          gap={2}
+          itemClassName="layout-space-item">
           {hasSuggestionEditAccess && (
             <>
               <Button
@@ -124,7 +129,7 @@ const SuggestionsSlider = () => {
             <ExitIcon />
             {t('label.close')}
           </Button>
-        </Space>
+        </Box>
       )}
     </div>
   );
