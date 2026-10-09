@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Select, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -188,7 +188,12 @@ const AddRolePage = () => {
                   </Select>
                 </Form.Item>
 
-                <Space align="center" className="w-full justify-end">
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal w-full justify-end"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <Button
                     data-testid="cancel-btn"
                     type="link"
@@ -203,7 +208,7 @@ const AddRolePage = () => {
                     type="primary">
                     {t('label.create')}
                   </Button>
-                </Space>
+                </Box>
               </Form>
             </div>
           </div>

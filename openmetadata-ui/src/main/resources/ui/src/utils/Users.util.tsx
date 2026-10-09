@@ -13,11 +13,12 @@
 
 import {
   Badge,
+  Box,
   Popover,
   PopoverTrigger,
   Skeleton,
 } from '@openmetadata/ui-core-components';
-import { Space, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { Button as AriaButton } from 'react-aria-components';
 import { Link } from 'react-router-dom';
@@ -50,7 +51,12 @@ export const commonUserDetailColumns = (
     key: 'username',
     ellipsis: { showTitle: false },
     render: (_, record) => (
-      <Space size={4}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={1}
+        itemClassName="layout-space-item">
         {record.isBot && (
           <Tooltip title={t('label.bot')}>
             <BotIcon
@@ -63,7 +69,7 @@ export const commonUserDetailColumns = (
           </Tooltip>
         )}
         {userCellRenderer(record)}
-      </Space>
+      </Box>
     ),
   },
   {
@@ -89,7 +95,14 @@ export const commonUserDetailColumns = (
         return <>{t('label.no-entity', { entity: t('label.team') })}</>;
       } else {
         return (
-          <Space wrap data-testid="policy-link" size={4}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            data-testid="policy-link"
+            gap={1}
+            itemClassName="layout-space-item"
+            wrap="wrap">
             {record.teams.slice(0, LIST_CAP).map((team) => (
               <Link
                 className="cursor-pointer"
@@ -113,7 +126,13 @@ export const commonUserDetailColumns = (
                   arrow
                   containerClassName="tw:w-40 tw:px-4 tw:py-3"
                   placement="bottom">
-                  <Space wrap size={4}>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={1}
+                    itemClassName="layout-space-item"
+                    wrap="wrap">
                     {record.teams.slice(LIST_CAP).map((team) => (
                       <Link
                         className="cursor-pointer"
@@ -122,11 +141,11 @@ export const commonUserDetailColumns = (
                         {getEntityName(team)}
                       </Link>
                     ))}
-                  </Space>
+                  </Box>
                 </Popover>
               </PopoverTrigger>
             )}
-          </Space>
+          </Box>
         );
       }
     },
@@ -147,7 +166,14 @@ export const commonUserDetailColumns = (
         return <>{t('label.no-entity', { entity: t('label.role') })}</>;
       } else {
         return (
-          <Space wrap data-testid="policy-link" size={4}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            data-testid="policy-link"
+            gap={1}
+            itemClassName="layout-space-item"
+            wrap="wrap">
             {record.roles.slice(0, LIST_CAP).map((role) => (
               <Link
                 className="cursor-pointer"
@@ -171,7 +197,13 @@ export const commonUserDetailColumns = (
                   arrow
                   containerClassName="tw:w-40 tw:px-4 tw:py-3"
                   placement="bottom">
-                  <Space wrap size={4}>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={1}
+                    itemClassName="layout-space-item"
+                    wrap="wrap">
                     {record.roles.slice(LIST_CAP).map((role) => (
                       <Link
                         className="cursor-pointer"
@@ -180,11 +212,11 @@ export const commonUserDetailColumns = (
                         {getEntityName(role)}
                       </Link>
                     ))}
-                  </Space>
+                  </Box>
                 </Popover>
               </PopoverTrigger>
             )}
-          </Space>
+          </Box>
         );
       }
     },

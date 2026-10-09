@@ -130,7 +130,7 @@
       width: inherit;
       padding: var(--om-space-20);
 
-      .ant-space-item {
+      :is(.ant-space-item, .layout-space-item) {
         width: inherit;
       }
     }
@@ -188,7 +188,7 @@
 
       padding-bottom: var(--om-space-16);
 
-      .ant-space-item {
+      :is(.ant-space-item, .layout-space-item) {
         width: inherit;
       }
     }
@@ -450,7 +450,7 @@
 // normal flow is what stops the bar overlapping the comment text - it can no
 // longer be mispositioned relative to a padding or line-height it doesn't know
 // about.
-.reply-card .feed-actions.ant-space {
+.reply-card .feed-actions:is(.ant-space, .layout-space) {
   position: static;
   padding-top: var(--om-space-2);
   padding-bottom: var(--om-space-2);

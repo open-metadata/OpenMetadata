@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { camelCase, isEmpty, isUndefined } from 'lodash';
@@ -269,16 +270,18 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <Typography className="font-medium" data-testid="header">
           {t('label.schedule-for-entity', {
             entity: t('label.test-case-plural'),
           })}
         </Typography>
-      </Col>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         {isIngestionCreated ? (
           <SuccessScreen
             handleDeployClick={handleDeployClick}
@@ -304,7 +307,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
             onSubmit={handleIngestionSubmit}
           />
         )}
-      </Col>
+      </Grid.Item>
       <DeployIngestionLoaderModal
         action={ingestionAction}
         ingestionName={getEntityName(ingestionData)}
@@ -313,7 +316,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         progress={ingestionProgress}
         visible={showDeployModal}
       />
-    </Row>
+    </Grid>
   );
 };
 
