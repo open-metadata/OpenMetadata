@@ -275,8 +275,8 @@ const AppLayoutEditor = ({
           aria-label={t('label.default-landing-page')}
           data-testid="default-landing-page-select"
           fontSize="sm"
-          value={landingPage}
           size="md"
+          value={landingPage}
           onChange={(key) => key && setLandingPage(String(key))}>
           {LANDING_PAGE_SECTIONS.map((section) => (
             <ListBoxSection id={section.titleKey} key={section.titleKey}>
