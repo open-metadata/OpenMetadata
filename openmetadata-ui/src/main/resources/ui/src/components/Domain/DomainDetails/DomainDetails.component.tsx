@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Avatar,
   Box,
@@ -19,7 +18,13 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import {
+  Announcement02,
+  ChevronDown,
+  Edit01,
+  Trash01,
+  Version,
+} from '@openmetadata/ui-core-components/icons';
 import { Button, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -29,10 +34,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
@@ -819,7 +820,7 @@ const DomainDetails = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.announcement-action-description')}
-                icon={IconAnnouncementsBlack}
+                icon={Announcement02}
                 id="announcement-button"
                 name={t('label.announcement-plural')}
               />
@@ -841,7 +842,7 @@ const DomainDetails = ({
                 description={t('message.rename-entity', {
                   entity: t('label.domain'),
                 })}
-                icon={EditIcon}
+                icon={Edit01}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -888,7 +889,7 @@ const DomainDetails = ({
                     entityType: t('label.domain'),
                   }
                 )}
-                icon={DeleteIcon}
+                icon={Trash01}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -1097,7 +1098,7 @@ const DomainDetails = ({
                           'text-primary border-primary': version,
                         })}
                         data-testid="version-button"
-                        icon={<Icon component={VersionIcon} />}
+                        icon={<Version className="anticon" size={14} />}
                         onClick={handleVersionClick}>
                         <Typography
                           className={classNames('', {

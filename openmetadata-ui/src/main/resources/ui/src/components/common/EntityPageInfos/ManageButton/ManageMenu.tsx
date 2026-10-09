@@ -12,10 +12,10 @@
  */
 
 import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
+import { DotsVertical } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { isValidElement, Key, ReactNode, useCallback, useMemo } from 'react';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { useIsLimitReached } from '../../../../context/LimitsProvider/useLimitsStore';
 
 /**
@@ -148,7 +148,7 @@ export const ManageMenu = ({
           className={classNames('tw:p-2', triggerClassName)}
           color="secondary"
           data-testid={dataTestId}
-          icon={IconDropdown}
+          icon={DotsVertical}
           size="xs"
           tooltip={label}
           tooltipPlacement="top end"
