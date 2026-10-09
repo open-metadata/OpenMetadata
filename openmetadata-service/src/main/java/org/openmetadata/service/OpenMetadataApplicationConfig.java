@@ -45,6 +45,7 @@ import org.openmetadata.service.config.AlertingConfiguration;
 import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.config.BulkOperationConfiguration;
 import org.openmetadata.service.config.CacheConfiguration;
+import org.openmetadata.service.config.CdnConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.config.QoSConfiguration;
@@ -250,12 +251,22 @@ public class OpenMetadataApplicationConfig extends Configuration {
     return asyncOperationsConfiguration;
   }
 
+  @JsonProperty("cdn")
+  private CdnConfiguration cdnConfiguration;
+
   @JsonProperty("qos")
   private QoSConfiguration qosConfiguration;
 
   @JsonProperty("cacheMemory")
   @Valid
   private CacheConfiguration cacheMemoryConfiguration = new CacheConfiguration();
+
+  public CdnConfiguration getCdnConfiguration() {
+    if (cdnConfiguration == null) {
+      cdnConfiguration = new CdnConfiguration();
+    }
+    return cdnConfiguration;
+  }
 
   public QoSConfiguration getQosConfiguration() {
     if (qosConfiguration == null) {
