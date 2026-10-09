@@ -227,6 +227,10 @@ const getRepliesToggleLabel = (
     : t('label.number-reply-plural', { number: count });
 };
 
+// The footer's text buttons: 16px icons, like the reaction smiley between
+// them, and tighter padding, which alone spaces the row.
+const FOOTER_BUTTON_CLASS = 'tw:px-2 tw:*:data-icon:size-4';
+
 // A toggle (Like, the replies thread) reads brand while it is on: its text and
 // icon, without the link underline a link-colored button draws on hover.
 const TOGGLE_ON_CLASS =
@@ -266,7 +270,11 @@ const LikeButton = ({ likeCount, isLiked, onToggle }: LikeButtonProps) => {
     <Button
       aria-pressed={isLiked}
       // Its icon lines up with the body above, past the button's padding.
-      className={classNames('tw:-ml-3', isLiked && TOGGLE_ON_CLASS)}
+      className={classNames(
+        FOOTER_BUTTON_CLASS,
+        'tw:-ml-2',
+        isLiked && TOGGLE_ON_CLASS
+      )}
       color="tertiary"
       data-testid="activity-like"
       iconLeading={isLiked ? FilledThumbsUp : ThumbsUp}
@@ -574,7 +582,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                   {target.path ? (
                     <Link
                       // `!`: the Typography's prose styles color its links.
-                      className="tw:font-semibold tw:text-primary! tw:no-underline! tw:hover:text-brand-secondary!"
+                      className="tw:font-normal tw:text-brand-secondary! tw:no-underline! tw:hover:underline!"
                       data-testid="activity-entity-link"
                       to={target.path}>
                       {target.leaf}
@@ -594,14 +602,15 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
           {change ? (
             <ActivityChangePanel change={change} />
           ) : (
+            // A message reads on the recessed surface of a change's Before.
             <RichTextEditorPreviewerV1
-              className="inbox-feed-message tw:text-sm"
+              className="inbox-feed-message tw:rounded-lg tw:bg-secondary_subtle tw:px-3.5 tw:py-3 tw:text-sm"
               markdown={message}
             />
           )}
         </Box>
 
-        <Box align="center" className="inbox-feed-actions tw:ml-13 tw:gap-2">
+        <Box align="center" className="inbox-feed-actions tw:ml-13">
           <LikeButton
             isLiked={isLiked}
             likeCount={likes.length}
@@ -623,6 +632,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             onReactionSelect={handleReactionSelect}
           />
           <Button
+            className={FOOTER_BUTTON_CLASS}
             color="tertiary"
             data-testid="activity-reply"
             iconLeading={MessageDotsCircle}

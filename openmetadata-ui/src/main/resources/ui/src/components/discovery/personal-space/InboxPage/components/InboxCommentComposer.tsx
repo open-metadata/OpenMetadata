@@ -13,7 +13,13 @@
 
 import { Box, Button } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
-import React, { useCallback, useRef, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
@@ -25,6 +31,52 @@ import {
   MarkdownToHTMLConverter,
 } from '../../../../../utils/FeedUtilsPure';
 import './inbox-comment-composer.less';
+
+// quill-emoji opens its picker above the editor when the editor sits in the
+// lower half of the window, by this inline top.
+const EMOJI_PICKER_ABOVE_TOP = '-250px';
+
+/**
+ * quill-emoji drops its picker into the format bar with no horizontal
+ * position, so it lands at the composer's far edge. Anchor it to its button,
+ * above or below as the module chose, and mark the button open while it shows.
+ */
+const useEmojiPickerAnchor = (hostRef: RefObject<HTMLElement>) => {
+  useEffect(() => {
+    const toolbar = hostRef.current?.querySelector<HTMLElement>('.ql-toolbar');
+    if (!toolbar) {
+      return;
+    }
+    const sync = () => {
+      const button = toolbar.querySelector<HTMLElement>(
+        '.textarea-emoji-control'
+      );
+      const picker = toolbar.querySelector<HTMLElement>('#textarea-emoji');
+      button?.classList.toggle('ql-active', Boolean(picker));
+      button?.setAttribute('aria-expanded', String(Boolean(picker)));
+      if (button && picker) {
+        const isAbove = picker.style.top === EMOJI_PICKER_ABOVE_TOP;
+        // Kept inside the bar where the button sits near its far edge.
+        const left = Math.min(
+          button.offsetLeft,
+          toolbar.clientWidth - picker.offsetWidth
+        );
+        // `''` drops the module's inline top; quill-emoji's CSS pins `right`.
+        Object.assign(picker.style, {
+          left: `${Math.max(left, 0)}px`,
+          right: 'auto',
+          top: isAbove ? '' : '100%',
+          bottom: isAbove ? '100%' : '',
+        });
+      }
+    };
+    // The picker is added to, and removed from, the bar itself.
+    const observer = new MutationObserver(sync);
+    observer.observe(toolbar, { childList: true });
+
+    return () => observer.disconnect();
+  }, [hostRef]);
+};
 
 export interface InboxCommentComposerProps {
   // A rejected promise puts the draft back in the editor.
@@ -52,7 +104,9 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
   const { currentUser } = useApplicationStore();
   const placeholderText = placeHolder ?? t('message.leave-a-comment');
   const editorRef = useRef<EditorContentRef>(null);
+  const editorHostRef = useRef<HTMLDivElement>(null);
   const [hasText, setHasText] = useState(false);
+  useEmojiPickerAnchor(editorHostRef);
 
   // The editor reports its markdown on every change; whitespace alone is not a
   // comment, so it keeps the send button disabled.
@@ -102,6 +156,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
           copy through a CSS variable the scoped style reads. */}
       <div
         className="tw:min-w-0 tw:flex-1"
+        ref={editorHostRef}
         style={
           {
             '--inbox-composer-placeholder': JSON.stringify(placeholderText),
