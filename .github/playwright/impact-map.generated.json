@@ -2302,7 +2302,6 @@
         "playwright/e2e/Flow/ConditionalPermissions.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
         "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
-        "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
@@ -2380,6 +2379,7 @@
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/NavigationBlocker.spec.ts",
         "playwright/e2e/Features/PersonaOverviewCardWidgets.spec.ts",
+        "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts"
       ]
