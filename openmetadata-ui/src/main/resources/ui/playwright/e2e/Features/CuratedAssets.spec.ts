@@ -12,9 +12,8 @@
  */
 import { Page } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { expect, test as base } from '../../support/fixtures/base';
+import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
-import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
 import { redirectToHomePage } from '../../utils/common';
@@ -39,7 +38,6 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 
-const adminUser = new UserClass();
 const persona = new PersonaClass();
 let knowledgePage: Awaited<ReturnType<typeof createArticleViaApi>>;
 
@@ -64,32 +62,36 @@ const entityTypeToTestEntity: Record<string, () => NameableEntityResponse> = {
   Topic: () => EntityDataClass.topic1.entityResponseData,
 };
 
+// The worker's isolated admin (created, signed in once and deleted by the
+// fixture) owns this file's persona, so no other test's account is touched.
 const test = base.extend<{ page: Page }>({
-  page: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await adminUser.signIn(page);
-    await use(page);
-    await page.close();
+  page: async ({ isolatedUserPage }, use) => {
+    // The fixture page starts blank; land on the app as signIn() used to, so
+    // helpers that read the session from the page find the token.
+    await redirectToHomePage(isolatedUserPage);
+    await use(isolatedUserPage);
   },
 });
 
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
+test.use({ isolatedUserOptions: { isAdmin: true } });
+
+test.beforeAll(
+  'Setup pre-requests',
+  async ({ browser, isolatedUserSession }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    await persona.create(apiContext, [
+      isolatedUserSession.user.responseData.id,
+    ]);
+    knowledgePage = await createArticleViaApi(apiContext);
+
+    await afterAction();
+  }
+);
+
+test.afterAll('Cleanup', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
 
-  // Create admin user and persona
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await persona.create(apiContext, [adminUser.responseData.id]);
-  knowledgePage = await createArticleViaApi(apiContext);
-
-  await afterAction();
-});
-
-base.afterAll('Cleanup', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-
-  // Delete user and persona
-  await adminUser.delete(apiContext);
   await persona.delete(apiContext);
   await deleteArticleByFqn(apiContext, knowledgePage.fullyQualifiedName);
 

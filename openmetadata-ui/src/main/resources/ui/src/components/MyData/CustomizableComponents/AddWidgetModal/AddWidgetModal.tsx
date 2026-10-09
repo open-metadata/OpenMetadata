@@ -132,8 +132,8 @@ function AddWidgetModal({
   const visitedTabs = useVisitedTabs(activeTab);
 
   useEffect(() => {
-    fetchKnowledgePanels();
-  }, []);
+    void fetchKnowledgePanels();
+  }, [fetchKnowledgePanels]);
 
   const widgetsInfo = useMemo(() => {
     if (loading) {
@@ -178,7 +178,7 @@ function AddWidgetModal({
         ))}
       </Tabs>
     );
-  }, [loading, widgetsList, tabItems, activeTab, visitedTabs]);
+  }, [loading, widgetsList, tabItems, activeTab, visitedTabs, t]);
 
   return (
     <ModalOverlay

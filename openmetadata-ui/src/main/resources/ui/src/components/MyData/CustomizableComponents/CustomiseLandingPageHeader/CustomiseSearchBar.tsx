@@ -90,9 +90,10 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     [setSuggestionSearch]
   );
 
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
-    debouncedOnChange,
-  ]);
+  const debounceOnSearch = useMemo(
+    () => debounce(debouncedOnChange, 400),
+    [debouncedOnChange]
+  );
 
   const searchHandler = (value: string) => {
     if (!isTourOpen) {
@@ -128,14 +129,17 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     }
   };
 
-  const handleSearchChange = (value: string) => {
-    setSearchValue(value);
-    if (isTourOpen) {
-      updateTourSearch(value);
-    } else {
-      value ? setIsSearchBoxOpen(true) : setIsSearchBoxOpen(false);
-    }
-  };
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchValue(value);
+      if (isTourOpen) {
+        updateTourSearch(value);
+      } else {
+        setIsSearchBoxOpen(Boolean(value));
+      }
+    },
+    [isTourOpen, updateTourSearch]
+  );
 
   const popoverContent = useMemo(() => {
     if (!isSearchBoxOpen) {
@@ -198,7 +202,7 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     if (!isEmpty(currentUser)) {
       initNLP();
     }
-  }, [currentUser]);
+  }, [currentUser, initNLP]);
 
   const nlpLabel = isNLPActive
     ? t('message.natural-language-search-active')

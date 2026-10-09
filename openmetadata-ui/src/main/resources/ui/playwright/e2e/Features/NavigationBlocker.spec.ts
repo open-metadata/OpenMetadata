@@ -12,9 +12,8 @@
  */
 import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { expect, test as base } from '../../support/fixtures/base';
+import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
-import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
@@ -23,29 +22,31 @@ import {
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
 
-const adminUser = new UserClass();
 const persona = new PersonaClass();
 
-const test = base.extend<{ adminPage: Page; userPage: Page }>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.signIn(adminPage);
-    await use(adminPage);
-    await adminPage.close();
+// The worker's isolated admin (created, signed in once and deleted by the
+// fixture) owns this file's persona, so no other test's account is touched.
+const test = base.extend<{ adminPage: Page }>({
+  adminPage: async ({ isolatedUserPage }, use) => {
+    await use(isolatedUserPage);
   },
 });
 
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await persona.create(apiContext, [adminUser.responseData.id]);
-  await afterAction();
-});
+test.use({ isolatedUserOptions: { isAdmin: true } });
 
-base.afterAll('Cleanup', async ({ browser }) => {
+test.beforeAll(
+  'Setup pre-requests',
+  async ({ browser, isolatedUserSession }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    await persona.create(apiContext, [
+      isolatedUserSession.user.responseData.id,
+    ]);
+    await afterAction();
+  }
+);
+
+test.afterAll('Cleanup', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
   await persona.delete(apiContext);
   await afterAction();
 });
