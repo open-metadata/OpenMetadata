@@ -314,6 +314,7 @@ const CustomiseHomeModal = ({
           showCloseButton
           aria-label={title}
           data-testid="customise-home-modal"
+          dividers="scroll"
           panelClassName="customise-home-modal"
           width={1800}
           onClose={onClose}>
@@ -326,7 +327,8 @@ const CustomiseHomeModal = ({
               {title}
             </Typography>
           </Box>
-          <Box className="customise-home-modal-body tw:h-[70vh]" gap={1}>
+          {/* Fixed height: the sidebar and content columns scroll on their own. */}
+          <Dialog.Content className="customise-home-modal-body tw:h-[70vh] tw:max-h-none tw:flex-row tw:gap-1 tw:p-0 tw:sm:px-0">
             <div className="sidebar p-box tw:overflow-y-auto">
               {sidebarOptions}
             </div>
@@ -344,11 +346,8 @@ const CustomiseHomeModal = ({
                 selectedComponent
               )}
             </div>
-          </Box>
-          <Box
-            className="customise-home-modal-footer p-box tw:border-t tw:border-secondary"
-            gap={3}
-            justify="end">
+          </Dialog.Content>
+          <Dialog.Footer className="tw:mt-0">
             <Button
               color="secondary"
               data-testid="cancel-btn"
@@ -363,7 +362,7 @@ const CustomiseHomeModal = ({
               onPress={handleApply}>
               {t('label.apply')}
             </Button>
-          </Box>
+          </Dialog.Footer>
         </Dialog>
       </Modal>
     </ModalOverlay>

@@ -48,6 +48,7 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
           showCloseButton
           aria-label={title || t('message.unsaved-changes')}
           data-testid="unsaved-changes-modal"
+          dividers="scroll"
           width={400}
           onClose={onCancel}>
           <Box className="tw:p-6" direction="col" gap={4}>

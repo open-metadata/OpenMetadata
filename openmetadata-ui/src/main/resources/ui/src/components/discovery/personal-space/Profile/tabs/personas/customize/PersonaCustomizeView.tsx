@@ -16,6 +16,7 @@ import {
   Button,
   EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +28,7 @@ import { PageType } from '../../../../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { getDocumentByFQN } from '../../../../../../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../../../../../../rest/PersonaAPI';
+import { docStoreQueryKey } from '../../../../../../../rest/queries/docStoreQuery';
 import { getEntityName } from '../../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../../utils/ToastUtils';
 import Loader from '../../../../../../common/Loader/Loader';
@@ -47,6 +49,8 @@ interface PersonaCustomizeViewProps {
   category: string;
   onBack: () => void;
   onHeaderActionsChange?: (actions: React.ReactNode) => void;
+  /** Reports the editor's actions (incl. dirty state); `undefined` on unmount. */
+  onEditorActionsChange?: (actions?: CustomizeEditorActions) => void;
   onRename: (name: string) => void;
 }
 
@@ -64,10 +68,12 @@ const PersonaCustomizeView = ({
   category,
   onBack,
   onHeaderActionsChange,
+  onEditorActionsChange,
   onRename,
 }: PersonaCustomizeViewProps) => {
   const { t } = useTranslation();
   const { setDocument } = useCustomizeStore();
+  const queryClient = useQueryClient();
   const [persona, setPersona] = useState<Persona>();
   const [personaDocument, setPersonaDocument] = useState<Document | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -153,12 +159,18 @@ const PersonaCustomizeView = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personaFqn]);
 
+  // Runtime consumers (MyDataPage, useCustomPages, usePersonaDocument) read the
+  // doc-store query cache, so refresh it or they keep the pre-save layout.
   const handleDocumentSaved = useCallback(
     (saved: Document) => {
       setPersonaDocument(saved);
       setDocument(saved);
+      queryClient.setQueryData(
+        docStoreQueryKey(saved.fullyQualifiedName ?? ''),
+        saved
+      );
     },
-    [setDocument]
+    [queryClient, setDocument]
   );
 
   const handleActionsChange = useCallback(
@@ -169,6 +181,15 @@ const PersonaCustomizeView = ({
   useEffect(() => {
     onHeaderActionsChange?.(actions?.headerAction);
   }, [actions?.headerAction, onHeaderActionsChange]);
+
+  useEffect(() => {
+    onEditorActionsChange?.(actions);
+  }, [actions, onEditorActionsChange]);
+
+  useEffect(
+    () => () => onEditorActionsChange?.(undefined),
+    [onEditorActionsChange]
+  );
 
   const content = useMemo(() => {
     if (!persona || !personaDocument) {

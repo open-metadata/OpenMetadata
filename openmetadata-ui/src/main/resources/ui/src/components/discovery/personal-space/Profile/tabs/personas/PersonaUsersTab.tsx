@@ -41,7 +41,7 @@ import {
   getPersonaUserRefs,
   PersonaUserOption,
   usePersonaUsersField,
-} from './usePersonaUsersField';
+} from '../../../../../../hooks/usePersonaUsersField';
 
 type UserColumnId = 'name' | 'teams' | 'roles' | 'actions';
 type UserColumn = { id: UserColumnId; label: string; className?: string };

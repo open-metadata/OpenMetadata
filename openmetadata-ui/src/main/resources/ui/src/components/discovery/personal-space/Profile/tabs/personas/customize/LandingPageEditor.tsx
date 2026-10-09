@@ -60,10 +60,10 @@ const LandingPageEditor = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSaveLayout = useCallback(
-    async (newPage?: Page) => {
-      const pageToSave =
-        newPage ?? currentPage ?? ({ pageType: PageType.LandingPage } as Page);
+  // `undefined` is CustomizeMyData's reset signal: updatePersonaDocumentPage
+  // then drops the stored LandingPage so the default layout is persisted.
+  const persistLayout = useCallback(
+    async (pageToSave?: Page) => {
       setIsSaving(true);
       try {
         const saved = await savePersonaDocument(document, (draft) => {
@@ -92,7 +92,15 @@ const LandingPageEditor = ({
         setIsSaving(false);
       }
     },
-    [currentPage, document, setDocument, onDocumentSaved, t]
+    [document, setDocument, onDocumentSaved, t]
+  );
+
+  const handleSaveLayout = useCallback(
+    () =>
+      persistLayout(
+        currentPage ?? ({ pageType: PageType.LandingPage } as Page)
+      ),
+    [currentPage, persistLayout]
   );
 
   const backgroundColor = useMemo(
@@ -178,7 +186,7 @@ const LandingPageEditor = ({
         onSaveLayout={(p) => {
           setIsDirty(true);
 
-          return handleSaveLayout(p);
+          return persistLayout(p);
         }}
       />
     </div>

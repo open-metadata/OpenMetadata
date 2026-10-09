@@ -137,43 +137,47 @@ const CuratedAssetsForm = ({
           {title}
         </Typography>
       </Box>
-      <HookForm
-        className="tw:flex tw:max-h-[70vh] tw:flex-col tw:gap-4 tw:overflow-y-auto tw:px-6 tw:pt-5"
-        data-testid="curated-assets-form"
-        form={form}
-        id="curated-assets-form"
-        onSubmit={form.handleSubmit(handleSave)}>
-        <Controller
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <Input
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the title input when the modal opens
-              autoFocus
-              inputDataTestId="title-input"
-              label={t('label.title')}
-              name={field.name}
-              placeholder={t('message.curated-assets-widget-title-placeholder')}
-              value={field.value ?? ''}
-              onBlur={field.onBlur}
-              onChange={field.onChange}
-            />
-          )}
-        />
-        {/* The fields read the form through useFormContext. The core HookForm
+      <Dialog.Content className="tw:max-h-[70vh] tw:px-6">
+        <HookForm
+          className="tw:flex tw:flex-col tw:gap-4"
+          data-testid="curated-assets-form"
+          form={form}
+          id="curated-assets-form"
+          onSubmit={form.handleSubmit(handleSave)}>
+          <Controller
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the title input when the modal opens
+                autoFocus
+                inputDataTestId="title-input"
+                label={t('label.title')}
+                name={field.name}
+                placeholder={t(
+                  'message.curated-assets-widget-title-placeholder'
+                )}
+                value={field.value ?? ''}
+                onBlur={field.onBlur}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          {/* The fields read the form through useFormContext. The core HookForm
             provider comes from the core package's own react-hook-form copy at
             runtime, so provide the app's copy explicitly. */}
-        <FormProvider {...form}>
-          <SelectAssetTypeField
-            fetchEntityCount={fetchEntityCount}
-            selectedAssetsInfo={selectedAssetsInfo}
-          />
-          <AdvancedAssetsFilterField
-            fetchEntityCount={fetchEntityCount}
-            selectedAssetsInfo={selectedAssetsInfo}
-          />
-        </FormProvider>
-      </HookForm>
+          <FormProvider {...form}>
+            <SelectAssetTypeField
+              fetchEntityCount={fetchEntityCount}
+              selectedAssetsInfo={selectedAssetsInfo}
+            />
+            <AdvancedAssetsFilterField
+              fetchEntityCount={fetchEntityCount}
+              selectedAssetsInfo={selectedAssetsInfo}
+            />
+          </FormProvider>
+        </HookForm>
+      </Dialog.Content>
       <Dialog.Footer>
         <Button color="secondary" data-testid="cancelButton" onPress={onCancel}>
           {t('label.cancel')}
@@ -212,6 +216,7 @@ const CuratedAssetsModal = ({
           showCloseButton
           aria-label={title}
           data-testid="curated-assets-modal-container"
+          dividers="scroll"
           panelClassName="tw:[&>button]:text-primary_on-brand"
           width={700}
           onClose={onCancel}>

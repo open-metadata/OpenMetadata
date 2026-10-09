@@ -31,7 +31,9 @@ import {
   getCustomizePageOptions,
 } from '../../../../../../utils/Persona/PersonaUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
+import { UnsavedChangesModal } from '../../../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
+import type { CustomizeEditorActions } from './customize/customizeEditor.types';
 import PersonaAddForm from './PersonaAddForm';
 import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
 import PersonaDetail from './PersonaDetail';
@@ -59,6 +61,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { state: hashState, setHash, updateParams } = useSettingsHash();
   const closeSilent = usePersonalSpaceStore((state) => state.closeSilent);
+  const setExitGuard = usePersonalSpaceStore((state) => state.setExitGuard);
 
   const view = useMemo<PersonaView>(
     () => hashSubPathToView(hashState.subPath),
@@ -74,6 +77,58 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     },
     [setHash]
   );
+
+  const [editorActions, setEditorActions] = useState<CustomizeEditorActions>();
+  const [pendingExit, setPendingExit] = useState<() => void>();
+  const [isSavingBeforeExit, setIsSavingBeforeExit] = useState(false);
+  const isEditorDirty =
+    view.type === 'customize' && Boolean(editorActions?.canSave);
+
+  // Every way out of a dirty in-modal editor (breadcrumbs, Cancel, the modal's
+  // close button) goes through here so unsaved changes are never dropped silently.
+  const guardExit = useCallback(
+    (exit: () => void) => {
+      if (!isEditorDirty) {
+        return false;
+      }
+      setPendingExit(() => exit);
+
+      return true;
+    },
+    [isEditorDirty]
+  );
+
+  const navigateGuarded = useCallback(
+    (nextView: PersonaView) => {
+      const exit = () => onNavigate(nextView);
+      if (!guardExit(exit)) {
+        exit();
+      }
+    },
+    [guardExit, onNavigate]
+  );
+
+  useEffect(() => {
+    setExitGuard(isEditorDirty ? guardExit : null);
+
+    return () => setExitGuard(null);
+  }, [isEditorDirty, guardExit, setExitGuard]);
+
+  const handleDiscardExit = useCallback(() => {
+    const exit = pendingExit;
+    setPendingExit(undefined);
+    exit?.();
+  }, [pendingExit]);
+
+  const handleSaveExit = useCallback(async () => {
+    setIsSavingBeforeExit(true);
+    try {
+      await editorActions?.onSave();
+      handleDiscardExit();
+    } finally {
+      setIsSavingBeforeExit(false);
+    }
+  }, [editorActions, handleDiscardExit]);
 
   const onTabChange = useCallback(
     (tab: PersonaDetailTab) => updateParams({ tab }),
@@ -186,9 +241,9 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
 
     const onBreadcrumbAction = (id: Key) => {
       if (id === HASH_TAB) {
-        onNavigate({ type: 'landing' });
+        navigateGuarded({ type: 'landing' });
       } else if (id === 'detail' && viewFqn) {
-        onNavigate({ type: 'detail', fqn: viewFqn, name: resolvedName });
+        navigateGuarded({ type: 'detail', fqn: viewFqn, name: resolvedName });
       }
     };
 
@@ -296,6 +351,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     parentCategoryMeta,
     customizeIcon,
     onNavigate,
+    navigateGuarded,
     subCategory,
     isDetailLike,
   ]);
@@ -346,13 +402,23 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     }
 
     return (
-      <PersonaCustomizeView
-        category={cat}
-        personaFqn={fqn}
-        onBack={() => onNavigate({ type: 'detail', fqn, name })}
-        onHeaderActionsChange={setCustomizeActions}
-        onRename={setResolvedName}
-      />
+      <>
+        <PersonaCustomizeView
+          category={cat}
+          personaFqn={fqn}
+          onBack={() => navigateGuarded({ type: 'detail', fqn, name })}
+          onEditorActionsChange={setEditorActions}
+          onHeaderActionsChange={setCustomizeActions}
+          onRename={setResolvedName}
+        />
+        <UnsavedChangesModal
+          loading={isSavingBeforeExit}
+          open={Boolean(pendingExit)}
+          onCancel={() => setPendingExit(undefined)}
+          onDiscard={handleDiscardExit}
+          onSave={() => void handleSaveExit()}
+        />
+      </>
     );
   }
 

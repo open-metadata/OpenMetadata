@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { useEffect } from 'react';
 import { EntityType } from '../../../../../../../enums/entity.enum';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
@@ -19,6 +19,8 @@ import { Persona } from '../../../../../../../generated/entity/teams/persona';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { getDocumentByFQN } from '../../../../../../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../../../../../../rest/PersonaAPI';
+import { docStoreQueryKey } from '../../../../../../../rest/queries/docStoreQuery';
+import { renderWithQueryClient } from '../../../../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../../../../utils/ToastUtils';
 import { CustomizeEditorProps } from './customizeEditor.types';
 import PersonaCustomizeView from './PersonaCustomizeView';
@@ -58,6 +60,7 @@ const MockEditor = ({
   canSave = true,
   document,
   onActionsChange,
+  onDocumentSaved,
   testId,
 }: CustomizeEditorProps & { canSave?: boolean; testId: string }) => {
   useEffect(() => {
@@ -68,7 +71,15 @@ const MockEditor = ({
     });
   }, [canSave, onActionsChange]);
 
-  return <div data-testid={testId}>{document.fullyQualifiedName}</div>;
+  return (
+    <div data-testid={testId}>
+      {document.fullyQualifiedName}
+      <button
+        data-testid={`${testId}-saved`}
+        onClick={() => onDocumentSaved({ ...document, id: 'saved-doc-id' })}
+      />
+    </div>
+  );
 };
 
 jest.mock('./NavigationEditor', () => (props: CustomizeEditorProps) => (
@@ -105,7 +116,7 @@ const renderView = (category: string) => {
     personaFqn: 'dataSteward',
   };
 
-  render(
+  const { queryClient } = renderWithQueryClient(
     <PersonaCustomizeView
       category={props.category}
       personaFqn={props.personaFqn}
@@ -114,7 +125,7 @@ const renderView = (category: string) => {
     />
   );
 
-  return props;
+  return { ...props, queryClient };
 };
 
 describe('PersonaCustomizeView', () => {
@@ -255,6 +266,16 @@ describe('PersonaCustomizeView', () => {
       ).not.toBeInTheDocument();
     }
   );
+
+  it('refreshes the shared doc-store query cache when an editor saves', async () => {
+    const { queryClient } = renderView('navigation');
+
+    fireEvent.click(await screen.findByTestId('navigation-editor-saved'));
+
+    expect(
+      queryClient.getQueryData(docStoreQueryKey('persona.dataSteward'))
+    ).toEqual(expect.objectContaining({ id: 'saved-doc-id' }));
+  });
 
   it('renders the empty placeholder for an unknown category', async () => {
     renderView('unknown');

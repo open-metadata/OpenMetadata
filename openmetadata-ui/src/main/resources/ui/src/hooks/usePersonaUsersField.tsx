@@ -20,14 +20,14 @@ import {
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_MEDIUM } from '../../../../../../constants/constants';
-import { EntityType } from '../../../../../../enums/entity.enum';
-import { SearchIndex } from '../../../../../../enums/search.enum';
-import { EntityReference } from '../../../../../../generated/entity/type';
-import { searchQuery } from '../../../../../../rest/searchAPI';
-import { getRandomColor } from '../../../../../../utils/ColorUtils';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
+import { PAGE_SIZE_MEDIUM } from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { EntityReference } from '../generated/entity/type';
+import { searchQuery } from '../rest/searchAPI';
+import { getRandomColor } from '../utils/ColorUtils';
+import { getEntityName } from '../utils/EntityNameUtils';
+import { getTermQuery } from '../utils/SearchPureUtils';
 
 export interface PersonaUserOption extends FormSelectItem {
   value: EntityReference;

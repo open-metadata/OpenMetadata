@@ -37,7 +37,7 @@ import {
   getPersonaUserRefs,
   PersonaUserOption,
   usePersonaUsersField,
-} from './usePersonaUsersField';
+} from '../../../../../../hooks/usePersonaUsersField';
 
 interface FormValues {
   name: string;

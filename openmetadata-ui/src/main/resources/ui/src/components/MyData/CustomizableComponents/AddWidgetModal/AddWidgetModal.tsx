@@ -187,6 +187,7 @@ function AddWidgetModal({
       <Modal className="add-widget-modal">
         <Dialog
           data-testid="add-widget-modal"
+          dividers="scroll"
           title={t('label.add-new-entity', { entity: t('label.widget') })}
           width={750}
           onClose={handleCloseAddWidgetModal}>

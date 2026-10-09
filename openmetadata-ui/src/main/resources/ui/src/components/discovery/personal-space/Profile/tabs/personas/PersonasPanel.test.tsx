@@ -78,20 +78,39 @@ jest.mock('./PersonaDetail', () => ({
   ),
 }));
 
+const mockEditorSave = jest.fn();
+
 jest.mock('./customize/PersonaCustomizeView', () => ({
   __esModule: true,
   default: (props: {
     category: string;
     personaFqn: string;
     onBack: () => void;
+    onEditorActionsChange?: (actions: {
+      canSave: boolean;
+      onSave: () => void;
+      onReset: () => void;
+    }) => void;
   }) => (
-    <button
-      data-category={props.category}
-      data-fqn={props.personaFqn}
-      data-testid="persona-customize-view"
-      onClick={props.onBack}>
-      customize
-    </button>
+    <>
+      <button
+        data-category={props.category}
+        data-fqn={props.personaFqn}
+        data-testid="persona-customize-view"
+        onClick={props.onBack}>
+        customize
+      </button>
+      <button
+        data-testid="make-editor-dirty"
+        onClick={() =>
+          props.onEditorActionsChange?.({
+            canSave: true,
+            onSave: mockEditorSave,
+            onReset: jest.fn(),
+          })
+        }
+      />
+    </>
   ),
 }));
 
@@ -323,6 +342,59 @@ describe('PersonasPanel', () => {
       );
     }
   );
+
+  describe('unsaved in-modal customize changes', () => {
+    const openDirtyEditor = async () => {
+      renderAt('#personas/p1/customize/navigation');
+      fireEvent.click(await screen.findByTestId('make-editor-dirty'));
+    };
+
+    it('asks before a breadcrumb leaves and discards on confirm', async () => {
+      await openDirtyEditor();
+
+      fireEvent.click(screen.getByTestId('crumb-detail'));
+
+      expect(
+        await screen.findByTestId('unsaved-changes-modal')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('persona-customize-view')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('unsaved-changes-modal-discard'));
+
+      expect(await screen.findByTestId('persona-detail')).toBeInTheDocument();
+      expect(mockEditorSave).not.toHaveBeenCalled();
+    });
+
+    it('saves the editor before leaving when the user picks save', async () => {
+      await openDirtyEditor();
+
+      fireEvent.click(screen.getByTestId('persona-customize-view'));
+      fireEvent.click(await screen.findByTestId('unsaved-changes-modal-save'));
+
+      expect(await screen.findByTestId('persona-detail')).toBeInTheDocument();
+      expect(mockEditorSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('intercepts closing the modal through the exit guard', async () => {
+      await openDirtyEditor();
+      const close = jest.fn();
+
+      let intercepted = false;
+      act(() => {
+        intercepted =
+          usePersonalSpaceStore.getState().exitGuard?.(close) ?? false;
+      });
+
+      expect(intercepted).toBe(true);
+      expect(
+        await screen.findByTestId('unsaved-changes-modal')
+      ).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('unsaved-changes-modal-discard'));
+
+      expect(close).toHaveBeenCalledTimes(1);
+    });
+  });
 
   it('keeps the modal open for in-modal views', () => {
     renderAt('#personas/p1');

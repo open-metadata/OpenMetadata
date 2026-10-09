@@ -13,8 +13,8 @@
 
 import { FieldTypes } from '@openmetadata/ui-core-components';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { SearchIndex } from '../../../../../../enums/search.enum';
-import { searchQuery } from '../../../../../../rest/searchAPI';
+import { SearchIndex } from '../enums/search.enum';
+import { searchQuery } from '../rest/searchAPI';
 import {
   getPersonaUserRefs,
   PersonaUserOption,
@@ -28,7 +28,7 @@ jest.mock('react-i18next', () => {
   return { useTranslation: () => ({ t }) };
 });
 
-jest.mock('../../../../../../rest/searchAPI', () => ({
+jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 

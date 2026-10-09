@@ -161,6 +161,22 @@ describe('LandingPageEditor', () => {
     );
   });
 
+  it('removes the stored landing page when CustomizeMyData resets the layout', async () => {
+    (updateDocument as jest.Mock).mockResolvedValue({
+      ...existingDocument,
+      data: { pages: [], navigation: null },
+    });
+    renderEditor();
+
+    await act(
+      () => mockCustomizeMyDataProps?.onSaveLayout() ?? Promise.resolve()
+    );
+
+    expect(updateDocument).toHaveBeenCalledWith('doc-id', [
+      { op: 'remove', path: '/data/pages/0' },
+    ]);
+  });
+
   it('creates the document from the store page when saved from the footer', async () => {
     const draftDocument = { ...existingDocument, id: undefined } as Document;
     const saved = { ...existingDocument, id: 'new-id' } as Document;
