@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, SpaceProps } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { SpaceProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC } from 'react';
@@ -77,18 +78,23 @@ const AirflowMessageBanner: FC<AirflowMessageBannerProps> = ({
   }
 
   return (
-    <Space
+    <Box
+      inline
       align="center"
-      className={classNames('airflow-message-banner', className)}
+      className={`layout-space layout-space-horizontal ${classNames(
+        'airflow-message-banner',
+        className
+      )}`}
       data-testid="no-airflow-placeholder"
-      role="status"
-      size={16}>
+      gap={4}
+      itemClassName="layout-space-item"
+      role="status">
       <IconRetry className="align-middle" height={24} width={24} />
       <RichTextEditorPreviewerV1
         enableSeeMoreVariant={false}
         markdown={message ?? ''}
       />
-    </Space>
+    </Box>
   );
 };
 

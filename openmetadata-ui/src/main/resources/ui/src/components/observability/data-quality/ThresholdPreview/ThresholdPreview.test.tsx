@@ -219,18 +219,38 @@ describe('ThresholdPreview', () => {
     );
   });
 
-  it('says the unit is ignored when custom SQL is given a percentage', () => {
+  it('reads a custom SQL percentage as a share of the table rows', () => {
     renderPreview(definitionOf('tableCustomSQLQuery', [{ name: 'operator' }]), {
       operator: { id: '<=' },
       threshold: 10,
       thresholdUnit: { id: 'PERCENTAGE' },
     });
 
-    // The sentence states the raw-count reading that will actually run.
-    expect(sentence()).toBe('Pass when the query returns at most 10 row(s).');
+    expect(sentence()).toBe(
+      'Pass when the query returns at most 10% of table rows.'
+    );
     expect(
-      screen.getByTestId('threshold-unit-not-enforced-warning')
-    ).toHaveTextContent('the threshold unit is not applied');
+      screen.queryByTestId('threshold-unit-not-enforced-warning')
+    ).not.toBeInTheDocument();
+  });
+
+  it('reads a COUNT strategy percentage as a share of the table rows', () => {
+    renderPreview(
+      definitionOf('tableCustomSQLQuery', [
+        { name: 'operator' },
+        { name: 'strategy' },
+      ]),
+      {
+        operator: { id: '>' },
+        strategy: { id: 'COUNT' },
+        threshold: 1,
+        thresholdUnit: { id: 'PERCENTAGE' },
+      }
+    );
+
+    expect(sentence()).toBe(
+      'Pass when the number the query returns is more than 1% of table rows.'
+    );
   });
 
   it('warns that the in-set threshold needs Match enum, instead of promising one', () => {

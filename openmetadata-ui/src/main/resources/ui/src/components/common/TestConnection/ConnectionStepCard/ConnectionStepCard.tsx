@@ -13,8 +13,8 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Collapse, Space, Tooltip } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Collapse, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -175,8 +175,18 @@ const ConnectionStepCard = ({
           failure: isMandatoryStepsFailing,
           warning: isNonMandatoryStepsFailing,
         })}>
-        <Space className="w-full justify-between">
-          <Space>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-between"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <Typography className="text-body text-600 tw:text-primary">
               {testConnectionStep.mandatory
                 ? requiredField(testConnectionStep.name, true)
@@ -188,7 +198,7 @@ const ConnectionStepCard = ({
               title={testConnectionStep.description}>
               <InfoCircleOutlined />
             </Tooltip>
-          </Space>
+          </Box>
           <ConnectionStepStatusBadge
             isMandatoryStepsFailing={isMandatoryStepsFailing}
             isNonMandatoryStepsFailing={isNonMandatoryStepsFailing}
@@ -196,7 +206,7 @@ const ConnectionStepCard = ({
             isTestingConnection={isTestingConnection}
             success={success}
           />
-        </Space>
+        </Box>
       </div>
       {(isMandatoryStepsFailing ||
         isNonMandatoryStepsFailing ||

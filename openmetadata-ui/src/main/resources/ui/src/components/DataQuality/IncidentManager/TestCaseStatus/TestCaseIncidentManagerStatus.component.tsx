@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
-import { Space, Tooltip } from 'antd';
+import {
+  Box,
+  Typography as CoreTypography,
+} from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -105,9 +108,13 @@ const TestCaseIncidentManagerStatus = ({
           )}
         </div>
         <Tooltip placement="bottom" title={tooltipTitle}>
-          <Space
+          <Box
+            inline
             align="center"
-            data-testid={`${data.testCaseReference?.name}-status`}>
+            className="layout-space layout-space-horizontal"
+            data-testid={`${data.testCaseReference?.name}-status`}
+            gap={2}
+            itemClassName="layout-space-item">
             <AppBadge
               className={classNames(
                 'resolution',
@@ -115,7 +122,7 @@ const TestCaseIncidentManagerStatus = ({
               )}
               label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
             />
-          </Space>
+          </Box>
         </Tooltip>
 
         {isEditStatus && (
@@ -143,9 +150,13 @@ const TestCaseIncidentManagerStatus = ({
 
   return (
     <>
-      <Space
+      <Box
+        inline
         align="center"
-        data-testid={`${data.testCaseReference?.name}-status`}>
+        className="layout-space layout-space-horizontal"
+        data-testid={`${data.testCaseReference?.name}-status`}
+        gap={2}
+        itemClassName="layout-space-item">
         <Tooltip placement="bottom" title={tooltipTitle}>
           <AppBadge
             className={classNames('resolution', statusType.toLocaleLowerCase())}
@@ -166,7 +177,7 @@ const TestCaseIncidentManagerStatus = ({
             onClick={onEditStatus}
           />
         )}
-      </Space>
+      </Box>
 
       {isEditStatus && (
         <TestCaseStatusModal

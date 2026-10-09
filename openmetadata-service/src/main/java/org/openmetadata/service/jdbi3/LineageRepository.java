@@ -245,15 +245,9 @@ public class LineageRepository {
     boolean relationAlreadyExists = priorDetails != null;
 
     if (lineageDetails.getPipeline() != null) {
-      // Validate pipeline entity
-      EntityReference pipeline =
-          Entity.getEntityReferenceById(
-              lineageDetails.getPipeline().getType(),
-              lineageDetails.getPipeline().getId(),
-              Include.NON_DELETED);
-
-      // Add pipeline entity details to lineage details
-      lineageDetails.withPipeline(pipeline);
+      EntityReference storedPipeline = priorDetails == null ? null : priorDetails.getPipeline();
+      lineageDetails.withPipeline(
+          resolveEdgePipeline(lineageDetails.getPipeline(), storedPipeline));
     }
 
     applyTemporalFields(lineageDetails, priorDetails, updatedBy, System.currentTimeMillis());
@@ -749,6 +743,33 @@ public class LineageRepository {
         "fqnHash",
         FullyQualifiedName.buildHash((String) pipelineMap.get(Entity.FIELD_FULLY_QUALIFIED_NAME)));
     return Pair.of(pipelineRef.getType(), pipelineMap);
+  }
+
+  /**
+   * Resolves the pipeline a lineage write carries. Ingestion copies an edge's stored pipeline onto
+   * writes that carry none, so a pipeline the edge already references is kept even if it was deleted
+   * after the edge was written, and dropped once it no longer exists. Only a pipeline newly linked to
+   * the edge must exist and not be deleted.
+   */
+  private static EntityReference resolveEdgePipeline(
+      EntityReference requested, EntityReference stored) {
+    boolean isAlreadyOnEdge = stored != null && Objects.equals(stored.getId(), requested.getId());
+    return isAlreadyOnEdge
+        ? findPipelineIncludingDeleted(requested)
+        : Entity.getEntityReferenceById(
+            requested.getType(), requested.getId(), Include.NON_DELETED);
+  }
+
+  private static EntityReference findPipelineIncludingDeleted(EntityReference pipelineRef) {
+    try {
+      return Entity.getEntityReferenceById(pipelineRef.getType(), pipelineRef.getId(), Include.ALL);
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Dropping pipeline {} from lineage edge, it no longer exists: {}",
+          pipelineRef.getId(),
+          e.getMessage());
+      return null;
+    }
   }
 
   String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details) {
@@ -1686,13 +1707,7 @@ public class LineageRepository {
       LineageDetails original = JsonUtils.readValue(json, LineageDetails.class);
       LineageDetails updated = JsonUtils.applyPatch(original, patch, LineageDetails.class);
       if (updated.getPipeline() != null) {
-        // Validate pipeline entity
-        EntityReference pipeline =
-            Entity.getEntityReferenceById(
-                updated.getPipeline().getType(),
-                updated.getPipeline().getId(),
-                Include.NON_DELETED);
-        updated.withPipeline(pipeline);
+        updated.withPipeline(resolveEdgePipeline(updated.getPipeline(), original.getPipeline()));
       }
 
       // Update the lineage details with user and time

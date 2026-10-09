@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Select, Space } from 'antd';
+import { Box, Grid } from '@openmetadata/ui-core-components';
+import { Button, Form, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { useState } from 'react';
 import { DomainType } from '../../../generated/api/domains/createDomain';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { DomainTypeSelectFormProps } from './DomainTypeSelectForm.interface';
 
 const DomainTypeSelectForm = ({
@@ -38,9 +40,18 @@ const DomainTypeSelectForm = ({
         setIsSubmitLoading(true);
         onSubmit(data.domainType);
       }}>
-      <Row gutter={[0, 8]}>
-        <Col className="gutter-row d-flex justify-end" span={24}>
-          <Space align="center">
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 8) }}>
+        <Grid.Item
+          className="layout-column gutter-row d-flex justify-end"
+          span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <Button
               className="p-x-05"
               data-testid="cancelAssociatedTag"
@@ -58,10 +69,10 @@ const DomainTypeSelectForm = ({
               size="small"
               type="primary"
             />
-          </Space>
-        </Col>
+          </Box>
+        </Grid.Item>
 
-        <Col className="gutter-row" span={24}>
+        <Grid.Item className="layout-column gutter-row" span={24}>
           <Form.Item noStyle name="domainType">
             <Select
               className="w-full"
@@ -69,8 +80,8 @@ const DomainTypeSelectForm = ({
               options={domainTypeArray}
             />
           </Form.Item>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </Form>
   );
 };

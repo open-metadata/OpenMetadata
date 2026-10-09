@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """Harness-integrity checks — keep the agent-facing config from silently decaying.
 
-Eight checks, all emitting GitHub Actions **warning** annotations (never failing) unless
+Nine checks, all emitting GitHub Actions **warning** annotations (never failing) unless
 run with ``--strict``:
 
   1. dead-reference       — a path / make target / yarn script / maven goal named in the
                             agent docs or a SKILL.md that no longer resolves
-  2. agents-sync          — AGENTS.md drifting from CLAUDE.md's corrected stack facts
-  3. skill-symlinks       — a real file where a symlink into skills/ is expected, or two
-                            SKILL.md sharing a name with different content
-  4. doc-size             — CLAUDE.md > 200 lines, ARCHITECTURE.md > 300, a rule file > 100
+  2. agents-sync          — a CLAUDE.md (or another harness's file) that is not a symlink to
+                            the AGENTS.md beside it, a .claude/rules/ file AGENTS.md never
+                            names, or a root-to-leaf chain of AGENTS.md past what Codex reads
+  3. skill-symlinks       — a real file where a symlink into skills/ is expected, a skill
+                            missing from .claude/skills or .agents/skills, or two SKILL.md
+                            sharing a name with different content
+  4. doc-size             — AGENTS.md > 200 lines, ARCHITECTURE.md > 300, a rule file > 100
   5. rule-globs           — a .claude/rules/ paths: glob that matches zero files
   6. generated-fresh      — docs/generated/** out of date with its source
   7. baseline-freshness   — timing-baseline.json still lists an entire Playwright spec
@@ -19,6 +22,9 @@ run with ``--strict``:
   8. java-impact-map      — an integration test no bucket of .github/java-tests/impact-map.json
                             reaches (so `make java_affected` never runs it before a PR), a
                             bucket pattern matching nothing, or an engine the IT pom lacks
+  9. decision-records     — a docs/decisions/ record breaking the format, or an ADR citation
+                            anywhere in the tree that resolves to no record (the same check
+                            fails standalone and as a pre-commit hook)
 
 Run locally with ``make harness-check`` or ``python3 scripts/harness/check_harness.py``.
 Stdlib only; deterministic; safe to run anywhere in the tree.
@@ -34,9 +40,17 @@ import sys
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", ".."))
 
-# Files whose code-span references are dead-ref checked (check 1).
-REF_DOCS = ["CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md", "docs/index.md", "docs/design-patterns.md"]
+# Files whose code-span references are dead-ref checked (check 1). CLAUDE.md is a symlink to
+# AGENTS.md, so listing it too would report every dead reference twice.
+REF_DOCS = ["AGENTS.md", "ARCHITECTURE.md", "docs/index.md", "docs/design-patterns.md"]
 RULES_DIR = ".claude/rules"
+
+# Codex's default project_doc_max_bytes: one budget for every AGENTS.md from the repository root
+# down to the working directory. Past it Codex truncates, and says so only in its own log.
+CODEX_DEFAULT_BUDGET = 32768
+# Another harness's instruction file is allowed only as a symlink to an AGENTS.md.
+OTHER_INSTRUCTION_FILES = {"GEMINI.md", ".cursorrules", ".windsurfrules", ".clinerules",
+                           "copilot-instructions.md"}
 
 # Path prefixes that legitimately do not exist in a fresh checkout (gitignored /
 # build output). References under these are skipped by the dead-ref path check.
@@ -342,15 +356,61 @@ def check_dead_references():
 # ------------------------------------------------------------------------- check 2
 
 
+def tracked_files():
+    out = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True, text=True)
+    return out.stdout.splitlines() if out.returncode == 0 else []
+
+
+def codex_budget():
+    if not os.path.isfile(rp(".codex", "config.toml")):
+        return CODEX_DEFAULT_BUDGET
+    match = re.search(r"^\s*project_doc_max_bytes\s*=\s*(\d+)", read(".codex/config.toml"), re.M)
+    return int(match.group(1)) if match else CODEX_DEFAULT_BUDGET
+
+
 def check_agents_sync():
-    """AGENTS.md must be a symlink to CLAUDE.md, so the two can never drift."""
+    """AGENTS.md is the one instruction file; everything else a harness reads is a link to it
+    (ADR:2026-10-09-agents-md-is-the-one-instruction-file)."""
     warnings = []
-    agents = rp("AGENTS.md")
-    if not os.path.lexists(agents):
-        return warnings
-    if not os.path.islink(agents) or os.path.realpath(agents) != os.path.realpath(rp("CLAUDE.md")):
-        warnings.append(Warn("agents-sync", "AGENTS.md", 1,
-                             "AGENTS.md should be a symlink to CLAUDE.md - run: ln -sf CLAUDE.md AGENTS.md"))
+    # skills/vendor/** ships upstream AGENTS.md files as skill payload, not directory instructions.
+    tracked = [f for f in tracked_files() if not f.startswith("skills/vendor/")]
+    agents = {os.path.dirname(f) for f in tracked if os.path.basename(f) == "AGENTS.md"}
+    claudes = {os.path.dirname(f) for f in tracked if os.path.basename(f) == "CLAUDE.md"}
+
+    for d in sorted(agents | claudes):
+        claude, agent = os.path.join(d, "CLAUDE.md"), os.path.join(d, "AGENTS.md")
+        if d not in agents:
+            warnings.append(Warn("agents-sync", claude, 1,
+                                 f"no AGENTS.md beside it - run: git mv {claude} {agent} && "
+                                 f"ln -s AGENTS.md {claude}"))
+        elif not os.path.islink(rp(claude)) or os.readlink(rp(claude)) != "AGENTS.md":
+            warnings.append(Warn("agents-sync", claude, 1,
+                                 f"should be a symlink to the AGENTS.md beside it - run: "
+                                 f"ln -sf AGENTS.md {claude}"))
+
+    for f in tracked:
+        if os.path.basename(f) in OTHER_INSTRUCTION_FILES or "/.cursor/rules/" in f"/{f}":
+            if not (os.path.islink(rp(f)) and os.path.basename(os.path.realpath(rp(f))) == "AGENTS.md"):
+                warnings.append(Warn("agents-sync", f, 1,
+                                     "a second instruction file - fold it into AGENTS.md, or make "
+                                     "it a symlink to AGENTS.md"))
+
+    index = read("AGENTS.md") if os.path.isfile(rp("AGENTS.md")) else ""
+    if os.path.isdir(rp(RULES_DIR)):
+        for name in sorted(os.listdir(rp(RULES_DIR))):
+            if name.endswith(".md") and f"`{name}`" not in index and f"{RULES_DIR}/{name}" not in index:
+                warnings.append(Warn("agents-sync", f"{RULES_DIR}/{name}", 1,
+                                     "not named in AGENTS.md's rule index - a harness that does not "
+                                     "auto-load .claude/rules never finds it"))
+
+    budget = codex_budget()
+    for d in sorted(agents):
+        chain = [a for a in agents if a in ("", d) or d.startswith(a + "/")]
+        total = sum(os.path.getsize(rp(a, "AGENTS.md")) for a in chain)
+        if total > budget:
+            warnings.append(Warn("agents-sync", os.path.join(d, "AGENTS.md"), 1,
+                                 f"the AGENTS.md files from the root to here total {total} bytes; "
+                                 f"Codex reads {budget} and silently drops the rest"))
     return warnings
 
 
@@ -385,6 +445,26 @@ def check_skill_symlinks():
                 if content != canonical[name]:
                     warnings.append(Warn("skill-symlinks", rel, 1,
                                          f"SKILL.md content diverges from skills/{name}/SKILL.md"))
+
+    # Claude Code discovers skills only under .claude/skills, Codex only under .agents/skills, so
+    # every skill needs both entries. An entry without a SKILL.md (skills/agents holds subagent
+    # definitions) is not a skill.
+    harnesses = {".claude/skills": "Claude Code", ".agents/skills": "Codex"}
+    names = {n for m in harnesses if os.path.isdir(rp(m)) for n in os.listdir(rp(m))
+             if os.path.isfile(rp(m, n, "SKILL.md"))}
+    for name in sorted(names):
+        claude, codex = rp(".claude/skills", name), rp(".agents/skills", name)
+        for mirror, path, other_mirror, other in ((".claude/skills", claude, ".agents/skills", codex),
+                                                  (".agents/skills", codex, ".claude/skills", claude)):
+            if not os.path.lexists(path):
+                link = os.readlink(other) if os.path.islink(other) else f"../../{other_mirror}/{name}"
+                warnings.append(Warn("skill-symlinks", f"{mirror}/{name}", 1,
+                                     f"missing, so {harnesses[mirror]} never sees the skill - "
+                                     f"run: ln -s {link} {mirror}/{name}"))
+        if os.path.lexists(claude) and os.path.lexists(codex) and \
+                os.path.realpath(claude) != os.path.realpath(codex):
+            warnings.append(Warn("skill-symlinks", f".agents/skills/{name}", 1,
+                                 f"resolves elsewhere than .claude/skills/{name}"))
     return warnings
 
 
@@ -393,7 +473,7 @@ def check_skill_symlinks():
 
 def check_doc_size():
     warnings = []
-    budgets = {"CLAUDE.md": 200, "ARCHITECTURE.md": 300}
+    budgets = {"AGENTS.md": 200, "ARCHITECTURE.md": 300}
     for path, limit in budgets.items():
         if os.path.exists(rp(path)):
             n = len(read_lines(path))
@@ -551,6 +631,19 @@ def check_java_impact_map():
     return [Warn("java-impact-map", JAVA_IMPACT_MAP, 1, problem) for problem in problems]
 
 
+# ------------------------------------------------------------------------- check 9
+
+DECISION_RECORDS = "scripts/harness/check_decision_records.py"
+
+
+def check_decision_records():
+    spec = importlib.util.spec_from_file_location("check_decision_records", rp(DECISION_RECORDS))
+    guard = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(guard)
+    return [Warn("decision-records", file, line, message)
+            for file, line, message in guard.check(pathlib.Path(REPO))]
+
+
 # ------------------------------------------------------------------------------ main
 
 
@@ -563,6 +656,7 @@ CHECKS = [
     check_generated_fresh,
     check_baseline_freshness,
     check_java_impact_map,
+    check_decision_records,
 ]
 
 

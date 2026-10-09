@@ -12,8 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,8 +42,19 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
 
   return (
     <div className={classNames('feed-panel-header', className)}>
-      <Space className="w-full justify-between">
-        <Space direction="vertical" size={0}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-between"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Box
+          inline
+          align="stretch"
+          className="layout-space"
+          direction="col"
+          gap={0}
+          itemClassName="layout-space-item">
           <Typography className="font-semibold text-md">
             {`#${getTaskDisplayId(task.taskId)} `}
             {t(taskTypeLabel)}
@@ -53,8 +64,13 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
               {getEntityName(task.about)}
             </Typography>
           )}
-        </Space>
-        <Space>
+        </Box>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           <Typography
             className={classNames('task-status-badge', {
               open: isOpen,
@@ -71,8 +87,8 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
               onClick={onCancel}
             />
           )}
-        </Space>
-      </Space>
+        </Box>
+      </Box>
     </div>
   );
 };

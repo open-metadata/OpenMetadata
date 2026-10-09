@@ -171,10 +171,10 @@ test.describe(
         // Verify rule description
         await expect(
           page
-            .locator(
-              '[data-testid="viewer-container"] > [data-testid="markdown-parser"]'
-            )
-            .nth(1)
+            .getByTestId('rule-card')
+            .filter({ has: page.getByText(RULE_NAME, { exact: true }) })
+            .getByTestId('description')
+            .getByTestId('markdown-parser')
         ).toContainText(RULE_DESCRIPTION);
 
         // Verify other details

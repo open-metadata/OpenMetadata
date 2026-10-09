@@ -25,17 +25,8 @@
  */
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Card,
-  Checkbox,
-  Empty,
-  Form,
-  Input,
-  Select,
-  Space,
-} from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Checkbox, Empty, Form, Input, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
@@ -287,7 +278,12 @@ const TaskFormBuilderSection = ({
                       />
                     </Form.Item>
 
-                    <Space size="large">
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={6}
+                      itemClassName="layout-space-item">
                       <Checkbox
                         checked={field.required}
                         data-testid={`${testIdPrefix}-field-required-${index}`}
@@ -310,7 +306,7 @@ const TaskFormBuilderSection = ({
                         }>
                         {t('label.hidden')}
                       </Checkbox>
-                    </Space>
+                    </Box>
                   </div>
                 </Card>
               );
