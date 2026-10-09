@@ -126,6 +126,21 @@ describe('InlineAlert', () => {
     expect(container.querySelector(`.${customClass}`)).toBeInTheDocument();
   });
 
+  it('clears the latest error on unmount after a second failed submit', async () => {
+    useApplicationStore.setState({ inlineAlertDetails: mockProps });
+    const { unmount } = render(<StoredAlert />);
+    act(() => {
+      useApplicationStore.setState({
+        inlineAlertDetails: { ...mockProps, description: 'Second error' },
+      });
+    });
+    unmount();
+
+    await waitFor(() => {
+      expect(useApplicationStore.getState().inlineAlertDetails).toBeUndefined();
+    });
+  });
+
   it('should clear inlineAlertDetails on unmount', async () => {
     useApplicationStore.setState({ inlineAlertDetails: mockProps });
     const { unmount } = render(<StoredAlert />);

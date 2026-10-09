@@ -40,7 +40,9 @@ function InlineAlert({
   const { inlineAlertDetails, setInlineAlertDetails } = useApplicationStore();
   const [showMore, setShowMore] = useState(false);
   const mounted = useRef(false);
-  const initialAlert = useRef(inlineAlertDetails);
+  // Latest alert this form showed; a later failed submit replaces the first one.
+  const ownedAlert = useRef(inlineAlertDetails);
+  ownedAlert.current = inlineAlertDetails ?? ownedAlert.current;
 
   const { alertContainerClass, alertIconClass } = useMemo(
     () => ({
@@ -87,17 +89,17 @@ function InlineAlert({
 
   useEffect(() => {
     mounted.current = true;
-    const ownedAlert = initialAlert.current;
 
     return () => {
       mounted.current = false;
       // Strict Mode replays effect cleanup before remounting. Defer the clear
       // so that replay keeps the error visible, and preserve a newer form's alert.
       queueMicrotask(() => {
+        const alert = ownedAlert.current;
         if (
           !mounted.current &&
-          !isUndefined(ownedAlert) &&
-          useApplicationStore.getState().inlineAlertDetails === ownedAlert
+          !isUndefined(alert) &&
+          useApplicationStore.getState().inlineAlertDetails === alert
         ) {
           setInlineAlertDetails(undefined);
         }
