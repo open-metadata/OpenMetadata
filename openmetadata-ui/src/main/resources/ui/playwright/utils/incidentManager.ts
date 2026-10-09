@@ -189,17 +189,25 @@ export const addAssigneeFromPopoverWidget = async (data: {
 
     const assigneeModal = page.locator('.ant-modal-content').last();
     const assigneeSelect = assigneeModal.getByTestId('select-assignee');
-    const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
-    const assigneeInput = assigneeSelect.locator('input').last();
+    const assigneeInput = assigneeSelect.locator('input');
     const assigneeOption = page.getByTestId(user.name).first();
     const normalizedAssigneeOption = page
       .getByTestId(user.name.toLowerCase())
       .first();
 
     await expect(assigneeModal).toBeVisible();
-    await expect(assigneeSelector).toBeVisible();
 
-    await assigneeSelector.click();
+    // Single-select core Autocomplete hides its input while an item is selected.
+    const selectedAssignee = assigneeSelect.getByTestId(
+      'autocomplete-selected-item'
+    );
+    if (await selectedAssignee.isVisible()) {
+      await selectedAssignee.getByRole('button').click();
+    }
+
+    await expect(assigneeInput).toBeVisible();
+
+    await assigneeInput.click();
     await assigneeInput.fill(user.displayName);
 
     if (await assigneeOption.isVisible().catch(() => false)) {
