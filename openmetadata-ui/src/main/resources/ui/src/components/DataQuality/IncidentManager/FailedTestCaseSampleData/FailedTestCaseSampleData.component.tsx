@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import { Box, Table, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -251,8 +251,19 @@ const FailedTestCaseSampleData = ({
 
   return (
     <div className="w-full">
-      <Space className="m-b-md justify-between w-full">
-        <Typography className="right-panel-label" size="text-sm">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-b-md justify-between w-full"
+        gap={2}
+        itemClassName="layout-space-item">
+        {/* not-prose: Typography wraps a heading in .prose, whose h2 style
+            (24px, margins) would otherwise outrank the size classes. */}
+        <Typography
+          as="h2"
+          className="not-prose tw:m-0 tw:text-primary"
+          size="text-md"
+          weight="bold">
           {t('label.sample-data')}
         </Typography>
         <div className="d-flex gap-4">
@@ -279,7 +290,7 @@ const FailedTestCaseSampleData = ({
             />
           )}
         </div>
-      </Space>
+      </Box>
       <div className="tw:overflow-x-auto tw:border tw:border-border-secondary tw:rounded-[10px]">
         <Table
           aria-label={t('label.sample-data')}

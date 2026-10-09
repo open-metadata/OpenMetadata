@@ -20,6 +20,7 @@ from datetime import datetime
 from functools import partial
 from itertools import product
 
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
@@ -90,7 +91,6 @@ from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_database_name_for_lineage
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
@@ -259,13 +259,16 @@ class TableaupipelineSource(PipelineServiceSource):
         the `includeTags` source config."""
         if not self.source_config.includeTags or not pipeline_details.tags:
             return
-        yield from get_ometa_tag_and_classification(
-            tags=list(pipeline_details.tags),
-            classification_name=TABLEAU_TAG_CLASSIFICATION,
-            tag_description="Tableau Tag",
-            classification_description="Tags associated with Tableau Prep flows",
-            include_tags=True,
-        )
+        for tag_name in pipeline_details.tags:
+            yield from self.register_tag(
+                entity_fqn=self.get_pipeline_fqn(pipeline_details),
+                definition=TagDefinition(
+                    classification_name=TABLEAU_TAG_CLASSIFICATION,
+                    tag_name=tag_name,
+                    tag_description="Tableau Tag",
+                    classification_description="Tags associated with Tableau Prep flows",
+                ),
+            )
 
     def get_owners(self, pipeline_details: TableauPipelineDetails) -> EntityReferenceList | None:
         """Resolve the Tableau owner of the flow, data source or workbook to an
@@ -285,15 +288,7 @@ class TableaupipelineSource(PipelineServiceSource):
     def _tag_labels_for_pipeline(self, pipeline_details: TableauPipelineDetails) -> list[TagLabel]:
         if not self.source_config.includeTags or not pipeline_details.tags:
             return []
-        return (
-            get_tag_labels(
-                metadata=self.metadata,
-                tags=list(pipeline_details.tags),
-                classification_name=TABLEAU_TAG_CLASSIFICATION,
-                include_tags=True,
-            )
-            or []
-        )
+        return self.get_tag_by_fqn(self.get_pipeline_fqn(pipeline_details)) or []
 
     def _get_tasks(self, pipeline_details: TableauPipelineDetails) -> list[Task]:
         """See _build_tasks — cached so yield_pipeline_status annotates the same

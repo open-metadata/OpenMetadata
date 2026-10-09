@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   BadgeWithDot,
   Box,
+  Button,
   Card,
+  ProgressBarBase,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, maxBy } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
   TestCase,
@@ -50,13 +53,14 @@ interface RunDetailsCardProps {
 
 const RunDuration = ({
   duration,
-  errorType,
+  errorDetails,
 }: {
-  duration: number;
-  errorType?: string;
+  duration?: number;
+  errorDetails?: TestCaseErrorDetails;
 }) => {
   const { t } = useTranslation();
-  const text = formatRunDuration(duration);
+  // The slot stays for a run with no duration yet, a queued one, as in the mock.
+  const text = isUndefined(duration) ? NO_VALUE : formatRunDuration(duration);
 
   return (
     <Box
@@ -66,7 +70,7 @@ const RunDuration = ({
       gap={1}>
       <Clock aria-hidden className="tw:size-3.5" />
       <Typography size="text-xs">
-        {isTimeoutError(errorType)
+        {isTimeoutError(errorDetails?.errorType, errorDetails?.message)
           ? t('label.duration-with-timeout', { duration: text })
           : text}
       </Typography>
@@ -74,12 +78,17 @@ const RunDuration = ({
   );
 };
 
+const quietWhenUnknown = (text: string, className: string) =>
+  text === NO_VALUE ? 'tw:text-quaternary' : className;
+
 const ComparisonBars = ({
   bars,
   barClassName,
+  valueClassName,
 }: {
   bars: ComparisonBar[];
   barClassName: string;
+  valueClassName: string;
 }) => {
   const { t } = useTranslation();
 
@@ -96,23 +105,29 @@ const ComparisonBars = ({
               {t(`label.${kind}`)}
             </Typography>
             <Typography
-              className="tw:font-mono tw:text-secondary"
+              className={classNames(
+                'tw:font-mono',
+                kind === 'found' ? valueClassName : 'tw:text-secondary'
+              )}
+              data-testid={`run-details-${kind}-value`}
               size="text-xs">
               {value.toLocaleString()}
             </Typography>
           </Box>
           {/* Decorative: the numbers are already stated in text. */}
-          <div
+          <Box
             aria-hidden
-            className="tw:h-2.5 tw:overflow-hidden tw:rounded-full tw:bg-quaternary">
-            <div
-              className={classNames(
-                'tw:h-full tw:rounded-full',
+            data-testid={`run-details-${kind}-bar`}
+            direction="col">
+            <ProgressBarBase
+              className="tw:h-2.5 tw:rounded-full"
+              progressClassName={classNames(
+                'tw:rounded-full',
                 kind === 'found' ? barClassName : 'tw:bg-fg-quaternary'
               )}
-              style={{ width: `${width}%` }}
+              value={width}
             />
-          </div>
+          </Box>
         </Box>
       ))}
     </Box>
@@ -154,7 +169,14 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
   const selectedRunTimestamp = useTestCaseStore(
     (state) => state.selectedRunTimestamp
   );
+  const setSelectedRunTimestamp = useTestCaseStore(
+    (state) => state.setSelectedRunTimestamp
+  );
   const result = getSelectedRun(results, selectedRunTimestamp);
+  // A run picked on the chart that is not the newest says so, with the way back.
+  const isOlderRunSelected =
+    !isUndefined(result) &&
+    result.timestamp !== maxBy(results, 'timestamp')?.timestamp;
   const status = result?.testCaseStatus;
 
   if (!result || !status) {
@@ -170,18 +192,19 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
     result
   );
   const valueClassName = (text: string) =>
-    text === NO_VALUE ? 'tw:text-quaternary' : style.valueClassName;
+    quietWhenUnknown(text, style.valueClassName);
 
   const details = [
     {
       // A camel-case name may break anywhere; numbers below only between words.
       className: 'tw:break-words tw:font-medium tw:text-primary',
-      labelKey: 'label.test-definition',
+      weight: 'medium' as const,
+      labelKey: 'label.test-definition-sentence',
       testId: 'run-details-definition',
       value: testCase.testDefinition?.name ?? NO_VALUE,
     },
     {
-      className: 'tw:text-primary',
+      className: quietWhenUnknown(expectedText, 'tw:text-primary'),
       labelKey: 'label.expected',
       testId: 'run-details-expected',
       value: expectedText,
@@ -209,7 +232,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
       data-testid="run-details-card">
       <Box
         align="center"
-        className="tw:border-b tw:border-inherit tw:px-4 tw:py-3"
+        className="tw:border-b tw:border-inherit tw:px-4 tw:py-4"
         gap={3}
         wrap="wrap">
         {/* White on the tinted header, as in the mock; text, border and dot keep the status colour. */}
@@ -229,22 +252,41 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           weight="semibold">
           {t('label.run-details')}
         </Typography>
-        <Typography className="tw:text-tertiary" size="text-sm">
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="run-details-date"
+          size="text-sm">
           {formatDateTime(result.timestamp)}
         </Typography>
-        {!isUndefined(duration) && (
-          <RunDuration
-            duration={duration}
-            errorType={errorDetails?.errorType}
-          />
+        {isOlderRunSelected && (
+          <Box align="center" gap={2}>
+            <Badge
+              color="gray"
+              data-testid="run-details-selected"
+              size="sm"
+              type="pill-color">
+              {t('label.selected-run')}
+            </Badge>
+            <Button
+              color="link-color"
+              data-testid="run-details-back-to-latest"
+              size="sm"
+              onPress={() => setSelectedRunTimestamp(undefined)}>
+              {t('label.back-to-latest')}
+            </Button>
+          </Box>
         )}
+        <RunDuration duration={duration} errorDetails={errorDetails} />
       </Box>
       <Box
         className="tw:@container tw:bg-surface tw:p-4"
         direction="col"
         gap={4}>
-        <div className="tw:grid tw:grid-cols-2 tw:gap-3 tw:@lg:grid-cols-[max-content_repeat(3,minmax(min-content,1fr))]">
-          {details.map(({ className, labelKey, testId, value }) => (
+        {/* Four columns, as the mock sets them, but the definition's never
+            narrower than its name, or a camel-case name breaks mid-word.
+            Two in a narrow card. */}
+        <div className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:@lg:grid-cols-[minmax(max-content,1fr)_repeat(3,minmax(0,1fr))]">
+          {details.map(({ className, labelKey, testId, value, weight }) => (
             <Box className="tw:min-w-0" direction="col" gap={1} key={labelKey}>
               <Typography
                 className="tw:text-quaternary"
@@ -255,14 +297,19 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
               <Typography
                 className={classNames('tw:font-mono', className)}
                 data-testid={testId}
-                size="text-sm">
+                size="text-xs"
+                weight={weight ?? 'semibold'}>
                 {value}
               </Typography>
             </Box>
           ))}
         </div>
         {bars.length > 0 && (
-          <ComparisonBars barClassName={style.barClassName} bars={bars} />
+          <ComparisonBars
+            barClassName={style.barClassName}
+            bars={bars}
+            valueClassName={style.valueClassName}
+          />
         )}
         {status === TestCaseStatus.Aborted ? (
           <RunExecutionError

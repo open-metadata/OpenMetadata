@@ -245,8 +245,12 @@
   }
 
   &.block-editor-wrapper--bar-menu {
-    border: 1px solid var(--om-legacy-color-dadde6);
+    border: 1px solid var(--tw-color-border-primary);
     border-radius: var(--om-radius-sm);
+
+    &:focus-within {
+      border-color: var(--tw-color-border-brand);
+    }
 
     // do not show drag handle and block handle in bar menu mode
     .om-drag-handle,
@@ -475,7 +479,7 @@
 }
 .om-image-node-action {
   width: 100%;
-  .ant-space-item {
+  :is(.ant-space-item, .layout-space-item) {
     width: 100%;
   }
 }

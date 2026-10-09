@@ -245,15 +245,9 @@ public class LineageRepository {
     boolean relationAlreadyExists = priorDetails != null;
 
     if (lineageDetails.getPipeline() != null) {
-      // Validate pipeline entity
-      EntityReference pipeline =
-          Entity.getEntityReferenceById(
-              lineageDetails.getPipeline().getType(),
-              lineageDetails.getPipeline().getId(),
-              Include.NON_DELETED);
-
-      // Add pipeline entity details to lineage details
-      lineageDetails.withPipeline(pipeline);
+      EntityReference storedPipeline = priorDetails == null ? null : priorDetails.getPipeline();
+      lineageDetails.withPipeline(
+          resolveEdgePipeline(lineageDetails.getPipeline(), storedPipeline));
     }
 
     applyTemporalFields(lineageDetails, priorDetails, updatedBy, System.currentTimeMillis());
@@ -340,9 +334,9 @@ public class LineageRepository {
             && Entity.entityHasField(to.getType(), FIELD_DATA_PRODUCTS);
 
     String fields = getExtendedLineageFields(addService, addDomain, addDataProduct);
-    EntityInterface fromEntity =
+    EntityInterface<?> fromEntity =
         Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
-    EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
+    EntityInterface<?> toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
 
     addServiceLineage(fromEntity, toEntity, lineageDetails, priorDetails, childRelationExists);
     addDomainLineage(fromEntity, toEntity, lineageDetails, childRelationExists);
@@ -350,8 +344,8 @@ public class LineageRepository {
   }
 
   private void addServiceLineage(
-      EntityInterface fromEntity,
-      EntityInterface toEntity,
+      EntityInterface<?> fromEntity,
+      EntityInterface<?> toEntity,
       LineageDetails entityLineageDetails,
       LineageDetails priorDetails,
       boolean childRelationExists) {
@@ -474,7 +468,7 @@ public class LineageRepository {
     if (!Entity.entityHasField(pipelineRef.getType(), FIELD_SERVICE)) {
       return null;
     }
-    EntityInterface pipelineEntity =
+    EntityInterface<?> pipelineEntity =
         Entity.getEntity(pipelineRef.getType(), pipelineRef.getId(), FIELD_SERVICE, Include.ALL);
     return pipelineEntity.getService();
   }
@@ -495,8 +489,8 @@ public class LineageRepository {
   }
 
   private void addDomainLineage(
-      EntityInterface fromEntity,
-      EntityInterface toEntity,
+      EntityInterface<?> fromEntity,
+      EntityInterface<?> toEntity,
       LineageDetails entityLineageDetails,
       boolean childRelationExists) {
 
@@ -524,8 +518,8 @@ public class LineageRepository {
   }
 
   private void addDataProductsLineage(
-      EntityInterface fromEntity,
-      EntityInterface toEntity,
+      EntityInterface<?> fromEntity,
+      EntityInterface<?> toEntity,
       LineageDetails entityLineageDetails,
       boolean childRelationExists) {
 
@@ -550,21 +544,23 @@ public class LineageRepository {
   }
 
   private boolean shouldAddDataProductLineage(
-      EntityInterface fromEntity, EntityInterface toEntity) {
+      EntityInterface<?> fromEntity, EntityInterface<?> toEntity) {
     return Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_DATA_PRODUCTS)
         && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_DATA_PRODUCTS)
         && !nullOrEmpty(fromEntity.getDataProducts())
         && !nullOrEmpty(toEntity.getDataProducts());
   }
 
-  private boolean shouldAddDomainsLineage(EntityInterface fromEntity, EntityInterface toEntity) {
+  private boolean shouldAddDomainsLineage(
+      EntityInterface<?> fromEntity, EntityInterface<?> toEntity) {
     return Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_DOMAINS)
         && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_DOMAINS)
         && !nullOrEmpty(fromEntity.getDomains())
         && !nullOrEmpty(toEntity.getDomains());
   }
 
-  private boolean shouldAddServiceLineage(EntityInterface fromEntity, EntityInterface toEntity) {
+  private boolean shouldAddServiceLineage(
+      EntityInterface<?> fromEntity, EntityInterface<?> toEntity) {
     return Entity.entityHasField(fromEntity.getEntityReference().getType(), FIELD_SERVICE)
         && Entity.entityHasField(toEntity.getEntityReference().getType(), FIELD_SERVICE)
         && fromEntity.getService() != null
@@ -747,6 +743,33 @@ public class LineageRepository {
         "fqnHash",
         FullyQualifiedName.buildHash((String) pipelineMap.get(Entity.FIELD_FULLY_QUALIFIED_NAME)));
     return Pair.of(pipelineRef.getType(), pipelineMap);
+  }
+
+  /**
+   * Resolves the pipeline a lineage write carries. Ingestion copies an edge's stored pipeline onto
+   * writes that carry none, so a pipeline the edge already references is kept even if it was deleted
+   * after the edge was written, and dropped once it no longer exists. Only a pipeline newly linked to
+   * the edge must exist and not be deleted.
+   */
+  private static EntityReference resolveEdgePipeline(
+      EntityReference requested, EntityReference stored) {
+    boolean isAlreadyOnEdge = stored != null && Objects.equals(stored.getId(), requested.getId());
+    return isAlreadyOnEdge
+        ? findPipelineIncludingDeleted(requested)
+        : Entity.getEntityReferenceById(
+            requested.getType(), requested.getId(), Include.NON_DELETED);
+  }
+
+  private static EntityReference findPipelineIncludingDeleted(EntityReference pipelineRef) {
+    try {
+      return Entity.getEntityReferenceById(pipelineRef.getType(), pipelineRef.getId(), Include.ALL);
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Dropping pipeline {} from lineage edge, it no longer exists: {}",
+          pipelineRef.getId(),
+          e.getMessage());
+      return null;
+    }
   }
 
   String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details) {
@@ -1191,7 +1214,7 @@ public class LineageRepository {
   private Set<String> getRegistryChildrenNames(EntityReference entityReference, String entityType) {
     // Only the container fields: this path reads child names, so asking for the write path's tags
     // and constraints would add a tag lookup per lineage edge for nothing.
-    EntityInterface parent =
+    EntityInterface<?> parent =
         Entity.getEntity(
             entityType,
             entityReference.getId(),
@@ -1360,19 +1383,21 @@ public class LineageRepository {
         hasField(from, FIELD_DATA_PRODUCTS) && hasField(to, FIELD_DATA_PRODUCTS);
 
     String fields = getExtendedLineageFields(addService, addDomain, addDataProduct);
-    EntityInterface fromEntity =
+    EntityInterface<?> fromEntity =
         Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
-    EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
+    EntityInterface<?> toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
 
     cleanUpServiceLineage(fromEntity, toEntity, lineageDetails);
-    cleanupListLineage(fromEntity, toEntity, FIELD_DOMAINS, EntityInterface::getDomains);
+    cleanupListLineage(fromEntity, toEntity, FIELD_DOMAINS, EntityInterface<?>::getDomains);
     cleanUpLineageForDataProducts(
-        fromEntity, toEntity, FIELD_DATA_PRODUCTS, EntityInterface::getDataProducts);
+        fromEntity, toEntity, FIELD_DATA_PRODUCTS, EntityInterface<?>::getDataProducts);
   }
 
   /** Mirrors {@link #addServiceLineage}: releases exactly the edges that edge's insert created. */
   private void cleanUpServiceLineage(
-      EntityInterface fromEntity, EntityInterface toEntity, LineageDetails entityLineageDetails) {
+      EntityInterface<?> fromEntity,
+      EntityInterface<?> toEntity,
+      LineageDetails entityLineageDetails) {
     if (!shouldAddServiceLineage(fromEntity, toEntity)) {
       return;
     }
@@ -1415,10 +1440,10 @@ public class LineageRepository {
   }
 
   private void cleanupListLineage(
-      EntityInterface fromEntity,
-      EntityInterface toEntity,
+      EntityInterface<?> fromEntity,
+      EntityInterface<?> toEntity,
       String field,
-      Function<EntityInterface, List<EntityReference>> getter) {
+      Function<EntityInterface<?>, List<EntityReference>> getter) {
     boolean hasField =
         hasField(fromEntity.getEntityReference(), field)
             && hasField(toEntity.getEntityReference(), field);
@@ -1437,10 +1462,10 @@ public class LineageRepository {
   }
 
   private void cleanUpLineageForDataProducts(
-      EntityInterface fromEntity,
-      EntityInterface toEntity,
+      EntityInterface<?> fromEntity,
+      EntityInterface<?> toEntity,
       String field,
-      Function<EntityInterface, List<EntityReference>> getter) {
+      Function<EntityInterface<?>, List<EntityReference>> getter) {
     boolean hasField =
         hasField(fromEntity.getEntityReference(), field)
             && hasField(toEntity.getEntityReference(), field);
@@ -1677,13 +1702,7 @@ public class LineageRepository {
       LineageDetails original = JsonUtils.readValue(json, LineageDetails.class);
       LineageDetails updated = JsonUtils.applyPatch(original, patch, LineageDetails.class);
       if (updated.getPipeline() != null) {
-        // Validate pipeline entity
-        EntityReference pipeline =
-            Entity.getEntityReferenceById(
-                updated.getPipeline().getType(),
-                updated.getPipeline().getId(),
-                Include.NON_DELETED);
-        updated.withPipeline(pipeline);
+        updated.withPipeline(resolveEdgePipeline(updated.getPipeline(), original.getPipeline()));
       }
 
       // Update the lineage details with user and time

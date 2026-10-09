@@ -887,7 +887,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Pipeline entity, String fields) {
+  public EntityInterface<?> getParentEntity(Pipeline entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -971,7 +971,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Pipeline pipeline = (Pipeline) entity;
     EntityUtil.mergeTags(allTags, pipeline.getTags());

@@ -42,12 +42,12 @@ import {
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import type { Config } from '../generated/api/data/createCustomProperty';
-import { EntityStatus } from '../generated/entity/data/searchIndex';
 import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
+import { lifecycleStatusAutocomplete } from './governance/lifecycle/LifecycleStatus.utils';
 import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
@@ -1076,12 +1076,9 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
-          listValues: Object.values(EntityStatus).map((status) => ({
-            value: status,
-            title: status,
-          })),
+          asyncFetch: lifecycleStatusAutocomplete(entitySearchIndex),
           showSearch: true,
-          useAsyncSearch: false,
+          useAsyncSearch: true,
         },
       },
     };

@@ -56,7 +56,7 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
 
   private Boolean checkAttributes(
       WorkflowVariableHandler varHandler, MessageParser.EntityLink entityLink, String rules) {
-    EntityInterface entity = varHandler.getRelatedEntity(entityLink, "*", Include.ALL);
+    EntityInterface<?> entity = varHandler.getRelatedEntity(entityLink, "*", Include.ALL);
     Map<String, Object> entityMap = JsonUtils.getMap(entity);
     enrichTransientCounts(entityLink.getEntityType(), entity, entityMap);
 
@@ -70,7 +70,7 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
   }
 
   private void enrichTransientCounts(
-      String entityType, EntityInterface entity, Map<String, Object> entityMap) {
+      String entityType, EntityInterface<?> entity, Map<String, Object> entityMap) {
     if (!DATA_PRODUCT.equals(entityType)) {
       return;
     }

@@ -194,7 +194,7 @@ class FormatterUtilTest {
             .withId(entityId)
             .withType(Entity.TABLE)
             .withFullyQualifiedName("service.sales.orders");
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(entityId);
     when(entity.getEntityReference()).thenReturn(entityRef);
     when(entity.getDomains()).thenReturn(List.of(new EntityReference().withId(UUID.randomUUID())));

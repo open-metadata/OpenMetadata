@@ -45,6 +45,7 @@ import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForFutureDays,
+  pickDateInCorePicker,
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import {
@@ -1592,22 +1593,30 @@ const announcementForm = async (
 ) => {
   await page.fill('#title', data.title);
 
-  // `fill` alone is enough for a native `<input type="date">`. The old
-  // click-then-Enter dance is left over from the antd DatePicker and is now
-  // actively harmful: the picker indicator is stretched across the whole
-  // control so a click opens the native picker, and the Enter then commits
-  // whatever date that picker has highlighted — today — silently overwriting
-  // the end date that was just filled.
-  await page.fill('#startTime', data.startDate);
-  await page.fill('#endTime', data.endDate);
-
   // Scoped to the announcement dialog, not the page: this form opens over an
-  // entity page that has description editors of its own, and an unscoped
-  // `descriptionBox` matches those too.
+  // entity page that has fields of its own.
   const announcementDialog = page
     .locator('[role="dialog"]')
     .filter({ has: page.locator('#announcement-submit') });
-  const announcementDescription = announcementDialog.locator(descriptionBox);
+
+  // Both dates are the design system's DatePicker — a button opening a
+  // calendar, not a text input — so each is driven through the shared picker
+  // helper rather than filled.
+  await pickDateInCorePicker(
+    page,
+    announcementDialog.getByTestId('startTime').getByRole('button'),
+    data.startDate
+  );
+  await pickDateInCorePicker(
+    page,
+    announcementDialog.getByTestId('endTime').getByRole('button'),
+    data.endDate
+  );
+
+  // The description is the design system's `TextArea`, not the block editor.
+  // `data-testid` lands on the field wrapper, so the control is addressed by
+  // its id — the same way `#title` and `#announcement-submit` are here.
+  const announcementDescription = announcementDialog.locator('#description');
 
   await expect(announcementDescription).toHaveCount(1);
   await announcementDescription.fill(data.description);
@@ -1838,15 +1847,14 @@ export const editAnnouncement = async (
     data.title
   );
 
-  // Clear and fill the description field
-  await page
+  // Clear and fill the description — core's `TextArea`, addressed by its id for
+  // the same reason as the create path above.
+  const editDescription = page
     .locator('[data-testid="edit-announcement-dialog"]')
-    .locator(descriptionBox)
-    .fill('');
-  await page
-    .locator('[data-testid="edit-announcement-dialog"]')
-    .locator(descriptionBox)
-    .fill(data.description);
+    .locator('#description');
+
+  await editDescription.fill('');
+  await editDescription.fill(data.description);
 
   // Save the changes and wait for the API response
   const updateResponse = page.waitForResponse(

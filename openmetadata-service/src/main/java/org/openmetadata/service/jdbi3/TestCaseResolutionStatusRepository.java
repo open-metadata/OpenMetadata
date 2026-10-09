@@ -739,7 +739,7 @@ public class TestCaseResolutionStatusRepository
             "",
             Include.ALL);
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntityByName(
             entityLink.getEntityType(),
             entityLink.getEntityFQN(),
