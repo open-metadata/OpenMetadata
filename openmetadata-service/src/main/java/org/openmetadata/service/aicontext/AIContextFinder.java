@@ -14,6 +14,8 @@ package org.openmetadata.service.aicontext;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -34,7 +36,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
  * Mode B of the AI Context Platform: given a natural-language question and no chosen asset, run a
@@ -235,7 +236,8 @@ public class AIContextFinder {
           tagSearchRequest(
               tagFqn,
               Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS),
-              MAX_ASSETS_PER_ITEM);
+              MAX_ASSETS_PER_ITEM,
+              List.of());
       Response response = Entity.getSearchRepository().search(request, subjectContext);
       parseTagHits((String) response.getEntity(), refs);
     } catch (Exception e) {
@@ -244,10 +246,16 @@ public class AIContextFinder {
     return refs;
   }
 
-  static SearchRequest tagSearchRequest(String tagFqn, String index, int size) {
+  /**
+   * The tag is matched by a filter, never by query text: the data-asset query builders also run the
+   * text through a multi_match over every search field, so a long FQN there overflows OpenSearch's
+   * 1024-clause limit and fails most shards.
+   */
+  static SearchRequest tagSearchRequest(
+      String tagFqn, String index, int size, List<String> excludedTypes) {
     return new SearchRequest()
-        .withQuery(
-            String.format("** AND (tags.tagFQN:\"%s\")", ReindexingUtil.escapeDoubleQuotes(tagFqn)))
+        .withQuery("*")
+        .withQueryFilter(taggedWith(tagFqn, excludedTypes))
         .withSize(size)
         .withIndex(index)
         .withFrom(0)
@@ -259,6 +267,15 @@ public class AIContextFinder {
         // Routing only reads identity fields; restricting _source keeps the tag search
         // light on assets with large documents (wide tables, long descriptions).
         .withIncludeSourceFields(List.of("fullyQualifiedName", "entityType"));
+  }
+
+  private static String taggedWith(String tagFqn, List<String> excludedTypes) {
+    Map<String, Object> bool = new LinkedHashMap<>();
+    bool.put("filter", Map.of("term", Map.of(TAGS_FQN, tagFqn)));
+    if (!excludedTypes.isEmpty()) {
+      bool.put("must_not", Map.of("terms", Map.of(ENTITY_TYPE, excludedTypes)));
+    }
+    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", bool)));
   }
 
   static void parseTagHits(String json, List<EntityReference> refs) {

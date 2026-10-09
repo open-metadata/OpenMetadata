@@ -513,6 +513,25 @@ class ConceptContextIT extends McpTestBase {
         .isEqualTo(key.getFullyQualifiedName());
   }
 
+  /**
+   * Names as long as the ones the shared IT namespaces generate. Matched as query text, an FQN this
+   * long overflowed OpenSearch's 1024-clause limit and failed the whole context with a 500.
+   */
+  @Test
+  void longTermFqnResolvesBindingsWithinTheSearchClauseLimit() throws Exception {
+    String segment =
+        UUID.randomUUID().toString().replace("-", "")
+            + "__ConceptContextIT__longTermFqnResolvesBindings";
+    GlossaryTerm longTerm = createTerm("term__" + segment + "__" + segment);
+    Table bound = createBoundTable(orders, longTerm, "long_" + suffix, 1, false);
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> assertThat(termContext(longTerm).path("totalAssets").asInt()).isEqualTo(1));
+    assertThat(bindingKeys(termContext(longTerm)))
+        .containsExactly(bound.getFullyQualifiedName() + "." + COLUMN);
+  }
+
   @Test
   void perAssetCapKeepsActualBindingCount() throws Exception {
     GlossaryTerm wide = createTerm("Wide");

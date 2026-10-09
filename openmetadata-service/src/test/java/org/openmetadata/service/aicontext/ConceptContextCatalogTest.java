@@ -110,6 +110,27 @@ class ConceptContextCatalogTest {
   }
 
   @Test
+  void matchesTheTermInTheFilterRatherThanTheQueryText() throws IOException {
+    List<SearchRequest> requests = new ArrayList<>();
+    when(search.search(any(SearchRequest.class), isNull()))
+        .thenAnswer(
+            invocation -> {
+              requests.add(invocation.getArgument(0));
+              return response(List.of(hit(1, true)));
+            });
+
+    catalog().candidates(term, 0);
+
+    SearchRequest request = requests.getFirst();
+    assertEquals("*", request.getQuery());
+    assertEquals(
+        term.getFullyQualifiedName(),
+        JsonUtils.readTree(request.getQueryFilter())
+            .at("/query/bool/filter/term/tags.tagFQN")
+            .asText());
+  }
+
+  @Test
   void doesNotReportCompleteTotalsWithoutARequiredCursor() throws IOException {
     when(search.search(any(SearchRequest.class), isNull()))
         .thenReturn(

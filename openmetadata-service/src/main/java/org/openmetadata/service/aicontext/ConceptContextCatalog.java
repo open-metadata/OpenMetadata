@@ -24,7 +24,6 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -66,14 +65,6 @@ final class ConceptContextCatalog implements ConceptContextBuilder.Catalog {
   private static final List<String> NON_ASSET_TYPES =
       List.of(Entity.TABLE_COLUMN, Entity.GLOSSARY_TERM, Entity.TAG, Entity.PAGE);
 
-  private static final String ASSETS_ONLY_FILTER =
-      JsonUtils.pojoToJson(
-          Map.of(
-              "query",
-              Map.of(
-                  "bool",
-                  Map.of("must_not", Map.of("terms", Map.of("entityType", NON_ASSET_TYPES))))));
-
   private static final String QUERY_MASKING_FIELDS =
       String.join(",", Entity.FIELD_OWNERS, Entity.FIELD_TAGS);
 
@@ -106,8 +97,8 @@ final class ConceptContextCatalog implements ConceptContextBuilder.Catalog {
         AIContextFinder.tagSearchRequest(
                 term.getFullyQualifiedName(),
                 Entity.getSearchRepository().getIndexOrAliasName(DATA_ASSET_SEARCH_ALIAS),
-                CANDIDATE_PAGE_SIZE)
-            .withQueryFilter(ASSETS_ONLY_FILTER)
+                CANDIDATE_PAGE_SIZE,
+                NON_ASSET_TYPES)
             .withSortFieldParam("id.keyword")
             .withSortOrder("asc")
             .withSearchAfter(searchAfter)
