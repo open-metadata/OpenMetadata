@@ -59,6 +59,7 @@ class SettingsSourceServiceTest {
             clientId: ${AUTHENTICATION_CLIENT_ID:-""}
             enableSelfSignup: ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-false}
             maxActiveSessionsPerUser: ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}
+            publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
           """,
           "/authenticationConfiguration");
   private static final String DEPLOYMENT =
@@ -179,6 +180,106 @@ class SettingsSourceServiceTest {
     assertEquals(1000, stored().get("maxActiveSessionsPerUser").asInt());
   }
 
+  /**
+   * The deployment only sets the session cap on purpose; everything else is the file's default. The
+   * SSO configured in the UI must survive "Use deployment value" without fields.
+   */
+  @Test
+  void takesOnlyTheReportedFieldsWhenNoneAreNamed() {
+    installDeployment(
+        "{'provider':'basic','providerName':'basic','clientId':'','enableSelfSignup':false,"
+            + "'maxActiveSessionsPerUser':1000}");
+    store(
+        "{'provider':'google','providerName':'Google','clientId':'ui-client',"
+            + "'callbackUrl':'https://om.example.com/callback','enableSelfSignup':true,"
+            + "'maxActiveSessionsPerUser':5}");
+
+    assertEquals(List.of("/maxActiveSessionsPerUser"), overriddenPaths());
+    assertEquals(
+        List.of("/maxActiveSessionsPerUser"), service.adopt(AUTHENTICATION_CONFIGURATION, null));
+
+    JsonNode stored = stored();
+    assertEquals("google", stored.get("provider").asText());
+    assertEquals("ui-client", stored.get("clientId").asText());
+    assertEquals("https://om.example.com/callback", stored.get("callbackUrl").asText());
+    assertTrue(stored.get("enableSelfSignup").asBoolean());
+    assertEquals(1000, stored.get("maxActiveSessionsPerUser").asInt());
+  }
+
+  @Test
+  void adoptsNothingWhileNothingIsOverridden() {
+    installDeployment(
+        "{'provider':'basic','providerName':'basic','clientId':'','enableSelfSignup':false,"
+            + "'maxActiveSessionsPerUser':5}");
+    store(
+        "{'provider':'google','providerName':'Google','clientId':'ui-client',"
+            + "'enableSelfSignup':true,'maxActiveSessionsPerUser':42}");
+
+    assertTrue(service.adopt(AUTHENTICATION_CONFIGURATION, List.of()).isEmpty());
+
+    assertTrue(written.isEmpty());
+    assertTrue(refreshed.isEmpty());
+  }
+
+  /**
+   * Helm sets its own JWKS address, so the deployment's public keys count as deliberate while its
+   * provider is still the default one. Taking those keys would drop the keys of the provider
+   * configured in the UI, or switch the provider to the default.
+   */
+  @Test
+  void refusesProviderFieldsOfADeploymentThatNamesNoProvider() {
+    installDeployment(
+        "{'provider':'basic','providerName':'basic',"
+            + "'publicKeyUrls':['http://openmetadata:8585/api/v1/system/config/jwks']}");
+    store(
+        "{'provider':'okta','providerName':'Okta','clientId':'okta-client',"
+            + "'authority':'https://example.okta.com',"
+            + "'publicKeyUrls':['https://example.okta.com/oauth2/v1/keys']}");
+
+    assertTrue(overriddenPaths().isEmpty());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> service.adopt(AUTHENTICATION_CONFIGURATION, List.of("/publicKeyUrls")));
+    assertTrue(written.isEmpty());
+  }
+
+  @Test
+  void takesAProviderFieldOfTheSameProviderAlone() {
+    installDeployment(
+        "{'provider':'okta','providerName':'Okta','clientId':'okta-client',"
+            + "'authority':'https://example.okta.com','enableSelfSignup':false,"
+            + "'publicKeyUrls':['https://example.okta.com/oauth2/v1/keys']}");
+    store(
+        "{'provider':'okta','providerName':'Okta','clientId':'okta-client',"
+            + "'authority':'https://example.okta.com','enableSelfSignup':true,"
+            + "'publicKeyUrls':['https://old.example.com/keys']}");
+
+    assertEquals(
+        List.of("/publicKeyUrls"),
+        service.adopt(AUTHENTICATION_CONFIGURATION, List.of("/publicKeyUrls")));
+
+    assertEquals(
+        "https://example.okta.com/oauth2/v1/keys", stored().at("/publicKeyUrls/0").asText());
+    assertTrue(stored().get("enableSelfSignup").asBoolean());
+  }
+
+  @Test
+  void neverReplacesAStoredValueWithABlankDeploymentValue() {
+    installDeployment(
+        "{'provider':'google','providerName':'Google','clientId':'deployment-client',"
+            + "'enableSelfSignup':true}");
+    store(
+        "{'provider':'google','providerName':'Google','clientId':'deployment-client',"
+            + "'enableSelfSignup':true,'maxActiveSessionsPerUser':42}");
+
+    assertTrue(
+        service
+            .adopt(AUTHENTICATION_CONFIGURATION, List.of("/maxActiveSessionsPerUser"))
+            .isEmpty());
+
+    assertEquals(42, stored().get("maxActiveSessionsPerUser").asInt());
+  }
+
   @Test
   void adoptingTheProviderTakesTheWholeIdentityProviderFromTheDeployment() {
     store(
@@ -220,6 +321,12 @@ class SettingsSourceServiceTest {
     ConfigSources.install(
         DeploymentConfig.of(
             List.of(setting), new ConfigSourceConfiguration().withSecurity(ConfigSourceMode.AUTO)));
+  }
+
+  private List<String> overriddenPaths() {
+    return service.status(AUTHENTICATION_CONFIGURATION).orElseThrow().getOverriddenFields().stream()
+        .map(OverriddenSettingField::getPath)
+        .toList();
   }
 
   private void store(String singleQuoted) {

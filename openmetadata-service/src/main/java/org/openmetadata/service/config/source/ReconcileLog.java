@@ -30,7 +30,7 @@ import org.openmetadata.schema.settings.SettingsType;
 final class ReconcileLog {
   private static final String REMEDY =
       "To use the deployment value, choose 'Use deployment value' on the settings page, run "
-          + "./bootstrap/openmetadata-ops.sh adopt-deployment-config, or set %s=ENV.";
+          + "./bootstrap/openmetadata-ops.sh adopt-deployment-config --type %s %s, or set %s=ENV.";
 
   private final DeploymentSetting setting;
   private final MergeResult result;
@@ -111,7 +111,7 @@ final class ReconcileLog {
     String field = describe(List.of(warning.unit()));
     String type = setting.settingsType().value();
     String modeVariable = SettingsWriteGuard.modeVariable(setting.settingsType());
-    String remedy = String.format(REMEDY, modeVariable);
+    String remedy = remedyFor(warning.unit(), modeVariable);
     return switch (warning.outcome()) {
       case CONFLICT -> String.format(
           "%s: %s was changed both in the deployment configuration and in the UI since the last "
@@ -123,8 +123,8 @@ final class ReconcileLog {
           type, field, remedy);
       case IGNORED_FOR_IDENTITY -> String.format(
           "%s: the deployment configuration changed %s, but the identity provider was changed in "
-              + "the UI, so deployment changes to it are ignored. %s",
-          type, field, remedy);
+              + "the UI, so deployment changes to it are ignored.",
+          type, field);
       case KEPT_OVER_BLANK -> String.format(
           "%s: %s became empty in the deployment configuration. Keeping the stored value.",
           type, field);
@@ -132,6 +132,14 @@ final class ReconcileLog {
           "%s: %s changed in the deployment configuration, but %s=DB keeps the stored value.",
           type, field, modeVariable);
     };
+  }
+
+  private String remedyFor(MergeUnit unit, String modeVariable) {
+    String paths =
+        unit.pointers().stream()
+            .map(pointer -> "--path " + pointer)
+            .collect(Collectors.joining(" "));
+    return String.format(REMEDY, setting.settingsType().value(), paths, modeVariable);
   }
 
   private String describe(List<MergeUnit> units) {

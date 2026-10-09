@@ -105,13 +105,19 @@ For each unit:
   - If the UI switched the identity provider, deployment changes to the identity units and the
     provider-dependent units are ignored, with a WARN.
   - If the deployment switched it, all of those units change together.
+  - While the two name different providers, the deployment's provider fields count as overriding
+    the stored ones only when the deployment names its provider on purpose. Otherwise they belong
+    to a provider nobody set up: Helm's own JWKS address, for example, makes `publicKeyUrls`
+    deliberate while the provider is still the default `basic`. The same rule keeps DB mode from
+    filling one provider's fields into another's on first sight.
 - The merged value goes through the API write validation (`prepareReconciled`): base URL, active
   provider, token validity, authorizer schema. In AUTO and DB modes a value that fails keeps D and
   logs an ERROR; the server still starts.
 - WARNs name the field and its environment variable, never values. Each is logged once per
   (outcome, unit, deployment value); later starts log a count and point to the status endpoint.
-  Every WARN names the remedies: "Use deployment value" on the settings page,
-  `./bootstrap/openmetadata-ops.sh adopt-deployment-config`, or `<GROUP>_CONFIG_SOURCE=ENV`.
+  CONFLICT and DRIFT warnings name the remedies: "Use deployment value" on the settings page,
+  `./bootstrap/openmetadata-ops.sh adopt-deployment-config --type <configType> --path <field>`, or
+  `<GROUP>_CONFIG_SOURCE=ENV`.
 - Finally L := E.
 
 ## Start, seeding and writes
@@ -191,8 +197,14 @@ API writes:
     overrides (AUTO, DB);
   - `lastReloadError`.
 - **`POST /api/v1/system/settings/source/{configType}/adopt {paths}`** stores the deployment value
-  of the given fields, or of all overridden fields. Identity-provider units are taken together. In
-  ENV mode it returns 409, since the start already applied E.
+  of the given fields. In ENV mode it returns 409, since the start already applied E.
+  - No paths means exactly the fields `overriddenFields` lists; when it lists none, nothing changes.
+  - A blank deployment value means "not set" and never replaces a stored value.
+  - When stored and deployment name the same identity provider, a provider field is taken on its
+    own. When they name different providers, taking any provider field replaces the provider as a
+    whole, blanks included, so the result never mixes two providers. That is refused (400) unless
+    the deployment names its provider on purpose; the status then lists `/provider` too, so the
+    admin sees the switch before confirming it.
 - **CLI.** `./bootstrap/openmetadata-ops.sh adopt-deployment-config --type <configType> [--path <pointer>]...`
   does the same from a process that has the server's environment, for example inside a server pod.
   Running servers pick the change up through the watcher.

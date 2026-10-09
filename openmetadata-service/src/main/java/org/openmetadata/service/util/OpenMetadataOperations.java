@@ -2826,12 +2826,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
           List<String> paths) {
     try {
       parseConfig();
-      adoptDeploymentSetting(
-          collectionDAO.systemDAO(), Entity.getSystemRepository(), configType, paths);
-      LOG.info(
-          "Stored the deployment configuration of {}. Running servers apply it within their "
-              + "settings watch interval.",
-          configType);
+      List<String> adopted =
+          adoptDeploymentSetting(
+              collectionDAO.systemDAO(), Entity.getSystemRepository(), configType, paths);
+      if (adopted.isEmpty()) {
+        LOG.info("{} has no stored value to replace; nothing was changed.", configType);
+      } else {
+        LOG.info(
+            "Took {} of {} from the deployment configuration. Running servers apply it within "
+                + "their settings watch interval.",
+            adopted,
+            configType);
+      }
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to adopt the deployment configuration due to ", e);
@@ -2843,9 +2849,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
    * Running servers are not refreshed from here: they pick the stored change up through their
    * settings watch.
    */
-  static void adoptDeploymentSetting(
+  static List<String> adoptDeploymentSetting(
       SystemDAO dao, SystemRepository repository, String configType, List<String> paths) {
-    new SettingsSourceService(dao, repository, settingsType -> {})
+    return new SettingsSourceService(dao, repository, settingsType -> {})
         .adopt(SettingsType.fromValue(configType), paths);
   }
 

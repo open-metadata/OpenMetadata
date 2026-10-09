@@ -101,6 +101,16 @@ final class MergeContext {
   }
 
   /**
+   * Whether the deployment configuration names its identity provider on purpose. When it only
+   * carries the file's default provider, its provider fields belong to a provider nobody set up.
+   */
+  boolean deploymentNamesProvider() {
+    return input
+        .template()
+        .isDeliberate(input.deployment(), List.of(IdentityProviderIdentity.PROVIDER));
+  }
+
+  /**
    * Whether the stored setting has no value of its own for {@code unit}. Saves made before a field
    * was reconciled wrote its schema default explicitly, so for the allow-listed non-privileged
    * fields that default counts as no value.

@@ -275,6 +275,44 @@ public class ConfigSourceIT {
     assertEquals("groups", storedAuthentication().path("jwtTeamClaimMapping").asText());
   }
 
+  /**
+   * The deployment sets only the session cap on purpose. "Use deployment value" without fields must
+   * take just that, and keep the values the deployment leaves at their defaults as saved in the UI.
+   */
+  @Test
+  void adoptWithoutFieldsTakesOnlyTheOverriddenOnes() throws Exception {
+    DeploymentTemplate template =
+        DeploymentTemplate.parse(
+            """
+            authenticationConfiguration:
+              clientId: ${AUTHENTICATION_CLIENT_ID:-""}
+              enableSelfSignup: ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-false}
+              maxActiveSessionsPerUser: ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}
+            """,
+            "/authenticationConfiguration");
+    ObjectNode stored = storedAuthentication();
+    stored.put("clientId", "ui-client");
+    stored.put("enableSelfSignup", true);
+    stored.put("maxActiveSessionsPerUser", 4000);
+    store(stored);
+    ObjectNode deployment = stored.deepCopy();
+    deployment.put("clientId", "");
+    deployment.put("enableSelfSignup", false);
+    deployment.put("maxActiveSessionsPerUser", 1000);
+    installDeployment(deployment, template);
+
+    JsonNode overridden = authenticationSource().get("overriddenFields");
+    assertEquals(1, overridden.size(), overridden.toString());
+    assertEquals("/maxActiveSessionsPerUser", overridden.get(0).get("path").asText());
+
+    execute(HttpMethod.POST, SETTINGS_SOURCE_PATH + "/" + AUTH + "/adopt", "{}");
+
+    JsonNode adopted = storedAuthentication();
+    assertEquals(1000, adopted.path("maxActiveSessionsPerUser").asInt());
+    assertEquals("ui-client", adopted.path("clientId").asText());
+    assertTrue(adopted.path("enableSelfSignup").asBoolean());
+  }
+
   @Test
   void onlyAdminsSeeOrAdoptSettingSources() {
     OpenMetadataClient nonAdmin = SdkClients.user1Client();
@@ -360,14 +398,21 @@ public class ConfigSourceIT {
   }
 
   private void reconcile(JsonNode deploymentValue, DeploymentTemplate template) {
+    DeploymentConfig deployment = installDeployment(deploymentValue, template);
+    new DeploymentConfigReconciler(dao, Entity.getSystemRepository(), "2.1.0")
+        .reconcile(deployment, deployment.setting(AUTHENTICATION_CONFIGURATION).orElseThrow());
+  }
+
+  /** Makes {@code deploymentValue} this server's deployment configuration without a restart. */
+  private static DeploymentConfig installDeployment(
+      JsonNode deploymentValue, DeploymentTemplate template) {
     DeploymentSetting setting =
         new DeploymentSetting(DualSourceSetting.AUTHENTICATION, deploymentValue, template);
     DeploymentConfig deployment =
         DeploymentConfig.of(
             List.of(setting), new ConfigSourceConfiguration().withSecurity(ConfigSourceMode.AUTO));
     ConfigSources.install(deployment);
-    new DeploymentConfigReconciler(dao, Entity.getSystemRepository(), "2.1.0")
-        .reconcile(deployment, setting);
+    return deployment;
   }
 
   private static int runningMaxActiveSessionsPerUser() {

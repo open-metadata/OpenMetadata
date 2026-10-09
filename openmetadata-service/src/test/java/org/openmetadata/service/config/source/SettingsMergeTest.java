@@ -216,6 +216,47 @@ class SettingsMergeTest {
   }
 
   @Test
+  void providerFieldsOfADeploymentThatNamesNoProviderOverrideNothing() {
+    MergeResult result =
+        auth(
+            ConfigSourceMode.AUTO,
+            "{'provider':'basic','jwtPrincipalClaims':['upn']}",
+            "{'provider':'okta','clientId':'okta-client','authority':'https://okta.example.com',"
+                + "'jwtPrincipalClaims':['email']}",
+            "{'provider':'basic','jwtPrincipalClaims':['upn']}");
+
+    assertFalse(result.report().has(MergeOutcome.DRIFT));
+    assertFalse(result.storedChanged());
+  }
+
+  @Test
+  void providerFieldsOfADeploymentThatNamesItsProviderAreReportedAsOverridden() {
+    MergeResult result =
+        auth(
+            ConfigSourceMode.AUTO,
+            "{'provider':'google','jwtPrincipalClaims':['upn']}",
+            "{'provider':'okta','clientId':'okta-client','authority':'https://okta.example.com',"
+                + "'jwtPrincipalClaims':['email']}",
+            "{'provider':'google','jwtPrincipalClaims':['upn']}");
+
+    assertTrue(result.report().has(MergeOutcome.DRIFT));
+    assertFalse(result.storedChanged());
+  }
+
+  @Test
+  void dbModeNeverFillsProviderFieldsFromADeploymentOfAnotherProvider() {
+    MergeResult result =
+        auth(
+            ConfigSourceMode.DB,
+            "{'provider':'basic','emailClaim':'mail'}",
+            "{'provider':'okta','clientId':'okta-client','authority':'https://okta.example.com'}",
+            null);
+
+    assertFalse(result.stored().has("emailClaim"));
+    assertFalse(result.report().has(MergeOutcome.BACKFILLED));
+  }
+
+  @Test
   void providerSwitchedInTheDeploymentBringsItsFieldsAlong() {
     MergeResult result =
         auth(

@@ -49,7 +49,7 @@ public final class SettingsMerge {
   private void mergeAuto(MergeContext context, MergeUnit unit) {
     if (unit.kind() == UnitKind.DEPLOYMENT_OWNED) {
       applyDeploymentOwned(context, unit);
-    } else if (unit.concernsIdentityProvider() && context.providerChange() != ProviderChange.NONE) {
+    } else if (isAcrossProviders(context, unit)) {
       mergeAcrossProviderChange(context, unit);
     } else if (!context.isInLastApplied(unit)) {
       reconcileFirstTime(context, unit);
@@ -80,12 +80,26 @@ public final class SettingsMerge {
    */
   private void mergeAcrossProviderChange(MergeContext context, MergeUnit unit) {
     if (!context.deploymentChanged(unit)) {
-      reportDrift(context, unit);
+      reportDriftAcrossProviders(context, unit);
     } else if (context.providerChange() == ProviderChange.BY_DEPLOYMENT) {
       applyProviderSwitch(context, unit);
     } else if (context.isInLastApplied(unit)) {
       context.record(IGNORED_FOR_IDENTITY, unit);
     } else {
+      reportDriftAcrossProviders(context, unit);
+    }
+  }
+
+  private static boolean isAcrossProviders(MergeContext context, MergeUnit unit) {
+    return unit.concernsIdentityProvider() && context.providerChange() != ProviderChange.NONE;
+  }
+
+  /**
+   * The provider fields of a deployment that names no provider of its own override nothing: taking
+   * one would mix two providers' settings, or replace the configured provider with the default.
+   */
+  private void reportDriftAcrossProviders(MergeContext context, MergeUnit unit) {
+    if (context.deploymentNamesProvider()) {
       reportDrift(context, unit);
     }
   }
@@ -157,12 +171,25 @@ public final class SettingsMerge {
   private void mergeDb(MergeContext context, MergeUnit unit) {
     if (unit.kind() == UnitKind.DEPLOYMENT_OWNED) {
       applyDeploymentOwned(context, unit);
+    } else if (isAcrossProviders(context, unit)) {
+      mergeDbAcrossProviderChange(context, unit);
     } else if (!context.isInLastApplied(unit)) {
       reconcileFirstTime(context, unit);
     } else if (context.deploymentChanged(unit) && !isBlank(context.deploymentValue(unit))) {
       context.record(IGNORED_BY_DB_MODE, unit);
     } else {
       reportDrift(context, unit);
+    }
+  }
+
+  /** DB mode never fills a provider field from a deployment that configures another provider. */
+  private void mergeDbAcrossProviderChange(MergeContext context, MergeUnit unit) {
+    if (context.isInLastApplied(unit)
+        && context.deploymentChanged(unit)
+        && !isBlank(context.deploymentValue(unit))) {
+      context.record(IGNORED_BY_DB_MODE, unit);
+    } else {
+      reportDriftAcrossProviders(context, unit);
     }
   }
 
