@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Select, Space } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -36,6 +36,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { searchQuery } from '../../rest/searchAPI';
 import { getOnlineUsers, OnlineUsersQueryParams } from '../../rest/userAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getTermQuery } from '../../utils/SearchPureUtils';
@@ -220,7 +221,13 @@ const OnlineUsersPage = () => {
         }
 
         return (
-          <Space direction="vertical" size={0}>
+          <Box
+            inline
+            align="stretch"
+            className="layout-space"
+            direction="col"
+            gap={0}
+            itemClassName="layout-space-item">
             <Typography
               className="tw:text-primary"
               style={{ color: statusColor }}>
@@ -229,7 +236,7 @@ const OnlineUsersPage = () => {
             <Typography color="secondary" style={{ fontSize: '12px' }}>
               {formatDateTime(activityTime)}
             </Typography>
-          </Space>
+          </Box>
         );
       },
     };
@@ -248,28 +255,36 @@ const OnlineUsersPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.online-user-plural')}>
-      <Row data-testid="online-users-page" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        data-testid="online-users-page"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <PageHeader
             data={{
               header: t(PAGE_HEADERS.ONLINE_USERS.header),
               subHeader: t(PAGE_HEADERS.ONLINE_USERS.subHeader),
             }}
           />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             className="user-list-table"
             columns={columns}
             data-testid="online-users-table"
             dataSource={userList}
             extraTableFilters={
-              <Space>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={2}
+                itemClassName="layout-space-item">
                 <Typography>{t('label.time-window')}:</Typography>
                 <Select
                   data-testid="time-window-select"
@@ -279,7 +294,7 @@ const OnlineUsersPage = () => {
                   value={timeWindow}
                   onChange={setTimeWindow}
                 />
-              </Space>
+              </Box>
             }
             loading={isDataLoading}
             locale={{
@@ -308,10 +323,10 @@ const OnlineUsersPage = () => {
             }}
             size="small"
           />
-        </Col>
+        </Grid.Item>
 
         {showPagination && (
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <div className="w-full flex justify-center">
               {paging && (
                 <div data-testid="pagination">
@@ -319,9 +334,9 @@ const OnlineUsersPage = () => {
                 </div>
               )}
             </div>
-          </Col>
+          </Grid.Item>
         )}
-      </Row>
+      </Grid>
     </PageLayoutV1>
   );
 };

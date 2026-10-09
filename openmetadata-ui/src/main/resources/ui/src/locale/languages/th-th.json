@@ -4129,7 +4129,6 @@
     "dq-threshold-preview-sampling-dynamic": "วัดจากตัวอย่างที่กำหนดขนาดแบบพลวัตซึ่งใช้ทำโปรไฟล์ตารางนี้",
     "dq-threshold-preview-statistical": "ล้มเหลวเมื่อค่าที่วัดได้อยู่นอก {{bound}}",
     "dq-threshold-preview-statistical-deviation": "ล้มเหลวเมื่อค่าที่วัดได้อยู่นอก {{bound}} โดยยอมให้เบี่ยงเบนได้ {{amount}} (ช่วงที่มีผลจริง {{range}})",
-    "dq-threshold-preview-unit-not-enforced": "การทดสอบนี้เปรียบเทียบเกณฑ์เป็นจำนวนแถวดิบ จึงไม่มีการใช้หน่วยของเกณฑ์",
     "dq-threshold-preview-zero-bound": "การเบี่ยงเบนเป็นเปอร์เซ็นต์รอบขอบเขต 0 จะทำให้ขอบเขตนั้นยังคงเป็น 0 — ให้ใช้การเบี่ยงเบนแบบสัมบูรณ์แทน",
     "dq-unresolved-incidents-count": "<0>{{count}} เหตุการณ์</0>ที่ยังไม่ได้แก้ไข",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} เหตุการณ์</0>ที่ยังไม่ได้แก้ไข",

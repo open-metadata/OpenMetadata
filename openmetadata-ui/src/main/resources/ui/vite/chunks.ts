@@ -18,6 +18,49 @@ export type ModuleGraph = {
   } | null;
 };
 
+// Vendor families that get a named chunk (stable cache keys across releases).
+// `pinned` families take every module; the rest only their shell modules.
+const VENDOR_FAMILIES: {
+  chunk: string;
+  matches: (packageName: string) => boolean;
+  pinned?: boolean;
+}[] = [
+  {
+    // The shell renders through all of React and the router.
+    chunk: 'vendor-react',
+    pinned: true,
+    matches: (name) =>
+      ['react', 'react-dom', 'scheduler'].includes(name) ||
+      name.startsWith('react-router'),
+  },
+  {
+    // The /silent-callback entry loads only this. Its own chunk keeps the
+    // silent-refresh iframe off every other vendor chunk (SsoScenarios
+    // scenario 7 budget).
+    chunk: 'vendor-oidc-client',
+    pinned: true,
+    matches: (name) => name === 'oidc-client',
+  },
+  {
+    // Left whole until antd is removed from the app.
+    chunk: 'vendor-antd',
+    pinned: true,
+    matches: (name) => name === 'antd',
+  },
+  {
+    chunk: 'vendor-aria',
+    matches: (name) =>
+      name.startsWith('@react-aria/') ||
+      name.startsWith('@react-stately/') ||
+      name.startsWith('@react-types/') ||
+      ['react-aria', 'react-aria-components', 'react-stately'].includes(name),
+  },
+  {
+    chunk: 'vendor-untitled',
+    matches: (name) => name === '@openmetadata/ui-core-components',
+  },
+];
+
 // Classifier used by both bundlers to assign modules to vendor buckets.
 // Rollup consumes it via `rollupOptions.output.manualChunks`, Rolldown via
 // `rollupOptions.output.advancedChunks.groups[].name`. Same logic, one
@@ -131,74 +174,21 @@ export const createChunkClassifier = ({
     const packageName = scopeOrName.startsWith('@')
       ? `${scopeOrName}/${scopedName}`
       : scopeOrName;
+    const family = VENDOR_FAMILIES.find(({ matches }) => matches(packageName));
 
-    if (
-      ['react', 'react-dom', 'scheduler'].includes(packageName) ||
-      packageName.startsWith('react-router')
-    ) {
-      return 'vendor-react';
-    }
-
-    // `oidc-client` is the only vendor the /silent-callback entry path
-    // needs. Pin it into its own chunk so the min-chunk-size merger
-    // cannot fold it into vendor-antd — that merge makes vendor-antd a
-    // static sibling of the entry chunk and pulls a >1 MB Antd chunk
-    // into the silent-refresh iframe, violating the scenario-7 budget
-    // in SsoScenarios.spec.
-    if (packageName === 'oidc-client') {
-      return 'vendor-oidc-client';
-    }
-
-    if (
-      packageName.startsWith('@react-aria/') ||
-      packageName.startsWith('@react-stately/') ||
-      packageName.startsWith('@react-types/') ||
-      packageName === 'react-aria' ||
-      packageName === 'react-aria-components' ||
-      packageName === 'react-stately'
-    ) {
-      return 'vendor-aria';
-    }
-
-    // The core charts entry and echarts render only on chart routes. Left
-    // unassigned they stay behind those routes' dynamic imports; inside
-    // vendor-untitled (an entry-graph chunk) they would load on every page.
-    if (
-      normalizedId.includes('/ui-core-components/') &&
-      normalizedId.includes('/dist/charts/')
-    ) {
-      return undefined;
-    }
-    if (
-      ['echarts', 'echarts-for-react', 'zrender', 'size-sensor'].includes(
-        packageName
-      )
-    ) {
+    if (!family) {
       return undefined;
     }
 
-    // Antd and the core component library are shared by nearly every route,
-    // so stable cache buckets pay off. Route-specific dependencies are left
-    // to the bundler so they stay behind their dynamic import.
-    if (normalizedId.includes('/node_modules/antd/')) {
-      return 'vendor-antd';
+    // A family chunk holds only the modules the shell loads anyway: modules
+    // whose static importers lead back to an entry. Anything only a lazy route
+    // reaches stays with that route; a named group would put it on every
+    // page. A group also captures its members' dependencies, and the
+    // dependencies of a shell module are shell modules too, so this never
+    // drags lazy code onto the entry graph.
+    if (family.pinned || (graph && isShellReachable(id, graph))) {
+      return family.chunk;
     }
-    if (
-      normalizedId.includes('/node_modules/@openmetadata/ui-core-components/')
-    ) {
-      return 'vendor-untitled';
-    }
-
-    // NOTE: earlier revisions grouped viz (@antv, three, reactflow, recharts,
-    // elkjs, dagre), editors (@tiptap, prosemirror, codemirror, quill), and
-    // forms (@rjsf, react-hook-form, query-builder) into three named vendor
-    // buckets. That produced a single 4.8 MB vendor-viz chunk (max 1.75 MB)
-    // and pulled 2.55 MB brotli of JS onto index.html because one static
-    // importer forced the whole bucket onto the entry graph. Rollup already
-    // lazy-splits these packages behind their consumers' `import()`
-    // boundaries, so leave the auto-splitter to do its job here. Reintroduce
-    // a bucket only after checking (a) every consumer is behind a dynamic
-    // import and (b) the resulting chunk stays under MAX_SINGLE_JS_BYTES.
 
     return undefined;
   };

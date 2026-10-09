@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Form, Input, Row, Select } from 'antd';
+import { Divider, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Form, Input, Select } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
@@ -32,6 +32,7 @@ import {
   Policy,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { filterSelectOptions } from '../../../utils/FilterQueryUtils';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
@@ -81,8 +82,11 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
           <div className="contract-consumer-security-card-rule-container">
             {rowFilterFields.map((rowFilterField, rowFilterIndex) => {
               return (
-                <Row align="middle" gutter={[16, 16]} key={rowFilterField.key}>
-                  <Col span={11}>
+                <Grid
+                  className="layout-row layout-grid tw:items-center"
+                  key={rowFilterField.key}
+                  style={{ ...getLayoutGutter(16, 16) }}>
+                  <Grid.Item className="layout-column" span={11}>
                     <Form.Item
                       label={t('label.column-name')}
                       name={[rowFilterField.name, 'columnName']}>
@@ -94,9 +98,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                         })}
                       />
                     </Form.Item>
-                  </Col>
+                  </Grid.Item>
 
-                  <Col span={11}>
+                  <Grid.Item className="layout-column" span={11}>
                     <Form.Item
                       label={t('label.value-plural')}
                       name={[rowFilterField.name, 'values']}>
@@ -111,8 +115,8 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                         })}
                       />
                     </Form.Item>
-                  </Col>
-                </Row>
+                  </Grid.Item>
+                </Grid>
               );
             })}
           </div>
@@ -170,12 +174,14 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
       dataTestId={`contract-policy-card-${policyField.key}`}
       defaultExpanded={editingKey === policyField.name}>
       {editingKey === policyField.name ? (
-        <Row className="security-form-item-content" key={policyField.key}>
-          <Col span={24}>
-            <Row
-              className="contract-consumer-security-card-row"
-              gutter={[0, 16]}>
-              <Col span={24}>
+        <Grid
+          className="layout-row layout-grid security-form-item-content"
+          key={policyField.key}>
+          <Grid.Item className="layout-column" span={24}>
+            <Grid
+              className="layout-row layout-grid contract-consumer-security-card-row"
+              style={{ ...getLayoutGutter(0, 16) }}>
+              <Grid.Item className="layout-column" span={24}>
                 <Form.Item
                   label={t('label.access-policy')}
                   name={[policyField.name, 'accessPolicy']}>
@@ -186,9 +192,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                     })}
                   />
                 </Form.Item>
-              </Col>
+              </Grid.Item>
 
-              <Col span={24}>
+              <Grid.Item className="layout-column" span={24}>
                 <Form.Item
                   label={t('label.identities')}
                   name={[policyField.name, 'identities']}>
@@ -202,8 +208,8 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                     })}
                   />
                 </Form.Item>
-              </Col>
-            </Row>
+              </Grid.Item>
+            </Grid>
 
             {SUPPORTED_ROW_FILTER_ENTITIES.includes(entityType) ? (
               <>
@@ -237,11 +243,13 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                           {rowFilterFields.map(
                             (rowFilterField, rowFilterIndex) => {
                               return (
-                                <Row
-                                  align="middle"
-                                  gutter={[16, 16]}
-                                  key={rowFilterField.key}>
-                                  <Col span={11}>
+                                <Grid
+                                  className="layout-row layout-grid tw:items-center"
+                                  key={rowFilterField.key}
+                                  style={{ ...getLayoutGutter(16, 16) }}>
+                                  <Grid.Item
+                                    className="layout-column"
+                                    span={11}>
                                     <Form.Item
                                       label={t('label.column-name')}
                                       name={[
@@ -264,9 +272,11 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                                         )}
                                       />
                                     </Form.Item>
-                                  </Col>
+                                  </Grid.Item>
 
-                                  <Col span={11}>
+                                  <Grid.Item
+                                    className="layout-column"
+                                    span={11}>
                                     <Form.Item
                                       label={t('label.value-plural')}
                                       name={[rowFilterField.name, 'values']}>
@@ -283,9 +293,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                                         )}
                                       />
                                     </Form.Item>
-                                  </Col>
+                                  </Grid.Item>
 
-                                  <Col span={2}>
+                                  <Grid.Item className="layout-column" span={2}>
                                     <Button
                                       className="contract-consumer-security-card-rule-delete-button"
                                       icon={<Icon component={CloseIcon} />}
@@ -295,8 +305,8 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                                         removeRowFilter(rowFilterField.name);
                                       }}
                                     />
-                                  </Col>
-                                </Row>
+                                  </Grid.Item>
+                                </Grid>
                               );
                             }
                           )}
@@ -337,8 +347,8 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                 </Button>
               </div>
             )}
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       ) : (
         rowFilterContent
       )}

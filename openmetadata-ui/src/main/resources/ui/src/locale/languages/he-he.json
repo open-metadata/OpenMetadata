@@ -4129,7 +4129,6 @@
     "dq-threshold-preview-sampling-dynamic": "נמדד על המדגם בגודל הדינמי שבו הטבלה הזו מנותחת.",
     "dq-threshold-preview-statistical": "נכשל כאשר הערך הנמדד חורג מ־{{bound}}.",
     "dq-threshold-preview-statistical-deviation": "נכשל כאשר הערך הנמדד חורג מ־{{bound}}, עם סטייה מותרת של {{amount}} (טווח אפקטיבי {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "הבדיקה הזו משווה את הסף כמספר שורות גולמי, ולכן יחידת הסף אינה מוחלת.",
     "dq-threshold-preview-zero-bound": "סטייה באחוזים סביב גבול של 0 משאירה את הגבול על 0 — השתמשו בסטייה מוחלטת במקום.",
     "dq-unresolved-incidents-count": "<0>{{count}} תקרית</0> לא פתורה",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} תקריות</0> לא פתורות",

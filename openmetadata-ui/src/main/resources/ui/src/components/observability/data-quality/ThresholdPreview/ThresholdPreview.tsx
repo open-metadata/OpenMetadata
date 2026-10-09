@@ -86,13 +86,6 @@ const ThresholdPreview: FC<ThresholdPreviewProps> = ({
           variant="warning"
         />
       )}
-      {data.isUnitIgnored && (
-        <Alert
-          data-testid="threshold-unit-not-enforced-warning"
-          title={t('message.dq-threshold-preview-unit-not-enforced')}
-          variant="warning"
-        />
-      )}
       {data.hasZeroBound && (
         <Alert
           data-testid="threshold-zero-bound-warning"

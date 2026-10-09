@@ -34,7 +34,6 @@ import {
   getThresholdTestSemantic,
   getThresholdUnitLabelParts,
   hasThresholdUnitParam,
-  isThresholdUnitOptionDisabled,
   omitDimensionFailurePolicy,
   ThresholdNoun,
   ThresholdSamplingKind,
@@ -188,23 +187,6 @@ describe('omitDimensionFailurePolicy', () => {
   });
 });
 
-describe('isThresholdUnitOptionDisabled', () => {
-  it('does not let custom SQL pick a unit its validator never reads', () => {
-    expect(
-      isThresholdUnitOptionDisabled('tableCustomSQLQuery', 'PERCENTAGE')
-    ).toBe(true);
-    expect(
-      isThresholdUnitOptionDisabled('tableCustomSQLQuery', 'ABSOLUTE')
-    ).toBe(false);
-  });
-
-  it('leaves both units selectable for every other test', () => {
-    expect(
-      isThresholdUnitOptionDisabled('columnValuesToBeNotNull', 'PERCENTAGE')
-    ).toBe(false);
-  });
-});
-
 describe('hasThresholdUnitParam', () => {
   it('is false for a definition without the param', () => {
     expect(
@@ -349,7 +331,6 @@ describe('getThresholdPreviewData', () => {
       noun: ThresholdNoun.NonNullValues,
       target: 'email',
       isThresholdIgnored: false,
-      isUnitIgnored: false,
     });
     expect(data?.sampling).toBeUndefined();
   });
@@ -540,13 +521,12 @@ describe('getThresholdPreviewData', () => {
       operator: '<=',
       operatorLabelKey: 'label.threshold-operator-at-most',
       strategy: CustomSqlStrategy.Rows,
-      isUnitIgnored: false,
     });
   });
 
-  it('flags that custom SQL ignores a percentage unit', () => {
-    // `evaluate_threshold` compares the raw row count, so a PERCENTAGE unit
-    // changes nothing about the verdict.
+  it('reads a custom SQL percentage as a share of the table rows', () => {
+    // The validator applies the operator to the returned rows as a
+    // percentage of the table's row count.
     const data = getThresholdPreviewData({
       definition: definitionOf('tableCustomSQLQuery', [
         { name: 'operator', optionValues: ['<=', '>'] },
@@ -558,8 +538,11 @@ describe('getThresholdPreviewData', () => {
       },
     });
 
-    expect(data?.isUnitIgnored).toBe(true);
-    expect(data?.isThresholdIgnored).toBe(false);
+    expect(data).toMatchObject({
+      isPercentage: true,
+      noun: ThresholdNoun.TableRows,
+      isThresholdIgnored: false,
+    });
   });
 
   it('does not promise the in-set tolerance while Match enum is off', () => {

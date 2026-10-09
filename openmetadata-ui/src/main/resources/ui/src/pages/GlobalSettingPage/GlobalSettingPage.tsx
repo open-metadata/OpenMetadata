@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,8 +92,10 @@ const GlobalSettingPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
-      <Row className="m-t-xs" gutter={[0, 20]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid m-t-xs"
+        style={{ ...getLayoutGutter(0, 20) }}>
+        <Grid.Item className="layout-column" span={24}>
           <PageHeader
             data={{
               header: t(PAGE_HEADERS.SETTING.header),
@@ -100,22 +104,26 @@ const GlobalSettingPage = () => {
             learningPageId={LEARNING_PAGE_IDS.SETTINGS}
             title={t('label.setting-plural')}
           />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
-          <Row className="setting-items-container" gutter={[20, 20]}>
+        <Grid.Item className="layout-column" span={24}>
+          <Grid
+            className="layout-row layout-grid setting-items-container"
+            style={{ ...getLayoutGutter(20, 20) }}>
             {settingItems.map((setting) => (
-              <Col key={setting?.key} lg={8} md={12} sm={24}>
+              <Grid.Item
+                className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8"
+                key={setting?.key}>
                 <SettingItemCard
                   className="global-setting-card"
                   data={setting}
                   onClick={handleSettingItemClick}
                 />
-              </Col>
+              </Grid.Item>
             ))}
-          </Row>
-        </Col>
-      </Row>
+          </Grid>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

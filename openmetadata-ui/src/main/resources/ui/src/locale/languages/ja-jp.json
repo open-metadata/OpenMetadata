@@ -4129,7 +4129,6 @@
     "dq-threshold-preview-sampling-dynamic": "このテーブルのプロファイリングに使われる、動的に決まるサイズのサンプルで測定されます。",
     "dq-threshold-preview-statistical": "測定値が {{bound}} の範囲外になったとき失敗します。",
     "dq-threshold-preview-statistical-deviation": "測定値が {{bound}} の範囲外になったとき失敗します（{{amount}} の偏差を許容、実効範囲 {{range}}）。",
-    "dq-threshold-preview-unit-not-enforced": "このテストはしきい値をそのままの行数として比較するため、しきい値の単位は適用されません。",
     "dq-threshold-preview-zero-bound": "境界値が 0 のときに割合で偏差を指定しても境界値は 0 のままです。絶対値の偏差を使ってください。",
     "dq-unresolved-incidents-count": "<0>{{count}} 件の未解決</0>インシデント",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} 件の未解決</0>インシデント",

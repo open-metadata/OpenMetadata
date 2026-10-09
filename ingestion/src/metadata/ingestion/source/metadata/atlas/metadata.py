@@ -15,9 +15,11 @@ Atlas source to extract metadata
 
 import traceback
 from collections.abc import Iterable
+from contextlib import closing
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 
+from metadata.domain.tags import TagDefinition, TagRegistry
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -44,6 +46,7 @@ from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
@@ -55,7 +58,6 @@ from metadata.utils import fqn
 from metadata.utils.helpers import get_database_name_for_lineage, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 if TYPE_CHECKING:
     from metadata.ingestion.connections.connection import BaseConnection
@@ -84,6 +86,7 @@ class AtlasSource(Source):
         super().__init__()
         self.config = config
         self.metadata = metadata
+        self.tags_registry = TagRegistry(metadata=metadata)
         self.service_connection = self.config.serviceConnection.root.config
 
         self._connection = create_connection(self.service_connection)
@@ -236,12 +239,10 @@ class AtlasSource(Source):
                             force=True,
                         )
 
-                    yield from get_ometa_tag_and_classification(
-                        tags=[ATLAS_TABLE_TAG],
-                        classification_name=ATLAS_TAG_CATEGORY,
-                        tag_description="Atlas Cluster Tag",
-                        classification_description="Tags associated with atlas entities",
-                    )
+                    self.tags_registry.define(self._tag_definition(ATLAS_TABLE_TAG))
+                    with closing(self.tags_registry.drain()) as definitions:
+                        for definition in definitions:
+                            yield Either(left=None, right=definition)
 
                     table_fqn = fqn.build(
                         metadata=self.metadata,
@@ -276,39 +277,45 @@ class AtlasSource(Source):
                     )
 
     def apply_table_tags(self, table_object: Table, table_entity: dict) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        apply default atlas table tag
-        """
-        tag_labels = []
-        table_tags = get_tag_labels(
-            metadata=self.metadata,
-            tags=[ATLAS_TABLE_TAG],
+        """Add confirmed Atlas classification labels to an existing table."""
+        table_fqn = model_str(table_object.fullyQualifiedName)
+        try:
+            tag_names = [ATLAS_TABLE_TAG]
+            tag_names.extend(
+                tag["typeName"] for tag in table_entity.get("classifications", []) if tag and tag.get("typeName")
+            )
+            for tag_name in tag_names:
+                try:
+                    tag = self._tag_definition(tag_name)
+                    self.tags_registry.define(tag)
+                    self.tags_registry.attach(entity_fqn=table_fqn, tag=tag)
+                except Exception as exc:
+                    yield Either(
+                        right=None,
+                        left=StackTraceError(
+                            name=tag_name,
+                            error=f"Error registering tag [{tag_name}]: [{exc}]",
+                            stackTrace=traceback.format_exc(),
+                        ),
+                    )
+            with closing(self.tags_registry.drain()) as definitions:
+                for definition in definitions:
+                    yield Either(left=None, right=definition)
+            self.metadata.patch_tags(
+                entity=Table,
+                source=table_object,
+                tag_labels=self.tags_registry.labels_for(table_fqn),
+            )
+        finally:
+            self.tags_registry.clear_scope(table_fqn)
+
+    @staticmethod
+    def _tag_definition(tag_name: str) -> TagDefinition:
+        return TagDefinition(
             classification_name=ATLAS_TAG_CATEGORY,
-        )
-        if table_tags:
-            tag_labels.extend(table_tags)
-
-        # apply classification tags
-        for tag in table_entity.get("classifications", []):
-            if tag and tag.get("typeName"):
-                yield from get_ometa_tag_and_classification(
-                    tags=[tag.get("typeName", ATLAS_TABLE_TAG)],
-                    classification_name=ATLAS_TAG_CATEGORY,
-                    tag_description="Atlas Cluster Tag",
-                    classification_description="Tags associated with atlas entities",
-                )
-                classification_tags = get_tag_labels(
-                    metadata=self.metadata,
-                    tags=[tag.get("typeName", ATLAS_TABLE_TAG)],
-                    classification_name=ATLAS_TAG_CATEGORY,
-                )
-                if classification_tags:
-                    tag_labels.extend(classification_tags)
-
-        self.metadata.patch_tags(
-            entity=Table,
-            source=table_object,
-            tag_labels=tag_labels,
+            tag_name=tag_name,
+            tag_description="Atlas Cluster Tag",
+            classification_description="Tags associated with atlas entities",
         )
 
     def _parse_table_columns(self, table_response, tbl_entity, name) -> list[Column]:

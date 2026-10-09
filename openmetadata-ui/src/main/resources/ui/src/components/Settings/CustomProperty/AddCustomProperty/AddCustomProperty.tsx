@@ -13,13 +13,14 @@
 
 import {
   Badge,
+  Box,
   Button as CoreButton,
   SelectItemType,
   SlideoutMenu,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, FormInstance, Row } from 'antd';
+import { Button, Form, FormInstance } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 
@@ -616,16 +617,16 @@ const AddCustomProperty = ({
       {generateFormFields(conditionalTypeFields)}
       {generateFormFields([descriptionField])}
       {isUndefined(open) && (
-        <Row justify="end">
-          <Col>
+        <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-column tw:block">
             <Button
               data-testid="back-button"
               type="link"
               onClick={handleCancel}>
               {t('label.back')}
             </Button>
-          </Col>
-          <Col>
+          </Box>
+          <Box className="layout-column tw:block">
             <Button
               data-testid="create-button"
               htmlType="submit"
@@ -633,8 +634,8 @@ const AddCustomProperty = ({
               type="primary">
               {t('label.create')}
             </Button>
-          </Col>
-        </Row>
+          </Box>
+        </Box>
       )}
     </Form>
   );

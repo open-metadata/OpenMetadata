@@ -106,13 +106,16 @@ const formatCustomSqlSentence = (
   amount: string,
   t: TFunction
 ): string => {
-  const { operator, operatorLabelKey, strategy, threshold } = data;
+  const { isPercentage, operator, operatorLabelKey, strategy, threshold } =
+    data;
   const operatorText = operatorLabelKey ? t(operatorLabelKey) : operator;
 
+  // A COUNT query returns a bare number, so an absolute threshold is quoted
+  // without a noun; a percentage is still a share of the table rows.
   return strategy === CustomSqlStrategy.Count
     ? t('message.dq-threshold-preview-custom-sql-count', {
         operator: operatorText,
-        value: threshold,
+        value: isPercentage ? amount : threshold,
       })
     : t('message.dq-threshold-preview-custom-sql-rows', {
         operator: operatorText,
@@ -130,17 +133,8 @@ export const formatThresholdSentence = (
   data: ThresholdPreviewData,
   t: TFunction
 ): string | undefined => {
-  const { semantic, threshold, isPercentage, noun, target, isUnitIgnored } =
-    data;
-
-  // When the unit is not read for this test the threshold is a raw count
-  // whatever the dropdown says, so the sentence says what will happen.
-  const amount = formatThresholdAmount(
-    threshold,
-    isUnitIgnored ? false : isPercentage,
-    isUnitIgnored ? ThresholdNoun.Rows : noun,
-    t
-  );
+  const { semantic, threshold, isPercentage, noun, target } = data;
+  const amount = formatThresholdAmount(threshold, isPercentage, noun, t);
 
   switch (semantic) {
     case ThresholdTestSemantic.Statistical:
