@@ -36,8 +36,9 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.matching.AlertMatching;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
@@ -284,9 +285,9 @@ class AbstractEventConsumerTest {
     ChangeEvent event = createMockChangeEvent();
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(webhookId, slackId));
 
-    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
+    try (MockedStatic<AlertMatching> alertUtil = mockStatic(AlertMatching.class)) {
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .when(() -> AlertMatching.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
       consumer.handle(List.copyOf(events.keySet()));
     }
@@ -335,7 +336,7 @@ class AbstractEventConsumerTest {
     lenient().doAnswer(inv -> sent.add(inv.getArgument(1))).when(slackA).sendTo(any(), any());
     lenient().doAnswer(inv -> sent.add(inv.getArgument(1))).when(slackB).sendTo(any(), any());
 
-    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+    try (MockedStatic<AlertMatching> alertUtil = mockStatic(AlertMatching.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(
                 RecipientResolver.class,
@@ -347,7 +348,7 @@ class AbstractEventConsumerTest {
                 })) {
       consumer.openTick(destinations);
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .when(() -> AlertMatching.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
 
       consumer.handle(List.copyOf(events.keySet()));
@@ -377,7 +378,7 @@ class AbstractEventConsumerTest {
     ChangeEvent event = createMockChangeEvent();
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(id));
 
-    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+    try (MockedStatic<AlertMatching> alertUtil = mockStatic(AlertMatching.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(
                 RecipientResolver.class,
@@ -386,7 +387,7 @@ class AbstractEventConsumerTest {
                         .thenReturn(Recipients.none()))) {
       consumer.openTick(Map.of(id, slack));
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .when(() -> AlertMatching.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
       consumer.handle(List.copyOf(events.keySet()));
     }
@@ -411,12 +412,12 @@ class AbstractEventConsumerTest {
     ChangeEvent event = createMockChangeEvent();
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(id));
 
-    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+    try (MockedStatic<AlertMatching> alertUtil = mockStatic(AlertMatching.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(RecipientResolver.class)) {
       consumer.openTick(Map.of(id, destination));
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .when(() -> AlertMatching.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
       consumer.handle(List.copyOf(events.keySet()));
 
@@ -445,12 +446,12 @@ class AbstractEventConsumerTest {
     ChangeEvent event = createMockChangeEvent();
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(okId, failId));
 
-    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+    try (MockedStatic<AlertMatching> alertUtil = mockStatic(AlertMatching.class);
         MockedConstruction<RecipientResolver> resolverCtor =
             mockConstruction(RecipientResolver.class)) {
       consumer.openTick(destinations);
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .when(() -> AlertMatching.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
       consumer.handle(List.copyOf(events.keySet()));
     }
@@ -485,9 +486,9 @@ class AbstractEventConsumerTest {
     ChangeEvent event = createMockChangeEvent();
     Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(unusableId));
 
-    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
+    try (MockedStatic<AlertMatching> alertUtil = mockStatic(AlertMatching.class)) {
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .when(() -> AlertMatching.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
       consumer.handle(List.copyOf(events.keySet()));
     }
@@ -530,9 +531,9 @@ class AbstractEventConsumerTest {
       ChangeEvent event = createMockChangeEvent();
       Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(unusableId, usableId));
 
-      try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
+      try (MockedStatic<AlertMatching> alertUtil = mockStatic(AlertMatching.class)) {
         alertUtil
-            .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+            .when(() -> AlertMatching.getFilteredEvents(any(), any(), any(), any()))
             .thenReturn(events);
         consumer.handle(List.copyOf(events.keySet()));
       }

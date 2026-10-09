@@ -13,6 +13,7 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.service.alerting.definition.AlertConditions;
 
 /**
  * The text stored for an alert is what decides it, so what the builder writes for one source must
@@ -75,7 +76,7 @@ class CompiledTextTest {
                         "failed")));
 
     FilteringRules stored =
-        AlertUtil.validateAndBuildFilteringConditions(
+        AlertConditions.validateAndBuildFilteringConditions(
             List.of("table", "topic", "pipeline"), AlertType.OBSERVABILITY, input);
 
     assertEquals(List.of("table", "topic", "pipeline"), stored.getResources());
@@ -130,7 +131,7 @@ class CompiledTextTest {
 
   private static Compiled textOf(AlertType type, String source, AlertFilteringInput input) {
     FilteringRules built =
-        AlertUtil.validateAndBuildFilteringConditions(List.of(source), type, input);
+        AlertConditions.validateAndBuildFilteringConditions(List.of(source), type, input);
     return new Compiled(wholeTextOf(built.getRules()), wholeTextOf(built.getActions()));
   }
 

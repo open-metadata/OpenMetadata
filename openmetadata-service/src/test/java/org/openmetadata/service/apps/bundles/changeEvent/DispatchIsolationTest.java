@@ -38,15 +38,16 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.generic.GenericPublisher;
+import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.webhook.GenericPublisher;
+import org.openmetadata.service.alerting.channel.webhook.StubbedTargets;
+import org.openmetadata.service.alerting.matching.AlertMatching;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertRows;
-import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
-import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
@@ -65,14 +66,18 @@ class DispatchIsolationTest {
     Invocation.Builder dead = endpointAnswering(500, "Server Error");
     Invocation.Builder firstLive = endpointAnswering(200, "OK");
     Invocation.Builder secondLive = endpointAnswering(200, "OK");
-    Set<Recipient> recipients = new LinkedHashSet<>();
-    recipients.add(recipientOf(dead));
-    recipients.add(recipientOf(firstLive));
-    recipients.add(recipientOf(secondLive));
     ChangeEvent event = new ChangeEvent().withId(UUID.randomUUID()).withEntityType("table");
 
-    EventPublisherException failure =
-        assertThrows(EventPublisherException.class, () -> publisher.sendMessage(event, recipients));
+    EventPublisherException failure;
+    try (StubbedTargets targets = new StubbedTargets()) {
+      Set<Recipient> recipients = new LinkedHashSet<>();
+      recipients.add(targets.recipientAnsweredBy(dead));
+      recipients.add(targets.recipientAnsweredBy(firstLive));
+      recipients.add(targets.recipientAnsweredBy(secondLive));
+      failure =
+          assertThrows(
+              EventPublisherException.class, () -> publisher.sendMessage(event, recipients));
+    }
 
     verify(firstLive, times(1)).post(any());
     verify(secondLive, times(1)).post(any());
@@ -96,11 +101,11 @@ class DispatchIsolationTest {
     events.put(broken, Set.of(destinationId));
     events.put(healthy, Set.of(destinationId));
 
-    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+    try (MockedStatic<AlertMatching> alertUtil = mockStatic(AlertMatching.class);
         MockedConstruction<RecipientResolver> ignored = mockConstruction(RecipientResolver.class)) {
       consumer.openTick(Map.of(destinationId, channel));
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .when(() -> AlertMatching.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
       consumer.handle(List.copyOf(events.keySet()));
     }
@@ -127,11 +132,11 @@ class DispatchIsolationTest {
     events.put(broken, Set.of(destinationId));
     events.put(healthy, Set.of(destinationId));
 
-    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+    try (MockedStatic<AlertMatching> alertUtil = mockStatic(AlertMatching.class);
         MockedConstruction<RecipientResolver> ignored = mockConstruction(RecipientResolver.class)) {
       consumer.openTick(Map.of(destinationId, channel));
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .when(() -> AlertMatching.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
       consumer.handle(List.copyOf(events.keySet()));
     }
@@ -193,12 +198,6 @@ class DispatchIsolationTest {
     Invocation.Builder builder = mock(Invocation.Builder.class);
     when(builder.post(any())).thenReturn(response);
     return builder;
-  }
-
-  private static WebhookRecipient recipientOf(Invocation.Builder builder) {
-    WebhookRecipient recipient = mock(WebhookRecipient.class);
-    when(recipient.getConfiguredRequest(any(), any())).thenReturn(builder);
-    return recipient;
   }
 
   @SuppressWarnings("unchecked")

@@ -19,6 +19,7 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -52,14 +53,17 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
@@ -881,5 +885,24 @@ public final class UserUtil {
         throw new BadRequestException("Header image must be a valid URL: " + e.getMessage());
       }
     }
+  }
+
+  /** The email of every admin user. */
+  public static Set<String> getAdminEmails() {
+    Set<String> emails = new HashSet<>();
+    UserRepository users = (UserRepository) Entity.getEntityRepository(USER);
+    ListFilter admins = new ListFilter(Include.ALL);
+    admins.addQueryParam("isAdmin", "true");
+    String after = null;
+    try {
+      do {
+        ResultList<User> page = users.listAfter(null, users.getFields("email"), admins, 50, after);
+        page.getData().stream().map(User::getEmail).forEach(emails::add);
+        after = page.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception ex) {
+      LOG.error("Failed in listing all Users , Reason", ex);
+    }
+    return emails;
   }
 }

@@ -4,7 +4,7 @@ import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
-import static org.openmetadata.service.util.SubscriptionUtil.getAdminEmails;
+import static org.openmetadata.service.util.UserUtil.getAdminEmails;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 import static org.openmetadata.service.util.email.TemplateConstants.DATA_INSIGHT_REPORT_TEMPLATE;
 

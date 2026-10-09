@@ -34,6 +34,7 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.definition.AlertConditions;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 
 /**
@@ -120,7 +121,7 @@ class AlertCatalogTest {
       String source = entry.get("source").asText();
       assertDoesNotThrow(
           () ->
-              AlertUtil.rebuildStoredFilteringConditions(
+              AlertConditions.rebuildStoredFilteringConditions(
                   List.of(source), alertType, selectionOf(alertType, source, entry)),
           entry.toString());
     }
@@ -135,17 +136,17 @@ class AlertCatalogTest {
 
     assertDoesNotThrow(
         () ->
-            AlertUtil.rebuildStoredFilteringConditions(
+            AlertConditions.rebuildStoredFilteringConditions(
                 List.of("testSuite"), AlertType.OBSERVABILITY, removedTrigger));
     assertThrows(
         BadRequestException.class,
         () ->
-            AlertUtil.validateAndBuildFilteringConditions(
+            AlertConditions.validateAndBuildFilteringConditions(
                 List.of("testSuite"), AlertType.OBSERVABILITY, removedTrigger));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AlertUtil.validateAndBuildFilteringConditions(
+            AlertConditions.validateAndBuildFilteringConditions(
                 List.of("location"), AlertType.NOTIFICATION, null));
   }
 

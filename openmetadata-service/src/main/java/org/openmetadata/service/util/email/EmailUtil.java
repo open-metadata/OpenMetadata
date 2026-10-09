@@ -393,13 +393,6 @@ public class EmailUtil {
     return emailConfig;
   }
 
-  public static Boolean isValidEmail(String email) {
-    if (StringUtils.isBlank(email)) {
-      return false;
-    }
-    return email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$");
-  }
-
   public static String getOMBaseURL() {
     Settings setting =
         new SystemRepository()

@@ -32,9 +32,10 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.matching.AlertMatching;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertRows;
-import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO;
@@ -172,7 +173,7 @@ class DispatchOrderTest {
     JobExecutionContext context = contextOf(scheduler);
     try (MockedStatic<Entity> entity = mockStatic(Entity.class);
         MockedStatic<AlertRows> rows = mockStatic(AlertRows.class);
-        MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+        MockedStatic<AlertMatching> alertUtil = mockStatic(AlertMatching.class);
         MockedStatic<AlertFactory> factory = mockStatic(AlertFactory.class);
         MockedConstruction<RecipientResolver> ignored =
             mockConstruction(
@@ -183,7 +184,7 @@ class DispatchOrderTest {
       entity.when(Entity::getCollectionDAO).thenReturn(dao);
       rows.when(() -> AlertRows.readOrNull(alert.getId())).thenReturn(alert);
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
+          .when(() -> AlertMatching.getFilteredEvents(any(), any(), any(), any()))
           .thenAnswer(invocation -> invocation.getArgument(1));
       for (int position = 0; position < channels.size(); position++) {
         Destination<ChangeEvent> channel = channels.get(position);

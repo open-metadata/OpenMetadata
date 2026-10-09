@@ -42,9 +42,4 @@ public final class TestMessageDecorator implements MessageDecorator<String> {
   public String getEntityUrl(String prefix, String fqn, String additionalInput) {
     return prefix + "|" + fqn + "|" + additionalInput;
   }
-
-  @Override
-  public String buildTestMessage() {
-    return "test";
-  }
 }

@@ -63,7 +63,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * SpEL matchers for alert filtering rules. A matcher returns {@code false} when it cannot evaluate
- * and must never throw for a well-formed event: {@code AlertUtil.isChangeEventAllowed} treats an
+ * and must never throw for a well-formed event: {@code AlertMatching.isChangeEventAllowed} treats an
  * escaping exception as "not allowed" and dead-letters that event, so a throw silently costs the
  * alert a delivery it should have made.
  */

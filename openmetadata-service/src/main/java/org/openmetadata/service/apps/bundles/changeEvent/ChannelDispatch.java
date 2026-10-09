@@ -33,6 +33,9 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination.Subscriptio
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.alerting.channel.DeliveryMemory;
+import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.IsolatedSends;
+import org.openmetadata.service.alerting.channel.SendStatus;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.Channel;

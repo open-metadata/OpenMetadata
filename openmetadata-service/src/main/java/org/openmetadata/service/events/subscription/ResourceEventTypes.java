@@ -24,7 +24,7 @@ import org.openmetadata.service.Entity;
  * given notification resource can actually receive, derived from what the emitters produce rather
  * than from the {@link EventType} enum. Consumers read the descriptor, never this class.
  *
- * <p>An alert matches an event when {@code AlertUtil.shouldTriggerAlert} lets it through: the "all"
+ * <p>An alert matches an event when {@code AlertMatching.shouldTriggerAlert} lets it through: the "all"
  * resource takes everything; a THREAD event matches {@code thread.type} for the thread-type
  * resources and {@code thread.entityRef.type} for every other resource; anything else matches on
  * {@code entityType}. Values no emitter produces, or that never reach {@code change_event}, are

@@ -35,26 +35,11 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.util.branding.MessageBrandingResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public interface MessageDecorator<T> {
   Logger LOG = LoggerFactory.getLogger(MessageDecorator.class);
-
-  default String getConnectionTestDescription() {
-    return "This is a test message, receiving this message confirms that you have successfully configured "
-        + MessageBrandingResolver.get().getProductName()
-        + " to receive alerts.";
-  }
-
-  default String getProductName() {
-    return MessageBrandingResolver.get().getProductName();
-  }
-
-  default String getLogoUrl() {
-    return MessageBrandingResolver.get().getLogoUrl();
-  }
 
   String getBold();
 
@@ -83,8 +68,6 @@ public interface MessageDecorator<T> {
   String getRemoveMarkerClose();
 
   String getEntityUrl(String prefix, String fqn, String additionalInput);
-
-  T buildTestMessage();
 
   @SneakyThrows
   default String buildEntityUrl(String entityType, EntityInterface<?> entityInterface) {
@@ -156,10 +139,6 @@ public interface MessageDecorator<T> {
                 return entityInterface.getFullyQualifiedName();
               }
             });
-  }
-
-  default T buildOutgoingTestMessage() {
-    return buildTestMessage();
   }
 
   default String getPlaintextDiff(String oldValue, String newValue) {

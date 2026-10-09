@@ -1,6 +1,6 @@
 package org.openmetadata.service.apps.bundles.changeEvent;
 
-import static org.openmetadata.service.events.subscription.AlertUtil.getFilteredEvents;
+import static org.openmetadata.service.alerting.matching.AlertMatching.getFilteredEvents;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -13,7 +13,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.channel.ChannelDelivery;
+import org.openmetadata.service.alerting.channel.Delivery;
 import org.openmetadata.service.alerting.channel.DeliveryMemory;
+import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
 import org.openmetadata.service.util.DIContainer;

@@ -13,6 +13,7 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.service.alerting.definition.AlertConditions;
 
 /**
  * What an alert watches and when it fires, as the user chose it, and the stored text compiled
@@ -30,7 +31,7 @@ public final class AlertDefinition {
 
   /** Rejects a definition that cannot be built. For a new alert or a definition that changed. */
   public static FilteringRules compileStrictly(EventSubscription alert) {
-    return AlertUtil.validateAndBuildFilteringConditions(
+    return AlertConditions.validateAndBuildFilteringConditions(
         sourcesOf(alert), alert.getAlertType(), alert.getInput());
   }
 
@@ -42,7 +43,7 @@ public final class AlertDefinition {
     FilteringRules compiled = stored;
     try {
       compiled =
-          AlertUtil.rebuildStoredFilteringConditions(
+          AlertConditions.rebuildStoredFilteringConditions(
               sourcesOf(alert), alert.getAlertType(), alert.getInput());
     } catch (RuntimeException e) {
       LOG.info("Alert {} keeps its stored conditions: {}", alert.getName(), e.getMessage());

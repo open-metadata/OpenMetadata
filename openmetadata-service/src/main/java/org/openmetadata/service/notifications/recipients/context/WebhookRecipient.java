@@ -13,9 +13,6 @@
 
 package org.openmetadata.service.notifications.recipients.context;
 
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.Invocation.Builder;
-import jakarta.ws.rs.client.WebTarget;
 import java.net.URI;
 import java.util.Map;
 import java.util.Objects;
@@ -27,8 +24,6 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
-import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.util.SubscriptionUtil;
 import org.openmetadata.service.util.URLValidator;
 
 /**
@@ -76,44 +71,6 @@ public final class WebhookRecipient extends Recipient {
     boolean hasSubscriptions = profile != null && profile.getSubscription() != null;
     Webhook webhook = hasSubscriptions ? ofTheChannel.apply(profile.getSubscription()) : null;
     return isUsable(webhook) ? new WebhookRecipient(webhook, name) : null;
-  }
-
-  /**
-   * Build a configured HTTP request for this webhook recipient.
-   *
-   * Applies all webhook configuration including query parameters, authentication headers, custom
-   * headers, and HMAC signature.
-   *
-   * @param client the JAX-RS client for making HTTP requests
-   * @param payload the JSON payload to be sent (used for HMAC calculation)
-   * @return a configured Invocation.Builder ready to send the request
-   */
-  public Builder getConfiguredRequest(Client client, String payload) {
-    String endpoint = webhook.getEndpoint().toString();
-
-    // Build the request target with query parameters
-    WebTarget target = client.target(endpoint);
-    target = addQueryParameters(target, webhook.getQueryParams());
-
-    // Add authentication headers
-    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-    Builder requestBuilder = SecurityUtil.addHeaders(target, authHeaders);
-
-    // Add webhook-specific headers (custom headers + HMAC signature)
-    SubscriptionUtil.prepareWebhookHeaders(requestBuilder, webhook, payload);
-
-    return requestBuilder;
-  }
-
-  private static WebTarget addQueryParameters(WebTarget target, Map<String, String> queryParams) {
-    if (CommonUtil.nullOrEmpty(queryParams)) {
-      return target;
-    }
-
-    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-      target = target.queryParam(entry.getKey(), entry.getValue());
-    }
-    return target;
   }
 
   private static boolean isUsable(Webhook webhook) {

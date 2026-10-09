@@ -13,11 +13,27 @@
 
 package org.openmetadata.service.events.subscription.channels;
 
+import jakarta.ws.rs.BadRequestException;
+import java.util.Map;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 
 /** What a channel expects of a destination's configuration. */
 public interface ConfigRules {
+  /** For a channel whose destination needs no configuration, such as the activity feed. */
+  ConfigRules NONE =
+      new ConfigRules() {
+        @Override
+        public void validate(SubscriptionDestination destination) {
+          // Nothing to judge.
+        }
+
+        @Override
+        public SubscriptionAction receiversOf(SubscriptionDestination destination) {
+          return null;
+        }
+      };
+
   /**
    * Runs for every new or changed destination, whatever its category. Throws a 400 naming what is
    * wrong.
@@ -37,5 +53,19 @@ public interface ConfigRules {
   static boolean configuredByTheUser(SubscriptionDestination destination) {
     return destination.getCategory() == null
         || destination.getCategory() == SubscriptionDestination.SubscriptionCategory.EXTERNAL;
+  }
+
+  /** A destination the user configures must carry that configuration. Throws a 400 otherwise. */
+  static void requireConfiguration(SubscriptionDestination destination) {
+    Object config = destination.getConfig();
+    if (config == null) {
+      throw new BadRequestException(
+          String.format(
+              "Destination configuration is required for %s type", destination.getType()));
+    }
+    if (config instanceof Map<?, ?> map && map.isEmpty()) {
+      throw new BadRequestException(
+          String.format("Destination configuration is empty for %s type", destination.getType()));
+    }
   }
 }

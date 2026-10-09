@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
-import org.openmetadata.service.events.subscription.channels.builtin.BuiltInChannels;
+import org.openmetadata.service.alerting.channel.builtin.BuiltInChannels;
 import org.openmetadata.service.notifications.channels.ChannelRenderer;
 
 class ChannelRegistryTest {
@@ -46,7 +46,14 @@ class ChannelRegistryTest {
               + "|GOVERNANCE_WORKFLOW_CHANGE_EVENT)\\b");
   private static final List<String> ALLOWED =
       List.of(
-          "events/subscription/channels/builtin/",
+          // Each channel names the destination type it serves, in its own package.
+          "alerting/channel/email/",
+          "alerting/channel/slack/",
+          "alerting/channel/teams/",
+          "alerting/channel/gchat/",
+          "alerting/channel/webhook/",
+          "alerting/channel/feed/",
+          "governance/workflows/GovernanceChannels.java",
           "migration/",
           "exception/CatalogExceptionMessage.java");
 
@@ -101,7 +108,7 @@ class ChannelRegistryTest {
   }
 
   @Test
-  void noSubscriptionTypeReferenceOutsideBuiltInChannels() throws IOException {
+  void onlyAChannelsOwnPackageNamesItsDestinationType() throws IOException {
     try (Stream<Path> sources = Files.walk(MAIN_SOURCES)) {
       List<String> offenders =
           sources

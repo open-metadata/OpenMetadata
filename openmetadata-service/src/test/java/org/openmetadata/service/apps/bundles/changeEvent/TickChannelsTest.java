@@ -32,6 +32,8 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.service.alerting.channel.Delivery;
+import org.openmetadata.service.alerting.channel.Destination;
 
 class TickChannelsTest {
   private static final ChangeEvent EVENT = new ChangeEvent().withId(UUID.randomUUID());

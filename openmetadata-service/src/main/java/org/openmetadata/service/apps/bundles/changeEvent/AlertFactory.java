@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.changeEvent;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.events.subscription.channels.Channel;
 import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 

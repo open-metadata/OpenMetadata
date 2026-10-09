@@ -16,14 +16,7 @@ package org.openmetadata.service.formatter.decorators;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
 
-import java.util.List;
-import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
-import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.AdaptiveCardContent;
-import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.Attachment;
-import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.Column;
-import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.ColumnSet;
-import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.Image;
-import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.TextBlock;
+import org.openmetadata.service.alerting.channel.teams.TeamsMessage;
 import org.openmetadata.service.util.email.EmailUtil;
 
 public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
@@ -74,69 +67,5 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         prefix,
         encodedFqn,
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams));
-  }
-
-  @Override
-  public TeamsMessage buildTestMessage() {
-    return getTeamTestMessage();
-  }
-
-  public TeamsMessage getTeamTestMessage() {
-    return createConnectionTestMessage();
-  }
-
-  private TeamsMessage createConnectionTestMessage() {
-    Image imageItem = createOMImageMessage();
-
-    Column column1 =
-        Column.builder().type("Column").width("auto").items(List.of(imageItem)).build();
-
-    TextBlock textBlock1 = createTextBlock("Connection Successful ✅", "Bolder", "Large");
-    TextBlock textBlock2 = createTextBlock(getConnectionTestDescription(), null, null);
-
-    Column column2 =
-        Column.builder()
-            .type("Column")
-            .width("stretch")
-            .items(List.of(textBlock1, textBlock2))
-            .build();
-
-    ColumnSet columnSet =
-        ColumnSet.builder().type("ColumnSet").columns(List.of(column1, column2)).build();
-
-    // Create the footer text block
-    TextBlock footerTextBlock = createTextBlock(getProductName(), "Lighter", "Small");
-    footerTextBlock.setHorizontalAlignment("Center");
-    footerTextBlock.setSpacing("Medium");
-    footerTextBlock.setSeparator(true);
-
-    AdaptiveCardContent adaptiveCardContent =
-        AdaptiveCardContent.builder()
-            .type("AdaptiveCard")
-            .version("1.0")
-            .body(List.of(columnSet, footerTextBlock))
-            .build();
-
-    Attachment attachment =
-        Attachment.builder()
-            .contentType("application/vnd.microsoft.card.adaptive")
-            .content(adaptiveCardContent)
-            .build();
-
-    return TeamsMessage.builder().type("message").attachments(List.of(attachment)).build();
-  }
-
-  private TextBlock createTextBlock(String text, String weight, String size) {
-    return TextBlock.builder()
-        .type("TextBlock")
-        .text(text)
-        .weight(weight)
-        .size(size)
-        .wrap(true)
-        .build();
-  }
-
-  private Image createOMImageMessage() {
-    return Image.builder().type("Image").url(getLogoUrl()).size("Small").build();
   }
 }

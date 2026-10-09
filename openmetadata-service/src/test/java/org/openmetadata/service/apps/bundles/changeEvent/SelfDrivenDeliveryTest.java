@@ -39,6 +39,8 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.Delivery;
+import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.DIContainer;

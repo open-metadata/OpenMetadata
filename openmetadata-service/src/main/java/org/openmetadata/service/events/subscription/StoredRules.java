@@ -23,6 +23,7 @@ import java.util.Objects;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.service.alerting.matching.AlertMatching;
 
 /** Checks on the rules an alert is stored with, whoever wrote them. */
 final class StoredRules {
@@ -61,11 +62,12 @@ final class StoredRules {
     if (alert.getFilteringRules() != null) {
       List<EventFilterRule> rules = alert.getFilteringRules().getRules();
       for (EventFilterRule rule : rules) {
-        AlertUtil.validateExpression(rule.getCondition(), Boolean.class);
+        AlertMatching.validateExpression(rule.getCondition(), Boolean.class);
       }
       rules.sort(Comparator.comparing(EventFilterRule::getName));
       if (!rules.isEmpty()) {
-        AlertUtil.validateExpression(AlertUtil.buildCompleteCondition(rules), Boolean.class);
+        AlertMatching.validateExpression(
+            AlertMatching.buildCompleteCondition(rules), Boolean.class);
       }
     }
   }

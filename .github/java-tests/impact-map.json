@@ -528,7 +528,6 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/util/email/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/branding/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/resourcepath/**",
-        "openmetadata-service/src/main/java/org/openmetadata/service/util/Subscription*",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/WebsocketNotification*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ChangeSummar*",
         "openmetadata-service/src/main/resources/json/data/notifications/**",

@@ -17,6 +17,7 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
+import org.openmetadata.service.alerting.definition.AlertConditions;
 
 /**
  * An alert that watches several sources. The sources are "any of", the filters "all of", and a
@@ -89,7 +90,7 @@ public final class SeveralSources {
     }
     EventFilterRule definition =
         definitionOf(chosen, catalog.getFirst().getSupportedFilters()).orElseThrow();
-    return AlertUtil.ruleOf(definition, chosen);
+    return AlertConditions.ruleOf(definition, chosen);
   }
 
   private static EventFilterRule triggersGroupedBySource(
@@ -121,13 +122,14 @@ public final class SeveralSources {
     List<String> own = new ArrayList<>();
     for (ArgumentsInput trigger : chosen) {
       definitionOf(trigger, source.getSupportedActions())
-          .map(definition -> AlertUtil.ruleOf(definition, trigger))
+          .map(definition -> AlertConditions.ruleOf(definition, trigger))
           .map(SeveralSources::wrapped)
           .ifPresent(own::add);
     }
     String ofThisSource =
         String.format(
-            "matchAnySource({%s})", AlertUtil.convertInputListToString(List.of(source.getName())));
+            "matchAnySource({%s})",
+            AlertConditions.convertInputListToString(List.of(source.getName())));
     return own.isEmpty()
         ? Optional.empty()
         : Optional.of("(" + ofThisSource + " && " + String.join(" && ", own) + ")");
@@ -147,7 +149,7 @@ public final class SeveralSources {
   }
 
   // Letter case is ignored here, and only here: events keep matching a source's name exactly.
-  static List<String> distinct(List<String> sources) {
+  public static List<String> distinct(List<String> sources) {
     Set<String> seen = new LinkedHashSet<>();
     return sources.stream().filter(source -> seen.add(source.toLowerCase(Locale.ROOT))).toList();
   }

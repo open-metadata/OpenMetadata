@@ -14,6 +14,8 @@ import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.service.alerting.definition.AlertConditions;
+import org.openmetadata.service.alerting.matching.AlertMatching;
 
 /** Which sources combine, and what a broken rule says: a 400 that names what is wrong. */
 class SeveralSourcesTest {
@@ -122,13 +124,13 @@ class SeveralSourcesTest {
 
     assertDoesNotThrow(
         () ->
-            AlertUtil.validateExpression(
-                AlertUtil.buildCompleteCondition(stored.getActions()), Boolean.class));
+            AlertMatching.validateExpression(
+                AlertMatching.buildCompleteCondition(stored.getActions()), Boolean.class));
   }
 
   private static FilteringRules build(
       AlertType alertType, List<String> sources, AlertFilteringInput input) {
-    return AlertUtil.validateAndBuildFilteringConditions(sources, alertType, input);
+    return AlertConditions.validateAndBuildFilteringConditions(sources, alertType, input);
   }
 
   private static BadRequestException refusal(

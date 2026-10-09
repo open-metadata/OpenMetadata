@@ -1,0 +1,358 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.alerting.matching;
+
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.CONVERSATION;
+import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.OptionalLong;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.EventFilterRule;
+import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Status;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.springframework.expression.Expression;
+import org.springframework.expression.spel.support.SimpleEvaluationContext;
+
+/**
+ * Whether a change event is one an alert sends: its sources, its rules evaluated on the event, and
+ * the watermark that keeps an alert from sending what happened before it started.
+ */
+@Slf4j
+public final class AlertMatching {
+
+  // Reuse compiled filter expressions across events; the condition string is the cache key.
+  // Bounded + thread-safe — also evaluated from EventSubscriptionScheduler parallel streams.
+  private static final Cache<String, Expression> COMPILED_CONDITIONS =
+      Caffeine.newBuilder().maximumSize(1000).build();
+
+  private static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
+
+  /** Default handler for {@link #isChangeEventAllowed}: log the event and leave it out. */
+  public static final BiConsumer<ChangeEvent, Exception> LOG_EVALUATION_ERROR =
+      (event, error) ->
+          LOG.error(
+              "Excluding change event {} on {}: alert filter evaluation failed",
+              event.getId(),
+              event.getEntityType(),
+              error);
+
+  public static <T> void validateExpression(String condition, Class<T> clz) {
+    if (condition == null) {
+      return;
+    }
+    Expression expression = parseExpression(condition);
+    AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(null);
+    SimpleEvaluationContext context =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(ruleEvaluator)
+            .build();
+    try {
+      expression.getValue(context, clz);
+    } catch (Exception exception) {
+      // Remove unnecessary class details in the exception message
+      String message =
+          exception.getMessage().replaceAll("on type .*$", "").replaceAll("on object .*$", "");
+      throw new IllegalArgumentException(CatalogExceptionMessage.failedToEvaluate(message));
+    }
+  }
+
+  public static boolean evaluateAlertConditions(
+      ChangeEvent changeEvent, List<EventFilterRule> alertFilterRules) {
+    if (!alertFilterRules.isEmpty()) {
+      boolean result;
+      String completeCondition = buildCompleteCondition(alertFilterRules);
+      AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
+      Expression expression =
+          COMPILED_CONDITIONS.get(completeCondition, condition -> parseExpression(condition));
+      SimpleEvaluationContext context =
+          SimpleEvaluationContext.forReadOnlyDataBinding()
+              .withInstanceMethods()
+              .withRootObject(ruleEvaluator)
+              .build();
+      result = Boolean.TRUE.equals(expression.getValue(context, Boolean.class));
+      LOG.debug("Alert evaluated as Result : {}", result);
+      return result;
+    } else {
+      return true;
+    }
+  }
+
+  public static String buildCompleteCondition(List<EventFilterRule> alertFilterRules) {
+    StringBuilder builder = new StringBuilder();
+    for (int i = 0; i < alertFilterRules.size(); i++) {
+      builder.append(getWrappedCondition(alertFilterRules.get(i), i));
+    }
+    return builder.toString();
+  }
+
+  private static String getWrappedCondition(EventFilterRule rule, int index) {
+    String prefixCondition = "";
+
+    // First Condition, no need to add prefix
+    if (index != 0) {
+      String rawCondition = getRawCondition(rule.getPrefixCondition());
+      prefixCondition = nullOrEmpty(rawCondition) ? " && " : rawCondition;
+    }
+
+    StringBuilder builder = new StringBuilder();
+    builder.append("(");
+    if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
+      builder.append(rule.getCondition());
+    } else {
+      builder.append("!");
+      builder.append(rule.getCondition());
+    }
+    builder.append(")");
+    return String.format("%s%s", prefixCondition, builder);
+  }
+
+  private static String getRawCondition(ArgumentsInput.PrefixCondition prefixCondition) {
+    if (prefixCondition.equals(ArgumentsInput.PrefixCondition.AND)) {
+      return " && ";
+    } else if (prefixCondition.equals(ArgumentsInput.PrefixCondition.OR)) {
+      return " || ";
+    } else {
+      return "";
+    }
+  }
+
+  public static boolean shouldTriggerAlert(ChangeEvent event, FilteringRules config) {
+    if (config == null) {
+      return true;
+    }
+    // OpenMetadataWide Setting apply to all ChangeEvents
+    if (config.getResources().size() == 1 && config.getResources().get(0).equals("all")) {
+      return true;
+    }
+
+    // Trigger Specific Settings
+    if (event.getEntityType().equals(CONVERSATION) || event.getEntityType().equals(Entity.THREAD)) {
+      // Observability alerts (those with trigger actions) react to a measurable signal the
+      // entity emits (test/pipeline status, …), never to threads/conversations on it. Routing
+      // a thread here would let an EXCLUDE trigger flip and deliver it. Thread events still
+      // reach notification alerts (no actions) — see #28122.
+      return nullOrEmpty(config.getActions()) && anySourceAdmitsTheDiscussion(event, config);
+    }
+
+    // Every source of the alert counts, never only the first.
+    return config.getResources().contains(event.getEntityType());
+  }
+
+  private static boolean anySourceAdmitsTheDiscussion(ChangeEvent event, FilteringRules config) {
+    boolean conversation = event.getEntityType().equals(CONVERSATION);
+    return config.getResources().stream()
+        .anyMatch(
+            resource ->
+                conversation
+                    ? shouldTriggerAlertForConversation(event, resource)
+                    : shouldTriggerAlertForThread(event, resource));
+  }
+
+  private static boolean shouldTriggerAlertForConversation(ChangeEvent event, String resource) {
+    Conversation conversation = AlertsRuleEvaluator.getConversation(event);
+    if (conversation == null) {
+      return false;
+    }
+    if (CONVERSATION.equalsIgnoreCase(resource)) {
+      return true;
+    }
+    return conversation.getEntityRef() != null
+        && resource.equalsIgnoreCase(conversation.getEntityRef().getType());
+  }
+
+  // Announcement (#25894) and task (#30559) are their own entities; conversation is the last one.
+  private static final Set<String> THREAD_TYPE_RESOURCES = Set.of("conversation");
+
+  private static boolean shouldTriggerAlertForThread(ChangeEvent event, String resource) {
+    Thread thread = AlertsRuleEvaluator.getThread(event);
+    if (thread == null) {
+      return false;
+    }
+    if (THREAD_TYPE_RESOURCES.contains(resource.toLowerCase(Locale.ROOT))) {
+      return resource.equalsIgnoreCase(thread.getType().value());
+    }
+    return thread.getEntityRef() != null
+        && resource.equalsIgnoreCase(thread.getEntityRef().getType());
+  }
+
+  public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
+      EventSubscription eventSubscription,
+      Map<ChangeEvent, Set<UUID>> events,
+      Long startingTimestamp) {
+    return getFilteredEvents(eventSubscription, events, startingTimestamp, LOG_EVALUATION_ERROR);
+  }
+
+  public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
+      EventSubscription eventSubscription,
+      Map<ChangeEvent, Set<UUID>> events,
+      Long startingTimestamp,
+      BiConsumer<ChangeEvent, Exception> onEvaluationError) {
+    Long watermark = alertingWatermark(eventSubscription, startingTimestamp);
+    FilteringRules filteringRules = eventSubscription.getFilteringRules();
+    return events.entrySet().stream()
+        .filter(
+            entry ->
+                isChangeEventAllowed(entry.getKey(), filteringRules, watermark, onEvaluationError))
+        .collect(
+            Collectors.toMap(
+                Map.Entry::getKey,
+                Map.Entry::getValue,
+                (first, second) -> first,
+                LinkedHashMap::new));
+  }
+
+  /**
+   * Evaluates one event in isolation, excluding it rather than letting the failure escape. Callers
+   * evaluate whole batches, and the consumer commits its offset either way, so an exception thrown
+   * out of a single matcher would silently drop every other event with it (issue #31331). The catch
+   * is deliberately cause-agnostic: matchers reach the store, the SpEL runtime and the event
+   * payload, and none of those failures may cost an unrelated event its notification.
+   */
+  public static boolean isChangeEventAllowed(
+      ChangeEvent event,
+      FilteringRules filteringRules,
+      Long startingTimestamp,
+      BiConsumer<ChangeEvent, Exception> onEvaluationError) {
+    boolean allowed;
+    try {
+      allowed = checkIfChangeEventIsAllowed(event, filteringRules, startingTimestamp);
+    } catch (Exception e) {
+      reportEvaluationError(onEvaluationError, event, e);
+      allowed = false;
+    }
+    return allowed;
+  }
+
+  /**
+   * Runs the failure handler without letting it become a second failure. The consumer's handler
+   * writes a dead-letter row, so a transient database error there would otherwise escape this
+   * method, abort the surrounding batch loop and lose the very events this isolation exists to
+   * protect.
+   */
+  private static void reportEvaluationError(
+      BiConsumer<ChangeEvent, Exception> onEvaluationError, ChangeEvent event, Exception error) {
+    try {
+      onEvaluationError.accept(event, error);
+    } catch (Exception handlerError) {
+      LOG.error("Failed to record unevaluable change event {}", event.getId(), handlerError);
+    }
+  }
+
+  /**
+   * Only notification and observability subscriptions suppress historical executions. Custom and
+   * governance-workflow consumers drive integrations that may legitimately need the full stream.
+   */
+  public static Long alertingWatermark(
+      EventSubscription eventSubscription, Long startingTimestamp) {
+    CreateEventSubscription.AlertType alertType = eventSubscription.getAlertType();
+    boolean alerting =
+        alertType == CreateEventSubscription.AlertType.NOTIFICATION
+            || alertType == CreateEventSubscription.AlertType.OBSERVABILITY;
+    return alerting ? startingTimestamp : null;
+  }
+
+  public static boolean checkIfChangeEventIsAllowed(
+      ChangeEvent event, FilteringRules filteringRules) {
+    return checkIfChangeEventIsAllowed(event, filteringRules, null);
+  }
+
+  public static boolean checkIfChangeEventIsAllowed(
+      ChangeEvent event, FilteringRules filteringRules, Long startingTimestamp) {
+    return !isStalePipelineExecution(event, startingTimestamp)
+        && shouldTriggerAlert(event, filteringRules)
+        && evaluateAlertConditions(event, filteringRules.getRules())
+        && evaluateAlertConditions(event, filteringRules.getActions());
+  }
+
+  /**
+   * True when a pipeline execution finished before this subscription started alerting. Anything we
+   * cannot place in time is delivered: a suppression rule that cannot decide must not suppress.
+   */
+  public static boolean isStalePipelineExecution(ChangeEvent event, Long startingTimestamp) {
+    if (startingTimestamp == null
+        || event == null
+        || !Entity.PIPELINE.equals(event.getEntityType())
+        || event.getChangeDescription() == null) {
+      return false;
+    }
+    for (FieldChange fieldChange : listOrEmpty(event.getChangeDescription().getFieldsUpdated())) {
+      if (!FIELD_PIPELINE_STATUS.equals(fieldChange.getName())
+          || fieldChange.getNewValue() == null) {
+        continue;
+      }
+      PipelineStatus status;
+      try {
+        status = JsonUtils.convertValue(fieldChange.getNewValue(), PipelineStatus.class);
+      } catch (Exception ex) {
+        // This filter runs on every pipeline event in the batch, including subscriptions with no
+        // pipelineStatus rule, so a throw here would drop the whole delivery batch.
+        LOG.warn("Could not read pipelineStatus for the staleness check, delivering", ex);
+        return false;
+      }
+      OptionalLong executedAt = effectiveExecutionTime(status);
+      return executedAt.isPresent() && executedAt.getAsLong() < startingTimestamp;
+    }
+    return false;
+  }
+
+  /**
+   * Wall-clock time the execution finished. {@code PipelineStatus.timestamp} is deliberately not a
+   * fallback: it is the per-execution unique key, and connectors fill it with anything stable, from
+   * Airflow's logical date to the ingestion clock.
+   */
+  static OptionalLong effectiveExecutionTime(PipelineStatus status) {
+    if (status.getEndTime() != null) {
+      return OptionalLong.of(status.getEndTime());
+    }
+    OptionalLong taskEnd = maxTaskTime(status, Status::getEndTime);
+    return taskEnd.isPresent() ? taskEnd : maxTaskTime(status, Status::getStartTime);
+  }
+
+  private static OptionalLong maxTaskTime(PipelineStatus status, Function<Status, Long> extractor) {
+    return listOrEmpty(status.getTaskStatus()).stream()
+        .map(extractor)
+        .filter(Objects::nonNull)
+        .mapToLong(Long::longValue)
+        .max();
+  }
+
+  private AlertMatching() {}
+}

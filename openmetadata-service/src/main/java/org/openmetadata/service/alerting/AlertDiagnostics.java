@@ -29,9 +29,9 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.alerting.matching.AlertMatching;
 import org.openmetadata.service.events.scheduled.AlertProgress;
 import org.openmetadata.service.events.subscription.AlertRows;
-import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 
@@ -100,10 +100,10 @@ public final class AlertDiagnostics {
 
   // The alert's own rules, from when it started alerting: what it still has to send.
   private static Predicate<ChangeEvent> matchingRules(EventSubscription alert, Long started) {
-    Long since = AlertUtil.alertingWatermark(alert, started);
+    Long since = AlertMatching.alertingWatermark(alert, started);
     return event ->
-        AlertUtil.isChangeEventAllowed(
-            event, alert.getFilteringRules(), since, AlertUtil.LOG_EVALUATION_ERROR);
+        AlertMatching.isChangeEventAllowed(
+            event, alert.getFilteringRules(), since, AlertMatching.LOG_EVALUATION_ERROR);
   }
 
   // Health lives in a row of its own, so registering, editing and restarting never reset it.

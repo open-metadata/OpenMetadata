@@ -18,6 +18,7 @@ import lombok.Getter;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.ledger.DestinationOutcome.Cause;
 import org.openmetadata.service.notifications.recipients.context.Recipient;

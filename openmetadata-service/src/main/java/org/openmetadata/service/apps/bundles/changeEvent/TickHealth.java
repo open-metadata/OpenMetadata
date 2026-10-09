@@ -25,7 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
-import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.events.subscription.ledger.DestinationOutcome;
 import org.openmetadata.service.events.subscription.ledger.DestinationOutcome.Cause;
 
@@ -157,7 +157,7 @@ final class TickHealth {
     boolean reachedNobody = tally.lastSuccess == 0 && tally.nobodyBecause != null;
     return tally.notAttemptedBecause == null && !reachedNobody
         ? DestinationOutcome.delivered(
-            AlertUtil.buildSubscriptionStatus(
+            DestinationStatuses.buildSubscriptionStatus(
                 ACTIVE, tally.lastSuccess, null, null, null, tally.lastSuccess, tally.lastSuccess))
         : notAttempted(tally);
   }

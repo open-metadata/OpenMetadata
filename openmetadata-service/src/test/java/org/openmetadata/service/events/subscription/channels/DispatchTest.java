@@ -25,8 +25,8 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
-import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 
 class DispatchTest {

@@ -75,13 +75,13 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
-import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertCatalog;
-import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.DestinationValidation;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.events.subscription.SourceCapabilities;
@@ -1460,7 +1460,7 @@ public class EventSubscriptionResource
     } catch (EventPublisherException e) {
       LOG.error("Failed to send test message to destination: {}", e.getMessage());
       destination.setStatusDetails(
-          AlertUtil.buildTestDestinationStatus(
+          DestinationStatuses.buildTestDestinationStatus(
               TestDestinationStatus.Status.FAILED,
               redactUrlQueryParams(e.getMessage()),
               System.currentTimeMillis()));

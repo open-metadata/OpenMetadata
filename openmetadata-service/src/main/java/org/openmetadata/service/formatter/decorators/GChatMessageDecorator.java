@@ -16,10 +16,8 @@ package org.openmetadata.service.formatter.decorators;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
 
-import java.util.Arrays;
-import java.util.List;
-import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
-import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage.*;
+import org.openmetadata.service.alerting.channel.gchat.GChatMessage;
+import org.openmetadata.service.alerting.channel.gchat.GChatMessage.*;
 import org.openmetadata.service.util.email.EmailUtil;
 
 public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
@@ -69,35 +67,5 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
         encodedFqn,
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim());
-  }
-
-  @Override
-  public GChatMessage buildTestMessage() {
-    return getGChatTestMessage();
-  }
-
-  private GChatMessage getGChatTestMessage() {
-    return createConnectionTestMessage();
-  }
-
-  public GChatMessage createConnectionTestMessage() {
-    Header header = createConnectionSuccessfulHeader();
-
-    Widget descriptionWidget = new Widget(new TextParagraph(getConnectionTestDescription()));
-
-    Section descriptionSection = new Section(List.of(descriptionWidget));
-    Section footerSection = createFooterSection();
-
-    Card card = new Card(header, Arrays.asList(descriptionSection, footerSection));
-
-    return new GChatMessage(List.of(card));
-  }
-
-  private Header createConnectionSuccessfulHeader() {
-    return new Header("Connection Successful ✅", getLogoUrl(), "IMAGE");
-  }
-
-  private Section createFooterSection() {
-    return new Section(List.of(new Widget(new TextParagraph(getProductName() + " Change Event"))));
   }
 }

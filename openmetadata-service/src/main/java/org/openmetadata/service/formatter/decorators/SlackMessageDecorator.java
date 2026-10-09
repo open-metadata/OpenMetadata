@@ -16,15 +16,7 @@ package org.openmetadata.service.formatter.decorators;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
 
-import com.slack.api.model.block.Blocks;
-import com.slack.api.model.block.LayoutBlock;
-import com.slack.api.model.block.composition.BlockCompositions;
-import com.slack.api.model.block.composition.PlainTextObject;
-import com.slack.api.model.block.element.ImageElement;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
+import org.openmetadata.service.alerting.channel.slack.SlackMessage;
 import org.openmetadata.service.util.email.EmailUtil;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
@@ -75,58 +67,5 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim() // Display text remains unencoded
         );
-  }
-
-  @Override
-  public SlackMessage buildTestMessage() {
-    return createConnectionTestMessage();
-  }
-
-  public SlackMessage createConnectionTestMessage() {
-    List<LayoutBlock> blocks = new ArrayList<>();
-
-    // Header Block
-    blocks.add(
-        Blocks.header(
-            header ->
-                header.text(
-                    PlainTextObject.builder()
-                        .text("Connection Successful :white_check_mark: ")
-                        .build())));
-
-    // Section Block 1 (Test Message)
-    blocks.add(
-        Blocks.section(
-            section ->
-                section.text(BlockCompositions.markdownText(getConnectionTestDescription()))));
-
-    // Divider Block
-    blocks.add(Blocks.divider());
-
-    // context
-    blocks.add(
-        Blocks.context(
-            context ->
-                context.elements(
-                    List.of(
-                        ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
-                        BlockCompositions.markdownText(applyBoldFormat(getProductName()))))));
-
-    SlackMessage.Attachment attachment = new SlackMessage.Attachment();
-    attachment.setColor("#36a64f"); // green
-    attachment.setBlocks(blocks);
-
-    SlackMessage message = new SlackMessage();
-    message.setAttachments(Collections.singletonList(attachment));
-
-    return message;
-  }
-
-  private String applyBoldFormat(String title) {
-    return String.format(getBold(), title);
-  }
-
-  private String getOMImage() {
-    return getLogoUrl();
   }
 }

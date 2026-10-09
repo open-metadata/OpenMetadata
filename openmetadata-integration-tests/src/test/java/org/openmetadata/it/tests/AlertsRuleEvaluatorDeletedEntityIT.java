@@ -58,7 +58,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.alerting.matching.AlertMatching;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
@@ -130,7 +130,7 @@ public class AlertsRuleEvaluatorDeletedEntityIT {
 
   /**
    * The observable the ticket is actually about: one un-evaluatable event must not take the rest of
-   * the batch with it. {@code AlertUtil.getFilteredEvents} streams every event through
+   * the batch with it. {@code AlertMatching.getFilteredEvents} streams every event through
    * {@code checkIfChangeEventIsAllowed}, so a throw anywhere in the stream drops the whole batch —
    * which is what {@code AbstractEventConsumer.publishEvents} hands to the destinations.
    */
@@ -153,7 +153,7 @@ public class AlertsRuleEvaluatorDeletedEntityIT {
     batch.put(liveEvent, Set.of(UUID.randomUUID()));
 
     Map<ChangeEvent, Set<UUID>> delivered =
-        AlertUtil.getFilteredEvents(
+        AlertMatching.getFilteredEvents(
             subscriptionFilteringOnDomain(domain.getFullyQualifiedName()), batch, null);
 
     assertTrue(
@@ -184,7 +184,7 @@ public class AlertsRuleEvaluatorDeletedEntityIT {
     batch.put(tableEvent, Set.of(UUID.randomUUID()));
 
     Map<ChangeEvent, Set<UUID>> delivered =
-        AlertUtil.getFilteredEvents(
+        AlertMatching.getFilteredEvents(
             subscriptionOnAllResourcesFilteringOnDomain(domain.getFullyQualifiedName()),
             batch,
             null);
@@ -208,12 +208,12 @@ public class AlertsRuleEvaluatorDeletedEntityIT {
     ChangeEvent domainEvent = updateEvent(Entity.DOMAIN, domain).withId(UUID.randomUUID());
 
     assertFalse(
-        AlertUtil.isChangeEventAllowed(
+        AlertMatching.isChangeEventAllowed(
             domainEvent,
             subscriptionOnAllResourcesFilteringOnDomain(domain.getFullyQualifiedName())
                 .getFilteringRules(),
             null,
-            AlertUtil.LOG_EVALUATION_ERROR),
+            AlertMatching.LOG_EVALUATION_ERROR),
         "a domain event must evaluate to false rather than throw out of the matcher");
   }
 
