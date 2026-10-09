@@ -19,10 +19,9 @@ verdict cites an artifact that was checked to still exist):
 
 | Guide | What it is |
 |---|---|
-| `CLAUDE.md` | Always-loaded session guidance; the pointer index to `.claude/rules/*` and skills |
+| `AGENTS.md` | Always-loaded session guidance for every harness; the pointer index to `.claude/rules/*` and skills. `CLAUDE.md` and `.github/copilot-instructions.md` are symlinks to it |
 | `ARCHITECTURE.md` | System map — modules, the request/ingestion/search paths, the invariants that hold |
 | `DEVELOPER.md` | How to build, test, and add an entity or connector (end-to-end checklists) |
-| `AGENTS.md` | Codex entry doc — **carries known contradictions** (Webpack→Vite, antd, Python ceiling); see `docs/tech-debt.md` #6 |
 
 ## Backend & platform design docs (`docs/`)
 
@@ -88,6 +87,7 @@ index, so only the entry point is listed here. A comment citing `ADR:<date>-<slu
 | Doc | Purpose | Read when | Modified | Freshness |
 |---|---|---|---|---|
 | `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md` | **UI folder structure + file naming spec.** Layers (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`) stay top-level, grouped inside by `domain/feature/`; five domains (`discovery`, `governance`, `observability`, `insights`, `platform`) with cross-cutting features at the domain level. New files use one stem + role suffix (`GlossaryList.tsx`, `.types.ts`, `.utils.ts`, `.test.tsx`); legacy uses `.component.tsx`/`.interface.ts`. Also covers imports, barrels, routing and state locations | **Before creating any new file under `ui/src/`**, or when deciding where code belongs | 2026-08-21 | CURRENT |
+| `openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md` | What a review of a UI pull request checks: type safety, i18n, design-system use, React patterns, file naming (`.types.ts` for new files) | Reviewing a UI PR, or before asking for review of one | 2026-10-06 | CURRENT |
 | `openmetadata-ui/src/main/resources/ui/specs/` | **Machine-readable design system** (41 files). `README.md` declares two stacks — **go-forward = UntitledUI + Tailwind (`tw:`)**, **legacy (deprecated) = Ant Design + Less** — plus `foundations/*` (color, spacing, typography, radius, elevation, motion), `tokens/*` (Tailwind-utility + master token reference), `untitled/*` (go-forward component specs), and legacy `components/*` | **Before writing or modifying any UI code** — start at `specs/README.md`, then the `foundations`/`tokens` and the `untitled/<component>.md` (or legacy `components/*`) spec for what you touch | 2026-07-27 | CURRENT ⁶ |
 | `openmetadata-ui/src/main/resources/ui/docs/colors.md` | Semantic color-token system (`tw:bg-primary`, `tw:text-fg-*`, `tw:border-*`) with light/dark values + the mandatory `ring`→`border` migration (§2.3.1) | Before writing/reviewing any Tailwind color class or dark-mode styling, or when tempted to use `ring-*` or a raw hex | 2026-07-23 | CURRENT |
 | `openmetadata-ui/src/main/resources/ui/docs/formutils.md` | The modern react-hook-form + react-aria form stack (`FieldProp`, `getField`/`FormFields`/`HookForm`) vs the legacy antd `@utils/formUtils` API | Before building/modifying any UI form — which API to use, and wiring to `useFormDrawerWithHook` + a pure transform | 2026-07-15 | CURRENT |

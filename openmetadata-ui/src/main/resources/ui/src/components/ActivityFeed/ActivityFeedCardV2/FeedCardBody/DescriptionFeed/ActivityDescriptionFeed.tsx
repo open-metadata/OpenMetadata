@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
+
 import { useMemo } from 'react';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
 import { ReactComponent as UpdatedIcon } from '../../../../../assets/svg/updated-icon.svg';
@@ -44,15 +46,18 @@ function ActivityDescriptionFeed({
   }, [isAdded]);
 
   return (
-    <Row gutter={[12, 12]} wrap={false}>
-      <Col className="h-4">{operationIcon}</Col>
-      <Col>
+    <Box
+      className="layout-row"
+      style={{ ...getLayoutGutter(12, 12) }}
+      wrap="nowrap">
+      <Box className="layout-column tw:block h-4">{operationIcon}</Box>
+      <Box className="layout-column tw:block">
         <RichTextEditorPreviewNew
           className="text-wrap"
           markdown={getFrontEndFormat(description)}
         />
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 }
 

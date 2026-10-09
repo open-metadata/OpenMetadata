@@ -52,9 +52,9 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // core assignee/schema-field selectors in the task and incident specs
     // remove three more. Merging main into this branch combines both sets of
     // removals, so the union is two below either side on its own.
-    'om-playwright/no-positional-locator': 593,
+    'om-playwright/no-positional-locator': 592,
     'om-playwright/require-assertion-per-test': 1,
-    'playwright/no-skipped-test': 2,
+    'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
   };
 

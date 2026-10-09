@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Modal, Space, Tooltip } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button, Modal, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
@@ -263,10 +264,12 @@ export const UserTab = ({
         key: 'actions',
         width: 90,
         render: (_, record) => (
-          <Space
+          <Box
+            inline
             align="center"
-            className="w-full justify-center remove-icon"
-            size={8}>
+            className="layout-space layout-space-horizontal w-full justify-center remove-icon"
+            gap={2}
+            itemClassName="layout-space-item">
             <Tooltip
               placement="left"
               title={
@@ -284,7 +287,7 @@ export const UserTab = ({
                 onClick={() => handleRemoveClick(record.id)}
               />
             </Tooltip>
-          </Space>
+          </Box>
         ),
       },
     ];
@@ -380,7 +383,12 @@ export const UserTab = ({
     isGroupType ? (
       <ErrorPlaceHolder
         button={
-          <Space>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <UserSelectableList
               hasPermission
               includeBot
@@ -409,7 +417,7 @@ export const UserTab = ({
                 extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
               />
             )}
-          </Space>
+          </Box>
         }
         className="mt-0-important border-none"
         heading={t('label.user')}
@@ -429,8 +437,13 @@ export const UserTab = ({
 
   const renderExtraTableFilters = () =>
     !currentTeam.deleted && (
-      <Col>
-        <Space>
+      <Box className="layout-column tw:block">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           {isGroupType && users.length > 0 && editUserPermission && (
             <UserSelectableList
               hasPermission
@@ -449,8 +462,8 @@ export const UserTab = ({
             entityType={EntityType.USER}
             extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
           />
-        </Space>
-      </Col>
+        </Box>
+      </Box>
     );
 
   if (isEmpty(users) && !searchText && !isLoading) {
