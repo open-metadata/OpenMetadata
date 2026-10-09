@@ -14,10 +14,13 @@ Lineage edge cache lifetime.
 An overrideLineage run deletes the edges into an entity, then writes them back. The
 write looks the edge up first and only PUTs when the server has none. Edges another
 client read before that delete must not answer the lookup, or the edge is reported as
-written and stays deleted. Each client below is one workflow run in the same process.
+written and stays deleted. Within one client the cache still spares repeat reads.
+Each client below is one workflow run in the same process.
 """
 
 from types import SimpleNamespace
+
+import pytest
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
@@ -41,14 +44,22 @@ REQUEST = AddLineageRequest(
 
 
 class FakeLineageServer:
-    """The lineage endpoints an override write goes through, holding the one edge."""
+    """The lineage endpoints a write goes through, holding the one edge. It counts the
+    edge reads, and its lineage graph can lag a write by leaving the edge out."""
 
-    def __init__(self):
-        self.edge_exists = True
+    def __init__(self, edge_exists: bool = True, graph_lists_edge: bool = True):
+        self.edge_exists = edge_exists
+        self.graph_lists_edge = graph_lists_edge
+        self.edge_reads = 0
 
     def get(self, path):
-        if "getLineageEdge" in path and self.edge_exists:
-            return {"edge": {"columnsLineage": [], "source": DETAILS.source.value}}
+        if "getLineageEdge" in path:
+            self.edge_reads += 1
+            if self.edge_exists:
+                return {"edge": {"columnsLineage": [], "source": DETAILS.source.value}}
+        elif path.startswith(f"/lineage/dashboard/{DASHBOARD_ID}"):
+            listed = self.edge_exists and self.graph_lists_edge
+            return {"downstreamEdges": [{"toEntity": CHART_ID, "lineageDetails": {}}] if listed else []}
         raise APIError(
             {"message": "not found", "code": 404}, SimpleNamespace(response=SimpleNamespace(status_code=404))
         )
@@ -106,4 +117,37 @@ class TestLineageEdgeCacheLifetime:
         )
         write(override_run)
 
+        assert server.edge_exists
+
+    @pytest.mark.parametrize(
+        "read",
+        [
+            pytest.param(
+                lambda client: client.add_lineage(REQUEST, check_patch=True, return_lineage=False), id="write"
+            ),
+            pytest.param(
+                lambda client: client.get_lineage_edge_by_name("dashboard", DASHBOARD_FQN, "chart", CHART_FQN),
+                id="by-name",
+            ),
+            pytest.param(lambda client: client.get_lineage_edge(DASHBOARD_ID, CHART_ID), id="by-id"),
+        ],
+    )
+    def test_a_client_reads_an_edge_from_the_server_once(self, read):
+        server = FakeLineageServer()
+        client = WorkflowClient(server)
+
+        read(client)
+        read(client)
+
+        assert server.edge_reads == 1
+
+    @pytest.mark.parametrize("graph_lists_edge", [True, False], ids=["graph-lists-edge", "graph-lags"])
+    def test_a_write_that_reads_the_graph_back_spares_the_next_edge_read(self, graph_lists_edge):
+        server = FakeLineageServer(edge_exists=False, graph_lists_edge=graph_lists_edge)
+        client = WorkflowClient(server)
+
+        client.add_lineage(REQUEST, check_patch=True)
+        client.add_lineage(REQUEST, check_patch=True)
+
+        assert server.edge_reads == 1
         assert server.edge_exists
