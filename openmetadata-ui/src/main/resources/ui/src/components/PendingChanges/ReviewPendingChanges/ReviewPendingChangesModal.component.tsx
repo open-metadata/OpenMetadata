@@ -441,9 +441,12 @@ const SuggestionRow = (props: SuggestionRowProps) => {
         verdict === Verdict.Accepted ? 'tw:bg-success-primary' : ''
       }`}
       data-testid={`suggestion-${suggestion.id}`}>
-      <ProfilePicture name={request.requestedBy} size="sm" />
+      {/* Same height as the name line, whose buttons set it, so the avatar centres on it. */}
+      <div className="tw:flex tw:h-9 tw:shrink-0 tw:items-center">
+        <ProfilePicture name={request.requestedBy} size="sm" />
+      </div>
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-2">
-        <div className="tw:flex tw:min-h-8 tw:flex-wrap tw:items-center tw:gap-2">
+        <div className="tw:flex tw:min-h-9 tw:flex-wrap tw:items-center tw:gap-2">
           <Typography as="span" size="text-sm" weight="semibold">
             {own ? t('label.you') : request.requestedBy}
           </Typography>
