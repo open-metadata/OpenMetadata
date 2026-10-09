@@ -107,6 +107,7 @@ import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO.SecuritySettingsUpdate;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
@@ -159,6 +160,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
   private static final String LDAP_VALIDATION_KEY = "LDAP";
+  private static final String PUBLIC_KEY_URLS_PATH = "/publicKeyUrls";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
 
@@ -311,16 +313,26 @@ public class SystemRepository implements DeploymentSettingPreparer {
    */
   public void updateSecurityConfigurationIfCurrent(
       SecurityConfiguration updated, StoredSecurityConfiguration stored) {
-    updateSettingIfCurrent(
+    Settings authentication =
         new Settings()
             .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
-            .withConfigValue(updated.getAuthenticationConfiguration()),
-        stored.authenticationJson());
-    updateSettingIfCurrent(
+            .withConfigValue(updated.getAuthenticationConfiguration());
+    Settings authorizer =
         new Settings()
             .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
-            .withConfigValue(updated.getAuthorizerConfiguration()),
-        stored.authorizerJson());
+            .withConfigValue(updated.getAuthorizerConfiguration());
+    assertDeploymentFieldsUnchanged(authentication);
+    assertDeploymentFieldsUnchanged(authorizer);
+    dao.updateSecuritySettingsIfCurrent(
+        securityUpdate(authentication, stored.authenticationJson()),
+        securityUpdate(authorizer, stored.authorizerJson()));
+    settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
+    settingUpdated(SettingsType.AUTHORIZER_CONFIGURATION);
+  }
+
+  private SecuritySettingsUpdate securityUpdate(Settings setting, String expectedJson) {
+    return new SecuritySettingsUpdate(
+        setting.getConfigType().value(), expectedJson, prepareSettingForUpdate(setting));
   }
 
   /**
@@ -2075,6 +2087,13 @@ public class SystemRepository implements DeploymentSettingPreparer {
 
     if (!isOidcProvider || !isConfidentialClient) {
       LOG.debug("Skipping publicKeyUrls resolution - not OIDC confidential client");
+      return;
+    }
+
+    // In ENV mode the deployment sets the keys; replacing them would make every save a 409.
+    if (SettingsWriteGuard.isDeploymentOwned(
+        SettingsType.AUTHENTICATION_CONFIGURATION, PUBLIC_KEY_URLS_PATH)) {
+      LOG.debug("Keeping publicKeyUrls: the deployment configuration owns them");
       return;
     }
 

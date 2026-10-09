@@ -15,7 +15,9 @@ package org.openmetadata.service.config.source;
 
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 
+import com.fasterxml.jackson.databind.node.IntNode;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.settings.SettingsType;
@@ -68,9 +70,13 @@ public final class SettingsFieldPolicies {
           .singleValue("/ldapConfiguration/trustStoreConfig")
           .firstSightDefault("/maxActiveSessionsPerUser")
           .firstSightDefault("/sessionExpiry")
+          // No schema default: the server falls back to 7 days, which the shipped configuration
+          // seeded into every row before 2.1.
+          .runtimeDefault("/sessionExpiry", IntNode.valueOf(604800))
           .firstSightDefault("/oidcConfiguration/tokenValidity")
           .firstSightDefault("/samlConfiguration/security/tokenValidity")
           .firstSightDefault("/ldapConfiguration/maxPoolSize")
+          .secrets(SettingsSecrets.pointersOf(AUTHENTICATION_CONFIGURATION))
           .build();
 
   private static final SettingsFieldPolicy AUTHORIZER =
@@ -93,8 +99,20 @@ public final class SettingsFieldPolicies {
           .setMerge("/allowedEmailRegistrationDomains")
           .build();
 
+  private static final SettingsFieldPolicy EMAIL =
+      SettingsFieldPolicy.builder()
+          // API writes always keep the stored templates, so only the deployment can change them.
+          .deploymentOwned("/templates")
+          .build();
+
   private static final Map<SettingsType, SettingsFieldPolicy> POLICIES =
-      Map.of(AUTHENTICATION_CONFIGURATION, AUTHENTICATION, AUTHORIZER_CONFIGURATION, AUTHORIZER);
+      Map.of(
+          AUTHENTICATION_CONFIGURATION,
+          AUTHENTICATION,
+          AUTHORIZER_CONFIGURATION,
+          AUTHORIZER,
+          EMAIL_CONFIGURATION,
+          EMAIL);
 
   private SettingsFieldPolicies() {}
 

@@ -187,11 +187,19 @@ API writes:
   - Security and MCP reload only if the stored value differs from the running one.
   - Login and workflow settings re-initialize.
   - A failed refresh keeps the running value and is reported as `lastReloadError`.
-- **Another server's start is not followed.** A change is skipped when it was written by another
+- **Another server's start triggers no reload.** A change is skipped when it was written by another
   server's start-up reconciliation: its hash equals `meta.appliedJsonHash` *and* that mark is new
-  since the last poll. Each server applies its own deployment configuration when it starts, the way
-  a rolling update replaces servers, so a bad configuration does not reach every server at once.
-  An admin who undoes a change back to that value is still followed, because the mark did not move.
+  since the last poll. This only spares the running servers an immediate reload during a rolling
+  update. The row is shared, so they still read the new value when their settings cache entry
+  expires (at most 3 minutes) and the security settings at their next security reload: a bad
+  deployment value reaches every server. An admin who undoes a change back to that value is
+  followed at once, because the mark did not move.
+- **Retries.** A row counts as seen only once it is applied, so a refresh that fails is retried at
+  every poll (logged once per value). A failed security reload restores the previous configuration,
+  including the authenticators it had already replaced.
+- **Baseline.** The watcher reads the rows right after the start-up reconciliation, before the
+  settings are loaded, so a change saved elsewhere while the server starts is applied at the first
+  poll. A row created after the start, such as SCIM enabled for the first time, counts as a change.
 - **Restart-only state.** The authenticator and the JWT filters (REST, websocket, MCP) are rebuilt
   on reload. These still need a restart:
   - the Jetty session-cookie flags;
@@ -229,6 +237,13 @@ API writes:
   - authentication secrets are encrypted in place.
 - Each deliberate value the database overrides is logged once with its environment variable and
   the remedies, and listed by the status endpoint.
+- **Self-signup is no longer reset by SSO saves.** Saving the SSO page used to drop
+  `enableSelfSignup`, which stored the default `true`. It now keeps the saved value, so an install
+  whose row says `false` stops accepting new users from the identity provider until an admin
+  enables self-signup.
+- **Downgrade.** 2.0 cannot read the encrypted authentication secrets. Before downgrading, re-enter
+  the SSO client secret, LDAP bind password and SAML key on the 2.0 server, or restore the database
+  backup taken before the upgrade.
 - **After the upgrade:**
   - A configuration change applies at the next start unless the UI changed the same field.
   - UI changes reach every server within `watchIntervalSeconds`.

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.config.source;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -35,6 +36,10 @@ import lombok.Singular;
  * @param singleValuePrefixes objects compared and applied whole instead of field by field
  * @param firstSightDefaults non-privileged fields whose stored schema default counts as unset the
  *     first time they are reconciled, because older saves wrote every default explicitly
+ * @param runtimeDefaults the default older versions stored for a first-sight field the schema gives
+ *     no default, the value the server falls back to
+ * @param secrets secret fields; a blank deployment value never replaces a stored secret, even when
+ *     the identity provider changes, because a blank secret is far likelier a missing mount
  * @param hasIdentityProvider whether the identity-provider guard applies to this setting
  */
 @Builder
@@ -46,6 +51,8 @@ public record SettingsFieldPolicy(
     @Singular("setMerge") Set<String> setMerge,
     @Singular("singleValue") Set<String> singleValuePrefixes,
     @Singular("firstSightDefault") Set<String> firstSightDefaults,
+    @Singular("runtimeDefault") Map<String, JsonNode> runtimeDefaults,
+    @Singular("secret") Set<String> secrets,
     boolean hasIdentityProvider) {
 
   public static SettingsFieldPolicy independent() {

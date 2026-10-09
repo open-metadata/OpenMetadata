@@ -43,6 +43,13 @@ public final class SettingsWriteGuard {
     }
   }
 
+  /** Whether {@code path} of {@code settingsType} may only be changed by the deployment. */
+  public static boolean isDeploymentOwned(SettingsType settingsType, String path) {
+    return ConfigSources.isManagedByDeployment(settingsType)
+        && (managedPaths(settingsType).contains(WHOLE_SETTING)
+            || managedPaths(settingsType).contains(path));
+  }
+
   /** The fields of {@code settingsType} that only the deployment configuration may change. */
   public static Set<String> managedPaths(SettingsType settingsType) {
     DeploymentTemplate template =

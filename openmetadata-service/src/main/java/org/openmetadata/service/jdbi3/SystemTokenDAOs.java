@@ -30,6 +30,7 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.configuration.AppConfiguration;
@@ -64,6 +65,7 @@ import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.config.source.SettingsFingerprint;
 import org.openmetadata.service.config.source.StoredSettingRow;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
@@ -247,6 +249,32 @@ public interface SystemTokenDAOs {
         @BindJson("expectedJson") String expectedJson,
         @BindJson("updatedJson") String updatedJson);
 
+    /**
+     * Replaces both security settings in one transaction, each only while it still holds what the
+     * caller read. When either changed, neither is written: two admins saving at once must not
+     * leave one's authentication with the other's authorizer.
+     */
+    @Transaction
+    default void updateSecuritySettingsIfCurrent(
+        SecuritySettingsUpdate authentication, SecuritySettingsUpdate authorizer) {
+      boolean bothCurrent =
+          updateSettingsIfCurrent(
+                      authentication.configType(),
+                      authentication.expectedJson(),
+                      authentication.updatedJson())
+                  > 0
+              && updateSettingsIfCurrent(
+                      authorizer.configType(), authorizer.expectedJson(), authorizer.updatedJson())
+                  > 0;
+      if (!bothCurrent) {
+        throw new PreconditionFailedException(
+            "The security configuration changed while it was being updated");
+      }
+    }
+
+    /** One setting's compare-and-set write: the JSON read and the JSON to store. */
+    record SecuritySettingsUpdate(String configType, String expectedJson, String updatedJson) {}
+
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE openmetadata_settings SET json = :updatedJson "
@@ -271,12 +299,14 @@ public interface SystemTokenDAOs {
     @RegisterRowMapper(StoredSettingRowMapper.class)
     StoredSettingRow getStoredSettingRow(@Bind("configType") String configType);
 
-    /** Inserts the row unless one exists, so a row that fails to parse is never overwritten. */
+    /**
+     * Inserts the row unless one exists, so a row that fails to parse is never overwritten. Returns
+     * 0 when the row exists: MySQL's ON DUPLICATE KEY UPDATE would report it as one affected row.
+     */
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO openmetadata_settings (configType, json, deployment_snapshot) "
-                + "VALUES (:configType, :json, :snapshot) "
-                + "ON DUPLICATE KEY UPDATE configType = configType",
+            "INSERT IGNORE INTO openmetadata_settings (configType, json, deployment_snapshot) "
+                + "VALUES (:configType, :json, :snapshot)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -329,14 +359,41 @@ public interface SystemTokenDAOs {
     void updateDeploymentSnapshot(
         @Bind("configType") String configType, @BindJson("snapshot") String snapshot);
 
+    /**
+     * Replaces the snapshot only while the row still holds what the caller read, so a server
+     * starting at the same time cannot overwrite the start-up mark of another.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET deployment_snapshot = :snapshot "
+                + "WHERE configType = :configType "
+                + "AND SHA2(CAST(json AS CHAR), 256) = "
+                + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256) "
+                + "AND SHA2(CAST(deployment_snapshot AS CHAR), 256) <=> "
+                + "SHA2(CAST(CAST(:expectedSnapshot AS JSON) AS CHAR), 256)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET deployment_snapshot = (:snapshot :: jsonb) "
+                + "WHERE configType = :configType AND json = (:expectedJson :: jsonb) "
+                + "AND deployment_snapshot IS NOT DISTINCT FROM (:expectedSnapshot :: jsonb)",
+        connectionType = POSTGRES)
+    int updateDeploymentSnapshotIfCurrent(
+        @Bind("configType") String configType,
+        @BindJson("expectedJson") String expectedJson,
+        @BindJson("expectedSnapshot") String expectedSnapshot,
+        @BindJson("snapshot") String snapshot);
+
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT configType, SHA2(CAST(json AS CHAR), 256) AS jsonHash, deployment_snapshot "
-                + "FROM openmetadata_settings",
+            "SELECT configType, SHA2(CAST(json AS CHAR), 256) AS jsonHash, "
+                + "JSON_UNQUOTE(JSON_EXTRACT(deployment_snapshot, '$.meta.appliedJsonHash')) "
+                + "AS appliedJsonHash FROM openmetadata_settings",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT configType, md5(json::text) AS jsonHash, deployment_snapshot "
+            "SELECT configType, md5(json::text) AS jsonHash, "
+                + "deployment_snapshot #>> '{meta,appliedJsonHash}' AS appliedJsonHash "
                 + "FROM openmetadata_settings",
         connectionType = POSTGRES)
     @RegisterRowMapper(SettingsFingerprintRowMapper.class)
@@ -423,9 +480,7 @@ public interface SystemTokenDAOs {
     @Override
     public SettingsFingerprint map(ResultSet rs, StatementContext ctx) throws SQLException {
       return new SettingsFingerprint(
-          rs.getString("configType"),
-          rs.getString("jsonHash"),
-          rs.getString("deployment_snapshot"));
+          rs.getString("configType"), rs.getString("jsonHash"), rs.getString("appliedJsonHash"));
     }
   }
 

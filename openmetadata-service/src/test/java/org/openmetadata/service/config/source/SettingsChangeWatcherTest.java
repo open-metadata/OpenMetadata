@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.configuration.ConfigSourceMode;
 import org.openmetadata.schema.settings.SettingsType;
 
 class SettingsChangeWatcherTest {
@@ -89,24 +87,60 @@ class SettingsChangeWatcherTest {
   }
 
   @Test
-  void reportsAFailedRefreshAndRetriesOnlyAfterTheNextChange() {
+  void backsOffBetweenRetriesOfAValueThatKeepsFailing() {
+    failingSetting = AUTHENTICATION_CONFIGURATION;
+    put(AUTHENTICATION_CONFIGURATION, "hash-2", null);
+
+    for (int poll = 0; poll < 10; poll++) {
+      watcher.pollNow();
+    }
+
+    assertEquals(4, refreshed.size());
+  }
+
+  @Test
+  void retriesAFailedRefreshUntilItApplies() {
     failingSetting = AUTHENTICATION_CONFIGURATION;
     put(AUTHENTICATION_CONFIGURATION, "hash-2", null);
 
     watcher.pollNow();
     watcher.pollNow();
 
-    assertEquals(1, refreshed.size());
+    assertEquals(2, refreshed.size());
     assertEquals(
         "IdP unreachable",
         SettingsChangeWatcher.refreshError(AUTHENTICATION_CONFIGURATION).orElse(""));
 
     failingSetting = null;
-    put(AUTHENTICATION_CONFIGURATION, "hash-3", null);
+    watcher.pollNow();
     watcher.pollNow();
 
-    assertEquals(2, refreshed.size());
+    assertEquals(3, refreshed.size());
     assertTrue(SettingsChangeWatcher.refreshError(AUTHENTICATION_CONFIGURATION).isEmpty());
+  }
+
+  @Test
+  void appliesARowCreatedAfterTheStart() {
+    put(SettingsType.SCIM_CONFIGURATION, "hash-scim", null);
+
+    watcher.pollNow();
+
+    assertEquals(List.of(SettingsType.SCIM_CONFIGURATION), refreshed);
+  }
+
+  @Test
+  void aChangeSavedBeforeTheStartIsAppliedAtTheFirstPoll() {
+    SettingsChangeWatcher early =
+        new SettingsChangeWatcher(
+            () -> List.copyOf(rows.values()), this::refresh, Duration.ofHours(1));
+    early.rememberCurrentHashes();
+    put(LOGIN_CONFIGURATION, "hash-b", null);
+
+    early.start();
+    early.pollNow();
+    early.stop();
+
+    assertEquals(List.of(LOGIN_CONFIGURATION), refreshed);
   }
 
   @Test
@@ -125,14 +159,13 @@ class SettingsChangeWatcherTest {
     }
   }
 
-  private void put(SettingsType settingsType, String hash, String snapshot) {
-    rows.put(settingsType.value(), new SettingsFingerprint(settingsType.value(), hash, snapshot));
+  private void put(SettingsType settingsType, String hash, String appliedJsonHash) {
+    rows.put(
+        settingsType.value(), new SettingsFingerprint(settingsType.value(), hash, appliedJsonHash));
   }
 
+  /** The mark a start-up reconciliation leaves: the hash of the value it wrote. */
   private static String snapshotApplying(String hash) {
-    return new DeploymentSnapshot(
-            JsonNodeFactory.instance.objectNode(),
-            new DeploymentSnapshot.Meta(ConfigSourceMode.AUTO, "2.1.0", hash, List.of(), null))
-        .toJson();
+    return hash;
   }
 }

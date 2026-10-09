@@ -58,7 +58,6 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
-import org.openmetadata.schema.configuration.ConfigSourceMode;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
@@ -999,14 +998,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   /**
-   * The stored value of a setting, or this process's deployment value when the setting's source is
-   * ENV or nothing is stored. Matches what the server uses after it reconciles.
+   * The stored value of a setting, or this process's deployment value when nothing is stored. In
+   * ENV mode the server writes its deployment value into the row at every start, so the row is the
+   * server's view even when this job lacks the server's environment.
    */
   private <T> T effectiveSetting(SettingsType type, Class<T> valueClass, T deploymentValue) {
-    Settings stored =
-        ConfigSources.modeOf(type) == ConfigSourceMode.ENV
-            ? null
-            : Entity.getSystemRepository().getConfigWithKey(type.value());
+    Settings stored = Entity.getSystemRepository().getConfigWithKey(type.value());
     return stored == null
         ? deploymentValue
         : JsonUtils.convertValue(stored.getConfigValue(), valueClass);

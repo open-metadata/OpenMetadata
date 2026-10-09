@@ -15,6 +15,7 @@ package org.openmetadata.service.config.source;
 
 /**
  * The database's hash of a stored setting, used to notice changes made by another server, the CLI
- * or an administration API, with the snapshot that says whether a reconciliation wrote it.
+ * or an administration API, with the hash of the value the last reconciliation wrote, which says
+ * whether a reconciliation wrote it.
  */
-public record SettingsFingerprint(String configType, String jsonHash, String snapshot) {}
+public record SettingsFingerprint(String configType, String jsonHash, String appliedJsonHash) {}

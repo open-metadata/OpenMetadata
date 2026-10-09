@@ -257,6 +257,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected Jdbi jdbi;
   private Environment environment;
   private AuditLogRepository auditLogRepository;
+  private SettingsChangeWatcher settingsWatcher;
   private org.openmetadata.service.socket.SocketAddressFilter socketAddressFilter;
 
   @Override
@@ -377,6 +378,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     startupTimer.time(
         "settings cache initialization", () -> SettingsCache.initialize(catalogConfig));
     startupTimer.time("deployment settings reconciliation", this::reconcileDeploymentSettings);
+    settingsWatcher = settingsChangeWatcher();
+    settingsWatcher.rememberCurrentHashes();
 
     // Phase 2: Advanced search features (after settings are available)
     startupTimer.time("advanced search features", this::initializeAdvancedSearchFeatures);
@@ -573,7 +576,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.lifecycle().manage(sessionService);
     environment.lifecycle().manage(new WebSocketSessionValidator(sessionService));
     environment.lifecycle().manage(new TestLoginSessionSweeper());
-    environment.lifecycle().manage(settingsChangeWatcher());
+    environment.lifecycle().manage(settingsWatcher);
     setAuthServletAttributes(
         contextHandler,
         AuthServeletHandlerFactory.getHandler(config, sessionService),

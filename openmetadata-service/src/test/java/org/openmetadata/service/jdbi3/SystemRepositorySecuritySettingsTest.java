@@ -17,8 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -37,6 +40,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.ConfigSourceConfiguration;
 import org.openmetadata.schema.configuration.ConfigSourceMode;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
@@ -58,6 +62,8 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.util.ValidationHttpUtil;
+import org.openmetadata.service.util.ValidationHttpUtil.HttpResponseData;
 
 class SystemRepositorySecuritySettingsTest {
   private static final String KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
@@ -116,6 +122,40 @@ class SystemRepositorySecuritySettingsTest {
     repository.createOrUpdate(authenticationSettings(authentication(5)));
 
     assertNull(repository.getStoredSecurityConfiguration());
+  }
+
+  /** In ENV mode the deployment owns publicKeyUrls; replacing them made every save a 409. */
+  @Test
+  void discoveryKeepsPublicKeyUrlsTheDeploymentOwns() throws Exception {
+    String idpKeys = "https://idp.example/jwks";
+    try (MockedStatic<ValidationHttpUtil> http =
+        mockStatic(ValidationHttpUtil.class, CALLS_REAL_METHODS)) {
+      http.when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenReturn(new HttpResponseData(200, "{\"jwks_uri\":\"" + idpKeys + "\"}"));
+      AuthenticationConfiguration discovered = confidentialClient();
+      repository.syncPublicKeyUrlsFromDiscovery(discovered);
+      assertEquals(List.of(idpKeys), discovered.getPublicKeyUrls());
+
+      List<String> deploymentKeys =
+          List.of("http://localhost:8585/api/v1/system/config/jwks", idpKeys);
+      AuthenticationConfiguration owned = confidentialClient().withPublicKeyUrls(deploymentKeys);
+      try (AutoCloseable env =
+          ConfigSources.overrideForTest(AUTHENTICATION_CONFIGURATION, ConfigSourceMode.ENV)) {
+        repository.syncPublicKeyUrlsFromDiscovery(owned);
+      }
+      assertEquals(deploymentKeys, owned.getPublicKeyUrls());
+    }
+  }
+
+  private static AuthenticationConfiguration confidentialClient() {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.CUSTOM_OIDC)
+        .withClientType(ClientType.CONFIDENTIAL)
+        .withPublicKeyUrls(List.of("https://stale.example/jwks"))
+        .withOidcConfiguration(
+            new OidcClientConfig()
+                .withId("om")
+                .withDiscoveryUri("https://idp.example/.well-known/openid-configuration"));
   }
 
   @Test
@@ -259,6 +299,7 @@ class SystemRepositorySecuritySettingsTest {
     when(dao.updateSettingsIfCurrent(anyString(), anyString(), anyString()))
         .thenAnswer(
             i -> rows.replace(i.getArgument(0), i.getArgument(1), i.getArgument(2)) ? 1 : 0);
+    doCallRealMethod().when(dao).updateSecuritySettingsIfCurrent(any(), any());
     return dao;
   }
 }

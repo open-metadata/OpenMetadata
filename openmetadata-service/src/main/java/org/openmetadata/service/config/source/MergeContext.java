@@ -119,7 +119,13 @@ final class MergeContext {
     JsonNode storedValue = storedValue(unit);
     return SettingValues.isBlank(storedValue)
         || (input.policy().firstSightDefaults().containsAll(unit.pointers())
-            && SettingValues.same(storedValue, valueOf(input.schemaDefaults(), unit)));
+            && SettingValues.same(storedValue, firstSightDefaultOf(unit)));
+  }
+
+  /** The default older versions stored for the field: the schema's, or the server's fallback. */
+  private JsonNode firstSightDefaultOf(MergeUnit unit) {
+    JsonNode runtimeDefault = input.policy().runtimeDefaults().get(unit.id());
+    return runtimeDefault == null ? valueOf(input.schemaDefaults(), unit) : runtimeDefault;
   }
 
   /** In ENV mode the deployment owns the fields its configuration file defines. */
@@ -148,6 +154,10 @@ final class MergeContext {
     writable.forEach(
         pointer -> writeValue(pointer, JsonPointers.valueAt(input.deployment(), pointer)));
     return !writable.isEmpty();
+  }
+
+  boolean isSecret(MergeUnit unit) {
+    return input.policy().secrets().containsAll(unit.pointers());
   }
 
   void applyValue(String pointer, JsonNode value) {

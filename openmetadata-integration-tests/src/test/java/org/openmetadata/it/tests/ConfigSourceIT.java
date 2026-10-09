@@ -41,6 +41,7 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.configuration.ConfigSourceConfiguration;
 import org.openmetadata.schema.configuration.ConfigSourceMode;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ConflictException;
@@ -57,7 +58,9 @@ import org.openmetadata.service.config.source.DualSourceSetting;
 import org.openmetadata.service.config.source.SettingsChangeWatcher;
 import org.openmetadata.service.config.source.SettingsSecrets;
 import org.openmetadata.service.config.source.StoredSettingRow;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.StoredSecurityConfiguration;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -107,6 +110,7 @@ public class ConfigSourceIT {
     dao.insertSettings(AUTHORIZER, originalAuthorizerRow.json());
     SettingsCache.invalidateSettings(AUTHORIZER);
     ConfigSources.install(originalDeployment.orElse(null));
+    ConfigSources.recordPersistedMode(AUTHENTICATION_CONFIGURATION, ConfigSourceMode.AUTO);
     reloadSecurity();
   }
 
@@ -233,12 +237,72 @@ public class ConfigSourceIT {
         JsonUtils.readTree(dao.getConfigJsonWithKey(AUTH))
             .at("/ldapConfiguration/dnAdminPassword")
             .asText();
-    assertTrue(!Fernet.getInstance().isKeyDefined() || Fernet.isTokenized(storedPassword));
+    assertTrue(Fernet.getInstance().isKeyDefined(), "The test server runs with a Fernet key");
+    assertTrue(Fernet.isTokenized(storedPassword), storedPassword);
+    JsonNode masked = currentSecurity();
     assertEquals(
         "*********",
-        currentSecurity()
-            .at("/authenticationConfiguration/ldapConfiguration/dnAdminPassword")
-            .asText());
+        masked.at("/authenticationConfiguration/ldapConfiguration/dnAdminPassword").asText());
+
+    execute(HttpMethod.PUT, SECURITY_CONFIG_PATH, masked.toString());
+
+    assertEquals(
+        "bind-s3cret", storedAuthentication().at("/ldapConfiguration/dnAdminPassword").asText());
+  }
+
+  /** ENV mode guards only the fields the configuration file defines; the others stay editable. */
+  @Test
+  void envModeLeavesFieldsTheFileDoesNotDefineEditable() throws Exception {
+    clearSnapshot();
+    restart(storedAuthentication());
+    try (AutoCloseable env =
+        ConfigSources.overrideForTest(AUTHENTICATION_CONFIGURATION, ConfigSourceMode.ENV)) {
+      saveInUi("sessionExpiry", 7200);
+    }
+
+    assertEquals(7200, storedAuthentication().path("sessionExpiry").asInt());
+  }
+
+  /**
+   * A process that does not reconcile, such as another server's CLI job, reads the mode the last
+   * start stored with the setting, so it honours ENV mode without the variable.
+   */
+  @Test
+  void theModeStoredByAnEnvStartGuardsWritesWithoutTheVariable() throws Exception {
+    clearSnapshot();
+    DeploymentConfig env =
+        installDeployment(storedAuthentication(), TEMPLATE, ConfigSourceMode.ENV);
+    new DeploymentConfigReconciler(dao, Entity.getSystemRepository(), "2.1.0")
+        .reconcile(env, env.setting(AUTHENTICATION_CONFIGURATION).orElseThrow());
+    installDeployment(storedAuthentication(), TEMPLATE, ConfigSourceMode.AUTO);
+    ConfigSources.recordPersistedMode(AUTHENTICATION_CONFIGURATION, ConfigSourceMode.AUTO);
+
+    ConfigSources.loadPersistedModes(dao);
+
+    ConflictException rejected =
+        assertThrows(ConflictException.class, () -> saveInUi("maxActiveSessionsPerUser", 4321));
+    assertEquals(409, rejected.getStatusCode());
+  }
+
+  /** Both security rows are written in one transaction: a stale write changes neither. */
+  @Test
+  void aStaleSecurityWriteChangesNeitherSetting() {
+    StoredSecurityConfiguration read =
+        Entity.getSystemRepository().getStoredSecurityConfiguration();
+    ObjectNode authorizer = (ObjectNode) JsonUtils.readTree(originalAuthorizerRow.json());
+    authorizer.put("botDomain", "concurrent-writer.example");
+    dao.insertSettings(AUTHORIZER, authorizer.toString());
+    SecurityConfiguration update =
+        JsonUtils.deepCopy(read.configuration(), SecurityConfiguration.class);
+    update.getAuthenticationConfiguration().setMaxActiveSessionsPerUser(4321);
+
+    assertThrows(
+        PreconditionFailedException.class,
+        () -> Entity.getSystemRepository().updateSecurityConfigurationIfCurrent(update, read));
+
+    assertEquals(
+        JsonUtils.readTree(originalRow.json()).path("maxActiveSessionsPerUser"),
+        JsonUtils.readTree(dao.getConfigJsonWithKey(AUTH)).path("maxActiveSessionsPerUser"));
   }
 
   /**
@@ -448,11 +512,15 @@ public class ConfigSourceIT {
   /** Makes {@code deploymentValue} this server's deployment configuration without a restart. */
   private static DeploymentConfig installDeployment(
       JsonNode deploymentValue, DeploymentTemplate template) {
+    return installDeployment(deploymentValue, template, ConfigSourceMode.AUTO);
+  }
+
+  private static DeploymentConfig installDeployment(
+      JsonNode deploymentValue, DeploymentTemplate template, ConfigSourceMode mode) {
     DeploymentSetting setting =
         new DeploymentSetting(DualSourceSetting.AUTHENTICATION, deploymentValue, template);
     DeploymentConfig deployment =
-        DeploymentConfig.of(
-            List.of(setting), new ConfigSourceConfiguration().withSecurity(ConfigSourceMode.AUTO));
+        DeploymentConfig.of(List.of(setting), new ConfigSourceConfiguration().withSecurity(mode));
     ConfigSources.install(deployment);
     return deployment;
   }

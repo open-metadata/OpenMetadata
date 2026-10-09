@@ -16,7 +16,9 @@ package org.openmetadata.service.config.source;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.ConfigSourceMode;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
@@ -26,6 +28,7 @@ import org.openmetadata.schema.utils.JsonUtils;
  * @param values the deployment value applied last time
  * @param meta facts about the reconciliation that applied it
  */
+@Slf4j
 public record DeploymentSnapshot(JsonNode values, Meta meta) {
 
   /**
@@ -48,10 +51,20 @@ public record DeploymentSnapshot(JsonNode values, Meta meta) {
     }
   }
 
+  /**
+   * An unreadable snapshot counts as none, so the setting is reconciled as on first sight instead
+   * of stopping the server or the settings watcher.
+   */
   public static Optional<DeploymentSnapshot> parse(String json) {
-    return json == null || json.isBlank()
-        ? Optional.empty()
-        : Optional.ofNullable(JsonUtils.readValueLenient(json, DeploymentSnapshot.class));
+    Optional<DeploymentSnapshot> snapshot = Optional.empty();
+    if (json != null && !json.isBlank()) {
+      try {
+        snapshot = Optional.ofNullable(JsonUtils.readValueLenient(json, DeploymentSnapshot.class));
+      } catch (JsonParsingException unreadable) {
+        LOG.warn("Ignoring an unreadable deployment snapshot: {}", unreadable.getMessage());
+      }
+    }
+    return snapshot;
   }
 
   public String toJson() {

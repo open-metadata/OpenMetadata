@@ -76,28 +76,6 @@ public final class SettingsSecrets {
   }
 
   /**
-   * A copy of {@code updated} in which secrets the client sent back masked, or left out, take their
-   * value from {@code original}. Clients only ever see masked secrets, so sending one back means
-   * "unchanged".
-   */
-  public static ObjectNode withMaskedSecretsRestored(
-      SettingsType settingsType, JsonNode updated, JsonNode original) {
-    ObjectNode restored = copyOf(updated);
-    for (String pointer : pointersOf(settingsType)) {
-      JsonNode sent = JsonPointers.valueAt(updated, pointer);
-      JsonNode kept = JsonPointers.valueAt(original, pointer);
-      if (isMaskedOrMissing(sent) && !kept.isMissingNode()) {
-        JsonPointers.setValue(restored, pointer, kept.deepCopy());
-      }
-    }
-    return restored;
-  }
-
-  private static boolean isMaskedOrMissing(JsonNode sent) {
-    return sent.isMissingNode() || PasswordEntityMasker.PASSWORD_MASK.equals(sent.asText());
-  }
-
-  /**
    * Masks the secrets of {@code value} in place. Works on the object itself: a JSON round trip
    * would re-apply schema defaults to fields the caller set to null.
    */

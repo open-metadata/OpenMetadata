@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.configuration.ConfigSourceMode;
+import org.openmetadata.schema.settings.SettingsType;
 
 class SettingsMergeTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -434,6 +435,68 @@ class SettingsMergeTest {
             admins, json("['admin','ui-admin','ops']"), json("['ops','admin']")));
     assertTrue(
         SettingsMerge.overridesDeployment(admins, json("['admin','ui-admin']"), json("['ops']")));
+  }
+
+  @Test
+  void aProviderSwitchKeepsTheStoredSecretOverABlankDeploymentSecret() {
+    String before =
+        "{'provider':'custom-oidc','clientType':'confidential','authority':'https://a.example',"
+            + "'clientId':'om','oidcConfiguration':{'id':'om','secret':'s3cret',"
+            + "'discoveryUri':'https://a.example/.well-known/openid-configuration'}}";
+    String brokenSecretMount =
+        before
+            .replace("https://a.example','clientId", "https://b.example','clientId")
+            .replace("'secret':'s3cret'", "'secret':''");
+
+    MergeResult result = auth(ConfigSourceMode.AUTO, brokenSecretMount, before, before);
+
+    assertEquals("https://b.example", result.stored().get("authority").asText());
+    assertEquals("s3cret", result.stored().at("/oidcConfiguration/secret").asText());
+    assertTrue(result.report().has(MergeOutcome.KEPT_OVER_BLANK));
+  }
+
+  @Test
+  void anEmptiedAdminListKeepsTheStoredAdmins() {
+    MergeResult result =
+        authz(
+            ConfigSourceMode.AUTO,
+            "{'adminPrincipals':[]}",
+            "{'adminPrincipals':['admin','ops','ui-admin']}",
+            "{'adminPrincipals':['admin','ops']}");
+
+    assertEquals(3, result.stored().get("adminPrincipals").size());
+    assertTrue(result.report().has(MergeOutcome.KEPT_OVER_BLANK));
+  }
+
+  @Test
+  void firstReconcileTreatsTheShippedSessionExpiryAsUnset() {
+    MergeResult result =
+        auth(
+            ConfigSourceMode.AUTO,
+            "{'provider':'basic','sessionExpiry':86400}",
+            "{'provider':'basic','sessionExpiry':604800}",
+            null);
+
+    assertEquals(86400, result.stored().get("sessionExpiry").asInt());
+    assertTrue(result.report().has(MergeOutcome.BACKFILLED));
+  }
+
+  @Test
+  void theDeploymentAlwaysSetsTheEmailTemplates() {
+    DeploymentTemplate email =
+        DeploymentTemplate.parse("email:\n  templates: ${TEMPLATES:-openmetadata}\n", "/email");
+    MergeResult result =
+        merge.merge(
+            input(
+                    email,
+                    ConfigSourceMode.AUTO,
+                    "{'templates':'collate'}",
+                    "{'templates':'custom'}",
+                    "{'templates':'openmetadata'}")
+                .policy(SettingsFieldPolicies.of(SettingsType.EMAIL_CONFIGURATION))
+                .build());
+
+    assertEquals("collate", result.stored().get("templates").asText());
   }
 
   private MergeResult auth(

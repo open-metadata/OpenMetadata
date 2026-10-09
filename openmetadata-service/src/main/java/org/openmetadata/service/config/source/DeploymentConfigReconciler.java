@@ -239,7 +239,7 @@ public final class DeploymentConfigReconciler {
     boolean stored =
         result.storedChanged()
             ? storeMerged(type, row, result, snapshot)
-            : storeSnapshot(type, snapshot);
+            : storeSnapshot(type, row, snapshot);
     if (stored) {
       ConfigSources.recordPersistedMode(type, mode);
       log.write();
@@ -280,8 +280,10 @@ public final class DeploymentConfigReconciler {
     return written;
   }
 
-  private boolean storeSnapshot(SettingsType type, DeploymentSnapshot snapshot) {
-    dao.updateDeploymentSnapshot(type.value(), snapshot.toJson());
-    return true;
+  private boolean storeSnapshot(
+      SettingsType type, StoredSettingRow row, DeploymentSnapshot snapshot) {
+    return dao.updateDeploymentSnapshotIfCurrent(
+            type.value(), row.json(), row.snapshot(), snapshot.toJson())
+        > 0;
   }
 }

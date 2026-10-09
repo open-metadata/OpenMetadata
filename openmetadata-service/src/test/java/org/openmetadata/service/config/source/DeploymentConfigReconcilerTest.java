@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -201,6 +203,43 @@ class DeploymentConfigReconcilerTest {
   }
 
   @Test
+  void reconcilesASettingWithAnUnreadableSnapshotAsOnFirstSight() {
+    rows.put(
+        AUTH,
+        new StoredSettingRow(
+            json("{'provider':'basic'}").toString(), "{\"meta\":{\"mode\":\"NOT_A_MODE\"}}"));
+
+    reconcile(ConfigSourceMode.AUTO, "{'provider':'basic','maxActiveSessionsPerUser':1000}");
+
+    assertEquals(1000, stored().get("maxActiveSessionsPerUser").asInt());
+    assertEquals(ConfigSourceMode.AUTO, snapshot().meta().mode());
+  }
+
+  @Test
+  void aSnapshotWriteRacingAnotherWriterIsRetriedOnTheirValue() {
+    reconcile(ConfigSourceMode.AUTO, "{'provider':'basic','maxActiveSessionsPerUser':5}");
+    AtomicInteger attempts = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (attempts.incrementAndGet() == 1) {
+                editStored("enableSelfSignup", false);
+              }
+              return snapshotCompareAndSet(
+                  invocation.getArgument(0),
+                  invocation.getArgument(1),
+                  invocation.getArgument(2),
+                  invocation.getArgument(3));
+            })
+        .when(dao)
+        .updateDeploymentSnapshotIfCurrent(any(), any(), any(), any());
+
+    reconcile(ConfigSourceMode.AUTO, "{'provider':'basic','maxActiveSessionsPerUser':5}");
+
+    assertEquals(2, attempts.get());
+    assertFalse(stored().get("enableSelfSignup").asBoolean());
+  }
+
+  @Test
   void storesSecretsEncryptedInTheSnapshot() {
     reconcile(
         ConfigSourceMode.AUTO,
@@ -311,6 +350,11 @@ class DeploymentConfigReconcilerTest {
             })
         .when(inMemory)
         .updateDeploymentSnapshot(anyString(), anyString());
+    when(inMemory.updateDeploymentSnapshotIfCurrent(any(), any(), any(), any()))
+        .thenAnswer(
+            i ->
+                snapshotCompareAndSet(
+                    i.getArgument(0), i.getArgument(1), i.getArgument(2), i.getArgument(3)));
     return inMemory;
   }
 
@@ -324,6 +368,19 @@ class DeploymentConfigReconcilerTest {
       ObjectNode marked = (ObjectNode) JsonUtils.readTree(snapshot);
       ((ObjectNode) marked.get("meta")).put("appliedJsonHash", hashOf(updatedJson));
       rows.put(type, new StoredSettingRow(updatedJson, marked.toString()));
+    }
+    return unchanged ? 1 : 0;
+  }
+
+  private int snapshotCompareAndSet(
+      String type, String expectedJson, String expectedSnapshot, String snapshot) {
+    StoredSettingRow current = rows.get(type);
+    boolean unchanged =
+        current != null
+            && JsonUtils.readTree(current.json()).equals(JsonUtils.readTree(expectedJson))
+            && Objects.equals(current.snapshot(), expectedSnapshot);
+    if (unchanged) {
+      rows.put(type, new StoredSettingRow(current.json(), snapshot));
     }
     return unchanged ? 1 : 0;
   }

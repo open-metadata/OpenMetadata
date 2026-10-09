@@ -61,11 +61,12 @@ public final class SettingsMerge {
   private void mergeThreeWay(MergeContext context, MergeUnit unit) {
     if (!context.deploymentChanged(unit)) {
       reportDrift(context, unit);
+    } else if (isBlank(context.deploymentValue(unit)) && !isBlank(context.storedValue(unit))) {
+      // An unset variable, for example a missing secret or an emptied admin list, must not wipe a
+      // working value.
+      context.record(KEPT_OVER_BLANK, unit);
     } else if (unit.kind() == UnitKind.SET_MERGE) {
       mergeEntries(context, unit);
-    } else if (isBlank(context.deploymentValue(unit)) && !isBlank(context.storedValue(unit))) {
-      // An unset variable, for example a missing secret, must not wipe a working value.
-      context.record(KEPT_OVER_BLANK, unit);
     } else if (!context.storedChangedSinceLastApplied(unit)) {
       applyDeploymentChange(context, unit);
     } else if (!same(context.storedValue(unit), context.deploymentValue(unit))) {
@@ -105,10 +106,22 @@ public final class SettingsMerge {
   }
 
   private void applyProviderSwitch(MergeContext context, MergeUnit unit) {
-    if (context.applyFromDeployment(unit)) {
+    if (keepsSecretOverBlank(context, unit)) {
+      context.record(KEPT_OVER_BLANK, unit);
+    } else if (context.applyFromDeployment(unit)) {
       context.record(APPLIED, unit);
       context.report().markIdentityProviderReplaced();
     }
+  }
+
+  /**
+   * A switch replaces the old provider's fields, blanks included, except a secret: a blank secret
+   * is far likelier a missing mount than a deliberate removal, and losing it stops sign-in.
+   */
+  private static boolean keepsSecretOverBlank(MergeContext context, MergeUnit unit) {
+    return context.isSecret(unit)
+        && isBlank(context.deploymentValue(unit))
+        && !isBlank(context.storedValue(unit));
   }
 
   private void applyDeploymentChange(MergeContext context, MergeUnit unit) {

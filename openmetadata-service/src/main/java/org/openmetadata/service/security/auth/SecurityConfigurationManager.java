@@ -200,17 +200,7 @@ public class SecurityConfigurationManager {
       currentMcpConfig =
           SettingsCache.getSettingOrDefault(
               MCP_CONFIGURATION, deploymentMcpConfiguration(), MCPConfiguration.class);
-
-      OpenMetadataApplicationConfig appConfig = this.config;
-      SecurityState state = currentState;
-      appConfig.setAuthenticationConfiguration(state.authenticationConfiguration());
-      appConfig.setAuthorizerConfiguration(state.authorizerConfiguration());
-      if (currentMcpConfig != null) {
-        appConfig.setMcpConfiguration(currentMcpConfig);
-      }
-
-      application.reinitializeAuthSystem(appConfig, environment);
-
+      applyToApplication();
       notifyListeners();
 
       LOG.info("Successfully reloaded security system with new configuration");
@@ -252,6 +242,23 @@ public class SecurityConfigurationManager {
     }
   }
 
+  /** Copies the current state into the application configuration and rebuilds authentication. */
+  private void applyToApplication() {
+    OpenMetadataApplicationConfig appConfig = this.config;
+    SecurityState state = currentState;
+    appConfig.setAuthenticationConfiguration(state.authenticationConfiguration());
+    appConfig.setAuthorizerConfiguration(state.authorizerConfiguration());
+    if (currentMcpConfig != null) {
+      appConfig.setMcpConfiguration(currentMcpConfig);
+    }
+    application.reinitializeAuthSystem(appConfig, environment);
+  }
+
+  /**
+   * Restores the previous configuration everywhere the failed reload reached, including the
+   * application configuration and the authenticators it may already have replaced, so this server
+   * is never left half switched.
+   */
   private void rollbackConfiguration() {
     if (previousSecurityConfig != null) {
       currentState =
@@ -259,7 +266,16 @@ public class SecurityConfigurationManager {
               previousSecurityConfig.getAuthenticationConfiguration(),
               previousSecurityConfig.getAuthorizerConfiguration());
       currentMcpConfig = previousMcpConfig;
+      restoreApplication();
       LOG.info("Rolled back to previous security configuration");
+    }
+  }
+
+  private void restoreApplication() {
+    try {
+      applyToApplication();
+    } catch (RuntimeException failure) {
+      LOG.error("Could not rebuild authentication for the previous configuration", failure);
     }
   }
 
