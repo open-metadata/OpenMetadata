@@ -1309,6 +1309,45 @@ export const waitForDraftPersisted = async (
 };
 
 /**
+ * Blocks the debounced autosave PATCH for a single article so a test can hold an
+ * article in a genuinely unsaved state.
+ *
+ * Typing schedules two independent writes: the draft stash (300ms debounce, into
+ * localStorage) and the real autosave PATCH (SHORT_DELAY, 3000ms). A test that
+ * stashes a draft and then reloads is racing that 3s debounce -- and a reload does
+ * not cancel an already in-flight XHR. If the PATCH lands, the server version goes
+ * N -> N+1 while the stashed draft still carries version N, so on the next load
+ * getDraftMergeCandidate() sees serverChangedSinceDraft, discards the draft and
+ * calls removeDraft(). The editor then renders the server's old description and the
+ * assertion fails against the pre-edit text.
+ *
+ * Aborting the PATCH removes the race instead of hoping to win it: the draft keeps
+ * the version it was stamped with, so the post-reload merge is deterministic.
+ *
+ * Returns a function that stops blocking, for tests that later need the real save.
+ */
+export const blockArticleAutoSave = async (
+  page: Page,
+  articleId: string
+): Promise<() => Promise<void>> => {
+  const pattern = `**/api/v1/contextCenter/pages/${articleId}`;
+
+  await page.route(pattern, async (route) => {
+    if (route.request().method() === 'PATCH') {
+      await route.abort();
+
+      return;
+    }
+
+    await route.fallback();
+  });
+
+  return async () => {
+    await page.unroute(pattern);
+  };
+};
+
+/**
  * A minimal valid 1x1 transparent PNG, used as an in-memory upload fixture
  * since this repo has no binary image fixtures under playwright/test-data/.
  */

@@ -34,6 +34,7 @@ import {
   ARTICLES_URL,
   ARTICLE_DESCRIPTION,
   assertArticleEditorSaved,
+  blockArticleAutoSave,
   cleanupCurrentArticle,
   createArticleFromButton,
   createArticleViaApi,
@@ -1867,15 +1868,23 @@ test.describe('Context Center Articles', () => {
       test.slow();
 
       const reloadDescription = `Reload draft ${uuid()}`;
+      let unblockAutoSave: () => Promise<void>;
 
       await test.step('Navigate to draft article A and type content without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        // Hold off the 3s autosave PATCH: this test is specifically about a reload
+        // that happens *before* the content is saved, so the save must not land
+        // and bump the server version out from under the stashed draft.
+        unblockAutoSave = await blockArticleAutoSave(page, draftArticleA.id);
         await page.fill('.om-block-editor', reloadDescription);
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
         await waitForDraftPersisted(page, draftArticleA.id, reloadDescription);
       });
 
       await test.step('Reload the page (simulates browser refresh before auto-save)', async () => {
+        // Lift the block before reloading: the post-reload draft sync issues its own
+        // PATCH, and that one must succeed for the badge to reach "Saved".
+        await unblockAutoSave();
         await page.reload();
         await waitForAllLoadersToDisappear(page);
       });
@@ -2038,7 +2047,13 @@ test.describe('Context Center Articles', () => {
           .locator('.ProseMirror[contenteditable="true"]')
           .first();
 
-        await expect(editor).toContainText(contentA);
+        await editor.waitFor({ state: 'visible' });
+        // Same async draft restore as the Article B leg above: the draft is applied
+        // after the API response has already rendered the server's content, so the
+        // assertion has to retry rather than sample once.
+        await expect(async () => {
+          await expect(editor).toContainText(contentA);
+        }).toPass({ timeout: 20000 });
         await assertArticleEditorSaved(page);
       });
     });
