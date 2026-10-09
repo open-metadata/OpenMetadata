@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Accordion,
   AccordionHeader,
@@ -22,11 +23,7 @@ import {
   RadioButton,
   RadioGroup,
 } from '@openmetadata/ui-core-components';
-import {
-  Check,
-  ChevronRight,
-  XClose,
-} from '@openmetadata/ui-core-components/icons';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useEffect, useRef, useState } from 'react';
@@ -261,14 +258,14 @@ const TierCard = ({
                 className={FOOTER_BUTTON_CLASS}
                 color="secondary"
                 data-testid="close-tier-card"
-                iconLeading={<XClose size={14} />}
+                iconLeading={<CloseOutlined />}
                 onPress={handleCloseTier}
               />
               <Button
                 className={FOOTER_BUTTON_CLASS}
                 color="primary"
                 data-testid="update-tier-card"
-                iconLeading={<Check size={14} />}
+                iconLeading={<CheckOutlined />}
                 onPress={() => updateTierData(selectedTier)}
               />
             </div>
