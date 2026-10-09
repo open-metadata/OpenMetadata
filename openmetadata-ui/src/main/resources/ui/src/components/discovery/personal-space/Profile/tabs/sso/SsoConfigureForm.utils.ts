@@ -46,6 +46,89 @@ const toCoreRenderer = (fieldUiSchema: UiSchema): UiSchema => {
     : fieldUiSchema;
 };
 
+const CARD_CLASS_NAME =
+  'tw:flex tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-secondary tw:p-5';
+
+/**
+ * The cards each SSO section is split into — the same groups the classic
+ * settings page draws (`SSOGroupedFieldTemplate`). Fields not listed here
+ * share one last card.
+ */
+const SECTION_CARDS: Record<string, string[][]> = {
+  authenticationConfiguration: [
+    ['providerName'],
+    ['clientType', 'enableSelfSignup', 'clientId', 'callbackUrl'],
+    ['authority', 'domain'],
+    ['publicKeyUrls', 'tokenValidationAlgorithm'],
+    ['secret', 'clientSecret'],
+    ['oidcConfiguration'],
+    ['ldapConfiguration'],
+    ['samlConfiguration'],
+    [
+      'emailClaim',
+      'displayNameClaim',
+      'jwtPrincipalClaims',
+      'jwtPrincipalClaimsMapping',
+      'jwtTeamClaimMapping',
+    ],
+  ],
+  authorizerConfiguration: [
+    ['adminEmails'],
+    ['allowedEmailDomains', 'botDomain'],
+    [
+      'enableSecureSocketConnection',
+      'className',
+      'containerRequestFilter',
+      'useRolesFromProvider',
+    ],
+    [
+      'adminPrincipals',
+      'principalDomain',
+      'enforcePrincipalDomain',
+      'allowedDomains',
+      'botPrincipals',
+    ],
+  ],
+};
+
+/**
+ * Lays a section out with FormBuilderV1's LayoutGridField, one card per
+ * group. Fields the schema drops or the uiSchema hides are left out so no
+ * card renders empty; hidden fields stay mounted in a hidden row.
+ */
+const toCardLayout = (
+  sectionSchema: RJSFSchema,
+  sectionUiSchema: UiSchema,
+  groups: string[][]
+): UiSchema => {
+  const names = Object.keys(sectionSchema.properties ?? {});
+  const isHidden = (name: string) =>
+    (sectionUiSchema[name] as UiSchema | undefined)?.['ui:widget'] === 'hidden';
+  const visibleGroups = groups
+    .map((group) =>
+      group.filter((name) => names.includes(name) && !isHidden(name))
+    )
+    .filter((group) => group.length > 0);
+  const grouped = new Set(groups.flat());
+  const rest = names.filter((name) => !grouped.has(name) && !isHidden(name));
+  const toRow = (group: string[], className = CARD_CLASS_NAME) => ({
+    className,
+    columns: group.map((name) => ({ name })),
+  });
+
+  return {
+    'ui:field': 'LayoutGridField',
+    'ui:options': {
+      className: 'tw:flex tw:flex-col tw:gap-5',
+      rows: [
+        ...visibleGroups.map((group) => toRow(group)),
+        ...(rest.length ? [toRow(rest)] : []),
+        toRow(names.filter(isHidden), 'tw:hidden'),
+      ],
+    },
+  };
+};
+
 /**
  * Adapts the classic SSO uiSchema to FormBuilderV1: every field full width
  * (one column — the default three-column grid is built for full-page forms
@@ -64,11 +147,19 @@ export const toCoreUiSchema = (
       const fieldUiSchema = toCoreRenderer((uiSchema[name] ?? {}) as UiSchema);
       const isObject = property.type === 'object';
 
-      next[name] = {
+      const nextUiSchema: UiSchema = {
         ...(isObject ? toCoreUiSchema(property, fieldUiSchema) : fieldUiSchema),
         ...(isObject && { 'ui:description': '' }),
         'ui:options': { ...fieldUiSchema['ui:options'], fullWidth: true },
       };
+      const cards = SECTION_CARDS[name];
+
+      next[name] = cards
+        ? {
+            ...nextUiSchema,
+            ...toCardLayout(property, nextUiSchema, cards),
+          }
+        : nextUiSchema;
 
       return next;
     },

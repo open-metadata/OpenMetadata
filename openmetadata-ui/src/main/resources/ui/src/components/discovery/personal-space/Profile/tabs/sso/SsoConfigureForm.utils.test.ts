@@ -55,13 +55,54 @@ describe('toCoreUiSchema', () => {
 
     expect(uiSchema.authenticationConfiguration).toMatchObject({
       'ui:description': '',
-      'ui:options': { fullWidth: true },
       provider: {
         'ui:widget': 'hidden',
         'ui:options': { fullWidth: true },
       },
       clientId: { 'ui:options': { help: 'Client ID help', fullWidth: true } },
     });
+  });
+
+  it('splits a section into the classic cards, skipping hidden and absent fields', () => {
+    const authSchema: RJSFSchema = {
+      type: 'object',
+      properties: {
+        authenticationConfiguration: {
+          type: 'object',
+          properties: {
+            provider: { type: 'string' },
+            providerName: { type: 'string' },
+            clientType: { type: 'string' },
+            clientId: { type: 'string' },
+            authority: { type: 'string' },
+            customSetting: { type: 'string' },
+          },
+        },
+      },
+    };
+
+    const section = toCoreUiSchema(authSchema, {
+      authenticationConfiguration: {
+        provider: { 'ui:widget': 'hidden' },
+        clientId: { 'ui:widget': 'hidden' },
+      },
+    }).authenticationConfiguration;
+    const rows = section['ui:options'].rows as {
+      className: string;
+      columns: { name: string }[];
+    }[];
+    const names = rows.map((row) => row.columns.map((c) => c.name));
+
+    expect(section['ui:field']).toBe('LayoutGridField');
+    expect(names).toEqual([
+      ['providerName'],
+      ['clientType'],
+      ['authority'],
+      ['customSetting'],
+      ['provider', 'clientId'],
+    ]);
+    expect(rows[0].className).toContain('tw:border');
+    expect(rows[rows.length - 1].className).toBe('tw:hidden');
   });
 
   it('swaps the classic-only renderers for FormBuilderV1 ones', () => {
