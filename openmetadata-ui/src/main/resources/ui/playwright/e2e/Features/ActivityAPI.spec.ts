@@ -368,6 +368,8 @@ test.describe(
               .includes(`/api/v1/conversations/${firstActivityId}/replies/`) &&
             response.request().method() === 'DELETE'
         );
+        // The reply delete confirm is ConfirmationModal, which is a core
+        // Dialog — scope by its own test id rather than `.ant-modal`.
         await page
           .getByTestId('confirmation-modal')
           .getByTestId('save-button')

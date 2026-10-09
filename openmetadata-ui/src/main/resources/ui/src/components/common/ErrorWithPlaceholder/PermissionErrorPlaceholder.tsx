@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { SIZE } from '../../../enums/common.enum';
@@ -25,12 +26,17 @@ const PermissionErrorPlaceholder = ({
   return (
     <div
       className={classNames(
-        'full-height flex-center border-default border-radius-sm tw:bg-surface',
+        'full-height flex-center border-default border-radius-sm bg-white',
         className
       )}>
-      <div
-        className="tw:flex tw:flex-col tw:items-center tw:gap-2"
-        data-testid="permission-error-placeholder">
+      <Box
+        inline
+        align="center"
+        className="layout-space"
+        data-testid="permission-error-placeholder"
+        direction="col"
+        gap={2}
+        itemClassName="layout-space-item">
         <NoAccessPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
@@ -47,7 +53,7 @@ const PermissionErrorPlaceholder = ({
             />
           </Typography>
         </div>
-      </div>
+      </Box>
     </div>
   );
 };

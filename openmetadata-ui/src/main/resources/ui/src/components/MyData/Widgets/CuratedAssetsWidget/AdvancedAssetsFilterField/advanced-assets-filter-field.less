@@ -101,8 +101,9 @@
               margin: 0;
               flex: 1;
 
-              .ant-col {
-                padding: 0 !important; // remove padding from ant-col inline styling by antd
+              :is(.ant-col, .layout-column) {
+                // Filter controls must stay flush inside padded layout columns.
+                padding: 0 !important;
               }
             }
 

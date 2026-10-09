@@ -27,10 +27,14 @@ coverage, a retried one looks green.
 
 ## Entries
 
-No entries. The threshold for quarantining is **2 or more** failures, counted per
+The threshold for quarantining is **2 or more** failures, counted per
 generated variant rather than per source line. The 11 merge_group runs sampled
 on 2026-09-04 that seeded this list are all released now, as is the DataContracts
 entry that was tagged separately on 2026-09-11 (see *Released from quarantine*).
+
+| Spec / variant | Tests | Evidence and root cause | Owner / release condition |
+|---|---|---|---|
+| `e2e/Features/AutoPilot.spec.ts` / Kafka | Create Service and check the AutoPilot status; Agents created by AutoPilot should be deleted | Quarantined 2026-10-08 after first-attempt failures in [run 37772845555](https://github.com/open-metadata/OpenMetadata/actions/runs/37772845555) and [run 37779291019](https://github.com/open-metadata/OpenMetadata/actions/runs/37779291019). The CI broker advertises `localhost:9092`; Airflow connects to its own container and gets `Connection refused`, then `GetTopics` times out and AutoPilot ends with `FAILURE`. A read-only metadata request confirmed broker ID 1 advertises localhost. The deletion test depends on the creation test in this serial group, so both Kafka tests are tagged. | @ShaileshParmar11 coordinates the CI broker configuration fix. Remove the tag after the broker advertises an endpoint reachable from Airflow and both Kafka tests pass with `PLAYWRIGHT_RUN_QUARANTINED=true`. |
 
 ### Triage, 2026-09-09
 

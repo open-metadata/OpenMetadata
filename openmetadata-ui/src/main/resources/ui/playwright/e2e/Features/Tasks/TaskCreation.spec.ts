@@ -84,7 +84,7 @@ test.describe('Task Creation - Request Description', () => {
     await expect(page.getByTestId('form-container')).toBeVisible();
 
     // Verify title contains description request info
-    const titleField = page.locator('#title');
+    const titleField = page.getByTestId('title').locator('input');
     await expect(titleField).toBeVisible();
     const titleValue = await titleField.inputValue();
     expect(titleValue.toLowerCase()).toContain('description');
@@ -144,7 +144,7 @@ test.describe('Task Creation - Request Description', () => {
       await expect(page.getByTestId('form-container')).toBeVisible();
 
       // Verify this is a column-level task by checking the about field references a column
-      const titleField = page.locator('#title');
+      const titleField = page.getByTestId('title').locator('input');
       const titleValue = await titleField.inputValue();
       expect(titleValue.toLowerCase()).toContain('description');
 
@@ -175,9 +175,7 @@ test.describe('Task Creation - Request Description', () => {
     await expect(page.getByTestId('form-container')).toBeVisible();
 
     // Assignee field - search and select user
-    const assigneeInput = page
-      .getByTestId('select-assignee')
-      .getByRole('combobox');
+    const assigneeInput = page.locator('[data-testid="select-assignee"] input');
     await assigneeInput.click();
 
     // Search for user
@@ -217,7 +215,7 @@ test.describe('Task Creation - Request Description', () => {
     await submitBtn.click();
 
     // Should show validation error for assignee field
-    const assigneeError = page.locator('.ant-form-item-explain-error');
+    const assigneeError = page.getByTestId('assignees').getByText(/required/i);
     await expect(assigneeError).toBeVisible();
   });
 });
@@ -274,7 +272,7 @@ test.describe('Task Creation - Request Tags', () => {
       await expect(page.getByTestId('form-container')).toBeVisible();
 
       // Verify title contains tag info
-      const titleField = page.locator('#title');
+      const titleField = page.getByTestId('title').locator('input');
       const titleValue = await titleField.inputValue();
       expect(titleValue.toLowerCase()).toContain('tag');
 

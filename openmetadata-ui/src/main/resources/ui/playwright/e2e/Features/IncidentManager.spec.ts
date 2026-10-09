@@ -105,9 +105,11 @@ const waitForIncidentTask = async (page: Page, testCaseFqn?: string) => {
           const response = await apiContext.get('/api/v1/tasks', {
             params: {
               category: 'Incident',
+              // The test case's own task: the list is oldest first, so a
+              // database with more than 100 incidents never shows a new one.
+              ...(testCaseFqn ? { aboutEntity: testCaseFqn } : {}),
               limit: 100,
               fields: 'about,payload,assignees',
-              ...(testCaseFqn ? { aboutEntity: testCaseFqn } : {}),
             },
           });
 
@@ -262,6 +264,14 @@ const reassignIncidentTask = async (
   const assigneeSelect = reassignModal.getByTestId('select-assignee');
   const assigneeInput = assigneeSelect.getByRole('combobox');
   const assigneeOption = page.getByTestId(assignee.name.toLowerCase());
+
+  // Single-select core Autocomplete hides its input while an item is selected.
+  const selectedAssignee = assigneeSelect.getByTestId(
+    'autocomplete-selected-item'
+  );
+  if (await selectedAssignee.isVisible()) {
+    await selectedAssignee.getByRole('button').click();
+  }
 
   await expect(assigneeInput).toBeVisible();
   await assigneeInput.click();
@@ -746,15 +756,14 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await openIncidentTaskTab(actorPage, true);
       const resolveModal = await openIncidentResolveDialog(actorPage);
       const resolveTextareas = resolveModal.locator('textarea');
-      const resolveReasonSelect = resolveModal
-        .locator('button[aria-haspopup="listbox"]')
-        .first();
+      const resolveReasonSelect = resolveModal.getByRole('button', {
+        name: /Root Cause/i,
+      });
       const textareaCount = await resolveTextareas.count();
 
       if (await resolveReasonSelect.isVisible().catch(() => false)) {
         await resolveReasonSelect.click();
-        await actorPage.keyboard.press('ArrowDown');
-        await actorPage.keyboard.press('Enter');
+        await actorPage.getByRole('option', { name: 'MissingData' }).click();
         await resolveTextareas.first().fill('test');
       } else if (textareaCount >= 2) {
         await resolveTextareas.nth(0).fill('Missing Data');
@@ -1123,7 +1132,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await afterAction();
     }
 
-    await page.click('[data-testid="select-assignee"]');
+    await page.click('[data-testid="select-assignee"] input');
     const assigneeOption = page.locator(
       `[data-testid="${assigneeTestCase.username}"]`
     );

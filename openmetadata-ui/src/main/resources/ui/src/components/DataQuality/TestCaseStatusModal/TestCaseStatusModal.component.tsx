@@ -403,7 +403,6 @@ export const TestCaseStatusModal = ({
               <Box className="tw:gap-1.5" direction="col">
                 <Label isRequired>{t('label.assignee')}</Label>
                 <Assignees
-                  allowClear
                   isSingleSelect
                   options={options}
                   value={field.value ?? []}

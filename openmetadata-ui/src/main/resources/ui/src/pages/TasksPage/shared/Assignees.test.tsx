@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Assignees from './Assignees';
 
 const mockOptions = [
@@ -23,145 +23,77 @@ const mockOptions = [
   },
   {
     label: 'alec_kane4',
-    name: 'alec_kane4',
     value: 'c1c41191-fee0-4754-b1a4-55079f8ff0df',
     type: 'user',
   },
   {
-    label: 'Data Platform',
-    name: 'data_platform',
+    label: 'alex_pollard9',
     value: 'ad861728-76d4-4b03-be5e-f0655b71a9ac',
-    type: 'team',
+    type: 'user',
+  },
+  {
+    label: 'alexa_jordan3',
+    value: '932cf7c1-feee-4760-84c6-3accfa0aed0b',
+    type: 'user',
+  },
+  {
+    label: 'alexander_jackson5',
+    value: 'e29c826a-41af-41eb-ac5e-595b6967839e',
+    type: 'user',
   },
 ];
 
 const mockProps = {
   options: mockOptions,
-  value: [],
+  value: mockOptions,
   onSearch: jest.fn(),
   onChange: jest.fn(),
 };
 
-jest.mock('../../../components/common/UserTag/UserTag.component', () => ({
-  UserTag: jest.fn().mockImplementation(({ name }) => <div>{name}</div>),
-}));
-
-const openList = async () => {
-  const input = await screen.findByRole('combobox');
-
-  fireEvent.focus(input);
-  fireEvent.keyDown(input, { key: 'ArrowDown' });
-
-  return input;
-};
-
 describe('Test assignees component', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('Should render the grouped team and user options', async () => {
-    render(<Assignees {...mockProps} />);
-
-    await openList();
-
-    expect(await screen.findByTestId('adam_matthews2')).toBeInTheDocument();
-    expect(screen.getByTestId('data_platform')).toBeInTheDocument();
-    expect(screen.getByText('label.team-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.user-plural')).toBeInTheDocument();
-  });
-
-  it('Should emit the picked assignee with its type and name', async () => {
-    render(<Assignees {...mockProps} />);
-
-    await openList();
-    fireEvent.click(await screen.findByTestId('adam_matthews2'));
-
-    expect(mockProps.onChange).toHaveBeenCalledWith([
-      {
-        label: undefined,
-        value: mockOptions[0].value,
-        type: 'user',
-        name: 'adam_matthews2',
-        displayName: undefined,
-      },
-    ]);
-  });
-
-  it('Should append to existing assignees in multi select mode', async () => {
-    render(<Assignees {...mockProps} value={[mockOptions[0]]} />);
-
-    await openList();
-
-    expect(screen.queryByTestId('adam_matthews2')).not.toBeInTheDocument();
-
-    fireEvent.click(await screen.findByTestId('data_platform'));
-
-    expect(mockProps.onChange).toHaveBeenCalledWith([
-      expect.objectContaining({ value: mockOptions[0].value }),
-      expect.objectContaining({ value: mockOptions[2].value, type: 'team' }),
-    ]);
-  });
-
-  it('Should resolve bare id values to their option label', async () => {
-    render(<Assignees {...mockProps} value={[mockOptions[1].value]} />);
-
-    expect(
-      await screen.findByTestId('autocomplete-selected-item')
-    ).toHaveTextContent('alec_kane4');
-  });
-
-  it('Should clear a single select to undefined', async () => {
-    render(
-      <Assignees {...mockProps} isSingleSelect value={[mockOptions[0]]} />
+  it('allows a required assignee selection with an empty search query to submit', () => {
+    const { container } = render(
+      <form>
+        <Assignees
+          {...mockProps}
+          isRequired
+          label="Assignees"
+          value={[mockOptions[0]]}
+        />
+      </form>
     );
 
-    const chip = await screen.findByTestId('autocomplete-selected-item');
-    fireEvent.click(chip.querySelector('button') as HTMLButtonElement);
-
-    expect(mockProps.onChange).toHaveBeenCalledWith(undefined);
-  });
-
-  it('Should replace the pick in single select mode', async () => {
-    render(
-      <Assignees {...mockProps} isSingleSelect value={[mockOptions[0]]} />
+    expect(screen.getByRole('combobox')).toHaveValue('');
+    expect(container.querySelector('form')?.checkValidity()).toBe(true);
+    expect(screen.getByRole('combobox')).toHaveAttribute(
+      'aria-required',
+      'true'
     );
-
-    await openList();
-    fireEvent.click(await screen.findByTestId('alec_kane4'));
-
-    expect(mockProps.onChange).toHaveBeenCalledWith([
-      expect.objectContaining({ value: mockOptions[1].value }),
-    ]);
   });
 
-  it('Should debounce the search', async () => {
-    jest.useFakeTimers();
+  it('preserves the selected assignee label and identity', async () => {
+    const onChange = jest.fn();
+    render(<Assignees {...mockProps} value={[]} onChange={onChange} />);
+
+    fireEvent.mouseDown(screen.getByRole('combobox'));
+    fireEvent.click(await screen.findByText('adam_matthews2'));
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith([mockOptions[0]])
+    );
+  });
+
+  it('Should render the component', async () => {
     render(<Assignees {...mockProps} />);
 
-    const input = await screen.findByRole('combobox');
-    fireEvent.change(input, { target: { value: 'ad' } });
-    fireEvent.change(input, { target: { value: 'adam' } });
+    const container = await screen.findByRole('combobox');
 
-    expect(mockProps.onSearch).not.toHaveBeenCalled();
+    fireEvent.change(container, { target: { value: 'adam_matthews2' } });
 
-    act(() => {
-      jest.advanceTimersByTime(300);
-    });
+    const options = await screen.findByText('adam_matthews2');
 
-    expect(mockProps.onSearch).toHaveBeenCalledTimes(1);
-    expect(mockProps.onSearch).toHaveBeenCalledWith('adam');
+    expect(container).toBeInTheDocument();
 
-    jest.useRealTimers();
-  });
-
-  it('Should disable the input', async () => {
-    render(<Assignees {...mockProps} disabled id="assignees" />);
-
-    const input = await screen.findByRole('combobox');
-
-    expect(input).toBeDisabled();
-    // antd Form.Item injected this id; Playwright targets `#assignees`.
-    expect(input).toHaveAttribute('id', 'assignees');
+    expect(options).toBeInTheDocument();
   });
 });

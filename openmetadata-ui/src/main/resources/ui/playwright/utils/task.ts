@@ -108,7 +108,7 @@ export const createDescriptionTask = async (
   addDescription = true,
   assigneeDisabled?: boolean
 ) => {
-  await expect(page.locator('#title')).toHaveValue(
+  await expect(page.getByTestId('title').locator('input')).toHaveValue(
     `${addDescription ? 'Update' : 'Request'} description for table ${
       value.columnName
         ? `${value.term} columns/${value.columnName}`
@@ -117,17 +117,15 @@ export const createDescriptionTask = async (
   );
 
   if (isUndefined(value.assignee) || assigneeDisabled) {
-    await expect(page.getByTestId('select-assignee')).toHaveText(
-      value.assignee
+    await expect(page.getByTestId('select-assignee')).toContainText(
+      value.assignee ?? ''
     );
 
     await expect(
       page.locator('[data-testid="select-assignee"] input')
     ).toBeDisabled();
   } else {
-    const assigneeField = page.locator(
-      '[data-testid="select-assignee"] #assignees'
-    );
+    const assigneeField = page.locator('[data-testid="select-assignee"] input');
     await assigneeField.click();
     await assigneeField.fill(value.assignee);
 
@@ -155,13 +153,13 @@ export const createTagTask = async (
   addTag = true,
   assigneeDisabled?: boolean
 ) => {
-  await expect(page.locator('#title')).toHaveValue(
+  await expect(page.getByTestId('title').locator('input')).toHaveValue(
     `Request tags for table ${value.term}`
   );
 
   if (isUndefined(value.assignee) || assigneeDisabled) {
-    await expect(page.getByTestId('select-assignee')).toHaveText(
-      value.assignee
+    await expect(page.getByTestId('select-assignee')).toContainText(
+      value.assignee ?? ''
     );
 
     await expect(
@@ -169,9 +167,7 @@ export const createTagTask = async (
     ).toBeDisabled();
   } else {
     // select assignee
-    const assigneeField = page.locator(
-      '[data-testid="select-assignee"] #assignees'
-    );
+    const assigneeField = page.locator('[data-testid="select-assignee"] input');
     await assigneeField.click();
     await assigneeField.fill(value.assignee);
 

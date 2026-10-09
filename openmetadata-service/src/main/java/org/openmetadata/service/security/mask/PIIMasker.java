@@ -8,10 +8,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.openmetadata.schema.entity.data.Container;
@@ -70,21 +70,24 @@ public class PIIMasker {
 
     List<Integer> columnsPositionToBeMasked;
 
-    // If the entity itself is marked as PII, mask all the sample data
+    // Positions index the sample's own columns, which may be a subset of the entity's columns, in
+    // any order, and (for failed-row samples, validated case-insensitively) in a different case.
+    // An entity-level PII tag masks every sampled column; otherwise a sampled column is masked when
+    // its name matches a PII column ignoring case.
+    List<String> sampledColumns = sampleData.getColumns();
     if (entityHasPiiTag) {
       columnsPositionToBeMasked =
-          IntStream.range(0, columns.size()).boxed().collect(Collectors.toList());
+          IntStream.range(0, sampledColumns.size()).boxed().collect(Collectors.toList());
     } else {
-      // Otherwise, mask only the PII columns
-      columnsPositionToBeMasked =
+      Set<String> piiColumnNames =
           columns.stream()
-              .collect(
-                  Collectors.toMap(
-                      Function.identity(), c -> sampleData.getColumns().indexOf(c.getName())))
-              .entrySet()
-              .stream()
-              .filter(entry -> hasPiiSensitiveTag(entry.getKey()))
-              .map(Map.Entry::getValue)
+              .filter(column -> hasPiiSensitiveTag(column))
+              .map(column -> column.getName().toLowerCase(Locale.ROOT))
+              .collect(Collectors.toSet());
+      columnsPositionToBeMasked =
+          IntStream.range(0, sampledColumns.size())
+              .filter(position -> isPiiColumnName(sampledColumns.get(position), piiColumnNames))
+              .boxed()
               .collect(Collectors.toList());
     }
 
@@ -94,14 +97,15 @@ public class PIIMasker {
             .map(r -> maskSampleDataRow(r, columnsPositionToBeMasked))
             .collect(Collectors.toList()));
 
-    List<String> sampleDataColumns = sampleData.getColumns();
-
     // Flag column names as masked
     columnsPositionToBeMasked.forEach(
-        position ->
-            sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position))));
+        position -> sampledColumns.set(position, flagMaskedName(sampledColumns.get(position))));
 
     return sampleData;
+  }
+
+  private static boolean isPiiColumnName(String sampledColumn, Set<String> piiColumnNames) {
+    return sampledColumn != null && piiColumnNames.contains(sampledColumn.toLowerCase(Locale.ROOT));
   }
 
   public static Table getSampleData(Table table) {

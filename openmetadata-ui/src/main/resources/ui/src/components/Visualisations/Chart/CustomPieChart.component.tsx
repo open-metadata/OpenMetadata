@@ -17,6 +17,7 @@ import {
   PieChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
+
 import { isString } from 'lodash';
 import { useCallback } from 'react';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
@@ -72,9 +73,21 @@ const CustomPieChart = ({
       </div>
 
       {showLegends && (
-        <Box align="center" gap={4} wrap="wrap">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={4}
+          itemClassName="layout-space-item"
+          wrap="wrap">
           {data.map((item, index) => (
-            <Box align="center" gap={2} key={item.name}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item"
+              key={item.name}>
               <div
                 className="legend-dot"
                 style={{

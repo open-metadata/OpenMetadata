@@ -14,11 +14,11 @@
 .ontology-studio-query-editor .cm-editor {
   height: auto;
   min-height: 138px;
-  background: var(--color-bg-primary);
-  color: var(--color-text-primary);
+  background: var(--tw-color-bg-primary);
+  color: var(--tw-color-text-primary);
   font-family: 'Geist Mono', ui-monospace, monospace;
-  font-size: var(--om-font-size-xs);
-  font-weight: var(--om-font-weight-regular);
+  font-size: var(--tw-text-xs);
+  font-weight: var(--tw-font-weight-normal);
   line-height: 1.6;
 }
 
@@ -32,7 +32,7 @@
 }
 
 .ontology-studio-query-editor .cm-content {
-  padding: var(--om-space-12) var(--om-space-16);
+  padding: calc(var(--tw-spacing) * 3) calc(var(--tw-spacing) * 4);
 }
 
 .ontology-studio-query-editor .cm-line {
@@ -40,5 +40,5 @@
 }
 
 .ontology-studio-query-editor .cm-content > .cm-line:nth-child(-n + 2) span {
-  color: var(--color-utility-purple-600);
+  color: var(--tw-color-utility-purple-600);
 }

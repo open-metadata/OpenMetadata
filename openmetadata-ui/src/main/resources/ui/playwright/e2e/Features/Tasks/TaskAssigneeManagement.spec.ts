@@ -99,9 +99,9 @@ test.describe('Task Assignee Management', () => {
     await expect(page.getByTestId('select-assignee')).toBeVisible();
 
     const existingAssigneeRemoveButton = page
-      .getByTestId('select-assignee')
-      .getByTestId('autocomplete-selected-item')
-      .getByRole('button')
+      .locator(
+        '[data-testid="select-assignee"] [data-testid="autocomplete-selected-item"] button'
+      )
       .first();
 
     await existingAssigneeRemoveButton.click();

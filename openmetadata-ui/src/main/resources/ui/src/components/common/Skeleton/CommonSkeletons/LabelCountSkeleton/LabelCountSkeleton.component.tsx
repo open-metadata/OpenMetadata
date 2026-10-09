@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, GridItem, Skeleton } from '@openmetadata/ui-core-components';
+import { Box, Skeleton } from '@openmetadata/ui-core-components';
+
 import { LabelCountSkeletonProps } from '../../Skeleton.interfaces';
 
 const LabelCountSkeleton = ({
@@ -25,9 +26,14 @@ const LabelCountSkeleton = ({
   ...props
 }: LabelCountSkeletonProps) => {
   return (
-    <Grid className="tw:mb-6">
+    <Box className="layout-row tw:mb-6" justify="between" wrap="wrap">
       {isSelect || isLabel ? (
-        <GridItem span={firstColSize}>
+        <Box
+          className="layout-column tw:block"
+          style={{
+            maxWidth: `${(firstColSize / 24) * 100}%`,
+            flex: `0 0 ${(firstColSize / 24) * 100}%`,
+          }}>
           <div className="w-48 flex">
             {isSelect ? (
               <div>
@@ -40,14 +46,19 @@ const LabelCountSkeleton = ({
               </div>
             ) : null}
           </div>
-        </GridItem>
+        </Box>
       ) : null}
-      <GridItem span={secondColSize}>
+      <Box
+        className="layout-column tw:block"
+        style={{
+          maxWidth: `${(secondColSize / 24) * 100}%`,
+          flex: `0 0 ${(secondColSize / 24) * 100}%`,
+        }}>
         {isCount ? (
           <Skeleton height={16} width={40} {...props} {...countProps} />
         ) : null}
-      </GridItem>
-    </Grid>
+      </Box>
+    </Box>
   );
 };
 

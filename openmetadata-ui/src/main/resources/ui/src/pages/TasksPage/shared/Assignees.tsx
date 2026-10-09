@@ -11,236 +11,95 @@
  *  limitations under the License.
  */
 
-import { Autocomplete, Typography } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
-import { debounce, isEmpty, isString, uniqBy } from 'lodash';
-import { FC, useEffect, useMemo, useRef } from 'react';
-import { Header, ListBoxSection } from 'react-aria-components';
+import {
+  Autocomplete,
+  AutocompleteProps,
+  Avatar,
+} from '@openmetadata/ui-core-components';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
+import { debounce, uniqBy } from 'lodash';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
-import { UserTag } from '../../../components/common/UserTag/UserTag.component';
-import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';
-import { OwnerType } from '../../../enums/user.enum';
-import { ensureComboboxMenuOpen } from '../../../utils/formPureUtils';
 import { Option } from '../TasksPage.interface';
-import './Assignee.less';
 
-interface Props {
+interface Props
+  extends Omit<
+    AutocompleteProps,
+    | 'children'
+    | 'items'
+    | 'selectedItems'
+    | 'onSearchChange'
+    | 'onChange'
+    | 'value'
+  > {
   options: Option[];
-  // antd Form.setFieldValue callers can seed the field with bare ids.
-  value: Array<Option | string>;
+  value: Option[];
   onSearch: (value: string) => void;
   onChange: (values: Option[]) => void;
   disabled?: boolean;
   isSingleSelect?: boolean;
-  id?: string;
-  className?: string;
-  placeholder?: string;
-  // Accepted for existing callers; removing the selected chip always clears.
-  allowClear?: boolean;
-  showArrow?: boolean;
 }
 
-const getOptionValue = (option: Option | string) =>
-  isString(option) ? option : option.value;
-
-const Assignees: FC<Props> = ({
+const Assignees = ({
   value: assignees = [],
   onSearch,
   onChange,
   options,
   disabled,
   isSingleSelect = false,
-  id,
-  className,
-  placeholder,
-  allowClear: _allowClear,
-  showArrow: _showArrow,
-}) => {
+  ...rest
+}: Props) => {
   const { t } = useTranslation();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const onSearchRef = useRef(onSearch);
-  onSearchRef.current = onSearch;
+  const search = useMemo(() => debounce(onSearch, 300), [onSearch]);
+  useEffect(() => () => search.cancel(), [search]);
 
-  const debouncedSearch = useMemo(
-    () => debounce((query: string) => onSearchRef.current(query), 300),
-    []
-  );
+  const toItem = (option: Option) => ({
+    id: option.value,
+    label: option.label,
+    supportingText: option.type === 'team' ? t('label.team') : t('label.user'),
+    icon:
+      option.type === 'team' ? (
+        <Avatar placeholderIcon={Users01} size="xs" />
+      ) : (
+        <Avatar initials={option.label?.charAt(0).toUpperCase()} size="xs" />
+      ),
+  });
+  // Selected identities must survive when a remote search replaces the option page.
+  const availableOptions = uniqBy([...options, ...assignees], 'value');
 
-  useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
-
-  const optionMap = useMemo(
-    () => new Map(options.map((option) => [option.value, option])),
-    [options]
-  );
-
-  // Only selected assignees are remembered, so they stay resolvable after a
-  // new search replaces `options` without the map growing with every search.
-  const selectedOptionsRef = useRef(new Map<string, Option>());
-  const selectedOptions = useMemo(() => {
-    const next = new Map<string, Option>();
-    assignees.forEach((assignee) => {
-      const value = getOptionValue(assignee);
-      const option =
-        optionMap.get(value) ??
-        (isString(assignee) ? undefined : assignee) ??
-        selectedOptionsRef.current.get(value);
-      if (option) {
-        next.set(value, option);
-      }
-    });
-    selectedOptionsRef.current = next;
-
-    return next;
-  }, [assignees, optionMap]);
-
-  const resolveOption = (value: string) =>
-    optionMap.get(value) ?? selectedOptions.get(value);
-
-  const selectedValues = useMemo(
-    () => assignees.map(getOptionValue),
-    [assignees]
-  );
-
-  const selectedItems = useMemo(
-    () =>
-      selectedValues.map((value) => {
-        const option = selectedOptions.get(value);
-
-        return {
-          id: value,
-          label: option?.label || option?.displayName || option?.name || value,
-        };
-      }),
-    [selectedValues, selectedOptions]
-  );
-
-  const items = useMemo(
-    () =>
-      uniqBy(options, 'value').map((option) => ({
-        id: option.value,
-        label: option.label,
-      })),
-    [options]
-  );
-
-  const emitChange = (values: string[]) => {
-    if (isSingleSelect && isEmpty(values)) {
-      onChange(undefined as unknown as Option[]);
-
-      return;
-    }
-
-    onChange(
-      values.map((value) => {
-        const option = resolveOption(value);
-
-        return {
-          label: option?.['data-label'],
-          value,
-          type: option?.type,
-          name: option?.name,
-          displayName: option?.displayName,
-        } as Option;
-      })
-    );
-  };
-
-  const { teams, users } = useMemo(() => {
-    const unselected = uniqBy(options, 'value').filter(
-      (option) => !selectedValues.includes(option.value)
-    );
-
-    return {
-      teams: unselected.filter((option) => option.type === OwnerType.TEAM),
-      users: unselected.filter((option) => option.type === OwnerType.USER),
-    };
-  }, [options, selectedValues]);
-
-  const sectionHeaderClass =
-    'tw:px-3.5 tw:pt-2 tw:pb-1 tw:text-xs tw:font-medium tw:text-tertiary';
-
+  // Form rules validate selected identities; the search query clears after selection.
   return (
-    <div
-      className={classNames('select-assignee', className)}
-      ref={containerRef}>
-      {/* Always `multiple`: single select replaces the pick (as antd did)
-          instead of locking the input until the chip is removed. */}
-      <Autocomplete
-        multiple
-        aria-label={placeholder ?? t('label.assignee-plural')}
-        data-testid="select-assignee"
-        filterOption={() => true}
-        icon={null}
-        id={id}
-        isDisabled={disabled}
-        items={items}
-        placeholder={placeholder ?? t('label.select-to-search')}
-        selectedItems={selectedItems}
-        onItemCleared={(key) =>
-          emitChange(selectedValues.filter((value) => value !== String(key)))
-        }
-        onItemInserted={(key) => {
-          if (isSingleSelect) {
-            emitChange([String(key)]);
-
-            return;
-          }
-          emitChange([...selectedValues, String(key)]);
-          // antd kept a multi select open after a pick; do the same.
-          ensureComboboxMenuOpen(() =>
-            containerRef.current?.querySelector('input')
+    <Autocomplete
+      {...rest}
+      data-testid="select-assignee"
+      filterOption={() => true}
+      isDisabled={disabled}
+      items={availableOptions.map(toItem)}
+      multiple={!isSingleSelect}
+      placeholder={rest.placeholder ?? t('label.select-to-search')}
+      selectedItems={assignees.map(toItem)}
+      validationBehavior="aria"
+      onItemCleared={(key) =>
+        onChange(assignees.filter((option) => option.value !== key))
+      }
+      onItemInserted={(key) => {
+        const option = availableOptions.find((item) => item.value === key);
+        if (option) {
+          onChange(
+            isSingleSelect ? [option] : uniqBy([...assignees, option], 'value')
           );
-        }}
-        onSearchChange={debouncedSearch}>
-        {[
-          teams.length > 0 && (
-            <ListBoxSection id={OwnerType.TEAM} key={OwnerType.TEAM}>
-              <Header className={sectionHeaderClass}>
-                {t('label.team-plural')}
-              </Header>
-              {teams.map((team) => (
-                <Autocomplete.Item
-                  data-testid={team.name}
-                  id={team.value}
-                  key={team.value}
-                  textValue={team.label}>
-                  <div className="d-flex items-center">
-                    <TeamIcon
-                      className="vertical-middle m-r-xs"
-                      height={16}
-                      width={16}
-                    />
-                    <Typography>{team.label}</Typography>
-                  </div>
-                </Autocomplete.Item>
-              ))}
-            </ListBoxSection>
-          ),
-          users.length > 0 && (
-            <ListBoxSection id={OwnerType.USER} key={OwnerType.USER}>
-              <Header className={sectionHeaderClass}>
-                {t('label.user-plural')}
-              </Header>
-              {users.map((user) => (
-                <Autocomplete.Item
-                  data-testid={user.name}
-                  id={user.value}
-                  key={user.value}
-                  textValue={user.label}>
-                  <UserTag
-                    className="assignee-item"
-                    id={user.name ?? ''}
-                    name={user.label}
-                    size={UserTagSize.small}
-                  />
-                </Autocomplete.Item>
-              ))}
-            </ListBoxSection>
-          ),
-        ].filter(Boolean)}
-      </Autocomplete>
-    </div>
+        }
+      }}
+      onSearchChange={search}>
+      {(item) => (
+        <Autocomplete.Item
+          {...item}
+          data-testid={
+            availableOptions.find((option) => option.value === item.id)?.name
+          }
+        />
+      )}
+    </Autocomplete>
   );
 };
 
