@@ -20,6 +20,7 @@ import { SEARCH_INDEXING_APPLICATION } from '../../../../constants/explore.const
 import { AppType } from '../../../../generated/entity/applications/app';
 import { getSearchEntityTypes } from '../../../../rest/searchAPI';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
+import type { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
@@ -180,6 +181,18 @@ class ApplicationsClassBase {
    */
   public getApplicationConfigurationComponent(): ComponentType<ApplicationConfigurationProps> {
     return ApplicationConfiguration;
+  }
+
+  /**
+   * Contribute extension points that are NOT tied to an installed app.
+   *
+   * `AppPlugin.contributeExtensions` only runs for apps the server reports as
+   * installed, so a downstream build cannot use it for features that always
+   * ship (e.g. Collate's SCIM provisioning). This hook runs once regardless of
+   * the installed-app list. Base implementation contributes nothing.
+   */
+  public contributeStaticExtensions(_registry: ExtensionPointRegistry): void {
+    return;
   }
 }
 

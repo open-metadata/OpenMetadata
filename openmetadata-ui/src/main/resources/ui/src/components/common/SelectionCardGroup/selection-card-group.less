@@ -45,7 +45,7 @@
     border-radius: @border-rad-xs;
     cursor: pointer;
     transition: all var(--om-duration-300) ease;
-    background: var(--tw-color-bg-primary);
+    background: var(--tw-color-bg-surface);
     position: relative;
 
     .beta-badge {
@@ -140,25 +140,25 @@
     // Selected state styles
     &.selected,
     &:hover {
-      border-color: @primary-3;
-      background-color: @primary-50;
+      border-color: var(--tw-color-border-brand);
+      background-color: var(--tw-color-bg-brand-primary);
 
       .selection-content {
         .selection-icon {
-          background-color: @primary-1;
-          border: 6px solid @primary-50;
+          background-color: var(--tw-color-utility-brand-100);
+          border: 6px solid var(--tw-color-bg-brand-primary);
 
           svg {
-            color: @primary-6;
+            color: var(--tw-color-text-link);
           }
         }
 
         .selection-title {
-          color: @primary-8;
+          color: var(--tw-color-text-link);
         }
 
         .selection-description {
-          color: @primary-6;
+          color: var(--tw-color-text-link);
         }
 
         .custom-radio.unchecked {

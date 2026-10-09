@@ -41,11 +41,11 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { pickDateInCorePicker } from './datePicker';
 import {
   customFormatDateTime,
   getCurrentMillis,
   getEpochMillisForFutureDays,
+  pickDateInCorePicker,
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import {
@@ -878,11 +878,12 @@ export const updateDescriptionForChildren = async (
     .getByTestId('edit-button');
 
   await expect(editButton).toBeVisible();
-  await editButton.click();
 
-  // Wait for modal to be visible
-  const modal = page.locator('[role="dialog"]');
-  await expect(modal).toBeVisible();
+  // The edit-button is a hover-revealed icon whose position shifts as sibling
+  // icons settle, so a single click can land without dispatching (target moves
+  // between mousedown and mouseup) and the modal never opens. Retry until it does.
+  const modal = page.getByTestId('editor');
+  await clickUntilVisible(editButton, modal);
 
   // Wait for editor to be ready
   const modalEditor = modal.locator(descriptionBox);
@@ -960,6 +961,48 @@ export const openClassificationTagPicker = async (
     { force: 'onRetry' }
   );
 };
+
+// Rows are keyed by FQN; callers that only know a display name match its exact text.
+export const classificationTagPickerRow = (page: Page, tag: string) => {
+  const popover = page.getByTestId('classification-tag-picker-popover');
+
+  return tag.includes('.')
+    ? popover.getByTestId(`tree-node-${tag}`)
+    : popover
+        .locator('[data-testid^="tree-node-"]')
+        .filter({ has: page.getByText(tag, { exact: true }) });
+};
+
+// The search is debounced and a freshly created tag may not be indexed yet, so
+// the search is re-typed until the row shows up.
+export const searchClassificationTagPicker = async (
+  page: Page,
+  tag: string
+) => {
+  const searchBox = page.getByTestId('classification-tag-picker-search');
+  const row = classificationTagPickerRow(page, tag);
+
+  await expect
+    .poll(
+      async () => {
+        // Refilling the same value is a no-op for the debounced search.
+        await searchBox.clear();
+        await searchBox.fill(tag);
+
+        return row
+          .waitFor({ state: 'visible', timeout: 5_000 })
+          .then(() => true)
+          .catch(() => false);
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(true);
+
+  return row;
+};
+
+export const isClassificationTagSelected = async (row: Locator) =>
+  (await row.getAttribute('data-selected')) === 'true';
 
 export const assignTag = async (
   page: Page,
@@ -1593,17 +1636,30 @@ const announcementForm = async (
 ) => {
   await page.fill('#title', data.title);
 
-  // Announcement dates are core DatePickers (segmented, not a text input).
-  await pickDateInCorePicker(page, page.locator('#startTime'), data.startDate);
-  await pickDateInCorePicker(page, page.locator('#endTime'), data.endDate);
-
   // Scoped to the announcement dialog, not the page: this form opens over an
-  // entity page that has description editors of its own, and an unscoped
-  // `descriptionBox` matches those too.
+  // entity page that has fields of its own.
   const announcementDialog = page
     .locator('[role="dialog"]')
     .filter({ has: page.locator('#announcement-submit') });
-  const announcementDescription = announcementDialog.locator(descriptionBox);
+
+  // Both dates are the design system's DatePicker — a button opening a
+  // calendar, not a text input — so each is driven through the shared picker
+  // helper rather than filled.
+  await pickDateInCorePicker(
+    page,
+    announcementDialog.getByTestId('startTime').getByRole('button'),
+    data.startDate
+  );
+  await pickDateInCorePicker(
+    page,
+    announcementDialog.getByTestId('endTime').getByRole('button'),
+    data.endDate
+  );
+
+  // The description is the design system's `TextArea`, not the block editor.
+  // `data-testid` lands on the field wrapper, so the control is addressed by
+  // its id — the same way `#title` and `#announcement-submit` are here.
+  const announcementDescription = announcementDialog.locator('#description');
 
   await expect(announcementDescription).toHaveCount(1);
   await announcementDescription.fill(data.description);
@@ -1834,15 +1890,14 @@ export const editAnnouncement = async (
     data.title
   );
 
-  // Clear and fill the description field
-  await page
+  // Clear and fill the description — core's `TextArea`, addressed by its id for
+  // the same reason as the create path above.
+  const editDescription = page
     .locator('[data-testid="edit-announcement-dialog"]')
-    .locator(descriptionBox)
-    .fill('');
-  await page
-    .locator('[data-testid="edit-announcement-dialog"]')
-    .locator(descriptionBox)
-    .fill(data.description);
+    .locator('#description');
+
+  await editDescription.fill('');
+  await editDescription.fill(data.description);
 
   // Save the changes and wait for the API response
   const updateResponse = page.waitForResponse(

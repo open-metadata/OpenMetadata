@@ -61,10 +61,10 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
-import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
@@ -447,8 +447,10 @@ public class EmailUtil {
   }
 
   public static String getOMBaseURL() {
+    // The registered repository, not a new one: the SystemRepository constructor re-registers
+    // itself, which would replace a distribution's subclass (and its status cards) at runtime.
     Settings setting =
-        new SystemRepository()
+        Entity.getSystemRepository()
             .getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
     OpenMetadataBaseUrlConfiguration urlConfiguration =
         (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();

@@ -20,7 +20,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   // Spread the real module: TableV2 pulls Table/Button/Dropdown/Typography
   // from here, and a wholesale mock leaves them undefined.
   ...jest.requireActual('@openmetadata/ui-core-components'),
-  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Popover: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),

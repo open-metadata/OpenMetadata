@@ -371,7 +371,6 @@ export const TestCaseStatusModal = ({
               },
             ]}>
             <Assignees
-              allowClear
               isSingleSelect
               options={options}
               value={updatedAssignees}

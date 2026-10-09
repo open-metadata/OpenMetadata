@@ -15,8 +15,9 @@ import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button as CoreButton,
   Dropdown,
+  Grid,
 } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Input, Modal } from 'antd';
+import { Button, Card, Input, Modal } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -563,7 +564,7 @@ export const CustomizeTabWidget = () => {
 
   return (
     <>
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <Card
           bordered={false}
           data-testid="customize-tab-card"
@@ -623,8 +624,8 @@ export const CustomizeTabWidget = () => {
             ))}
           </div>
         </Card>
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <Card
           bodyStyle={{ padding: 0, paddingBottom: '20px' }}
           bordered={false}
@@ -674,7 +675,7 @@ export const CustomizeTabWidget = () => {
             </ReactGridLayout>
           )}
         </Card>
-      </Col>
+      </Grid.Item>
 
       {currentPageType && (
         <AddDetailsPageWidgetModal
