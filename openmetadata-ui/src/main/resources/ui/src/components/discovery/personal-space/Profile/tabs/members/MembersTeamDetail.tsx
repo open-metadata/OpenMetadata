@@ -888,20 +888,31 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const pluginTabs = useMemo(() => {
     const extensionContext = { teamId: team?.id };
 
-    return getContributions<TabContribution>(EXTENSION_POINTS.TEAM_DETAILS_TABS)
-      .filter((tab) =>
-        tab.condition ? tab.condition(extensionContext) : !tab.isHidden
-      )
-      .map((tab) => ({
-        key: tab.key,
-        // `label` is `string | ReactNode`. A string may be an i18n key or a
-        // literal — `t` returns the input unchanged when it isn't a known key,
-        // so this covers both. A ReactNode (icon + text, a badge) is rendered
-        // as-is, as TeamDetailsV1 does; substituting `tab.key` here would show
-        // the raw key instead of the element.
-        label: typeof tab.label === 'string' ? t(tab.label) : tab.label,
-        component: tab.component,
-      }));
+    return getContributions<TabContribution>(
+      EXTENSION_POINTS.TEAM_DETAILS_TABS
+    ).reduce<Array<Pick<TabContribution, 'key' | 'label' | 'component'>>>(
+      (acc, tab) => {
+        const isVisible = tab.condition
+          ? tab.condition(extensionContext)
+          : !tab.isHidden;
+
+        if (isVisible) {
+          acc.push({
+            key: tab.key,
+            // `label` is `string | ReactNode`. A string may be an i18n key or a
+            // literal — `t` returns the input unchanged when it isn't a known
+            // key, so this covers both. A ReactNode (icon + text, a badge) is
+            // rendered as-is, as TeamDetailsV1 does; substituting `tab.key`
+            // here would show the raw key instead of the element.
+            label: typeof tab.label === 'string' ? t(tab.label) : tab.label,
+            component: tab.component,
+          });
+        }
+
+        return acc;
+      },
+      []
+    );
   }, [getContributions, team?.id, t]);
 
   const allTabKeys = useMemo(
