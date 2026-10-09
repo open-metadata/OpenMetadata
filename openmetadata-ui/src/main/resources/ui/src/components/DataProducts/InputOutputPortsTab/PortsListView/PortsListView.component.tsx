@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { SkeletonParagraph } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import {
   forwardRef,
@@ -185,13 +186,15 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             minHeight: 0,
           }}>
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            <Row gutter={[16, 16]}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(16, 16) }}>
               {[1, 2, 3].map((key) => (
-                <Col key={key} span={24}>
+                <Grid.Item className="layout-column" key={key} span={24}>
                   <SkeletonParagraph rows={2} />
-                </Col>
+                </Grid.Item>
               ))}
-            </Row>
+            </Grid>
           </div>
         </div>
       );
@@ -214,9 +217,11 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
             overflowX: 'hidden',
             minHeight: 0,
           }}>
-          <Row gutter={[16, 16]}>
+          <Grid
+            className="layout-row layout-grid"
+            style={{ ...getLayoutGutter(16, 16) }}>
             {ports.map((port) => (
-              <Col key={port.id} span={24}>
+              <Grid.Item className="layout-column" key={port.id} span={24}>
                 <ExploreSearchCard
                   showEntityIcon
                   actionPopoverContent={
@@ -250,9 +255,9 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                   showTags={false}
                   source={port}
                 />
-              </Col>
+              </Grid.Item>
             ))}
-          </Row>
+          </Grid>
         </div>
 
         {showPagination && (

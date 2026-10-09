@@ -28,6 +28,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useInteractOutside } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
@@ -179,6 +180,19 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     handleSelectOption,
     handleSearchChange,
   ]);
+
+  // Non-modal popovers skip react-aria's outside-press dismissal; restore the
+  // antd behaviour. The popover is portaled, so presses inside it land
+  // outside the search container and are filtered by class.
+  useInteractOutside({
+    ref: searchContainerRef,
+    isDisabled: !isSearchBoxOpen,
+    onInteractOutside: (event) => {
+      if (!(event.target as Element).closest('.customise-search-overlay')) {
+        setIsSearchBoxOpen(false);
+      }
+    },
+  });
 
   useEffect(() => {
     if (!isEmpty(currentUser)) {

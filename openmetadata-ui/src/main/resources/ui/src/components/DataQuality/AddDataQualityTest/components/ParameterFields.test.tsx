@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
 import { Table } from '../../../../generated/entity/data/table';
@@ -527,6 +528,41 @@ describe('ParameterFields', () => {
       expect(options).not.toContain('ABSOLUTE');
     }
   );
+
+  it('lets custom SQL pick a percentage threshold unit', async () => {
+    const definition = {
+      name: 'tableCustomSQLQuery',
+      parameterDefinition: [
+        {
+          name: 'thresholdUnit',
+          displayName: 'Threshold Unit',
+          dataType: TestDataType.String,
+          optionValues: ['ABSOLUTE', 'PERCENTAGE'],
+        },
+      ],
+    } as TestDefinition;
+
+    renderWithForm(definition);
+
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByTestId('parameter-thresholdUnit')).getByRole(
+          'button'
+        )
+      );
+    });
+
+    const percentage = screen
+      .getAllByRole('option')
+      .find(
+        (option) =>
+          option.textContent === 'label.threshold-unit-percentage' &&
+          !(option instanceof HTMLOptionElement)
+      );
+
+    expect(percentage).toBeDefined();
+    expect(percentage).not.toHaveAttribute('aria-disabled', 'true');
+  });
 
   it('shows a threshold unit id it has no sentence for as stored', () => {
     const definition = {
