@@ -276,13 +276,3 @@ export const buildChangeSections = (
     ...columns.filter((section) => section.column),
   ];
 };
-
-/** How many top-level fields a change request touches. */
-export const countChangedFields = (ops: MutationOp[] = []): number =>
-  new Set(ops.map((op) => op.field)).size;
-
-/** How many values a change request adds, removes or replaces, as a reviewer reads them. */
-export const countChanges = (ops: MutationOp[] = []): number =>
-  buildChangeSections(ops)
-    .flatMap((section) => section.entries)
-    .reduce((sum, change) => sum + change.values.length, 0);

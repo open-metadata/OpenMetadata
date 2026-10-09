@@ -24,7 +24,6 @@ import {
 import {
   ChangeOutcome,
   ChangeRequest,
-  ChangeRequestStatus,
   MutationOp,
   MutationOpType,
 } from '../../../generated/governance/changeRequest/changeRequest';
@@ -36,14 +35,18 @@ export enum Verdict {
   Superseded = 'superseded',
 }
 
-/** One change of one request, as a reviewer decides it. */
+/**
+ * What one request proposes for one field, as a reviewer decides it: a text edit, or every element
+ * the request adds to or removes from a list field. A verdict covers all of its changes.
+ */
 export interface Suggestion {
   id: string;
   request: ChangeRequest;
-  op: MutationOp;
+  field: string;
+  ops: MutationOp[];
 }
 
-/** The suggestions on one field, with the field's published value when the requests carry it. */
+/** The suggestions on one field, with the field's published value when it is known. */
 export interface FieldGroup {
   field: string;
   current?: string;
@@ -71,13 +74,16 @@ const textOf = (value: unknown): string => {
   if (value === null || value === undefined) {
     return '';
   }
+  if (Array.isArray(value)) {
+    return value.map(textOf).join(', ');
+  }
 
   return typeof value === 'string' ? withoutMarkup(value) : toValue(value).text;
 };
 
 // Keyed by revision too: a decision staged on one revision must never be sent for a newer one.
-export const suggestionId = (request: ChangeRequest, op: MutationOp) =>
-  `${request.id}|${request.activeRevisionNumber}|${op.field}|${op.key ?? ''}`;
+export const suggestionId = (request: ChangeRequest, field: string) =>
+  `${request.id}|${request.activeRevisionNumber}|${field}`;
 
 const targetOf = (field: string, key?: string) => `${field}|${key ?? ''}`;
 
@@ -129,36 +135,27 @@ export const votesOf = (
   return votes;
 };
 
+/** The user's earlier vote on any change of the suggestion; voting on it again would be refused. */
 export const voteOn = (
   votes: Map<string, Verdict> | undefined,
-  op: MutationOp
-) => votes?.get(targetOf(op.field, op.key));
+  suggestion: Suggestion
+) =>
+  suggestion.ops
+    .map((op) => votes?.get(targetOf(op.field, op.key)))
+    .find(Boolean);
 
 /** A change still waiting for review: reported Pending, or not reported at all. */
-export const isOpen = (op: MutationOp) =>
+export const isOpenOp = (op: MutationOp) =>
   !op.outcome || op.outcome === ChangeOutcome.Pending;
 
-const OPEN_REQUEST_STATUSES = new Set([
-  ChangeRequestStatus.Pending,
-  ChangeRequestStatus.Approved,
-]);
+/** A suggestion whose field moved since it was proposed: it can be rejected, not accepted. */
+export const isConflicted = ({ request, field }: Suggestion) =>
+  (request.conflicts ?? []).some((conflict) => conflict.field === field);
 
-/**
- * The changes of a request to show: while it is open, the ones still under review; once it ends,
- * all of them, with how each one ended.
- */
-export const shownOps = (request: ChangeRequest): MutationOp[] => {
-  const ops = request.activeRevision?.ops ?? [];
-
-  return OPEN_REQUEST_STATUSES.has(request.status) ? ops.filter(isOpen) : ops;
-};
-
-/** A change whose field moved since it was proposed: it can be rejected, not accepted. */
-export const isConflicted = ({ request, op }: Suggestion) =>
-  (request.conflicts ?? []).some((conflict) => conflict.field === op.field);
-
-export const isTextChange = (op: MutationOp) =>
-  op.op === MutationOpType.Set && typeof parse(op.value) === 'string';
+export const isTextChange = ({ ops }: Suggestion) =>
+  ops.length === 1 &&
+  ops[0].op === MutationOpType.Set &&
+  typeof parse(ops[0].value) === 'string';
 
 /** What a list change adds or removes, read by its name rather than its stored identity. */
 export const elementLabel = (op: MutationOp): string => {
@@ -169,36 +166,55 @@ export const elementLabel = (op: MutationOp): string => {
 
 export const valueText = (json?: string) => textOf(parse(json));
 
+/** How many elements a list suggestion adds and removes. */
+export const listCounts = ({ ops }: Suggestion) => ({
+  added: ops.filter((op) => op.op === MutationOpType.Add).length,
+  removed: ops.filter((op) => op.op === MutationOpType.Remove).length,
+});
+
 /**
- * The pending requests' changes still under review, grouped by field, in the order the fields first
- * appear.
+ * The pending requests' changes still under review grouped by field, in the order the fields first
+ * appear, one suggestion per request on each field. A field's published value is read from its changes, or
+ * from {@code published}, the asset as it is now, for list fields whose changes do not carry it.
  */
-export const groupSuggestions = (requests: ChangeRequest[]): FieldGroup[] => {
+export const groupSuggestions = (
+  requests: ChangeRequest[],
+  published?: Record<string, unknown>
+): FieldGroup[] => {
   const suggestions = requests.flatMap((request) =>
-    (request.activeRevision?.ops ?? []).filter(isOpen).map((op) => ({
-      id: suggestionId(request, op),
+    Object.entries(
+      groupBy(
+        (request.activeRevision?.ops ?? []).filter(isOpenOp),
+        (op) => op.field
+      )
+    ).map(([field, ops]) => ({
+      id: suggestionId(request, field),
       request,
-      op,
+      field,
+      ops,
     }))
   );
 
-  return Object.entries(groupBy(suggestions, (s) => s.op.field)).map(
+  return Object.entries(groupBy(suggestions, (s) => s.field)).map(
     ([field, items]) => {
-      const withBase = items.find((s) => s.op.baseValue !== undefined);
+      const base = items
+        .flatMap((s) => s.ops)
+        .find((op) => op.baseValue !== undefined)?.baseValue;
+      let current: string | undefined;
+      if (base !== undefined) {
+        current = valueText(base);
+      } else if (published) {
+        current = textOf(published[field]);
+      }
 
-      return {
-        field,
-        current: withBase ? valueText(withBase.op.baseValue) : undefined,
-        suggestions: items,
-      };
+      return { field, current, suggestions: items };
     }
   );
 };
 
 /** Text fields with more than one open suggestion: a reviewer picks one of them. */
 export const isCompeting = (group: FieldGroup) =>
-  group.suggestions.filter((s) => isOpen(s.op) && isTextChange(s.op)).length >
-  1;
+  group.suggestions.filter(isTextChange).length > 1;
 
 const isDecided = (verdict?: Verdict) =>
   verdict === Verdict.Accepted || verdict === Verdict.Rejected;
@@ -212,9 +228,9 @@ export const incompleteRequests = (
   verdicts: Record<string, Verdict>
 ): ChangeRequest[] =>
   requests.filter((request) => {
-    const open = (request.activeRevision?.ops ?? []).filter(isOpen);
+    const open = (request.activeRevision?.ops ?? []).filter(isOpenOp);
     const decided = open.filter((op) =>
-      isDecided(verdicts[suggestionId(request, op)])
+      isDecided(verdicts[suggestionId(request, op.field)])
     );
 
     return (
@@ -225,8 +241,8 @@ export const incompleteRequests = (
   });
 
 /**
- * The resolve call for each request the reviewer decided changes of: the decided changes, the
- * revision they were read from, and Approved when anything is approved.
+ * The resolve call for each request the reviewer decided changes of: every open change of each
+ * decided suggestion, the revision they were read from, and Approved when anything is approved.
  */
 export const buildResolutions = (
   requests: ChangeRequest[],
@@ -234,11 +250,11 @@ export const buildResolutions = (
 ): { request: ChangeRequest; taskId: string; body: ResolveTask }[] =>
   requests.flatMap((request) => {
     const decisions: ChangeDecision[] = (request.activeRevision?.ops ?? [])
-      .filter((op) => isOpen(op))
+      .filter(isOpenOp)
       .flatMap((op) => {
-        const verdict = verdicts[suggestionId(request, op)];
+        const verdict = verdicts[suggestionId(request, op.field)];
 
-        return verdict === Verdict.Accepted || verdict === Verdict.Rejected
+        return isDecided(verdict)
           ? [
               {
                 field: op.field,
@@ -272,10 +288,9 @@ export const buildResolutions = (
       : [];
   });
 
-/** Word-level diff of two texts: unchanged, removed and added runs. */
-export const wordDiff = (before: string, after: string): DiffPart[] => {
-  const a = before.split(/(\s+)/);
-  const b = after.split(/(\s+)/);
+type Run = { text: string; type: DiffPart['type'] };
+
+const lcsRuns = (a: string[], b: string[]): Run[] => {
   const lcs = Array.from({ length: a.length + 1 }, () =>
     new Array<number>(b.length + 1).fill(0)
   );
@@ -287,13 +302,13 @@ export const wordDiff = (before: string, after: string): DiffPart[] => {
           : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
     }
   }
-  const parts: DiffPart[] = [];
-  const push = (text: string, type: DiffPart['type']) => {
-    const last = parts[parts.length - 1];
+  const runs: Run[] = [];
+  const push = (text: string, type: Run['type']) => {
+    const last = runs[runs.length - 1];
     if (last?.type === type) {
       last.text += text;
     } else {
-      parts.push({ id: parts.length, text, type });
+      runs.push({ text, type });
     }
   };
   let i = 0;
@@ -312,5 +327,67 @@ export const wordDiff = (before: string, after: string): DiffPart[] => {
   a.slice(i).forEach((text) => push(text, 'del'));
   b.slice(j).forEach((text) => push(text, 'add'));
 
-  return parts;
+  return runs;
+};
+
+const isChange = (run: Run) => run.type !== 'same';
+
+// Trimming a changed stretch drops the space that set it apart from the unchanged words next to it.
+const needsSpace = (prev: Run | undefined, part: Run) => {
+  if (!prev || isChange(prev) === isChange(part)) {
+    return false;
+  }
+
+  return isChange(part) ? !/\s$/.test(prev.text) : !/^\s/.test(part.text);
+};
+
+/**
+ * Word-level diff of two texts. A changed stretch reads as its removed words, then its added
+ * words, rather than alternating word by word; whitespace between two changes joins them.
+ */
+export const wordDiff = (before: string, after: string): DiffPart[] => {
+  const runs = lcsRuns(before.split(/(\s+)/), after.split(/(\s+)/));
+  const parts: Run[] = [];
+  let del = '';
+  let add = '';
+  const flush = () => {
+    if (del.trim()) {
+      parts.push({ text: del.trim(), type: 'del' });
+    }
+    if (del.trim() && add.trim()) {
+      parts.push({ text: ' ', type: 'same' });
+    }
+    if (add.trim()) {
+      parts.push({ text: add.trim(), type: 'add' });
+    }
+    del = '';
+    add = '';
+  };
+  runs.forEach((run, index) => {
+    const bridge =
+      run.type === 'same' &&
+      !run.text.trim() &&
+      index > 0 &&
+      index < runs.length - 1;
+    if (run.type === 'same' && !bridge) {
+      flush();
+      parts.push(run);
+    } else if (bridge) {
+      del += run.text;
+      add += run.text;
+    } else if (run.type === 'del') {
+      del += run.text;
+    } else {
+      add += run.text;
+    }
+  });
+  flush();
+
+  return parts
+    .flatMap((part, index) =>
+      needsSpace(parts[index - 1], part)
+        ? [{ text: ' ', type: 'same' as const }, part]
+        : [part]
+    )
+    .map((part, id) => ({ ...part, id }));
 };

@@ -12,23 +12,10 @@
  */
 import { ChangeRequest } from '../../../generated/governance/changeRequest/changeRequest';
 
-export interface PendingChangesModalProps {
+export interface ReviewPendingChangesModalProps {
   /** Open change requests on one asset, in the order they are listed. */
   requests: ChangeRequest[];
   onClose: () => void;
-  /** Called after a request is withdrawn, approved or rejected. */
-  onChange: () => Promise<void>;
-  /** The asset the requests are on, for previewing an edit to it. */
-  entityId?: string;
-  entityType?: string;
-  entityFqn?: string;
-  /** Switches to the other view of the same requests; to its preview when {@code preview}. */
-  onSwitchView?: (preview?: boolean) => void;
-  /** Opens on the preview of an edit to the asset rather than on a request. */
-  startWithPreview?: boolean;
-}
-
-export interface RequestDetailProps {
-  request: ChangeRequest;
+  /** Called after a request is withdrawn, decided, overridden or cancelled. */
   onChange: () => Promise<void>;
 }

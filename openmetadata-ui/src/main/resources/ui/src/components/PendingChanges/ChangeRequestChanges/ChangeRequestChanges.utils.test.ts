@@ -14,12 +14,7 @@ import {
   MutationOp,
   MutationOpType,
 } from '../../../generated/governance/changeRequest/changeRequest';
-import {
-  buildChangeSections,
-  ChangeKind,
-  countChangedFields,
-  countChanges,
-} from './ChangeRequestChanges.utils';
+import { buildChangeSections, ChangeKind } from './ChangeRequestChanges.utils';
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getClassificationTagPath: (fqn: string) => `/tags/${fqn}`,
@@ -202,28 +197,5 @@ describe('buildChangeSections', () => {
         previous: [],
       },
     ]);
-  });
-});
-
-describe('change counts', () => {
-  const ops = [
-    op(
-      MutationOpType.Set,
-      'owners',
-      [{ type: 'user', name: 'karan', fullyQualifiedName: 'karan' }],
-      [{ type: 'user', name: 'admin', fullyQualifiedName: 'admin' }]
-    ),
-    op(MutationOpType.Add, 'tags', tag('PII.NonSensitive')),
-    op(MutationOpType.Set, 'description', 'New', 'Old'),
-  ];
-
-  it('counts each changed field once', () => {
-    expect(countChangedFields(ops)).toBe(3);
-    expect(countChangedFields()).toBe(0);
-  });
-
-  it('counts every value added, removed or replaced', () => {
-    expect(countChanges(ops)).toBe(4);
-    expect(countChanges()).toBe(0);
   });
 });

@@ -21,7 +21,6 @@ import {
 import {
   ChangeOutcome,
   ChangeRequest,
-  ChangeRequestStatus,
   MutationOpType,
 } from '../../../generated/governance/changeRequest/changeRequest';
 import {
@@ -29,7 +28,7 @@ import {
   groupSuggestions,
   incompleteRequests,
   isCompeting,
-  shownOps,
+  listCounts,
   suggestionId,
   valueText,
   Verdict,
@@ -49,6 +48,12 @@ const TAG = {
   field: 'tags',
   key: 'PII.Sensitive',
   value: '{"tagFQN":"PII.Sensitive"}',
+};
+const REMOVED_TAG = {
+  op: MutationOpType.Remove,
+  field: 'tags',
+  key: 'PII.NonSensitive',
+  value: '{"tagFQN":"PII.NonSensitive"}',
 };
 
 const request = (
@@ -70,9 +75,9 @@ describe('ReviewPendingChanges utils', () => {
     const a = request('a', true);
     const b = request('b', true);
     const resolutions = buildResolutions([a, b], {
-      [suggestionId(a, TAG)]: Verdict.Accepted,
-      [suggestionId(a, DESCRIPTION)]: Verdict.Rejected,
-      [suggestionId(b, TAG)]: Verdict.Rejected,
+      [suggestionId(a, 'tags')]: Verdict.Accepted,
+      [suggestionId(a, 'description')]: Verdict.Rejected,
+      [suggestionId(b, 'tags')]: Verdict.Rejected,
     });
 
     expect(resolutions).toEqual([
@@ -120,8 +125,8 @@ describe('ReviewPendingChanges utils', () => {
 
     expect(
       buildResolutions([a], {
-        [suggestionId(a, DESCRIPTION)]: Verdict.Superseded,
-        [suggestionId(a, decidedTag)]: Verdict.Accepted,
+        [suggestionId(a, 'description')]: Verdict.Superseded,
+        [suggestionId(a, 'tags')]: Verdict.Accepted,
       })
     ).toEqual([]);
   });
@@ -130,15 +135,15 @@ describe('ReviewPendingChanges utils', () => {
     const whole = request('a', false);
     const partial = request('b', true);
     const verdicts = {
-      [suggestionId(whole, TAG)]: Verdict.Accepted,
-      [suggestionId(partial, TAG)]: Verdict.Accepted,
+      [suggestionId(whole, 'tags')]: Verdict.Accepted,
+      [suggestionId(partial, 'tags')]: Verdict.Accepted,
     };
 
     expect(incompleteRequests([whole, partial], verdicts)).toEqual([whole]);
     expect(
       incompleteRequests([whole], {
         ...verdicts,
-        [suggestionId(whole, DESCRIPTION)]: Verdict.Rejected,
+        [suggestionId(whole, 'description')]: Verdict.Rejected,
       })
     ).toEqual([]);
   });
@@ -156,21 +161,13 @@ describe('ReviewPendingChanges utils', () => {
   it('offers only the changes still under review', () => {
     const appliedTag = { ...TAG, outcome: ChangeOutcome.Applied };
     const groups = groupSuggestions([
-      request('a', true, [DESCRIPTION, appliedTag]),
+      request('a', true, [DESCRIPTION, appliedTag, REMOVED_TAG]),
     ]);
+    const tags = groups.find((group) => group.field === 'tags');
 
-    expect(groups.map((group) => group.field)).toEqual(['description']);
-  });
-
-  it('shows an open request its pending changes and a closed one all of them', () => {
-    const appliedTag = { ...TAG, outcome: ChangeOutcome.Applied };
-    const open = request('a', true, [DESCRIPTION, appliedTag]);
-    const closed = { ...open, status: ChangeRequestStatus.Applied };
-
-    expect(shownOps({ ...open, status: ChangeRequestStatus.Pending })).toEqual([
-      DESCRIPTION,
-    ]);
-    expect(shownOps(closed)).toEqual([DESCRIPTION, appliedTag]);
+    expect(groups.map((group) => group.field)).toEqual(['description', 'tags']);
+    expect(tags?.suggestions[0].ops).toEqual([REMOVED_TAG]);
+    expect(groupSuggestions([request('b', true, [appliedTag])])).toEqual([]);
   });
 
   it('compares descriptions by their words, not their markup', () => {
@@ -208,11 +205,67 @@ describe('ReviewPendingChanges utils', () => {
       'karan'
     );
 
-    expect(voteOn(votes, DESCRIPTION)).toBe(Verdict.Accepted);
-    expect(voteOn(votes, TAG)).toBeUndefined();
-    expect(voteOn(votesOf(a, [decision('karan', 2, {})], 'karan'), TAG)).toBe(
+    const [description, tags] = groupSuggestions([a]).map(
+      (group) => group.suggestions[0]
+    );
+
+    expect(voteOn(votes, description)).toBe(Verdict.Accepted);
+    expect(voteOn(votes, tags)).toBeUndefined();
+    expect(voteOn(votesOf(a, [decision('karan', 2, {})], 'karan'), tags)).toBe(
       Verdict.Accepted
     );
+  });
+
+  it('lists one suggestion per request on a field, deciding all of its changes together', () => {
+    const a = request('a', true, [DESCRIPTION, TAG, REMOVED_TAG]);
+    const tags = groupSuggestions([a]).find((group) => group.field === 'tags');
+    const [suggestion] = tags?.suggestions ?? [];
+
+    expect(tags?.suggestions).toHaveLength(1);
+    expect(suggestion && listCounts(suggestion)).toEqual({
+      added: 1,
+      removed: 1,
+    });
+    expect(
+      buildResolutions([a], { [suggestionId(a, 'tags')]: Verdict.Rejected })[0]
+        .body.changeDecisions
+    ).toEqual([
+      {
+        field: 'tags',
+        key: 'PII.Sensitive',
+        decision: ChangeDecisionType.Reject,
+      },
+      {
+        field: 'tags',
+        key: 'PII.NonSensitive',
+        decision: ChangeDecisionType.Reject,
+      },
+    ]);
+  });
+
+  it('reads the published value of a list field from the asset', () => {
+    const [, tags] = groupSuggestions([request('a', true)], {
+      tags: [{ tagFQN: 'Tier.Tier3' }, { tagFQN: 'PII.NonSensitive' }],
+    });
+    const [, empty] = groupSuggestions([request('a', true)], { tags: [] });
+
+    expect(tags.current).toBe('Tier.Tier3, PII.NonSensitive');
+    expect(empty.current).toBe('');
+    expect(groupSuggestions([request('a', true)])[1].current).toBeUndefined();
+  });
+
+  it('reads a changed stretch as its removed words, then its added words', () => {
+    expect(
+      wordDiff(
+        'Business terms used in demo datasets.',
+        'Shared business vocabulary for demo datasets.'
+      ).map(({ text, type }) => [type, text])
+    ).toEqual([
+      ['del', 'Business terms used in'],
+      ['same', ' '],
+      ['add', 'Shared business vocabulary for'],
+      ['same', ' demo datasets.'],
+    ]);
   });
 
   it('diffs text word by word', () => {
@@ -222,7 +275,8 @@ describe('ReviewPendingChanges utils', () => {
       )
     ).toEqual([
       ['same', 'Demo desc update'],
-      ['add', ' for finance'],
+      ['same', ' '],
+      ['add', 'for finance'],
     ]);
   });
 });

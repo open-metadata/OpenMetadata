@@ -22,19 +22,10 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getChangeRequestsForEntity } from '../../rest/changeRequestsAPI';
 import { PENDING_CHANGE_EVENT } from '../../rest/pendingChangeInterceptor';
 import { showErrorToast } from '../../utils/ToastUtils';
-import PendingChangesModal from './PendingChangesModal/PendingChangesModal.component';
 import ReviewPendingChangesModal from './ReviewPendingChanges/ReviewPendingChangesModal.component';
 
 interface ChangeRequestsIndicatorProps {
   entityId: string;
-  entityType?: string;
-  entityFqn?: string;
-}
-
-enum View {
-  Closed,
-  Review,
-  Requests,
 }
 
 const OPEN_STATUSES = new Set([
@@ -48,14 +39,11 @@ const OPEN_STATUSES = new Set([
  */
 const ChangeRequestsIndicator = ({
   entityId,
-  entityType,
-  entityFqn,
 }: ChangeRequestsIndicatorProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [requests, setRequests] = useState<ChangeRequest[]>([]);
-  const [view, setView] = useState(View.Closed);
-  const [startWithPreview, setStartWithPreview] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const fetchRequests = useCallback(async () => {
     if (!entityId) {
@@ -97,32 +85,14 @@ const ChangeRequestsIndicator = ({
           ) : undefined
         }
         size="sm"
-        onClick={() =>
-          setView(requests.length > 0 ? View.Review : View.Requests)
-        }>
+        onClick={() => setIsOpen(true)}>
         {t('label.pending-changes')}
       </Button>
-      {view === View.Review && (
+      {isOpen && (
         <ReviewPendingChangesModal
           requests={ordered}
           onChange={fetchRequests}
-          onClose={() => setView(View.Closed)}
-          onSwitchView={(preview) => {
-            setStartWithPreview(Boolean(preview));
-            setView(View.Requests);
-          }}
-        />
-      )}
-      {view === View.Requests && (
-        <PendingChangesModal
-          entityFqn={entityFqn}
-          entityId={entityId}
-          entityType={entityType}
-          requests={ordered}
-          startWithPreview={startWithPreview}
-          onChange={fetchRequests}
-          onClose={() => setView(View.Closed)}
-          onSwitchView={() => setView(View.Review)}
+          onClose={() => setIsOpen(false)}
         />
       )}
     </>

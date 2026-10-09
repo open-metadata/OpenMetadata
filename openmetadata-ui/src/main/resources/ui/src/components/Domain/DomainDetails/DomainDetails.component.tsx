@@ -1076,11 +1076,7 @@ const DomainDetails = ({
                 )}
 
                 {!isVersionsView && (
-                  <ChangeRequestsIndicator
-                    entityFqn={domain.fullyQualifiedName}
-                    entityId={domain.id}
-                    entityType={EntityType.DOMAIN}
-                  />
+                  <ChangeRequestsIndicator entityId={domain.id} />
                 )}
 
                 <ButtonGroup className="spaced" size="small">

@@ -13,21 +13,30 @@
 import {
   Badge,
   BadgeColors,
+  BadgeWithIcon,
   Button,
   Dialog,
+  Dot,
+  HoverCard,
   Modal,
   ModalOverlay,
   NativeSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Eye, ListView } from '@openmetadata/ui-core-components/icons';
+import {
+  AlertCircle,
+  Check,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { startCase, uniq } from 'lodash';
+import { TFunction } from 'i18next';
+import { isEmpty, startCase, uniq } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Task } from '../../../generated/entity/tasks/task';
+import { EntityReference } from '../../../generated/entity/type';
 import {
   ChangeRequest,
   MutationOpType,
@@ -38,13 +47,21 @@ import {
   withdrawChangeRequest,
 } from '../../../rest/changeRequestsAPI';
 import { getTaskById, resolveTask } from '../../../rest/tasksAPI';
+import { getEntityAPIfromSource } from '../../../utils/Assets/AssetsUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import Fqn from '../../../utils/Fqn';
-import { getEntityTasksPath } from '../../../utils/TaskNavigationUtils';
+import {
+  getEntityTasksPath,
+  getTaskDisplayId,
+} from '../../../utils/TaskNavigationUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
-import { AdminActions } from '../ChangeRequestTools/ChangeRequestTools.component';
-import { PendingChangesModalProps } from '../PendingChangesModal/PendingChangesModal.interface';
+import { MapPatchAPIResponse } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
+import {
+  computeTaskEditAccessFlags,
+  computeTaskOwnershipFlags,
+} from '../../Entity/Task/TaskTab/TaskTab.utils';
+import { RequestHistory } from '../ChangeRequestTools/ChangeRequestTools.component';
 import {
   buildResolutions,
   DiffPart,
@@ -54,8 +71,8 @@ import {
   incompleteRequests,
   isCompeting,
   isConflicted,
-  isOpen,
   isTextChange,
+  listCounts,
   Suggestion,
   valueText,
   Verdict,
@@ -63,53 +80,72 @@ import {
   votesOf,
   wordDiff,
 } from './ReviewPendingChanges.utils';
+import { ReviewPendingChangesModalProps } from './ReviewPendingChangesModal.interface';
 
 const EVERYONE = '';
 // A decision moves the workflow asynchronously; the requests are read again once it has.
 const WORKFLOW_SETTLE_MS = 3000;
 
+const GLOSSARY_ENTITIES = new Set<string>([
+  EntityType.GLOSSARY,
+  EntityType.GLOSSARY_TERM,
+]);
+
 /**
- * Whether the current user can decide a request's review task: administrators decide every task,
- * anyone else the tasks assigned to them or to one of their teams. One task read per open request
- * on the asset; a user's assigned-task list is paged and can be far larger than this.
+ * The review task of each request, read once per open request on the asset: its number, and
+ * whether the current user can decide it. Who can decide is the same rule the task's own Tasks tab
+ * applies to its Approve and Reject actions, over the same task, owners and glossary reviewers.
  */
-const useDecidableTasks = (requests: ChangeRequest[]) => {
+const useReviewTasks = (
+  requests: ChangeRequest[],
+  published?: Record<string, unknown>
+) => {
   const { currentUser } = useApplicationStore();
-  const [taskIds, setTaskIds] = useState<Set<string>>(new Set());
-  const isAdmin = Boolean(currentUser?.isAdmin);
+  const [tasks, setTasks] = useState<Map<string, Task>>(new Map());
   const taskKey = requests.map((request) => request.taskId).join(',');
+  const owners = (published?.owners ?? []) as EntityReference[];
+  const hasGlossaryReviewer = GLOSSARY_ENTITIES.has(requests[0]?.entityType)
+    ? !isEmpty(published?.reviewers)
+    : undefined;
 
   useEffect(() => {
-    const names = new Set([
-      currentUser?.name,
-      ...(currentUser?.teams ?? []).map((team) => team.name),
-    ]);
-    const assignedToMe = (task: Task) =>
-      (task.assignees ?? []).some((assignee) => names.has(assignee.name));
     const ids = uniq(
       requests.map((request) => request.taskId).filter(Boolean)
     ) as string[];
-    if (!isAdmin) {
-      // A task the user cannot read is one they cannot decide; it does not hide the others.
-      Promise.allSettled(
-        ids.map((id) => getTaskById(id, { fields: 'assignees' }))
-      ).then((results) =>
-        setTaskIds(
-          new Set(
-            results
-              .flatMap((result) =>
-                result.status === 'fulfilled' ? [result.value.data] : []
-              )
-              .filter(assignedToMe)
-              .map((task) => task.id)
+    // A task the user cannot read is one they cannot decide; it does not hide the others.
+    Promise.allSettled(
+      ids.map((id) => getTaskById(id, { fields: 'assignees,createdBy' }))
+    ).then((results) =>
+      setTasks(
+        new Map(
+          results.flatMap((result) =>
+            result.status === 'fulfilled'
+              ? [[result.value.data.id, result.value.data]]
+              : []
           )
         )
-      );
-    }
-  }, [taskKey, isAdmin]);
+      )
+    );
+  }, [taskKey]);
 
-  return (taskId?: string) =>
-    isAdmin || (taskId !== undefined && taskIds.has(taskId));
+  return {
+    canDecide: (taskId?: string) => {
+      const task = taskId ? tasks.get(taskId) : undefined;
+      if (!task) {
+        return false;
+      }
+
+      return computeTaskEditAccessFlags({
+        ...computeTaskOwnershipFlags(owners, task, currentUser),
+        isAdminUser: Boolean(currentUser?.isAdmin),
+        hasGlossaryReviewer,
+        isTaskClosed: false,
+        ownersCount: owners.length,
+      }).hasEditAccess;
+    },
+    taskNumber: (taskId?: string) =>
+      getTaskDisplayId(taskId ? tasks.get(taskId)?.taskId : undefined),
+  };
 };
 
 /**
@@ -148,13 +184,42 @@ const useMyVotes = (requests: ChangeRequest[]) => {
   }, [revisionKey, currentUser?.name]);
 
   return (suggestion: Suggestion) =>
-    voteOn(votes.get(suggestion.request.id), suggestion.op);
+    voteOn(votes.get(suggestion.request.id), suggestion);
 };
 
-const VERBS: Record<MutationOpType, string> = {
-  [MutationOpType.Add]: 'label.added',
-  [MutationOpType.Remove]: 'label.removed',
-  [MutationOpType.Set]: 'label.edited',
+/**
+ * The asset as it is published: its owners and glossary reviewers, who decide the review tasks,
+ * and the list fields the requests add to or remove from, whose changes carry no previous value.
+ */
+const usePublishedEntity = (requests: ChangeRequest[]) => {
+  const [published, setPublished] = useState<Record<string, unknown>>();
+  const [first] = requests;
+  const fields = uniq([
+    'owners',
+    ...(GLOSSARY_ENTITIES.has(first?.entityType) ? ['reviewers'] : []),
+    ...requests.flatMap((request) =>
+      (request.activeRevision?.ops ?? [])
+        .filter((op) => op.op !== MutationOpType.Set)
+        .map((op) => op.field)
+    ),
+  ]).join(',');
+
+  useEffect(() => {
+    const getEntity = first
+      ? getEntityAPIfromSource(first.entityType as keyof MapPatchAPIResponse)
+      : undefined;
+    if (!first || !getEntity) {
+      return;
+    }
+    // Without the published asset the fields still list their changes, just no current value.
+    getEntity(first.entityFullyQualifiedName, { fields })
+      .then((entity) =>
+        setPublished(entity as unknown as Record<string, unknown>)
+      )
+      .catch(() => setPublished(undefined));
+  }, [first?.entityType, first?.entityFullyQualifiedName, fields]);
+
+  return published;
 };
 
 const VERDICT_COLORS: Record<Verdict, BadgeColors> = {
@@ -164,13 +229,28 @@ const VERDICT_COLORS: Record<Verdict, BadgeColors> = {
 };
 
 const DIFF_CLASSES: Record<DiffPart['type'], string> = {
-  add: 'tw:bg-success-secondary tw:text-success-primary',
-  del: 'tw:bg-error-secondary tw:text-error-primary tw:line-through',
+  add: 'tw:rounded-xs tw:bg-success-secondary tw:text-success-primary',
+  del: 'tw:rounded-xs tw:bg-error-secondary tw:text-error-primary tw:line-through',
   same: '',
 };
 
+const verbOf = (suggestion: Suggestion, t: TFunction) => {
+  if (isTextChange(suggestion)) {
+    return t('label.suggested-an-edit');
+  }
+  const { added, removed } = listCounts(suggestion);
+  if (added && !removed) {
+    return t('label.added-count', { count: added });
+  }
+  if (removed && !added) {
+    return t('label.removed-count', { count: removed });
+  }
+
+  return t('label.edited-lowercase');
+};
+
 const TextDiff = ({ before, after }: { before: string; after: string }) => (
-  <div className="tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-2 tw:text-sm">
+  <div className="tw:rounded-lg tw:border tw:border-secondary tw:px-3 tw:py-2.5 tw:text-sm tw:text-pretty">
     {wordDiff(before, after).map((part) => (
       <span className={DIFF_CLASSES[part.type]} key={part.id}>
         {part.text}
@@ -180,29 +260,69 @@ const TextDiff = ({ before, after }: { before: string; after: string }) => (
 );
 
 const SuggestionBody = ({ suggestion }: { suggestion: Suggestion }) => {
-  const { op } = suggestion;
-  if (isTextChange(op)) {
+  const [first] = suggestion.ops;
+  if (isTextChange(suggestion)) {
     return (
-      <TextDiff after={valueText(op.value)} before={valueText(op.baseValue)} />
+      <TextDiff
+        after={valueText(first.value)}
+        before={valueText(first.baseValue)}
+      />
     );
   }
-  if (op.op === MutationOpType.Set) {
+  if (first.op === MutationOpType.Set) {
     return (
       <Typography as="p" size="text-sm">
-        {valueText(op.value)}
+        {valueText(first.value)}
       </Typography>
     );
   }
-  const removed = op.op === MutationOpType.Remove;
 
   return (
-    <Badge
-      className={removed ? 'tw:line-through' : ''}
-      color={removed ? 'error' : 'success'}
-      size="sm"
-      type="color">
-      {`${removed ? '−' : '+'} ${elementLabel(op)}`}
-    </Badge>
+    <div className="tw:flex tw:flex-wrap tw:gap-2">
+      {suggestion.ops.map((op) => {
+        const removed = op.op === MutationOpType.Remove;
+
+        return (
+          <Badge
+            className={removed ? 'tw:line-through' : ''}
+            color={removed ? 'error' : 'success'}
+            key={`${op.op}-${op.key}`}
+            size="md"
+            type="color">
+            {`${removed ? '−' : '+'} ${elementLabel(op)}`}
+          </Badge>
+        );
+      })}
+    </div>
+  );
+};
+
+// The request's review task; hovering it shows the request's revisions, decisions and events.
+const TaskChip = ({
+  request,
+  number,
+}: {
+  request: ChangeRequest;
+  number: string;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <HoverCard
+      content={<RequestHistory request={request} />}
+      placement="bottom start">
+      <Link
+        className="tw:rounded-xs"
+        data-testid={`task-${request.id}`}
+        to={getEntityTasksPath(
+          request.entityType as EntityType,
+          request.entityFullyQualifiedName
+        )}>
+        <Badge color="gray" size="sm" type="color">
+          {number ? t('label.task-number', { number }) : t('label.task')}
+        </Badge>
+      </Link>
+    </HoverCard>
   );
 };
 
@@ -212,6 +332,7 @@ interface SuggestionRowProps {
   // The current user's vote recorded earlier on this change, still waiting for other reviewers.
   myVote?: Verdict;
   canDecide: boolean;
+  taskNumber: string;
   onDecide: (verdict?: Verdict) => void;
   onWithdraw: () => void;
 }
@@ -227,7 +348,7 @@ const StagedVerdict = ({
 
   return (
     <>
-      <Badge color={VERDICT_COLORS[verdict]} size="sm" type="color">
+      <Badge color={VERDICT_COLORS[verdict]} size="sm" type="pill-color">
         {`${t(`label.verdict-${verdict}`)} · ${t('label.pending-submit')}`}
       </Badge>
       <Button color="tertiary" size="sm" onClick={onUndo}>
@@ -237,9 +358,9 @@ const StagedVerdict = ({
   );
 };
 
-// What the viewer can do with one change: nothing once it is decided, withdraw their own request,
-// or, as a reviewer, accept or reject it. A change whose field moved since it was proposed can only
-// be rejected; accepting it would be refused.
+// What the viewer can do with one suggestion: nothing once it is decided, withdraw their own
+// request, or, as a reviewer, accept or reject it. A suggestion whose field moved since it was
+// proposed can only be rejected; accepting it would be refused.
 const SuggestionControls = ({
   suggestion,
   verdict,
@@ -250,19 +371,22 @@ const SuggestionControls = ({
 }: SuggestionRowProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { request } = suggestion;
   const conflicted = isConflicted(suggestion);
 
-  if (currentUser?.name === request.requestedBy) {
+  if (currentUser?.name === suggestion.request.requestedBy) {
     return (
-      <Button color="secondary" size="sm" onClick={onWithdraw}>
+      <Button
+        color="secondary"
+        data-testid={`withdraw-${suggestion.id}`}
+        size="sm"
+        onClick={onWithdraw}>
         {t('label.withdraw-revision')}
       </Button>
     );
   }
   if (myVote) {
     return (
-      <Badge color="gray" size="sm" type="color">
+      <Badge color="gray" size="sm" type="pill-color">
         {t('label.you-voted-waiting', {
           vote: t(`label.verdict-${myVote}`),
         })}
@@ -276,7 +400,7 @@ const SuggestionControls = ({
   return (
     <>
       {conflicted && (
-        <Badge color="warning" size="sm" type="color">
+        <Badge color="warning" size="sm" type="pill-color">
           {t('label.conflicts-with-published-value')}
         </Badge>
       )}
@@ -284,6 +408,7 @@ const SuggestionControls = ({
         <Button
           color="secondary"
           data-testid={`reject-${suggestion.id}`}
+          iconLeading={XClose}
           size="sm"
           onClick={() => onDecide(Verdict.Rejected)}>
           {t('label.reject')}
@@ -293,6 +418,7 @@ const SuggestionControls = ({
         <Button
           color="primary"
           data-testid={`accept-${suggestion.id}`}
+          iconLeading={Check}
           size="sm"
           onClick={() => onDecide(Verdict.Accepted)}>
           {t('label.accept')}
@@ -305,42 +431,33 @@ const SuggestionControls = ({
 const SuggestionRow = (props: SuggestionRowProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { suggestion, verdict } = props;
-  const { request, op } = suggestion;
+  const { suggestion, verdict, taskNumber } = props;
+  const { request } = suggestion;
   const own = currentUser?.name === request.requestedBy;
-  const verb = isTextChange(op)
-    ? t('label.suggested-an-edit')
-    : t(VERBS[op.op]);
 
   return (
     <div
-      className={`tw:flex tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-3 ${
+      className={`tw:flex tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-3.5 ${
         verdict === Verdict.Accepted ? 'tw:bg-success-primary' : ''
       }`}
       data-testid={`suggestion-${suggestion.id}`}>
       <ProfilePicture name={request.requestedBy} size="sm" />
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-2">
-        <div className="tw:flex tw:items-center tw:gap-2">
+        <div className="tw:flex tw:min-h-8 tw:flex-wrap tw:items-center tw:gap-2">
           <Typography as="span" size="text-sm" weight="semibold">
             {own ? t('label.you') : request.requestedBy}
           </Typography>
-          <Typography as="span" className="tw:text-tertiary" size="text-sm">
-            {`${verb} · ${getRelativeTime(request.updatedAt)}`}
+          <Typography
+            as="span"
+            className="tw:whitespace-nowrap tw:text-tertiary"
+            size="text-sm">
+            {`${verbOf(suggestion, t)} · ${getRelativeTime(request.updatedAt)}`}
           </Typography>
-          {request.taskId && (
-            <Link
-              className="tw:text-xs tw:text-tertiary"
-              to={getEntityTasksPath(
-                request.entityType as EntityType,
-                request.entityFullyQualifiedName
-              )}>
-              {`${t('label.task')} · ${t('label.revision-number', {
-                number: request.activeRevisionNumber,
-              })}`}
-            </Link>
-          )}
+          {request.taskId && <TaskChip number={taskNumber} request={request} />}
           <span className="tw:flex-1" />
-          <SuggestionControls {...props} />
+          <div className="tw:flex tw:items-center tw:gap-2">
+            <SuggestionControls {...props} />
+          </div>
         </div>
         <div
           className={
@@ -358,6 +475,7 @@ const SuggestionRow = (props: SuggestionRowProps) => {
 interface FieldSectionProps {
   group: FieldGroup;
   canDecide: (taskId?: string) => boolean;
+  taskNumber: (taskId?: string) => string;
   voteOf: (suggestion: Suggestion) => Verdict | undefined;
   verdicts: Record<string, Verdict>;
   onDecide: (suggestion: Suggestion, verdict?: Verdict) => void;
@@ -367,6 +485,7 @@ interface FieldSectionProps {
 const FieldSection = ({
   group,
   canDecide,
+  taskNumber,
   voteOf,
   verdicts,
   onDecide,
@@ -375,7 +494,7 @@ const FieldSection = ({
   const { t } = useTranslation();
 
   return (
-    <section className="tw:flex tw:flex-col tw:gap-2">
+    <section className="tw:flex tw:flex-col tw:gap-3">
       <div className="tw:flex tw:items-center tw:gap-2">
         <Typography as="span" size="text-md" weight="semibold">
           {startCase(group.field)}
@@ -383,24 +502,25 @@ const FieldSection = ({
         <Typography as="span" className="tw:text-tertiary" size="text-sm">
           {t('label.suggestion-count', { count: group.suggestions.length })}
         </Typography>
-        {isCompeting(group) && (
-          <Badge color="warning" size="sm" type="color">
-            {t('label.competing-edits-accept-one')}
-          </Badge>
-        )}
+        {isCompeting(group) &&
+          !group.suggestions.some((suggestion) => verdicts[suggestion.id]) && (
+            <BadgeWithIcon color="warning" iconLeading={AlertCircle} size="sm">
+              {t('label.competing-edits-accept-one')}
+            </BadgeWithIcon>
+          )}
       </div>
       <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary">
         {group.current !== undefined && (
-          <div className="tw:flex tw:gap-4 tw:bg-secondary tw:px-4 tw:py-2">
+          <div className="tw:flex tw:items-baseline tw:gap-3 tw:bg-secondary tw:px-4 tw:py-2.5">
             <Typography
               as="span"
-              className="tw:text-tertiary tw:uppercase"
+              className="tw:w-16 tw:shrink-0 tw:text-tertiary tw:uppercase"
               size="text-xs"
               weight="semibold">
               {t('label.current')}
             </Typography>
-            <Typography as="span" size="text-sm">
-              {group.current}
+            <Typography as="span" className="tw:text-secondary" size="text-sm">
+              {group.current || t('label.none')}
             </Typography>
           </div>
         )}
@@ -410,6 +530,7 @@ const FieldSection = ({
             key={suggestion.id}
             myVote={voteOf(suggestion)}
             suggestion={suggestion}
+            taskNumber={taskNumber(suggestion.request.taskId)}
             verdict={verdicts[suggestion.id]}
             onDecide={(verdict) => onDecide(suggestion, verdict)}
             onWithdraw={() => onWithdraw(suggestion.request)}
@@ -420,88 +541,82 @@ const FieldSection = ({
   );
 };
 
-/**
- * An administrator's actions on each open request: publish it without review, with a reason, or
- * cancel it. Shown to administrators only; the server checks the same.
- */
-const AdminSection = ({
-  requests,
-  onChange,
+const Tally = ({ className, text }: { className: string; text: string }) => (
+  <span className="tw:flex tw:items-center tw:gap-1.5">
+    <Dot className={className} size="sm" />
+    {text}
+  </span>
+);
+
+// The staged verdicts so far, and the submit that sends them.
+const ReviewFooter = ({
+  verdicts,
+  toReview,
+  isBusy,
+  onSubmit,
 }: {
-  requests: ChangeRequest[];
-  onChange: () => Promise<void>;
+  verdicts: Verdict[];
+  toReview: number;
+  isBusy: boolean;
+  onSubmit: () => void;
 }) => {
   const { t } = useTranslation();
+  const accepted = verdicts.filter((v) => v === Verdict.Accepted).length;
+  const staged = verdicts.filter((v) => v !== Verdict.Superseded).length;
 
   return (
-    <section
-      className="tw:flex tw:flex-col tw:gap-2"
-      data-testid="review-admin-actions">
-      <Typography as="span" size="text-md" weight="semibold">
-        {t('label.admin-action-plural')}
+    <Dialog.Footer className="tw:mt-0 tw:flex tw:items-center tw:border-t tw:border-subtle tw:sm:mt-0">
+      <Typography
+        as="div"
+        className="tw:flex tw:flex-wrap tw:items-center tw:gap-4 tw:text-tertiary"
+        size="text-sm">
+        <Tally
+          className="tw:text-fg-success-secondary"
+          text={t('label.accepted-count', { count: accepted })}
+        />
+        <Tally
+          className="tw:text-fg-error-secondary"
+          text={t('label.rejected-count', {
+            count: verdicts.length - accepted,
+          })}
+        />
+        <Tally
+          className="tw:text-fg-quaternary"
+          text={t('label.to-review-count', { count: toReview })}
+        />
       </Typography>
-      <div className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary tw:rounded-xl tw:border tw:border-secondary tw:bg-primary">
-        {requests.map((request) => (
-          <div
-            className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-3"
-            key={request.id}>
-            <Typography as="span" className="tw:text-tertiary" size="text-sm">
-              {`${request.requestedBy} · ${t('label.revision-number', {
-                number: request.activeRevisionNumber,
-              })}`}
-            </Typography>
-            <AdminActions request={request} onChange={onChange} />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-};
-
-// Above the changes: an administrator's actions on each request, or why there is nothing to review.
-const BodyIntro = ({
-  isAdmin,
-  isEmpty,
-  requests,
-  onChange,
-}: {
-  isAdmin: boolean;
-  isEmpty: boolean;
-  requests: ChangeRequest[];
-  onChange: () => Promise<void>;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <>
-      {isAdmin && requests.length > 0 && (
-        <AdminSection requests={requests} onChange={onChange} />
-      )}
-      {isEmpty && (
-        <Typography as="p" className="tw:text-tertiary" size="text-sm">
-          {t('message.no-pending-changes-on-asset')}
-        </Typography>
-      )}
-    </>
+      <span className="tw:flex-1" />
+      <Button
+        color="primary"
+        data-testid="submit-review"
+        isDisabled={staged === 0 || isBusy}
+        size="md"
+        onClick={onSubmit}>
+        {staged > 0
+          ? t('label.submit-review-count', { count: staged })
+          : t('label.submit-review')}
+      </Button>
+    </Dialog.Footer>
   );
 };
 
 /**
- * Every pending change on one asset, grouped by field: a reviewer accepts or rejects each change,
- * then submits, which resolves each request's task with the decisions made on its changes.
+ * Every pending change on one asset, grouped by field: a reviewer accepts or rejects what each
+ * request proposes for a field, then submits, which resolves each request's task with the
+ * decisions made on its changes.
  */
 const ReviewPendingChangesModal = ({
   requests,
   onClose,
   onChange,
-  onSwitchView,
-}: PendingChangesModalProps) => {
+}: ReviewPendingChangesModalProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [proposedBy, setProposedBy] = useState(EVERYONE);
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
   const [isBusy, setIsBusy] = useState(false);
-  const canDecide = useDecidableTasks(requests);
+  const published = usePublishedEntity(requests);
+  const { canDecide, taskNumber } = useReviewTasks(requests, published);
   const myVote = useMyVotes(requests);
 
   const visible = useMemo(
@@ -511,10 +626,15 @@ const ReviewPendingChangesModal = ({
         : requests.filter((request) => request.requestedBy === proposedBy),
     [requests, proposedBy]
   );
-  const groups = useMemo(() => groupSuggestions(visible), [visible]);
-  const all = useMemo(() => groupSuggestions(requests), [requests]);
+  const groups = useMemo(
+    () => groupSuggestions(visible, published),
+    [visible, published]
+  );
+  const all = useMemo(
+    () => groupSuggestions(requests, published),
+    [requests, published]
+  );
   const reviewable = (suggestion: Suggestion) =>
-    isOpen(suggestion.op) &&
     suggestion.request.requestedBy !== currentUser?.name &&
     canDecide(suggestion.request.taskId) &&
     !myVote(suggestion);
@@ -524,25 +644,20 @@ const ReviewPendingChangesModal = ({
   );
   const allSuggestions = all.flatMap((group) => group.suggestions);
   const undecided = groups
-    .flatMap((group) =>
-      group.suggestions.map((suggestion) => ({ group, suggestion }))
-    )
-    .filter(
-      ({ suggestion }) => reviewable(suggestion) && !verdicts[suggestion.id]
-    );
+    .flatMap((group) => group.suggestions)
+    .filter((suggestion) => reviewable(suggestion) && !verdicts[suggestion.id]);
   const acceptable = undecided.filter(
-    ({ group, suggestion }) =>
-      !competingFields.has(group.field) && !isConflicted(suggestion)
+    (suggestion) =>
+      !competingFields.has(suggestion.field) && !isConflicted(suggestion)
   );
-  const counts = Object.values(verdicts);
 
   const decide = (suggestion: Suggestion, verdict?: Verdict) =>
     setVerdicts((current) => {
       const next = { ...current };
-      const competing = isTextChange(suggestion.op)
-        ? (all.find((g) => g.field === suggestion.op.field)?.suggestions ?? [])
+      const competing = isTextChange(suggestion)
+        ? (all.find((g) => g.field === suggestion.field)?.suggestions ?? [])
             .filter((other) => other.id !== suggestion.id)
-            .filter((other) => isTextChange(other.op) && isOpen(other.op))
+            .filter(isTextChange)
         : [];
       // At most one text edit of a field is accepted: accepting one supersedes the others, and
       // only undoing that accepted edit brings them back.
@@ -564,11 +679,11 @@ const ReviewPendingChangesModal = ({
       return next;
     });
 
-  const decideAll = (items: { suggestion: Suggestion }[], verdict: Verdict) =>
+  const decideAll = (items: Suggestion[], verdict: Verdict) =>
     setVerdicts((current) => ({
       ...current,
       ...Object.fromEntries(
-        items.map(({ suggestion }) => [suggestion.id, verdict])
+        items.map((suggestion) => [suggestion.id, verdict])
       ),
     }));
 
@@ -639,7 +754,6 @@ const ReviewPendingChangesModal = ({
         }),
       ].join(' · ')
     : '';
-  const staged = counts.filter((v) => v !== Verdict.Superseded).length;
 
   return (
     <ModalOverlay
@@ -658,12 +772,17 @@ const ReviewPendingChangesModal = ({
             <Typography as="p" className="tw:text-tertiary" size="text-sm">
               {subtitle}
             </Typography>
-            <div className="tw:mt-3 tw:flex tw:items-center tw:gap-2">
-              <Typography as="span" className="tw:text-tertiary" size="text-sm">
+            <div className="tw:mt-4 tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+              <Typography
+                as="span"
+                className="tw:whitespace-nowrap tw:text-tertiary"
+                size="text-sm"
+                weight="medium">
                 {t('label.proposed-by')}
               </Typography>
               <NativeSelect
-                className="tw:w-56"
+                aria-label={t('label.proposed-by')}
+                className="tw:w-48"
                 data-testid="proposed-by"
                 options={[
                   {
@@ -679,30 +798,10 @@ const ReviewPendingChangesModal = ({
                     value: person,
                   })),
                 ]}
-                selectClassName="tw:py-2 tw:text-sm"
+                selectClassName="tw:py-1.5 tw:text-sm"
                 value={proposedBy}
                 onChange={(event) => setProposedBy(event.target.value)}
               />
-              {onSwitchView && (
-                <>
-                  <Button
-                    color="secondary"
-                    data-testid="switch-to-requests"
-                    iconLeading={ListView}
-                    size="sm"
-                    onClick={() => onSwitchView()}>
-                    {t('label.by-request')}
-                  </Button>
-                  <Button
-                    color="secondary"
-                    data-testid="open-preview"
-                    iconLeading={Eye}
-                    size="sm"
-                    onClick={() => onSwitchView(true)}>
-                    {t('label.preview-change')}
-                  </Button>
-                </>
-              )}
               <span className="tw:flex-1" />
               {undecided.length > 0 && (
                 <>
@@ -717,6 +816,7 @@ const ReviewPendingChangesModal = ({
                     <Button
                       color="secondary"
                       data-testid="accept-all"
+                      iconLeading={Check}
                       size="sm"
                       onClick={() => decideAll(acceptable, Verdict.Accepted)}>
                       {acceptable.length < undecided.length
@@ -730,53 +830,39 @@ const ReviewPendingChangesModal = ({
               )}
             </div>
           </Dialog.Header>
-          <div className="tw:flex tw:h-[520px] tw:flex-col tw:gap-6 tw:overflow-y-auto tw:bg-secondary tw:px-6 tw:py-5">
-            <BodyIntro
-              isAdmin={Boolean(currentUser?.isAdmin)}
-              isEmpty={groups.length === 0}
-              requests={visible}
-              onChange={onChange}
-            />
+          <div className="tw:flex tw:h-[520px] tw:flex-col tw:gap-7 tw:overflow-y-auto tw:bg-secondary tw:px-6 tw:pt-5 tw:pb-6">
             {groups.map((group) => (
               <FieldSection
                 canDecide={canDecide}
                 group={group}
                 key={group.field}
+                taskNumber={taskNumber}
                 verdicts={verdicts}
                 voteOf={myVote}
                 onDecide={decide}
                 onWithdraw={withdraw}
               />
             ))}
+            {groups.length === 0 && (
+              <Typography
+                as="p"
+                className="tw:p-12 tw:text-center tw:text-tertiary"
+                size="text-sm">
+                {requests.length > 0
+                  ? t('message.no-changes-from-person')
+                  : t('message.no-pending-changes-on-asset')}
+              </Typography>
+            )}
           </div>
-          <Dialog.Footer className="tw:mt-0 tw:flex tw:items-center tw:border-t tw:border-subtle tw:sm:mt-0">
-            <Typography as="span" className="tw:text-tertiary" size="text-sm">
-              {[
-                t('label.accepted-count', {
-                  count: counts.filter((v) => v === Verdict.Accepted).length,
-                }),
-                t('label.rejected-count', {
-                  count: counts.filter((v) => v === Verdict.Rejected).length,
-                }),
-                t('label.to-review-count', {
-                  count: allSuggestions.filter(
-                    (s) => reviewable(s) && !verdicts[s.id]
-                  ).length,
-                }),
-              ].join(' · ')}
-            </Typography>
-            <span className="tw:flex-1" />
-            <Button
-              color="primary"
-              data-testid="submit-review"
-              isDisabled={staged === 0 || isBusy}
-              size="md"
-              onClick={submit}>
-              {staged > 0
-                ? t('label.submit-review-count', { count: staged })
-                : t('label.submit-review')}
-            </Button>
-          </Dialog.Footer>
+          <ReviewFooter
+            isBusy={isBusy}
+            toReview={
+              allSuggestions.filter((s) => reviewable(s) && !verdicts[s.id])
+                .length
+            }
+            verdicts={Object.values(verdicts)}
+            onSubmit={submit}
+          />
         </Dialog>
       </Modal>
     </ModalOverlay>

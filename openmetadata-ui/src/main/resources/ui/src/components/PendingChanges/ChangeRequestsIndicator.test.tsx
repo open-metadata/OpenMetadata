@@ -23,6 +23,7 @@ import {
   getChangeRequestsForEntity,
   withdrawChangeRequest,
 } from '../../rest/changeRequestsAPI';
+import { getTaskById, resolveTask } from '../../rest/tasksAPI';
 import ChangeRequestsIndicator from './ChangeRequestsIndicator.component';
 
 jest.mock('../../rest/changeRequestsAPI', () => ({
@@ -31,12 +32,17 @@ jest.mock('../../rest/changeRequestsAPI', () => ({
   getChangeRequestRevisions: jest.fn().mockResolvedValue([]),
   getChangeRequestDecisions: jest.fn().mockResolvedValue([]),
   getChangeRequestEvents: jest.fn().mockResolvedValue([]),
-  getChangeRequestsByRequester: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('../../rest/tasksAPI', () => ({
-  getTaskById: jest.fn().mockResolvedValue({ data: { id: 'task-1' } }),
-  resolveTask: jest.fn(),
+  getTaskById: jest.fn(),
+  resolveTask: jest.fn().mockResolvedValue({}),
+}));
+
+const mockGetEntity = jest.fn();
+
+jest.mock('../../utils/Assets/AssetsUtils', () => ({
+  getEntityAPIfromSource: () => mockGetEntity,
 }));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
@@ -102,15 +108,24 @@ const openModal = async () => {
   });
 };
 
-const openRequestsView = async () => {
-  await openModal();
-  await act(async () => {
-    fireEvent.click(screen.getByTestId('switch-to-requests'));
-  });
-};
+const task = (assignees: string[]) => ({
+  data: {
+    id: 'task-1',
+    taskId: 'TASK-00022',
+    createdBy: { id: 'user-bob', type: 'user', name: 'bob' },
+    assignees: assignees.map((name) => ({
+      id: `user-${name}`,
+      type: 'user',
+      name,
+    })),
+  },
+});
 
 describe('ChangeRequestsIndicator', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetEntity.mockResolvedValue({ tags: [] });
+  });
 
   it('shows no count when no request is open', async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
@@ -136,87 +151,112 @@ describe('ChangeRequestsIndicator', () => {
       screen.getByTestId('review-pending-changes-modal')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('suggestion-cr-1|2|description|')
+      screen.getByTestId('suggestion-cr-1|2|description')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('suggestion-cr-2|2|description|')
+      screen.getByTestId('suggestion-cr-2|2|description')
     ).toBeInTheDocument();
   });
 
-  it('shows the request count and lists the open requests in the modal', async () => {
-    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
-      request({}),
-      request({ id: 'cr-2', requestedBy: 'bob' }),
-    ]);
+  it('shows the request count and an empty review when the asset has none', async () => {
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([]);
 
-    await openRequestsView();
+    await openModal();
 
-    expect(screen.getByTestId('pending-change-requests')).toHaveTextContent(
-      '2'
-    );
-    expect(screen.getByTestId('pending-changes-modal')).toBeInTheDocument();
-    expect(screen.getByTestId('change-request-cr-1')).toBeInTheDocument();
-    expect(screen.getByTestId('change-request-cr-2')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-pending-changes-on-asset')
+    ).toBeInTheDocument();
   });
 
-  it('shows the previous and proposed value of an update and lets the requester withdraw', async () => {
+  it('lets the requester withdraw their own request', async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([request({})]);
     (withdrawChangeRequest as jest.Mock).mockResolvedValue({});
 
-    await openRequestsView();
-
-    const change = screen.getByTestId('change-description-updated');
-
-    expect(change).toHaveTextContent('Old text');
-    expect(change).toHaveTextContent('New text');
-
+    await openModal();
     await act(async () => {
-      fireEvent.click(screen.getByTestId('withdraw-change-request'));
+      fireEvent.click(screen.getByTestId('withdraw-cr-1|2|description'));
     });
 
     expect(withdrawChangeRequest).toHaveBeenCalledWith('cr-1', 2);
     expect(getChangeRequestsForEntity).toHaveBeenCalledTimes(2);
   });
 
-  it("offers no actions on someone else's request", async () => {
+  it("offers no decision on a request whose task is not the user's", async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
       request({ requestedBy: 'bob', taskId: 'task-1' }),
     ]);
+    (getTaskById as jest.Mock).mockResolvedValue(task(['carol']));
 
     await openModal();
 
-    expect(screen.queryByTestId('withdraw-change-request')).toBeNull();
     expect(
-      screen.queryByTestId('accept-cr-1|2|description|')
+      screen.queryByTestId('withdraw-cr-1|2|description')
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('reject-cr-1|2|description|')
+      screen.queryByTestId('accept-cr-1|2|description')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('reject-cr-1|2|description')
     ).not.toBeInTheDocument();
   });
 
-  it('filters the requests by requester or changed field', async () => {
+  it("resolves an assigned reviewer's task with the changes they accepted", async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
-      request({}),
-      request({ id: 'cr-2', requestedBy: 'bob' }),
+      request({ requestedBy: 'bob', taskId: 'task-1' }),
     ]);
+    (getTaskById as jest.Mock).mockResolvedValue(task(['alice']));
 
-    await openRequestsView();
-    await act(async () => {
-      fireEvent.change(screen.getByTestId('pending-changes-search'), {
-        target: { value: 'bob' },
-      });
-    });
+    await openModal();
 
-    expect(screen.queryByTestId('change-request-cr-1')).toBeNull();
-    expect(screen.getByTestId('change-request-cr-2')).toBeInTheDocument();
+    expect(screen.getByTestId('task-cr-1')).toHaveTextContent(
+      'label.task-number'
+    );
 
     await act(async () => {
-      fireEvent.change(screen.getByTestId('pending-changes-search'), {
-        target: { value: 'owners' },
-      });
+      fireEvent.click(screen.getByTestId('accept-cr-1|2|description'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-review'));
     });
 
-    expect(screen.queryByTestId('change-request-cr-2')).toBeNull();
-    expect(screen.getByText('message.no-match-found')).toBeInTheDocument();
+    expect(resolveTask).toHaveBeenCalledWith('task-1', {
+      resolutionType: 'Approved',
+      changeRequestRevision: 2,
+      changeDecisions: [
+        { field: 'description', key: undefined, decision: 'Approve' },
+      ],
+    });
+  });
+
+  it('lets an owner decide when the glossary has no reviewers', async () => {
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
+      request({ requestedBy: 'bob', taskId: 'task-1' }),
+    ]);
+    (getTaskById as jest.Mock).mockResolvedValue(task(['carol']));
+    mockGetEntity.mockResolvedValue({
+      owners: [{ id: 'user-alice', type: 'user', name: 'alice' }],
+      reviewers: [],
+    });
+
+    await openModal();
+
+    expect(screen.getByTestId('accept-cr-1|2|description')).toBeInTheDocument();
+  });
+
+  it('leaves the decision to the reviewers of a glossary that has them', async () => {
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
+      request({ requestedBy: 'bob', taskId: 'task-1' }),
+    ]);
+    (getTaskById as jest.Mock).mockResolvedValue(task(['carol']));
+    mockGetEntity.mockResolvedValue({
+      owners: [{ id: 'user-alice', type: 'user', name: 'alice' }],
+      reviewers: [{ id: 'user-carol', type: 'user', name: 'carol' }],
+    });
+
+    await openModal();
+
+    expect(
+      screen.queryByTestId('accept-cr-1|2|description')
+    ).not.toBeInTheDocument();
   });
 });

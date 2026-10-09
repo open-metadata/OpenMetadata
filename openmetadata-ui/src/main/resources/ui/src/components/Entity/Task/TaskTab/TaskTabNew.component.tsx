@@ -22,14 +22,7 @@ import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import {
-  isEmpty,
-  isEqual,
-  isUndefined,
-  last,
-  orderBy,
-  startCase,
-} from 'lodash';
+import { isEmpty, isUndefined, last, orderBy, startCase } from 'lodash';
 import React, {
   lazy,
   useCallback,
@@ -91,7 +84,6 @@ import {
   editTaskComment,
   patchTask,
   resolveTask as resolveTaskAPI,
-  Task,
   TaskEntityStatus,
   TaskEntityType,
   TaskPayload,
@@ -160,6 +152,10 @@ import TaskActionSplitButton, {
   TaskActionSplitButtonItem,
 } from './TaskActionSplitButton';
 import { TaskTabProps } from './TaskTab.interface';
+import {
+  computeTaskEditAccessFlags,
+  computeTaskOwnershipFlags,
+} from './TaskTab.utils';
 
 const FeedbackApprovalTask = withSuspenseFallback(
   lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
@@ -342,78 +338,6 @@ const deriveIsTaskActionable = (
   return isWorkflowDrivenTask
     ? hasAvailableTransitions
     : taskStatus === TaskEntityStatus.Open;
-};
-
-interface TaskOwnershipFlags {
-  isOwner: boolean;
-  isCreator: boolean;
-  isAssignee: boolean;
-  isPartOfAssigneeTeam: boolean;
-}
-
-const computeTaskOwnershipFlags = (
-  owners: EntityReference[],
-  task: Task,
-  currentUser?: { id?: string; name?: string; teams?: EntityReference[] }
-): TaskOwnershipFlags => {
-  const isUserPartOfTeam = (teamId: string): boolean =>
-    Boolean(currentUser?.teams?.find((team) => teamId === team.id));
-
-  const isOwner = Boolean(
-    owners?.some((owner) => isEqual(owner.id, currentUser?.id))
-  );
-  const isCreator = isEqual(task.createdBy?.name, currentUser?.name);
-  const isAssignee = Boolean(
-    task.assignees?.some((assignee) => isEqual(assignee.id, currentUser?.id))
-  );
-  const isPartOfAssigneeTeam = Boolean(
-    task.assignees?.some((assignee) =>
-      assignee.type === 'team' ? isUserPartOfTeam(assignee.id) : false
-    )
-  );
-
-  return { isOwner, isCreator, isAssignee, isPartOfAssigneeTeam };
-};
-
-interface TaskEditAccessParams {
-  isAdminUser: boolean;
-  isAssignee: boolean;
-  isOwner: boolean;
-  isCreator: boolean;
-  isPartOfAssigneeTeam: boolean;
-  hasGlossaryReviewer?: boolean;
-  isTaskClosed: boolean;
-  ownersCount: number;
-}
-
-interface TaskEditAccessFlags {
-  hasEditAccess: boolean;
-  shouldEditAssignee: boolean;
-}
-
-// Extracted so the numerous boolean short-circuits live in their own
-// complexity scope instead of TaskTabNew's render body.
-const computeTaskEditAccessFlags = ({
-  isAdminUser,
-  isAssignee,
-  isOwner,
-  isCreator,
-  isPartOfAssigneeTeam,
-  hasGlossaryReviewer,
-  isTaskClosed,
-  ownersCount,
-}: TaskEditAccessParams): TaskEditAccessFlags => {
-  const isOwnerWithoutReviewer = !hasGlossaryReviewer && isOwner;
-  const isAssigneeTeamMemberNonCreator = isPartOfAssigneeTeam && !isCreator;
-  const hasEditAccess =
-    isAdminUser ||
-    isAssignee ||
-    isOwnerWithoutReviewer ||
-    isAssigneeTeamMemberNonCreator;
-  const shouldEditAssignee =
-    (isCreator || hasEditAccess) && !isTaskClosed && ownersCount === 0;
-
-  return { hasEditAccess, shouldEditAssignee };
 };
 
 export const TaskTabNew = ({

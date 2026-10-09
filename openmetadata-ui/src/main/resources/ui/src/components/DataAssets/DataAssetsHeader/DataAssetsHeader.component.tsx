@@ -1271,11 +1271,7 @@ export const DataAssetsHeader = ({
             {dataContractLatestResultButton}
             {sourceUrlButton}
             {tableClassBase.getRequestDataAccessButton()}
-            <ChangeRequestsIndicator
-              entityFqn={dataAsset.fullyQualifiedName}
-              entityId={dataAsset.id ?? ''}
-              entityType={entityType}
-            />
+            <ChangeRequestsIndicator entityId={dataAsset.id ?? ''} />
             {headerActions}
             {renderManageButton()}
           </div>
