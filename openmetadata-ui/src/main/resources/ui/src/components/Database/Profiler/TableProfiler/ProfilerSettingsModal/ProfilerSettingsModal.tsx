@@ -14,15 +14,18 @@
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
+  Box,
   Button as CoreButton,
+  Grid,
   SlideoutMenu,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Input, InputNumber, Select, Space, TreeSelect } from 'antd';
+import { Button, Input, InputNumber, Select, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
-import { Col, Row } from 'antd/lib/grid';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
@@ -475,7 +478,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const drawerFooter = (
     <div className="drawer-footer-actions">
-      <Space size={16}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={4}
+        itemClassName="layout-space-item">
         <CoreButton color="secondary" onPress={handleCancel}>
           {t('label.cancel')}
         </CoreButton>
@@ -485,7 +493,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           type="submit">
           {t('label.save')}
         </CoreButton>
-      </Space>
+      </Box>
     </div>
   );
 
@@ -495,8 +503,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     </div>
   ) : (
     <div className="profiler-settings-drawer-content new-form-style">
-      <Row gutter={[16, 16]}>
-        <Col data-testid="profile-sample-container" span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item
+          className="layout-column"
+          data-testid="profile-sample-container"
+          span={24}>
           <Form<ProfilerForm>
             className="profiler-settings-form new-form-style"
             data-testid="configure-ingestion-container"
@@ -575,8 +588,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               />
             </Form.Item>
           </Form>
-        </Col>
-        <Col data-testid="sql-editor-container" span={24}>
+        </Grid.Item>
+        <Grid.Item
+          className="layout-column"
+          data-testid="sql-editor-container"
+          span={24}>
           <p className="m-b-xs">
             {t('label.profile-sample-type', {
               type: t('label.query'),
@@ -591,8 +607,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             value={state?.sqlQuery ?? ''}
             onChange={handleCodeMirrorChange}
           />
-        </Col>
-        <Col data-testid="exclude-column-container" span={24}>
+        </Grid.Item>
+        <Grid.Item
+          className="layout-column"
+          data-testid="exclude-column-container"
+          span={24}>
           <Typography as="p">{t('message.enable-column-profile')}</Typography>
           <p className="text-xs m-b-xss">{t('label.exclude')}:</p>
           <Select
@@ -608,9 +627,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             value={state?.excludeCol}
             onChange={handleExcludeCol}
           />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Form<ProfilerForm>
             autoComplete="off"
             className="new-form-style"
@@ -646,8 +665,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     })}
                     data-testid="include-column-container">
                     {fields.map(({ key, name, ...restField }) => (
-                      <Row gutter={16} key={key}>
-                        <Col span={12}>
+                      <Grid
+                        className="layout-row layout-grid"
+                        key={key}
+                        style={{ ...getLayoutGutter(16) }}>
+                        <Grid.Item className="layout-column" span={12}>
                           <Form.Item
                             className="w-full m-b-md"
                             {...restField}
@@ -665,8 +687,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               size="middle"
                             />
                           </Form.Item>
-                        </Col>
-                        <Col className="flex" span={12}>
+                        </Grid.Item>
+                        <Grid.Item className="layout-column flex" span={12}>
                           <Form.Item
                             className="w-full m-b-md"
                             {...restField}
@@ -693,16 +715,23 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             type="text"
                             onClick={() => remove(name)}
                           />
-                        </Col>
-                      </Row>
+                        </Grid.Item>
+                      </Grid>
                     ))}
                   </div>
                 </>
               )}
             </List>
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <Space align="center" size={12}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(16, 16) }}>
+              <Grid.Item className="layout-column" span={24}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={3}
+                  itemClassName="layout-space-item">
                   <p>{t('label.enable-partition')}</p>
                   <Form.Item className="m-b-0" name="enablePartitioning">
                     <Toggle
@@ -712,9 +741,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                       onChange={handleEnablePartition}
                     />
                   </Form.Item>
-                </Space>
-              </Col>
-              <Col span={12}>
+                </Box>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={12}>
                 <Form.Item
                   className="m-b-0"
                   label={
@@ -741,8 +770,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     size="middle"
                   />
                 </Form.Item>
-              </Col>
-              <Col span={12}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={12}>
                 <Form.Item
                   className="m-b-0"
                   label={
@@ -776,11 +805,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     size="middle"
                   />
                 </Form.Item>
-              </Col>
+              </Grid.Item>
               {partitionIntervalType &&
               TIME_BASED_PARTITION.includes(partitionIntervalType) ? (
                 <>
-                  <Col span={12}>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
@@ -804,8 +833,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
@@ -834,12 +863,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
+                  </Grid.Item>
                 </>
               ) : null}
               {PartitionIntervalTypes.IntegerRange === partitionIntervalType ? (
                 <>
-                  <Col span={12}>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
@@ -873,8 +902,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       className="m-b-0"
                       label={
@@ -908,12 +937,12 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         size="middle"
                       />
                     </Form.Item>
-                  </Col>
+                  </Grid.Item>
                 </>
               ) : null}
 
               {PartitionIntervalTypes.ColumnValue === partitionIntervalType ? (
-                <Col span={24}>
+                <Grid.Item className="layout-column" span={24}>
                   <List name="partitionValues">
                     {(fields, { add, remove }) => (
                       <>
@@ -931,8 +960,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         </div>
 
                         {fields.map(({ key, name, ...restField }) => (
-                          <Row gutter={16} key={key}>
-                            <Col className="flex" span={24}>
+                          <Grid
+                            className="layout-row layout-grid"
+                            key={key}
+                            style={{ ...getLayoutGutter(16) }}>
+                            <Grid.Item className="layout-column flex" span={24}>
                               <Form.Item
                                 className="w-full m-b-md"
                                 {...restField}
@@ -969,18 +1001,18 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 type="text"
                                 onClick={() => remove(name)}
                               />
-                            </Col>
-                          </Row>
+                            </Grid.Item>
+                          </Grid>
                         ))}
                       </>
                     )}
                   </List>
-                </Col>
+                </Grid.Item>
               ) : null}
-            </Row>
+            </Grid>
           </Form>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </div>
   );
 

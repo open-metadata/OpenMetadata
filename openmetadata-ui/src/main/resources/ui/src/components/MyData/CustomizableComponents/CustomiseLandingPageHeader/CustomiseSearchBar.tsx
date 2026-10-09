@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Input, Popover, Tooltip } from 'antd';
+import { SelectPopover } from '@openmetadata/ui-core-components';
+import { Button, Input, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -24,6 +25,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useInteractOutside } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
@@ -178,6 +180,19 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     handleSearchChange,
   ]);
 
+  // Non-modal popovers skip react-aria's outside-press dismissal; restore the
+  // antd behaviour. The popover is portaled, so presses inside it land
+  // outside the search container and are filtered by class.
+  useInteractOutside({
+    ref: searchContainerRef,
+    isDisabled: !isSearchBoxOpen,
+    onInteractOutside: (event) => {
+      if (!(event.target as Element).closest('.customise-search-overlay')) {
+        setIsSearchBoxOpen(false);
+      }
+    },
+  });
+
   useEffect(() => {
     if (!isEmpty(currentUser)) {
       initNLP();
@@ -213,39 +228,35 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
           />
         </Tooltip>
       )}
-      <Popover
-        align={{ offset: [0, 12] }}
-        content={popoverContent}
-        getPopupContainer={() => searchContainerRef.current || document.body}
-        open={isSearchBoxOpen}
-        overlayClassName="customise-search-overlay"
-        overlayStyle={{ paddingTop: 0, width: '100%' }}
-        placement="bottom"
-        showArrow={false}
-        trigger={['click']}
-        onOpenChange={(open) => {
-          setIsSearchBoxOpen(isNLPActive ? open : !!searchValue && open);
-        }}>
-        <Input
-          autoComplete="off"
-          bordered={false}
-          className="rounded-4 appbar-search"
-          data-testid="searchBox"
-          disabled={disabled}
-          id="searchBox"
-          placeholder={t('label.search-for-type', {
-            type: 'Tables, Database, Schema...',
-          })}
-          type="text"
-          value={searchValue}
-          onChange={(e) => {
-            const { value } = e.target;
-            debounceOnSearch(value);
-            handleSearchChange(value);
-          }}
-          onKeyDown={handleKeyDown}
-        />
-      </Popover>
+      <Input
+        autoComplete="off"
+        bordered={false}
+        className="rounded-4 appbar-search"
+        data-testid="searchBox"
+        disabled={disabled}
+        id="searchBox"
+        placeholder={t('label.search-for-type', {
+          type: 'Tables, Database, Schema...',
+        })}
+        type="text"
+        value={searchValue}
+        onChange={(e) => {
+          const { value } = e.target;
+          debounceOnSearch(value);
+          handleSearchChange(value);
+        }}
+        onClick={() => setIsSearchBoxOpen(isNLPActive || Boolean(searchValue))}
+        onKeyDown={handleKeyDown}
+      />
+      <SelectPopover
+        className="customise-search-overlay"
+        isOpen={isSearchBoxOpen}
+        size="md"
+        style={{ width: searchContainerRef.current?.offsetWidth }}
+        triggerRef={searchContainerRef}
+        onOpenChange={setIsSearchBoxOpen}>
+        {popoverContent}
+      </SelectPopover>
     </div>
   );
 };
