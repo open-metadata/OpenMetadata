@@ -1696,6 +1696,7 @@
     "kg-presentation": "표시 방식",
     "kg-range": "치역",
     "kg-relationship-labels": "관계 레이블",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "엔터티 {{nodes}}개 · 관계 {{edges}}개",
     "kg-selected-entity": "선택한 엔터티",
     "kg-show-more": "{{total}}개 중 {{count}}개 더 보기",

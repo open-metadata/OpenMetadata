@@ -1696,6 +1696,7 @@
     "kg-presentation": "العرض",
     "kg-range": "المدى",
     "kg-relationship-labels": "تسميات العلاقات",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "{{nodes}} كيانات · {{edges}} علاقات",
     "kg-selected-entity": "الكيان المحدد",
     "kg-show-more": "عرض {{count}} أخرى من أصل {{total}}",

@@ -1696,6 +1696,7 @@
     "kg-presentation": "Sunum",
     "kg-range": "Değer alanı",
     "kg-relationship-labels": "İlişki etiketleri",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "{{nodes}} varlık · {{edges}} ilişki",
     "kg-selected-entity": "Seçili varlık",
     "kg-show-more": "{{total}} sonuçtan {{count}} tane daha göster",

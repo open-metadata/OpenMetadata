@@ -1696,6 +1696,7 @@
     "kg-presentation": "Darstellung",
     "kg-range": "Wertebereich",
     "kg-relationship-labels": "Beziehungsbeschriftungen",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "{{nodes}} Entitäten · {{edges}} Beziehungen",
     "kg-selected-entity": "Ausgewählte Entität",
     "kg-show-more": "{{count}} weitere von {{total}} anzeigen",

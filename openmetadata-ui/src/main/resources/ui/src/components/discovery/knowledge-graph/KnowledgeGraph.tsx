@@ -18,6 +18,8 @@ import { toPng } from 'html-to-image';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FocusScope, useOverlay, usePreventScroll } from 'react-aria';
 import { useTranslation } from 'react-i18next';
+import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
+import 'react-reflex/styles.css';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
 import {
@@ -370,6 +372,41 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     );
   }
 
+  // Grouping the splitter + details ReflexElement under one conditional keeps
+  // the main return's cyclomatic complexity in budget — react-reflex flattens
+  // the fragment internally via React.Children.
+  const detailsPane =
+    drawer && displayData ? (
+      <>
+        <ReflexSplitter
+          aria-label={t('label.kg-resize-details')}
+          className="kg-stage-splitter"
+          propagate={false}
+        />
+        <ReflexElement
+          className="kg-stage-details-pane"
+          flex={0.36}
+          minSize={220}>
+          <KnowledgeGraphDetails
+            columns={columns}
+            concepts={concepts}
+            coverage={coverage}
+            data={displayData}
+            drawer={drawer}
+            mode={mode}
+            relationshipScope={relationshipScope}
+            onClearRelationshipScope={() => setRelationshipScope(null)}
+            onClose={() => setDrawer(null)}
+            onDrawerChange={setDrawer}
+            onRetry={handleRefresh}
+            onSelect={(kind, id) =>
+              kind === 'node' ? findNode(id) : setSelection({ kind, id })
+            }
+          />
+        </ReflexElement>
+      </>
+    ) : null;
+
   return (
     <FocusScope contain={isFullscreen}>
       <div
@@ -437,65 +474,57 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               onRetry={handleRefresh}
             />
             <div className="kg-stage">
-              <Card.Content className="knowledge-graph-body tw:p-0">
-                <KnowledgeGraphBands
-                  layout={layout}
-                  rings={canvas.rings}
-                  showBands={areBandsVisible(showBands, selectedLevel)}
-                  zoom={canvas.zoom}
-                />
-                <div
-                  aria-busy={result.loading}
-                  aria-label={t('label.knowledge-graph')}
-                  className="knowledge-graph-canvas"
-                  data-graph-origin={canvas.viewportOrigin}
-                  data-ready={canvas.ready}
-                  data-testid="knowledge-graph-canvas"
-                  ref={canvas.containerRef}
-                  role="region"
-                />
-                {view.initialLoading && (
-                  <div className="knowledge-graph-loading">
-                    <Loader />
-                  </div>
-                )}
-                {view.empty && (
-                  <KnowledgeGraphEmptyState
-                    hasFilters={hasFilters}
-                    level={view.level}
-                    mode={mode}
-                    onClearFilters={clearFilters}
-                    onExtend={() => setSelectedLevel(3)}
-                  />
-                )}
-                <KnowledgeGraphViewControls
-                  isFullscreen={isFullscreen}
-                  zoom={canvas.zoom}
-                  onFit={handleFit}
-                  onFullscreen={handleFullscreen}
-                  onRefresh={handleRefresh}
-                  onZoomIn={() => handleZoom(ZOOM_IN_FACTOR)}
-                  onZoomOut={() => handleZoom(ZOOM_OUT_FACTOR)}
-                />
-              </Card.Content>
-              {drawer && displayData && (
-                <KnowledgeGraphDetails
-                  columns={columns}
-                  concepts={concepts}
-                  coverage={coverage}
-                  data={displayData}
-                  drawer={drawer}
-                  mode={mode}
-                  relationshipScope={relationshipScope}
-                  onClearRelationshipScope={() => setRelationshipScope(null)}
-                  onClose={() => setDrawer(null)}
-                  onDrawerChange={setDrawer}
-                  onRetry={handleRefresh}
-                  onSelect={(kind, id) =>
-                    kind === 'node' ? findNode(id) : setSelection({ kind, id })
-                  }
-                />
-              )}
+              <ReflexContainer
+                className="kg-stage-main"
+                orientation="horizontal">
+                <ReflexElement
+                  className="kg-stage-canvas-pane"
+                  minSize={160}
+                  propagateDimensions={false}>
+                  <Card.Content className="knowledge-graph-body tw:p-0">
+                    <KnowledgeGraphBands
+                      layout={layout}
+                      rings={canvas.rings}
+                      showBands={areBandsVisible(showBands, selectedLevel)}
+                      zoom={canvas.zoom}
+                    />
+                    <div
+                      aria-busy={result.loading}
+                      aria-label={t('label.knowledge-graph')}
+                      className="knowledge-graph-canvas"
+                      data-graph-origin={canvas.viewportOrigin}
+                      data-ready={canvas.ready}
+                      data-testid="knowledge-graph-canvas"
+                      ref={canvas.containerRef}
+                      role="region"
+                    />
+                    {view.initialLoading && (
+                      <div className="knowledge-graph-loading">
+                        <Loader />
+                      </div>
+                    )}
+                    {view.empty && (
+                      <KnowledgeGraphEmptyState
+                        hasFilters={hasFilters}
+                        level={view.level}
+                        mode={mode}
+                        onClearFilters={clearFilters}
+                        onExtend={() => setSelectedLevel(3)}
+                      />
+                    )}
+                    <KnowledgeGraphViewControls
+                      isFullscreen={isFullscreen}
+                      zoom={canvas.zoom}
+                      onFit={handleFit}
+                      onFullscreen={handleFullscreen}
+                      onRefresh={handleRefresh}
+                      onZoomIn={() => handleZoom(ZOOM_IN_FACTOR)}
+                      onZoomOut={() => handleZoom(ZOOM_OUT_FACTOR)}
+                    />
+                  </Card.Content>
+                </ReflexElement>
+                {detailsPane}
+              </ReflexContainer>
               <KnowledgeGraphOverlays
                 coverage={coverage}
                 edges={scene.edges}

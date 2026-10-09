@@ -1696,6 +1696,7 @@
     "kg-presentation": "รูปแบบการแสดง",
     "kg-range": "พิสัย",
     "kg-relationship-labels": "ป้ายกำกับความสัมพันธ์",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "{{nodes}} เอนทิตี · {{edges}} ความสัมพันธ์",
     "kg-selected-entity": "เอนทิตีที่เลือก",
     "kg-show-more": "แสดงเพิ่มอีก {{count}} จาก {{total}}",
