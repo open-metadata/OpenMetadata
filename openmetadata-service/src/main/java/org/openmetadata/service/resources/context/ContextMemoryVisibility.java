@@ -20,11 +20,16 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
@@ -56,6 +61,12 @@ public final class ContextMemoryVisibility {
   private static final Logger LOG = LoggerFactory.getLogger(ContextMemoryVisibility.class);
   private static final int MAX_ANCHOR_DECISIONS_PER_PAGE = 1000;
 
+  /**
+   * The anchors one query may have evaluated, each a policy evaluation on the request path
+   * (ADR:2026-10-09-search-admits-memories-of-pinned-anchors).
+   */
+  public static final int MAX_PINNED_ANCHORS = 20;
+
   /** The field selection that already asks for every allowed field, owners included. */
   private static final String ALL_FIELDS = "*";
 
@@ -67,6 +78,12 @@ public final class ContextMemoryVisibility {
   @FunctionalInterface
   interface AnchorAccess {
     boolean canView(String userName, EntityReference anchor);
+  }
+
+  /** The entities among some ids that anchor a memory, with their type. */
+  @FunctionalInterface
+  interface AnchorFinder {
+    List<EntityReference> findAnchors(List<UUID> candidateIds);
   }
 
   private ContextMemoryVisibility() {}
@@ -100,6 +117,75 @@ public final class ContextMemoryVisibility {
       ContextMemory memory, String userName, AnchorAccess anchorAccess) {
     EntityReference anchor = memory.getPrimaryEntity();
     return anchor == null || anchorAccess.canView(userName, anchor);
+  }
+
+  /**
+   * The anchors among {@code pinnedAnchorIds} whose Entity memories {@code userName} may read under
+   * the anchor rule above. Search cannot evaluate an anchor's policy for every hit, but it can for
+   * the few anchors a query names: the agent's entity memory fetch and capture's duplicate probe
+   * name one. Ids that do not parse, ids past {@link #MAX_PINNED_ANCHORS} and entities that anchor
+   * no memory are dropped, so a query cannot make this evaluate an unbounded number of policies.
+   */
+  public static Set<String> readableAnchorIds(String userName, Collection<String> pinnedAnchorIds) {
+    return readableAnchorIds(
+        userName,
+        pinnedAnchorIds,
+        ContextMemoryVisibility::findAnchors,
+        ContextMemoryAnchorAccess::canView);
+  }
+
+  static Set<String> readableAnchorIds(
+      String userName,
+      Collection<String> pinnedAnchorIds,
+      AnchorFinder anchorFinder,
+      AnchorAccess anchorAccess) {
+    List<UUID> candidates = pinnedAnchors(pinnedAnchorIds);
+    Set<String> readable = Set.of();
+    if (userName != null && !candidates.isEmpty()) {
+      readable =
+          anchorFinder.findAnchors(candidates).stream()
+              .filter(anchor -> anchorAccess.canView(userName, anchor))
+              .map(anchor -> anchor.getId().toString())
+              .collect(Collectors.toUnmodifiableSet());
+    }
+    return readable;
+  }
+
+  static List<UUID> pinnedAnchors(Collection<String> pinnedAnchorIds) {
+    return pinnedAnchorIds == null
+        ? List.of()
+        : pinnedAnchorIds.stream()
+            .filter(Objects::nonNull)
+            .map(ContextMemoryVisibility::parseAnchorId)
+            .flatMap(Optional::stream)
+            .distinct()
+            .limit(MAX_PINNED_ANCHORS)
+            .toList();
+  }
+
+  private static Optional<UUID> parseAnchorId(String anchorId) {
+    Optional<UUID> parsed = Optional.empty();
+    try {
+      parsed = Optional.of(UUID.fromString(anchorId.trim()));
+    } catch (IllegalArgumentException e) {
+      LOG.debug("Ignoring pinned anchor '{}': not an entity id", anchorId);
+    }
+    return parsed;
+  }
+
+  /** A lookup that cannot run leaves the query owner-only, as if it pinned nothing. */
+  private static List<EntityReference> findAnchors(List<UUID> candidates) {
+    List<EntityReference> anchors = List.of();
+    if (Entity.hasEntityRepository(Entity.CONTEXT_MEMORY)) {
+      try {
+        anchors =
+            ((ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+                .findAnchors(candidates);
+      } catch (JdbiException e) {
+        LOG.warn("Cannot resolve pinned memory anchors {}; search stays owner-only", candidates, e);
+      }
+    }
+    return anchors;
   }
 
   public static void enforceVisibility(ContextMemory memory, String userName, boolean isAdmin) {

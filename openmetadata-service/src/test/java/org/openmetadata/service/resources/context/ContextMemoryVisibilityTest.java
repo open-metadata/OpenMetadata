@@ -24,9 +24,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -357,6 +361,76 @@ class ContextMemoryVisibilityTest {
         ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "primaryEntity"));
     assertEquals("*", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "*"));
     assertEquals("", ContextMemoryVisibility.guardFields(Entity.TABLE, ""));
+  }
+
+  @Test
+  void readableAnchorIds_keepsTheAnchorsTheCallerMayRead() {
+    EntityReference hidden =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE).withName("salaries");
+
+    Set<String> readable =
+        ContextMemoryVisibility.readableAnchorIds(
+            BOB,
+            List.of(ANCHOR.getId().toString(), hidden.getId().toString()),
+            candidates -> List.of(ANCHOR, hidden),
+            (userName, anchor) -> BOB.equals(userName) && ANCHOR.equals(anchor));
+
+    assertEquals(Set.of(ANCHOR.getId().toString()), readable);
+  }
+
+  @Test
+  void readableAnchorIds_anIdThatAnchorsNoMemoryIsNeverReadable() {
+    Set<String> readable =
+        ContextMemoryVisibility.readableAnchorIds(
+            BOB, List.of(ANCHOR.getId().toString()), candidates -> List.of(), (u, a) -> true);
+
+    assertTrue(readable.isEmpty());
+  }
+
+  @Test
+  void readableAnchorIds_anAnonymousCallerReadsNoAnchorAndLooksNothingUp() {
+    Set<String> readable =
+        ContextMemoryVisibility.readableAnchorIds(
+            null,
+            List.of(ANCHOR.getId().toString()),
+            candidates -> {
+              throw new AssertionError("an anonymous caller must not reach the database");
+            },
+            (u, a) -> true);
+
+    assertTrue(readable.isEmpty());
+  }
+
+  @Test
+  void readableAnchorIds_looksUpAtMostTheCapOfAnchors() {
+    List<String> pinned =
+        IntStream.range(0, 3 * ContextMemoryVisibility.MAX_PINNED_ANCHORS)
+            .mapToObj(i -> UUID.randomUUID().toString())
+            .toList();
+    AtomicInteger lookedUp = new AtomicInteger();
+
+    ContextMemoryVisibility.readableAnchorIds(
+        BOB,
+        pinned,
+        candidates -> {
+          lookedUp.set(candidates.size());
+          return List.of();
+        },
+        (u, a) -> true);
+
+    assertEquals(ContextMemoryVisibility.MAX_PINNED_ANCHORS, lookedUp.get());
+  }
+
+  @Test
+  void pinnedAnchors_dropsWhatIsNotAnEntityIdAndRepeats() {
+    String id = ANCHOR.getId().toString();
+
+    List<UUID> candidates =
+        ContextMemoryVisibility.pinnedAnchors(
+            Arrays.asList("not-a-uuid", "", null, " " + id.toUpperCase(Locale.ROOT) + " ", id));
+
+    assertEquals(List.of(ANCHOR.getId()), candidates);
+    assertTrue(ContextMemoryVisibility.pinnedAnchors(null).isEmpty());
   }
 
   private SecurityContext securityContextFor(String userName) {

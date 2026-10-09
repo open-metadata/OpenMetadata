@@ -48,6 +48,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -436,7 +437,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       applySearchFilter(filter, requestBuilder);
     }
 
-    applyRbacCondition(subjectContext, requestBuilder, statuses);
+    applyRbacCondition(
+        subjectContext,
+        requestBuilder,
+        statuses,
+        ContextMemorySearchVisibility.pinnedAnchorIds(filter));
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -620,7 +625,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     requestBuilder.size(request.getSize());
 
     // applyRbacCondition already applies the ContextMemory visibility filter.
-    applyRbacCondition(subjectContext, requestBuilder);
+    applyRbacCondition(
+        subjectContext, requestBuilder, ContextMemorySearchVisibility.pinnedAnchorIds(request));
     applyQueryFilter(requestBuilder, request);
     // Strip any clusterAlias prefix first, the same way doSearch does — the deleted filter compares
     // this against the dataAsset/all aliases.
@@ -630,15 +636,21 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   private void applyRbacCondition(
-      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      Collection<String> pinnedAnchorIds) {
     applyRbacCondition(
-        subjectContext, requestBuilder, ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+        subjectContext,
+        requestBuilder,
+        ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+        pinnedAnchorIds);
   }
 
   private void applyRbacCondition(
       SubjectContext subjectContext,
       ElasticSearchRequestBuilder requestBuilder,
-      List<ContextMemoryStatus> statuses) {
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQueryBuilder != null) {
@@ -660,7 +672,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
     }
-    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses, pinnedAnchorIds);
   }
 
   /**
@@ -684,17 +696,12 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
    * memories. Non-memory documents are left untouched.
    */
   private void applyContextMemoryVisibility(
-      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
-    applyContextMemoryVisibility(
-        subjectContext, requestBuilder, ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
-  }
-
-  private void applyContextMemoryVisibility(
       SubjectContext subjectContext,
       ElasticSearchRequestBuilder requestBuilder,
-      List<ContextMemoryStatus> statuses) {
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds) {
     OMQueryBuilder visibilityBuilder =
-        contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses);
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds);
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -956,7 +963,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
 
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(
+          subjectContext,
+          requestBuilder,
+          ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+          ContextMemorySearchVisibility.pinnedAnchorIds(request));
 
       // Add aggregations if needed
       ElasticSearchSourceBuilderFactory factory = getSearchBuilderFactory();
@@ -1579,7 +1590,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         requestBuilder.query());
 
     // Apply RBAC query
-    applyRbacCondition(subjectContext, requestBuilder);
+    applyRbacCondition(
+        subjectContext, requestBuilder, ContextMemorySearchVisibility.pinnedAnchorIds(request));
 
     applyQueryFilter(requestBuilder, request);
 

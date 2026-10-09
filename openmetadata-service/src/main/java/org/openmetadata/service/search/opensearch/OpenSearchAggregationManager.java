@@ -76,8 +76,12 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
    * {@code OpenSearchRequestBuilder#build} apply its org-wide-only default instead.
    */
   private void applyContextMemoryVisibility(
-      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
-    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder, String queryFilter) {
+    OMQueryBuilder visibilityBuilder =
+        MEMORY_VISIBILITY.buildVisibilityFilter(
+            subjectContext,
+            ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+            ContextMemorySearchVisibility.pinnedAnchorIds(queryFilter));
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -601,7 +605,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       String resolvedIndex =
           Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
 
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(subjectContext, requestBuilder, request.getQueryFilter());
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

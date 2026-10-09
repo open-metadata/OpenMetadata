@@ -359,6 +359,36 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return nullOrEmpty(refs) ? null : refs.getFirst();
   }
 
+  /** The entities among {@code candidateIds} that anchor at least one memory, with their type. */
+  public List<EntityReference> findAnchors(List<UUID> candidateIds) {
+    List<EntityReference> anchors = List.of();
+    if (!nullOrEmpty(candidateIds)) {
+      anchors =
+          daoCollection
+              .relationshipDAO()
+              .findDistinctFromEdges(
+                  candidateIds.stream().map(UUID::toString).toList(),
+                  Entity.CONTEXT_MEMORY,
+                  List.of(Relationship.APPLIED_TO.ordinal(), Relationship.HAS.ordinal()))
+              .stream()
+              .filter(ContextMemoryRepository::isAnchorEdge)
+              .map(
+                  edge ->
+                      new EntityReference()
+                          .withId(UUID.fromString(edge.getFromId()))
+                          .withType(edge.getFromEntity()))
+              .distinct()
+              .toList();
+    }
+    return anchors;
+  }
+
+  /** The edge {@link #getPrimaryEntity} reads: APPLIED_TO, or the older HAS from a non-domain. */
+  private static boolean isAnchorEdge(CollectionDAO.EntityRelationshipObject edge) {
+    return edge.getRelation() == Relationship.APPLIED_TO.ordinal()
+        || !Entity.DOMAIN.equals(edge.getFromEntity());
+  }
+
   private List<EntityReference> getRelatedEntities(ContextMemory entity) {
     return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null);
   }

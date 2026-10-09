@@ -975,6 +975,25 @@ public interface CoreRelationshipDAOs {
           fromIds, chunk -> findToBatchByToEntityInternal(chunk, relation, toEntityType));
     }
 
+    /**
+     * The distinct (from entity, relation) pairs among {@code fromIds} with a live edge of one of
+     * {@code relations} to an entity of {@code toEntityType}. Only {@code fromId}, {@code
+     * fromEntity} and {@code relation} are set. One row per pair however many edges it stands for,
+     * so it stays cheap for an entity with thousands of them.
+     */
+    @SqlQuery(
+        "SELECT DISTINCT fromId, fromEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND toEntity = :toEntityType "
+            + "AND relation IN (<relations>) "
+            + "AND deleted = FALSE")
+    @UseRowMapper(FromEdgeMapper.class)
+    List<EntityRelationshipObject> findDistinctFromEdges(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("toEntityType") String toEntityType,
+        @BindList("relations") List<Integer> relations);
+
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
@@ -1867,6 +1886,17 @@ public interface CoreRelationshipDAOs {
         return new RelationshipTypeUsage()
             .withRelationshipType(relationshipType)
             .withCount(rs.getInt("cnt"));
+      }
+    }
+
+    class FromEdgeMapper implements RowMapper<EntityRelationshipObject> {
+      @Override
+      public EntityRelationshipObject map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipObject.builder()
+            .fromId(rs.getString("fromId"))
+            .fromEntity(rs.getString("fromEntity"))
+            .relation(rs.getInt("relation"))
+            .build();
       }
     }
 
