@@ -17,7 +17,10 @@ import { NODE_HEIGHT, NODE_WIDTH } from '../../../constants/Lineage.constants';
 const FALLBACK_LAYER_GAP = 180;
 const FALLBACK_NODE_GAP = 40;
 
-export const layoutLargeGraphWithoutElk = (nodes: Node[]): Node[] => {
+export const layoutLargeGraphWithoutElk = (
+  nodes: Node[],
+  calculatedHeights: Map<string, number> = new Map()
+): Node[] => {
   const nodesByDepth = new Map<number, Node[]>();
 
   nodes.forEach((node) => {
@@ -36,17 +39,22 @@ export const layoutLargeGraphWithoutElk = (nodes: Node[]): Node[] => {
     let y = 0;
 
     layer.forEach((node) => {
+      const height =
+        calculatedHeights.get(node.id) ?? node.height ?? NODE_HEIGHT;
+
       layerYPositions.set(node.id, y);
-      y += (node.height ?? NODE_HEIGHT) + FALLBACK_NODE_GAP;
+      y += height + FALLBACK_NODE_GAP;
     });
   });
 
   return nodes.map((node) => {
     const depth = node.data?.nodeDepth ?? 0;
     const depthIndex = depths.indexOf(depth);
+    const height = calculatedHeights.get(node.id) ?? node.height ?? NODE_HEIGHT;
 
     return {
       ...node,
+      height,
       position: {
         x: (depthIndex - rootDepthIndex) * (NODE_WIDTH + FALLBACK_LAYER_GAP),
         y: layerYPositions.get(node.id) ?? 0,

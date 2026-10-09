@@ -50,6 +50,23 @@ describe('layoutLargeGraphWithoutElk', () => {
     expect(result.map((node) => node.position.y)).toEqual([0, 106, 246]);
   });
 
+  it('uses calculated heights to prevent expanded nodes from overlapping', () => {
+    const nodes = [createNode('expanded', 0, 66), createNode('next', 0, 66)];
+
+    const calculatedHeights = new Map([
+      ['expanded', 300],
+      ['next', 66],
+    ]);
+
+    const result = layoutLargeGraphWithoutElk(nodes, calculatedHeights);
+
+    expect(result[0].height).toBe(300);
+    expect(result[1].position.y).toBe(340);
+    expect(result[1].position.y).toBeGreaterThanOrEqual(
+      result[0].position.y + (result[0].height ?? 66) + 40
+    );
+  });
+
   it('preserves all nodes and makes them visible', () => {
     const nodes = [
       createNode('upstream', -1),

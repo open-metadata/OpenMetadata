@@ -13,7 +13,7 @@
 
 import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import type { Edge, Node } from 'reactflow';
-import { NODE_WIDTH } from '../../../constants/Lineage.constants';
+import { NODE_HEIGHT, NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { layoutLargeGraphWithoutElk } from './LargeGraphLayout';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getNodeHeight } from '../../CanvasUtils';
@@ -76,8 +76,12 @@ export const getELKLayoutedElements = async (
       elkEdges.length > VERY_LARGE_GRAPH_EDGE_THRESHOLD;
 
     if (isVeryLargeGraph) {
+      const calculatedHeights = new Map(
+        elkNodes.map((node) => [node.id, node.height ?? NODE_HEIGHT])
+      );
+
       return {
-        nodes: layoutLargeGraphWithoutElk(nodes),
+        nodes: layoutLargeGraphWithoutElk(nodes, calculatedHeights),
         edges: edges ?? [],
       };
     }
