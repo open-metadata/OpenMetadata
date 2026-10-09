@@ -602,7 +602,7 @@ const ContextCenterDashboardPage: FC = () => {
                     {recentlyViewedItems.map((item) => (
                       <Box
                         align="center"
-                        className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                        className="tw:cursor-pointer tw:rounded tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover"
                         gap={2}
                         key={item.id}
                         role="button"
@@ -671,7 +671,7 @@ const ContextCenterDashboardPage: FC = () => {
                     {mostCitedItems.map((item) => (
                       <Box
                         align="center"
-                        className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                        className="tw:cursor-pointer tw:rounded tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover"
                         gap={2}
                         key={item.id}
                         role="button"
