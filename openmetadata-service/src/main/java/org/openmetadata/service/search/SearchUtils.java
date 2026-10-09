@@ -858,6 +858,7 @@ public final class SearchUtils {
    * @param updatedDocuments documents the update-by-query actually modified
    * @param versionConflicts documents skipped because another write won the version race
    * @param failureReasons per-shard failure reasons, empty when the call fully succeeded
+   * @param attempts times the update-by-query ran
    */
   public record ColumnLineageFlushOutcome(
       String operation,
@@ -865,18 +866,38 @@ public final class SearchUtils {
       int requestedFqnCount,
       long updatedDocuments,
       long versionConflicts,
-      List<String> failureReasons)
+      List<String> failureReasons,
+      int attempts)
       implements UpdateByQueryReconciler.Outcome<ColumnLineageFlushOutcome> {
 
+    /** The outcome of a single attempt. */
+    public ColumnLineageFlushOutcome(
+        String operation,
+        String indexName,
+        int requestedFqnCount,
+        long updatedDocuments,
+        long versionConflicts,
+        List<String> failureReasons) {
+      this(
+          operation,
+          indexName,
+          requestedFqnCount,
+          updatedDocuments,
+          versionConflicts,
+          failureReasons,
+          1);
+    }
+
     @Override
-    public ColumnLineageFlushOutcome withUpdatedDocuments(long updatedDocuments) {
+    public ColumnLineageFlushOutcome afterAttempts(long updatedDocuments, int attempts) {
       return new ColumnLineageFlushOutcome(
           operation,
           indexName,
           requestedFqnCount,
           updatedDocuments,
           versionConflicts,
-          failureReasons);
+          failureReasons,
+          attempts);
     }
   }
 
@@ -900,11 +921,12 @@ public final class SearchUtils {
     } else if (outcome.versionConflicts() > 0) {
       LOG.warn(
           "{} in upstream lineage for index {} hit {} version conflict(s); those documents kept "
-              + "their previous column FQNs after reconciliation. {} document(s) updated for {} "
+              + "their previous column FQNs after {} attempt(s). {} document(s) updated for {} "
               + "requested FQN(s).",
           outcome.operation(),
           outcome.indexName(),
           outcome.versionConflicts(),
+          outcome.attempts(),
           outcome.updatedDocuments(),
           outcome.requestedFqnCount());
     } else if (outcome.updatedDocuments() == 0 && outcome.requestedFqnCount() > 0) {

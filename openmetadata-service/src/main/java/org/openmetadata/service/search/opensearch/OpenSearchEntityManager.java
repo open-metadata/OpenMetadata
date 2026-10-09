@@ -416,11 +416,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
     }
 
-    UpdateByQueryResponse response =
-        client.updateByQuery(
+    UpdateByQueryRequest request =
+        UpdateByQueryRequest.of(
             u ->
                 u.index(indexNames)
                     .query(q -> q.bool(boolQueryBuilder.build()))
+                    .conflicts(Conflicts.Proceed)
                     .script(
                         s ->
                             s.inline(
@@ -435,18 +436,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                         .params(Map.of())))
                     .refresh(Refresh.True));
 
+    UpdateByQueryOutcome outcome = runReconciled("softDeleteOrRestoreChildren", request, true);
+
     LOG.info(
         "Successfully soft deleted/restored children in OpenSearch for indices: {}, updated documents: {}",
         indexNames,
-        response.updated());
-
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("UpdateByQuery encountered failures: {}", failureDetails);
-    }
+        outcome.updatedDocuments());
   }
 
   @Override

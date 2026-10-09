@@ -10,13 +10,24 @@ public record UpdateByQueryOutcome(
     List<String> indices,
     long updatedDocuments,
     long versionConflicts,
-    List<String> failureReasons)
+    List<String> failureReasons,
+    int attempts)
     implements UpdateByQueryReconciler.Outcome<UpdateByQueryOutcome> {
 
+  /** The outcome of a single attempt. */
+  public UpdateByQueryOutcome(
+      String operation,
+      List<String> indices,
+      long updatedDocuments,
+      long versionConflicts,
+      List<String> failureReasons) {
+    this(operation, indices, updatedDocuments, versionConflicts, failureReasons, 1);
+  }
+
   @Override
-  public UpdateByQueryOutcome withUpdatedDocuments(long updatedDocuments) {
+  public UpdateByQueryOutcome afterAttempts(long updatedDocuments, int attempts) {
     return new UpdateByQueryOutcome(
-        operation, indices, updatedDocuments, versionConflicts, failureReasons);
+        operation, indices, updatedDocuments, versionConflicts, failureReasons, attempts);
   }
 
   /**
@@ -29,11 +40,11 @@ public record UpdateByQueryOutcome(
     }
     if (versionConflicts > 0) {
       LOG.warn(
-          "{} on {} left {} document(s) unchanged after {} attempts: a concurrent write held them",
+          "{} on {} left {} document(s) unchanged after {} attempt(s): a concurrent write held them",
           operation,
           indices,
           versionConflicts,
-          UpdateByQueryReconciler.MAX_ATTEMPTS);
+          attempts);
     }
   }
 
@@ -46,8 +57,8 @@ public record UpdateByQueryOutcome(
     if (versionConflicts > 0) {
       String reason =
           String.format(
-              "%s: %d version conflict(s) left after %d attempts",
-              operation, versionConflicts, UpdateByQueryReconciler.MAX_ATTEMPTS);
+              "%s: %d version conflict(s) left after %d attempt(s)",
+              operation, versionConflicts, attempts);
       entityIds.forEach(id -> SearchIndexRetryQueue.enqueue(id, null, reason));
     }
   }

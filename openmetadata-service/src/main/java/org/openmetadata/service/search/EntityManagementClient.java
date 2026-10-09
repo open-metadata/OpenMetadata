@@ -93,6 +93,10 @@ public interface EntityManagementClient {
   /**
    * Soft deletes or restores child entities using a script update.
    *
+   * <p>The script must give the same result when it runs twice on a document: documents a
+   * concurrent write held are retried by running the query again ({@link
+   * UpdateByQueryReconciler}).
+   *
    * @param indexNames the list of index names
    * @param scriptTxt the script text for the update operation
    * @param fieldAndValue list of field-value pairs to match for the update

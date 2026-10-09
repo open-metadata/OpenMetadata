@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.opensearch;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -11,13 +12,16 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.function.Function;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.Conflicts;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryRequest;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
@@ -67,6 +71,25 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
 
     verify(client, times(1)).updateByQuery(any(UpdateByQueryRequest.class));
     verify(indices, never()).refresh(any(Function.class));
+  }
+
+  @Test
+  void softDeletingChildrenProceedsPastAConflictAndRetriesIt() throws Exception {
+    UpdateByQueryResponse conflicted = response(1, 1);
+    UpdateByQueryResponse clean = response(1, 0);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(conflicted, clean);
+
+    new OpenSearchEntityManager(client)
+        .softDeleteOrRestoreChildren(
+            List.of("table_search_index"),
+            "ctx._source.put('deleted', true)",
+            List.of(Pair.of("databaseSchema.id", "schema-id")));
+
+    ArgumentCaptor<UpdateByQueryRequest> requests =
+        ArgumentCaptor.forClass(UpdateByQueryRequest.class);
+    verify(client, times(2)).updateByQuery(requests.capture());
+    assertEquals(Conflicts.Proceed, requests.getValue().conflicts());
+    verify(indices).refresh(any(Function.class));
   }
 
   private static UpdateByQueryResponse response(long updated, long versionConflicts) {

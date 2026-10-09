@@ -15,7 +15,8 @@ import org.openmetadata.service.search.SearchRetryUtil.IOOperation;
  *
  * <p>A query runs again only when that is safe: the next attempt applies the script again to every
  * document the query still matches, including those the previous attempt already rewrote. Shard
- * failures are never retried; they are reported.
+ * failures are never retried; they are reported. See
+ * ADR:2026-10-09-synchronous-update-by-query-retries-version-conflicts.
  */
 @Slf4j
 public final class UpdateByQueryReconciler {
@@ -32,8 +33,8 @@ public final class UpdateByQueryReconciler {
 
     List<String> failureReasons();
 
-    /** The same outcome with the documents every attempt updated. */
-    O withUpdatedDocuments(long updatedDocuments);
+    /** The same outcome with the documents every attempt updated and the attempts made. */
+    O afterAttempts(long updatedDocuments, int attempts);
   }
 
   @FunctionalInterface
@@ -57,7 +58,7 @@ public final class UpdateByQueryReconciler {
       updatedDocuments += outcome.updatedDocuments();
       attempts++;
     }
-    return outcome.withUpdatedDocuments(updatedDocuments);
+    return outcome.afterAttempts(updatedDocuments, attempts);
   }
 
   /**

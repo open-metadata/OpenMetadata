@@ -390,11 +390,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
           Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
     }
 
-    UpdateByQueryResponse response =
-        client.updateByQuery(
+    UpdateByQueryRequest request =
+        UpdateByQueryRequest.of(
             u ->
                 u.index(indexNames)
                     .query(q -> q.bool(boolQueryBuilder.build()))
+                    .conflicts(Conflicts.Proceed)
                     .script(
                         s ->
                             s.source(ss -> ss.scriptString(scriptTxt))
@@ -402,17 +403,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                 .params(Map.of()))
                     .refresh(true));
 
+    UpdateByQueryOutcome outcome = runReconciled("softDeleteOrRestoreChildren", request, true);
+
     LOG.info(
         "Successfully soft deleted/restored children in ElasticSearch for indices: {}, updated documents: {}",
         indexNames,
-        response.updated());
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkIndexByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("UpdateByQuery encountered failures: {}", failureDetails);
-    }
+        outcome.updatedDocuments());
   }
 
   @Override

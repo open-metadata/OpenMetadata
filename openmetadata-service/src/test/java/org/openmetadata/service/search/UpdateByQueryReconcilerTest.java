@@ -31,6 +31,7 @@ class UpdateByQueryReconcilerTest {
 
     assertEquals(0, result.versionConflicts());
     assertEquals(5, result.updatedDocuments());
+    assertEquals(2, result.attempts());
   }
 
   @Test
@@ -47,6 +48,7 @@ class UpdateByQueryReconcilerTest {
             true);
 
     assertEquals(UpdateByQueryReconciler.MAX_ATTEMPTS, attempts.get());
+    assertEquals(UpdateByQueryReconciler.MAX_ATTEMPTS, result.attempts());
     assertEquals(2, result.versionConflicts());
   }
 
@@ -66,6 +68,7 @@ class UpdateByQueryReconcilerTest {
             false);
 
     assertEquals(1, attempts.get());
+    assertEquals(1, result.attempts());
     assertEquals(1, result.versionConflicts());
   }
 
@@ -80,6 +83,7 @@ class UpdateByQueryReconcilerTest {
             true);
 
     assertEquals(List.of("invalid script"), result.failureReasons());
+    assertEquals(1, result.attempts());
   }
 
   @Test
@@ -97,6 +101,19 @@ class UpdateByQueryReconcilerTest {
 
       queue.verify(() -> SearchIndexRetryQueue.enqueue(eq("a"), isNull(), anyString()));
       queue.verify(() -> SearchIndexRetryQueue.enqueue(eq("b"), isNull(), anyString()));
+    }
+  }
+
+  @Test
+  void theQueuedReasonStatesTheAttemptsActuallyMade() {
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      new UpdateByQueryOutcome("rename", INDICES, 0, 2, List.of(), 1)
+          .requeueIfConflicted(List.of("a"));
+
+      queue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  eq("a"), isNull(), eq("rename: 2 version conflict(s) left after 1 attempt(s)")));
     }
   }
 
