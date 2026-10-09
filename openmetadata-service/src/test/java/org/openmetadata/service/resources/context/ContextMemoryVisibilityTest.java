@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -419,6 +421,28 @@ class ContextMemoryVisibilityTest {
         (u, a) -> true);
 
     assertEquals(ContextMemoryVisibility.MAX_PINNED_ANCHORS, lookedUp.get());
+  }
+
+  @Test
+  void readableAnchorIds_withoutAMemoryRepositoryLeavesTheQueryOwnerOnly() {
+    assertTrue(
+        ContextMemoryVisibility.readableAnchorIds(BOB, List.of(ANCHOR.getId().toString()))
+            .isEmpty());
+  }
+
+  @Test
+  void readableAnchorIds_aFailedLookupLeavesTheQueryOwnerOnly() {
+    ContextMemoryRepository repository = Mockito.mock(ContextMemoryRepository.class);
+    Mockito.when(repository.findAnchors(any()))
+        .thenThrow(new UnableToExecuteStatementException("database unavailable"));
+    entityStaticMock.when(() -> Entity.hasEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(true);
+    entityStaticMock
+        .when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+        .thenReturn(repository);
+
+    assertTrue(
+        ContextMemoryVisibility.readableAnchorIds(BOB, List.of(ANCHOR.getId().toString()))
+            .isEmpty());
   }
 
   @Test

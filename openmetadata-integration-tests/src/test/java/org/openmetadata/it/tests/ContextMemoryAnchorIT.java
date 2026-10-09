@@ -224,6 +224,8 @@ public class ContextMemoryAnchorIT {
     assertEquals(Set.of(shown.getId()), searchHits(clientOf(reader), query, pinned));
     assertTrue(ids(memoriesAs(blocked).list(byAnchor)).isEmpty());
     assertTrue(searchHits(clientOf(blocked), query, pinned).isEmpty());
+    assertEquals(1, countedHits(clientOf(reader), query, pinned), "counts agree with the hits");
+    assertEquals(0, countedHits(clientOf(blocked), query, pinned));
     assertTrue(
         searchHits(clientOf(reader), query, null).isEmpty(),
         "free text that pins no anchor keeps anchored memories owner-only");
@@ -459,6 +461,19 @@ public class ContextMemoryAnchorIT {
     return "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"primaryEntity.id\":\""
         + anchor.getId()
         + "\"}}]}}}";
+  }
+
+  /** The documents {@code /v1/search/entityTypeCounts} counts for {@code client}. */
+  private static long countedHits(OpenMetadataClient client, String query, String queryFilter) {
+    String response =
+        client
+            .search()
+            .entityTypeCounts()
+            .query(query)
+            .index("context_memory_search_index")
+            .queryFilter(queryFilter)
+            .execute();
+    return JsonUtils.readTree(response).path("hits").path("total").path("value").asLong();
   }
 
   /** The memory ids {@code /v1/search/query} returns to {@code client}. */
