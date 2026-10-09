@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-08T03:48:55Z",
+  "generatedAt": "2026-10-09T03:28:35Z",
   "window": 10,
   "threshold": 2,
   "runs": [
@@ -48,6 +48,11 @@
       "runId": "37720017171",
       "sourceSha": "278e4abf6fb0c3027d5f1878bac92839995ef75c",
       "recordedAt": "2026-10-08T03:48:55Z"
+    },
+    {
+      "runId": "37876815560",
+      "sourceSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
+      "recordedAt": "2026-10-09T03:28:35Z"
     }
   ],
   "entries": {
@@ -89,6 +94,16 @@
       "file": "Features/AIMode/ProfileNotificationTab.spec.ts",
       "title": "Multiple Filters Alert",
       "lastSeenSha": "170677437861064916f8ac34ceea410bb4ca8273",
+      "hardFailure": false
+    },
+    "chromium :: Features/ActivityFeed.spec.ts :: ActivityFeed: activity + conversation merge (regression #25894) \u203a All badge, header and rendered list agree on the count": {
+      "observations": [
+        "37876815560"
+      ],
+      "project": "chromium",
+      "file": "Features/ActivityFeed.spec.ts",
+      "title": "ActivityFeed: activity + conversation merge (regression #25894) \u203a All badge, header and rendered list agree on the count",
+      "lastSeenSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
       "hardFailure": false
     },
     "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Draft Persistence \u203a description: switching articles does not bleed unsaved content into next article": {
@@ -189,6 +204,16 @@
       "file": "Pages/ServiceEntity.spec.ts",
       "title": "Delete Api Service",
       "lastSeenSha": "857ded977baaf4e0662f28fb32215027964c5a6d",
+      "hardFailure": false
+    },
+    "chromium :: Pages/Tags.spec.ts :: Verify Owner Add Delete": {
+      "observations": [
+        "37876815560"
+      ],
+      "project": "chromium",
+      "file": "Pages/Tags.spec.ts",
+      "title": "Verify Owner Add Delete",
+      "lastSeenSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
       "hardFailure": false
     }
   },
