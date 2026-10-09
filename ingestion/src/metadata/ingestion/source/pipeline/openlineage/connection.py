@@ -167,6 +167,9 @@ class NatsJetStreamClient:
     _loop: asyncio.AbstractEventLoop = field(repr=False)
     _thread: threading.Thread = field(repr=False)
     _temp_files: list[str] = field(default_factory=list)
+    # What the server enforces, which is not the configured value when an existing
+    # durable was reused: the keep-alive has to be paced off this one
+    effective_ack_wait: float | None = None
 
     def _run(self, coro: Any, timeout: float | None = None) -> Any:
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result(timeout=timeout)
@@ -256,7 +259,7 @@ async def _existing_consumer(js: Any, consumer: Any, broker: NatsBrokerConfig) -
     return None
 
 
-async def _ensure_consumer(js: Any, consumer: Any, broker: NatsBrokerConfig) -> None:
+async def _ensure_consumer(js: Any, consumer: Any, broker: NatsBrokerConfig) -> float | None:
     """Create the durable consumer, or confirm the existing one is ours.
 
     Reusing a durable by name is the point -- it carries the position in the
@@ -266,10 +269,13 @@ async def _ensure_consumer(js: Any, consumer: Any, broker: NatsBrokerConfig) -> 
     to it blindly means consuming and acknowledging events this connector was
     never configured to read. A subject filter that does not match is refused
     instead of silently adopted.
+
+    Returns the acknowledgement wait the server will enforce, which is the existing
+    consumer's when one is reused.
     """
     existing = await _existing_consumer(js, consumer, broker)
     if existing is None:
-        return
+        return consumer.ack_wait
 
     wanted = _consumer_subject_filter(consumer)
     found = _consumer_subject_filter(existing)
@@ -296,6 +302,8 @@ async def _ensure_consumer(js: Any, consumer: Any, broker: NatsBrokerConfig) -> 
                 getattr(in_use, "value", in_use),
                 getattr(configured, "value", configured),
             )
+
+    return existing.ack_wait
 
 
 def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
@@ -332,23 +340,30 @@ def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
                     # a limit JetStream would redeliver them on every run
                     max_deliver=broker.maxDeliver,
                 )
-                await _ensure_consumer(js, consumer, broker)
+                effective_ack_wait = await _ensure_consumer(js, consumer, broker)
                 subscription = await js.pull_subscribe_bind(broker.durableConsumerName, stream=broker.streamName)
             except Exception:
                 # The connection is open by now, so a failure here would leak it: one
                 # live connection per attempt against a stream that does not exist
                 await nc.close()
                 raise
-            return nc, subscription
+            return nc, subscription, effective_ack_wait
 
-        nc, subscription = asyncio.run_coroutine_threadsafe(_connect(), loop).result()
+        nc, subscription, effective_ack_wait = asyncio.run_coroutine_threadsafe(_connect(), loop).result()
     except Exception as exc:
         cleanup_temp_secrets(temp_files)
         loop.call_soon_threadsafe(loop.stop)
         thread.join(timeout=ACK_TIMEOUT_SECONDS)
         msg = f"Unknown error connecting with NATS: {exc}."
         raise SourceConnectionException(msg)  # noqa: B904
-    return NatsJetStreamClient(nc=nc, subscription=subscription, _loop=loop, _thread=thread, _temp_files=temp_files)
+    return NatsJetStreamClient(
+        nc=nc,
+        subscription=subscription,
+        _loop=loop,
+        _thread=thread,
+        _temp_files=temp_files,
+        effective_ack_wait=effective_ack_wait,
+    )
 
 
 class OpenLineageConnection(

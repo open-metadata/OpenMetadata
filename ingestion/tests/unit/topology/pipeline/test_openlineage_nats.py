@@ -54,6 +54,18 @@ def _message(payload: dict) -> MagicMock:
     return message
 
 
+def _client(effective_ack_wait: float | None = None) -> MagicMock:
+    """A stand-in for NatsJetStreamClient.
+
+    ``effective_ack_wait`` is a real attribute on the client and holds a number or
+    None. A bare MagicMock would hand the poller another MagicMock, which the
+    keep-alive arithmetic cannot use.
+    """
+    client = MagicMock()
+    client.effective_ack_wait = effective_ack_wait
+    return client
+
+
 def _fake_nats(js: MagicMock) -> MagicMock:
     connection = MagicMock()
     connection.jetstream.return_value = js
@@ -216,7 +228,7 @@ class TestNatsConnection:
 class TestPollNats:
     def test_yields_events_and_acknowledges_them(self, source, broker, event_payload):
         messages = [_message(event_payload), _message(event_payload)]
-        source.client = MagicMock()
+        source.client = _client()
         source.client.fetch.side_effect = [messages, []]
 
         events = list(source._poll_nats(broker))
@@ -225,7 +237,7 @@ class TestPollNats:
         assert source.client.ack.call_count == 2
 
     def test_stops_after_the_session_timeout(self, source, broker):
-        source.client = MagicMock()
+        source.client = _client()
         source.client.fetch.return_value = []
 
         assert list(source._poll_nats(broker)) == []
@@ -233,7 +245,7 @@ class TestPollNats:
         assert source.client.fetch.call_count == 1
 
     def test_unparseable_message_is_acknowledged_and_skipped(self, source, broker):
-        source.client = MagicMock()
+        source.client = _client()
         source.client.fetch.side_effect = [[_message({"not": "an event"})], []]
 
         assert list(source._poll_nats(broker)) == []
@@ -242,7 +254,7 @@ class TestPollNats:
 
     def test_filters_out_event_types_that_carry_no_lineage(self, source, broker, event_payload):
         aborted = {**event_payload, "eventType": "ABORT"}
-        source.client = MagicMock()
+        source.client = _client()
         source.client.fetch.side_effect = [[_message(aborted)], []]
 
         assert list(source._poll_nats(broker)) == []
@@ -286,6 +298,29 @@ class TestDurableConsumerReuse:
         try:
             js.pull_subscribe_bind.assert_awaited_once()
             js.add_consumer.assert_not_awaited()
+        finally:
+            client.close()
+
+    def test_the_servers_ack_wait_is_what_reaches_the_client(self, broker, monkeypatch):
+        """Pacing the keep-alive off the config would be slower than the real deadline."""
+        js = _fake_jetstream(existing=ConsumerConfig(durable_name="openmetadata", filter_subject=">", ack_wait=5))
+        _connect_with(monkeypatch, js)
+
+        client = _get_nats_connection(broker)
+        try:
+            # the config asks for 60; the durable that exists enforces 5
+            assert broker.ackWait == 60
+            assert client.effective_ack_wait == 5
+        finally:
+            client.close()
+
+    def test_a_created_consumer_reports_the_configured_ack_wait(self, broker, monkeypatch):
+        js = _fake_jetstream(existing=None)
+        _connect_with(monkeypatch, js)
+
+        client = _get_nats_connection(broker)
+        try:
+            assert client.effective_ack_wait == broker.ackWait
         finally:
             client.close()
 
@@ -346,7 +381,7 @@ class TestBatchKeepalive:
         """One refresh only buys a single ackWait, however long the pipeline takes."""
         monkeypatch.setattr(openlineage_metadata, "MIN_NATS_KEEPALIVE_INTERVAL", 0.01)
         message = _message(event_payload)
-        source.client = MagicMock()
+        source.client = _client()
         source.client.fetch.side_effect = [[message], []]
 
         for _ in source._poll_nats(quick_broker):
@@ -359,7 +394,7 @@ class TestBatchKeepalive:
     def test_a_batch_that_keeps_up_costs_no_control_traffic(self, source, broker, event_payload):
         """Refreshing per message was N(N-1)/2 blocking calls even when nothing was slow."""
         messages = [_message(event_payload) for _ in range(5)]
-        source.client = MagicMock()
+        source.client = _client()
         source.client.fetch.side_effect = [messages, []]
 
         assert len(list(source._poll_nats(broker))) == 5
@@ -370,7 +405,7 @@ class TestBatchKeepalive:
         monkeypatch.setattr(openlineage_metadata, "MIN_NATS_KEEPALIVE_INTERVAL", 0.01)
         acknowledged: set[int] = set()
         refreshed_after_ack: list[int] = []
-        source.client = MagicMock()
+        source.client = _client()
         source.client.ack.side_effect = lambda m: acknowledged.add(id(m))
         source.client.in_progress.side_effect = lambda m: (
             refreshed_after_ack.append(id(m)) if id(m) in acknowledged else None
@@ -384,8 +419,43 @@ class TestBatchKeepalive:
 
     def test_nothing_is_kept_alive_for_an_unparseable_message(self, source, quick_broker):
         """It is acknowledged straight away, so there is no processing window to cover."""
-        source.client = MagicMock()
+        source.client = _client()
         source.client.fetch.side_effect = [[_message({"not": "an event"})], []]
 
         assert list(source._poll_nats(quick_broker)) == []
         source.client.in_progress.assert_not_called()
+
+    def test_the_heartbeat_follows_the_reused_durables_deadline(self, source, broker, event_payload, monkeypatch):
+        """The bug: a 60s config against a 5s durable left the refresh 25s too late."""
+        monkeypatch.setattr(openlineage_metadata, "MIN_NATS_KEEPALIVE_INTERVAL", 0.01)
+        # as _get_nats_connection reports it after binding to an existing durable
+        source.client = _client(effective_ack_wait=1)
+        source.client.fetch.side_effect = [[_message(event_payload)], []]
+
+        for _ in source._poll_nats(broker):
+            # under the configured 60s the first refresh would be 30s away
+            time.sleep(1.0)
+
+        assert source.client.in_progress.call_count >= 1, "the lease was never refreshed"
+
+    def test_the_interval_stays_under_the_shortest_allowed_deadline(self, source, event_payload, monkeypatch):
+        """ackWait may be 1, where the 1.0s floor alone lands on the deadline itself."""
+        recorded: list[float] = []
+        monkeypatch.setattr(openlineage_metadata, "MIN_NATS_KEEPALIVE_INTERVAL", 1.0)
+        quick = NatsBrokerConfig(
+            natsServers="nats://localhost:4222",
+            streamName="OPENLINEAGE",
+            poolTimeout=0.01,
+            sessionTimeout=0,
+            ackWait=1,
+        )
+        source.client = _client()
+        source.client.fetch.side_effect = [[_message(event_payload)], []]
+        source.client.in_progress.side_effect = lambda _m: recorded.append(time.monotonic())
+
+        started = time.monotonic()
+        for _ in source._poll_nats(quick):
+            time.sleep(1.1)
+
+        assert recorded, "no refresh was sent before the 1s deadline"
+        assert recorded[0] - started < 1.0, f"first refresh landed at {recorded[0] - started:.2f}s"
