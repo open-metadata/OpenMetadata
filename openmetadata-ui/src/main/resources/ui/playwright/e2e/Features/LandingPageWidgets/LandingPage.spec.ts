@@ -46,14 +46,16 @@ test.describe('Landing page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(page.getByTestId(LANDING_PAGE_ROOT)).toBeVisible();
   });
 
-  test('renders the page shell and its greeting', async ({ page }) => {
-    // The subtitle is the one piece of header copy that is not derived from the
-    // signed-in user, so it is the stable thing to assert the header rendered.
+  // The page opens on the announcements and topics; the greeting header that
+  // used to sit above them was removed, so its copy must not come back.
+  test('renders the page shell without a greeting header', async ({ page }) => {
+    await expect(page.getByTestId('topics-to-catch-up-on')).toBeVisible();
+    await expect(
+      page.getByTestId(LANDING_PAGE_ROOT).getByTestId('page-header')
+    ).toHaveCount(0);
     await expect(
       page.getByText("Here's what needs your attention across your data.")
-    ).toBeVisible();
-
-    await expect(page.getByTestId('topics-to-catch-up-on')).toBeVisible();
+    ).toHaveCount(0);
   });
 
   // The persona layout decides what is on the page; this account's persona has
@@ -81,7 +83,9 @@ test.describe('Landing page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     page,
     landingPagePersona,
   }) => {
-    const customize = page.getByTestId('customize-home-page');
+    const customize = page
+      .getByTestId('topics-to-catch-up-on')
+      .getByTestId('customize-home-page');
 
     await expect(customize).toBeVisible();
 

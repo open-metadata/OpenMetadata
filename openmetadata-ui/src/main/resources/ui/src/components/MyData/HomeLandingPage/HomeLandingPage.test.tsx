@@ -22,11 +22,6 @@ import {
 } from '../../../mocks/MyDataPage.mock';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import HomeLandingPage from './HomeLandingPage';
-import { getLandingPageHeaderTintStyle } from './landingPageHeaderColor';
-
-// The default variant's class carries the gradient; a tinted header drops it
-// so the inline wash is the only background.
-const DEFAULT_GRADIENT_CLASS = 'tw:bg-[linear-gradient';
 
 jest.mock('../../../utils/CustomizeMyDataPageClassBase', () => {
   return mockCustomizePageClassBase;
@@ -46,20 +41,6 @@ jest.mock('./AnnouncementsRail', () => {
   return jest
     .fn()
     .mockImplementation(() => <div data-testid="announcements-rail" />);
-});
-
-// jsdom drops any `linear-gradient` it is handed, so the inline style cannot
-// be read back off the element. Spy on the helper instead: what it is asked to
-// tint with is what the page resolved, and its own suite covers the CSS.
-jest.mock('./landingPageHeaderColor', () => {
-  const actual = jest.requireActual('./landingPageHeaderColor');
-
-  return {
-    ...actual,
-    getLandingPageHeaderTintStyle: jest.fn(
-      actual.getLandingPageHeaderTintStyle
-    ),
-  };
 });
 
 jest.mock('../../common/DeferredWidget/DeferredWidget.component', () => ({
@@ -140,14 +121,30 @@ describe('HomeLandingPage', () => {
     expect(screen.getByTestId('announcements-rail')).toBeInTheDocument();
   });
 
-  // The banner used to gate it: the greeting and Customize only appeared once
-  // the alert was dismissed, and dismissal was never persisted.
   it('always offers the Customize entry point', async () => {
     renderHome();
 
     expect(
       await screen.findByTestId('customize-home-page')
     ).toBeInTheDocument();
+  });
+
+  it('renders no greeting header above the announcements', async () => {
+    renderHome();
+
+    await screen.findByTestId('react-grid-layout');
+
+    expect(screen.queryByTestId('page-header')).not.toBeInTheDocument();
+    expect(screen.queryByText('message.hi-user')).not.toBeInTheDocument();
+  });
+
+  it('offers no Customize entry point without a persona to edit', async () => {
+    mockSelectedPersona = null;
+    renderHome();
+
+    await screen.findByTestId('react-grid-layout');
+
+    expect(screen.queryByTestId('customize-home-page')).not.toBeInTheDocument();
   });
 
   it('should show the skeleton while the persona layout is resolving', async () => {
@@ -198,69 +195,6 @@ describe('HomeLandingPage', () => {
       await screen.findByTestId(LandingPageWidgetKeys.ACTIVITY_FEED)
     ).toBeInTheDocument();
     expect(getDocumentByFQN).toHaveBeenCalledTimes(1);
-  });
-
-  it('should keep the default gradient header when no colour is saved', async () => {
-    renderHome();
-
-    const header = await screen.findByTestId('page-header');
-
-    expect(header.className).toContain(DEFAULT_GRADIENT_CLASS);
-    expect(getLandingPageHeaderTintStyle).toHaveBeenLastCalledWith(undefined);
-  });
-
-  it("should tint the header with the persona's saved header colour", async () => {
-    mockSelectedPersona = {
-      fullyQualifiedName: mockPersonaName,
-      id: 'persona-id',
-    };
-    (getDocumentByFQN as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ...mockDocumentData,
-        data: {
-          ...mockDocumentData.data,
-          personPreferences: [
-            {
-              personaId: 'persona-id',
-              personaName: mockPersonaName,
-              landingPageSettings: { headerColor: '#099250' },
-            },
-          ],
-        },
-      })
-    );
-
-    renderHome();
-
-    await screen.findByTestId(LandingPageWidgetKeys.ACTIVITY_FEED);
-
-    expect(getLandingPageHeaderTintStyle).toHaveBeenLastCalledWith('#099250');
-    expect(screen.getByTestId('page-header').className).not.toContain(
-      DEFAULT_GRADIENT_CLASS
-    );
-  });
-
-  it("should prefer the user's own header colour over the persona's", async () => {
-    mockSelectedPersona = {
-      fullyQualifiedName: mockPersonaName,
-      id: 'persona-id',
-    };
-    mockCurrentUser = {
-      ...mockUserData,
-      personaPreferences: [
-        {
-          personaId: 'persona-id',
-          personaName: mockPersonaName,
-          landingPageSettings: { headerColor: '#DD2590' },
-        },
-      ],
-    };
-
-    renderHome();
-
-    await screen.findByTestId(LandingPageWidgetKeys.ACTIVITY_FEED);
-
-    expect(getLandingPageHeaderTintStyle).toHaveBeenLastCalledWith('#DD2590');
   });
 
   it("should render the widgets from the persona's saved layout", async () => {

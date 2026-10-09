@@ -20,6 +20,7 @@ import {
   ChevronSelectorVertical,
   Columns01,
   Rows03,
+  Settings01,
 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,10 +33,13 @@ export interface TopicsSectionHeaderProps {
   onToggleAll: () => void;
   viewMode: TopicsViewMode;
   onViewModeChange: (mode: TopicsViewMode) => void;
+  /** Opens the persona's landing-page editor; omitted when no persona is set. */
+  onCustomize?: () => void;
 }
 
 /**
- * The "Topics to catch up on" heading and its two view controls.
+ * The "Topics to catch up on" heading, its two view controls and the entry
+ * point to the persona's layout editor.
  *
  * Split from the page so the page keeps one job — owning collapse and view
  * state — rather than also carrying this markup's share of the branching.
@@ -46,6 +50,7 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
   onToggleAll,
   viewMode,
   onViewModeChange,
+  onCustomize,
 }) => {
   const { t } = useTranslation();
 
@@ -103,6 +108,17 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
             id="grid"
           />
         </ButtonGroup>
+
+        {onCustomize && (
+          <Button
+            color="secondary"
+            data-testid="customize-home-page"
+            iconLeading={Settings01}
+            size="sm"
+            onPress={onCustomize}>
+            {t('label.customize')}
+          </Button>
+        )}
       </div>
     </div>
   );

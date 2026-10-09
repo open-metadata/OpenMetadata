@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, PageLayout } from '@openmetadata/ui-core-components';
-import { Settings01 } from '@openmetadata/ui-core-components/icons';
+import { PageLayout } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
-import { startCase } from 'lodash';
 import type { ReactNode } from 'react';
 import { lazy, useMemo } from 'react';
 import type { ReactGridLayoutProps } from 'react-grid-layout';
 import RGL, { WidthProvider } from 'react-grid-layout';
-import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { PageType } from '../../../generated/system/ui/page';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -38,18 +35,12 @@ import {
   normalizeLandingPageLayout,
 } from '../../../utils/CustomizeMyDataPageWidgetUtils';
 import { getPersonaPage } from '../../../utils/CustomizePage/PersonaPage.utils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getCustomizePagePath } from '../../../utils/GlobalSettingsUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DeferredWidget from '../../common/DeferredWidget/DeferredWidget.component';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { TopicCollapseContext } from '../Widgets/Common/TopicWidget/TopicCollapseContext';
 import AnnouncementsRail from './AnnouncementsRail';
 import HomeLandingPageSkeleton from './HomeLandingPageSkeleton';
-import {
-  getLandingPageHeaderTintStyle,
-  resolveLandingPageHeaderColor,
-} from './landingPageHeaderColor';
 import TopicsSectionHeader from './TopicsSectionHeader';
 import { useTopicsView } from './useTopicsView';
 
@@ -82,8 +73,8 @@ export interface HomeLandingPageProps {
 }
 
 /**
- * The persona's landing page as the grid and header render it: the normalized
- * widget layout, whether it is still resolving, and the saved header colour.
+ * The persona's landing page as the grid renders it: the normalized widget
+ * layout and whether it is still resolving.
  */
 const usePersonaLandingPage = () => {
   const { currentUser, selectedPersona } = useApplicationStore();
@@ -119,37 +110,21 @@ const usePersonaLandingPage = () => {
     [docData]
   );
 
-  // Set through the customize page's Header Theme tab (persona-wide) or a
-  // user's own persona preference, which wins.
-  const headerTintStyle = useMemo(
-    () =>
-      getLandingPageHeaderTintStyle(
-        resolveLandingPageHeaderColor(
-          selectedPersona?.id,
-          currentUser?.personaPreferences,
-          docData?.data?.personPreferences
-        )
-      ),
-    [selectedPersona?.id, currentUser?.personaPreferences, docData]
-  );
-
-  return { currentUser, headerTintStyle, isLoading, layout, selectedPersona };
+  return { isLoading, layout, selectedPersona };
 };
 
 /**
  * The home page, shared by both app modes.
  *
- * Fixed shell top to bottom — header, announcements rail — then the persona's
- * widget grid. Which widgets appear and where is entirely the persona's
+ * Fixed shell top to bottom — announcements rail, then the persona's widget
+ * grid. Which widgets appear and where is entirely the persona's
  * landing-page layout (docStore), edited through `CustomizeMyData`; nothing
  * here is mode-specific. Widgets that have AI-only content decide that for
  * themselves.
  */
 const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { currentUser, headerTintStyle, isLoading, layout, selectedPersona } =
-    usePersonaLandingPage();
+  const { isLoading, layout, selectedPersona } = usePersonaLandingPage();
 
   const {
     collapseValue,
@@ -188,10 +163,7 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
     [displayLayout]
   );
 
-  const displayName = getEntityName(currentUser);
-  const greeting = t('message.hi-user', {
-    user: displayName ? startCase(displayName) : t('label.user'),
-  });
+  const personaFqn = selectedPersona?.fullyQualifiedName;
 
   // react-grid-layout has known RTL issues; the grid wrapper is pinned to ltr.
   useGridLayoutDirection(isLoading);
@@ -202,43 +174,6 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
         className="tw:p-0!"
         data-testid="home-landing-page"
         scroll="page">
-        <PageLayout.PageHeader
-          actions={
-            selectedPersona?.fullyQualifiedName ? (
-              <Button
-                color="secondary"
-                data-testid="customize-home-page"
-                iconLeading={Settings01}
-                size="sm"
-                onPress={() =>
-                  navigate(
-                    getCustomizePagePath(
-                      selectedPersona.fullyQualifiedName as string,
-                      PageType.LandingPage
-                    )
-                  )
-                }>
-                {t('label.customize')}
-              </Button>
-            ) : undefined
-          }
-          className="tw:m-2 tw:mb-0! tw:border-0"
-          density="comfortable"
-          icon={
-            currentUser?.name ? (
-              <ProfilePicture
-                displayName={displayName}
-                name={currentUser.name}
-                width="42"
-              />
-            ) : null
-          }
-          style={headerTintStyle}
-          subtitle={t('message.home-landing-page-subtitle')}
-          title={greeting}
-          variant={headerTintStyle ? 'flat' : 'gradient'}
-        />
-
         <PageLayout.Content className={contentClassName(Boolean(footerSlot))}>
           <div className="tw:flex tw:flex-col tw:gap-14 tw:px-4 tw:pt-8">
             <AnnouncementsRail />
@@ -248,6 +183,14 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
                 isEveryWidgetCollapsed={isEveryWidgetCollapsed}
                 isToggleAllDisabled={layout.length === 0}
                 viewMode={viewMode}
+                onCustomize={
+                  personaFqn
+                    ? () =>
+                        navigate(
+                          getCustomizePagePath(personaFqn, PageType.LandingPage)
+                        )
+                    : undefined
+                }
                 onToggleAll={toggleAll}
                 onViewModeChange={setViewMode}
               />
