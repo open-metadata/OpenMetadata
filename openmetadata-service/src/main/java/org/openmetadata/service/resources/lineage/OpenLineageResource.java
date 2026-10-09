@@ -116,9 +116,9 @@ public class OpenLineageResource {
    * entity's persisted parent.
    */
   private void authorizeCreate(
-      SecurityContext securityContext, String entityType, EntityInterface entity) {
+      SecurityContext securityContext, String entityType, EntityInterface<?> entity) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    CreateResourceContext<EntityInterface> resourceContext =
+    CreateResourceContext<EntityInterface<?>> resourceContext =
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, resourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, resourceContext);

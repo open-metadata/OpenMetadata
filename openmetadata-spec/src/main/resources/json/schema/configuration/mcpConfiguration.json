@@ -57,6 +57,13 @@
       "description": "HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms (30 seconds)",
       "type": "integer",
       "default": 30000
+    },
+    "maxResponseChars": {
+      "description": "Largest MCP tool response, in characters. Tools return fewer items to stay under it, so it bounds how much of the MCP client's context one call can use. A saved change applies right away on the server that handled the save; other servers in a cluster pick it up on restart.",
+      "$comment": "25000 is the lowest value where LineageEdgePager's cut (cap - 5000) and refill (0.8 x cap) agree, and it keeps GetPersonaContextTool's part budget (cap - 10000) well above zero.",
+      "type": "integer",
+      "minimum": 25000,
+      "default": 100000
     }
   },
   "additionalProperties": false

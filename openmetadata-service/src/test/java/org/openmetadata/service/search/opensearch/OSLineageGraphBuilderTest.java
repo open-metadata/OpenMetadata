@@ -14,6 +14,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -22,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -34,6 +36,7 @@ import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.lineage.AbstractLineageGraphBuilder;
 import org.openmetadata.service.search.lineage.LineageQueryContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
@@ -801,7 +804,9 @@ class OSLineageGraphBuilderTest {
       when(hitC.source()).thenReturn(jsonC);
 
       stubOsClientSearch();
-      when(hitsMetadata.hits()).thenReturn(List.of(hitC, hitA, hitB), List.of());
+      // The walk and the page load both see all three: only sorting and slicing keep c off the
+      // page.
+      when(hitsMetadata.hits()).thenReturn(List.of(hitC, hitA, hitB));
 
       osUtilsMock
           .when(() -> OsUtils.jsonDataToMap(any(JsonData.class)))
@@ -845,6 +850,116 @@ class OSLineageGraphBuilderTest {
       assertTrue(result.getNodes().containsKey("service.database.schema.b_table"));
       assertFalse(result.getNodes().containsKey("service.database.schema.c_table"));
     }
+  }
+
+  /**
+   * A page used to read every node at every depth in full, every column and SQL statement, then
+   * keep the page. The walk now reads only what finds the next level, and whole documents are
+   * loaded for the page alone, with the fields the caller asked for.
+   */
+  @SuppressWarnings("unchecked")
+  @Test
+  void searchLineageByEntityCount_walksSlimAndLoadsWholeDocumentsForThePageOnly()
+      throws IOException {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<OsUtils> osUtilsMock = mockStatic(OsUtils.class);
+        MockedStatic<LineageUtil> lineageUtilMock =
+            mockStatic(LineageUtil.class, Mockito.CALLS_REAL_METHODS)) {
+
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      stubOsUtilsGetSearchRequest(osUtilsMock);
+      String fqnA = "service.database.schema.a_table";
+      String fqnB = "service.database.schema.b_table";
+      String fqnC = "service.database.schema.c_table";
+      osUtilsMock
+          .when(
+              () ->
+                  OsUtils.searchEntityByKey(
+                      any(OpenSearchClient.class),
+                      any(),
+                      anyString(),
+                      anyString(),
+                      any(),
+                      anyList()))
+          .thenReturn(entityDoc(ROOT_FQN, List.of()));
+      Map<JsonData, Map<String, Object>> docs = new HashMap<>();
+      List<Hit<JsonData>> walkHits =
+          List.of(
+              hitFor(docs, entityDoc(fqnC, List.of(lineageEdge(ROOT_FQN, fqnC)))),
+              hitFor(docs, entityDoc(fqnA, List.of(lineageEdge(ROOT_FQN, fqnA)))),
+              hitFor(docs, entityDoc(fqnB, List.of(lineageEdge(ROOT_FQN, fqnB)))));
+      Map<String, Object> wholeA = entityDoc(fqnA, List.of(lineageEdge(ROOT_FQN, fqnA)));
+      wholeA.put("columns", List.of(Map.of("name", "id")));
+      Map<String, Object> wholeB = entityDoc(fqnB, List.of(lineageEdge(ROOT_FQN, fqnB)));
+      wholeB.put("columns", List.of(Map.of("name", "id")));
+      List<Hit<JsonData>> pageHits = List.of(hitFor(docs, wholeA), hitFor(docs, wholeB));
+      osUtilsMock
+          .when(() -> OsUtils.jsonDataToMap(any(JsonData.class)))
+          .thenAnswer(invocation -> docs.getOrDefault(invocation.getArgument(0), Map.of()));
+      stubOsClientSearch();
+      when(hitsMetadata.hits()).thenReturn(walkHits, pageHits);
+      lineageUtilMock
+          .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
+          .then(invocation -> null);
+
+      SearchLineageResult result =
+          new OSLineageGraphBuilder(esClient)
+              .searchLineageByEntityCount(
+                  new EntityCountLineageRequest()
+                      .withFqn(ROOT_FQN)
+                      .withDirection(LineageDirection.DOWNSTREAM)
+                      .withMaxDepth(1)
+                      .withNodeDepth(1)
+                      .withIncludeDeleted(false)
+                      .withFrom(1)
+                      .withSize(2)
+                      .withIncludeSourceFields(Set.of())
+                      .withIsConnectedVia(false));
+
+      ArgumentCaptor<Map<String, Set<String>>> keys = ArgumentCaptor.forClass(Map.class);
+      ArgumentCaptor<List<String>> includes = ArgumentCaptor.forClass(List.class);
+      osUtilsMock.verify(
+          () ->
+              OsUtils.getSearchRequest(
+                  any(LineageDirection.class),
+                  anyString(),
+                  any(),
+                  any(),
+                  keys.capture(),
+                  anyInt(),
+                  anyInt(),
+                  any(),
+                  includes.capture(),
+                  any()),
+          Mockito.atLeastOnce());
+      int pageCall =
+          keys.getAllValues()
+              .indexOf(
+                  Map.of(
+                      FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+                      Set.of(
+                          FullyQualifiedName.buildHash(fqnA), FullyQualifiedName.buildHash(fqnB))));
+      assertTrue(pageCall >= 0, "one request loads exactly the page's two documents");
+      assertEquals(List.of(), includes.getAllValues().get(pageCall), "with the caller's fields");
+      assertEquals(
+          AbstractLineageGraphBuilder.LINEAGE_WALK_FIELDS,
+          includes.getAllValues().get(0),
+          "the walk reads only what finds the next level");
+      assertTrue(
+          ((Map<String, Object>) result.getNodes().get(fqnA).getEntity()).containsKey("columns"),
+          "a page node is the whole document, not the walk's");
+      assertFalse(result.getNodes().containsKey(fqnC));
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Hit<JsonData> hitFor(
+      Map<JsonData, Map<String, Object>> docs, Map<String, Object> doc) {
+    JsonData json = Mockito.mock(JsonData.class);
+    Hit<JsonData> hit = Mockito.mock(Hit.class);
+    when(hit.source()).thenReturn(json);
+    docs.put(json, doc);
+    return hit;
   }
 
   @SuppressWarnings("unchecked")

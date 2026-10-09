@@ -11,21 +11,14 @@
  *  limitations under the License.
  */
 import {
+  Box,
   ButtonUtility,
   Dropdown,
+  Grid,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Alert,
-  Button,
-  Checkbox,
-  Col,
-  MenuProps,
-  notification,
-  Row,
-  Space,
-} from 'antd';
+import { Alert, Button, Checkbox, MenuProps, notification } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isObject } from 'lodash';
@@ -81,6 +74,7 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchPureUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getDomainDryRunImpacts } from '../../../../utils/Domain/DomainDryRunUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
@@ -299,12 +293,13 @@ const AssetsFilterBar = ({
 
   return (
     <>
-      <Col className="d-flex gap-3" span={24}>
+      <Grid.Item className="layout-column d-flex gap-3" span={24}>
         <Dropdown.Root>
           <ButtonUtility
+            className="tw:size-9"
             color="secondary"
             data-testid="asset-filter-button"
-            icon={<FilterIcon height={16} width={16} />}
+            icon={FilterIcon}
             size="sm"
             tooltip={t('label.filter-plural')}
           />
@@ -336,9 +331,9 @@ const AssetsFilterBar = ({
             onSearch={onSearchChange}
           />
         </div>
-      </Col>
+      </Grid.Item>
       {selectedFilter.length > 0 && (
-        <Col className="searched-data-container" span={24}>
+        <Grid.Item className="layout-column searched-data-container" span={24}>
           <div className="d-flex justify-between">
             <ExploreQuickFilters
               aggregations={aggregations}
@@ -357,7 +352,7 @@ const AssetsFilterBar = ({
               </Typography>
             )}
           </div>
-        </Col>
+        </Grid.Item>
       )}
     </>
   );
@@ -1132,10 +1127,10 @@ const AssetsTabs = forwardRef(
 
     const layout = useMemo(() => {
       return (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           {assetsHeader}
           {assetListing}
-        </Col>
+        </Grid.Item>
       );
     }, [assetsHeader, assetListing, selectedCard]);
 
@@ -1241,11 +1236,14 @@ const AssetsTabs = forwardRef(
           )}
           data-testid="table-container"
           id="asset-tab">
-          <Row
-            className={classNames('filters-row gap-2 p-md', {
-              'h-full': totalAssetCount === 0,
-            })}
-            gutter={[0, 20]}>
+          <Grid
+            className={`layout-row layout-grid ${classNames(
+              'filters-row gap-2 p-md',
+              {
+                'h-full': totalAssetCount === 0,
+              }
+            )}`}
+            style={{ ...getLayoutGutter(0, 20) }}>
             <AssetsFilterBar
               aggregations={aggregations}
               filterMenu={filterMenu}
@@ -1261,21 +1259,26 @@ const AssetsTabs = forwardRef(
               onSearchChange={setSearchValue}
             />
             {isLoading ? (
-              <Col className="border-default border-radius-sm p-lg" span={24}>
-                <Space
-                  className="w-full"
+              <Grid.Item
+                className="layout-column border-default border-radius-sm p-lg"
+                span={24}>
+                <Box
+                  inline
+                  align="stretch"
+                  className="layout-space w-full"
                   data-testid="loader"
-                  direction="vertical"
-                  size={16}>
+                  direction="col"
+                  gap={4}
+                  itemClassName="layout-space-item">
                   <SkeletonParagraph animation={false} />
                   <SkeletonParagraph animation={false} />
                   <SkeletonParagraph animation={false} />
-                </Space>
-              </Col>
+                </Box>
+              </Grid.Item>
             ) : (
               layout
             )}
-          </Row>
+          </Grid>
 
           <ConfirmationModal
             bodyText={confirmationBodyText}

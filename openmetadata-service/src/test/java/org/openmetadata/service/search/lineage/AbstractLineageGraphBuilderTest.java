@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -782,6 +783,12 @@ class AbstractLineageGraphBuilderTest {
   }
 
   private static class TestableLineageGraphBuilder extends AbstractLineageGraphBuilder {
+
+    @Override
+    protected Map<String, Map<String, Object>> documentsByHash(
+        Set<String> hashes, EntityCountLineageRequest request) {
+      return Map.of();
+    }
 
     TestableLineageGraphBuilder() {
       super();
