@@ -37,6 +37,7 @@ import iomete from '../assets/img/service-icon-iomete.webp';
 import mariadb from '../assets/img/service-icon-mariadb.webp';
 import mongodb from '../assets/img/service-icon-mongodb.webp';
 import mssql from '../assets/img/service-icon-mssql.webp';
+import neo4j from '../assets/img/service-icon-neo4j.svg';
 import oracle from '../assets/img/service-icon-oracle.webp';
 import pinot from '../assets/img/service-icon-pinot.webp';
 import postgres from '../assets/img/service-icon-post.webp';
@@ -188,6 +189,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   burstiq: burstiq,
   sas: sas,
   iomete: iomete,
+  neo4j: neo4j,
   questdb: questdb,
   domodatabase: domo,
   customdatabase: databasedefault,

@@ -422,6 +422,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["cloud-sql-python-connector-pymysql"],
         DATA_DIFF["mysql"],
     },
+    "neo4j": {"neo4j>=5.0,<7"},
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
     "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},

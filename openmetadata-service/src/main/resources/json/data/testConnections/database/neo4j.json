@@ -1,0 +1,33 @@
+{
+  "name": "Neo4j",
+  "displayName": "Neo4j Test Connection",
+  "description": "This Test Connection validates the access against the database and basic metadata extraction of node labels and relationship types.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can connect to Neo4j with the given credentials.",
+      "errorMessage": "Failed to connect to Neo4j, please validate the connection scheme, host, port and credentials.",
+      "mandatory": true,
+      "shortCircuit": true
+    },
+    {
+      "name": "GetDatabases",
+      "description": "Resolve the database to extract, either the configured one or the user's home database.",
+      "errorMessage": "Failed to resolve the database, please validate that it exists and that the user can access it.",
+      "mandatory": true,
+      "shortCircuit": true
+    },
+    {
+      "name": "GetNodeLabels",
+      "description": "List the node labels and their properties via db.schema.nodeTypeProperties().",
+      "errorMessage": "Failed to read node labels, please validate that the user can read the graph schema of the database.",
+      "mandatory": true
+    },
+    {
+      "name": "GetRelationshipTypes",
+      "description": "List the relationship types and their properties via db.schema.relTypeProperties().",
+      "errorMessage": "Failed to read relationship types, please validate that the user can read the graph schema of the database.",
+      "mandatory": false
+    }
+  ]
+}

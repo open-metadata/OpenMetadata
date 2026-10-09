@@ -75,7 +75,8 @@
         "Iomete",
         "QuestDB",
         "Data360",
-        "SapBw4Hana"
+        "SapBw4Hana",
+        "Neo4j"
       ],
       "javaEnums": [
         {
@@ -257,6 +258,9 @@
         },
         {
           "name": "SapBw4Hana"
+        },
+        {
+          "name": "Neo4j"
         }
       ]
     },
@@ -446,6 +450,9 @@
             },
             {
               "$ref": "./connections/database/sapBw4HanaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/neo4jConnection.json"
             }
           ]
         }
