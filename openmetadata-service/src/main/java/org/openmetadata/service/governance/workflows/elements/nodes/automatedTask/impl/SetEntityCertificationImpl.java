@@ -43,7 +43,7 @@ public class SetEntityCertificationImpl implements JavaDelegate {
                       inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
                       RELATED_ENTITY_VARIABLE));
       String entityType = entityLink.getEntityType();
-      EntityInterface entity = Entity.getEntity(entityLink, "certification", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(entityLink, "certification", Include.ALL);
 
       String certification =
           Optional.ofNullable(certificationExpr)
@@ -66,7 +66,7 @@ public class SetEntityCertificationImpl implements JavaDelegate {
   }
 
   private void setStatus(
-      EntityInterface entity, String entityType, String user, String certification) {
+      EntityInterface<?> entity, String entityType, String user, String certification) {
     String originalJson = JsonUtils.pojoToJson(entity);
 
     Optional<String> oCertification = Optional.ofNullable(certification);

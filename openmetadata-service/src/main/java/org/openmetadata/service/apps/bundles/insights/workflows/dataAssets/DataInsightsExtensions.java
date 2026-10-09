@@ -60,7 +60,7 @@ public final class DataInsightsExtensions implements AutoCloseable {
     sessions.forEach(Session::complete);
   }
 
-  public void beforeBatch(List<? extends EntityInterface> entities) {
+  public void beforeBatch(List<? extends EntityInterface<?>> entities) {
     context.requireActive();
     sessions.forEach(session -> session.beforeBatch(entities));
   }

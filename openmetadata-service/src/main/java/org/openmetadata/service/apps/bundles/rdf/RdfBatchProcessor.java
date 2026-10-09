@@ -85,7 +85,9 @@ public class RdfBatchProcessor {
   }
 
   public BatchProcessingResult processEntities(
-      String entityType, List<? extends EntityInterface> entities, BooleanSupplier stopRequested) {
+      String entityType,
+      List<? extends EntityInterface<?>> entities,
+      BooleanSupplier stopRequested) {
     return processEntitiesInternal(entityType, entities, null, stopRequested);
   }
 
@@ -97,7 +99,7 @@ public class RdfBatchProcessor {
    */
   public BatchProcessingResult processEntitiesPreTranslated(
       String entityType,
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       List<RdfStorageInterface.EntityWriteRequest> preTranslated,
       BooleanSupplier stopRequested) {
     return processEntitiesInternal(entityType, entities, preTranslated, stopRequested);
@@ -105,7 +107,7 @@ public class RdfBatchProcessor {
 
   private BatchProcessingResult processEntitiesInternal(
       String entityType,
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       List<RdfStorageInterface.EntityWriteRequest> preTranslated,
       BooleanSupplier stopRequested) {
     if (entities == null || entities.isEmpty()) {
@@ -116,17 +118,17 @@ public class RdfBatchProcessor {
     int successCount = 0;
     int failedCount = 0;
     String lastError = null;
-    List<EntityInterface> indexedEntities = new ArrayList<>();
+    List<EntityInterface<?>> indexedEntities = new ArrayList<>();
 
     // An entity whose translation failed has no write request. Count it here so a
     // skipped record surfaces as one failure rather than vanishing from the totals.
-    List<? extends EntityInterface> writableEntities = entities;
+    List<? extends EntityInterface<?>> writableEntities = entities;
     if (preTranslated != null && preTranslated.size() != entities.size()) {
       Set<UUID> translatedIds =
           preTranslated.stream()
               .map(RdfStorageInterface.EntityWriteRequest::entityId)
               .collect(Collectors.toSet());
-      List<EntityInterface> untranslated =
+      List<EntityInterface<?>> untranslated =
           entities.stream()
               .filter(entity -> !translatedIds.contains(entity.getId()))
               .collect(Collectors.toList());
@@ -254,10 +256,10 @@ public class RdfBatchProcessor {
    */
   private BisectResult writePreTranslatedWithBisectFallback(
       String entityType,
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       List<RdfStorageInterface.EntityWriteRequest> preTranslated,
       BooleanSupplier stopRequested,
-      List<EntityInterface> indexedEntities) {
+      List<EntityInterface<?>> indexedEntities) {
     final long deadlineNanos = bisectDeadlineNanos();
     BisectResult result;
     if (stopRequested.getAsBoolean()) {
@@ -278,10 +280,10 @@ public class RdfBatchProcessor {
 
   private BisectResult writeWithBisect(
       String entityType,
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       BooleanSupplier stopRequested,
       long deadlineNanos,
-      List<EntityInterface> indexedEntities) {
+      List<EntityInterface<?>> indexedEntities) {
     BisectResult result;
     if (stopRequested.getAsBoolean()) {
       result = BisectResult.EMPTY;
@@ -305,10 +307,10 @@ public class RdfBatchProcessor {
 
   private BisectResult handleBisectFailure(
       String entityType,
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       BooleanSupplier stopRequested,
       long deadlineNanos,
-      List<EntityInterface> indexedEntities,
+      List<EntityInterface<?>> indexedEntities,
       Exception cause) {
     BisectResult result;
     if (isCircuitBreakerOpen(cause)) {
@@ -336,7 +338,7 @@ public class RdfBatchProcessor {
               describeError(entityType + " batch (write budget exhausted)", cause),
               false);
     } else if (entities.size() == 1) {
-      EntityInterface entity = entities.getFirst();
+      EntityInterface<?> entity = entities.getFirst();
       LOG.error("Failed to index entity {} to RDF", entity.getId(), cause);
       recordEntityWriteFailures(entityType, entities, describeFailureMessage(cause));
       result =
@@ -354,10 +356,10 @@ public class RdfBatchProcessor {
 
   private BisectResult bisectHalves(
       String entityType,
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       BooleanSupplier stopRequested,
       long deadlineNanos,
-      List<EntityInterface> indexedEntities) {
+      List<EntityInterface<?>> indexedEntities) {
     int mid = entities.size() / 2;
     BisectResult left =
         writeWithBisect(
@@ -366,7 +368,7 @@ public class RdfBatchProcessor {
     if (left.circuitOpen()) {
       // The breaker opened while writing the left half; every right-half
       // attempt would fail-fast on the same breaker.
-      List<? extends EntityInterface> rightHalf = entities.subList(mid, entities.size());
+      List<? extends EntityInterface<?>> rightHalf = entities.subList(mid, entities.size());
       recordEntityWriteFailures(entityType, rightHalf, left.lastError());
       right = BisectResult.allFailed(rightHalf.size(), left.lastError(), true);
     } else {
@@ -542,7 +544,7 @@ public class RdfBatchProcessor {
    * and never throws — a failure-recording failure must not fail the write path it is describing.
    */
   private void recordEntityWriteFailures(
-      String entityType, List<? extends EntityInterface> entities, String message) {
+      String entityType, List<? extends EntityInterface<?>> entities, String message) {
     if (runContext.jobId() == null || entities == null || entities.isEmpty()) {
       return;
     }
@@ -663,7 +665,7 @@ public class RdfBatchProcessor {
   }
 
   public RelationshipProcessingResult processBatchRelationships(
-      String entityType, List<? extends EntityInterface> entities) {
+      String entityType, List<? extends EntityInterface<?>> entities) {
     if (entities == null || entities.isEmpty()) {
       return RelationshipProcessingResult.OK;
     }
@@ -748,7 +750,7 @@ public class RdfBatchProcessor {
       // subsequent bulkAdd failed, batch sources lost their relationships
       // until the next weekly recreate-index.)
       Set<RdfRepository.EntitySourceRef> batchSources = new HashSet<>();
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         batchSources.add(new RdfRepository.EntitySourceRef(entityType, entity.getId()));
       }
       try {
@@ -923,10 +925,10 @@ public class RdfBatchProcessor {
   }
 
   RelationshipProcessingResult processGlossaryTermRelations(
-      List<? extends EntityInterface> entities, BooleanSupplier stopRequested) {
+      List<? extends EntityInterface<?>> entities, BooleanSupplier stopRequested) {
     List<RdfRepository.GlossaryTermRelationData> relations = new ArrayList<>();
 
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       if (stopRequested.getAsBoolean()) {
         break;
       }

@@ -31,10 +31,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
@@ -183,7 +183,8 @@ class ContextMemorySearchVisibilityTest {
     OMQueryBuilder filter =
         new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
             .buildVisibilityFilter(
-                nonAdminSubject(), List.of(EntityStatus.APPROVED, EntityStatus.REJECTED));
+                nonAdminSubject(),
+                List.of(ContextMemoryStatus.APPROVED, ContextMemoryStatus.REJECTED));
     DocumentContext json =
         JsonPath.parse(serializeElasticQuery(((ElasticQueryBuilder) filter).build()));
 
@@ -384,7 +385,7 @@ class ContextMemorySearchVisibilityTest {
                 "anchorId",
                 ContextMemoryIndex.UNANCHORED,
                 "entityStatus",
-                EntityStatus.DEPRECATED.value())),
+                ContextMemoryStatus.DEPRECATED.value())),
         "retired memories do not appear in anonymous search reads");
   }
 
@@ -418,7 +419,7 @@ class ContextMemorySearchVisibilityTest {
         "anchorId",
         ContextMemoryIndex.UNANCHORED,
         "entityStatus",
-        EntityStatus.APPROVED.value());
+        ContextMemoryStatus.APPROVED.value());
   }
 
   private String orgWideOnlyJson() {

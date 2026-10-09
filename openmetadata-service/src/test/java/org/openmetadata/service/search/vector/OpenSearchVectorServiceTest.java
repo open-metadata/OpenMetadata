@@ -23,9 +23,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
@@ -84,7 +84,7 @@ class OpenSearchVectorServiceTest {
     mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
 
     vectorService.updateEntityEmbeddings(
-        refreshableMemory().withEntityStatus(EntityStatus.REJECTED), "entityIndex");
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
 
     ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
         ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
@@ -108,11 +108,12 @@ class OpenSearchVectorServiceTest {
         .withTitle("SQL preference")
         .withQuestion("Should keywords be upper case?")
         .withAnswer("Yes, use upper case keywords.")
-        .withEntityStatus(EntityStatus.APPROVED);
+        .withEntityStatus(ContextMemoryStatus.APPROVED);
   }
 
   private static OpenSearchVectorService.ChunkRefresh refresh(
-      org.openmetadata.schema.EntityInterface entity, OpenSearchVectorService.ChunkHeader header) {
+      org.openmetadata.schema.EntityInterface<?> entity,
+      OpenSearchVectorService.ChunkHeader header) {
     return OpenSearchVectorService.chunkRefresh(
         entity, VectorDocBuilder.computeFingerprintForEntity(entity), header);
   }
@@ -144,7 +145,7 @@ class OpenSearchVectorServiceTest {
             .withTitle("SQL preference")
             .withQuestion("Should keywords be upper case?")
             .withAnswer("Yes, use upper case keywords.")
-            .withEntityStatus(EntityStatus.APPROVED);
+            .withEntityStatus(ContextMemoryStatus.APPROVED);
     String fingerprint = VectorDocBuilder.computeFingerprintForEntity(memory);
     mockOpenSearchResponse(
         "{\"found\":true,\"_source\":{\"fingerprint\":\""

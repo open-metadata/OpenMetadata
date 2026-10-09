@@ -370,7 +370,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public EntityInterface getParentEntity(SearchIndex entity, String fields) {
+  public EntityInterface<?> getParentEntity(SearchIndex entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -378,7 +378,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     SearchIndex searchIndex = (SearchIndex) entity;
     EntityUtil.mergeTags(allTags, searchIndex.getTags());
