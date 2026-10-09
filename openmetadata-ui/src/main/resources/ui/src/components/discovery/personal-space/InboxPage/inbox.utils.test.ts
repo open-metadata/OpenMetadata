@@ -58,6 +58,7 @@ import {
   formatInboxDateTime,
   getActivityChange,
   getActivityEventLabel,
+  getActivityKindType,
   getFeedSortTimestamp,
   getInboxTabBadge,
   isSameLocalDay,
@@ -193,6 +194,55 @@ describe('inbox.utils', () => {
           t
         )
       ).toBe('message.activity-changed-tier');
+    });
+
+    // The card's badge reads the kind the same way as its sentence.
+    it.each([
+      [
+        'a tier carried as tags',
+        activity(
+          ActivityEventType.TagsUpdated,
+          'tags',
+          tags('Tier.Tier2'),
+          tags('Tier.Tier1')
+        ),
+        ActivityEventType.TierUpdated,
+      ],
+      [
+        "a column's tags carried as the asset's",
+        activity(
+          ActivityEventType.TagsUpdated,
+          'columns.email.tags',
+          undefined,
+          tags('PII.Sensitive')
+        ),
+        ActivityEventType.ColumnTagsUpdated,
+      ],
+      [
+        "an asset's tags",
+        activity(
+          ActivityEventType.TagsUpdated,
+          'tags',
+          undefined,
+          tags('PII.Sensitive')
+        ),
+        ActivityEventType.TagsUpdated,
+      ],
+      [
+        "a column's description carried as the asset's",
+        activity(
+          ActivityEventType.DescriptionUpdated,
+          'columns.email.description'
+        ),
+        ActivityEventType.ColumnDescriptionUpdated,
+      ],
+      [
+        'an owner change',
+        activity(ActivityEventType.OwnerUpdated, 'owners'),
+        ActivityEventType.OwnerUpdated,
+      ],
+    ])('reads %s as its kind', (_, event, kind) => {
+      expect(getActivityKindType(event)).toBe(kind);
     });
 
     it('uses the field name for a generic EntityUpdated', () => {

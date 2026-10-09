@@ -79,6 +79,7 @@ import {
   applyReaction,
   getActivityChange,
   getActivityEventLabel,
+  getActivityKindType,
   getFeedSortTimestamp,
   INBOX_ENTITY_ICON_CLASS,
   isSameLocalDay,
@@ -156,11 +157,12 @@ const getEventEntity = (
   };
 };
 
-// The badge on the actor's avatar that says what kind of change this is; an
-// event type this UI does not know yet reads as a plain update.
+// The badge on the actor's avatar that says what kind of change this is, as the
+// card's sentence names it; a type this UI does not know yet reads as a plain
+// update.
 const getActivityBadge = (activity?: ActivityEvent): ActivityBadge =>
   activity
-    ? ACTIVITY_EVENT_BADGE[activity.eventType] ??
+    ? ACTIVITY_EVENT_BADGE[getActivityKindType(activity)] ??
       ACTIVITY_EVENT_BADGE[ActivityEventType.EntityUpdated]
     : CONVERSATION_BADGE;
 
