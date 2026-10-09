@@ -92,7 +92,7 @@ export const ThemeProvider = ({
   const setTheme = useCallback(
     (nextPreference: ThemePreference) => {
       try {
-        if (typeof globalThis.localStorage !== 'undefined') {
+        if (globalThis.localStorage !== undefined) {
           localStorage.setItem(storageKey, nextPreference);
         }
       } catch {

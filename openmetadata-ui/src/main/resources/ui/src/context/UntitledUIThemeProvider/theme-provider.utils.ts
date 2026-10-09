@@ -36,7 +36,7 @@ export const resolveTheme = (preference: ThemePreference): Theme => {
 // See ADR:2026-10-09-theme-and-sidebar-preferences-are-per-device.
 export const getStoredTheme = (storageKey: string): ThemePreference | null => {
   try {
-    if (typeof globalThis.localStorage === 'undefined') {
+    if (globalThis.localStorage === undefined) {
       return null;
     }
 
@@ -61,7 +61,7 @@ export const getStoredTheme = (storageKey: string): ThemePreference | null => {
 };
 
 export const applyThemeToRoot = (theme: Theme, darkModeClass: string) => {
-  if (typeof globalThis.document === 'undefined') {
+  if (globalThis.document === undefined) {
     return;
   }
 

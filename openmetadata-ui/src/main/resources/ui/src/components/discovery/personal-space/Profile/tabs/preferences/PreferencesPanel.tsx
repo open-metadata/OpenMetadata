@@ -55,7 +55,7 @@ const PreferencesPanel = () => {
     try {
       await localUtilClassBase.loadLocales(String(key));
       await i18n.changeLanguage(String(key));
-      navigate(0);
+      void navigate(0);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
