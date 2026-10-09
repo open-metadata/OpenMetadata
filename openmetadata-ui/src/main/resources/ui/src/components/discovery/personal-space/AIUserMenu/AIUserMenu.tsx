@@ -340,9 +340,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
         placement="right"
         title={
           <span className="tw:flex tw:items-center tw:gap-2 tw:leading-5">
-            <Typography
-              className="tw:truncate tw:text-[13px]"
-              weight="medium">
+            <Typography className="tw:truncate tw:text-[13px]" weight="medium">
               {displayName}
             </Typography>
             <Typography
