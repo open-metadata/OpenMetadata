@@ -35,7 +35,7 @@ import { applyZoomWindow } from './options/common';
 import { buildGeoMapOption } from './options/geo';
 import { buildPieOption } from './options/pie';
 import { REPLACE_MERGE_KEYS } from './options/merge';
-import { LIGHT_CHART_THEME } from './theme';
+import { DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
 import type { CartesianBuildInput, ChartOption, GeoJson } from './types';
 
 // These run the builders against a real (server-side) ECharts instance with
@@ -399,6 +399,53 @@ describe('pie on a real chart', () => {
 
     expect(arcs(chart)).toBe(1);
   });
+});
+
+describe('neutral pie hover on a real chart', () => {
+  it.each([LIGHT_CHART_THEME, DARK_CHART_THEME])(
+    'keeps neutral slices grey while expanding in dark mode: $isDark',
+    (theme) => {
+      const chart = mount(
+        buildPieOption(
+          {
+            ariaLabel: 'Coverage',
+            innerRadius: 40,
+            outerRadius: 54,
+            legend: { show: false },
+            data: [{ name: 'Uncovered', value: 378, status: 'neutral' }],
+            option: { animation: false },
+          },
+          theme
+        )
+      );
+      const slice = chart
+        .getZr()
+        .storage.getDisplayList()
+        .find((element) => element.type === 'sector');
+
+      if (!slice) {
+        throw new Error('Expected a rendered pie slice');
+      }
+
+      const restingWidth = slice.getBoundingRect().width;
+      const fill = () =>
+        chart.renderToSVGString().match(/<path[^>]*fill="([^"]+)"/)?.[1];
+
+      expect(fill()).toBe(theme.palette.status.neutral);
+      chart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: 0 });
+      // SSR has no automatic frame to apply the hover state.
+      chart.getZr().animation.update();
+
+      expect(slice.getBoundingRect().width).toBeGreaterThan(restingWidth);
+      expect(fill()).toBe(theme.palette.status.neutral);
+
+      chart.dispatchAction({ type: 'downplay', seriesIndex: 0, dataIndex: 0 });
+      chart.getZr().animation.update();
+
+      expect(fill()).toBe(theme.palette.status.neutral);
+      expect(slice.getBoundingRect().width).toBe(restingWidth);
+    }
+  );
 });
 
 describe('category value axis on a real chart', () => {

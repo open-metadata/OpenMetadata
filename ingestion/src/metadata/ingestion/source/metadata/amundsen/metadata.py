@@ -15,12 +15,14 @@ Amundsen source to extract metadata
 
 import traceback
 from collections.abc import Iterable
+from contextlib import closing
 from typing import TYPE_CHECKING, cast
 
 from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
 
 from metadata.config.common import ConfigModel
+from metadata.domain.tags import TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -54,12 +56,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
@@ -75,7 +77,6 @@ from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 if TYPE_CHECKING:
     from metadata.ingestion.connections.connection import BaseConnection
@@ -128,6 +129,7 @@ class AmundsenSource(Source):
         self.database_schema_object = None
         self.database_object = None
         self.metadata = metadata
+        self.tags_registry = TagRegistry(metadata=metadata)
         self.service_connection = self.config.serviceConnection.root.config
         self._connection = create_connection(self.service_connection)
         self.client = cast("BaseConnection", self._connection).client
@@ -292,10 +294,11 @@ class AmundsenSource(Source):
                 )
             )
 
-    def create_table_entity(self, table) -> Iterable[Either[Entity]]:
+    def create_table_entity(self, table) -> Iterable[Either]:
         """
         Process table details and return CreateTableRequest
         """
+        table_fqn = None
         try:
             yield from self._yield_create_database(table)
             yield from self._yield_create_database_schema(table)
@@ -327,28 +330,40 @@ class AmundsenSource(Source):
                 col = Column(**parsed_string)
                 columns.append(col)
 
-            # We are creating a couple of custom tags
+            schema_fqn = model_str(cast("DatabaseSchema", self.database_schema_object).fullyQualifiedName)
+            table_fqn = f"{schema_fqn}.{fqn.quote_name(table['name'])}"
             tags = [AMUNDSEN_TABLE_TAG, table["cluster"]]
             if table["tags"]:
                 tags.extend(table["tags"])
-            yield from get_ometa_tag_and_classification(
-                tags=tags,
-                classification_name=AMUNDSEN_TAG_CATEGORY,
-                tag_description="Amundsen Table Tag",
-                classification_description="Tags associated with amundsen entities",
-            )
+            for tag_name in tags:
+                try:
+                    tag = TagDefinition(
+                        classification_name=AMUNDSEN_TAG_CATEGORY,
+                        tag_name=tag_name,
+                        tag_description="Amundsen Table Tag",
+                        classification_description="Tags associated with amundsen entities",
+                    )
+                    self.tags_registry.define(tag)
+                    self.tags_registry.attach(entity_fqn=table_fqn, tag=tag)
+                except Exception as exc:
+                    yield Either(
+                        right=None,
+                        left=StackTraceError(
+                            name=tag_name,
+                            error=f"Error registering tag [{tag_name}]: [{exc}]",
+                            stackTrace=traceback.format_exc(),
+                        ),
+                    )
+            with closing(self.tags_registry.drain()) as definitions:
+                for definition in definitions:
+                    yield Either(left=None, right=definition)
 
             table_request = CreateTableRequest(
                 name=table["name"],
                 tableType="Regular",
                 description=table.get("description"),
                 databaseSchema=self.database_schema_object.fullyQualifiedName,
-                tags=get_tag_labels(
-                    metadata=self.metadata,
-                    tags=tags,
-                    classification_name=AMUNDSEN_TAG_CATEGORY,
-                    include_tags=True,
-                ),
+                tags=self.tags_registry.labels_for(table_fqn),
                 columns=columns,
             )
             yield Either(right=table_request)
@@ -361,6 +376,9 @@ class AmundsenSource(Source):
                     stackTrace=traceback.format_exc(),
                 )
             )
+        finally:
+            if table_fqn is not None:
+                self.tags_registry.clear_scope(table_fqn)
 
     def create_dashboard_service(self, dashboard: dict) -> Iterable[Either[CreateDashboardRequest]]:
         service_name = dashboard["cluster"]

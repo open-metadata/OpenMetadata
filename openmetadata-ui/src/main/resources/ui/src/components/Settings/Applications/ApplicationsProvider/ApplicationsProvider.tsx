@@ -123,8 +123,20 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
         // Silently ignore errors during plugin contribution
       }
     });
-    setContributionsVersion((version) => version + 1);
-    setContributionsReady(true);
+    // Static (always-on) contributions from the downstream build — these are
+    // not tied to an installed app, so they can't come from a plugin instance.
+    void (async () => {
+      try {
+        const { default: applicationsClassBase } = await import(
+          '../AppDetails/ApplicationsClassBase'
+        );
+        applicationsClassBase.contributeStaticExtensions(extensionRegistry);
+      } catch {
+        // Silently ignore errors during static contribution
+      }
+      setContributionsVersion((version) => version + 1);
+      setContributionsReady(true);
+    })();
   }, [installedPluginInstances, extensionRegistry, isLoading]);
 
   const getContributions = useCallback(

@@ -14,7 +14,9 @@
 import { FormProps } from '@rjsf/core';
 import { LoadingState } from 'Models';
 
-export interface FormBuilderV1Props extends FormProps {
+export interface FormBuilderV1Props extends Omit<FormProps, 'validator'> {
+  /** Defaults to the stock `@rjsf/validator-ajv8` validator. */
+  validator?: FormProps['validator'];
   okText?: string;
   cancelText?: string;
   isLoading?: boolean;

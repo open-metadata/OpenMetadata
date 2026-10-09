@@ -66,6 +66,9 @@ const DomainSelect: FC<DomainSelectProps> = ({
   triggerVariant = 'input',
   triggerClassName,
   fullWidthTrigger,
+  placement,
+  offset: dropdownOffset,
+  popoverClassName,
   bordered,
   commitMode,
   renderTrigger,
@@ -397,12 +400,15 @@ const DomainSelect: FC<DomainSelectProps> = ({
       label={label}
       maxIndentLevel={showAllDomains ? 3 : undefined}
       multiple={multiple}
+      offset={dropdownOffset}
       // One page per branch; the rest arrives behind "Show N more".
       pageSize={PAGE_SIZE_LARGE}
       placeholder={
         placeholder ??
         t('label.select-field', { field: t('label.domain-plural') })
       }
+      placement={placement}
+      popoverClassName={popoverClassName}
       renderSelectedItem={renderSelectedItem}
       renderTrigger={renderTrigger}
       searchPlaceholder={t('label.search-entity', {

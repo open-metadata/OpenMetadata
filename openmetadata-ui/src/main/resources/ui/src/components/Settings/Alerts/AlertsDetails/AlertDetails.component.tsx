@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Space } from 'antd';
+import {
+  Box,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +33,7 @@ import {
   getDisplayNameForEntities,
   getFunctionDisplayName,
 } from '../../../../utils/Alerts/AlertsUtilPure';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';
@@ -53,13 +59,20 @@ export const AlertDetailsComponent = ({
   const { t } = useTranslation();
 
   return (
-    <Row align="middle" gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid tw:items-center"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <div className="d-flex items-center justify-between">
           {breadcrumb ? <TitleBreadcrumb titleLinks={breadcrumb} /> : null}
 
           {pageHeaderData ? <PageHeader data={pageHeaderData} /> : null}
-          <Space size={16}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={4}
+            itemClassName="layout-space-item">
             {allowEdit && (
               <Link to={`${EDIT_LINK_PATH}/${alerts?.id}`}>
                 <Button
@@ -77,12 +90,18 @@ export const AlertDetailsComponent = ({
                 {t('label.delete')}
               </Button>
             )}
-          </Space>
+          </Box>
         </div>
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <Card>
-          <Space direction="vertical" size={8}>
+          <Box
+            inline
+            align="stretch"
+            className="layout-space"
+            direction="col"
+            gap={2}
+            itemClassName="layout-space-item">
             <Typography
               as="h5"
               className="m-0"
@@ -95,7 +114,7 @@ export const AlertDetailsComponent = ({
                 ?.map(getDisplayNameForEntities)
                 ?.join(', ')}
             </Typography>
-          </Space>
+          </Box>
           <Divider className="tw:my-6" />
           <Typography as="h5" size="text-md" weight="semibold">
             {t('label.filter-plural')}
@@ -124,9 +143,13 @@ export const AlertDetailsComponent = ({
           <Typography as="h5" size="text-md" weight="semibold">
             {t('label.destination')}
           </Typography>
-          <Row gutter={[16, 16]} />
+          <Box
+            className="layout-row"
+            style={{ ...getLayoutGutter(16, 16) }}
+            wrap="wrap"
+          />
         </Card>
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };

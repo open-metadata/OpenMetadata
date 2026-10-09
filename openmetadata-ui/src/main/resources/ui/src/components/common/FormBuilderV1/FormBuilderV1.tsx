@@ -128,8 +128,6 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       [props.templates]
     );
 
-    const resolvedValidator = props.validator ?? validator;
-
     return (
       <Form
         {...props}
@@ -146,7 +144,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
         templates={mergedTemplates}
         transformErrors={transformErrors}
         uiSchema={uiSchema}
-        validator={resolvedValidator}
+        validator={props.validator ?? validator}
         widgets={mergedWidgets}
         onChange={handleFormChange}
         onSubmit={onSubmit}>

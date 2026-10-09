@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Modal, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Modal } from 'antd';
 import { isArray, startCase } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,7 @@ import {
   PipelineStatus,
   StepSummary,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
@@ -34,9 +35,11 @@ import { IngestionRunDetailsModalProps } from './IngestionRunDetailsModal.interf
 
 const renderFailuresRow = (record: StepSummary) =>
   record.failures ? (
-    <Row gutter={[16, 16]}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(16, 16) }}>
       {record.failures.map((failure) => (
-        <Col key={failure.name} span={24}>
+        <Grid.Item className="layout-column" key={failure.name} span={24}>
           <ConnectionStepCard
             isTestingConnection={false}
             key={failure.name}
@@ -53,9 +56,9 @@ const renderFailuresRow = (record: StepSummary) =>
               errorLog: failure.stackTrace,
             }}
           />
-        </Col>
+        </Grid.Item>
       ))}
-    </Row>
+    </Grid>
   ) : undefined;
 
 function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
