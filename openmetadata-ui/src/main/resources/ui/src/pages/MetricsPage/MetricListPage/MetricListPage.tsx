@@ -28,7 +28,6 @@ import {
   ModalOverlay,
   PageLayout,
   Skeleton,
-  Table,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -38,15 +37,12 @@ import {
   CursorClick01,
   Download01,
   Edit03,
-  Eye,
-  EyeOff,
   FileCheck03,
   Grid01,
   Package,
   Plus,
   Rows03,
   Search,
-  Settings01,
   Trash01,
   UploadCloud01,
   User01,
@@ -77,6 +73,8 @@ import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
 } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import type { ColumnsType } from '../../../components/common/Table/Table.interface';
+import TableV2 from '../../../components/common/Table/TableV2';
 import { useMetricCreateDrawer } from '../../../components/Metric/AddMetric/useMetricCreateDrawer';
 import MetricListHealth from '../../../components/Metric/MetricListHealth/MetricListHealth';
 import MetricStatusPill from '../../../components/Metric/MetricStatusPill/MetricStatusPill';
@@ -90,6 +88,7 @@ import { EntityStatus } from '../../../generated/entity/data/metric';
 import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
@@ -118,6 +117,7 @@ import {
   isSyntheticRow,
   MetricTableRow,
   MetricTreeNode,
+  VisibleMetricTableRow,
 } from '../../../utils/MetricEntityUtils/MetricHierarchyUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -142,21 +142,11 @@ type MetricColumnId =
 
 type MetricViewMode = 'card' | 'table';
 
-const METRIC_COLUMN_STORAGE_KEY = 'metricsList.columnPrefs.v2';
+const METRIC_TABLE_PREFERENCE_KEY = 'metricList';
+const METRIC_STATIC_COLUMNS = ['name'];
 const METRIC_VIEW_STORAGE_KEY = 'metricsList.viewMode.v1';
 const METRIC_SEARCH_DEBOUNCE_MS = 500;
 const METRIC_PAGE_SIZE = 20;
-
-const METRIC_COLUMN_ORDER: MetricColumnId[] = [
-  'description',
-  'glossary',
-  'entityStatus',
-  'health',
-  'owners',
-  'tags',
-  'domains',
-  'updatedAt',
-];
 
 const DEFAULT_VISIBLE_METRIC_COLUMNS: MetricColumnId[] = [
   'description',
@@ -192,19 +182,11 @@ const METRIC_STATUS_FILTER_OPTIONS = Object.values(EntityStatus);
 const getInputChangeValue = (value: string | ChangeEvent<HTMLInputElement>) =>
   typeof value === 'string' ? value : value.target.value;
 
-const getStoredColumns = (): MetricColumnId[] => {
-  try {
-    const storedColumns = JSON.parse(
-      localStorage.getItem(METRIC_COLUMN_STORAGE_KEY) ?? 'null'
-    );
-
-    return Array.isArray(storedColumns)
-      ? METRIC_COLUMN_ORDER.filter((column) => storedColumns.includes(column))
-      : DEFAULT_VISIBLE_METRIC_COLUMNS;
-  } catch {
-    return DEFAULT_VISIBLE_METRIC_COLUMNS;
-  }
-};
+const getVisibleMetricColumns = (
+  selectedEntityTableColumns: Record<string, string[]> | undefined
+) =>
+  (selectedEntityTableColumns?.[METRIC_TABLE_PREFERENCE_KEY] ??
+    DEFAULT_VISIBLE_METRIC_COLUMNS) as MetricColumnId[];
 
 const getInitialViewMode = (): MetricViewMode => {
   const storedMode = localStorage.getItem(METRIC_VIEW_STORAGE_KEY);
@@ -258,8 +240,11 @@ const MetricListPage = () => {
   const [statusFilter, setStatusFilter] = useState<EntityStatus>();
   const [page, setPage] = useState(1);
   const [selectedMetricIds, setSelectedMetricIds] = useState<string[]>([]);
-  const [visibleColumns, setVisibleColumns] =
-    useState<MetricColumnId[]>(getStoredColumns);
+  const {
+    preferences: { selectedEntityTableColumns },
+  } = useCurrentUserPreferences();
+  // Owned by TableV2's Customize menu; card view only reads it.
+  const visibleColumns = getVisibleMetricColumns(selectedEntityTableColumns);
   const [viewMode, setViewMode] = useState<MetricViewMode>(getInitialViewMode);
   const [isExporting, setIsExporting] = useState(false);
   const [isMetricActionsOpen, setIsMetricActionsOpen] = useState(false);
@@ -525,24 +510,6 @@ const MetricListPage = () => {
       setCurrentPage(1);
     },
     [setCurrentPage]
-  );
-
-  const persistVisibleColumns = useCallback((columns: MetricColumnId[]) => {
-    setVisibleColumns(columns);
-    localStorage.setItem(METRIC_COLUMN_STORAGE_KEY, JSON.stringify(columns));
-  }, []);
-
-  const handleToggleColumn = useCallback(
-    (columnId: MetricColumnId) => {
-      persistVisibleColumns(
-        visibleColumns.includes(columnId)
-          ? visibleColumns.filter((id) => id !== columnId)
-          : METRIC_COLUMN_ORDER.filter(
-              (id) => id === columnId || visibleColumns.includes(id)
-            )
-      );
-    },
-    [persistVisibleColumns, visibleColumns]
   );
 
   const handleViewModeChange = useCallback((nextMode: MetricViewMode) => {
@@ -839,153 +806,98 @@ const MetricListPage = () => {
     </Button>
   );
 
-  const fullWidthTableColumnCount = 2 + visibleColumns.length;
+  const metricTableColumns: ColumnsType<VisibleMetricTableRow> = [
+    {
+      key: 'name',
+      title: t('label.metric'),
+      width: 320,
+      render: (_, { row, depth }) =>
+        renderMetricName(row as MetricTreeNode, depth),
+    },
+    {
+      key: 'description',
+      title: t(METRIC_COLUMN_LABEL_KEYS.description),
+      width: 288,
+      render: (_, { row }) =>
+        (row as MetricTreeNode).description ?? t('label.empty-dash'),
+    },
+    {
+      key: 'glossary',
+      title: t(METRIC_COLUMN_LABEL_KEYS.glossary),
+      render: (_, { row }) =>
+        renderTagBadges(getGlossaryTerms((row as MetricTreeNode).tags)),
+    },
+    {
+      key: 'entityStatus',
+      title: t(METRIC_COLUMN_LABEL_KEYS.entityStatus),
+      render: (_, { row }) => (
+        <MetricStatusPill status={(row as MetricTreeNode).entityStatus} />
+      ),
+    },
+    {
+      key: 'health',
+      title: t(METRIC_COLUMN_LABEL_KEYS.health),
+      render: (_, { row }) => <MetricListHealth metricId={row.id} />,
+    },
+    {
+      key: 'owners',
+      title: t(METRIC_COLUMN_LABEL_KEYS.owners),
+      render: (_, { row }) => renderOwners((row as MetricTreeNode).owners),
+    },
+    {
+      key: 'tags',
+      title: t(METRIC_COLUMN_LABEL_KEYS.tags),
+      render: (_, { row }) =>
+        renderTagBadges(getTags((row as MetricTreeNode).tags)),
+    },
+    {
+      key: 'domains',
+      title: t(METRIC_COLUMN_LABEL_KEYS.domains),
+      render: (_, { row }) => {
+        const { domains } = row as MetricTreeNode;
 
-  const renderPrimaryTableCells = (metric: MetricTreeNode) => (
-    <>
-      {visibleColumns.includes('description') && (
-        <Table.Cell>{metric.description ?? t('label.empty-dash')}</Table.Cell>
-      )}
-      {visibleColumns.includes('glossary') && (
-        <Table.Cell>
-          {renderTagBadges(getGlossaryTerms(metric.tags))}
-        </Table.Cell>
-      )}
-      {visibleColumns.includes('entityStatus') && (
-        <Table.Cell>
-          <MetricStatusPill status={metric.entityStatus} />
-        </Table.Cell>
-      )}
-      {visibleColumns.includes('health') && (
-        <Table.Cell>
-          <MetricListHealth metricId={metric.id} />
-        </Table.Cell>
-      )}
-    </>
-  );
+        return domains?.length ? (
+          <DomainTags domains={domains} maxVisible={2} />
+        ) : (
+          <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
+        );
+      },
+    },
+    {
+      key: 'updatedAt',
+      title: t(METRIC_COLUMN_LABEL_KEYS.updatedAt),
+      render: (_, { row }) => {
+        const { updatedAt } = row as MetricTreeNode;
 
-  const renderSecondaryTableCells = (metric: MetricTreeNode) => (
-    <>
-      {visibleColumns.includes('owners') && (
-        <Table.Cell>{renderOwners(metric.owners)}</Table.Cell>
-      )}
-      {visibleColumns.includes('tags') && (
-        <Table.Cell>{renderTagBadges(getTags(metric.tags))}</Table.Cell>
-      )}
-      {visibleColumns.includes('domains') && (
-        <Table.Cell>
-          {metric.domains?.length ? (
-            <DomainTags domains={metric.domains} maxVisible={2} />
-          ) : (
-            <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
-          )}
-        </Table.Cell>
-      )}
-      {visibleColumns.includes('updatedAt') && (
-        <Table.Cell>
-          {metric.updatedAt
-            ? getShortRelativeTime(metric.updatedAt)
-            : t('label.empty-dash')}
-        </Table.Cell>
-      )}
-    </>
-  );
+        return updatedAt
+          ? getShortRelativeTime(updatedAt)
+          : t('label.empty-dash');
+      },
+    },
+  ];
 
-  const renderTableRow = ({ row, depth }: (typeof visibleRows)[number]) => {
+  const renderFullWidthRow = ({ row, depth }: VisibleMetricTableRow) => {
     if (isGroupRow(row)) {
-      return (
-        <Table.Row
-          hideSelectionCell
-          className="tw:h-auto tw:bg-secondary tw:hover:bg-secondary"
-          data-testid={`metric-group-row-${row.group.id}`}
-          id={row.id}
-          key={row.id}>
-          <Table.Cell className="tw:p-0" colSpan={fullWidthTableColumnCount}>
-            {renderGroupName(row)}
-          </Table.Cell>
-        </Table.Row>
-      );
+      return renderGroupName(row);
     }
-
     if (isLoadMoreRow(row)) {
       return (
-        <Table.Row
-          hideSelectionCell
-          className="tw:h-auto"
-          id={row.id}
-          key={row.id}>
-          <Table.Cell colSpan={fullWidthTableColumnCount}>
-            <Box className="tw:py-1" justify="center">
-              {renderLoadMore(row, depth)}
-            </Box>
-          </Table.Cell>
-        </Table.Row>
+        <Box className="tw:px-4 tw:py-2" justify="center">
+          {renderLoadMore(row, depth)}
+        </Box>
       );
     }
 
-    return (
-      <Table.Row className="tw:cursor-pointer" id={row.id} key={row.id}>
-        <Table.Cell>{renderMetricName(row, depth)}</Table.Cell>
-        {renderPrimaryTableCells(row)}
-        {renderSecondaryTableCells(row)}
-      </Table.Row>
-    );
+    return null;
   };
 
-  const renderTable = () => (
-    <Table
-      aria-label={t('label.metric-plural')}
-      disabledKeys={visibleRows
-        .filter(({ row }) => isSyntheticRow(row))
-        .map(({ row }) => row.id)}
-      selectedKeys={new Set(selectedMetricIds)}
-      selectionBehavior="toggle"
-      selectionMode="multiple"
-      size="sm"
-      onRowAction={handleMetricRowAction}
-      onSelectionChange={(selection) =>
-        setSelectedMetricIds(
-          selection === 'all'
-            ? selectableMetricIds
-            : Array.from(selection)
-                .map(String)
-                .filter((id) => selectableMetricIds.includes(id))
-        )
-      }>
-      <Table.Header>
-        <Table.Head
-          isRowHeader
-          className="tw:min-w-80"
-          label={t('label.metric')}
-        />
-        {visibleColumns.includes('description') && (
-          <Table.Head className="tw:min-w-72" label={t('label.description')} />
-        )}
-        {visibleColumns.includes('glossary') && (
-          <Table.Head label={t('label.glossary-term-plural')} />
-        )}
-        {visibleColumns.includes('entityStatus') && (
-          <Table.Head label={t('label.status')} />
-        )}
-        {visibleColumns.includes('health') && (
-          <Table.Head label={t('label.health')} />
-        )}
-        {visibleColumns.includes('owners') && (
-          <Table.Head label={t('label.owner-plural')} />
-        )}
-        {visibleColumns.includes('tags') && (
-          <Table.Head label={t('label.tag-plural')} />
-        )}
-        {visibleColumns.includes('domains') && (
-          <Table.Head label={t('label.domain-plural')} />
-        )}
-        {visibleColumns.includes('updatedAt') && (
-          <Table.Head label={t('label.last-updated')} />
-        )}
-      </Table.Header>
-      <Table.Body>{visibleRows.map(renderTableRow)}</Table.Body>
-    </Table>
-  );
+  const getMetricRowClassName = ({ row }: VisibleMetricTableRow) => {
+    if (isGroupRow(row)) {
+      return 'tw:h-auto tw:bg-secondary tw:hover:bg-secondary';
+    }
+
+    return isLoadMoreRow(row) ? 'tw:h-auto' : 'tw:cursor-pointer';
+  };
 
   const renderMetricCardMetadata = (metric: MetricTreeNode) => (
     <>
@@ -1416,13 +1328,10 @@ const MetricListPage = () => {
     </ButtonGroup>
   );
 
-  const renderColumnControl = () => {
-    if (selectedMetricIds.length > 0) {
+  const renderColumnControl = (columnCustomize: ReactNode) => {
+    if (selectedMetricIds.length > 0 || !columnCustomize) {
       return null;
     }
-
-    const areAllColumnsVisible =
-      visibleColumns.length === METRIC_COLUMN_ORDER.length;
 
     return (
       <>
@@ -1430,72 +1339,12 @@ const MetricListPage = () => {
           aria-hidden="true"
           className="tw:h-5 tw:w-px tw:bg-border-secondary"
         />
-        <Dropdown.Root>
-          <Button
-            className="tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
-            color="link-color"
-            iconLeading={Settings01}>
-            {t('label.customize')}
-          </Button>
-          <Dropdown.Popover className="metric-customize-menu">
-            <div
-              className={classNames(
-                'metric-customize-header tw:flex tw:items-center tw:justify-between',
-                'tw:border-b tw:border-secondary tw:px-3 tw:py-2.5',
-                'tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-tertiary'
-              )}>
-              <span>{t('label.column')}</span>
-              <button
-                className="metric-customize-toggle tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-xs tw:font-medium tw:normal-case tw:tracking-normal tw:text-brand-secondary"
-                type="button"
-                onClick={() =>
-                  persistVisibleColumns(
-                    areAllColumnsVisible ? [] : METRIC_COLUMN_ORDER
-                  )
-                }>
-                {areAllColumnsVisible
-                  ? t('label.hide-all')
-                  : t('label.view-all')}
-              </button>
-            </div>
-            <div className="metric-customize-list tw:flex tw:flex-col tw:p-1.5">
-              {METRIC_COLUMN_ORDER.map((columnId) => {
-                const isVisible = visibleColumns.includes(columnId);
-
-                return (
-                  <button
-                    className={classNames(
-                      'metric-customize-row tw:flex tw:cursor-pointer tw:items-center tw:gap-3',
-                      'tw:rounded-lg tw:border-0 tw:bg-transparent tw:p-2 tw:text-left',
-                      'tw:text-sm tw:text-primary tw:hover:bg-secondary'
-                    )}
-                    key={columnId}
-                    type="button"
-                    onClick={() => handleToggleColumn(columnId)}>
-                    <span
-                      aria-hidden="true"
-                      className="metric-customize-grip tw:text-quaternary">
-                      ::
-                    </span>
-                    <span className="tw:flex-1">
-                      {t(METRIC_COLUMN_LABEL_KEYS[columnId])}
-                    </span>
-                    {isVisible ? (
-                      <Eye className="metric-customize-eye tw:size-4 tw:text-quaternary" />
-                    ) : (
-                      <EyeOff className="metric-customize-eye tw:size-4 tw:text-quaternary" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </Dropdown.Popover>
-        </Dropdown.Root>
+        {columnCustomize}
       </>
     );
   };
 
-  const renderToolbar = () => (
+  const renderToolbar = (columnCustomize: ReactNode = null) => (
     <Box
       align="center"
       className="tw:flex-col tw:border-b tw:border-secondary tw:px-4 tw:py-3 tw:sm:flex-row tw:sm:flex-nowrap"
@@ -1510,7 +1359,7 @@ const MetricListPage = () => {
         justify="end">
         {renderUnselectedFilters()}
         {renderViewModeControl()}
-        {renderColumnControl()}
+        {renderColumnControl(columnCustomize)}
       </Box>
     </Box>
   );
@@ -1522,7 +1371,56 @@ const MetricListPage = () => {
     rowCount: rows.length,
   });
 
+  const getTablePlaceholder = () => {
+    if (listingError) {
+      return renderError();
+    }
+
+    return isMetricsPending || isSearchTextPending
+      ? renderLoading()
+      : renderEmpty();
+  };
+
+  const renderTable = () => {
+    const isPlaceholder =
+      isPlaceholderState || isMetricsPending || isSearchTextPending;
+
+    return (
+      <TableV2<VisibleMetricTableRow>
+        aria-label={t('label.metric-plural')}
+        cellClassName="tw:px-5 tw:py-3 tw:align-middle"
+        columns={metricTableColumns}
+        containerClassName="tw:border-0 tw:rounded-none tw:flex tw:flex-col tw:flex-1 tw:min-h-0"
+        data-testid="metric-list-table"
+        dataSource={isPlaceholder ? [] : visibleRows}
+        defaultVisibleColumns={DEFAULT_VISIBLE_METRIC_COLUMNS}
+        entityType={METRIC_TABLE_PREFERENCE_KEY}
+        fullWidthRowRender={renderFullWidthRow}
+        locale={{ emptyText: getTablePlaceholder() }}
+        pagination={false}
+        renderToolbar={renderToolbar}
+        rowClassName={getMetricRowClassName}
+        rowKey={({ row }) => row.id}
+        rowSelection={{
+          selectedRowKeys: selectedMetricIds,
+          getCheckboxProps: ({ row }) => ({ disabled: isSyntheticRow(row) }),
+          onChange: (keys) =>
+            setSelectedMetricIds(
+              keys.map(String).filter((id) => selectableMetricIds.includes(id))
+            ),
+        }}
+        size="small"
+        staticVisibleColumns={METRIC_STATIC_COLUMNS}
+        tableLayout="auto"
+        onRowAction={handleMetricRowAction}
+      />
+    );
+  };
+
   const renderListingContent = () => {
+    if (viewMode === 'table') {
+      return renderTable();
+    }
     if (listingError) {
       return renderError();
     }
@@ -1533,7 +1431,7 @@ const MetricListPage = () => {
       return renderEmpty();
     }
 
-    return viewMode === 'table' ? renderTable() : renderCards();
+    return renderCards();
   };
 
   const renderListCard = () => (
@@ -1542,7 +1440,7 @@ const MetricListPage = () => {
         'tw:flex tw:flex-col tw:flex-1 tw:min-h-0': isPlaceholderState,
       })}
       size="sm">
-      {renderToolbar()}
+      {viewMode === 'card' && renderToolbar()}
       <span aria-live="polite" className="tw:sr-only">
         {isMetricsBusy || isSearchTextPending
           ? t('label.loading')

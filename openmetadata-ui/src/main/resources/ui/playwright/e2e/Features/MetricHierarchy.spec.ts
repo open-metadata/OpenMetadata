@@ -504,10 +504,8 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         'Approved'
       );
 
-      await page.getByRole('button', { name: 'Customize' }).click();
-      await page
-        .getByRole('button', { name: 'Description', exact: true })
-        .click();
+      await page.getByTestId('column-dropdown').click();
+      await page.getByTestId('column-menu-item-description').click();
       await expect(
         page.getByRole('columnheader', { name: 'Description' })
       ).toHaveCount(0);
