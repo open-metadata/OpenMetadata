@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
@@ -157,7 +157,11 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
           {/* When hideFooter is true, the parent card renders the footer to span full width
            * and keep the card's bottom border-radius visible during scroll. */}
           {!hideFooter && (
-            <div className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1">
+            <Box
+              className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1"
+              direction="row"
+              gap={2}
+              justify="end">
               {!hideCancelButton && (
                 <Button
                   color="secondary"
@@ -177,7 +181,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
                   ? t('label.submitting')
                   : okText ?? t('label.submit')}
               </Button>
-            </div>
+            </Box>
           )}
         </Form>
       </FieldDocsContext.Provider>
