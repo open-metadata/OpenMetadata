@@ -106,6 +106,29 @@ class EssentialSeedsTest {
   }
 
   @Test
+  void reportForTypesExcludesOtherTypes() {
+    EssentialSeeds seeds = withExisting(Set.of());
+    seeds.register("bot", List.of("ingestion-bot"));
+    seeds.register("dynamicAgent", List.of("AskCollate"));
+    seeds.seedEach(
+        "dynamicAgent", List.of("x"), n -> n, n -> failWith(new IllegalStateException("boom")));
+
+    EssentialSeedReport report = seeds.report(Set.of("bot", "user"));
+
+    assertEquals(List.of(new MissingArtifact("bot", "ingestion-bot")), report.missing());
+    assertTrue(report.failures().isEmpty());
+  }
+
+  @Test
+  void expectedNamesReturnsRegisteredNamesOrEmpty() {
+    EssentialSeeds seeds = withExisting(Set.of());
+    seeds.register("bot", List.of("ingestion-bot", "profiler-bot"));
+
+    assertEquals(List.of("ingestion-bot", "profiler-bot"), seeds.expectedNames("bot"));
+    assertEquals(List.of(), seeds.expectedNames("dynamicAgent"));
+  }
+
+  @Test
   void resetClearsRegistrationsAndFailures() {
     EssentialSeeds seeds = withExisting(Set.of());
     seeds.register("bot", List.of("a"));

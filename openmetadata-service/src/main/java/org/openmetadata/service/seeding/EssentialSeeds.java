@@ -5,9 +5,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -16,7 +18,7 @@ import org.openmetadata.service.seeding.EssentialSeedReport.SeedFailure;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
- * System artifacts whose absence silently disables product features (bots, AI agents). Each type
+ * System artifacts whose absence silently disables product features (e.g. system bots). Each type
  * declares its expected names from its seed files; {@link #report()} checks them against the
  * database on every call, so artifacts removed after startup are reported too.
  */
@@ -49,15 +51,30 @@ public final class EssentialSeeds {
   }
 
   public synchronized EssentialSeedReport report() {
+    return reportFor(entityType -> true);
+  }
+
+  public synchronized EssentialSeedReport report(Set<String> entityTypes) {
+    return reportFor(entityTypes::contains);
+  }
+
+  public synchronized List<String> expectedNames(String entityType) {
+    return expectedByType.getOrDefault(entityType, List.of());
+  }
+
+  private EssentialSeedReport reportFor(Predicate<String> includesType) {
     List<MissingArtifact> missing =
         expectedByType.entrySet().stream()
+            .filter(expected -> includesType.test(expected.getKey()))
             .flatMap(
                 expected ->
                     expected.getValue().stream()
                         .map(name -> new MissingArtifact(expected.getKey(), name)))
             .filter(artifact -> !exists.test(artifact.entityType(), artifact.name()))
             .toList();
-    return new EssentialSeedReport(missing, failures);
+    List<SeedFailure> matching =
+        failures.stream().filter(failure -> includesType.test(failure.entityType())).toList();
+    return new EssentialSeedReport(missing, matching);
   }
 
   public synchronized void reset() {

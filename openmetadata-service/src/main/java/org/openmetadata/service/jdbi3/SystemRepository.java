@@ -9,6 +9,7 @@ import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.get
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Suppliers;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.SearchResult;
@@ -26,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -67,12 +69,10 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.FieldError;
@@ -92,6 +92,7 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.NoOpAssetService;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.BadRequestException;
@@ -110,11 +111,11 @@ import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftSt
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.BotTokenCheck;
+import org.openmetadata.service.security.BotTokenCheck.UnusableBot;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.TokenValidityResolver;
@@ -131,13 +132,13 @@ import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.seeding.EssentialSeedReport;
 import org.openmetadata.service.seeding.EssentialSeeds;
+import org.openmetadata.service.seeding.EssentialSeedsStatus;
 import org.openmetadata.service.seeding.RequiredSeedRows;
 import org.openmetadata.service.seeding.RequiredSeedRows.SeedTable;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.OpenMetadataBaseUrlValidator;
-import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
@@ -153,10 +154,20 @@ public class SystemRepository {
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
-  private static final String SEED_ARTIFACTS_VALIDATION_KEY = "System Bots and Agents";
+  private static final String SYSTEM_BOTS_VALIDATION_KEY = "System Bots";
+  private static final Set<String> SYSTEM_BOT_TYPES = Set.of(Entity.BOT, Entity.USER);
+  private static final String UNUSABLE_TOKEN_LINE = "Token not usable: bot %s (%s)";
   private static final String LDAP_VALIDATION_KEY = "LDAP";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
+  private final BotTokenCheck botTokenCheck = BotTokenCheck.forSystemBots();
+  // Built on first use: the security configuration is loaded by then.
+  private final Supplier<JwtFilter> statusJwtFilter =
+      Suppliers.memoize(
+          () ->
+              new JwtFilter(
+                  SecurityConfigurationManager.getCurrentAuthConfig(),
+                  SecurityConfigurationManager.getCurrentAuthzConfig()));
 
   private enum ValidationStepDescription {
     DATABASE("Validate that we can properly run a query against the configured database."),
@@ -168,9 +179,9 @@ public class SystemRepository {
     SEARCH_REINDEX(
         "Validate that every deployed search index was built from the current index mapping "
             + "(i.e. no reindex is pending)."),
-    SEED_ARTIFACTS(
-        "Validate that the built-in system bots and AI agents exist and were created without"
-            + " errors.");
+    SYSTEM_BOTS(
+        "Validate that the built-in system bots exist, were created without errors, and their"
+            + " tokens can be decrypted and validated.");
 
     public final String key;
 
@@ -732,6 +743,15 @@ public class SystemRepository {
     return JsonUtils.readValue(encryptedSetting, SlackAppConfiguration.class);
   }
 
+  /** The Health Check response, for any caller that has only the application config. */
+  public ValidationResponse validateSystem(OpenMetadataApplicationConfig applicationConfig) {
+    return validateSystem(
+        applicationConfig,
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            applicationConfig.getPipelineServiceClientConfiguration()),
+        statusJwtFilter.get());
+  }
+
   public ValidationResponse validateSystem(
       OpenMetadataApplicationConfig applicationConfig,
       PipelineServiceClientInterface pipelineServiceClient,
@@ -761,7 +781,8 @@ public class SystemRepository {
     validation.setAdditionalProperty(
         "Object Storage", getObjectStorageValidation(applicationConfig));
     validation.setAdditionalProperty(REINDEX_STATUS_VALIDATION_KEY, getReindexStatusValidation());
-    validation.setAdditionalProperty(SEED_ARTIFACTS_VALIDATION_KEY, getSeedArtifactsValidation());
+    validation.setAdditionalProperty(
+        SYSTEM_BOTS_VALIDATION_KEY, getSystemBotsValidation(applicationConfig, jwtFilter));
 
     addExtraValidations(applicationConfig, validation);
 
@@ -1350,44 +1371,43 @@ public class SystemRepository {
     return missing;
   }
 
-  private StepValidation getSeedArtifactsValidation() {
-    return seedArtifactsValidation(EssentialSeeds.getInstance()::report);
+  private StepValidation getSystemBotsValidation(
+      OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
+    return EssentialSeedsStatus.toStep(
+        ValidationStepDescription.SYSTEM_BOTS.key,
+        "system bots",
+        () -> currentBotProblems(applicationConfig, jwtFilter));
   }
 
-  // A lookup failure fails this step only, so one card cannot take down the whole status page.
-  static StepValidation seedArtifactsValidation(Supplier<EssentialSeedReport> report) {
-    StepValidation result;
-    try {
-      result = buildSeedArtifactsStepValidation(report.get());
-    } catch (RuntimeException e) {
-      LOG.error("Could not verify system bots and agents", e);
-      result =
-          new StepValidation()
-              .withDescription(ValidationStepDescription.SEED_ARTIFACTS.key)
-              .withPassed(Boolean.FALSE)
-              .withMessage("Could not verify system bots and agents.");
-    }
-    return result;
+  // For each seeded bot: it exists (seed report), and if it does, it can be used (token check).
+  private List<String> currentBotProblems(
+      OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
+    EssentialSeeds essentialSeeds = EssentialSeeds.getInstance();
+    EssentialSeedReport report = essentialSeeds.report(SYSTEM_BOT_TYPES);
+    List<String> present = presentBots(essentialSeeds.expectedNames(Entity.BOT), report);
+    return systemBotProblems(
+        report, botTokenCheck.unusableBots(present, applicationConfig, jwtFilter));
   }
 
-  // Lists type and name only: /system/status is readable by any authenticated user, and seeding
-  // errors can name secret paths and KMS failures. The error text is served by Admin Ops only.
-  static StepValidation buildSeedArtifactsStepValidation(EssentialSeedReport report) {
-    String message =
-        report.isHealthy()
-            ? "All system bots and agents are present."
-            : Stream.concat(
-                    report.missing().stream()
-                        .map(missing -> "Missing: " + missing.entityType() + " " + missing.name()),
-                    report.failures().stream()
-                        .map(
-                            failure ->
-                                "Failed to set up: " + failure.entityType() + " " + failure.item()))
-                .collect(Collectors.joining("\n"));
-    return new StepValidation()
-        .withDescription(ValidationStepDescription.SEED_ARTIFACTS.key)
-        .withPassed(report.isHealthy())
-        .withMessage(message);
+  // Bots and their bot users share a name, stored lowercase for users; either one missing means
+  // no connection can be built, and the seed report already lists it.
+  static List<String> presentBots(List<String> seededBots, EssentialSeedReport report) {
+    Set<String> missing =
+        report.missing().stream()
+            .map(artifact -> artifact.name().toLowerCase(Locale.ROOT))
+            .collect(Collectors.toUnmodifiableSet());
+    return seededBots.stream()
+        .filter(botName -> !missing.contains(botName.toLowerCase(Locale.ROOT)))
+        .toList();
+  }
+
+  static List<String> systemBotProblems(
+      EssentialSeedReport report, List<UnusableBot> unusableBots) {
+    return Stream.concat(
+            EssentialSeedsStatus.describe(report).stream(),
+            unusableBots.stream()
+                .map(bot -> String.format(UNUSABLE_TOKEN_LINE, bot.name(), bot.problem().reason)))
+        .toList();
   }
 
   private StepValidation getReindexStatusValidation() {
@@ -1515,23 +1535,25 @@ public class SystemRepository {
 
   private StepValidation getJWKsValidation(
       OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(applicationConfig).build();
-    OpenMetadataJWTClientConfig realJWTConfig =
-        secretsManager.decryptJWTConfig(openMetadataServerConnection.getSecurityConfig());
+    StepValidation result;
     try {
-      jwtFilter.validateJwtAndGetClaims(realJWTConfig.getJwtToken());
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.JWT_TOKEN.key)
-          .withPassed(Boolean.TRUE)
-          .withMessage("Ingestion Bot token has been validated");
+      jwtFilter.validateJwtAndGetClaims(
+          BotTokenCheck.decryptedToken(applicationConfig, Entity.INGESTION_BOT_NAME));
+      result =
+          new StepValidation()
+              .withDescription(ValidationStepDescription.JWT_TOKEN.key)
+              .withPassed(Boolean.TRUE)
+              .withMessage("Ingestion Bot token has been validated");
     } catch (Exception e) {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.JWT_TOKEN.key)
-          .withPassed(Boolean.FALSE)
-          .withMessage(e.getMessage());
+      // validateJwtAndGetClaims is @SneakyThrows: a JWKS key lookup throws the checked
+      // JwkException through it.
+      result =
+          new StepValidation()
+              .withDescription(ValidationStepDescription.JWT_TOKEN.key)
+              .withPassed(Boolean.FALSE)
+              .withMessage(e.getMessage());
     }
+    return result;
   }
 
   private StepValidation getMigrationValidation(
