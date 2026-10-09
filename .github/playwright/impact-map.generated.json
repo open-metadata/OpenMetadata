@@ -8413,9 +8413,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
-        "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
-        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts"
       ]
