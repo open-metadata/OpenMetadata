@@ -357,14 +357,15 @@ class BaseTestValidator(ABC):
         """Fail a passing test case when a dimension group failed and the policy asks for it
 
         Only a `Success` is ever turned into a `Failed`: an aborted run computed nothing to roll
-        up, and a failed one already is. The `Others` group takes part like any other group, but
-        it is the aggregate of every group beyond `topDimensions`, so those groups are only ever
-        checked together.
+        up, and a failed one already is. A failed aggregate still gets the explanation for any
+        excluded failing groups. The `Others` group takes part like any other group, but it is the
+        aggregate of every group beyond `topDimensions`, so those groups are only ever checked
+        together.
 
         A group below `minRowsPerDimension` keeps its own `Failed` status but does not fail the
         test case. The message names it, so a failing small group is never silently ignored.
         """
-        if test_result.testCaseStatus is not TestCaseStatus.Success:
+        if test_result.testCaseStatus is TestCaseStatus.Aborted:
             return
         if self.get_dimension_failure_policy() is not DimensionFailurePolicy.ANY_DIMENSION:
             return
@@ -380,7 +381,7 @@ class BaseTestValidator(ABC):
                 failed_groups.append(dimension_result.dimensionKey)
 
         sentences = []
-        if failed_groups:
+        if failed_groups and test_result.testCaseStatus is TestCaseStatus.Success:
             test_result.testCaseStatus = TestCaseStatus.Failed
             sentences.append(result_messages.dimension_rollup_sentence(failed_groups))
         if excluded_failed_groups:

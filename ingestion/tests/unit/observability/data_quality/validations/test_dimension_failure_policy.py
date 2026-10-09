@@ -377,6 +377,22 @@ def test_excluded_and_rolled_up_groups_are_both_named():
     assert "fewer than 15 rows (name=Eve)" in test_result.result
 
 
+def test_an_excluded_failing_group_is_named_when_the_aggregate_already_failed():
+    validator = ColumnValuesToBeNotNullValidator(MagicMock(), not_null_within_60_percent_min_rows("15"), EXECUTION_DATE)
+    test_result = TestCaseResult(
+        timestamp=int(EXECUTION_DATE.timestamp() * 1000),
+        testCaseStatus=TestCaseStatus.Failed,
+        result="Overall failed.",
+    )
+    small = dimension_result("Eve", TestCaseStatus.Failed)
+    small.excludedFromRollUp = True
+
+    validator._roll_up_dimension_results(test_result, [small])
+
+    assert test_result.testCaseStatus == TestCaseStatus.Failed
+    assert "fewer than 15 rows (name=Eve)" in test_result.result
+
+
 def test_excluded_sentence_agrees_with_the_number_of_groups():
     sentence = result_messages.excluded_dimensions_sentence(["name=a", "name=b"], 2.5)
 
