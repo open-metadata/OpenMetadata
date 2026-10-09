@@ -31,6 +31,10 @@ ignored, and how changes travel between servers. Code: `openmetadata-service/...
 | **D** | The stored value | The raw row JSON (`SystemDAO.getStoredSettingRow`); secrets are decrypted only for comparison |
 | **L** | The deployment value applied last time | The `openmetadata_settings.deployment_snapshot` column (2.1.0 migration), with `meta`: mode, app version, applied JSON hash, warnings already logged, value before switching to ENV |
 
+An environment variable set to an empty string counts as unset, so `${VAR:-default}` resolves to
+`default`. A blank deployment value therefore only arises where the template default is blank, such
+as a missing secret.
+
 **Deliberate.** Helm charts and compose files set every variable explicitly, usually to the
 default. So a field counts as deliberately configured only when E ≠ E0 after normalization, or
 when the file holds a literal value. Without a captured file (configuration built in code), nothing
@@ -62,7 +66,14 @@ configSource:                  # optional; a missing block means these defaults
 | **ENV** | The fields the configuration file defines are set from E; the rest keep D. The whole setting if no file was captured. A setting that cannot be applied stops the start. | Changing a file-defined field returns **409** `SETTINGS_MANAGED_BY_ENVIRONMENT`; other fields stay editable |
 | **DB** | A present stored value is never overwritten. Fields the stored value lacks are filled from deliberate deployment values. Later deployment changes are logged as ignored. | Allowed |
 
-- ENV on a group without a deployment block fails the start (`validateConfiguration`).
+- ENV on a group without a deployment block fails the start (`validateConfiguration`). The shipped
+  `conf/openmetadata.yaml` defines every group except MCP, so `mcpConfiguration` is stored only in
+  the database unless the file adds a block.
+- Every ENV-mode setting is merged and validated before any is written. A start that stops
+  therefore changes no setting, including the authorizer when the identity provider of the same
+  security group is refused.
+- ENV writes an empty deployment value as an empty field rather than removing it, because some
+  fields must be present (`providerName`). It never creates an absent enclosing object.
 - The first start that switches the security group to ENV refuses to replace an identity provider
   configured in the UI with a different one, unless `confirmProviderChange` is true. The replaced
   value is kept in `meta.previousStored`.
@@ -79,7 +90,7 @@ another provider's client id. Each field therefore belongs to a merge unit:
 | DEPLOYMENT_OWNED | auth `forceSecureSessionCookie`; authorizer `className`, `containerRequestFilter` | Always E (all three are read once at start) |
 | IDP_IDENTITY | `provider`, `clientType`, `authority`, `clientId`, `oidcConfiguration.id`/`discoveryUri`, `samlConfiguration.idp.entityId`, `ldapConfiguration.host` | Decides whether D and E describe the same identity provider |
 | IDP_DEPENDENT | the `oidc`/`saml`/`ldap` blocks, `responseType`, `providerName`, `callbackUrl`, `tokenValidationAlgorithm`, `publicKeyUrls`; the claims group; the LDAP roles group | Follows the identity guard; a group moves as one value |
-| SET_MERGE | authorizer `adminPrincipals`, `adminEmails`, `allowedEmailRegistrationDomains` | `D − (L − E) ∪ (E − L)`: entries the deployment removed or added since last time, UI entries kept |
+| SET_MERGE | authorizer `adminPrincipals`, `adminEmails`, `allowedEmailRegistrationDomains` | `D − (L − E) ∪ (E − L)`: entries the deployment removed or added since last time, UI entries kept. The stored set overrides the deployment only when it lacks one of E's entries |
 | Group (INDEPENDENT) | authorizer domains: `enforcePrincipalDomain`, `principalDomain`, `allowedDomains`, `allowedEmailDomains` | All or nothing (half a restriction can lock everyone out) |
 | Single value | `oidcConfiguration.customParams`, `ldapConfiguration.trustStoreConfig` | Compared and replaced whole |
 | INDEPENDENT | everything else, including every field of email, server URL, SCIM, MCP and app | Per leaf |
@@ -200,6 +211,8 @@ API writes:
   of the given fields. In ENV mode it returns 409, since the start already applied E.
   - No paths means exactly the fields `overriddenFields` lists; when it lists none, nothing changes.
   - A blank deployment value means "not set" and never replaces a stored value.
+  - For a set-merged field, adopt adds the deployment's missing entries and keeps those added in
+    the UI, so it never revokes an admin.
   - When stored and deployment name the same identity provider, a provider field is taken on its
     own. When they name different providers, taking any provider field replaces the provider as a
     whole, blanks included, so the result never mixes two providers. That is refused (400) unless

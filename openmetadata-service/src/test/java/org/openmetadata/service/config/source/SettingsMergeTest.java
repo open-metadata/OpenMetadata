@@ -413,6 +413,29 @@ class SettingsMergeTest {
     assertFalse(template.isDeliberate(json("{'c':'${VAR_C}'}"), List.of("/c")));
   }
 
+  @Test
+  void aGroupNamesEveryVariableInTheOrderOfItsFields() {
+    DeploymentTemplate template =
+        DeploymentTemplate.parse(
+            "section:\n  claims: ${CLAIMS:-[email]}\n  b: literal\n  displayName: ${DISPLAY:-''}\n",
+            "/section");
+
+    assertEquals(
+        List.of("CLAIMS", "DISPLAY"),
+        template.envVariables(List.of("/claims", "/b", "/displayName")));
+  }
+
+  @Test
+  void addingEntriesToASetDoesNotOverrideTheDeployment() {
+    MergeUnit admins = MergeUnit.field("/adminPrincipals", UnitKind.SET_MERGE);
+
+    assertFalse(
+        SettingsMerge.overridesDeployment(
+            admins, json("['admin','ui-admin','ops']"), json("['ops','admin']")));
+    assertTrue(
+        SettingsMerge.overridesDeployment(admins, json("['admin','ui-admin']"), json("['ops']")));
+  }
+
   private MergeResult auth(
       ConfigSourceMode mode, String deployment, String stored, String lastApplied) {
     return merge.merge(authInput(mode, deployment, stored, lastApplied).build());

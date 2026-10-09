@@ -57,6 +57,11 @@ public final class SettingValues {
     return canonicalElements(left).equals(canonicalElements(right));
   }
 
+  /** Whether every entry of {@code entries} is in {@code array}, compared as sets. */
+  public static boolean containsElements(JsonNode array, JsonNode entries) {
+    return canonicalElements(array).containsAll(canonicalElements(entries));
+  }
+
   public static Set<JsonNode> canonicalElements(JsonNode array) {
     Set<JsonNode> elements = new HashSet<>();
     if (array != null && array.isArray()) {

@@ -47,6 +47,7 @@ public final class DeploymentConfigReconciler {
   }
 
   public void reconcileAll(DeploymentConfig deployment) {
+    requireEnvSettingsApplicable(deployment);
     deployment.settings().forEach(setting -> reconcile(deployment, setting));
   }
 
@@ -69,11 +70,7 @@ public final class DeploymentConfigReconciler {
         | IllegalStateException
         | WebApplicationException failure) {
       if (mode == ConfigSourceMode.ENV) {
-        throw new IllegalStateException(
-            String.format(
-                "%s cannot be applied from the deployment configuration: %s",
-                setting.settingsType().value(), failure.getMessage()),
-            failure);
+        throw startStoppedBy(setting, failure);
       }
       LOG.error(
           "{} could not be reconciled with the deployment configuration and keeps its stored "
@@ -82,6 +79,50 @@ public final class DeploymentConfigReconciler {
           failure.getMessage(),
           failure);
     }
+  }
+
+  /**
+   * A setting in ENV mode that cannot be applied stops the start. Checking every one of them before
+   * writing any keeps a stopped start from changing the others, such as the authorizer when the
+   * identity provider of the same security group is refused.
+   */
+  private void requireEnvSettingsApplicable(DeploymentConfig deployment) {
+    deployment.settings().stream()
+        .filter(setting -> deployment.modeOf(setting.settingsType()) == ConfigSourceMode.ENV)
+        .forEach(setting -> requireApplicable(deployment, setting));
+  }
+
+  private void requireApplicable(DeploymentConfig deployment, DeploymentSetting setting) {
+    try {
+      Optional.ofNullable(dao.getStoredSettingRow(setting.settingsType().value()))
+          .ifPresent(row -> checkEnvMerge(deployment, setting, row));
+    } catch (JdbiException
+        | IllegalArgumentException
+        | IllegalStateException
+        | WebApplicationException failure) {
+      throw startStoppedBy(setting, failure);
+    }
+  }
+
+  private void checkEnvMerge(
+      DeploymentConfig deployment, DeploymentSetting setting, StoredSettingRow row) {
+    Optional<DeploymentSnapshot> previous = DeploymentSnapshot.parse(row.snapshot());
+    if (previous.filter(this::isFromNewerServer).isEmpty()) {
+      MergeResult result =
+          merge.merge(inputOf(deployment, setting, ConfigSourceMode.ENV, row, previous));
+      if (result.storedChanged()) {
+        preparer.prepareReconciled(setting.settingsType(), result.stored());
+      }
+    }
+  }
+
+  private static IllegalStateException startStoppedBy(
+      DeploymentSetting setting, RuntimeException failure) {
+    return new IllegalStateException(
+        String.format(
+            "%s cannot be applied from the deployment configuration: %s",
+            setting.settingsType().value(), failure.getMessage()),
+        failure);
   }
 
   private void reconcileWithRetries(

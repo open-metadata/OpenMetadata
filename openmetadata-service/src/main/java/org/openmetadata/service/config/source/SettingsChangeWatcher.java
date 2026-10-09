@@ -146,7 +146,7 @@ public final class SettingsChangeWatcher implements Managed {
     try {
       refresher.refresh(settingsType);
       refreshErrors.remove(settingsType);
-      LOG.info("Applied {} changed on another server or by the CLI", settingsType.value());
+      LOG.info("Applied {} after it changed in the database", settingsType.value());
     } catch (RuntimeException failure) {
       // A failed refresh keeps the last working value; the error is shown on the settings source.
       refreshErrors.put(settingsType, failure.getMessage());

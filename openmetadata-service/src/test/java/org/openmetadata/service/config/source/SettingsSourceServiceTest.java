@@ -23,6 +23,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -62,6 +63,13 @@ class SettingsSourceServiceTest {
             publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
           """,
           "/authenticationConfiguration");
+  private static final DeploymentTemplate AUTHORIZER_TEMPLATE =
+      DeploymentTemplate.parse(
+          """
+          authorizerConfiguration:
+            adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+          """,
+          "/authorizerConfiguration");
   private static final String DEPLOYMENT =
       "{'provider':'google','providerName':'Google','clientId':'deployment-client',"
           + "'enableSelfSignup':true,'maxActiveSessionsPerUser':1000}";
@@ -301,11 +309,42 @@ class SettingsSourceServiceTest {
     store(DEPLOYMENT);
     try (AutoCloseable env =
         ConfigSources.overrideForTest(AUTHENTICATION_CONFIGURATION, ConfigSourceMode.ENV)) {
-      assertThrows(
-          SettingsManagedByEnvironmentException.class,
-          () -> service.adopt(AUTHENTICATION_CONFIGURATION, List.of()));
+      SettingsManagedByEnvironmentException refused =
+          assertThrows(
+              SettingsManagedByEnvironmentException.class,
+              () -> service.adopt(AUTHENTICATION_CONFIGURATION, List.of()));
+      assertTrue(refused.getMessage().contains("(SECURITY_CONFIG_SOURCE=ENV), so it cannot"));
     }
     assertTrue(written.isEmpty());
+  }
+
+  @Test
+  void adminsAddedHereDoNotOverrideTheDeploymentAdmins() {
+    installAuthorizer("{'adminPrincipals':['admin','ops']}");
+    rows.put(
+        AUTHORIZER_CONFIGURATION.value(), "{\"adminPrincipals\":[\"admin\",\"ui-admin\",\"ops\"]}");
+
+    assertTrue(
+        service.status(AUTHORIZER_CONFIGURATION).orElseThrow().getOverriddenFields().isEmpty());
+    assertTrue(service.adopt(AUTHORIZER_CONFIGURATION, List.of()).isEmpty());
+    assertTrue(written.isEmpty());
+  }
+
+  @Test
+  void adoptingTheAdminsRestoresTheDeploymentAdminsAndKeepsThoseAddedHere() {
+    installAuthorizer("{'adminPrincipals':['admin','ops']}");
+    rows.put(AUTHORIZER_CONFIGURATION.value(), "{\"adminPrincipals\":[\"admin\",\"ui-admin\"]}");
+
+    List<String> overridden =
+        service.status(AUTHORIZER_CONFIGURATION).orElseThrow().getOverriddenFields().stream()
+            .map(OverriddenSettingField::getPath)
+            .toList();
+    assertEquals(List.of("/adminPrincipals"), overridden);
+    assertEquals(List.of("/adminPrincipals"), service.adopt(AUTHORIZER_CONFIGURATION, List.of()));
+
+    JsonNode admins =
+        JsonUtils.readTree(rows.get(AUTHORIZER_CONFIGURATION.value())).get("adminPrincipals");
+    assertEquals(List.of("admin", "ui-admin", "ops"), JsonUtils.convertValue(admins, List.class));
   }
 
   @Test
@@ -318,6 +357,15 @@ class SettingsSourceServiceTest {
   private void installDeployment(String deploymentValue) {
     DeploymentSetting setting =
         new DeploymentSetting(DualSourceSetting.AUTHENTICATION, json(deploymentValue), TEMPLATE);
+    ConfigSources.install(
+        DeploymentConfig.of(
+            List.of(setting), new ConfigSourceConfiguration().withSecurity(ConfigSourceMode.AUTO)));
+  }
+
+  private void installAuthorizer(String deploymentValue) {
+    DeploymentSetting setting =
+        new DeploymentSetting(
+            DualSourceSetting.AUTHORIZER, json(deploymentValue), AUTHORIZER_TEMPLATE);
     ConfigSources.install(
         DeploymentConfig.of(
             List.of(setting), new ConfigSourceConfiguration().withSecurity(ConfigSourceMode.AUTO)));

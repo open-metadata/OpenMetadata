@@ -19,7 +19,9 @@ import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
@@ -107,6 +109,16 @@ public final class DeploymentTemplate {
         .map(entry -> entry.getValue().envVariable())
         .filter(variable -> variable != null)
         .findFirst();
+  }
+
+  /** Every variable that sets one of {@code pointers}, in the order of the pointers. */
+  public List<String> envVariables(List<String> pointers) {
+    return pointers.stream()
+        .flatMap(pointer -> fieldsCovering(List.of(pointer)))
+        .map(entry -> entry.getValue().envVariable())
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
   }
 
   private Stream<Map.Entry<String, TemplateField>> fieldsCovering(Collection<String> pointers) {

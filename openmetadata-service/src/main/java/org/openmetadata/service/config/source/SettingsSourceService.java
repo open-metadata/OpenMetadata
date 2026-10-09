@@ -77,7 +77,7 @@ public final class SettingsSourceService {
     MergeContext context = new MergeContext(comparison);
     Set<String> requested = nullOrEmpty(paths) ? overriddenPointers(comparison) : Set.copyOf(paths);
     List<MergeUnit> units = unitsToAdopt(context, requested);
-    units.forEach(context::applyFromDeployment);
+    units.forEach(unit -> adoptUnit(context, unit));
     if (!units.isEmpty()) {
       store(setting, context.result().stored());
     }
@@ -188,8 +188,22 @@ public final class SettingsSourceService {
       MergeContext context, MergeUnit unit, boolean switchesProvider) {
     JsonNode deploymentValue = context.deploymentValue(unit);
     boolean replacesProvider = switchesProvider && unit.concernsIdentityProvider();
-    return !SettingValues.same(context.storedValue(unit), deploymentValue)
+    return SettingsMerge.overridesDeployment(unit, context.storedValue(unit), deploymentValue)
         && (replacesProvider || !SettingValues.isBlank(deploymentValue));
+  }
+
+  /**
+   * Taking the deployment value of a set, such as the admin principals, restores the deployment's
+   * missing entries; entries added here stay, so adopting never revokes an admin.
+   */
+  private static void adoptUnit(MergeContext context, MergeUnit unit) {
+    if (unit.kind() == UnitKind.SET_MERGE) {
+      JsonNode merged =
+          SetMerge.merge(context.storedValue(unit), null, context.deploymentValue(unit));
+      context.applyValue(unit.pointers().getFirst(), merged);
+    } else {
+      context.applyFromDeployment(unit);
+    }
   }
 
   private static DeploymentSetting requireDeploymentSetting(SettingsType settingsType) {

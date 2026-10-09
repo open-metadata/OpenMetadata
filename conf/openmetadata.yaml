@@ -450,6 +450,15 @@ configSource:
   confirmProviderChange: ${SECURITY_CONFIG_SOURCE_CONFIRM_PROVIDER_CHANGE:-false}
   watchIntervalSeconds: ${CONFIG_SOURCE_WATCH_INTERVAL_SECONDS:-10}
 
+appConfiguration:
+  # Tenant default app mode ("ai" or "classic") for users who have not chosen one.
+  # Admins change it at runtime; user and persona app mode still win over it.
+  defaultAppMode: ${APP_DEFAULT_MODE:-null}
+
+scimConfiguration:
+  enabled: ${SCIM_ENABLED:-false}
+  identityProvider: ${SCIM_IDENTITY_PROVIDER:-"azure"}
+
 # Authorizer Configuration
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}

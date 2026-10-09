@@ -19,15 +19,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,6 +77,7 @@ public class ConfigSourceIT {
   private static final String SETTINGS_PATH = "/v1/system/settings";
   private static final String SETTINGS_SOURCE_PATH = SETTINGS_PATH + "/source";
   private static final String AUTH = AUTHENTICATION_CONFIGURATION.value();
+  private static final String AUTHORIZER = AUTHORIZER_CONFIGURATION.value();
   private static final DeploymentTemplate TEMPLATE =
       DeploymentTemplate.parse(
           """
@@ -85,12 +89,14 @@ public class ConfigSourceIT {
 
   private SystemDAO dao;
   private StoredSettingRow originalRow;
+  private StoredSettingRow originalAuthorizerRow;
   private Optional<DeploymentConfig> originalDeployment;
 
   @BeforeEach
   void rememberStoredState() {
     dao = Entity.getCollectionDAO().systemDAO();
     originalRow = dao.getStoredSettingRow(AUTH);
+    originalAuthorizerRow = dao.getStoredSettingRow(AUTHORIZER);
     originalDeployment = ConfigSources.deployment();
   }
 
@@ -98,6 +104,8 @@ public class ConfigSourceIT {
   void restoreStoredState() {
     dao.insertSettings(AUTH, originalRow.json());
     dao.updateDeploymentSnapshot(AUTH, originalRow.snapshot());
+    dao.insertSettings(AUTHORIZER, originalAuthorizerRow.json());
+    SettingsCache.invalidateSettings(AUTHORIZER);
     ConfigSources.install(originalDeployment.orElse(null));
     reloadSecurity();
   }
@@ -313,6 +321,26 @@ public class ConfigSourceIT {
     assertTrue(adopted.path("enableSelfSignup").asBoolean());
   }
 
+  /** "Use deployment value" on the admins restores the deployment's and never revokes the UI's. */
+  @Test
+  void adoptingTheAdminsKeepsThoseAddedInTheUi() throws Exception {
+    ObjectNode stored = (ObjectNode) JsonUtils.readTree(originalAuthorizerRow.json());
+    stored.putArray("adminPrincipals").add("admin").add("ui-admin");
+    dao.insertSettings(AUTHORIZER, stored.toString());
+    SettingsCache.invalidateSettings(AUTHORIZER);
+    ObjectNode deployment = stored.deepCopy();
+    deployment.putArray("adminPrincipals").add("admin").add("deployment-admin");
+    installAuthorizerDeployment(deployment);
+
+    execute(HttpMethod.POST, SETTINGS_SOURCE_PATH + "/" + AUTHORIZER + "/adopt", "{}");
+
+    JsonNode admins =
+        JsonUtils.readTree(dao.getConfigJsonWithKey(AUTHORIZER)).get("adminPrincipals");
+    Set<String> adminNames = new HashSet<>();
+    admins.forEach(admin -> adminNames.add(admin.asText()));
+    assertEquals(Set.of("admin", "ui-admin", "deployment-admin"), adminNames);
+  }
+
   @Test
   void onlyAdminsSeeOrAdoptSettingSources() {
     OpenMetadataClient nonAdmin = SdkClients.user1Client();
@@ -368,6 +396,20 @@ public class ConfigSourceIT {
       assertEquals(409, rejected.getStatusCode());
     }
     assertEquals(storedMcp, dao.getConfigJsonWithKey(MCP_CONFIGURATION.value()));
+  }
+
+  private static void installAuthorizerDeployment(JsonNode deploymentValue) {
+    DeploymentTemplate template =
+        DeploymentTemplate.parse(
+            """
+            authorizerConfiguration:
+              adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+            """,
+            "/authorizerConfiguration");
+    ConfigSources.install(
+        DeploymentConfig.of(
+            List.of(new DeploymentSetting(DualSourceSetting.AUTHORIZER, deploymentValue, template)),
+            new ConfigSourceConfiguration().withSecurity(ConfigSourceMode.AUTO)));
   }
 
   private static void installMcpDeployment(String storedMcp) {

@@ -17,6 +17,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.Collection;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.sdk.exception.WebServiceException;
+import org.openmetadata.service.config.source.SettingsWriteGuard;
 
 /**
  * A write tried to change fields of a setting that the deployment configuration owns, because the
@@ -33,6 +34,10 @@ public class SettingsManagedByEnvironmentException extends WebServiceException {
         String.format(
             "%s is managed by the deployment configuration (%s=ENV), so %s cannot be changed "
                 + "here. Change the configuration file or environment and restart the server.",
-            settingsType.value(), modeVariable, String.join(", ", paths)));
+            settingsType.value(), modeVariable, subjectOf(paths)));
+  }
+
+  private static String subjectOf(Collection<String> paths) {
+    return paths.contains(SettingsWriteGuard.WHOLE_SETTING) ? "it" : String.join(", ", paths);
   }
 }

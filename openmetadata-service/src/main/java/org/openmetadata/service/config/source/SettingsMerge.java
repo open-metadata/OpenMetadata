@@ -154,9 +154,19 @@ public final class SettingsMerge {
     JsonNode deploymentValue = context.deploymentValue(unit);
     if (context.isDeliberate(unit)
         && !isBlank(deploymentValue)
-        && !same(context.effectiveStoredValue(unit), deploymentValue)) {
+        && overridesDeployment(unit, context.effectiveStoredValue(unit), deploymentValue)) {
       context.record(DRIFT, unit);
     }
+  }
+
+  /**
+   * Entries added to a set in the UI sit alongside the deployment's, so a set only overrides the
+   * deployment when it lacks one of the deployment's entries.
+   */
+  static boolean overridesDeployment(MergeUnit unit, JsonNode stored, JsonNode deployment) {
+    return unit.kind() == UnitKind.SET_MERGE
+        ? !SettingValues.containsElements(stored, deployment)
+        : !same(stored, deployment);
   }
 
   private void applyDeploymentOwned(MergeContext context, MergeUnit unit) {

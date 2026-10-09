@@ -146,12 +146,10 @@ final class ReconcileLog {
     return units.stream().map(this::describe).collect(Collectors.joining(", "));
   }
 
+  /** Names every variable of a group: naming one would point at a field that did not change. */
   private String describe(MergeUnit unit) {
     String fields = unit.isGroup() ? String.join(" + ", unit.pointers()) : unit.id();
-    return setting
-        .template()
-        .envVariable(unit.pointers())
-        .map(variable -> fields + " (" + variable + ")")
-        .orElse(fields);
+    List<String> variables = setting.template().envVariables(unit.pointers());
+    return variables.isEmpty() ? fields : fields + " (" + String.join(", ", variables) + ")";
   }
 }

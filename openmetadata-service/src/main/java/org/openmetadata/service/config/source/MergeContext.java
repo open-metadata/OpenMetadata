@@ -168,11 +168,26 @@ final class MergeContext {
   }
 
   private void writeValue(String pointer, JsonNode value) {
-    if (SettingValues.isBlank(value)) {
+    if (value.isMissingNode()) {
       JsonPointers.removeValue(stored, pointer);
+    } else if (SettingValues.isBlank(value)) {
+      writeBlank(pointer, value);
     } else {
       copyMissingAncestorFromDeployment(pointer);
       JsonPointers.setValue(stored, pointer, value.deepCopy());
+    }
+  }
+
+  /**
+   * An empty deployment value keeps its key, because some fields must be present even when empty
+   * (the authentication schema requires {@code providerName}). It never creates the enclosing
+   * object, so an unused provider block stays absent.
+   */
+  private void writeBlank(String pointer, JsonNode value) {
+    if (stored.at(JsonPointers.parentOf(pointer)) instanceof ObjectNode) {
+      JsonPointers.setValue(stored, pointer, value.deepCopy());
+    } else {
+      JsonPointers.removeValue(stored, pointer);
     }
   }
 

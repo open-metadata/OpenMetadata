@@ -22,6 +22,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,6 +34,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.configuration.ConfigSourceConfiguration;
@@ -51,6 +53,8 @@ class DeploymentConfigReconcilerTest {
           """
           authenticationConfiguration:
             provider: ${AUTHENTICATION_PROVIDER:-basic}
+            providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
+            clientId: ${AUTHENTICATION_CLIENT_ID:-""}
             enableSelfSignup: ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
             maxActiveSessionsPerUser: ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}
             oidcConfiguration:
@@ -58,6 +62,16 @@ class DeploymentConfigReconcilerTest {
               secret: ${OIDC_CLIENT_SECRET:-""}
           """,
           "/authenticationConfiguration");
+
+  private static final DeploymentTemplate AUTHORIZER_TEMPLATE =
+      DeploymentTemplate.parse(
+          """
+          authorizerConfiguration:
+            adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+          """,
+          "/authorizerConfiguration");
+  private static final String UI_CONFIGURED_OIDC =
+      "{'provider':'custom-oidc','providerName':'Corp','clientId':'ui-client'}";
 
   private final Map<String, StoredSettingRow> rows = new ConcurrentHashMap<>();
   private final AtomicBoolean rejectNextPreparedValue = new AtomicBoolean();
@@ -67,6 +81,13 @@ class DeploymentConfigReconcilerTest {
   void setUp() {
     Fernet.getInstance().setFernetKey(KEY);
     dao = inMemoryDao();
+  }
+
+  /** A start recorded in ENV mode would make later tests in this JVM see read-only settings. */
+  @AfterEach
+  void tearDown() {
+    ConfigSources.recordPersistedMode(AUTHENTICATION_CONFIGURATION, ConfigSourceMode.AUTO);
+    ConfigSources.recordPersistedMode(AUTHORIZER_CONFIGURATION, ConfigSourceMode.AUTO);
   }
 
   @Test
@@ -152,6 +173,34 @@ class DeploymentConfigReconcilerTest {
   }
 
   @Test
+  void aRefusedEnvStartChangesNoSettingOfTheSecurityGroup() {
+    String authorizer = AUTHORIZER_CONFIGURATION.value();
+    String storedAdmins = json("{'adminPrincipals':['admin']}").toString();
+    rows.put(authorizer, new StoredSettingRow(storedAdmins, null));
+    storeUiConfiguredProvider();
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> reconcileSecurity(new ConfigSourceConfiguration(), "{'provider':'basic'}"));
+
+    assertEquals(storedAdmins, rows.get(authorizer).json());
+    assertEquals("custom-oidc", stored().get("provider").asText());
+  }
+
+  @Test
+  void envModeKeepsTheEmptyProviderNameOfTheProviderItSwitchesTo() {
+    storeUiConfiguredProvider();
+
+    reconcileSecurity(
+        new ConfigSourceConfiguration().withConfirmProviderChange(true),
+        "{'provider':'basic','providerName':'','clientId':''}");
+
+    assertEquals("basic", stored().get("provider").asText());
+    assertTrue(stored().has("providerName"));
+    assertEquals("", stored().get("providerName").asText());
+  }
+
+  @Test
   void storesSecretsEncryptedInTheSnapshot() {
     reconcile(
         ConfigSourceMode.AUTO,
@@ -166,6 +215,30 @@ class DeploymentConfigReconcilerTest {
         new DeploymentSetting(DualSourceSetting.AUTHENTICATION, json(deploymentValue), TEMPLATE);
     DeploymentConfig deployment =
         DeploymentConfig.of(List.of(setting), new ConfigSourceConfiguration().withSecurity(mode));
+    new DeploymentConfigReconciler(dao, new TestPreparer(), "2.1.0").reconcileAll(deployment);
+  }
+
+  /** A provider configured in the UI over the deployment's {@code basic}, last applied in AUTO. */
+  private void storeUiConfiguredProvider() {
+    DeploymentSnapshot lastApplied =
+        new DeploymentSnapshot(
+            json("{'provider':'basic','providerName':'','clientId':''}"),
+            new DeploymentSnapshot.Meta(ConfigSourceMode.AUTO, "2.1.0", null, List.of(), null));
+    rows.put(AUTH, new StoredSettingRow(json(UI_CONFIGURED_OIDC).toString(), lastApplied.toJson()));
+  }
+
+  private void reconcileSecurity(ConfigSourceConfiguration sources, String authenticationValue) {
+    DeploymentSetting authorizer =
+        new DeploymentSetting(
+            DualSourceSetting.AUTHORIZER,
+            json("{'adminPrincipals':['admin','ops']}"),
+            AUTHORIZER_TEMPLATE);
+    DeploymentSetting authentication =
+        new DeploymentSetting(
+            DualSourceSetting.AUTHENTICATION, json(authenticationValue), TEMPLATE);
+    DeploymentConfig deployment =
+        DeploymentConfig.of(
+            List.of(authorizer, authentication), sources.withSecurity(ConfigSourceMode.ENV));
     new DeploymentConfigReconciler(dao, new TestPreparer(), "2.1.0").reconcileAll(deployment);
   }
 
