@@ -135,6 +135,7 @@ Not applicable. <!-- Or attach recording/screenshots above -->
 - [ ] For JSON Schema changes: I updated the migration scripts or explained why it is not needed.
 - [ ] For UI changes: I attached a screen recording and/or screenshots above.
 - [ ] I have added tests (unit / integration / Playwright as applicable) and listed them above.
+- [ ] Decision check: if this PR decides something the next contributor could undo — a schema field, REST path or format another component or repo must agree with, a new default or limit, an ordering that must hold, or a rule stated only in this description — it adds a record under `docs/decisions/` (see its `README.md`). This description is gone from `git log` after the squash-merge.
 
 <!-- Based on the type(s) of your change, uncomment the required checklist 👇 -->
 
