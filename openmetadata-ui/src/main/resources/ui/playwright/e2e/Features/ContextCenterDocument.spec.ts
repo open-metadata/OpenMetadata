@@ -1367,15 +1367,24 @@ test.describe('Context Center - Documents Page', () => {
     await expect(documentsViewCount).toBeVisible();
     await expect(folderViewCount).toBeVisible();
 
-    const globalCountText = await documentsViewCount.textContent();
-    const globalCount = parseInt(globalCountText ?? '0', 10);
-    expect(globalCount).toBeGreaterThanOrEqual(2);
+    // Clear the search before comparing the two headers. While a search is
+    // active the DocumentsView count reports the *result* total, not the global
+    // one, so the two headers are measuring different things and comparing them
+    // is meaningless.
+    const browseResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        !res.url().includes('search')
+    );
+    await getDocumentSearchInput(page).clear();
+    await browseResPromise;
+    await waitForAllLoadersToDisappear(page);
 
-    // The folder-view header should show the same global total.
+    // Unsearched and unfiltered, both headers show the same system-wide total.
     // Re-read both counts each attempt rather than comparing one to a value
-    // captured earlier. Both headers show a system-wide total that every other
-    // worker in the run is adding to and deleting from, so two reads taken a
-    // moment apart are not two views of the same number.
+    // captured earlier: every other worker in the run is adding to and deleting
+    // from that corpus, so two reads taken a moment apart are not two views of
+    // the same number.
     await expect
       .poll(async () => {
         const global = parseInt(
@@ -1387,17 +1396,9 @@ test.describe('Context Center - Documents Page', () => {
           10
         );
 
-        return folder >= global;
+        return global >= 2 && folder >= global;
       })
       .toBe(true);
-    const browseResPromise = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/contextCenter/drive/files') &&
-        !res.url().includes('search')
-    );
-    await getDocumentSearchInput(page).clear();
-    await browseResPromise;
-    await waitForAllLoadersToDisappear(page);
 
     // Click the folder — triggers a server-side refetch scoped to that folder.
     await selectFolderInSidebar(page, folderName);
@@ -1407,7 +1408,8 @@ test.describe('Context Center - Documents Page', () => {
     await expect(getDocumentRowByName(page, docOutsideName)).not.toBeVisible();
 
     // DocumentsView header count updates to reflect the folder-scoped total.
-    await expect(documentsViewCount).toContainText('1');
+    // Anchored: toContainText('1') would also accept "21 files" or "100 files".
+    await expect(documentsViewCount).toHaveText(/^1\s+files?$/i);
 
     // DocumentFolderView header is not scoped by the sidebar selection, so it
     // still counts the document outside the folder as well as the one inside
