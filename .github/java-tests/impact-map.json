@@ -516,6 +516,7 @@
       "description": "Change events, event subscriptions, alerts, notification templates and channels, email.",
       "sources": [
         "openmetadata-service/src/main/java/org/openmetadata/service/events/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/alerting/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/notifications/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/formatter/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/events/**",

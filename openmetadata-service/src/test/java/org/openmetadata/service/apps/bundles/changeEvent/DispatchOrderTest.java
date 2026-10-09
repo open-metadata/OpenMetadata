@@ -263,7 +263,7 @@ class DispatchOrderTest {
   }
 
   /** The real tick and the real reader; failures stay in memory and nothing is committed. */
-  private static class RecordingTick extends AbstractEventConsumer {
+  private static class RecordingTick extends AlertPublisher {
     final List<EventPublisherException> failures = new ArrayList<>();
 
     RecordingTick() {
@@ -277,15 +277,5 @@ class DispatchOrderTest {
 
     @Override
     public void commit(JobExecutionContext jobExecutionContext) {}
-
-    @Override
-    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
-      return true;
-    }
-
-    @Override
-    public boolean getEnabled() {
-      return true;
-    }
   }
 }

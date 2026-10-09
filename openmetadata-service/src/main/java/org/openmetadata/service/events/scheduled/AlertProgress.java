@@ -7,11 +7,9 @@ import java.util.function.Predicate;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
-import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.ConsumerKind;
-import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.util.ChangeEventJsonUtils;
 
@@ -22,10 +20,16 @@ import org.openmetadata.service.util.ChangeEventJsonUtils;
  * reads no change event: none is still to read, and it stands at the latest offset whatever its
  * position row says.
  */
-sealed interface AlertProgress {
+public sealed interface AlertProgress {
 
   /** Each event or piece of work once, so a partly delivered one is in both counts but handled once. */
   record Counts(long handled, long delivered, long failed) {}
+
+  /** Which change events the alert lets through, given when it started alerting. */
+  @FunctionalInterface
+  interface Relevance {
+    Predicate<ChangeEvent> since(EventSubscription alert, Long startingTimestamp);
+  }
 
   static AlertProgress of(EventSubscription alert) {
     // The position first, so the latest offset, read after it, is never behind it.
@@ -44,10 +48,10 @@ sealed interface AlertProgress {
 
   long latestOffset();
 
-  /** The unread change events the alert's rules let through. */
-  long relevantUnreadCount();
+  /** The unread change events the alert lets through. */
+  long relevantUnreadCount(Relevance relevance);
 
-  List<ChangeEvent> relevantUnread(int limit, int pageOffset);
+  List<ChangeEvent> relevantUnread(int limit, int pageOffset, Relevance relevance);
 
   List<ChangeEvent> allUnread(int limit, int pageOffset);
 
@@ -89,13 +93,13 @@ sealed interface AlertProgress {
     }
 
     @Override
-    public long relevantUnreadCount() {
-      return UnprocessedEvents.countMatching(currentOffset(), matchesRules());
+    public long relevantUnreadCount(Relevance relevance) {
+      return UnprocessedEvents.countMatching(currentOffset(), relevant(relevance));
     }
 
     @Override
-    public List<ChangeEvent> relevantUnread(int limit, int pageOffset) {
-      return UnprocessedEvents.matching(unreadRows(limit, pageOffset), matchesRules());
+    public List<ChangeEvent> relevantUnread(int limit, int pageOffset, Relevance relevance) {
+      return UnprocessedEvents.matching(unreadRows(limit, pageOffset), relevant(relevance));
     }
 
     @Override
@@ -112,11 +116,8 @@ sealed interface AlertProgress {
           .listUnprocessedEvents(currentOffset(), limit, pageOffset);
     }
 
-    private Predicate<ChangeEvent> matchesRules() {
-      FilteringRules rules = alert.getFilteringRules();
-      Long since = AlertUtil.alertingWatermark(alert, position.getStartingTimestamp());
-      return event ->
-          AlertUtil.isChangeEventAllowed(event, rules, since, AlertUtil.LOG_EVALUATION_ERROR);
+    private Predicate<ChangeEvent> relevant(Relevance relevance) {
+      return relevance.since(alert, position.getStartingTimestamp());
     }
   }
 
@@ -146,12 +147,12 @@ sealed interface AlertProgress {
     }
 
     @Override
-    public long relevantUnreadCount() {
+    public long relevantUnreadCount(Relevance relevance) {
       return 0;
     }
 
     @Override
-    public List<ChangeEvent> relevantUnread(int limit, int pageOffset) {
+    public List<ChangeEvent> relevantUnread(int limit, int pageOffset, Relevance relevance) {
       return List.of();
     }
 

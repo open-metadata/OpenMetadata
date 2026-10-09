@@ -73,6 +73,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -568,8 +569,7 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
-    return EventSubscriptionScheduler.getInstance()
-        .getStatusForEventSubscription(sub.getId(), destinationId);
+    return AlertDiagnostics.destinationStatus(sub.getId(), destinationId);
   }
 
   @GET
@@ -602,8 +602,7 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
 
-    return EventSubscriptionScheduler.getInstance()
-        .getStatusForEventSubscription(id, destinationId);
+    return AlertDiagnostics.destinationStatus(id, destinationId);
   }
 
   @GET
@@ -753,8 +752,7 @@ public class EventSubscriptionResource
             .build();
       }
 
-      EventsRecord eventsRecord =
-          EventSubscriptionScheduler.getInstance().getEventSubscriptionEventsRecord(subscriptionId);
+      EventsRecord eventsRecord = AlertDiagnostics.eventsRecord(subscriptionId);
 
       return Response.ok().entity(eventsRecord).build();
     } catch (Exception e) {
@@ -806,9 +804,7 @@ public class EventSubscriptionResource
             .build();
       }
 
-      EventsRecord eventsRecord =
-          EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionEventsRecord(subscription.getId());
+      EventsRecord eventsRecord = AlertDiagnostics.eventsRecord(subscription.getId());
 
       return Response.ok().entity(eventsRecord).build();
     } catch (Exception e) {
@@ -872,9 +868,7 @@ public class EventSubscriptionResource
       }
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
-          EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(
-                  subscriptionId, limit, paginationOffset, listCountOnly);
+          AlertDiagnostics.diagnosticInfo(subscriptionId, limit, paginationOffset, listCountOnly);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {
@@ -998,9 +992,8 @@ public class EventSubscriptionResource
       }
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
-          EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(
-                  subscription.getId(), limit, paginationOffset, listCountOnly);
+          AlertDiagnostics.diagnosticInfo(
+              subscription.getId(), limit, paginationOffset, listCountOnly);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {
@@ -1350,7 +1343,7 @@ public class EventSubscriptionResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return EventSubscriptionScheduler.getInstance().listAlertDestinations(id);
+    return AlertDiagnostics.listDestinations(id);
   }
 
   @GET
@@ -1383,7 +1376,7 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     EventSubscription sub = repository.getByName(null, name, repository.getFields("id"));
-    return EventSubscriptionScheduler.getInstance().listAlertDestinations(sub.getId());
+    return AlertDiagnostics.listDestinations(sub.getId());
   }
 
   @PUT

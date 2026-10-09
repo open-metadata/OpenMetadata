@@ -42,6 +42,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.cache.CacheBundle;
@@ -259,13 +260,10 @@ class AlertStateIT {
     assertEquals(SubscriptionStatus.Status.DISABLED, statusOf(alert, destination));
     assertEquals(
         SubscriptionStatus.Status.DISABLED,
-        shownStatusOf(
-            EventSubscriptionScheduler.getInstance()
-                .destinationsWithStatus(AlertRows.read(alert.getId()))));
+        shownStatusOf(AlertDiagnostics.destinationsWithStatus(AlertRows.read(alert.getId()))));
     assertEquals(
         SubscriptionStatus.Status.DISABLED,
-        shownStatusOf(
-            EventSubscriptionScheduler.getInstance().listAlertDestinations(alert.getId())));
+        shownStatusOf(AlertDiagnostics.listDestinations(alert.getId())));
 
     save(withDestinationEnabled(AlertRows.read(alert.getId()), true));
 
@@ -598,9 +596,7 @@ class AlertStateIT {
 
   private static SubscriptionStatus.Status statusOf(
       EventSubscription alert, SubscriptionDestination destination) {
-    return EventSubscriptionScheduler.getInstance()
-        .getStatusForEventSubscription(alert.getId(), destination.getId())
-        .getStatus();
+    return AlertDiagnostics.destinationStatus(alert.getId(), destination.getId()).getStatus();
   }
 
   private static SubscriptionStatus.Status shownStatusOf(

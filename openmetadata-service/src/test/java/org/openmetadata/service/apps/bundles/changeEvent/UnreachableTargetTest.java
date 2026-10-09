@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.channel.DeliveryMemory;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 
@@ -27,14 +28,14 @@ class UnreachableTargetTest {
 
   @AfterEach
   void endOfTick() {
-    TickMemory.end();
+    DeliveryMemory.end();
     AlertingSettings.use(new AlertingSettings(Duration.ofSeconds(60), false));
   }
 
   @Test
   void secondAttemptInTheSameTickIsSkippedWhenTheSettingIsOn() {
     skipUnreachable(true);
-    TickMemory.begin();
+    DeliveryMemory.begin();
 
     sendFailingWith(new ProcessingException(new ConnectException("Connection refused")));
     EventPublisherException second =
@@ -49,11 +50,11 @@ class UnreachableTargetTest {
   @Test
   void nextTickTriesAgain() {
     skipUnreachable(true);
-    TickMemory.begin();
+    DeliveryMemory.begin();
     sendFailingWith(new ProcessingException(new ConnectException("Connection refused")));
-    TickMemory.end();
+    DeliveryMemory.end();
 
-    TickMemory.begin();
+    DeliveryMemory.begin();
     sendFailingWith(new ProcessingException(new ConnectException("Connection refused")));
 
     assertEquals(2, attempts.size());
@@ -62,7 +63,7 @@ class UnreachableTargetTest {
   @Test
   void everyAttemptIsMadeWhileTheSettingIsOff() {
     skipUnreachable(false);
-    TickMemory.begin();
+    DeliveryMemory.begin();
 
     sendFailingWith(new ProcessingException(new ConnectException("Connection refused")));
     sendFailingWith(new ProcessingException(new ConnectException("Connection refused")));
@@ -73,7 +74,7 @@ class UnreachableTargetTest {
   @Test
   void targetThatAnsweredLateIsTriedAgain() {
     skipUnreachable(true);
-    TickMemory.begin();
+    DeliveryMemory.begin();
 
     sendFailingWith(new ProcessingException(new SocketTimeoutException("Read timed out")));
     sendFailingWith(new ProcessingException(new SocketTimeoutException("Read timed out")));

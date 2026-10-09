@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.channel.DeliveryMemory;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
 import org.openmetadata.service.events.subscription.AlertingSettings;
@@ -42,7 +43,7 @@ public final class IsolatedSends {
         // Cause-agnostic on purpose: whatever one target throws must not cost the others.
         failure = e;
         if (ConnectionFailures.neverReachedTheTarget(e)) {
-          TickMemory.rememberUnreachable(target);
+          DeliveryMemory.rememberUnreachable(target);
         }
       }
     }
@@ -54,7 +55,7 @@ public final class IsolatedSends {
   }
 
   private static boolean givenUpForThisTick(Object target) {
-    boolean failedBefore = TickMemory.isUnreachable(target);
+    boolean failedBefore = DeliveryMemory.isUnreachable(target);
     boolean skip = failedBefore && AlertingSettings.current().skipUnreachableTargetWithinTick();
     if (failedBefore) {
       AlertTelemetry.attemptOnUnreachableTarget(skip);

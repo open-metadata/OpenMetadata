@@ -1,7 +1,7 @@
 package org.openmetadata.it.tests.alerts;
 
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -61,12 +61,12 @@ public class LatchedConsumer extends AlertPublisher {
   }
 
   @Override
-  public void publishEvents(Map<ChangeEvent, Set<UUID>> events) {
+  protected void handle(List<ChangeEvent> events) {
     Gate gate = GATES.get(getEventSubscription().getId());
     if (gate != null && gate.callsBeforeHolding.decrementAndGet() == 0) {
       hold(gate);
     }
-    super.publishEvents(events);
+    super.handle(events);
   }
 
   private static void hold(Gate gate) {

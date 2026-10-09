@@ -83,7 +83,7 @@ class SelfDrivenDeliveryTest {
   }
 
   /** Sends one piece of work through the alert's channels and counts what they did with it. */
-  static final class MakesItsOwnWork extends AbstractEventConsumer implements SelfDrivenConsumer {
+  static final class MakesItsOwnWork extends AlertPublisher implements SelfDrivenConsumer {
     private Delivery delivery;
 
     MakesItsOwnWork() {
@@ -98,16 +98,6 @@ class SelfDrivenDeliveryTest {
 
     @Override
     public void commit(JobExecutionContext jobExecutionContext) {}
-
-    @Override
-    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
-      return false;
-    }
-
-    @Override
-    public boolean getEnabled() {
-      return true;
-    }
   }
 
   private static void tick(

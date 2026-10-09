@@ -38,8 +38,8 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -408,7 +408,7 @@ class DispatchScenariosIT {
   // In the order the alert declares its destinations.
   private static List<SubscriptionStatus> statusOfEachDestination(EventSubscription alert) {
     Map<UUID, SubscriptionDestination> afterTick =
-        EventSubscriptionScheduler.getInstance().listAlertDestinations(alert.getId()).stream()
+        AlertDiagnostics.listDestinations(alert.getId()).stream()
             .collect(Collectors.toMap(SubscriptionDestination::getId, destination -> destination));
     return alert.getDestinations().stream()
         .map(declared -> afterTick.get(declared.getId()).getStatusDetails())

@@ -25,6 +25,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 
@@ -77,8 +78,7 @@ class AlertTickOutcomesIT {
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
       DirectTick.run(alert);
 
-      EventsRecord record =
-          EventSubscriptionScheduler.getInstance().getEventSubscriptionEventsRecord(alert.getId());
+      EventsRecord record = AlertDiagnostics.eventsRecord(alert.getId());
       assertEquals(1, record.getSuccessfulEventsCount());
       assertEquals(1, record.getFailedEventsCount());
       assertEquals(1, record.getTotalEventsCount() - record.getPendingEventsCount());
@@ -196,18 +196,19 @@ class AlertTickOutcomesIT {
       ReportingConsumer.reportOnNextTick(alert.getId(), 2, 1);
       DirectTick.run(alert);
 
-      EventSubscriptionScheduler scheduler = EventSubscriptionScheduler.getInstance();
-      EventsRecord record = scheduler.getEventSubscriptionEventsRecord(alert.getId());
+      EventsRecord record = AlertDiagnostics.eventsRecord(alert.getId());
       assertEquals(List.of(3L, 2L, 1L, 0L), countsOf(record));
       EventSubscriptionDiagnosticInfo diagnostics =
-          scheduler.getEventSubscriptionDiagnosticInfo(alert.getId(), EVERY_ROW, 0, false);
+          AlertDiagnostics.diagnosticInfo(alert.getId(), EVERY_ROW, 0, false);
       assertEquals(2L, diagnostics.getSuccessfulEventsCount());
       assertEquals(1L, diagnostics.getFailedEventsCount());
       assertEquals(0L, diagnostics.getTotalUnprocessedEventsCount());
       assertEquals(0L, diagnostics.getRelevantUnprocessedEventsCount());
       assertTrue(diagnostics.getHasProcessedAllEvents());
       assertTrue(diagnostics.getTotalUnprocessedEventsList().isEmpty());
-      assertTrue(scheduler.checkIfPublisherPublishedAllEvents(alert.getId()));
+      assertTrue(
+          EventSubscriptionScheduler.getInstance()
+              .checkIfPublisherPublishedAllEvents(alert.getId()));
     }
   }
 

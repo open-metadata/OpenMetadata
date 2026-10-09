@@ -13,13 +13,10 @@
 
 package org.openmetadata.service.events.scheduled;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import io.dropwizard.db.DataSourceFactory;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
@@ -30,16 +27,10 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.AlertSchedulingInfo;
-import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
-import org.openmetadata.schema.api.events.EventsRecord;
-import org.openmetadata.schema.entity.events.DestinationHealth;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -47,8 +38,6 @@ import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.AlertingSettings;
-import org.openmetadata.service.events.subscription.channels.Channels;
-import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
 import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
@@ -244,96 +233,6 @@ public class EventSubscriptionScheduler {
         && stored.getNextFireTime().getTime() < now;
   }
 
-  private SubscriptionStatus getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status status) {
-    return new SubscriptionStatus().withStatus(status).withTimestamp(System.currentTimeMillis());
-  }
-
-  public SubscriptionStatus getStatusForEventSubscription(UUID subscriptionId, UUID destinationId) {
-    EventSubscription alert = AlertRows.read(subscriptionId);
-    return Boolean.FALSE.equals(alert.getEnabled())
-        ? new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED)
-        : destinationsWithHealth(alert).stream()
-            .filter(destination -> destination.getId().equals(destinationId))
-            .findFirst()
-            .map(destination -> convertToSubscriptionStatus(destination.getStatusDetails()))
-            .orElse(null);
-  }
-
-  public List<SubscriptionDestination> listAlertDestinations(UUID subscriptionId) {
-    EventSubscription alert = AlertRows.read(subscriptionId);
-    return Boolean.FALSE.equals(alert.getEnabled())
-        ? Collections.emptyList()
-        : destinationsWithHealth(alert);
-  }
-
-  /** Every destination of the alert with its current status: one read, whatever their number. */
-  public List<SubscriptionDestination> destinationsWithStatus(EventSubscription alert) {
-    return destinationsWithHealth(alert);
-  }
-
-  // Health lives in a row of its own, so registering, editing and restarting never reset it.
-  private static List<SubscriptionDestination> destinationsWithHealth(EventSubscription alert) {
-    Map<String, DestinationHealth> health =
-        AlertRecord.open(alert).map(AlertLedger::health).orElse(Map.of());
-    long now = System.currentTimeMillis();
-    for (SubscriptionDestination destination : listOrEmpty(alert.getDestinations())) {
-      destination.setStatusDetails(
-          statusToShow(alert, destination, health.get(destination.getId().toString()), now));
-    }
-    return listOrEmpty(alert.getDestinations());
-  }
-
-  // Disabled is decided when read, from the alert and the destination as they are now, and never
-  // stored. Otherwise the last tick that reached the destination speaks, and Active before any has.
-  private static SubscriptionStatus statusToShow(
-      EventSubscription alert,
-      SubscriptionDestination destination,
-      DestinationHealth known,
-      long now) {
-    boolean switchedOff =
-        Boolean.FALSE.equals(alert.getEnabled()) || Boolean.FALSE.equals(destination.getEnabled());
-    SubscriptionStatus status;
-    if (switchedOff) {
-      status = new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED);
-    } else if (known != null) {
-      status = known.getStatus();
-    } else {
-      status =
-          new SubscriptionStatus().withStatus(SubscriptionStatus.Status.ACTIVE).withTimestamp(now);
-    }
-    return status;
-  }
-
-  public EventsRecord getEventSubscriptionEventsRecord(UUID subscriptionId) {
-    AlertProgress progress = AlertProgress.of(AlertRows.read(subscriptionId));
-    AlertProgress.Counts counts = progress.counts();
-    long pending = progress.relevantUnreadCount();
-    return new EventsRecord()
-        .withTotalEventsCount(counts.handled() + pending)
-        .withFailedEventsCount(counts.failed())
-        .withPendingEventsCount(pending)
-        .withSuccessfulEventsCount(counts.delivered());
-  }
-
-  public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(
-      UUID subscriptionId, int limit, int paginationOffset, boolean listCountOnly) {
-    AlertProgress progress = AlertProgress.of(AlertRows.read(subscriptionId));
-    AlertProgress.Counts counts = progress.counts();
-    List<ChangeEvent> relevant = progress.relevantUnread(limit, paginationOffset);
-    return new EventSubscriptionDiagnosticInfo()
-        .withLatestOffset(progress.latestOffset())
-        .withCurrentOffset(progress.currentOffset())
-        .withStartingOffset(progress.startingOffset())
-        .withHasProcessedAllEvents(progress.caughtUp())
-        .withSuccessfulEventsCount(counts.delivered())
-        .withFailedEventsCount(counts.failed())
-        .withTotalUnprocessedEventsCount(progress.unread())
-        .withRelevantUnprocessedEventsCount((long) relevant.size())
-        .withRelevantUnprocessedEventsList(listCountOnly ? null : relevant)
-        .withTotalUnprocessedEventsList(
-            listCountOnly ? null : progress.allUnread(limit, paginationOffset));
-  }
-
   public boolean checkIfPublisherPublishedAllEvents(UUID subscriptionID) {
     return AlertProgress.of(AlertRows.read(subscriptionID)).caughtUp();
   }
@@ -429,27 +328,6 @@ public class EventSubscriptionScheduler {
     return Entity.getCollectionDAO().changeEventDAO().recordExists(id.toString()) > 0;
   }
 
-  /**
-   * Converts a status object to SubscriptionStatus. After JSON deserialization, the statusDetails
-   * field (typed as Object in SubscriptionDestination) may be deserialized as a LinkedHashMap
-   * instead of SubscriptionStatus. This method handles the conversion.
-   */
-  private SubscriptionStatus convertToSubscriptionStatus(Object status) {
-    if (status == null) {
-      return null;
-    }
-    if (status instanceof SubscriptionStatus subscriptionStatus) {
-      return subscriptionStatus;
-    }
-    try {
-      String json = JsonUtils.pojoToJson(status);
-      return JsonUtils.readValue(json, SubscriptionStatus.class);
-    } catch (Exception e) {
-      LOG.error("Failed to convert status to SubscriptionStatus: {}", status, e);
-      return null;
-    }
-  }
-
   /** Schedules the audit log consumer, which copies change events into the audit log. */
   public void scheduleAuditLogConsumer() throws SchedulerException {
     AuditLogSchedule.ensureScheduled(alertsScheduler);
@@ -461,7 +339,6 @@ public class EventSubscriptionScheduler {
       instance.reconciler.stop();
       AlertJobs.stop();
       instance.alertsScheduler.shutdown(true);
-      Channels.closeTransports();
     }
   }
 }

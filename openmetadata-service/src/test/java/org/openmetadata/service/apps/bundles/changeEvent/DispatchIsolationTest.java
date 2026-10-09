@@ -102,7 +102,7 @@ class DispatchIsolationTest {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
-      consumer.publishEvents(events);
+      consumer.handle(List.copyOf(events.keySet()));
     }
 
     verify(channel, times(1)).sendMessage(eq(healthy), any());
@@ -133,7 +133,7 @@ class DispatchIsolationTest {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
-      consumer.publishEvents(events);
+      consumer.handle(List.copyOf(events.keySet()));
     }
 
     assertEquals(1, consumer.ledger.pending().successEvents());
@@ -240,7 +240,7 @@ class DispatchIsolationTest {
   }
 
   /** Runs the real publish and tick logic, keeping failures in memory and reading no events. */
-  static class RecordingConsumer extends AbstractEventConsumer {
+  static class RecordingConsumer extends AlertPublisher {
     final List<EventPublisherException> failures = new ArrayList<>();
 
     RecordingConsumer() {
@@ -261,15 +261,5 @@ class DispatchIsolationTest {
 
     @Override
     public void commit(JobExecutionContext jobExecutionContext) {}
-
-    @Override
-    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
-      return true;
-    }
-
-    @Override
-    public boolean getEnabled() {
-      return true;
-    }
   }
 }

@@ -67,25 +67,9 @@ class AbstractEventConsumerTest {
   private UUID destinationId;
 
   static class TestEventConsumer extends AbstractEventConsumer {
-    private boolean sendAlertResult = true;
-    private final List<ChangeEvent> collectedSuccessfulEvents = new ArrayList<>();
-    private int batchWriteCallCount = 0;
 
     public TestEventConsumer(DIContainer dependencies) {
       super(dependencies);
-    }
-
-    @Override
-    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
-      if (sendAlertResult) {
-        collectedSuccessfulEvents.add(event);
-      }
-      return sendAlertResult;
-    }
-
-    @Override
-    public boolean getEnabled() {
-      return true;
     }
 
     @Override
@@ -96,7 +80,7 @@ class AbstractEventConsumerTest {
     }
 
     @Override
-    public void publishEvents(Map<ChangeEvent, Set<UUID>> events) {
+    protected void handle(List<ChangeEvent> events) {
       // Override to avoid static dependencies in tests
       // In real implementation, this would process events
     }
@@ -109,23 +93,6 @@ class AbstractEventConsumerTest {
     @Override
     public void commit(JobExecutionContext jobExecutionContext) {
       // Override to avoid Entity.getCollectionDAO() static call in tests
-      // Simulate batch write by incrementing counter
-      if (!collectedSuccessfulEvents.isEmpty()) {
-        batchWriteCallCount++;
-        collectedSuccessfulEvents.clear();
-      }
-    }
-
-    public void setSendAlertResult(boolean result) {
-      this.sendAlertResult = result;
-    }
-
-    public List<ChangeEvent> getCollectedSuccessfulEvents() {
-      return collectedSuccessfulEvents;
-    }
-
-    public int getBatchWriteCallCount() {
-      return batchWriteCallCount;
     }
   }
 
@@ -177,41 +144,6 @@ class AbstractEventConsumerTest {
         ImpersonationContext.getImpersonatedBy(),
         "A tick must leave the thread clean, or the next job scheduled onto it reads stale "
             + "per-request state");
-  }
-
-  @Test
-  void testSendAlertMethod() {
-    UUID receiverId = UUID.randomUUID();
-    ChangeEvent event = createMockChangeEvent();
-
-    boolean result = testEventConsumer.sendAlert(receiverId, event);
-
-    assertTrue(result);
-  }
-
-  @Test
-  void testGetEnabledMethod() {
-    boolean result = testEventConsumer.getEnabled();
-
-    assertTrue(result);
-  }
-
-  @Test
-  void testSendAlertFailure() {
-    testEventConsumer.setSendAlertResult(false);
-    UUID receiverId = UUID.randomUUID();
-    ChangeEvent event = createMockChangeEvent();
-
-    boolean result = testEventConsumer.sendAlert(receiverId, event);
-
-    assertFalse(result);
-  }
-
-  @Test
-  void testPublishEventsWithEmptyMap() {
-    Map<ChangeEvent, Set<UUID>> emptyEvents = new HashMap<>();
-
-    assertDoesNotThrow(() -> testEventConsumer.publishEvents(emptyEvents));
   }
 
   @Test
@@ -337,128 +269,6 @@ class AbstractEventConsumerTest {
   }
 
   @Test
-  void testPublishEventsWithSingleEvent() {
-    ChangeEvent event = createMockChangeEvent();
-    Set<UUID> receivers = Set.of(destinationId);
-    Map<ChangeEvent, Set<UUID>> events = Map.of(event, receivers);
-
-    assertDoesNotThrow(() -> testEventConsumer.publishEvents(events));
-  }
-
-  @Test
-  void testPublishEventsWithMultipleEvents() {
-    ChangeEvent event1 = createMockChangeEvent();
-    ChangeEvent event2 = createMockChangeEvent();
-    Set<UUID> receivers = Set.of(destinationId);
-    Map<ChangeEvent, Set<UUID>> events =
-        Map.of(
-            event1, receivers,
-            event2, receivers);
-
-    assertDoesNotThrow(() -> testEventConsumer.publishEvents(events));
-  }
-
-  @Test
-  void testBatchCollectionOnSuccessfulSend() {
-    ChangeEvent event1 = createMockChangeEvent();
-    ChangeEvent event2 = createMockChangeEvent();
-    ChangeEvent event3 = createMockChangeEvent();
-
-    testEventConsumer.sendAlert(destinationId, event1);
-    testEventConsumer.sendAlert(destinationId, event2);
-    testEventConsumer.sendAlert(destinationId, event3);
-
-    assertEquals(
-        3,
-        testEventConsumer.getCollectedSuccessfulEvents().size(),
-        "All successful events should be collected");
-    assertEquals(
-        0, testEventConsumer.getBatchWriteCallCount(), "Batch write should not occur until commit");
-  }
-
-  @Test
-  void testBatchCollectionNotOccurringOnFailedSend() {
-    testEventConsumer.setSendAlertResult(false);
-
-    ChangeEvent event1 = createMockChangeEvent();
-    ChangeEvent event2 = createMockChangeEvent();
-
-    testEventConsumer.sendAlert(destinationId, event1);
-    testEventConsumer.sendAlert(destinationId, event2);
-
-    assertTrue(
-        testEventConsumer.getCollectedSuccessfulEvents().isEmpty(),
-        "Failed events should not be collected");
-  }
-
-  @Test
-  void testBatchWriteOccursOnCommit() {
-    ChangeEvent event1 = createMockChangeEvent();
-    ChangeEvent event2 = createMockChangeEvent();
-
-    testEventConsumer.sendAlert(destinationId, event1);
-    testEventConsumer.sendAlert(destinationId, event2);
-
-    assertEquals(2, testEventConsumer.getCollectedSuccessfulEvents().size());
-    assertEquals(0, testEventConsumer.getBatchWriteCallCount());
-
-    testEventConsumer.commit(jobExecutionContext);
-
-    assertEquals(1, testEventConsumer.getBatchWriteCallCount(), "Single batch write should occur");
-    assertTrue(
-        testEventConsumer.getCollectedSuccessfulEvents().isEmpty(),
-        "Events should be cleared after commit");
-  }
-
-  @Test
-  void testEmptyCommitDoesNotTriggerBatchWrite() {
-    assertEquals(0, testEventConsumer.getCollectedSuccessfulEvents().size());
-
-    testEventConsumer.commit(jobExecutionContext);
-
-    assertEquals(
-        0, testEventConsumer.getBatchWriteCallCount(), "No batch write for empty collection");
-  }
-
-  @Test
-  void testMultipleBatchesWithSeparateCommits() {
-    ChangeEvent event1 = createMockChangeEvent();
-    ChangeEvent event2 = createMockChangeEvent();
-    ChangeEvent event3 = createMockChangeEvent();
-
-    testEventConsumer.sendAlert(destinationId, event1);
-    testEventConsumer.sendAlert(destinationId, event2);
-    testEventConsumer.commit(jobExecutionContext);
-
-    assertEquals(1, testEventConsumer.getBatchWriteCallCount());
-
-    testEventConsumer.sendAlert(destinationId, event3);
-    testEventConsumer.commit(jobExecutionContext);
-
-    assertEquals(
-        2, testEventConsumer.getBatchWriteCallCount(), "Second batch should trigger write");
-  }
-
-  @Test
-  void testMixedSuccessAndFailureResults() {
-    ChangeEvent successEvent = createMockChangeEvent();
-    ChangeEvent failEvent = createMockChangeEvent();
-
-    testEventConsumer.setSendAlertResult(true);
-    testEventConsumer.sendAlert(destinationId, successEvent);
-
-    assertEquals(1, testEventConsumer.getCollectedSuccessfulEvents().size());
-
-    testEventConsumer.setSendAlertResult(false);
-    testEventConsumer.sendAlert(destinationId, failEvent);
-
-    assertEquals(
-        1,
-        testEventConsumer.getCollectedSuccessfulEvents().size(),
-        "Only successful events should be collected");
-  }
-
-  @Test
   void testEventRecordedOncePerSubscriptionAcrossDestinationTypes() throws Exception {
     RealPublishConsumer consumer = new RealPublishConsumer(dependencies);
     consumer.eventSubscription = eventSubscription;
@@ -478,7 +288,7 @@ class AbstractEventConsumerTest {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
-      consumer.publishEvents(events);
+      consumer.handle(List.copyOf(events.keySet()));
     }
 
     List<?> recorded = consumer.ledger.pending().delivered();
@@ -539,7 +349,7 @@ class AbstractEventConsumerTest {
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
 
-      consumer.publishEvents(events);
+      consumer.handle(List.copyOf(events.keySet()));
 
       assertEquals(2, sent.size(), "One send per address, however many destinations lead to it");
       assertEquals(Set.of(r1, r2), Set.copyOf(sent));
@@ -576,7 +386,7 @@ class AbstractEventConsumerTest {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
-      consumer.publishEvents(events);
+      consumer.handle(List.copyOf(events.keySet()));
     }
 
     verify(slack, never()).sendMessage(any(), any());
@@ -606,7 +416,7 @@ class AbstractEventConsumerTest {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
-      consumer.publishEvents(events);
+      consumer.handle(List.copyOf(events.keySet()));
 
       RecipientResolver resolver = resolverCtor.constructed().getFirst();
       verify(resolver, never()).recipientsOf(any(), any());
@@ -640,7 +450,7 @@ class AbstractEventConsumerTest {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
-      consumer.publishEvents(events);
+      consumer.handle(List.copyOf(events.keySet()));
     }
 
     assertEquals(
@@ -677,7 +487,7 @@ class AbstractEventConsumerTest {
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
-      consumer.publishEvents(events);
+      consumer.handle(List.copyOf(events.keySet()));
     }
 
     assertTrue(consumer.ledger.pending().delivered().isEmpty());
@@ -722,7 +532,7 @@ class AbstractEventConsumerTest {
         alertUtil
             .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
             .thenReturn(events);
-        consumer.publishEvents(events);
+        consumer.handle(List.copyOf(events.keySet()));
       }
 
       verify(usable).sendMessage(eq(event), any());
@@ -861,7 +671,7 @@ class AbstractEventConsumerTest {
   }
 
   /** Counts commits unconditionally, which is what the offset-versus-metrics branch decides. */
-  static class CommitCountingConsumer extends AbstractEventConsumer {
+  static class CommitCountingConsumer extends AlertPublisher {
     int commits;
 
     CommitCountingConsumer(DIContainer dependencies) {
@@ -871,16 +681,6 @@ class AbstractEventConsumerTest {
     @Override
     public void commit(JobExecutionContext jobExecutionContext) {
       commits++;
-    }
-
-    @Override
-    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
-      return true;
-    }
-
-    @Override
-    public boolean getEnabled() {
-      return true;
     }
   }
 
@@ -896,7 +696,7 @@ class AbstractEventConsumerTest {
     return field.get(target);
   }
 
-  static class RealPublishConsumer extends AbstractEventConsumer {
+  static class RealPublishConsumer extends AlertPublisher {
     final List<EventPublisherException> capturedFailures = new ArrayList<>();
 
     RealPublishConsumer(DIContainer dependencies) {
@@ -904,18 +704,8 @@ class AbstractEventConsumerTest {
     }
 
     @Override
-    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
-      return true;
-    }
-
-    @Override
-    public boolean getEnabled() {
-      return true;
-    }
-
-    @Override
     public void handleFailedEvent(EventPublisherException ex, boolean errorOnSub) {
-      // Capture instead of writing via the DAO, so the real publishEvents runs without one.
+      // Capture instead of writing via the DAO, so the real delivery runs without one.
       capturedFailures.add(ex);
     }
   }

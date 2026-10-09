@@ -13,21 +13,14 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent;
 
-import static org.openmetadata.service.events.subscription.AlertUtil.getFilteredEvents;
-
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEvent;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -48,16 +41,20 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.SchedulerException;
 
+/**
+ * The runtime of every change-event consumer: one tick reads the alert's events after its position,
+ * hands them to the consumer, and commits how far it got. What a consumer does with the events, and
+ * what it needs around them, it says through four hooks: {@link #beginTick}, {@link #handle}, {@link
+ * #beforeCommit} and {@link #endTick}.
+ */
 @Slf4j
 @DisallowConcurrentExecution
-public abstract class AbstractEventConsumer
-    implements Alert<ChangeEvent>, Consumer<ChangeEvent>, Job {
+public abstract class AbstractEventConsumer implements Job {
   public static final String DESTINATION_MAP_KEY = "SubscriptionMapKey";
   public static final String OFFSET_EXTENSION = LedgerKeys.POSITION;
   public static final String METRICS_EXTENSION = LedgerKeys.COUNTERS;
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
   static final long GAP_RESOLVE_TIMEOUT_MS = 30_000;
-  private static final int MAX_FAILURE_REASON_LENGTH = 2000;
   private static final int COMMIT_AFTER_EVERY_EVENT_AT = 3;
   private static final int SET_ASIDE_FIRST_EVENT_AT = 6;
   protected final DIContainer dependencies;
@@ -68,14 +65,10 @@ public abstract class AbstractEventConsumer
   private boolean stoppedEarly;
 
   protected EventSubscription eventSubscription;
-  protected Map<UUID, Destination<ChangeEvent>> destinationMap;
 
   protected AbstractEventConsumer(DIContainer dependencies) {
     this.dependencies = dependencies;
   }
-
-  private TickHealth healthOfThisTick;
-  private TickChannels channelsOfThisTick;
 
   /**
    * Which kind of consumer this is, as its class declares. The kind decides what a tick reads and
@@ -85,8 +78,34 @@ public abstract class AbstractEventConsumer
     return ConsumerKind.of(getClass());
   }
 
+  /**
+   * Runs when the tick starts, before {@link #doInit} and outside the tick's error handling: what
+   * the consumer needs for the whole tick is made here. {@link #endTick} runs however the tick
+   * ends.
+   */
+  protected void beginTick() {
+    // Nothing to make by default.
+  }
+
   protected void doInit(JobExecutionContext context) {
     // To be implemented by the Subclass if needed
+  }
+
+  /**
+   * The change events this tick read, in the order they happened: one at a time, or the whole batch
+   * at once for a batch consumer that is not being careful, or for a consumer that reads its events
+   * its own way. Each event reaches the consumer once.
+   */
+  protected abstract void handle(List<ChangeEvent> events);
+
+  /** Runs when the tick commits at its end, before the commit and as part of it. */
+  protected void beforeCommit() {
+    // Nothing to add to the commit by default.
+  }
+
+  /** Runs however the tick ended, after its commit. */
+  protected void endTick() {
+    // Nothing to release by default.
   }
 
   public enum FailureTowards {
@@ -94,7 +113,6 @@ public abstract class AbstractEventConsumer
     PUBLISHER
   }
 
-  @Override
   public void handleFailedEvent(EventPublisherException ex, boolean errorOnSub) {
     if (ex.getChangeEventWithSubscription() == null) {
       LOG.error(
@@ -124,110 +142,10 @@ public abstract class AbstractEventConsumer
         source.toString());
   }
 
-  private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap() {
-    // In the order the alert declares them: that order decides which destination sends first and
-    // which one supplies the configuration when several share a type.
-    Map<UUID, Destination<ChangeEvent>> dMap = new LinkedHashMap<>();
-    if (eventSubscription.getDestinations() == null) {
-      return dMap;
-    }
-    for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
-      subscriptionDest.setStatusDetails(null);
-      dMap.put(
-          subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));
-    }
-    return dMap;
-  }
-
-  @Override
-  public void publishEvents(Map<ChangeEvent, Set<UUID>> events) {
-    if (events.isEmpty()) {
-      return;
-    }
-    Map<ChangeEvent, Set<UUID>> filteredEvents =
-        getFilteredEvents(eventSubscription, events, ledger.watermark(), this::deadLetterEvent);
-    int successDeliveries = 0;
-    int failedDeliveries = 0;
-    for (Map.Entry<ChangeEvent, Set<UUID>> eventWithReceivers : filteredEvents.entrySet()) {
-      EventDeliveryResult result =
-          publishEvent(eventWithReceivers.getKey(), eventWithReceivers.getValue());
-      // Record once per (event, subscription): the table has no destination dimension, so
-      // recording per type would duplicate rows and break Postgres ON CONFLICT.
-      if (result.delivered()) {
-        ledger.delivered(eventWithReceivers.getKey());
-      }
-      successDeliveries += result.successCount();
-      failedDeliveries += result.failedCount();
-    }
-    ledger.channelOutcomes(successDeliveries, failedDeliveries);
-  }
-
-  /** An event we could not even filter is a publisher-side failure, so record it as one. */
-  private void deadLetterEvent(ChangeEvent event, Exception error) {
-    LOG.error(
-        "Event Subscription: {} could not evaluate filters for change event {}",
-        eventSubscription.getName(),
-        event.getId(),
-        error);
-    handleFailedEvent(
-        new EventPublisherException(
-            String.format("Failed to evaluate alert filters: %s", error.getMessage()),
-            Pair.of(eventSubscription.getId(), event)),
-        false);
-  }
-
-  private EventDeliveryResult publishEvent(ChangeEvent event, Set<UUID> destinationIds) {
-    Delivery delivery = channelsOfThisTick().deliver(event, destinationIds);
-    recordSendFailures(event, delivery);
-    return new EventDeliveryResult(
-        delivery.delivered() > 0, delivery.delivered(), delivery.failures().size());
-  }
-
-  private record EventDeliveryResult(boolean delivered, int successCount, int failedCount) {}
-
-  // One failure row per event and alert. It names the first failing destination and lists every
-  // one, so a second failure on the same event adds detail and never overwrites the first.
-  private void recordSendFailures(ChangeEvent event, Delivery delivery) {
-    if (delivery.anyFailed()) {
-      recordSendFailure(
-          new EventPublisherException(
-              StringUtils.abbreviate(delivery.reasons(), MAX_FAILURE_REASON_LENGTH),
-              Pair.of(delivery.failures().getFirst().destinationId(), event)));
-    }
-  }
-
-  private void recordSendFailure(EventPublisherException failure) {
-    try {
-      handleFailedEvent(failure, true);
-    } catch (RuntimeException recordingError) {
-      LOG.error("Failed to record a send failure: {}", failure.getMessage(), recordingError);
-    }
-  }
-
-  private TickChannels channelsOfThisTick() {
-    if (channelsOfThisTick == null) {
-      throw new IllegalStateException("An alert's channels exist only while its tick runs");
-    }
-    return channelsOfThisTick;
-  }
-
-  /**
-   * The alert's channels for this tick, for a consumer that makes its own work to send it through.
-   * The consumer counts what it sent and records what failed, through {@link #recordDelivery} and
-   * {@link #recordFailure}; the tick writes each destination's health when it ends.
-   *
-   * @throws IllegalStateException outside a tick
-   */
-  protected final ChannelDelivery channels() {
-    return channelsOfThisTick();
-  }
-
-  @Override
   public void commit(JobExecutionContext jobExecutionContext) {
     ledger.commit();
   }
 
-  @Override
   public ResultList<ChangeEvent> pollEvents(long offset, long batchSize) {
     var records =
         Entity.getCollectionDAO().changeEventDAO().listWithOffset((int) batchSize, offset);
@@ -329,7 +247,8 @@ public abstract class AbstractEventConsumer
   final void tick(EventSubscription alert, AlertLedger openLedger, JobExecutionContext context) {
     this.eventSubscription = alert;
     this.ledger = openLedger;
-    openTick(loadDestinationsMap());
+    openTick();
+    beginTick();
     TickMemory.begin(stopSignal);
     try {
       doInit(context);
@@ -345,10 +264,7 @@ public abstract class AbstractEventConsumer
   }
 
   // What one tick works with, made fresh when it starts. Unit tests open a tick the same way.
-  void openTick(Map<UUID, Destination<ChangeEvent>> destinations) {
-    this.destinationMap = destinations;
-    this.healthOfThisTick = new TickHealth();
-    this.channelsOfThisTick = new TickChannels(eventSubscription, destinations, healthOfThisTick);
+  void openTick() {
     this.stopSignal = TickStopSignal.startingNow(AlertingSettings.current());
     this.stoppedEarly = false;
   }
@@ -381,11 +297,12 @@ public abstract class AbstractEventConsumer
     }
   }
 
+  // Each event once, in the order they were read, which is the order the changes happened.
   private void publish(List<ChangeEvent> events) {
-    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = createEventsWithReceivers(events);
-    if (!eventsWithReceivers.isEmpty()) {
-      ledger.eventsRead(eventsWithReceivers.size());
-      publishEvents(eventsWithReceivers);
+    List<ChangeEvent> distinct = List.copyOf(new LinkedHashSet<>(events));
+    if (!distinct.isEmpty()) {
+      ledger.eventsRead(distinct.size());
+      handle(distinct);
     }
   }
 
@@ -460,8 +377,7 @@ public abstract class AbstractEventConsumer
       restartTimetableIfBehind(context);
       runAgainAtOnceIfStoppedForTime(context);
     } finally {
-      closeDestinations();
-      channelsOfThisTick = null;
+      endTick();
     }
   }
 
@@ -483,30 +399,11 @@ public abstract class AbstractEventConsumer
   // However the commit ends, this tick came back: only one that never does was interrupted.
   private void commitThisTick(JobExecutionContext context) {
     try {
-      reportHealthOfThisTick();
+      beforeCommit();
       commit(context);
     } finally {
       ledger.clearOpeningNote();
     }
-  }
-
-  // A channel that cannot send, such as a mail server switched off, is said once per tick, not
-  // once per event and destination.
-  private void reportHealthOfThisTick() {
-    healthOfThisTick.reportTo(
-        (destinationId, outcome) -> {
-          ledger.destinationOutcome(destinationId, outcome);
-          AlertTelemetry.destinationOutcome(outcome);
-        });
-    healthOfThisTick
-        .notAttemptedChannels()
-        .forEach(
-            (channelId, why) ->
-                LOG.info(
-                    "Alert {} did not attempt channel {} in this tick: {}",
-                    eventSubscription.getName(),
-                    channelId,
-                    why));
   }
 
   // A one-off trigger for the same job. Quartz holds it until this tick is over, and it then
@@ -523,16 +420,6 @@ public abstract class AbstractEventConsumer
             "Alert {} could not run again at once; the rest waits for its next poll",
             eventSubscription.getName(),
             e);
-      }
-    }
-  }
-
-  private void closeDestinations() {
-    for (Destination<ChangeEvent> destination : destinationMap.values()) {
-      try {
-        destination.close();
-      } catch (RuntimeException e) {
-        LOG.warn("Failed to close a destination of {}", eventSubscription.getName(), e);
       }
     }
   }
@@ -575,14 +462,5 @@ public abstract class AbstractEventConsumer
 
   public EventSubscription getEventSubscription() {
     return eventSubscription;
-  }
-
-  private Map<ChangeEvent, Set<UUID>> createEventsWithReceivers(List<ChangeEvent> events) {
-    // In the order they were read, which is the order the changes happened.
-    Map<ChangeEvent, Set<UUID>> eventsWithReceivers = new LinkedHashMap<>();
-    for (ChangeEvent changeEvent : events) {
-      eventsWithReceivers.put(changeEvent, new LinkedHashSet<>(destinationMap.keySet()));
-    }
-    return eventsWithReceivers;
   }
 }

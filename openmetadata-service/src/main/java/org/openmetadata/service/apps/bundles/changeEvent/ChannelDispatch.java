@@ -31,6 +31,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.channel.DeliveryMemory;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.Channel;
@@ -197,7 +198,7 @@ final class ChannelDispatch {
   }
 
   private List<Outcome> sendTogether(List<Target> targets, Object prepared, int atOnce) {
-    TickMemory ofTheTick = TickMemory.current();
+    Memories ofTheTick = new Memories(TickMemory.current(), DeliveryMemory.current());
     Semaphore slots = new Semaphore(atOnce);
     try (ExecutorService threads = Executors.newVirtualThreadPerTaskExecutor()) {
       List<Future<Outcome>> sends =
@@ -208,13 +209,18 @@ final class ChannelDispatch {
     }
   }
 
-  private Outcome inASlot(Semaphore slots, TickMemory ofTheTick, Target target, Object prepared)
+  // What a thread sending on the tick's behalf must see as the tick does.
+  private record Memories(TickMemory tick, DeliveryMemory delivery) {}
+
+  private Outcome inASlot(Semaphore slots, Memories ofTheTick, Target target, Object prepared)
       throws InterruptedException {
     slots.acquire();
-    TickMemory.adopt(ofTheTick);
+    TickMemory.adopt(ofTheTick.tick());
+    DeliveryMemory.adopt(ofTheTick.delivery());
     try {
       return sendTo(target, prepared);
     } finally {
+      DeliveryMemory.end();
       TickMemory.end();
       slots.release();
     }
