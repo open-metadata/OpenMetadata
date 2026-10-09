@@ -12,45 +12,14 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-export const SIDEBAR_COLLAPSED_STORAGE_KEY = 'aiShell.sidebar.mainCollapsed';
-const SIDEBAR_COLLAPSED_EVENT = 'aiShell.sidebar.mainCollapsedChange';
-
-const readPersisted = (key: string): boolean | null => {
-  try {
-    const stored = localStorage.getItem(key);
-
-    return stored === null ? null : stored === 'true';
-  } catch {
-    return null;
-  }
-};
-
-const persist = (key: string, value: boolean): void => {
-  try {
-    localStorage.setItem(key, String(value));
-  } catch {
-    // ignore storage errors (e.g. private mode quota)
-  }
-};
-
-// Top-level main-nav collapse preference, defaulting to expanded.
-const readTopLevelDefault = (): boolean =>
-  readPersisted(SIDEBAR_COLLAPSED_STORAGE_KEY) ?? false;
-
-/** The "compact sidebar" preference: the top-level main nav starts as the icon rail. */
-export const readCompactSidebarPreference = readTopLevelDefault;
-
-/**
- * Sets the compact sidebar preference from outside the sidebar (e.g. the
- * Preferences page); a mounted sidebar applies it straight away.
- */
-export const setCompactSidebarPreference = (compact: boolean): void => {
-  persist(SIDEBAR_COLLAPSED_STORAGE_KEY, compact);
-  globalThis.dispatchEvent(
-    new CustomEvent<boolean>(SIDEBAR_COLLAPSED_EVENT, { detail: compact })
-  );
-};
+import {
+  SIDEBAR_COLLAPSED_EVENT,
+  SIDEBAR_COLLAPSED_STORAGE_KEY,
+} from './appModeSidebar.constants';
+import {
+  persistSidebarPreference,
+  readCompactSidebarPreference,
+} from './sidebarPreference.utils';
 
 /**
  * Main-nav collapse state, with context-dependent precedence:
@@ -74,8 +43,9 @@ export const useMainCollapse = (
   inSubModeRef.current = inSubMode;
 
   // Persisted preference, meaningful only at the top level.
-  const [topLevelCollapsed, setTopLevelCollapsed] =
-    useState<boolean>(readTopLevelDefault);
+  const [topLevelCollapsed, setTopLevelCollapsed] = useState<boolean>(
+    readCompactSidebarPreference
+  );
 
   useEffect(() => {
     const onPreferenceChange = (event: Event) =>
@@ -123,7 +93,7 @@ export const useMainCollapse = (
     }
     setTopLevelCollapsed((prev) => {
       const next = !prev;
-      persist(SIDEBAR_COLLAPSED_STORAGE_KEY, next);
+      persistSidebarPreference(SIDEBAR_COLLAPSED_STORAGE_KEY, next);
 
       return next;
     });
@@ -136,7 +106,7 @@ export const useMainCollapse = (
       return;
     }
     setTopLevelCollapsed(value);
-    persist(SIDEBAR_COLLAPSED_STORAGE_KEY, value);
+    persistSidebarPreference(SIDEBAR_COLLAPSED_STORAGE_KEY, value);
   }, []);
 
   return [collapsed, toggle, set] as const;

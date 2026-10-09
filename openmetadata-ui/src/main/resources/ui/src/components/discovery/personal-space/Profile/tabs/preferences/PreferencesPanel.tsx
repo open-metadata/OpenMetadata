@@ -23,25 +23,14 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../../../../context/UntitledUIThemeProvider/theme-provider';
 import type { ThemePreference } from '../../../../../../context/UntitledUIThemeProvider/theme-provider.interface';
-import { languageSelectOptions } from '../../../../../../utils/i18next/i18nextUtil';
 import localUtilClassBase from '../../../../../../utils/i18next/LocalUtilClassBase';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import {
   readCompactSidebarPreference,
   setCompactSidebarPreference,
-} from '../../../../../platform/ai-shell/Sidebar/useSidebarState';
+} from '../../../../../platform/ai-shell/Sidebar/sidebarPreference.utils';
 import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
-
-const THEME_OPTIONS: { id: ThemePreference; labelKey: string }[] = [
-  { id: 'light', labelKey: 'label.light' },
-  { id: 'dark', labelKey: 'label.dark' },
-  { id: 'system', labelKey: 'label.system' },
-];
-
-const LANGUAGE_ITEMS = languageSelectOptions.map(({ key, label }) => ({
-  id: key,
-  label,
-}));
+import { LANGUAGE_ITEMS, THEME_OPTIONS } from './PreferencesPanel.constants';
 
 /** Per-device preferences: theme, compact sidebar and language. */
 const PreferencesPanel = () => {

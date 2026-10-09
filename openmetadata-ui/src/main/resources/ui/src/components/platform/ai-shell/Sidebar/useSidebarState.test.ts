@@ -13,12 +13,12 @@
 
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
+import { SIDEBAR_COLLAPSED_STORAGE_KEY } from './appModeSidebar.constants';
 import {
   readCompactSidebarPreference,
   setCompactSidebarPreference,
-  SIDEBAR_COLLAPSED_STORAGE_KEY,
-  useMainCollapse,
-} from './useSidebarState';
+} from './sidebarPreference.utils';
+import { useMainCollapse } from './useSidebarState';
 
 const renderMain = (inSubMode = false, contextKey: string | null = null) =>
   renderHook(({ sub, key }) => useMainCollapse(sub, key), {

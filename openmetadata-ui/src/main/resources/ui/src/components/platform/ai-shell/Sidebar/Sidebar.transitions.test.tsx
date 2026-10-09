@@ -17,8 +17,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { observabilityModule } from '../../../observability/ObservabilityModule/observability.module';
 import { AppModule } from '../AppModule.types';
 import { useActiveModuleStore } from '../state/useActiveModule';
+import { SIDEBAR_COLLAPSED_STORAGE_KEY } from './appModeSidebar.constants';
 import Sidebar from './Sidebar';
-import { SIDEBAR_COLLAPSED_STORAGE_KEY } from './useSidebarState';
 
 // A second sub-context: the same real SubNavConfig under a different module id,
 // so switching modules exercises the real SubPanel/SubRail again without pulling

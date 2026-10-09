@@ -14,7 +14,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from '../../../../../../context/UntitledUIThemeProvider/theme-provider';
 import localUtilClassBase from '../../../../../../utils/i18next/LocalUtilClassBase';
-import { readCompactSidebarPreference } from '../../../../../platform/ai-shell/Sidebar/useSidebarState';
+import { readCompactSidebarPreference } from '../../../../../platform/ai-shell/Sidebar/sidebarPreference.utils';
 import PreferencesPanel from './PreferencesPanel';
 
 const mockNavigate = jest.fn();
