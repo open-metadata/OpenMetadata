@@ -520,6 +520,19 @@ SET json = jsonb_set(
 )
 WHERE name = 'DataQuality' AND entityType = 'KnowledgePanel';
 
+-- The Context Center card moved into OSS from Collate, which seeded this fullyQualifiedName as
+-- "Knowledge Center" with a description of a widget that no longer exists. OSS installs get the
+-- row from the seed file; this brings an upgraded Collate row in line with it.
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'displayName', 'Context Center',
+      'description', 'The most recently updated Context Center pages, articles and quick links, with how many changed this week.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'KnowledgeCenter' AND entityType = 'KnowledgePanel';
+
 -- Retired: their seed files are gone and no component resolves their key, so the renderer would
 -- answer with a render-nothing component and leave an empty cell. The UI already filters them out
 -- of both the grid and the picker; this stops the rows accumulating.
