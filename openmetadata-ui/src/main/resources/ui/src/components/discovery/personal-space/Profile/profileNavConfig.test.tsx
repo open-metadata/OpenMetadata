@@ -98,6 +98,14 @@ describe('profileNavConfig', () => {
     });
   });
 
+  it('shows SSO settings to admins only', () => {
+    const sso = getProfileNavItem('sso');
+    const permissions = {} as Parameters<NonNullable<typeof sso.isVisible>>[0];
+
+    expect(sso.isVisible?.(permissions, true)).toBe(true);
+    expect(sso.isVisible?.(permissions, false)).toBe(false);
+  });
+
   it('includes administration in the group label map', () => {
     expect(PROFILE_NAV_GROUP_LABEL.administration).toBe('label.administration');
   });
