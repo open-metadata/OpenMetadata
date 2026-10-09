@@ -5,7 +5,9 @@
 - **Date:** 2026-09-16 (amended 2026-09-29, §2a: default grant through Data Consumer)
 - **Issue:** [OpenMetadata #33384](https://github.com/open-metadata/OpenMetadata/issues/33384)
 - **Branch:** `fmcardoso/add-permissioned-read-only-sparql-execution-for`
-- **Amended by:** [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231).
+- **Amended by:** [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231),
+  [OpenMetadata #34270](https://github.com/open-metadata/OpenMetadata/issues/34270)
+  (MCP knowledge-graph tools — see the amendment before the Review log).
 - **Related:** ai-platform epic #224, ai-platform #1299, ai-platform PR #1310 (design, pinned at
   `0056ceb9`); OpenMetadata #33224 (asset-level RBAC — parallel work, explicitly **not** a
   prerequisite and **not** provided here).
@@ -414,6 +416,198 @@ Choices made while implementing that refine, but do not change, the decisions ab
   context value and falls back to the request thread's `ImpersonationContext`, the same
   fallback `DefaultAuthorizer` uses. Both are set by `JwtFilter` only for a validated
   session, so untrusted headers still audit as rejections without a bot actor.
+
+## Amendment: MCP knowledge-graph tools (#34270)
+
+- **Status:** Implemented on the #34270 branch (2026-10-01). The decisions were written before the
+  implementation so they could be reviewed on their own; the verification evidence is at the end of
+  this section.
+- **Issue:** [OpenMetadata #34270](https://github.com/open-metadata/OpenMetadata/issues/34270)
+
+### A1. Scope
+
+The OpenMetadata MCP server and its RDF tools (`sparql_query`, `entity_neighborhood`,
+`find_by_tag`, `shacl_validate`, `ontology_describe`) already exist and are shared by every
+deployment that serves MCP, including Collate. This amendment **extends those existing tools to
+non-admin callers who are explicitly permitted**. It does not add an MCP server or a tool, and it
+does not change `get_entity_lineage`; fixing that tool (column start, cursor, edge filters) is
+separate work in the MCP epic and does not depend on RDF.
+
+Motivation: a column-lineage question over thousands of edges is answerable only by paging a graph
+query, and today every RDF MCP tool is admin-only. The authorization point is a single call,
+`authorizer.authorizeAdmin`, in `RdfMcpTool.execute`; bots are rejected only as a side effect of
+`DefaultAuthorizer.authorizeAdmin` (no code names them). The admin-only wording in the tool
+descriptions says so.
+
+### A2. Access matrix
+
+The permission is the one §2 defines: `ExecuteSparqlQuery` on the `rdf` resource, with the
+explicit-allow / wildcard-deny matching of §2a. Admins pass through the authorizer's admin
+short-circuit exactly as in §2a.
+
+| Tool | Access |
+|---|---|
+| `sparql_query` | `ExecuteSparqlQuery`; the query profile depends on the caller (A3) |
+| `entity_neighborhood` | `ExecuteSparqlQuery` |
+| `find_by_tag` | `ExecuteSparqlQuery` |
+| `ontology_describe` without `resource` | no check: it returns the bundled ontology file that the unauthenticated `GET /v1/rdf/ontology` already serves |
+| `ontology_describe` with `resource` | `ExecuteSparqlQuery`: a `DESCRIBE` of an instance IRI is a data read |
+| `shacl_validate` | **admin only, unchanged.** `fullGraph=true` loads up to 100k triples into memory, and the REST `/v1/rdf/validate` is admin-only |
+
+`shacl_validate` is kept admin-only deliberately even though #34253 grants `ExecuteSparqlQuery` to
+Data Consumers: a permission meant for bounded SELECTs must not become a memory-pressure lever.
+The authorization hook is per tool, so each tool states its own requirement. Authorization runs
+before the "RDF is not enabled" check, so an unauthorized caller learns nothing about deployment
+configuration.
+
+### A3. Execution profile for `sparql_query`
+
+- **Admins:** behavior is unchanged: same parsing (SELECT, ASK, DESCRIBE, CONSTRUCT), the caller's
+  `format` and `inferenceLevel`, the existing default row limit, and the same response shape.
+- **Non-admins:** the query runs through the agent profile of §4 and §5, built by the same service
+  the `/v1/rdf/sparql/agent` endpoint uses, so the two surfaces cannot drift:
+  - SELECT only; `FROM`, `GRAPH`, `SERVICE`, `CALL` and `java:` IRIs are rejected;
+  - inference is `none`; a request for another inference level or for a non-JSON format is
+    rejected with a message naming the rule rather than silently ignored;
+  - the projection must be `READY` before and after execution (§4a);
+  - the server row cap, 10 MiB output bound, 30 s timeout and the global / per-principal
+    concurrency limits apply;
+  - one audit event per call, recorded through the same audit path as the agent endpoint;
+  - the response carries the completeness status computed from the row probe (§5), so a client
+    can tell a complete page from a truncated one.
+- The MCP response is additionally bounded to the MCP payload budget: 80% of the server's `maxResponseChars` setting, which is
+  80,000 bytes at its default of 100,000 and can be lowered by an administrator. A bounded
+  response is flagged `truncated` with its full size; the caller lowers `LIMIT` and repeats the
+  same `OFFSET`. This is a transport limit, separate from the completeness status. A row of a column
+  FQN and an asset IRI is about 205 bytes, so the published column-lineage query pages by 250 rows
+  (about 51 KB); 400 rows overflowed the default budget in the integration test. A lowered budget
+  truncates sooner, and the client's rule is the same: lower `LIMIT` and repeat the `OFFSET`.
+- The other tools that read the graph (`entity_neighborhood`, `find_by_tag` and `ontology_describe`
+  with a `resource`) execute inside the shared timeout and concurrency guard once non-admins can
+  call them, and for non-admins they apply the same `READY` check as `sparql_query`. A rebuild that
+  runs in place empties and refills the graph, and the projection is marked not ready while it
+  does; without the check, "everything tagged X" would return a partial list with nothing marking
+  it partial, and an agent turned away by `sparql_query` would fall back to exactly these tools.
+  The check is `AgentSparqlService.requireReadyProjection`, the one `sparql_query` runs, and it
+  raises the same errors (below). Administrators are not gated, as with administrator
+  `sparql_query`; `ontology_describe` without a `resource` serves a static file and is not gated.
+
+  These three tools check readiness before the read only. A rebuild that starts while such a read
+  is in flight can return one partial or empty result as a success; reads that start after the
+  rebuild has recorded its run are refused. That is accepted: they run fixed, short reads, and a
+  second state lookup per call buys little. `sparql_query` keeps the before-and-after check
+  because it runs caller-authored queries for up to the 30 s guard timeout. Neither is a
+  snapshot-consistency guarantee (§4a).
+- Agent-profile errors keep their stable code in the MCP error message and are mapped onto the
+  statuses the MCP dispatcher already uses (it has no 503 and no "unavailable" telemetry category):
+
+  | Agent code | MCP status |
+  |---|---|
+  | `QUERY_INVALID`, `QUERY_FORM_NOT_ALLOWED`, `GRAPH_SELECTION_NOT_ALLOWED`, `QUERY_LIMIT_EXCEEDED`, `RESULT_OUTPUT_LIMIT_EXCEEDED` | 400 |
+  | `FEDERATION_NOT_ALLOWED` | 403, as on the REST endpoints and the admin path of this tool |
+  | `EXECUTION_CAPACITY_EXHAUSTED`, `RDF_REPOSITORY_UNAVAILABLE` | 429 with "Retry shortly" |
+  | `PROJECTION_NOT_READY` while rebuilding (also when no `RdfIndexApp` run is recorded yet, or the state cannot be determined) | 429: "RDF projection is rebuilding; retry later. If it persists, an administrator needs to run RdfIndexApp." |
+  | `PROJECTION_NOT_READY` while `DEGRADED` | 400, the deployment-state bucket that "RDF is not enabled" uses: "RDF projection is degraded; an administrator must run a full RdfIndexApp rebuild before graph queries can be answered." Not retryable. |
+  | `EXECUTION_TIMEOUT` | 504, as for every other MCP timeout |
+  | `RDF_BACKEND_FAILURE` | 500 |
+
+  `PROJECTION_NOT_READY` is split by state, which the exception carries (not only its message):
+  a rebuild finishes on its own, but `DEGRADED` is set by a failed live write or a failed or
+  stopped run and is cleared only by a completed full rebuild, which can be a long way off. A
+  "retry shortly" there would send an agent into a loop, so it is a 400 that names the
+  administrator step.
+  The REST agent endpoint reports `PROJECTION_NOT_READY`, `RDF_REPOSITORY_UNAVAILABLE` and
+  `EXECUTION_TIMEOUT` as 503 (unchanged) and `RESULT_OUTPUT_LIMIT_EXCEEDED` as 413. MCP uses 429 for the
+  retryable states because a 5xx would append "retrying will not help", which is wrong for a
+  rebuilding projection. The cost is that telemetry counts them under `RATE_LIMIT`; a distinct
+  unavailable status and category would change the `McpToolCallUsage` schema and is left to a
+  follow-up if the split is needed.
+  The classification is by exception name in `DefaultToolContext`, so it applies to every MCP
+  tool: a `QueryCapacityException` from any tool, including the administrator path of
+  `sparql_query`, is now a 429 where it previously fell through to a 500.
+- On a deployment without RDF the server withholds `sparql_query`, `entity_neighborhood`,
+  `find_by_tag` and `shacl_validate` from `tools/list` and refuses a direct call. That is existing
+  behavior, kept deliberately so clients are never offered a tool that cannot run, and this
+  amendment does not change it. `ontology_describe` stays offered; describing a `resource` there
+  answers with the existing 400 "RDF knowledge graph is not enabled" message.
+
+### A4. Bots
+
+Bots receive no exemption and no special rejection. The MCP transport has no
+`X-Impersonate-User` equivalent (`JwtFilter` builds the MCP security context with no impersonated
+user), so a bot is authorized on its own policies and passes if one of them names
+`ExecuteSparqlQuery`. This matches the other MCP tools and the agent endpoint without
+impersonation. A bot with only an `All`/`All` rule is denied for the same reason any user is
+(§2a).
+
+**By default every bot holds that grant.** `POST /v1/users` with `isBot=true` attaches
+`DefaultBotRole` (`UserResource.addRolesToBot`), `DefaultBotRole` includes `DataConsumerPolicy`,
+and `DataConsumerPolicy` ships `DataConsumerPolicy-ExecuteSparqlQuery-Rule` (#34253). So the answer
+to the issue's question whether bot tokens are allowed is yes, by default; a bot loses access only
+when that rule is removed or a policy denies the operation. `RdfMcpKnowledgeGraphIT.
+aBotWithoutTheGrantIsForbidden` strips the default rule first for that reason. The rule's
+description names the MCP tools next to the agent endpoint, since that text is what an
+administrator reads when deciding whether to keep it. New installations take the text from the
+seeded `DataConsumerPolicy.json`. Existing ones get it from a statement appended to the 2.1.0
+migration that changes only that description, and only where it still reads as first shipped. The
+original INSERT is left exactly as shipped: the runner tracks statements by a hash of their text,
+so an edited INSERT would run again where 2.1.0 is already recorded, and its only guard (the rule
+does not exist) would add back a rule an administrator deleted to opt out.
+
+### A5. Non-guarantees apply to MCP
+
+§7 applies unchanged. There is **no asset-level, field-level, or path/aggregate leakage
+protection**: a caller with `ExecuteSparqlQuery` can obtain, through counts, joins and lineage
+paths, information about assets they could not open individually. This risk is accepted for the MCP
+tools exactly as it was for the agent endpoint, and is not gated on asset-level filtering
+(#33224). The readiness check (§4a) remains a conservative policy, not a snapshot guarantee. Tool
+descriptions must not imply per-asset filtering.
+
+### A6. Column lineage reflects the last `RdfIndexApp` run
+
+Column-level lineage reaches the graph only through `RdfIndexApp`. A live `PUT /v1/lineage`
+projects the table-to-table edge but not its `LineageDetails`, so a new column mapping appears
+after the next reindex. This is the normal state of the graph on a running instance and is **not
+changed here**. The column lineage section of `docs/rdf-ontology-contract.md` and the
+`sparql_query` description state the dependency once. Column FQNs in `om:fromColumn` and
+`om:toColumn` are plain string literals, not IRIs; the ontology and shapes currently describe
+them as IRIs, which is tracked in #34864.
+
+### A7. What this amendment does not change
+
+- Default roles and policies: the Data Consumer default grant is #34253 (§2a, amended
+  2026-09-29); this amendment adds no grant and changes none.
+- `get_entity_lineage` behavior.
+- The live-write projection of lineage details.
+- Asset-level SPARQL filtering (#33224).
+- Public tool descriptions carry data-model facts only (vocabulary, paging, the column-lineage
+  query shape). Query-planning or routing strategy for AI agents does not belong in them.
+
+### A8. Evidence
+
+Local runs on 2026-10-01 against Postgres, Elasticsearch and the supported Fuseki image
+(`-Ppostgres-rdf-tests`); nothing is waiting on CI.
+
+- **Authorization matrix** (`RdfMcpKnowledgeGraphIT`, 18 of 18): admin, an explicit grant and a bot
+  with a grant may call `sparql_query`, `entity_neighborhood` and `ontology_describe` with a
+  `resource`; an ungranted user, an `All`/`All` user, a grant plus a Deny and a bot without a grant
+  get 403. `shacl_validate` is 403 for a granted non-admin, and `ontology_describe` without a
+  `resource` needs no grant.
+- **Column lineage at scale**: 5,006 mappings in production shape (a six-hop chain, a fan-out of one
+  column into 450, a rename hop, a multi-source mapping, a cycle, a dashboard data model hop and a
+  nested column). A granted non-admin pages the query published in the tool description: 2,705
+  downstream columns over 11 pages of 250 rows equal an independent walk of the edge list exactly,
+  with no duplicates and no truncated page. Pages took 49 to 230 ms each and about 51 KB each. The
+  asset-type filter drops the data model hop, and upstream paging matches its oracle.
+- **Real projection**: one lineage edge with `columnsLineage`, added through the API and projected by
+  a real `RdfIndexApp` run, is found by the same query and resolves to the target table. The target
+  table has a struct column, and the same run materializes its `om:hasChildColumn` link (readable
+  with no inference), although the ontology labels that predicate `InferenceOnly`.
+- **Existing endpoint**: `AgentSparqlResourceIT` passes 22 of 22 with the shared service factory
+  (rerun on 2026-10-06, after #34253 merged and added three cases to that class).
+- **Without RDF** (`McpRdfNotEnabledIT`, default lane, 4 of 4): the withheld tools are not offered,
+  a direct call is refused, and describing a resource answers "not enabled".
+- **Unit coverage**: line coverage of the changed classes is 89 to 100 percent.
 
 ## Review log
 

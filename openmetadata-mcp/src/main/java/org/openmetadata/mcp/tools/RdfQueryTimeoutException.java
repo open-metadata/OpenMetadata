@@ -11,18 +11,12 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.rdf.agent;
+package org.openmetadata.mcp.tools;
 
-import java.util.Objects;
-import org.openmetadata.schema.api.rdf.AgentSparqlCompleteness;
+/** A graph query that exceeded the server's time limit; classified by name as a timeout. */
+final class RdfQueryTimeoutException extends RuntimeException {
 
-/**
- * A serialized agent response, the row count reported in the audit log, and the completeness
- * already embedded in the body, so a transport that bounds the body can still report it.
- */
-public record AgentSparqlResult(byte[] body, int rowCount, AgentSparqlCompleteness completeness) {
-  public AgentSparqlResult {
-    Objects.requireNonNull(body);
-    Objects.requireNonNull(completeness);
+  RdfQueryTimeoutException(final String message, final Throwable cause) {
+    super(message, cause);
   }
 }

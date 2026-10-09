@@ -11,18 +11,16 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.rdf.agent;
-
-import java.util.Objects;
-import org.openmetadata.schema.api.rdf.AgentSparqlCompleteness;
+package org.openmetadata.mcp.tools;
 
 /**
- * A serialized agent response, the row count reported in the audit log, and the completeness
- * already embedded in the body, so a transport that bounds the body can still report it.
+ * A graph read that failed for a transient reason the caller did not cause: the projection is
+ * rebuilding, the store is unreachable, or the server is at its query capacity. Classified as
+ * retryable rather than as a backend fault, so the client is not told that retrying will not help.
  */
-public record AgentSparqlResult(byte[] body, int rowCount, AgentSparqlCompleteness completeness) {
-  public AgentSparqlResult {
-    Objects.requireNonNull(body);
-    Objects.requireNonNull(completeness);
+final class RdfRetryLaterException extends RuntimeException {
+
+  RdfRetryLaterException(final String message, final Throwable cause) {
+    super(message, cause);
   }
 }

@@ -15,19 +15,44 @@ package org.openmetadata.mcp.tools;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+import org.openmetadata.schema.api.rdf.AgentSparqlCompleteness;
+import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSparqlService;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.rdf.agent.AgentSparqlAudit;
+import org.openmetadata.service.rdf.agent.AgentSparqlCaller;
+import org.openmetadata.service.rdf.agent.AgentSparqlException;
+import org.openmetadata.service.rdf.agent.AgentSparqlResult;
+import org.openmetadata.service.rdf.agent.AgentSparqlService;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
-/** Executes bounded, read-only SPARQL queries for MCP clients. */
+/**
+ * Executes bounded, read-only SPARQL queries for MCP clients.
+ *
+ * <p>Administrators keep the full read surface. Every other caller who holds {@code
+ * ExecuteSparqlQuery} runs through the same agent profile as {@code POST /v1/rdf/sparql/agent}:
+ * SELECT only, no graph selection or federation, no inference, a ready projection, and an audit
+ * event.
+ */
 public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
 
   private static final int MIN_MAX_BYTES = RdfBody.MIN_BYTES;
+  private static final String FORMAT_PARAMETER = "format";
+  private static final String INFERENCE_LEVEL_PARAMETER = "inferenceLevel";
+  private static final String JSON_FORMAT = "json";
+  private static final String NO_INFERENCE = "none";
+  private static final String SELECT_QUERY_TYPE = "SELECT";
   private final GuardedQueryExecutor guardedQueryExecutor;
 
   public SparqlQueryTool() {
@@ -41,7 +66,14 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
 
   SparqlQueryTool(
       Supplier<RdfRepository> repositorySupplier, GuardedQueryExecutor guardedQueryExecutor) {
-    super(repositorySupplier);
+    this(repositorySupplier, guardedQueryExecutor, RdfProjectionStateResolver::resolveConfigured);
+  }
+
+  SparqlQueryTool(
+      Supplier<RdfRepository> repositorySupplier,
+      GuardedQueryExecutor guardedQueryExecutor,
+      Supplier<RdfProjectionState> projectionStateSupplier) {
+    super(repositorySupplier, projectionStateSupplier);
     this.guardedQueryExecutor = Objects.requireNonNull(guardedQueryExecutor);
   }
 
@@ -51,6 +83,9 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
    * maxInMemoryInferenceTriples}. The REST endpoint surfaces this as the {@code OM-Inference-Warning}
    * header; dropping it here meant an {@code inferenceLevel: "owl"} call silently returned
    * un-inferred results that looked authoritative. Null when the query ran as asked.
+   *
+   * <p>{@code completeness} is set only for non-administrators, whose body is the agent JSON. It is
+   * repeated here because that JSON carries it at the end, where a bounded body cuts first.
    */
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record Result(
@@ -59,7 +94,30 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
       String body,
       boolean truncated,
       int byteCount,
-      String warning) {}
+      String warning,
+      Completeness completeness) {
+
+    Result(
+        String format,
+        String queryType,
+        String body,
+        boolean truncated,
+        int byteCount,
+        String warning) {
+      this(format, queryType, body, truncated, byteCount, warning, null);
+    }
+  }
+
+  /** Whether the rows are every row the submitted query selects, and why not when they are not. */
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public record Completeness(String status, String reason) {
+
+    static Completeness of(final AgentSparqlCompleteness completeness) {
+      return new Completeness(
+          completeness.getStatus().value(),
+          completeness.getReason() == null ? null : completeness.getReason().value());
+    }
+  }
 
   @Override
   protected Result executeAuthorized(
@@ -67,25 +125,27 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
       throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
     String sparql = parameters.requiredString("query");
+    return isAdministrator(securityContext)
+        ? executeAsAdministrator(securityContext, parameters, sparql)
+        : executeWithAgentProfile(securityContext, parameters, sparql);
+  }
+
+  private Result executeAsAdministrator(
+      final CatalogSecurityContext securityContext,
+      final McpToolParameters parameters,
+      final String sparql) {
     RdfSparqlService.ReadQuery query = RdfSparqlService.ReadQuery.parse(sparql);
     RdfRepository repository = repository();
-    String inferenceLevel = parameters.optionalString("inferenceLevel");
-    // Default and ceiling both come from the dispatch-level budget rather than a standalone
-    // megabyte
-    // figure. The previous 1 MiB default and 16 MiB ceiling were 10x and 160x the dispatch cap, so
-    // a
-    // large SELECT was executed and paid for in full, then discarded wholesale by
-    // DefaultToolContext.applyBudget and replaced with a data-less truncation stub. See RdfBody.
-    // maxBytes can therefore only narrow the response, never widen it.
-    int budgetBytes = RdfBody.maxBytes();
-    int maxBytes =
-        RdfBody.clamp(parameters.integer("maxBytes", budgetBytes), MIN_MAX_BYTES, budgetBytes);
+    String inferenceLevel = parameters.optionalString(INFERENCE_LEVEL_PARAMETER);
+    int maxBytes = maxBytes(parameters);
     RdfSparqlService sparqlService =
         new RdfSparqlService(repository, new SparqlFederationGuard(repository.getConfig()));
     RdfSparqlService.QueryResult queryResult =
         guardedQueryExecutor.execute(
             CommonUtils.principal(securityContext),
-            () -> sparqlService.query(query, parameters.optionalString("format"), inferenceLevel));
+            () ->
+                sparqlService.query(
+                    query, parameters.optionalString(FORMAT_PARAMETER), inferenceLevel));
     RdfBody.Bounded body = RdfBody.bound(queryResult.body(), maxBytes);
 
     return new Result(
@@ -95,6 +155,95 @@ public class SparqlQueryTool extends RdfMcpTool<SparqlQueryTool.Result> {
         body.truncated(),
         body.byteCount(),
         queryResult.warning());
+  }
+
+  private Result executeWithAgentProfile(
+      final CatalogSecurityContext securityContext,
+      final McpToolParameters parameters,
+      final String sparql) {
+    RdfRepository repository = repository();
+    AgentSparqlCaller caller =
+        AgentSparqlCaller.of(requirePrincipal(securityContext), serviceActor(securityContext));
+    AgentSparqlResult result = runAgentQuery(repository, caller, parameters, sparql);
+    RdfBody.Bounded body =
+        RdfBody.bound(new String(result.body(), StandardCharsets.UTF_8), maxBytes(parameters));
+
+    return new Result(
+        JSON_FORMAT,
+        SELECT_QUERY_TYPE,
+        body.value(),
+        body.truncated(),
+        body.byteCount(),
+        null,
+        Completeness.of(result.completeness()));
+  }
+
+  /**
+   * The option check runs inside the audited call, so a permitted caller whose options are refused
+   * leaves the same {@code agent_sparql_query} event as any other outcome.
+   */
+  private AgentSparqlResult runAgentQuery(
+      final RdfRepository repository,
+      final AgentSparqlCaller caller,
+      final McpToolParameters parameters,
+      final String sparql) {
+    AgentSparqlService service =
+        AgentSparqlService.forRepository(() -> repository, projectionStateSupplier);
+    try {
+      return AgentSparqlAudit.record(
+          caller,
+          () -> {
+            requireAgentProfileOptions(parameters);
+            return service.execute(caller.effectiveUser(), sparql);
+          });
+    } catch (AgentSparqlException failure) {
+      throw AgentSparqlToolErrors.toToolException(failure);
+    }
+  }
+
+  /**
+   * The bot behind the call, resolved the way {@code RdfResource} does for the REST endpoint: the
+   * validated swap on the context when there is one, else the request thread's impersonation.
+   * {@code McpServer} sets the latter to the MCP bot for every tool call.
+   */
+  private static String serviceActor(final CatalogSecurityContext securityContext) {
+    return securityContext.impersonatedUser() != null
+        ? securityContext.impersonatedUser()
+        : ImpersonationContext.getImpersonatedBy();
+  }
+
+  private static void requireAgentProfileOptions(final McpToolParameters parameters) {
+    requireOption(parameters, FORMAT_PARAMETER, JSON_FORMAT);
+    requireOption(parameters, INFERENCE_LEVEL_PARAMETER, NO_INFERENCE);
+  }
+
+  private static void requireOption(
+      final McpToolParameters parameters, final String name, final String allowed) {
+    String requested = parameters.optionalString(name);
+    if (!McpToolParameters.isBlank(requested)
+        && !allowed.equals(requested.toLowerCase(Locale.ROOT))) {
+      throw new AgentSparqlException(
+          AgentSparqlErrorCode.QUERY_INVALID,
+          "'%s' must be '%s' unless you are an administrator; got '%s'"
+              .formatted(name, allowed, requested));
+    }
+  }
+
+  private static String requirePrincipal(final CatalogSecurityContext securityContext) {
+    if (securityContext.getUserPrincipal() == null) {
+      throw new AuthorizationException("An authenticated principal is required");
+    }
+    return CommonUtils.principal(securityContext);
+  }
+
+  /**
+   * Default and ceiling both come from the dispatch-level budget: a larger response would be
+   * discarded wholesale by {@code DefaultToolContext.applyBudget}, so {@code maxBytes} can only
+   * narrow the response, never widen it.
+   */
+  private static int maxBytes(final McpToolParameters parameters) {
+    int budgetBytes = RdfBody.maxBytes();
+    return RdfBody.clamp(parameters.integer("maxBytes", budgetBytes), MIN_MAX_BYTES, budgetBytes);
   }
 
   @FunctionalInterface

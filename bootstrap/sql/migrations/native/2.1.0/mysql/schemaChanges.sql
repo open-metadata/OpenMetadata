@@ -517,6 +517,25 @@ WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'), '$.rules')
   AND JSON_CONTAINS(json, JSON_OBJECT('effect', 'allow', 'operations', JSON_ARRAY('ViewAll')), '$.rules');
 
+-- Name the MCP knowledge-graph tools in the description of the DataConsumerPolicy-ExecuteSparqlQuery-Rule that the statement
+-- above adds (#34270). That INSERT must stay exactly as it was first shipped, because the runner
+-- tracks statements by a hash of their text: an edited INSERT would run again where 2.1.0 is already
+-- recorded, and its only guard is "the rule does not exist", so it would add back a rule an
+-- administrator deleted on purpose. This is a separate, appended statement that changes only the
+-- description, and only where it still reads exactly as the old shipped text: a deleted rule, a
+-- customised description and a fresh install (seeded with the new text) are left alone.
+UPDATE policy_entity
+SET json = JSON_REPLACE(
+    json,
+    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule', NULL, '$.rules[*].name')), '.name', '.description'),
+    'Allow authenticated users and bots to run read-only SPARQL queries through the agent SPARQL endpoint and the MCP knowledge-graph tools (sparql_query, entity_neighborhood, find_by_tag, and ontology_describe with a resource). Results are not filtered by asset or domain policies, so remove this rule if viewing is restricted through custom policies.'
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'DataConsumerPolicy'
+  AND JSON_UNQUOTE(JSON_EXTRACT(
+        json,
+        REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule', NULL, '$.rules[*].name')), '.name', '.description')
+      )) = 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.';
+
 -- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
 -- the result polls, the credentials) that can reach different servers, so its state lives here
 -- rather than in one server's memory. pending_state holds the candidate configuration with its

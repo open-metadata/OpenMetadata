@@ -334,7 +334,12 @@ public class DefaultToolContext {
   private static final List<CategoryMatcher> CATEGORY_MATCHERS =
       List.of(
           new CategoryMatcher(
-              meta -> meta.name().contains("RateLimit") || meta.message().contains("rate limit"),
+              meta ->
+                  meta.name().contains("RateLimit")
+                      // A refused or deferred graph read the caller may repeat shortly.
+                      || meta.name().contains("RdfRetryLater")
+                      || meta.name().contains("QueryCapacity")
+                      || meta.message().contains("rate limit"),
               McpToolCallUsage.ErrorCategory.RATE_LIMIT,
               STATUS_TOO_MANY_REQUESTS),
           new CategoryMatcher(
@@ -349,12 +354,15 @@ public class DefaultToolContext {
                       || meta.message().contains("permission denied"),
               McpToolCallUsage.ErrorCategory.AUTH,
               STATUS_FORBIDDEN),
-          // A disabled RDF triplestore is a deployment state, not an outage. Left unmatched it
-          // fell through to 500, and summarizeFailure then told the caller the backend was broken
-          // and that a narrower request might help - both wrong. Matched by name so the message
-          // text stays free to change.
+          // A disabled RDF triplestore, or a degraded projection that only a full rebuild clears,
+          // is a deployment state, not an outage. Left unmatched it fell through to 500, and
+          // summarizeFailure then told the caller the backend was broken and that a narrower
+          // request might help - both wrong. Matched by name so the message text stays free to
+          // change.
           new CategoryMatcher(
-              meta -> meta.name().contains("RdfNotEnabled"),
+              meta ->
+                  meta.name().contains("RdfNotEnabled")
+                      || meta.name().contains("RdfProjectionDegraded"),
               McpToolCallUsage.ErrorCategory.VALIDATION,
               STATUS_BAD_REQUEST),
           // Validation by class name runs before the NotFound message heuristic below, so a

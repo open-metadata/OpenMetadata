@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.rdf.agent;
-
-import java.util.Objects;
-import org.openmetadata.schema.api.rdf.AgentSparqlCompleteness;
+package org.openmetadata.mcp.tools;
 
 /**
- * A serialized agent response, the row count reported in the audit log, and the completeness
- * already embedded in the body, so a transport that bounds the body can still report it.
+ * The RDF projection is degraded: a failed live write or a failed rebuild left it behind the
+ * catalog, and only a completed full {@code RdfIndexApp} rebuild clears that. A deployment state
+ * like a disabled triplestore, not a transient fault, so retrying does not help and the client is
+ * told an administrator has to act. Classified by name in {@code DefaultToolContext}.
  */
-public record AgentSparqlResult(byte[] body, int rowCount, AgentSparqlCompleteness completeness) {
-  public AgentSparqlResult {
-    Objects.requireNonNull(body);
-    Objects.requireNonNull(completeness);
+final class RdfProjectionDegradedException extends RuntimeException {
+
+  RdfProjectionDegradedException(final String message, final Throwable cause) {
+    super(message, cause);
   }
 }

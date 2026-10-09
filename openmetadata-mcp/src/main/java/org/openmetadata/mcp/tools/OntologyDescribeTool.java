@@ -18,14 +18,17 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfIriValidator;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Returns the canonical ontology or a focused description of one ontology resource. */
 public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result> {
+  private static final String RESOURCE_PARAMETER = "resource";
 
   public OntologyDescribeTool() {
     super();
@@ -33,6 +36,12 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
 
   OntologyDescribeTool(Supplier<RdfRepository> repositorySupplier) {
     super(repositorySupplier);
+  }
+
+  OntologyDescribeTool(
+      Supplier<RdfRepository> repositorySupplier,
+      Supplier<RdfProjectionState> projectionStateSupplier) {
+    super(repositorySupplier, projectionStateSupplier);
   }
 
   /**
@@ -54,12 +63,27 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
     }
   }
 
+  /**
+   * The bundled ontology is the same static file the unauthenticated {@code GET /v1/rdf/ontology}
+   * serves, so it needs no permission. A {@code resource} DESCRIBE reads instance data and does.
+   */
+  @Override
+  protected void authorize(
+      final Authorizer authorizer,
+      final CatalogSecurityContext securityContext,
+      final Map<String, Object> params) {
+    if (!McpToolParameters.isBlank(
+        McpToolParameters.from(params).optionalString(RESOURCE_PARAMETER))) {
+      super.authorize(authorizer, securityContext, params);
+    }
+  }
+
   @Override
   protected Result executeAuthorized(
       final CatalogSecurityContext securityContext, final Map<String, Object> params)
       throws IOException {
     McpToolParameters parameters = McpToolParameters.from(params);
-    String resource = parameters.optionalString("resource");
+    String resource = parameters.optionalString(RESOURCE_PARAMETER);
     RdfSerializationFormat format =
         RdfSerializationFormat.parse(parameters.optionalString("format"));
 
@@ -94,6 +118,7 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
       RdfSerializationFormat format,
       int maxBytes) {
     RdfRepository repository = repository();
+    requireReadyProjectionForNonAdmin(securityContext);
     // The guard call stays outside any catch: QueryCapacityException and QueryTimeoutException
     // carry their own 429/503 classification, and folding them into an IllegalStateException here
     // would report a busy or slow triplestore as an opaque server error.
