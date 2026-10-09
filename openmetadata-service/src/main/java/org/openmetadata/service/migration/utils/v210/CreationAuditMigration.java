@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.migration.utils.v210;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -27,8 +29,10 @@ import org.openmetadata.service.util.EntityUtil;
  * it was first created, so that row is the accurate source. Entities whose version history has been
  * pruned — or that were never updated — fall back to their own current values.
  *
- * <p>Both passes only touch rows where {@code createdAt} is still absent, so re-running the
- * migration is a no-op.
+ * <p>Each table is walked in batches of {@link #BATCH_SIZE} ids, read with a keyset cursor on the
+ * primary key, and each pass touches only a batch's rows where {@code createdAt} is still absent.
+ * Every statement is therefore bounded by the batch, not the table, and commits on its own, so a run
+ * cut short keeps what it filled and a re-run skips it.
  */
 @Slf4j
 public final class CreationAuditMigration {
@@ -57,17 +61,37 @@ public final class CreationAuditMigration {
   /** Run once per version through {@code DataMigrationStep}; repeating it finds nothing to fill. */
   public static final String STEP_NAME = "creation-audit-backfill";
 
+  /** Entities per statement. */
+  static final int BATCH_SIZE = 500;
+
   private static final String VERSION_PREFIX_BIND = "versionPrefix";
+  private static final String IDS_BIND = "ids";
+  private static final String AFTER_ID_BIND = "afterId";
+  private static final String LIMIT_BIND = "limit";
+
+  /** Rows one batch, or one table, filled, split by where the values came from. */
+  record Backfilled(int fromHistory, int fromCurrent) {
+    static final Backfilled NONE = new Backfilled(0, 0);
+
+    Backfilled plus(final Backfilled other) {
+      return new Backfilled(fromHistory + other.fromHistory, fromCurrent + other.fromCurrent);
+    }
+
+    int total() {
+      return fromHistory + fromCurrent;
+    }
+  }
 
   private CreationAuditMigration() {}
 
-  public static void backfillCreationAudit(
+  public static int backfillCreationAudit(
       final Handle handle, final ConnectionType connectionType) {
     int total = 0;
     for (final AuditedEntity entity : AUDITED_ENTITIES) {
       total += backfillEntity(handle, connectionType, entity);
     }
     LOG.info("Backfilled creation audit fields on {} rows across {} entity types", total, size());
+    return total;
   }
 
   static List<AuditedEntity> auditedEntities() {
@@ -80,32 +104,98 @@ public final class CreationAuditMigration {
 
   private static int backfillEntity(
       final Handle handle, final ConnectionType connectionType, final AuditedEntity entity) {
-    final int fromHistory = backfillFromOldestVersion(handle, connectionType, entity);
-    final int fromCurrent = backfillFromCurrentState(handle, connectionType, entity);
+    Backfilled backfilled = Backfilled.NONE;
+    String afterId = "";
+    boolean hasMore = true;
+    while (hasMore) {
+      final List<String> batch = listIdBatch(handle, entity.tableName(), afterId);
+      backfilled = backfilled.plus(backfillBatch(handle, connectionType, entity, batch));
+      hasMore = batch.size() == BATCH_SIZE;
+      if (hasMore) {
+        afterId = batch.getLast();
+      }
+    }
     LOG.info(
         "{}: creation audit backfilled from version history for {} rows, from current state for {} rows",
         entity.tableName(),
-        fromHistory,
-        fromCurrent);
-    return fromHistory + fromCurrent;
+        backfilled.fromHistory(),
+        backfilled.fromCurrent());
+    return backfilled.total();
+  }
+
+  /** Keyset pagination on the primary key: an index seek per batch, never OFFSET's row skipping. */
+  private static List<String> listIdBatch(
+      final Handle handle, final String table, final String afterId) {
+    return handle
+        .createQuery("SELECT id FROM " + table + " WHERE id > :afterId ORDER BY id LIMIT :limit")
+        .bind(AFTER_ID_BIND, afterId)
+        .bind(LIMIT_BIND, BATCH_SIZE)
+        .mapTo(String.class)
+        .list();
+  }
+
+  /** A batch an earlier, interrupted run already filled costs one read and no history read. */
+  private static Backfilled backfillBatch(
+      final Handle handle,
+      final ConnectionType connectionType,
+      final AuditedEntity entity,
+      final List<String> batch) {
+    final List<String> missing =
+        nullOrEmpty(batch)
+            ? List.of()
+            : idsMissingCreationAudit(handle, connectionType, entity.tableName(), batch);
+    return nullOrEmpty(missing)
+        ? Backfilled.NONE
+        : new Backfilled(
+            backfillFromOldestVersion(handle, connectionType, entity, missing),
+            backfillFromCurrentState(handle, connectionType, entity.tableName(), missing));
+  }
+
+  private static List<String> idsMissingCreationAudit(
+      final Handle handle,
+      final ConnectionType connectionType,
+      final String table,
+      final List<String> batch) {
+    return handle
+        .createQuery(
+            "SELECT e.id FROM "
+                + table
+                + " e WHERE e.id IN (<ids>) AND "
+                + createdAtIsAbsent(connectionType, "e"))
+        .bindList(IDS_BIND, batch)
+        .mapTo(String.class)
+        .list();
   }
 
   private static int backfillFromOldestVersion(
-      final Handle handle, final ConnectionType connectionType, final AuditedEntity entity) {
+      final Handle handle,
+      final ConnectionType connectionType,
+      final AuditedEntity entity,
+      final List<String> ids) {
     return handle
         .createUpdate(oldestVersionSql(connectionType, entity.tableName()))
+        .bindList(IDS_BIND, ids)
         .bind(VERSION_PREFIX_BIND, EntityUtil.getVersionExtensionPrefix(entity.entityType()) + ".%")
         .execute();
   }
 
   private static int backfillFromCurrentState(
-      final Handle handle, final ConnectionType connectionType, final AuditedEntity entity) {
-    return handle.createUpdate(currentStateSql(connectionType, entity.tableName())).execute();
+      final Handle handle,
+      final ConnectionType connectionType,
+      final String table,
+      final List<String> ids) {
+    return handle
+        .createUpdate(currentStateSql(connectionType, table))
+        .bindList(IDS_BIND, ids)
+        .execute();
   }
 
   /**
    * The table name is interpolated because SQL forbids binding an identifier. It is never
-   * caller-supplied — every value comes from the {@link #AUDITED_ENTITIES} constant above.
+   * caller-supplied — every value comes from the {@link #AUDITED_ENTITIES} constant above. The
+   * history read is limited to the batch's ids, so it is a primary-key range read on
+   * entity_extension, and it orders by the stored {@code updatedAt} column rather than parsing
+   * every version's JSON.
    */
   private static String oldestVersionSql(final ConnectionType connectionType, final String table) {
     return switch (connectionType) {
@@ -113,19 +203,17 @@ public final class CreationAuditMigration {
           + table
           + " e JOIN ("
           + "  SELECT ee.id AS id,"
-          + "         CAST(JSON_UNQUOTE(JSON_EXTRACT(ee.json, '$.updatedAt')) AS UNSIGNED) AS createdAt,"
+          + "         ee.updatedAt AS createdAt,"
           + "         JSON_UNQUOTE(JSON_EXTRACT(ee.json, '$.updatedBy')) AS createdBy,"
-          + "         ROW_NUMBER() OVER ("
-          + "           PARTITION BY ee.id"
-          + "           ORDER BY CAST(JSON_UNQUOTE(JSON_EXTRACT(ee.json, '$.updatedAt')) AS UNSIGNED) ASC"
-          + "         ) AS rn"
+          + "         ROW_NUMBER() OVER (PARTITION BY ee.id ORDER BY ee.updatedAt ASC) AS rn"
           + "  FROM entity_extension ee"
-          + "  WHERE ee.extension LIKE :"
+          + "  WHERE ee.id IN (<ids>)"
+          + "    AND ee.extension LIKE :"
           + VERSION_PREFIX_BIND
-          + "    AND JSON_EXTRACT(ee.json, '$.updatedAt') IS NOT NULL"
+          + "    AND ee.updatedAt IS NOT NULL"
           + " ) v ON v.id = e.id AND v.rn = 1"
           + " SET e.json = JSON_SET(e.json, '$.createdAt', v.createdAt, '$.createdBy', COALESCE(v.createdBy, JSON_UNQUOTE(JSON_EXTRACT(e.json, '$.updatedBy'))))"
-          + " WHERE "
+          + " WHERE e.id IN (<ids>) AND "
           + mysqlCreatedAtIsAbsent("e");
       case POSTGRES -> "UPDATE "
           + table
@@ -134,18 +222,16 @@ public final class CreationAuditMigration {
           + "   '{createdBy}', to_jsonb(COALESCE(v.createdBy, e.json ->> 'updatedBy', '')))"
           + " FROM ("
           + "  SELECT ee.id AS id,"
-          + "         (ee.json ->> 'updatedAt')::bigint AS createdAt,"
+          + "         ee.updatedAt AS createdAt,"
           + "         ee.json ->> 'updatedBy' AS createdBy,"
-          + "         ROW_NUMBER() OVER ("
-          + "           PARTITION BY ee.id"
-          + "           ORDER BY (ee.json ->> 'updatedAt')::bigint ASC"
-          + "         ) AS rn"
+          + "         ROW_NUMBER() OVER (PARTITION BY ee.id ORDER BY ee.updatedAt ASC) AS rn"
           + "  FROM entity_extension ee"
-          + "  WHERE ee.extension LIKE :"
+          + "  WHERE ee.id IN (<ids>)"
+          + "    AND ee.extension LIKE :"
           + VERSION_PREFIX_BIND
-          + "    AND ee.json ->> 'updatedAt' IS NOT NULL"
+          + "    AND ee.updatedAt IS NOT NULL"
           + " ) v"
-          + " WHERE v.id = e.id AND v.rn = 1 AND e.json ->> 'createdAt' IS NULL";
+          + " WHERE v.id = e.id AND v.rn = 1 AND e.id IN (<ids>) AND e.json ->> 'createdAt' IS NULL";
     };
   }
 
@@ -156,7 +242,7 @@ public final class CreationAuditMigration {
           + " e SET e.json = JSON_SET(e.json,"
           + "   '$.createdAt', CAST(JSON_UNQUOTE(JSON_EXTRACT(e.json, '$.updatedAt')) AS UNSIGNED),"
           + "   '$.createdBy', JSON_UNQUOTE(JSON_EXTRACT(e.json, '$.updatedBy')))"
-          + " WHERE "
+          + " WHERE e.id IN (<ids>) AND "
           + mysqlCreatedAtIsAbsent("e")
           + "   AND JSON_EXTRACT(e.json, '$.updatedAt') IS NOT NULL";
       case POSTGRES -> "UPDATE "
@@ -164,8 +250,16 @@ public final class CreationAuditMigration {
           + " e SET json = jsonb_set("
           + "   jsonb_set(e.json, '{createdAt}', e.json -> 'updatedAt'),"
           + "   '{createdBy}', to_jsonb(COALESCE(e.json ->> 'updatedBy', '')))"
-          + " WHERE e.json ->> 'createdAt' IS NULL"
+          + " WHERE e.id IN (<ids>)"
+          + "   AND e.json ->> 'createdAt' IS NULL"
           + "   AND e.json ->> 'updatedAt' IS NOT NULL";
+    };
+  }
+
+  private static String createdAtIsAbsent(final ConnectionType connectionType, final String alias) {
+    return switch (connectionType) {
+      case MYSQL -> mysqlCreatedAtIsAbsent(alias);
+      case POSTGRES -> alias + ".json ->> 'createdAt' IS NULL";
     };
   }
 
