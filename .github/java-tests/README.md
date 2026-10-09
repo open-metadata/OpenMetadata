@@ -138,10 +138,13 @@ checks it; the author's tools do:
   - patterns its deletions emptied, or that it adds matching nothing;
   - map rules its edits break.
 
-  Problems already on the base branch aren't the branch's. It runs before `git push` and
-  `gh pr create` in two places: a Claude Code hook for agents, and the `java-impact-map`
-  pre-push hook for anyone. `pre-commit install` installs the pre-push hook next to the commit
-  hooks; re-run it once if you installed before. `make java_affected` prints the same list.
+  Problems already on the base branch aren't the branch's. With `--head <ref>` it checks that
+  commit (its files, its map, its diff), which is what a push sends; without it, the working
+  tree. It runs on the pushed commit before `git push` and `gh pr create` in two places: a
+  Claude Code hook for agents, and the `java-impact-map` pre-push hook for anyone. Uncommitted
+  and untracked files don't count either way. `pre-commit install` installs the pre-push hook
+  next to the commit hooks; re-run it once if you installed before. `make java_affected` prints
+  the same list for the working tree.
 
 The hooks live in `.github/scripts/java_impact_map_hook.sh`. They only run a planner that has
 these checks, and step aside when `python3` is missing.

@@ -250,6 +250,67 @@ def plural(count: int, noun: str) -> str:
     )
 
 
+def committed_files(repo_root: Path, ref: str) -> list[str]:
+    """The files of commit `ref` (blobs only: a submodule is not a file of the checkout)."""
+    files = []
+    for line in git(repo_root, "ls-tree", "-r", ref).splitlines():
+        meta, _, path = line.partition("\t")
+        if meta.split()[1:2] == ["blob"]:
+            files.append(path)
+    return files
+
+
+def read_blobs(repo_root: Path, ref: str, paths: list[str]) -> dict[str, str]:
+    """The contents of `paths` at `ref`, read in one `git cat-file --batch`; a path the
+    commit lacks is left out."""
+    if not paths:
+        return {}
+    out = subprocess.run(
+        ["git", "cat-file", "--batch"],
+        cwd=repo_root,
+        input="".join(f"{ref}:{path}\n" for path in paths).encode(),
+        capture_output=True,
+        check=True,
+    ).stdout
+    blobs: dict[str, str] = {}
+    offset = 0
+    for path in paths:
+        end = out.index(b"\n", offset)
+        header = out[offset:end].split()
+        offset = end + 1
+        if header[-1:] == [b"missing"] or len(header) != 3:
+            continue
+        size = int(header[2])
+        blobs[path] = out[offset : offset + size].decode("utf-8", errors="replace")
+        offset += size + 1
+    return blobs
+
+
+def branch_changes(
+    repo_root: Path, merge_base: str, head: str | None
+) -> tuple[list[str], list[str]]:
+    """(changed, deleted) files since `merge_base`: in commit `head` when given, which is
+    what a push sends; else in the working tree, untracked files included."""
+    target = [head] if head else []
+    changed = git(
+        repo_root, "diff", "--name-only", "--no-renames", merge_base, *target
+    ).splitlines()
+    if not head:
+        changed += git(
+            repo_root, "ls-files", "--others", "--exclude-standard"
+        ).splitlines()
+    deleted = git(
+        repo_root,
+        "diff",
+        "--name-only",
+        "--no-renames",
+        "--diff-filter=D",
+        merge_base,
+        *target,
+    ).splitlines()
+    return sorted({path for path in changed if path}), [p for p in deleted if p]
+
+
 def collect_changed_files(repo_root: Path, base: str) -> list[str]:
     try:
         merge_base = git(repo_root, "merge-base", base, "HEAD")
@@ -332,39 +393,59 @@ def has_uncommitted_changes(repo_root: Path, ignore: list[str]) -> bool:
 
 
 class Repo:
-    """Read-only view of the checkout the planner selects from."""
+    """Read-only view of the checkout the planner selects from: the working tree, or with
+    `ref` the tree of that commit (what a push sends, whatever the working tree holds)."""
 
-    def __init__(self, root: Path, impact_map: dict[str, Any]):
+    def __init__(self, root: Path, impact_map: dict[str, Any], ref: str | None = None):
         self.root = root
+        self.ref = ref
         self.maven = impact_map["maven"]
         self.it_root = self.maven["integrationTestSourceRoot"]
         self.owned_roots = impact_map.get("ownedRoots", [])
         self.shared_infrastructure = impact_map.get("sharedInfrastructure", [])
         self._imports: dict[str, dict[str, str]] = {}
-        files = git(
-            root, "ls-files", "--cached", "--others", "--exclude-standard"
-        ).splitlines()
-        self.files = [path for path in files if (root / path).is_file()]
-        self.pom = (root / self.maven["integrationTestModule"] / "pom.xml").read_text(
-            encoding="utf-8"
-        )
+        if ref:
+            self.files = committed_files(root, ref)
+        else:
+            files = git(
+                root, "ls-files", "--cached", "--others", "--exclude-standard"
+            ).splitlines()
+            self.files = [path for path in files if (root / path).is_file()]
+        self.file_set = set(self.files)
+        self.pom = self._read(f"{self.maven['integrationTestModule']}/pom.xml")
         self.it_classes = self._integration_test_classes()
         self.unit_test_classes = self._unit_test_classes()
         self.lanes = self._lane_membership()
 
     def _read(self, path: str) -> str:
+        if self.ref:
+            return read_blobs(self.root, self.ref, [path]).get(path, "")
         return (self.root / path).read_text(encoding="utf-8", errors="replace")
+
+    def _read_all(self, paths: list[str]) -> dict[str, str]:
+        if self.ref:
+            return read_blobs(self.root, self.ref, paths)
+        return {path: self._read(path) for path in paths}
+
+    def exists(self, path: str) -> bool:
+        """Whether `path` is a file or a directory of the checkout."""
+        if not self.ref:
+            return (self.root / path).exists()
+        directory = path.rstrip("/") + "/"
+        return path in self.file_set or any(f.startswith(directory) for f in self.files)
 
     @cached_property
     def it_sources(self) -> dict[str, str]:
         """The Java the ITs are made of: the IT tree, and the client code they call the
         server through (`testSideSources`, the SDK)."""
         roots = (self.it_root + "/", *self.maven.get("testSideSources", []))
-        return {
-            path: self._read(path)
-            for path in self.files
-            if path.startswith(roots) and path.endswith(".java")
-        }
+        return self._read_all(
+            [
+                path
+                for path in self.files
+                if path.startswith(roots) and path.endswith(".java")
+            ]
+        )
 
     @cached_property
     def it_words(self) -> dict[str, set[str]]:
@@ -372,13 +453,15 @@ class Repo:
 
     @cached_property
     def production_sources(self) -> dict[str, str]:
-        return {
-            path: self._read(path)
-            for path in self.files
-            if path.endswith(".java")
-            and "/src/main/java/" in path
-            and matches(path, self.owned_roots)
-        }
+        return self._read_all(
+            [
+                path
+                for path in self.files
+                if path.endswith(".java")
+                and "/src/main/java/" in path
+                and matches(path, self.owned_roots)
+            ]
+        )
 
     @cached_property
     def production_words(self) -> dict[str, set[str]]:
@@ -1298,7 +1381,7 @@ def map_rule_problems(repo: Repo, impact_map: dict[str, Any]) -> list[str]:
         f"generatedSources '{source['module']}': '{path}' does not exist"
         for source in maven.get("generatedSources", [])
         for path in (source["module"], *source["inputs"])
-        if not (repo.root / path).exists()
+        if not repo.exists(path)
     ]
 
     def check_tests(owner: str, patterns: list[str]) -> None:
@@ -1429,7 +1512,7 @@ def suggest_area(repo: Repo, impact_map: dict[str, Any], path: str) -> str:
                 )
         if votes:
             return f"'{votes.most_common(1)[0][0]}' owns the other ITs in its package"
-    text = repo._read(path) if (repo.root / path).is_file() else ""
+    text = repo._read(path) if path in repo.file_set else ""
     for fqn in repo.imports(path, text).values():
         target = repo.production_classes.get(fqn)
         if target and target != path:
@@ -1600,12 +1683,17 @@ def branch_map_problems(
 
 
 def check_branch(
-    repo_root: Path, repo: Repo, impact_map: dict[str, Any], base: str
+    repo_root: Path,
+    repo: Repo,
+    impact_map: dict[str, Any],
+    base: str,
+    head: str | None = None,
 ) -> list[str]:
-    """branch_map_problems for HEAD and the working tree against `base`; none when the
-    base can't be resolved, so a missing fetch never blocks a push."""
+    """branch_map_problems against `base`: for commit `head` when given (a push sends that,
+    so `repo` and `impact_map` must be read at it), else for the working tree. None when
+    the base can't be resolved, so a missing fetch never blocks a push."""
     try:
-        merge_base = git(repo_root, "merge-base", base, "HEAD")
+        merge_base = git(repo_root, "merge-base", base, head or "HEAD")
     except subprocess.CalledProcessError:
         print(
             f"No merge base with '{base}'; the impact-map check is skipped.",
@@ -1616,16 +1704,8 @@ def check_branch(
         base_map = json.loads(git(repo_root, "show", f"{merge_base}:{IMPACT_MAP}"))
     except (subprocess.CalledProcessError, json.JSONDecodeError):
         base_map = None
-    deleted = git(
-        repo_root, "diff", "--name-only", "--no-renames", "--diff-filter=D", merge_base
-    ).splitlines()
-    return branch_map_problems(
-        repo,
-        impact_map,
-        base_map,
-        collect_changed_files(repo_root, base),
-        [path for path in deleted if path],
-    )
+    changed, deleted = branch_changes(repo_root, merge_base, head)
+    return branch_map_problems(repo, impact_map, base_map, changed, deleted)
 
 
 def print_plan(plan: Plan, planner: Planner) -> None:
@@ -2358,7 +2438,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--check-branch",
         action="store_true",
         help="Report the map problems this branch introduces against --base, then exit "
-        "(the agent hook runs it before git push and gh pr create)",
+        "(the hooks run it before git push and gh pr create)",
+    )
+    parser.add_argument(
+        "--head",
+        metavar="REF",
+        help="With --check-branch, check commit REF, which is what a push sends: its files, "
+        "its map and its diff from --base, whatever the working tree holds",
     )
     parser.add_argument(
         "--add-it",
@@ -2413,6 +2499,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--update-pr requires --run")
     if args.ci_run and not args.run:
         parser.error("--ci-run requires --run")
+    if args.head and not args.check_branch:
+        parser.error("--head requires --check-branch")
     return args
 
 
@@ -2449,8 +2537,20 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if problems else 0
 
     if args.check_branch:
+        if args.head:
+            try:
+                impact_map = json.loads(
+                    git(repo_root, "show", f"{args.head}:{IMPACT_MAP}")
+                )
+            except (subprocess.CalledProcessError, json.JSONDecodeError):
+                print(f"{args.head} has no readable {IMPACT_MAP}; nothing to check.")
+                return 0
         problems = check_branch(
-            repo_root, Repo(repo_root, impact_map), impact_map, args.base
+            repo_root,
+            Repo(repo_root, impact_map, ref=args.head),
+            impact_map,
+            args.base,
+            args.head,
         )
         print(
             f"Fix {IMPACT_MAP} in this branch before you raise the PR:\n"

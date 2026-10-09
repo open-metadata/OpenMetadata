@@ -107,7 +107,8 @@ repos:
       - id: java-impact-map
         name: Java impact map owns the code and ITs this branch adds
         description: Fails the push while the branch leaves Java code or ITs without an area in .github/java-tests/impact-map.json, empties a pattern or breaks a map rule. The message names the glob to add and the likely area.
-        entry: python3 .github/scripts/plan_local_java_tests.py --check-branch
+        # The commit being pushed, not the working tree: an unstaged map fix must not pass.
+        entry: bash -c 'python3 .github/scripts/plan_local_java_tests.py --check-branch --head "${PRE_COMMIT_TO_REF:-HEAD}"'
         language: system
         pass_filenames: false
         always_run: true

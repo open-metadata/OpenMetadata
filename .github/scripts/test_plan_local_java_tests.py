@@ -55,6 +55,59 @@ def test_impact_map_owns_every_test_and_production_file() -> None:
     assert PLANNER.audit_impact_map(REPO, IMPACT_MAP) == []
 
 
+def test_the_committed_map_owns_every_committed_test_and_production_file() -> None:
+    head_map = json.loads(
+        subprocess.run(
+            ["git", "show", f"HEAD:{PLANNER.IMPACT_MAP}"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    )
+    committed = PLANNER.Repo(REPO_ROOT, head_map, ref="HEAD")
+
+    assert committed.it_classes and committed.it_sources
+    assert PLANNER.audit_impact_map(committed, head_map) == []
+
+
+def test_a_push_is_checked_at_the_commit_it_sends_not_the_working_tree(
+    tmp_path: Path,
+) -> None:
+    def git(*args: str) -> str:
+        isolated = ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"]
+        author = ["-c", "user.name=t", "-c", "user.email=t@t"]
+        return subprocess.run(
+            ["git", *isolated, *author, *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    git("init", "-q")
+    (tmp_path / "map.json").write_text('{"v": 1}')
+    git("add", ".")
+    git("commit", "-qm", "base")
+    base = git("rev-parse", "HEAD")
+    (tmp_path / "svc").mkdir()
+    (tmp_path / "svc/New.java").write_text("class New {}")
+    git("add", ".")
+    git("commit", "-qm", "adds code")
+    # Neither of these is pushed: an unstaged map fix and an untracked scratch file.
+    (tmp_path / "map.json").write_text('{"v": 2}')
+    (tmp_path / "scratch").mkdir()
+    (tmp_path / "scratch/Scratch.java").write_text("class Scratch {}")
+
+    assert PLANNER.branch_changes(tmp_path, base, "HEAD") == (["svc/New.java"], [])
+    assert PLANNER.read_blobs(tmp_path, "HEAD", ["map.json", "gone.txt"]) == {
+        "map.json": '{"v": 1}'
+    }
+    assert PLANNER.committed_files(tmp_path, "HEAD") == ["map.json", "svc/New.java"]
+    changed, _ = PLANNER.branch_changes(tmp_path, base, None)
+    assert {"map.json", "scratch/Scratch.java", "svc/New.java"} <= set(changed)
+
+
 def unowning(*paths: str) -> dict:
     """The impact map with every area source that owns one of `paths` removed."""
     impact_map = copy.deepcopy(IMPACT_MAP)

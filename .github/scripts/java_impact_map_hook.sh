@@ -5,8 +5,9 @@
 #   written  PostToolUse on Write: a Java or schema file no area owns is reported back to
 #            the agent, with the glob to add and the likely area, so it fixes the map in the
 #            same turn.
-#   pre-pr   PreToolUse on Bash: `git push` and `gh pr create` are blocked while the branch
-#            leaves code or ITs without an area, empties a pattern, or breaks a map rule.
+#   pre-pr   PreToolUse on Bash: `git push` and `gh pr create` are blocked while the commit
+#            they send leaves code or ITs without an area, empties a pattern, or breaks a map
+#            rule. Uncommitted and untracked files don't count: they aren't pushed.
 # Each check runs the planner of the checkout the file or push belongs to, and only when
 # that planner has the check. Without python3 the hooks step aside rather than block.
 set -u
@@ -59,9 +60,35 @@ case "$mode" in
       \~) dir="$HOME" ;;
       \~/*) dir="$HOME/${dir#\~/}" ;;
     esac
-    root=$(planner_root "$dir" --check-branch) || exit 0
+    root=$(planner_root "$dir" '"--head"') || exit 0
     base=$(printf '%s' "$cmd" | sed -nE 's/.*gh[[:space:]]+pr[[:space:]]+create.*--base[[:space:]=]+"?([^"[:space:]]+)"?.*/\1/p' | head -n 1)
-    out=$(cd "$root" && python3 .github/scripts/plan_local_java_tests.py --check-branch --base "origin/${base:-main}" 2>&1) && exit 0
+    # Check the commit the command sends, not the working tree: the branch
+    # `gh pr create --head` names, or the source of `git push`'s first refspec; else HEAD.
+    if printf '%s' "$cmd" | grep -qE 'gh[[:space:]]+pr[[:space:]]+create'; then
+      sent=$(printf '%s' "$cmd" | sed -nE 's/.*--head[[:space:]=]+"?([^"[:space:]]+)"?.*/\1/p' | head -n 1)
+      sent="${sent##*:}"
+    else
+      args=$(printf '%s' "$cmd" | sed -nE 's/.*git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+push([[:space:]].*)?$/\2/p' | head -n 1)
+      args="${args%%[;&|]*}"
+      sent="" positional=0
+      set -f
+      # shellcheck disable=SC2086 # split the push arguments into words
+      for word in $args; do
+        case "$word" in -*) continue ;; esac
+        positional=$((positional + 1))
+        if [ "$positional" -eq 2 ]; then
+          sent="${word%%:*}"
+          sent="${sent#+}"
+          break
+        fi
+      done
+      set +f
+    fi
+    head=HEAD
+    if [ -n "$sent" ] && git -C "$root" rev-parse --verify --quiet "$sent^{commit}" >/dev/null; then
+      head="$sent"
+    fi
+    out=$(cd "$root" && python3 .github/scripts/plan_local_java_tests.py --check-branch --base "origin/${base:-main}" --head "$head" 2>&1) && exit 0
     ;;
   *) exit 0 ;;
 esac
