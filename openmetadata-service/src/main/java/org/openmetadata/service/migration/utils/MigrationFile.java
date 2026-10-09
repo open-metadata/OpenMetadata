@@ -53,9 +53,17 @@ public class MigrationFile implements Comparable<MigrationFile> {
     postDDLScripts = new ArrayList<>();
   }
 
+  /**
+   * The order migrations run in: by version number, and on equal numbers the native (or Flyway)
+   * version before the extension one, so 1.6.0 runs before 1.6.0-collate.
+   */
   @Override
   public int compareTo(MigrationFile another) {
-    return compareVersionNumbers(another.versionNumbers);
+    int result = compareVersionNumbers(another.versionNumbers);
+    if (result == 0) {
+      result = Boolean.compare(isExtension, another.isExtension);
+    }
+    return result;
   }
 
   public boolean biggerThan(String version) {
