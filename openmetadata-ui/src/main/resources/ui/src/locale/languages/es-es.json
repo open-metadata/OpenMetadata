@@ -4126,7 +4126,6 @@
     "dq-threshold-preview-sampling-dynamic": "Medido sobre la muestra de tamaño dinámico con la que se perfila esta tabla.",
     "dq-threshold-preview-statistical": "Falla cuando el valor medido queda fuera de {{bound}}.",
     "dq-threshold-preview-statistical-deviation": "Falla cuando el valor medido queda fuera de {{bound}}, permitiendo una desviación de {{amount}} (rango efectivo {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "Esta prueba compara el umbral como un recuento de filas sin más, por lo que no se aplica la unidad del umbral.",
     "dq-threshold-preview-zero-bound": "Una desviación porcentual alrededor de un límite de 0 deja ese límite en 0: use una desviación absoluta en su lugar.",
     "dq-unresolved-incidents-count": "<0>{{count}} incidente</0> sin resolver",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} incidentes</0> sin resolver",

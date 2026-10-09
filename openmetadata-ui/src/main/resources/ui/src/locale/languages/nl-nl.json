@@ -4126,7 +4126,6 @@
     "dq-threshold-preview-sampling-dynamic": "Gemeten op de dynamisch bepaalde steekproef waarmee deze tabel wordt geprofileerd.",
     "dq-threshold-preview-statistical": "Mislukt wanneer de gemeten waarde buiten {{bound}} valt.",
     "dq-threshold-preview-statistical-deviation": "Mislukt wanneer de gemeten waarde buiten {{bound}} valt, met een toegestane afwijking van {{amount}} (effectief bereik {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "Deze test vergelijkt de drempel als een kaal aantal rijen, dus de drempeleenheid wordt niet toegepast.",
     "dq-threshold-preview-zero-bound": "Een procentuele afwijking rond een grens van 0 laat die grens op 0 — gebruik in plaats daarvan een absolute afwijking.",
     "dq-unresolved-incidents-count": "<0>{{count}} onopgelost</0> incident",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} onopgeloste</0> incidenten",

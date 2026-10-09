@@ -4126,7 +4126,6 @@
     "dq-threshold-preview-sampling-dynamic": "Mesuré sur l'échantillon de taille dynamique avec lequel cette table est profilée.",
     "dq-threshold-preview-statistical": "Échoue lorsque la valeur mesurée sort de {{bound}}.",
     "dq-threshold-preview-statistical-deviation": "Échoue lorsque la valeur mesurée sort de {{bound}}, avec une déviation de {{amount}} autorisée (plage effective {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "Ce test compare le seuil à un simple nombre de lignes ; l'unité du seuil n'est donc pas appliquée.",
     "dq-threshold-preview-zero-bound": "Une déviation en pourcentage autour d'une borne de 0 laisse cette borne à 0 — utilisez plutôt une déviation absolue.",
     "dq-unresolved-incidents-count": "<0>{{count}} incident</0> non résolu",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} incidents</0> non résolus",
