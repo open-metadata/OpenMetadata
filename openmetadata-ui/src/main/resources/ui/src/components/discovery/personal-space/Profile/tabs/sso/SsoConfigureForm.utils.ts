@@ -49,7 +49,7 @@ const toCoreRenderer = (fieldUiSchema: UiSchema): UiSchema => {
 /**
  * Adapts the classic SSO uiSchema to FormBuilderV1: every field full width
  * (one column — the default three-column grid is built for full-page forms
- * and the SSO form is half width), no description on nested objects (it only
+ * and the SSO form is narrower), no description on nested objects (it only
  * restates their name), and core renderers in place of the classic ones.
  */
 export const toCoreUiSchema = (

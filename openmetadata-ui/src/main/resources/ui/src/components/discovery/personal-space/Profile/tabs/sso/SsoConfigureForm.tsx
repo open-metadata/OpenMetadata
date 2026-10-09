@@ -239,7 +239,12 @@ const SsoConfigureForm = ({
     [docsBySection]
   );
   const formContext = useMemo(
-    () => ({ clearFieldError: handleClearFieldError, currentProvider }),
+    () => ({
+      clearFieldError: handleClearFieldError,
+      currentProvider,
+      // Plain sections: no tinted background behind each field group.
+      flatPropertyLayout: true,
+    }),
     [handleClearFieldError, currentProvider]
   );
 
@@ -303,7 +308,7 @@ const SsoConfigureForm = ({
       <div
         className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-6"
         data-testid={FORM_BODY_TEST_ID}>
-        <Box className="tw:w-full tw:max-w-[50%]" direction="col" gap={5}>
+        <Box className="tw:w-full tw:max-w-[60%]" direction="col" gap={5}>
           {currentProvider === AuthProvider.Saml && renderSamlUpload()}
 
           <FieldDocProvider enabled={showHint}>
