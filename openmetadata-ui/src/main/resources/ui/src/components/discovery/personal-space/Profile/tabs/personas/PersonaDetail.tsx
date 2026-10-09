@@ -134,7 +134,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   }, [fqn, onRename]);
 
   useEffect(() => {
-    fetchPersona();
+    void fetchPersona();
   }, [fetchPersona]);
 
   const patchPersona = useCallback(
@@ -221,7 +221,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
 
   const handleUpdateUsers = useCallback(
     (users: EntityReference[]) => {
-      patchPersona({ users });
+      void patchPersona({ users });
     },
     [patchPersona]
   );

@@ -69,7 +69,7 @@ const PersonaCustomizeView = ({
   const { t } = useTranslation();
   const { setDocument } = useCustomizeStore();
   const [persona, setPersona] = useState<Persona>();
-  const [document, setDocState] = useState<Document | null>(null);
+  const [personaDocument, setPersonaDocument] = useState<Document | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actions, setActions] = useState<CustomizeEditorActions>();
 
@@ -92,7 +92,7 @@ const PersonaCustomizeView = ({
       try {
         const doc = await getDocumentByFQN(pageLayoutFQN);
         if (setActive()) {
-          setDocState(doc);
+          setPersonaDocument(doc);
           setDocument(doc);
         }
       } catch (error) {
@@ -106,7 +106,7 @@ const PersonaCustomizeView = ({
             entityType: EntityType.PAGE,
             data: { pages: [], navigation: null },
           } as Document;
-          setDocState(emptyDoc);
+          setPersonaDocument(emptyDoc);
           setDocument(emptyDoc);
         } else {
           showErrorToast(error as AxiosError);
@@ -145,7 +145,7 @@ const PersonaCustomizeView = ({
       }
     };
 
-    init();
+    void init();
 
     return () => {
       active = false;
@@ -155,7 +155,7 @@ const PersonaCustomizeView = ({
 
   const handleDocumentSaved = useCallback(
     (saved: Document) => {
-      setDocState(saved);
+      setPersonaDocument(saved);
       setDocument(saved);
     },
     [setDocument]
@@ -171,7 +171,7 @@ const PersonaCustomizeView = ({
   }, [actions?.headerAction, onHeaderActionsChange]);
 
   const content = useMemo(() => {
-    if (!persona || !document) {
+    if (!persona || !personaDocument) {
       return (
         <EmptyPlaceholder
           data-testid="persona-customize-empty"
@@ -184,7 +184,7 @@ const PersonaCustomizeView = ({
     if (Editor) {
       return (
         <Editor
-          document={document}
+          document={personaDocument}
           persona={persona}
           onActionsChange={handleActionsChange}
           onBack={onBack}
@@ -202,7 +202,7 @@ const PersonaCustomizeView = ({
   }, [
     Editor,
     persona,
-    document,
+    personaDocument,
     handleActionsChange,
     handleDocumentSaved,
     onBack,
@@ -213,10 +213,10 @@ const PersonaCustomizeView = ({
     return <Loader />;
   }
 
-  if (entityType && persona && document) {
+  if (entityType && persona && personaDocument) {
     return (
       <EntityCustomizeOverlay
-        document={document}
+        document={personaDocument}
         entityType={entityType}
         persona={persona}
         onDocumentSaved={handleDocumentSaved}

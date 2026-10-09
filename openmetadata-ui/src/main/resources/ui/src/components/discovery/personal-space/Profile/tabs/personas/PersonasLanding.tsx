@@ -119,7 +119,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
 
     if (newPage === 1) {
       setHashPage(1, undefined, undefined, pageSize);
-      fetchPersonas(undefined, 1);
+      void fetchPersonas(undefined, 1);
 
       return;
     }
@@ -132,10 +132,10 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
 
     if (newPage > currentPage && prevPaging?.after) {
       setHashPage(newPage, 'after', prevPaging.after, pageSize);
-      fetchPersonas({ after: prevPaging.after }, newPage);
+      void fetchPersonas({ after: prevPaging.after }, newPage);
     } else if (cursor) {
       setHashPage(newPage, 'before', cursor, pageSize);
-      fetchPersonas({ before: cursor }, newPage);
+      void fetchPersonas({ before: cursor }, newPage);
     }
   };
 
@@ -149,11 +149,11 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
       if (currentPage > 1) {
         setHashPage(1, undefined, undefined, pageSize);
       }
-      fetchPersonas(undefined, 1);
+      void fetchPersonas(undefined, 1);
     } else if (hashCursorType === 'before') {
-      fetchPersonas({ before: hashCursor }, currentPage);
+      void fetchPersonas({ before: hashCursor }, currentPage);
     } else {
-      fetchPersonas({ after: hashCursor }, currentPage);
+      void fetchPersonas({ after: hashCursor }, currentPage);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize]);

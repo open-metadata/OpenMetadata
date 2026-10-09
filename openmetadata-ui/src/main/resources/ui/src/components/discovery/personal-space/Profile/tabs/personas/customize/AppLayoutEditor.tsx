@@ -275,9 +275,9 @@ const AppLayoutEditor = ({
           aria-label={t('label.default-landing-page')}
           data-testid="default-landing-page-select"
           fontSize="sm"
-          selectedKey={landingPage}
+          value={landingPage}
           size="md"
-          onSelectionChange={(key) => key && setLandingPage(String(key))}>
+          onChange={(key) => key && setLandingPage(String(key))}>
           {LANDING_PAGE_SECTIONS.map((section) => (
             <ListBoxSection id={section.titleKey} key={section.titleKey}>
               <Header className="tw:px-3.5 tw:pt-3 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">

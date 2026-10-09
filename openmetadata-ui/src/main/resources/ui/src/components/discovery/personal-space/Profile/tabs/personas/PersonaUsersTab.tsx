@@ -149,7 +149,7 @@ const PersonaUsersTab = ({
       }
     };
 
-    fetchDetails();
+    void fetchDetails();
 
     return () => {
       active = false;
