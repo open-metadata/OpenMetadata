@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
 import { lazy, useCallback, useRef, useState } from 'react';
@@ -62,7 +62,7 @@ export const DescriptionTabs = ({
         setDiffs([]);
       }
     },
-    [markdownRef]
+    [description]
   );
 
   return (
@@ -76,29 +76,31 @@ export const DescriptionTabs = ({
         <Tabs.Item data-testid="new-tab" id="3" label="New" />
       </Tabs.List>
       <Tabs.Panel id="1">
-        <div className="tw:rounded-lg tw:border tw:border-subtle tw:bg-surface tw:p-3 tw:mt-3">
+        <Box
+          className="tw:mt-3 tw:rounded-md tw:border tw:border-primary tw:bg-surface tw:p-3"
+          direction="col">
           {description?.trim() ? (
             <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
               markdown={description}
             />
           ) : (
-            <span className="text-grey-muted">
+            <Typography color="secondary">
               {t('label.no-entity', { entity: t('label.description') })}
-            </span>
+            </Typography>
           )}
-        </div>
+        </Box>
       </Tabs.Panel>
       <Tabs.Panel id="2">
         <DiffView
-          className="tw:rounded-lg tw:border tw:border-subtle tw:bg-surface tw:p-3 tw:mt-3"
+          className="tw:mt-3 tw:rounded-md tw:border tw:border-primary tw:bg-surface tw:p-3"
           diffArr={diffs}
         />
       </Tabs.Panel>
       {/* Kept mounted so the editor keeps its edits and the Diff tab can read them via markdownRef. */}
       <Tabs.Panel shouldForceMount className="tw:data-inert:hidden" id="3">
         <RichTextEditor
-          className="m-t-sm"
+          className="new-form-style tw:mt-3"
           initialValue={suggestion}
           placeHolder={placeHolder ?? t('label.update-description')}
           ref={markdownRef}

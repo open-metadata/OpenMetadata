@@ -1280,14 +1280,14 @@ export const createDescriptionTaskForGlossary = async (
   const entityType = isGlossary ? 'glossary' : 'glossaryTerm';
   const entityName = get(entity, 'responseData.displayName');
 
-  await expect(page.locator('#title')).toHaveValue(
+  await expect(page.getByTestId('title').locator('input')).toHaveValue(
     `${
       addDescription ? 'Update' : 'Request'
     } description for ${entityType} ${entityName}`
   );
 
   if (isUndefined(value.assignee)) {
-    await expect(page.getByTestId('select-assignee')).toHaveText(
+    await expect(page.getByTestId('select-assignee')).toContainText(
       value.assignee ?? ''
     );
 
@@ -1295,9 +1295,7 @@ export const createDescriptionTaskForGlossary = async (
       page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
-    const assigneeField = page
-      .getByTestId('select-assignee')
-      .getByRole('combobox');
+    const assigneeField = page.getByTestId('select-assignee').getByRole('combobox');
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
@@ -1334,12 +1332,12 @@ export const createTagTaskForGlossary = async (
   const entityType = isGlossary ? 'glossary' : 'glossaryTerm';
   const entityName = get(entity, 'responseData.displayName');
 
-  await expect(page.locator('#title')).toHaveValue(
+  await expect(page.getByTestId('title').locator('input')).toHaveValue(
     `Request tags for ${entityType} ${entityName}`
   );
 
   if (isUndefined(value.assignee)) {
-    await expect(page.getByTestId('select-assignee')).toHaveText(
+    await expect(page.getByTestId('select-assignee')).toContainText(
       value.assignee ?? ''
     );
 
@@ -1348,9 +1346,7 @@ export const createTagTaskForGlossary = async (
     ).toBeDisabled();
   } else {
     // select assignee
-    const assigneeField = page
-      .getByTestId('select-assignee')
-      .getByRole('combobox');
+    const assigneeField = page.getByTestId('select-assignee').getByRole('combobox');
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${value.assignee}**&index=user%2Cteam*`

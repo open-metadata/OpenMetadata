@@ -13,24 +13,24 @@
 
 import {
   Autocomplete,
-  Select,
-  SelectItemType,
+  AutocompleteProps,
+  Avatar,
 } from '@openmetadata/ui-core-components';
-import { User01, Users01 } from '@openmetadata/ui-core-components/icons';
-import { SelectProps } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
-
-import { debounce } from 'lodash';
-import { FC, useEffect, useMemo } from 'react';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
+import { debounce, uniqBy } from 'lodash';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OwnerType } from '../../../enums/user.enum';
 import { Option } from '../TasksPage.interface';
-import './Assignee.less';
 
 interface Props
   extends Omit<
-    SelectProps<Option[], DefaultOptionType>,
-    'onChange' | 'onSearch' | 'value' | 'options'
+    AutocompleteProps,
+    | 'children'
+    | 'items'
+    | 'selectedItems'
+    | 'onSearchChange'
+    | 'onChange'
+    | 'value'
   > {
   options: Option[];
   value: Option[];
@@ -40,123 +40,66 @@ interface Props
   isSingleSelect?: boolean;
 }
 
-const Assignees: FC<Props> = ({
+const Assignees = ({
   value: assignees = [],
   onSearch,
   onChange,
   options,
   disabled,
   isSingleSelect = false,
-  className,
-  id,
-  placeholder,
-  status,
-}) => {
+  ...rest
+}: Props) => {
   const { t } = useTranslation();
   const search = useMemo(() => debounce(onSearch, 300), [onSearch]);
   useEffect(() => () => search.cancel(), [search]);
 
-  const toItem = (option: Option): SelectItemType => ({
+  const toItem = (option: Option) => ({
     id: option.value,
-    label: option['data-label'] ?? option.label,
-    icon: option.type === OwnerType.TEAM ? Users01 : User01,
-    supportingText: t(
-      option.type === OwnerType.TEAM ? 'label.team' : 'label.user'
-    ),
-  });
-
-  // Selected options retain their metadata when async search replaces the list.
-  const selectedItems = assignees.map(toItem);
-  const items = options.map(toItem);
-  const searchPlaceholder =
-    typeof placeholder === 'string' ? placeholder : t('label.select-to-search');
-
-  if (isSingleSelect) {
-    const singleItems = [
-      ...selectedItems,
-      ...items.filter(
-        (item) => !selectedItems.some((selected) => selected.id === item.id)
+    label: option.label,
+    supportingText: option.type === 'team' ? t('label.team') : t('label.user'),
+    icon:
+      option.type === 'team' ? (
+        <Avatar placeholderIcon={Users01} size="xs" />
+      ) : (
+        <Avatar initials={option.label?.charAt(0).toUpperCase()} size="xs" />
       ),
-    ];
+  });
+  // Selected identities must survive when a remote search replaces the option page.
+  const availableOptions = uniqBy([...options, ...assignees], 'value');
 
-    return (
-      <div className={className} data-testid="select-assignee">
-        <Select.ComboBox
-          aria-label={t('label.assignee')}
-          id={id}
-          isDisabled={disabled}
-          isInvalid={status === 'error'}
-          items={singleItems}
-          placeholder={searchPlaceholder}
-          selectedKey={assignees[0]?.value ?? null}
-          shortcut={false}
-          showSearchIcon={false}
-          onInputChange={search}
-          onSelectionChange={(key) => {
-            const option = [...assignees, ...options].find(
-              (item) => item.value === String(key)
-            );
-            onChange(
-              option
-                ? [{ ...option, label: option['data-label'] ?? option.label }]
-                : []
-            );
-          }}>
-          {(item) => (
-            <Select.Item
-              {...item}
-              data-testid={
-                [...assignees, ...options].find(
-                  (option) => option.value === item.id
-                )?.name
-              }
-              key={item.id}
-            />
-          )}
-        </Select.ComboBox>
-      </div>
-    );
-  }
-
+  // Form rules validate selected identities; the search query clears after selection.
   return (
-    <div className={className} data-testid="select-assignee">
-      <Autocomplete
-        aria-label={t('label.assignee-plural')}
-        filterOption={() => true}
-        id={id}
-        isDisabled={disabled}
-        isInvalid={status === 'error'}
-        items={items}
-        placeholder={searchPlaceholder}
-        selectedItems={selectedItems}
-        onItemCleared={(key) =>
-          onChange(assignees.filter((option) => option.value !== String(key)))
+    <Autocomplete
+      {...rest}
+      data-testid="select-assignee"
+      filterOption={() => true}
+      isDisabled={disabled}
+      items={availableOptions.map(toItem)}
+      multiple={!isSingleSelect}
+      placeholder={rest.placeholder ?? t('label.select-to-search')}
+      selectedItems={assignees.map(toItem)}
+      validationBehavior="aria"
+      onItemCleared={(key) =>
+        onChange(assignees.filter((option) => option.value !== key))
+      }
+      onItemInserted={(key) => {
+        const option = availableOptions.find((item) => item.value === key);
+        if (option) {
+          onChange(
+            isSingleSelect ? [option] : uniqBy([...assignees, option], 'value')
+          );
         }
-        onItemInserted={(key) => {
-          const option = options.find((item) => item.value === String(key));
-          if (option) {
-            const selected = {
-              ...option,
-              label: option['data-label'] ?? option.label,
-            };
-            onChange([...assignees, selected]);
+      }}
+      onSearchChange={search}>
+      {(item) => (
+        <Autocomplete.Item
+          {...item}
+          data-testid={
+            availableOptions.find((option) => option.value === item.id)?.name
           }
-        }}
-        onSearchChange={search}>
-        {(item) => (
-          <Autocomplete.Item
-            data-testid={
-              options.find((option) => option.value === item.id)?.name
-            }
-            icon={item.icon}
-            id={item.id}
-            key={item.id}
-            label={item.label}
-            supportingText={item.supportingText}
-          />
-        )}
-      </Autocomplete>
-    </div>
+        />
+      )}
+    </Autocomplete>
   );
 };
 
