@@ -28,7 +28,7 @@ const SsoOverview = ({
   return (
     <Box
       align="center"
-      className="tw:w-full tw:max-w-[50%] tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:p-5"
+      className="tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:p-5"
       data-testid="sso-overview"
       direction="row"
       gap={4}
