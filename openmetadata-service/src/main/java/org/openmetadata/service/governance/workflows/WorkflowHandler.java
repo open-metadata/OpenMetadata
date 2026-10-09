@@ -786,6 +786,40 @@ public class WorkflowHandler {
    * approval task at all, so they read fresh rather than trusting an in-process cache that a write on
    * another node may not have invalidated.
    */
+  /**
+   * Sends {@code signal} to the one workflow that listens for it. Flowable treats a signal nobody
+   * listens for as delivered, so a missing listener (workflow not yet deployed with this signal) is
+   * reported as a failure the caller can retry.
+   */
+  public void triggerWithRequiredSignal(String signal, Map<String, Object> variables) {
+    if (activeSignalListeners(signal) == 0) {
+      throw new IllegalStateException("No active workflow listens for signal %s".formatted(signal));
+    }
+    triggerWithSignal(signal, variables);
+  }
+
+  // A suspended workflow keeps its start subscription but starts nothing from it, so only
+  // subscriptions of active process definitions can take the signal.
+  private long activeSignalListeners(String signal) {
+    RepositoryService repositoryService = processEngine.getRepositoryService();
+    return processEngine
+        .getRuntimeService()
+        .createEventSubscriptionQuery()
+        .eventType("signal")
+        .eventName(signal)
+        .list()
+        .stream()
+        .filter(
+            subscription ->
+                repositoryService
+                        .createProcessDefinitionQuery()
+                        .processDefinitionId(subscription.getProcessDefinitionId())
+                        .active()
+                        .count()
+                    > 0)
+        .count();
+  }
+
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
@@ -1533,6 +1567,8 @@ public class WorkflowHandler {
       }
       List<ProcessInstance> instances = query.endOr().list();
       for (ProcessInstance pi : instances) {
+        endWorkflowInstanceForBusinessKey(
+            pi.getBusinessKey(), WorkflowInstance.WorkflowStatus.CANCELLED, reason);
         try {
           runtimeService.deleteProcessInstance(pi.getId(), reason);
         } catch (FlowableException ignored) {
@@ -2037,6 +2073,43 @@ public class WorkflowHandler {
           "Failed to delete Flowable process for superseded workflow instance {}: {}",
           workflowInstanceId,
           e.getMessage());
+    }
+  }
+
+  /**
+   * Records how a still-running workflow instance was ended from outside its run (superseded or
+   * cancelled), with the reason, on the instance and its stage states. Best effort: a failure is
+   * logged and never reaches the caller.
+   */
+  public void endWorkflowInstance(
+      UUID workflowInstanceId, WorkflowInstance.WorkflowStatus status, String reason) {
+    try {
+      WorkflowInstanceRepository workflowInstanceRepository =
+          (WorkflowInstanceRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+      if (workflowInstanceRepository.endRunningInstance(workflowInstanceId, status, reason)) {
+        ((WorkflowInstanceStateRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE))
+            .markInstanceStatesAs(workflowInstanceId, status, reason);
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to mark workflow instance {} as {}: {}",
+          workflowInstanceId,
+          status,
+          e.getMessage());
+    }
+  }
+
+  // The OM workflow instance id is the business key of every process the trigger starts.
+  private void endWorkflowInstanceForBusinessKey(
+      String businessKey, WorkflowInstance.WorkflowStatus status, String reason) {
+    if (businessKey != null && !businessKey.isBlank()) {
+      try {
+        endWorkflowInstance(UUID.fromString(businessKey), status, reason);
+      } catch (IllegalArgumentException e) {
+        LOG.debug("Process business key {} is not a workflow instance id", businessKey);
+      }
     }
   }
 

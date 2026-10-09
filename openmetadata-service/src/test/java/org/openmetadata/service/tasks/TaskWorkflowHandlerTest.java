@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.util.EntityUtil;
@@ -556,6 +557,34 @@ class TaskWorkflowHandlerTest {
                           && resolution.getResolvedAt() != null),
               isNull(),
               eq("alice"));
+    }
+  }
+
+  @Test
+  void testApprovedChangeRequestTaskLeavesTheEntityToTheCommitStep() throws Exception {
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withType(TaskEntityType.RequestApproval)
+            .withAbout(new EntityReference().withId(UUID.randomUUID()).withType(Entity.GLOSSARY))
+            .withPayload(Map.of(ChangePreviewUtils.CHANGE_REQUEST_ID_KEY, UUID.randomUUID()));
+
+    Method applyEntityChanges =
+        TaskWorkflowHandler.class.getDeclaredMethod(
+            "applyEntityChanges",
+            Task.class,
+            boolean.class,
+            String.class,
+            Object.class,
+            String.class);
+    applyEntityChanges.setAccessible(true);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      applyEntityChanges.invoke(TaskWorkflowHandler.getInstance(), task, true, null, null, "alice");
+
+      entityMock.verify(
+          () -> Entity.getEntity(any(EntityReference.class), anyString(), any(Include.class)),
+          never());
     }
   }
 

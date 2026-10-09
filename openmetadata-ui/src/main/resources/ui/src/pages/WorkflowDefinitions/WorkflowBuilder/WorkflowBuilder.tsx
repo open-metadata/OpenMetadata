@@ -15,6 +15,7 @@ import { Card, Tabs } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
+import { get } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -48,6 +49,8 @@ import {
   WorkflowModeProvider,
 } from '../../../contexts/WorkflowModeContext';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
+import { ApprovalMode } from '../../../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
+import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { useWorkflowActions } from '../../../hooks/useWorkflowActions';
@@ -74,6 +77,16 @@ import { getWorkflowDefinitionsListPath } from '../../../utils/WorkflowRouterUti
 interface WorkflowBuilderInternalProps {
   workflowLogic: UseWorkflowLogicReturn;
 }
+
+// The approval mode chosen on the start node in this session, else the one the workflow was saved
+// with.
+const isEnforceApproval = (
+  startNode: Node | null,
+  workflowDefinition?: WorkflowDefinition | null
+) =>
+  (startNode?.data?.approvalMode ??
+    get(workflowDefinition, 'trigger.config.approvalMode')) ===
+  ApprovalMode.Enforce;
 
 const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   workflowLogic,
@@ -155,6 +168,8 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   const startEventDataAssets = useMemo(() => {
     return startEventNode?.data?.dataAssets || [];
   }, [startEventNode]);
+
+  const isEnforceMode = isEnforceApproval(startEventNode, workflowDefinition);
 
   const startEventTriggerType = useMemo(() => {
     return startEventNode?.data?.triggerType || '';
@@ -547,6 +562,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
           dataAssets: startEventDataAssets,
           triggerType: startEventTriggerType,
         }}
+        isEnforceMode={isEnforceMode}
         isOpen={isConfigSidebarOpen}
         node={selectedNode}
         setEdges={setEdges}

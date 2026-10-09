@@ -38,6 +38,14 @@ export interface UserApprovalTask {
 
 export interface NodeConfiguration {
     /**
+     * In a workflow in Enforce approval mode, let reviewers approve or reject some of a change
+     * request's changes and leave the rest pending. Changes reviewers agree to approve are
+     * published and changes they agree to reject are dropped, while this task stays open with
+     * the remaining changes; the workflow leaves it through approve or reject once nothing is
+     * pending. A change is agreed once it reaches the approval or rejection threshold.
+     */
+    allowPartialDecisions?: boolean;
+    /**
      * Number of reviewers that must approve for the task to be completed. Default is 1 (any
      * single reviewer can approve).
      */

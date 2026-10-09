@@ -83,6 +83,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -1343,7 +1344,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             newValue,
             resolvedPayload,
             comment,
-            userName);
+            userName,
+            ChangeRequestReview.of(resolveTask));
     return Response.ok(resolvedTask).build();
   }
 

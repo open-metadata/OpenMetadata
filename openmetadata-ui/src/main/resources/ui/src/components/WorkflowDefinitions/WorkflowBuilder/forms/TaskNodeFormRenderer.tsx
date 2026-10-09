@@ -32,6 +32,8 @@ interface TaskNodeFormRendererProps {
   onClose: () => void;
   onDelete?: (nodeId: string) => void;
   entityTypes?: EntityType[];
+  /** Whether the workflow holds changes for approval; only then can a step allow partial decisions. */
+  isEnforceMode?: boolean;
 }
 
 export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
@@ -40,6 +42,7 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
   onClose,
   onDelete,
   entityTypes,
+  isEnforceMode,
 }) => {
   if (
     node.type === NodeType.EndEvent ||
@@ -96,6 +99,7 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
     ),
     [NodeSubType.UserApprovalTask]: (
       <UserApprovalForm
+        isEnforceMode={isEnforceMode}
         node={node}
         onClose={onClose}
         onDelete={onDelete}

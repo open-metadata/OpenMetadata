@@ -84,6 +84,7 @@ import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.ChildFieldPageReader;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -1121,9 +1122,20 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   }
 
   public Response bulkAddToAssetsAsync(
-      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+      SecurityContext securityContext,
+      UUID entityId,
+      BulkAssetsRequestInterface request,
+      boolean dryRun,
+      ApprovalGate.AssetEdit edit) {
     authorizeBulkAssetsPermission(
         securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            Entity.FIELD_TAGS,
+            securityContext.getUserPrincipal().getName(),
+            dryRun,
+            edit);
 
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
@@ -1134,7 +1146,8 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                 () -> {
                   try {
                     BulkOperationResult result =
-                        repository.bulkAddAndValidateTagsToAssets(entityId, request);
+                        ApprovalGate.withHeld(
+                            repository.bulkAddAndValidateTagsToAssets(entityId, request), held);
                     WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
                         jobId, securityContext, result);
                   } catch (Exception e) {
@@ -1147,13 +1160,24 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Add tags to Asset operation initiated successfully.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+    return jobStartedResponse(response, ApprovalGate.submittedCount(held, dryRun));
   }
 
   public Response bulkRemoveFromAssetsAsync(
-      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+      SecurityContext securityContext,
+      UUID entityId,
+      BulkAssetsRequestInterface request,
+      boolean dryRun,
+      ApprovalGate.AssetEdit edit) {
     authorizeBulkAssetsPermission(
         securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            Entity.FIELD_TAGS,
+            securityContext.getUserPrincipal().getName(),
+            dryRun,
+            edit);
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
         .executeDatabaseTask(
@@ -1163,7 +1187,8 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                 () -> {
                   try {
                     BulkOperationResult result =
-                        repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
+                        ApprovalGate.withHeld(
+                            repository.bulkRemoveAndValidateTagsToAssets(entityId, request), held);
                     WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
                         jobId, securityContext, result);
                   } catch (Exception e) {
@@ -1176,7 +1201,18 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Remove tags to Asset operation initiated successfully.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+    return jobStartedResponse(response, ApprovalGate.submittedCount(held, dryRun));
+  }
+
+  // The job applies the assets that were not held; the held ones already have change requests, so
+  // the response says how many.
+  private static Response jobStartedResponse(BulkAssetsOperationResponse response, int submitted) {
+    Response.ResponseBuilder builder =
+        Response.ok().entity(response).type(MediaType.APPLICATION_JSON);
+    if (submitted > 0) {
+      builder.header(RestUtil.PENDING_CHANGE_COUNT_HEADER, submitted);
+    }
+    return builder.build();
   }
 
   public Response importCsvInternalAsync(

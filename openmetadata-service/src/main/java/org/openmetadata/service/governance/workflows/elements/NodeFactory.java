@@ -47,6 +47,18 @@ public class NodeFactory {
       WorkflowNodeDefinitionInterface nodeDefinition,
       WorkflowConfiguration config,
       String workflowDefinitionName) {
+    return createNode(nodeDefinition, config, workflowDefinitionName, false);
+  }
+
+  /**
+   * Builds a node. In a workflow that holds edits ({@code holdsChanges}), an approval step also
+   * publishes the edit it approves and drops the edit it rejects.
+   */
+  public static NodeInterface createNode(
+      WorkflowNodeDefinitionInterface nodeDefinition,
+      WorkflowConfiguration config,
+      String workflowDefinitionName,
+      boolean holdsChanges) {
     return switch (NodeSubType.fromValue(nodeDefinition.getSubType())) {
       case START_EVENT -> new StartEvent((StartEventDefinition) nodeDefinition, config);
       case END_EVENT -> new EndEvent((EndEventDefinition) nodeDefinition, config);
@@ -64,7 +76,8 @@ public class NodeFactory {
           (UserApprovalTaskDefinition) nodeDefinition,
           config,
           resolveUserApprovalTaskType(workflowDefinitionName),
-          resolveUserApprovalTaskCategory(workflowDefinitionName));
+          resolveUserApprovalTaskCategory(workflowDefinitionName),
+          holdsChanges);
       case CREATE_AND_RUN_INGESTION_PIPELINE_TASK -> new CreateAndRunIngestionPipelineTask(
           (CreateAndRunIngestionPipelineTaskDefinition) nodeDefinition, config);
       case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition, config);

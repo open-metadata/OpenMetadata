@@ -26,11 +26,16 @@ export interface BulkOperationResult {
     /**
      * Failure Request that can be processed successfully.
      */
-    failedRequest?:         Response[];
-    numberOfRowsFailed?:    number;
-    numberOfRowsPassed?:    number;
-    numberOfRowsProcessed?: number;
-    status?:                Status;
+    failedRequest?:      Response[];
+    numberOfRowsFailed?: number;
+    numberOfRowsPassed?: number;
+    /**
+     * Rows accepted as change requests awaiting approval; counted in numberOfRowsPassed but not
+     * yet published.
+     */
+    numberOfRowsPendingApproval?: number;
+    numberOfRowsProcessed?:       number;
+    status?:                      Status;
     /**
      * Request that can be processed successfully.
      */

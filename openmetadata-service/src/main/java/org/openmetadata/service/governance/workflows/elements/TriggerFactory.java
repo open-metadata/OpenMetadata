@@ -10,6 +10,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.EventBased
 import org.openmetadata.schema.governance.workflows.elements.triggers.NoOpTriggerDefinition;
 import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.NoOpTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
@@ -22,7 +23,8 @@ public class TriggerFactory {
       case EVENT_BASED_ENTITY -> new EventBasedEntityTrigger(
           workflow.getName(),
           triggerWorkflowId,
-          (EventBasedEntityTriggerDefinition) workflow.getTrigger());
+          (EventBasedEntityTriggerDefinition) workflow.getTrigger(),
+          GovernanceApprovalRegistry.holdsChanges(workflow));
       case NO_OP -> new NoOpTrigger(
           workflow.getName(), triggerWorkflowId, (NoOpTriggerDefinition) workflow.getTrigger());
       case PERIODIC_BATCH_ENTITY -> new PeriodicBatchEntityTrigger(

@@ -24,14 +24,7 @@ import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import {
-  isEmpty,
-  isEqual,
-  isUndefined,
-  last,
-  orderBy,
-  startCase,
-} from 'lodash';
+import { isEmpty, isUndefined, last, orderBy, startCase } from 'lodash';
 import React, {
   lazy,
   useCallback,
@@ -93,7 +86,6 @@ import {
   editTaskComment,
   patchTask,
   resolveTask as resolveTaskAPI,
-  Task,
   TaskEntityStatus,
   TaskEntityType,
   TaskPayload,
@@ -156,12 +148,17 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
+import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {
   TaskActionSplitButtonItem,
 } from './TaskActionSplitButton';
 import { TaskTabProps } from './TaskTab.interface';
+import {
+  computeTaskEditAccessFlags,
+  computeTaskOwnershipFlags,
+} from './TaskTab.utils';
 
 const FeedbackApprovalTask = withSuspenseFallback(
   lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
@@ -229,6 +226,12 @@ const extractProposedChanges = (payload: unknown): ProposedChanges | null => {
 
   return Object.keys(normalized).length > 0 ? normalized : null;
 };
+
+// A task that reviews a change request names it in its payload.
+const changeRequestIdOf = (payload: unknown): string | undefined =>
+  isPlainRecord(payload) && typeof payload.changeRequestId === 'string'
+    ? payload.changeRequestId
+    : undefined;
 
 const TaskPayloadSchemaFields = withSuspenseFallback(
   lazy(
@@ -340,78 +343,6 @@ const deriveIsTaskActionable = (
     : taskStatus === TaskEntityStatus.Open;
 };
 
-interface TaskOwnershipFlags {
-  isOwner: boolean;
-  isCreator: boolean;
-  isAssignee: boolean;
-  isPartOfAssigneeTeam: boolean;
-}
-
-const computeTaskOwnershipFlags = (
-  owners: EntityReference[],
-  task: Task,
-  currentUser?: { id?: string; name?: string; teams?: EntityReference[] }
-): TaskOwnershipFlags => {
-  const isUserPartOfTeam = (teamId: string): boolean =>
-    Boolean(currentUser?.teams?.find((team) => teamId === team.id));
-
-  const isOwner = Boolean(
-    owners?.some((owner) => isEqual(owner.id, currentUser?.id))
-  );
-  const isCreator = isEqual(task.createdBy?.name, currentUser?.name);
-  const isAssignee = Boolean(
-    task.assignees?.some((assignee) => isEqual(assignee.id, currentUser?.id))
-  );
-  const isPartOfAssigneeTeam = Boolean(
-    task.assignees?.some((assignee) =>
-      assignee.type === 'team' ? isUserPartOfTeam(assignee.id) : false
-    )
-  );
-
-  return { isOwner, isCreator, isAssignee, isPartOfAssigneeTeam };
-};
-
-interface TaskEditAccessParams {
-  isAdminUser: boolean;
-  isAssignee: boolean;
-  isOwner: boolean;
-  isCreator: boolean;
-  isPartOfAssigneeTeam: boolean;
-  hasGlossaryReviewer?: boolean;
-  isTaskClosed: boolean;
-  ownersCount: number;
-}
-
-interface TaskEditAccessFlags {
-  hasEditAccess: boolean;
-  shouldEditAssignee: boolean;
-}
-
-// Extracted so the numerous boolean short-circuits live in their own
-// complexity scope instead of TaskTabNew's render body.
-const computeTaskEditAccessFlags = ({
-  isAdminUser,
-  isAssignee,
-  isOwner,
-  isCreator,
-  isPartOfAssigneeTeam,
-  hasGlossaryReviewer,
-  isTaskClosed,
-  ownersCount,
-}: TaskEditAccessParams): TaskEditAccessFlags => {
-  const isOwnerWithoutReviewer = !hasGlossaryReviewer && isOwner;
-  const isAssigneeTeamMemberNonCreator = isPartOfAssigneeTeam && !isCreator;
-  const hasEditAccess =
-    isAdminUser ||
-    isAssignee ||
-    isOwnerWithoutReviewer ||
-    isAssigneeTeamMemberNonCreator;
-  const shouldEditAssignee =
-    (isCreator || hasEditAccess) && !isTaskClosed && ownersCount === 0;
-
-  return { hasEditAccess, shouldEditAssignee };
-};
-
 export const TaskTabNew = ({
   task,
   owners = [],
@@ -503,6 +434,10 @@ export const TaskTabNew = ({
   } = deriveTaskTypeFlags(taskHandler.type, task.type);
   const proposedChanges = useMemo(
     () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
+    [isTaskApprovalRequest, task.payload]
+  );
+  const changeRequestId = useMemo(
+    () => (isTaskApprovalRequest ? changeRequestIdOf(task.payload) : undefined),
     [isTaskApprovalRequest, task.payload]
   );
   const readOnlyTaskPayload = useMemo(
@@ -1834,6 +1769,21 @@ export const TaskTabNew = ({
   const taskTitleDisplayName = task.displayName ?? taskDisplayMessage;
 
   const renderProposedChangesSection = () => {
+    if (changeRequestId) {
+      return (
+        <Col span={24}>
+          <div className="task-proposed-changes">
+            <Typography className="task-proposed-changes-title">
+              {t('label.proposed-change-plural')}
+            </Typography>
+            <ChangeRequestChangesById
+              changeRequestId={changeRequestId}
+              version={task.updatedAt}
+            />
+          </div>
+        </Col>
+      );
+    }
     if (proposedChanges === null) {
       return null;
     }

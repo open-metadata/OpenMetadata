@@ -59,6 +59,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -103,6 +104,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -129,6 +134,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   public static final String IMPORT_SKIPPED = "skipped";
   public static final String ENTITY_CREATED = "Entity created";
   public static final String ENTITY_UPDATED = "Entity updated";
+  public static final String ENTITY_PENDING_APPROVAL = "Pending approval";
   private static final String NAME_PATTERN_VALIDATION_PREFIX = "name must match ";
   private static final String EMAIL_FORMAT_VALIDATION = "email must be a well-formed email address";
 
@@ -145,6 +151,8 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   protected boolean processRecord; // When set to false record processing is discontinued
   protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
   protected final String importedBy;
+  // Whether a hook workflow gates each entity type, resolved once per import rather than per row.
+  private final Map<String, Boolean> gatedEntityTypes = new HashMap<>();
   protected int recordIndex = 0;
   protected String rowEntityType = null;
   private final Set<Long> countedFailureRecords = new HashSet<>();
@@ -1153,12 +1161,18 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
             throw ex;
           }
         }
+        if (stagedForApproval(csvRecord, entityType, original, entity)) {
+          return;
+        }
         // Queue for batch processing instead of immediate persist
         pendingEntityOperations.add(
             new PendingEntityOperation(entity, original, csvRecord, entityType, !isUpdate));
         pendingEntityFQNs.add(entity.getFullyQualifiedName());
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } else { // Dry run don't create the entity
+        if (stagedForApproval(csvRecord, entityType, original, entity)) {
+          return;
+        }
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
         // Track the dryRun created entities, as they may be referred by other entities being
         // created
@@ -1248,12 +1262,18 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
             throw ex;
           }
         }
+        if (stagedForApproval(csvRecord, type, original, entity)) {
+          return;
+        }
         // Queue for batch processing instead of immediate persist
         pendingEntityOperations.add(
             new PendingEntityOperation(entity, original, csvRecord, type, !isUpdate));
         pendingEntityFQNs.add(entity.getFullyQualifiedName());
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } else {
+        if (stagedForApproval(csvRecord, type, original, entity)) {
+          return;
+        }
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
       }
@@ -1383,12 +1403,67 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
   }
 
   /** Write pending CSV results to output */
+  /**
+   * A row that changes a field gated by an approval workflow is submitted as a change request (or,
+   * on a dry run, reported as needing approval) instead of being written. Returns true when the row
+   * was handled that way. The original is re-read with every field so the change request records
+   * the true published values it was based on.
+   */
+  private boolean stagedForApproval(
+      CSVRecord csvRecord, String type, EntityInterface original, EntityInterface entity) {
+    Optional<StagedChange> staged = admission(type, original, entity);
+    staged.ifPresent(change -> recordPendingApproval(csvRecord, change));
+    return staged.isPresent();
+  }
+
+  private boolean isGated(String type) {
+    return gatedEntityTypes.computeIfAbsent(
+        type, t -> !GovernanceApprovalRegistry.gatingRules(t).isEmpty());
+  }
+
+  private Optional<StagedChange> admission(
+      String type, EntityInterface original, EntityInterface entity) {
+    Optional<StagedChange> staged = Optional.empty();
+    if (original != null && isGated(type)) {
+      EntityRepository<?> repository = Entity.getEntityRepository(type);
+      EntityInterface hydrated =
+          repository.get(null, original.getId(), repository.getFields("*"), Include.ALL, false);
+      // A row entity carries a fresh id until the write aligns it; compare it as the same asset.
+      entity.setId(original.getId());
+      staged = ApprovalGate.admit(hydrated, entity, importedBy, null);
+    }
+    return staged;
+  }
+
+  private void recordPendingApproval(CSVRecord csvRecord, StagedChange change) {
+    String detail =
+        Boolean.TRUE.equals(importResult.getDryRun())
+            ? ENTITY_PENDING_APPROVAL
+            : pendingApprovalDetail(ChangeRequestService.submit(change).getId());
+    pendingCsvResults.put(csvRecord, detail);
+    importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
+    importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
+    countPendingApproval();
+  }
+
+  // Pending rows are successful submissions; they also count as passed (see csvImportResult).
+  protected void countPendingApproval() {
+    importResult.withNumberOfRowsPendingApproval(
+        Objects.requireNonNullElse(importResult.getNumberOfRowsPendingApproval(), 0) + 1);
+  }
+
+  protected static String pendingApprovalDetail(UUID changeRequestId) {
+    return "%s: change request %s".formatted(ENTITY_PENDING_APPROVAL, changeRequestId);
+  }
+
   protected void flushPendingCsvResults(CSVPrinter printer) throws IOException {
     for (Map.Entry<CSVRecord, String> entry : pendingCsvResults.entrySet()) {
       CSVRecord csvRecord = entry.getKey();
       String result = entry.getValue();
 
-      if (ENTITY_CREATED.equals(result) || ENTITY_UPDATED.equals(result)) {
+      if (ENTITY_CREATED.equals(result)
+          || ENTITY_UPDATED.equals(result)
+          || result.startsWith(ENTITY_PENDING_APPROVAL)) {
         writeSuccessResult(printer, csvRecord, result);
       } else {
         // It's an error message
@@ -1573,6 +1648,14 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
         boolean update = repository.isUpdateForImport(entity);
         repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
+        if (response.getPendingChangeRequestId() != null) {
+          countPendingApproval();
+          importSuccess(
+              resultsPrinter,
+              csvRecord,
+              pendingApprovalDetail(response.getPendingChangeRequestId()));
+          return;
+        }
         responseStatus = response.getStatus();
         createChangeEventForUserAndUpdateInES(response, importedBy);
       } catch (Exception ex) {
@@ -1585,6 +1668,12 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
       boolean exists = repository.isUpdateForImport(entity);
+      T original = exists ? repository.findMatchForImport(entity) : null;
+      if (admission(entityType, original, entity).isPresent()) {
+        countPendingApproval();
+        importSuccess(resultsPrinter, csvRecord, ENTITY_PENDING_APPROVAL);
+        return;
+      }
       responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
@@ -2075,7 +2164,13 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       if (Boolean.FALSE.equals(importResult.getDryRun())) {
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(context.originalTable, context.updatedTable);
-          tableRepo.patch(null, context.updatedTable.getId(), importedBy, jsonPatch);
+          UUID pendingChangeRequestId =
+              tableRepo
+                  .patch(null, context.updatedTable.getId(), importedBy, jsonPatch)
+                  .pendingChangeRequestId();
+          if (pendingChangeRequestId != null) {
+            markPendingApproval(context.csvRecords, pendingApprovalDetail(pendingChangeRequestId));
+          }
           LOG.info(
               "Batch patched table {} with {} column updates", tableFQN, context.csvRecords.size());
         } catch (Exception ex) {
@@ -2095,10 +2190,47 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
         tableRepo.setFullyQualifiedName(context.updatedTable);
         dryRunCreatedEntities.put(
             context.updatedTable.getFullyQualifiedName(), (T) context.updatedTable);
+        if (wouldBeHeld(tableRepo, context)) {
+          markPendingApproval(context.csvRecords, ENTITY_PENDING_APPROVAL);
+        }
       }
     }
 
     pendingTableUpdates.clear();
+  }
+
+  // The column rows of one table are written as a single patch; when that patch is held for
+  // approval, every row in it is reported as pending instead of updated.
+  private void markPendingApproval(List<CSVRecord> records, String detail) {
+    for (CSVRecord record : records) {
+      pendingCsvResults.put(record, detail);
+      countPendingApproval();
+    }
+  }
+
+  private boolean wouldBeHeld(TableRepository tableRepo, TableUpdateContext context) {
+    return wouldBeHeld(tableRepo, context.originalTable, context.updatedTable);
+  }
+
+  /**
+   * Whether writing {@code updated} over {@code original} would be held for approval, for a dry run
+   * that saves nothing.
+   */
+  protected <E extends EntityInterface<?>> boolean wouldBeHeld(
+      EntityRepository<E> repository, E original, E updated) {
+    boolean held = false;
+    if (original.getId() != null && isGated(repository.getEntityType())) {
+      try {
+        held =
+            repository
+                .previewPatch(
+                    original.getId(), importedBy, JsonUtils.getJsonPatch(original, updated))
+                .isPresent();
+      } catch (RuntimeException e) {
+        LOG.debug("Could not preview approval for {}: {}", original.getId(), e.getMessage());
+      }
+    }
+    return held;
   }
 
   private void updateColumnsFromCsvRecursive(Table table, CSVRecord csvRecord, CSVPrinter printer) {

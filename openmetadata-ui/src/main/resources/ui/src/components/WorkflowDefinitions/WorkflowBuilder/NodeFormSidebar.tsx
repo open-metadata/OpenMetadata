@@ -40,6 +40,7 @@ interface NodeFormSidebarProps {
   setNodes?: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges?: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
   triggerFieldsConfig: WorkflowTriggerFieldsConfig;
+  isEnforceMode?: boolean;
   currentWorkflowConfig?: {
     dataAssets?: string[];
     triggerType?: string;
@@ -133,6 +134,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
   setNodes,
   setEdges,
   triggerFieldsConfig,
+  isEnforceMode,
   currentWorkflowConfig,
 }) => {
   const { t } = useTranslation();
@@ -225,6 +227,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
             <Divider orientation="horizontal" />
             <TaskNodeFormRenderer
               entityTypes={entityTypes}
+              isEnforceMode={isEnforceMode}
               node={node}
               onClose={close}
               onDelete={setNodes && setEdges ? handleDeleteNode : undefined}

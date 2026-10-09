@@ -135,6 +135,14 @@ export interface NodeConfiguration {
      */
     fieldValue?: string;
     /**
+     * In a workflow in Enforce approval mode, let reviewers approve or reject some of a change
+     * request's changes and leave the rest pending. Changes reviewers agree to approve are
+     * published and changes they agree to reject are dropped, while this task stays open with
+     * the remaining changes; the workflow leaves it through approve or reject once nothing is
+     * pending. A change is agreed once it reaches the approval or rejection threshold.
+     */
+    allowPartialDecisions?: boolean;
+    /**
      * Number of reviewers that must approve for the task to be completed. Default is 1 (any
      * single reviewer can approve).
      */
@@ -425,6 +433,12 @@ export interface EntityTriggerDefinition {
  */
 export interface TriggerConfiguration {
     /**
+     * How the workflow treats edits to the fields it watches. Default runs it after the edit is
+     * published. Enforce holds the edit for review: the workflow's user approval task publishes
+     * it when approved and discards it when rejected.
+     */
+    approvalMode?: ApprovalMode;
+    /**
      * Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes'
      * for multiple types.
      */
@@ -465,6 +479,16 @@ export interface TriggerConfiguration {
      * Defines the schedule of the Periodic Trigger.
      */
     schedule?: any[] | boolean | AppScheduleClass | number | number | null | string;
+}
+
+/**
+ * How the workflow treats edits to the fields it watches. Default runs it after the edit is
+ * published. Enforce holds the edit for review: the workflow's user approval task publishes
+ * it when approved and discards it when rejected.
+ */
+export enum ApprovalMode {
+    Default = "Default",
+    Enforce = "Enforce",
 }
 
 /**
