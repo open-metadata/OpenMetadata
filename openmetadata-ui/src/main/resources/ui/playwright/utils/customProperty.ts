@@ -39,7 +39,7 @@ import {
   selectOptionWithRetry,
   uuid,
 } from './common';
-import { pickDateInCorePicker } from './datePicker';
+import { pickDateInCorePicker } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
   navigateToEntityPanelTab,
@@ -234,7 +234,7 @@ export const fillCustomPropertyEditModal = async (data: {
       const [datePart, timePart] = value.split(' ');
       await pickDateInCorePicker(
         page,
-        editModal.getByTestId('date-time-picker'),
+        editModal.getByTestId('date-time-picker').getByRole('button'),
         datePart
       );
       if (timePart) {
