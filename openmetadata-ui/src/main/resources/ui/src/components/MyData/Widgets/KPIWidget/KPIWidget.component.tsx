@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { Grid, GridItem } from '@openmetadata/ui-core-components';
+import { Grid } from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   chartColor,
   ChartSeries,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -273,8 +275,10 @@ const KPIWidget = ({
 
   const kpiChartData = useMemo(() => {
     return (
-      <Grid className="tw:px-4 tw:pt-3" gap="4">
-        <GridItem span={isFullSizeWidget ? 16 : 24}>
+      <Grid
+        className="layout-row layout-grid p-t-sm p-x-md"
+        style={getLayoutGutter(16, 16)}>
+        <Grid.Item className="layout-column" span={isFullSizeWidget ? 16 : 24}>
           <AreaChart<KpiChartRow>
             ariaLabel={t('label.kpi-title')}
             data={rows}
@@ -287,14 +291,14 @@ const KPIWidget = ({
             xKey="day"
             yAxis={yAxis}
           />
-        </GridItem>
+        </Grid.Item>
 
         {!isUndefined(kpiLatestResults) &&
           !isEmpty(kpiLatestResults) &&
           isFullSizeWidget && (
-            <GridItem className="tw:h-full" span={8}>
+            <Grid.Item className="layout-column h-full" span={8}>
               <KPILegend isFullSize kpiLatestResultsRecord={kpiLatestResults} />
-            </GridItem>
+            </Grid.Item>
           )}
       </Grid>
     );
@@ -360,7 +364,7 @@ const KPIWidget = ({
       header={widgetHeader}
       loading={isKPIListLoading || isLoading}>
       <div className="kpi-widget-container" data-testid="kpi-widget">
-        <div className="widget-content tw:h-full tw:flex-1">
+        <div className="widget-content flex-1 h-full">
           {isEmpty(kpiList) || isEmpty(kpiResults) ? emptyState : kpiChartData}
         </div>
       </div>

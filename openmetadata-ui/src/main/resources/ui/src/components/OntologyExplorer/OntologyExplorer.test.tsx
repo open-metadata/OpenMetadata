@@ -312,7 +312,7 @@ describe('OntologyExplorer Studio data controls', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('resolves palette tokens before painting custom SVG relationships', () => {
+  it('preserves palette tokens so custom SVG relationships follow theme changes', () => {
     const state = createExplorerState({
       explorationMode: 'data',
       graphDataToShow: {
@@ -339,7 +339,7 @@ describe('OntologyExplorer Studio data controls', () => {
 
     expect(screen.getByTestId('ontology-data-semantic-edge')).toHaveAttribute(
       'stroke',
-      '#7a5af8'
+      'var(--tw-color-utility-purple-500)'
     );
   });
 

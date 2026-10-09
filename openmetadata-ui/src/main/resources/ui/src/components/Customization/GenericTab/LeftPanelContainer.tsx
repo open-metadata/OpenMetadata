@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { isUndefined, orderBy } from 'lodash';
 import { lazy, useMemo } from 'react';
 import type {
@@ -21,7 +23,7 @@ import type {
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
-import type { WidgetConfig } from '../../../interface/customization.interface';
+import type { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import {
   fromLeftPanelEditGrid,
@@ -30,13 +32,6 @@ import {
 } from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './generic-tab.less';
-
-// Same box as the antd 24-column `Col span` this replaced; widget.w is a 0..1 fraction.
-const getColumnStyle = (w: number) => {
-  const width = `${(Math.round(w * 24) / 24) * 100}%`;
-
-  return { flex: `0 0 ${width}`, maxWidth: width };
-};
 
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
@@ -165,13 +160,13 @@ export const LeftPanelContainer = ({
     // they sit, so view mode lays them out by row and then column.
     return orderBy(layout, ['y', 'x']).map((widget: WidgetConfig) => {
       return (
-        <div
-          className="tw:px-2"
+        <Grid.Item
+          className="layout-column"
           id={widget.i}
           key={widget.i}
-          style={getColumnStyle(widget.w)}>
+          span={Math.round(widget.w * 24)}>
           {getWidgetsFromKey(type, widget)}
-        </div>
+        </Grid.Item>
       );
     });
   }, [layout, type, isEditView]);
@@ -203,8 +198,10 @@ export const LeftPanelContainer = ({
   }
 
   return (
-    <Box className="left-panel-content tw:-mx-2" rowGap={4} wrap="wrap">
+    <Grid
+      className="layout-row layout-grid left-panel-content"
+      style={getLayoutGutter(16, 16)}>
       {widgets}
-    </Box>
+    </Grid>
   );
 };

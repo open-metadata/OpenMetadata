@@ -331,11 +331,11 @@ describe('AllWidgetsContent', () => {
       const { container } = render(<AllWidgetsContent {...defaultProps} />);
 
       const row = container.querySelector('.all-widgets-grid');
-      const cells = row?.querySelectorAll(':scope > [data-widget-key]');
+      const cols = container.querySelectorAll('.layout-column');
 
       expect(row).toBeInTheDocument();
-      expect(row).toHaveClass('tw:grid', 'tw:overflow-y-auto');
-      expect(cells).toHaveLength(3); // One for each widget
+      expect(row).toHaveClass('p-r-xs', 'overflow-y-auto');
+      expect(cols).toHaveLength(3); // One for each widget
     });
 
     it('should pass ref correctly', () => {

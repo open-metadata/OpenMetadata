@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
 import { lazy, useCallback, useMemo } from 'react';
@@ -98,17 +100,23 @@ function CustomizeGlossaryTermDetailPage({
         pageTitle={t('label.customize-entity', {
           entity: t('label.' + kebabCase(currentPageType)),
         })}>
-        <Box className="customize-details-page" direction="col" gap={5}>
-          <CustomizablePageHeader
-            disableSave={disableSave}
-            personaName={getEntityName(personaDetails)}
-            onReset={handleReset}
-            onSave={handleSave}
-          />
-          <GlossaryHeaderWidget isGlossary={isGlossary} />
-          {/* CustomizeTabWidget renders its own cols internally */}
+        <Grid
+          className="layout-row layout-grid customize-details-page"
+          style={getLayoutGutter(0, 20)}>
+          <Grid.Item className="layout-column" span={24}>
+            <CustomizablePageHeader
+              disableSave={disableSave}
+              personaName={getEntityName(personaDetails)}
+              onReset={handleReset}
+              onSave={handleSave}
+            />
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
+            <GlossaryHeaderWidget isGlossary={isGlossary} />
+          </Grid.Item>
+          {/* It will render cols inside the row */}
           <CustomizeTabWidget />
-        </Box>
+        </Grid>
       </PageLayoutV1>
     </NavigationBlocker>
   );

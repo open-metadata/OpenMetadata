@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Grid, GridItem, Typography } from '@openmetadata/ui-core-components';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -401,11 +402,11 @@ const CuratedAssetsWidgetContent = ({
 
   const entityListData = useMemo(() => {
     return isFullSize ? (
-      <Grid className="tw:w-full">
+      <Grid className="layout-row layout-grid curated-assets-grid">
         {data.map((item) => (
-          <GridItem key={item.id} span={12}>
+          <Grid.Item className="layout-column" key={item.id} span={12}>
             {entityListLinkItem(item)}
-          </GridItem>
+          </Grid.Item>
         ))}
       </Grid>
     ) : (

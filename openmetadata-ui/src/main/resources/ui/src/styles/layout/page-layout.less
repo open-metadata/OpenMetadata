@@ -24,19 +24,16 @@
 // important Tailwind utilities (e.g. tw:!h-auto) — unlayered less rules
 // beat plain tw utilities, so the `!` is required.
 .page-layout-v1 {
-  display: flex;
-  flex-wrap: nowrap;
   margin: 0;
   overflow: hidden;
 }
 
 // fullHeight mode: the page container is pinned to --om-page-height (the
 // viewport minus the shell chrome), and PageLayoutV1's own centre column +
-// its single `<Row><Col>` wrapper become a flex chain so the page's root
+// its single Grid/Grid.Item wrapper become a flex chain so the page's root
 // child absorbs the remaining height and scrolls internally.
 //
-// Selectors use the direct-child combinator and stop at that wrapper Col —
-// never reaching antd Row/Col the page renders inside its own content.
+// Direct-child selectors stop at that wrapper, preserving layouts inside page content.
 .page-layout-v1-full-height {
   height: var(--om-page-height);
 
@@ -47,7 +44,16 @@
     overflow: hidden;
   }
 
-  > .page-layout-v1-center > .page-layout-v1-inner {
+  > .page-layout-v1-center > :is(.ant-row, .layout-row) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  > .page-layout-v1-center
+    > :is(.ant-row, .layout-row)
+    > :is(.ant-col, .layout-column) {
     display: flex;
     flex: 1;
     flex-direction: column;

@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { forwardRef, useMemo } from 'react';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
@@ -36,23 +38,27 @@ const AllWidgetsContent = forwardRef<HTMLDivElement, AllWidgetsContentProps>(
         const isSelected = selectedWidgets.includes(widget.id ?? '');
 
         return (
-          <Box data-widget-key={widget.fullyQualifiedName} key={widget.id}>
+          <Grid.Item
+            className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8 d-flex"
+            data-widget-key={widget.fullyQualifiedName}
+            key={widget.id}>
             <WidgetCard
               isSelected={isAlreadyAdded || isSelected}
               widget={widget}
               onSelectWidget={onSelectWidget}
             />
-          </Box>
+          </Grid.Item>
         );
       });
     }, [widgets, addedWidgetsList, selectedWidgets, onSelectWidget]);
 
     return (
-      <div
-        className="all-widgets-grid tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:overflow-y-auto tw:pr-1"
-        ref={ref}>
+      <Grid
+        className="layout-row layout-grid all-widgets-grid p-r-xs overflow-y-auto"
+        ref={ref}
+        style={getLayoutGutter(20, 20)}>
         {widgetsList}
-      </div>
+      </Grid>
     );
   }
 );

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Box, Grid } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { FC, Fragment, HTMLAttributes, ReactNode, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -21,6 +23,7 @@ import './../../styles/layout/page-layout.less';
 export type PageLayoutVariant = 'default' | 'compact';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
+  children?: ReactNode;
   leftPanel?: ReactNode;
   rightPanel?: ReactNode;
   center?: boolean;
@@ -73,47 +76,53 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
-      <div
-        className={classNames(
+      <Box
+        className={`layout-row ${classNames(
           'page-layout-v1',
           paddingClassName,
           { 'page-layout-v1-full-height': fullHeight },
           className
-        )}
+        )}`}
         data-testid="page-layout-v1"
-        data-variant={variant}>
+        data-variant={variant}
+        wrap="nowrap">
         {leftPanel && (
-          <div
-            className="page-layout-leftpanel"
+          <Box
+            className="layout-column tw:block page-layout-leftpanel"
             id="left-panelV1"
-            style={{ flex: `0 0 ${leftPanelWidth}px`, width: leftPanelWidth }}>
+            style={{ flex: `0 0 ${leftPanelWidth + 'px'}` }}>
             {leftPanel}
-          </div>
+          </Box>
         )}
-        <div
-          className={classNames(
-            'page-layout-v1-center page-layout-v1-vertical-scroll',
+        <Box
+          className={`layout-column tw:block ${classNames(
+            `page-layout-v1-center page-layout-v1-vertical-scroll`,
             {
               'flex justify-center': center,
               'full-screen-view': isFullScreen,
             },
             mainContainerClassName
-          )}
-          style={{ flex: `1 1 ${contentWidth}`, minWidth: 0 }}>
-          <div className="page-layout-v1-inner">{children}</div>
-        </div>
+          )}`}
+          style={{
+            maxWidth: `${((center ? 18 : 24) / 24) * 100}%`,
+            flex: `0 0 ${contentWidth}`,
+            marginInlineStart: `${((center ? 3 : 0) / 24) * 100}%`,
+          }}>
+          <Grid className="layout-row layout-grid">
+            <Grid.Item className="layout-column" span={24}>
+              {children}
+            </Grid.Item>
+          </Grid>
+        </Box>
         {rightPanel && (
-          <div
-            className="page-layout-rightpanel page-layout-v1-vertical-scroll"
+          <Box
+            className="layout-column tw:block page-layout-rightpanel page-layout-v1-vertical-scroll"
             id="right-panelV1"
-            style={{
-              flex: `0 0 ${rightPanelWidth}px`,
-              width: rightPanelWidth,
-            }}>
+            style={{ flex: `0 0 ${rightPanelWidth + 'px'}` }}>
             {rightPanel}
-          </div>
+          </Box>
         )}
-      </div>
+      </Box>
     </Fragment>
   );
 };

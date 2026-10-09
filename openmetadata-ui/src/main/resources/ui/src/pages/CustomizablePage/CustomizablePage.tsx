@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isUndefined } from 'lodash';
@@ -510,29 +511,31 @@ const CustomizablePageContent = () => {
 
   if (isUndefined(personaDetails)) {
     return (
-      <div className="tw:bg-white tw:h-full">
-        <ErrorPlaceHolder
-          className="m-t-lg"
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography as="p" className="w-max-500">
-            <Transi18next
-              i18nKey="message.no-persona-message"
-              renderElement={
-                <Link
-                  style={{ color: theme.primaryColor }}
-                  to={getSettingPath(
-                    GlobalSettingsMenuCategory.MEMBERS,
-                    GlobalSettingOptions.PERSONA
-                  )}
-                />
-              }
-              values={{
-                link: t('label.here-lowercase'),
-              }}
-            />
-          </Typography>
-        </ErrorPlaceHolder>
-      </div>
+      <Grid className="layout-row layout-grid bg-white h-full">
+        <Grid.Item className="layout-column" span={24}>
+          <ErrorPlaceHolder
+            className="m-t-lg"
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <Typography as="p" className="w-max-500">
+              <Transi18next
+                i18nKey="message.no-persona-message"
+                renderElement={
+                  <Link
+                    style={{ color: theme.primaryColor }}
+                    to={getSettingPath(
+                      GlobalSettingsMenuCategory.MEMBERS,
+                      GlobalSettingOptions.PERSONA
+                    )}
+                  />
+                }
+                values={{
+                  link: t('label.here-lowercase'),
+                }}
+              />
+            </Typography>
+          </ErrorPlaceHolder>
+        </Grid.Item>
+      </Grid>
     );
   }
 

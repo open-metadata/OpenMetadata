@@ -16,6 +16,7 @@ import {
   Button,
   Card,
   Dropdown,
+  Grid,
   Input,
   SimpleModal,
 } from '@openmetadata/ui-core-components';
@@ -566,122 +567,124 @@ export const CustomizeTabWidget = () => {
 
   return (
     <>
-      {/* w-full: legacy pages place this inside an antd Row, where the old
-          Col span={24} wrappers made each card a full-width row. */}
-      <Card className="tw:w-full" data-testid="customize-tab-card">
-        <Card.Header
-          className="tw:items-center tw:border-b-0 tw:pt-5"
-          extra={
-            <Button
-              color="primary"
-              iconLeading={Plus}
-              onPress={() => setShowAddTabModal(true)}>
-              {t('label.add-entity', {
-                entity: t('label.tab'),
-              })}
-            </Button>
-          }
-          title={t('label.customize-tab-plural')}
-        />
-        <Card.Content className="tw:pb-6">
-          <Box gap={4} wrap="wrap">
-            {items.map((item, index) => (
-              <TabItem
-                index={index}
-                // The Custom Properties tab has no widgets but its card layout
-                // is arranged here.
-                isEditable={
-                  item.editable || item.id === EntityTabs.CUSTOM_PROPERTIES
-                }
-                item={item}
-                key={item.id}
-                moveTab={moveTab}
-                shouldHide={systemTabIds.includes(item.id)}
-                onEdit={onChange}
-                onRemove={remove}
-                onRename={handleTabEditClick}
-              />
-            ))}
-            {hiddenTabs.map((item) => (
-              <Dropdown.Root key={item.id}>
-                <Button
-                  className="draggable-hidden-tab-item bg-grey"
-                  color="secondary"
-                  data-testid={`tab-${item.name}`}
-                  iconTrailing={DotsVertical}>
-                  {getTabDisplayName(item)}
-                </Button>
-                <Dropdown.Popover
-                  className="tw:w-auto"
-                  placement="bottom start">
-                  <Dropdown.Menu
-                    aria-label={getTabDisplayName(item)}
-                    selectionMode="none"
-                    onAction={() => add(item)}>
-                    <Dropdown.Item
-                      icon={EyeFilled}
-                      id="show"
-                      label={t('label.show')}
-                    />
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            ))}
-          </Box>
-        </Card.Content>
-      </Card>
-      <Card className="tw:w-full">
-        <Card.Header
-          className="tw:items-center tw:border-b-0 tw:pt-5"
-          extra={
-            activeKey === EntityTabs.CUSTOM_PROPERTIES ? undefined : (
+      <Grid.Item className="layout-column" span={24}>
+        <Card className="tw:w-full" data-testid="customize-tab-card">
+          <Card.Header
+            className="tw:items-center tw:border-b-0 tw:pt-5"
+            extra={
               <Button
                 color="primary"
                 iconLeading={Plus}
-                onPress={handleOpenAddWidgetModal}>
+                onPress={() => setShowAddTabModal(true)}>
                 {t('label.add-entity', {
-                  entity: t('label.widget'),
+                  entity: t('label.tab'),
                 })}
               </Button>
-            )
-          }
-          title={t('label.customize-entity-widget-plural', {
-            entity: getEntityName(
-              items.find((item) => item.id === activeKey) as Tab
-            ),
-          })}
-        />
-        <div className="tw:pb-5">
-          {/* 
+            }
+            title={t('label.customize-tab-plural')}
+          />
+          <Card.Content className="tw:pb-6">
+            <Box gap={4} wrap="wrap">
+              {items.map((item, index) => (
+                <TabItem
+                  index={index}
+                  // The Custom Properties tab has no widgets but its card layout
+                  // is arranged here.
+                  isEditable={
+                    item.editable || item.id === EntityTabs.CUSTOM_PROPERTIES
+                  }
+                  item={item}
+                  key={item.id}
+                  moveTab={moveTab}
+                  shouldHide={systemTabIds.includes(item.id)}
+                  onEdit={onChange}
+                  onRemove={remove}
+                  onRename={handleTabEditClick}
+                />
+              ))}
+              {hiddenTabs.map((item) => (
+                <Dropdown.Root key={item.id}>
+                  <Button
+                    className="draggable-hidden-tab-item bg-grey"
+                    color="secondary"
+                    data-testid={`tab-${item.name}`}
+                    iconTrailing={DotsVertical}>
+                    {getTabDisplayName(item)}
+                  </Button>
+                  <Dropdown.Popover
+                    className="tw:w-auto"
+                    placement="bottom start">
+                    <Dropdown.Menu
+                      aria-label={getTabDisplayName(item)}
+                      selectionMode="none"
+                      onAction={() => add(item)}>
+                      <Dropdown.Item
+                        icon={EyeFilled}
+                        id="show"
+                        label={t('label.show')}
+                      />
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown.Root>
+              ))}
+            </Box>
+          </Card.Content>
+        </Card>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
+        <Card className="tw:w-full">
+          <Card.Header
+            className="tw:items-center tw:border-b-0 tw:pt-5"
+            extra={
+              activeKey === EntityTabs.CUSTOM_PROPERTIES ? undefined : (
+                <Button
+                  color="primary"
+                  iconLeading={Plus}
+                  onPress={handleOpenAddWidgetModal}>
+                  {t('label.add-entity', {
+                    entity: t('label.widget'),
+                  })}
+                </Button>
+              )
+            }
+            title={t('label.customize-entity-widget-plural', {
+              entity: getEntityName(
+                items.find((item) => item.id === activeKey) as Tab
+              ),
+            })}
+          />
+          <div className="tw:pb-5">
+            {/* 
             ReactGridLayout with optimized drag and drop behavior for tab customization
             - verticalCompact: Packs widgets tightly without gaps
             - preventCollision={false}: Enables automatic widget repositioning on collision
             - useCSSTransforms: Uses CSS transforms for better performance during drag
           */}
-          {activeKey === EntityTabs.CUSTOM_PROPERTIES ? (
-            <CustomPropertiesTabLayoutSection
-              entityType={getEntityTypeFromPageType(currentPageType)}
-              propertyLayout={customPropertiesTabLayout}
-              onChange={handleCustomPropertiesTabLayoutChange}
-            />
-          ) : (
-            <ReactGridLayout
-              useCSSTransforms
-              verticalCompact
-              className="grid-container"
-              cols={TAB_GRID_MAX_COLUMNS}
-              draggableHandle=".drag-widget-icon"
-              margin={[16, 16]}
-              preventCollision={false}
-              rowHeight={100}
-              onDrag={handleTabDrag}
-              onDragStop={handleTabDragStop}
-              onLayoutChange={handleLayoutUpdate}>
-              {widgets}
-            </ReactGridLayout>
-          )}
-        </div>
-      </Card>
+            {activeKey === EntityTabs.CUSTOM_PROPERTIES ? (
+              <CustomPropertiesTabLayoutSection
+                entityType={getEntityTypeFromPageType(currentPageType)}
+                propertyLayout={customPropertiesTabLayout}
+                onChange={handleCustomPropertiesTabLayoutChange}
+              />
+            ) : (
+              <ReactGridLayout
+                useCSSTransforms
+                verticalCompact
+                className="grid-container"
+                cols={TAB_GRID_MAX_COLUMNS}
+                draggableHandle=".drag-widget-icon"
+                margin={[16, 16]}
+                preventCollision={false}
+                rowHeight={100}
+                onDrag={handleTabDrag}
+                onDragStop={handleTabDragStop}
+                onLayoutChange={handleLayoutUpdate}>
+                {widgets}
+              </ReactGridLayout>
+            )}
+          </div>
+        </Card>
+      </Grid.Item>
 
       {currentPageType && (
         <AddDetailsPageWidgetModal

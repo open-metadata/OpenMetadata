@@ -262,12 +262,19 @@ const reassignIncidentTask = async (
 ) => {
   const reassignModal = await openIncidentReassignModal(page, testCaseName);
   const assigneeSelect = reassignModal.getByTestId('select-assignee');
-  const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
   const assigneeInput = assigneeSelect.getByRole('combobox');
   const assigneeOption = page.getByTestId(assignee.name.toLowerCase());
 
-  await expect(assigneeSelector).toBeVisible();
-  await assigneeSelector.click();
+  // Single-select core Autocomplete hides its input while an item is selected.
+  const selectedAssignee = assigneeSelect.getByTestId(
+    'autocomplete-selected-item'
+  );
+  if (await selectedAssignee.isVisible()) {
+    await selectedAssignee.getByRole('button').click();
+  }
+
+  await expect(assigneeInput).toBeVisible();
+  await assigneeInput.click();
   await assigneeInput.fill(assignee.displayName);
   await expect(assigneeOption).toBeVisible({ timeout: ACTION_TIMEOUT });
 
@@ -745,15 +752,14 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await openIncidentTaskTab(actorPage, true);
       const resolveModal = await openIncidentResolveDialog(actorPage);
       const resolveTextareas = resolveModal.locator('textarea');
-      const resolveReasonSelect = resolveModal
-        .locator('.ant-select-selector')
-        .first();
+      const resolveReasonSelect = resolveModal.getByRole('button', {
+        name: /Root Cause/i,
+      });
       const textareaCount = await resolveTextareas.count();
 
       if (await resolveReasonSelect.isVisible().catch(() => false)) {
         await resolveReasonSelect.click();
-        await actorPage.keyboard.press('ArrowDown');
-        await actorPage.keyboard.press('Enter');
+        await actorPage.getByRole('option', { name: 'MissingData' }).click();
         await resolveTextareas.first().fill('test');
       } else if (textareaCount >= 2) {
         await resolveTextareas.nth(0).fill('Missing Data');
@@ -1126,7 +1132,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await afterAction();
     }
 
-    await page.click('[data-testid="select-assignee"]');
+    await page.click('[data-testid="select-assignee"] input');
     const assigneeOption = page.locator(
       `[data-testid="${assigneeTestCase.username}"]`
     );
@@ -1152,7 +1158,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     );
     await page
       .getByTestId('select-assignee')
-      .getByLabel('close-circle')
+      .getByTestId('autocomplete-selected-item')
+      .getByRole('button')
       .click();
     await nonAssigneeFilterRes;
 

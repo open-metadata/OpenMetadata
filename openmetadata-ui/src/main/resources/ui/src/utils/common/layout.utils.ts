@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CSSProperties } from 'react';
 
-.request-tags,
-.request-description {
-  .ant-select-custom {
-    margin: 0;
-  }
-}
-
-.task-data {
-  width: unset;
-}
+// Item padding preserves 24-column ratios without gaps consuming all 23 grid tracks.
+export const getLayoutGutter = (
+  horizontal: number,
+  vertical = 0
+): CSSProperties & { '--layout-gutter': string } => ({
+  '--layout-gutter': `var(--om-space-${horizontal})`,
+  marginInline: horizontal
+    ? `calc(var(--om-space-${horizontal}) / -2)`
+    : undefined,
+  rowGap: vertical ? `var(--om-space-${vertical})` : undefined,
+});
