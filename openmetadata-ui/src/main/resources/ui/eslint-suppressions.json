@@ -234,7 +234,7 @@
   },
   "playwright/e2e/Features/IncidentManager.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 9
     }
   },
   "playwright/e2e/Features/IngestionListNameSorting.spec.ts": {
@@ -352,7 +352,7 @@
   },
   "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 4
     }
   },
   "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts": {
@@ -524,7 +524,7 @@
       "count": 1
     },
     "om-playwright/no-positional-locator": {
-      "count": 6
+      "count": 4
     }
   },
   "playwright/e2e/Pages/GlossaryImportExport.spec.ts": {
@@ -535,11 +535,6 @@
   "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 3
-    }
-  },
-  "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts": {
-    "playwright/no-skipped-test": {
-      "count": 1
     }
   },
   "playwright/e2e/Pages/IntakeForm.spec.ts": {
@@ -598,9 +593,6 @@
   "playwright/e2e/Pages/TasksUIFlow.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 5
-    },
-    "playwright/no-wait-for-selector": {
-      "count": 4
     }
   },
   "playwright/e2e/Pages/TestSuite.spec.ts": {
@@ -770,7 +762,7 @@
   },
   "playwright/utils/incidentManager.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 8
+      "count": 7
     }
   },
   "playwright/utils/lineage.ts": {
@@ -838,7 +830,7 @@
   },
   "playwright/utils/userDetails.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   }
 }
