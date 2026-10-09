@@ -11,12 +11,28 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../generated/settings/settings';
+import {
+  ConfigSourceMode,
+  SettingSource,
+  SettingType,
+} from '../../generated/system/settingsSourceResponse';
 import * as securityConfigAPI from '../../rest/securityConfigAPI';
+import { getSettingsSource } from '../../rest/settingConfigAPI';
+import { showErrorToast } from '../../utils/ToastUtils';
 import SettingsSso from './SettingsSso';
+import { SSOConfigurationFormProps } from './SSOConfigurationForm/SSOConfigurationForm.interface';
 
 const mockSecurityConfig: securityConfigAPI.SecurityConfiguration = {
   authenticationConfiguration: {
@@ -52,6 +68,11 @@ jest.mock('../../rest/securityConfigAPI', () => ({
   patchSecurityConfiguration: jest.fn(),
 }));
 
+jest.mock('../../rest/settingConfigAPI', () => ({
+  getSettingsSource: jest.fn(),
+  adoptDeploymentConfig: jest.fn(),
+}));
+
 jest.mock('../../utils/SSOUtilClassBase', () => ({
   default: {
     isSSOEnabled: jest.fn().mockReturnValue(true),
@@ -85,11 +106,12 @@ jest.mock('./ProviderSelector/ProviderSelector', () => {
 });
 
 jest.mock('./SSOConfigurationForm/SSOConfigurationForm', () => {
-  return function SSOConfigurationForm(props: {
-    onChangeProvider?: () => void;
-  }) {
+  return function SSOConfigurationForm(props: SSOConfigurationFormProps) {
     return (
-      <div data-testid="sso-configuration-form">
+      <div
+        data-managed-paths={JSON.stringify(props.managedPaths)}
+        data-read-only={String(Boolean(props.isReadOnly))}
+        data-testid="sso-configuration-form">
         <button
           data-testid="change-provider-button"
           onClick={props.onChangeProvider}>
@@ -164,13 +186,40 @@ type PatchSecurityConfigResponse = Awaited<
   ReturnType<typeof securityConfigAPI.patchSecurityConfiguration>
 >;
 
+const mockGetSettingsSource = getSettingsSource as jest.Mock;
+
+const envSecuritySources = (
+  authenticationPaths: string[],
+  authorizerPaths: string[] = ['/adminEmails']
+): SettingSource[] => [
+  {
+    configType: SettingType.AuthenticationConfiguration,
+    source: ConfigSourceMode.Env,
+    sourceVariable: 'SECURITY_CONFIG_SOURCE',
+    editable: false,
+    managedPaths: authenticationPaths,
+  },
+  {
+    configType: SettingType.AuthorizerConfiguration,
+    source: ConfigSourceMode.Env,
+    sourceVariable: 'SECURITY_CONFIG_SOURCE',
+    editable: false,
+    managedPaths: authorizerPaths,
+  },
+];
+
 const renderComponent = (searchParams = '') => {
   const initialEntries = searchParams ? [`/?${searchParams}`] : ['/'];
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
 
   return render(
-    <MemoryRouter initialEntries={initialEntries}>
-      <SettingsSso />
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={initialEntries}>
+        <SettingsSso />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 };
 
@@ -180,6 +229,7 @@ describe('SettingsSso', () => {
     mockGetSecurityConfiguration.mockResolvedValue({
       data: mockSecurityConfig,
     } as unknown as GetSecurityConfigResponse);
+    mockGetSettingsSource.mockResolvedValue({ settings: [] });
   });
 
   describe('Initial Loading', () => {
@@ -468,12 +518,12 @@ describe('SettingsSso', () => {
 
       // Should show provider selector on error
       expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      expect(showErrorToast).toHaveBeenCalledWith(mockError);
     });
 
     it('should handle SSO toggle error gracefully', async () => {
-      mockPatchSecurityConfiguration.mockRejectedValue(
-        new Error('Update failed')
-      );
+      const updateError = new Error('Update failed');
+      mockPatchSecurityConfiguration.mockRejectedValue(updateError);
 
       renderComponent();
 
@@ -494,6 +544,178 @@ describe('SettingsSso', () => {
       await waitFor(() => {
         expect(mockPatchSecurityConfiguration).toHaveBeenCalled();
       });
+
+      // A field the deployment owns is rejected with a 409 that names the variable; the admin
+      // must see it rather than the toggle silently flipping back.
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalledWith(updateError);
+      });
+
+      expect(toggleSwitch).toBeChecked();
+    });
+  });
+
+  describe('Deployment configuration source', () => {
+    const basicSecurityConfig = {
+      ...mockSecurityConfig,
+      authenticationConfiguration: {
+        ...mockSecurityConfig.authenticationConfiguration,
+        provider: AuthProvider.Basic,
+      },
+    };
+
+    const openConfigureTab = async () => {
+      await waitFor(() => {
+        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByRole('tab', { name: /label.configure/i }));
+
+      return screen.findByTestId('sso-configuration-form');
+    };
+
+    it('should explain that the deployment configuration owns the security settings', async () => {
+      mockGetSettingsSource.mockResolvedValue({
+        settings: envSecuritySources(['/provider', '/clientId']),
+      });
+      renderComponent();
+
+      expect(
+        await screen.findByTestId('settings-source-env-alert')
+      ).toHaveTextContent('label.managed-by-deployment-configuration');
+      expect(screen.getAllByTestId('settings-source-env-alert')).toHaveLength(
+        1
+      );
+    });
+
+    it('should lock only the deployment-owned fields of the form', async () => {
+      mockGetSettingsSource.mockResolvedValue({
+        settings: envSecuritySources(['/clientId']),
+      });
+      renderComponent();
+      await screen.findByTestId('settings-source-env-alert');
+
+      const form = await openConfigureTab();
+
+      expect(JSON.parse(form.dataset.managedPaths ?? '{}')).toEqual({
+        authenticationConfiguration: ['/clientId'],
+        authorizerConfiguration: ['/adminEmails'],
+      });
+      expect(form).toHaveAttribute('data-read-only', 'false');
+    });
+
+    it('should make the form read-only when the deployment owns both settings', async () => {
+      mockGetSettingsSource.mockResolvedValue({
+        settings: envSecuritySources(['/'], ['/']),
+      });
+      renderComponent();
+      await screen.findByTestId('settings-source-env-alert');
+
+      const form = await openConfigureTab();
+
+      expect(form).toHaveAttribute('data-read-only', 'true');
+    });
+
+    it('should leave the form editable when no setting is managed by the deployment', async () => {
+      renderComponent();
+
+      const form = await openConfigureTab();
+
+      expect(form).toHaveAttribute('data-read-only', 'false');
+      expect(
+        screen.queryByTestId('settings-source-banner')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should disable the self-signup toggle when the deployment sets it', async () => {
+      mockGetSettingsSource.mockResolvedValue({
+        settings: envSecuritySources(['/enableSelfSignup']),
+      });
+      renderComponent();
+      await screen.findByTestId('settings-source-env-alert');
+
+      await waitFor(() => {
+        expect(screen.getAllByRole('switch')[0]).toBeDisabled();
+      });
+    });
+
+    it('should not offer other providers when the deployment sets the provider', async () => {
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: basicSecurityConfig,
+      } as unknown as GetSecurityConfigResponse);
+      mockGetSettingsSource.mockResolvedValue({
+        settings: envSecuritySources(['/provider']),
+      });
+      renderComponent();
+
+      await screen.findByTestId('settings-source-env-alert');
+
+      expect(screen.queryByTestId('provider-selector')).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId('sso-provider-set-by-deployment')
+      ).toHaveTextContent('message.sso-provider-set-by-deployment');
+    });
+
+    it('should not start a new configuration when the deployment sets the provider', async () => {
+      mockGetSecurityConfiguration.mockResolvedValue({
+        data: basicSecurityConfig,
+      } as unknown as GetSecurityConfigResponse);
+      mockGetSettingsSource.mockResolvedValue({
+        settings: envSecuritySources(['/provider']),
+      });
+      renderComponent(`provider=${AuthProvider.Okta}`);
+
+      await screen.findByTestId('settings-source-env-alert');
+
+      expect(
+        screen.queryByTestId('sso-configuration-form')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('provider-selector')).not.toBeInTheDocument();
+    });
+
+    it('should reload the configuration once deployment values are adopted', async () => {
+      const { adoptDeploymentConfig } = jest.requireMock(
+        '../../rest/settingConfigAPI'
+      );
+      adoptDeploymentConfig.mockResolvedValue({});
+      mockGetSettingsSource.mockResolvedValue({
+        settings: [
+          {
+            configType: SettingType.AuthenticationConfiguration,
+            source: ConfigSourceMode.Auto,
+            sourceVariable: 'SECURITY_CONFIG_SOURCE',
+            editable: true,
+            overriddenFields: [
+              {
+                path: '/oidcConfiguration/clientAuthenticationMethod',
+                envVariable: 'OIDC_CLIENT_AUTH_METHOD',
+              },
+            ],
+          },
+        ],
+      });
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      renderComponent();
+
+      await user.click(
+        await screen.findByTestId('use-deployment-value-button')
+      );
+      const dialog = await screen.findByRole('dialog');
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: 'label.use-deployment-value',
+        })
+      );
+
+      await waitFor(() => {
+        expect(mockGetSecurityConfiguration).toHaveBeenCalledTimes(2);
+      });
+
+      expect(adoptDeploymentConfig).toHaveBeenCalledWith(
+        SettingType.AuthenticationConfiguration,
+        ['/oidcConfiguration/clientAuthenticationMethod']
+      );
     });
   });
 

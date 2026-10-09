@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.config.source.SettingsChangeWatcher;
 
 @Slf4j
 public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConfig> {
@@ -120,6 +121,12 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
                     wsManager.disconnectAllForUser(msg.id());
                   }
                 }
+                return;
+              }
+              // A setting changed on another server: check the stored settings now rather than at
+              // the next poll. No entity changed, so no entity cache is touched.
+              if (CacheInvalidationPubSub.TYPE_SETTINGS.equals(msg.type())) {
+                SettingsChangeWatcher.requestImmediatePoll();
                 return;
               }
               // Non-entity signals ride this channel too (a persona context rebuild mutates no

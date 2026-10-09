@@ -31,19 +31,34 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import SettingsSourceBanner from '../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import TestEmail from '../../components/Settings/Email/TestEmail/TestEmail.component';
 import { ROUTES } from '../../constants/constants';
-import { NOT_INCLUDE_EMAIL_CONFIG_VALUE } from '../../constants/EmailConfig.constants';
+import {
+  EMAIL_CONFIG_FORM_FIELDS,
+  NOT_INCLUDE_EMAIL_CONFIG_VALUE,
+} from '../../constants/EmailConfig.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useAuth } from '../../hooks/authHooks';
+import { useSettingsSource } from '../../hooks/platform/useSettingsSource';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEmailConfigFieldLabels } from '../../utils/EmailConfigUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import {
+  areAllPathsManaged,
+  findSettingSource,
+  toJsonPointer,
+} from '../../utils/platform/settingsSource.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
+
+const EMAIL_SETTING_TYPES = [SettingType.EmailConfiguration];
+const EMAIL_FORM_POINTERS = EMAIL_CONFIG_FORM_FIELDS.map((field) =>
+  toJsonPointer(field)
+);
 
 function EmailConfigSettingsPage() {
   const { t } = useTranslation();
@@ -52,6 +67,16 @@ function EmailConfigSettingsPage() {
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
   const [isTeamEmailOpen, setIsTestEmailOpen] = useState<boolean>(false);
+  const {
+    sources,
+    isLoading: isSourceLoading,
+    refetch: refetchSources,
+  } = useSettingsSource(EMAIL_SETTING_TYPES);
+  // Editing is pointless when the deployment owns every field the form shows.
+  const isManagedByDeployment = areAllPathsManaged(
+    findSettingSource(sources, SettingType.EmailConfiguration),
+    EMAIL_FORM_POINTERS
+  );
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -190,26 +215,35 @@ function EmailConfigSettingsPage() {
                 </Button>
               )}
 
-              {loading ? (
+              {loading || isSourceLoading ? (
                 <ButtonSkeleton />
               ) : (
-                <Button
-                  className="m-l-md"
-                  icon={
-                    !isUndefined(emailConfigValues) && (
-                      <Icon component={IconEdit} size={12} />
-                    )
-                  }
-                  onClick={handleEditClick}>
-                  {isUndefined(emailConfigValues)
-                    ? t('label.add')
-                    : t('label.edit')}
-                </Button>
+                !isManagedByDeployment && (
+                  <Button
+                    className="m-l-md"
+                    data-testid="edit-email-configuration"
+                    icon={
+                      !isUndefined(emailConfigValues) && (
+                        <Icon component={IconEdit} size={12} />
+                      )
+                    }
+                    onClick={handleEditClick}>
+                    {isUndefined(emailConfigValues)
+                      ? t('label.add')
+                      : t('label.edit')}
+                  </Button>
+                )
               )}
             </Box>
           </Box>
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>
+          <SettingsSourceBanner
+            className="tw:mb-4"
+            sources={sources}
+            onAdopted={fetchEmailConfigValues}
+            onRefetch={refetchSources}
+          />
           {configValuesContainer}
         </Grid.Item>
       </Grid>

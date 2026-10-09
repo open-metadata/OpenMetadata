@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
@@ -20,6 +21,11 @@ import { LoginConfiguration } from '../generated/configuration/loginConfiguratio
 import { SearchSettings } from '../generated/configuration/searchSettings';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../generated/settings/settings';
+import { AdoptDeploymentConfigRequest } from '../generated/system/adoptDeploymentConfigRequest';
+import {
+  SettingSource,
+  SettingsSourceResponse,
+} from '../generated/system/settingsSourceResponse';
 import axiosClient from './axiosClient';
 
 export type RelationCategory = 'hierarchical' | 'associative' | 'equivalence';
@@ -60,6 +66,54 @@ export const updateSettingsConfig = async (payload: Settings) => {
   const response = await axiosClient.put<Settings>(`/system/settings`, payload);
 
   return response;
+};
+
+/**
+ * Changes only the fields named by the patch, so a write cannot overwrite fields of the setting
+ * that this client never read (unlike {@link updateSettingsConfig}, which replaces the setting).
+ */
+export const patchSettingsConfig = async (
+  configType: SettingType,
+  patches: Operation[]
+) => {
+  const response = await axiosClient.patch<
+    Operation[],
+    AxiosResponse<Settings>
+  >(`/system/settings/${configType}`, patches, {
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+
+  return response.data;
+};
+
+/**
+ * Admin-only. For each setting that lives both in the deployment configuration and in the
+ * database: where it takes its values from, the fields the deployment owns, and the deployment
+ * values the stored setting overrides.
+ */
+export const getSettingsSource = async () => {
+  const response = await axiosClient.get<SettingsSourceResponse>(
+    '/system/settings/source'
+  );
+
+  return response.data;
+};
+
+/**
+ * Admin-only. Replaces the stored values of `paths` (every overridden field when omitted) with
+ * the deployment values, and returns the setting's source status after the change.
+ */
+export const adoptDeploymentConfig = async (
+  configType: SettingSource['configType'],
+  paths?: string[]
+) => {
+  const request: AdoptDeploymentConfigRequest = { paths };
+  const response = await axiosClient.post<
+    AdoptDeploymentConfigRequest,
+    AxiosResponse<SettingSource>
+  >(`/system/settings/source/${configType}/adopt`, request);
+
+  return response.data;
 };
 
 export const getCustomUiThemePreference = async () => {

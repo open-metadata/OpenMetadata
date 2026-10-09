@@ -47,6 +47,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.WebServiceException;
@@ -106,7 +107,12 @@ public final class SecurityUtil {
   }
 
   public static String getDomain(OpenMetadataApplicationConfig config) {
-    String principalDomain = config.getAuthorizerConfiguration().getPrincipalDomain();
+    return getDomain(config.getAuthorizerConfiguration());
+  }
+
+  /** The principal domain of {@code authorizer}, or the default when it sets none. */
+  public static String getDomain(AuthorizerConfiguration authorizer) {
+    String principalDomain = authorizer == null ? null : authorizer.getPrincipalDomain();
     return CommonUtil.nullOrEmpty(principalDomain) ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
   }
 

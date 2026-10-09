@@ -8,8 +8,8 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Suppliers;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.SearchResult;
@@ -35,7 +35,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -94,14 +93,23 @@ import org.openmetadata.service.attachments.NoOpAssetService;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
+import org.openmetadata.service.config.source.ConfigSources;
+import org.openmetadata.service.config.source.DeploymentSettingPreparer;
+import org.openmetadata.service.config.source.DualSourceSetting;
+import org.openmetadata.service.config.source.SettingsChangeAnnouncer;
+import org.openmetadata.service.config.source.SettingsChangeWatcher;
+import org.openmetadata.service.config.source.SettingsSecrets;
+import org.openmetadata.service.config.source.SettingsWriteGuard;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO.SecuritySettingsUpdate;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
@@ -119,6 +127,7 @@ import org.openmetadata.service.security.BotTokenCheck.UnusableBot;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.TokenValidityResolver;
+import org.openmetadata.service.security.auth.ActiveProviderValidator;
 import org.openmetadata.service.security.auth.LdapDirectoryValidation;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -145,7 +154,7 @@ import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
 
 @Slf4j
 @Repository
-public class SystemRepository {
+public class SystemRepository implements DeploymentSettingPreparer {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
   private static final String GLOSSARY_TERM_RELATION_SETTINGS_CHANGED =
       "Glossary term relation settings changed while the JSON Patch was being applied";
@@ -158,16 +167,17 @@ public class SystemRepository {
   private static final Set<String> SYSTEM_BOT_TYPES = Set.of(Entity.BOT, Entity.USER);
   private static final String UNUSABLE_TOKEN_LINE = "Token not usable: bot %s (%s)";
   private static final String LDAP_VALIDATION_KEY = "LDAP";
+  private static final String PUBLIC_KEY_URLS_PATH = "/publicKeyUrls";
   private final SystemDAO dao;
   private final MigrationValidationClient migrationValidationClient;
   private final BotTokenCheck botTokenCheck = BotTokenCheck.forSystemBots();
-  // Built on first use: the security configuration is loaded by then.
-  private final Supplier<JwtFilter> statusJwtFilter =
-      Suppliers.memoize(
-          () ->
-              new JwtFilter(
-                  SecurityConfigurationManager.getCurrentAuthConfig(),
-                  SecurityConfigurationManager.getCurrentAuthzConfig()));
+  private volatile StatusJwtFilter statusJwtFilter;
+
+  /** The health check's JWT filter and the security configuration it was built from. */
+  private record StatusJwtFilter(
+      AuthenticationConfiguration authentication,
+      AuthorizerConfiguration authorizer,
+      JwtFilter filter) {}
 
   private enum ValidationStepDescription {
     DATABASE("Validate that we can properly run a query against the configured database."),
@@ -276,16 +286,94 @@ public class SystemRepository {
 
     // Apply LDAP default values to prevent JSON PATCH errors when updating fields that were
     // previously null
-    if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+    if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION
+        && fetchedSettings.getConfigValue() != null) {
       AuthenticationConfiguration authConfig =
-          (AuthenticationConfiguration) fetchedSettings.getConfigValue();
-      if (authConfig != null && authConfig.getLdapConfiguration() != null) {
+          decryptedAuthentication((AuthenticationConfiguration) fetchedSettings.getConfigValue());
+      if (authConfig.getLdapConfiguration() != null) {
         ensureLdapConfigDefaultValues(authConfig.getLdapConfiguration());
-        fetchedSettings.setConfigValue(authConfig);
       }
+      fetchedSettings.setConfigValue(authConfig);
     }
 
     return fetchedSettings;
+  }
+
+  /**
+   * The stored security configuration, read fresh from the database rather than from this server's
+   * memory, which may be behind a change made on another server; null when a row is missing.
+   */
+  public StoredSecurityConfiguration getStoredSecurityConfiguration() {
+    String authenticationJson =
+        dao.getConfigJsonWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+    String authorizerJson = dao.getConfigJsonWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
+    StoredSecurityConfiguration stored = null;
+    if (authenticationJson != null && authorizerJson != null) {
+      AuthenticationConfiguration authentication =
+          decryptedAuthentication(
+              JsonUtils.readValue(authenticationJson, AuthenticationConfiguration.class));
+      if (authentication.getLdapConfiguration() != null) {
+        ensureLdapConfigDefaultValues(authentication.getLdapConfiguration());
+      }
+      SecurityConfiguration configuration =
+          new SecurityConfiguration()
+              .withAuthenticationConfiguration(authentication)
+              .withAuthorizerConfiguration(
+                  JsonUtils.readValue(authorizerJson, AuthorizerConfiguration.class));
+      stored = new StoredSecurityConfiguration(configuration, authenticationJson, authorizerJson);
+    }
+    return stored;
+  }
+
+  /**
+   * Writes both security settings unless one changed since {@code stored} was read, which fails
+   * with a 412 instead of silently undoing that change.
+   */
+  public void updateSecurityConfigurationIfCurrent(
+      SecurityConfiguration updated, StoredSecurityConfiguration stored) {
+    Settings authentication =
+        new Settings()
+            .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(updated.getAuthenticationConfiguration());
+    Settings authorizer =
+        new Settings()
+            .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+            .withConfigValue(updated.getAuthorizerConfiguration());
+    assertDeploymentFieldsUnchanged(authentication);
+    assertDeploymentFieldsUnchanged(authorizer);
+    dao.updateSecuritySettingsIfCurrent(
+        securityUpdate(authentication, stored.authenticationJson()),
+        securityUpdate(authorizer, stored.authorizerJson()));
+    settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
+    settingUpdated(SettingsType.AUTHORIZER_CONFIGURATION);
+  }
+
+  private SecuritySettingsUpdate securityUpdate(Settings setting, String expectedJson) {
+    return new SecuritySettingsUpdate(
+        setting.getConfigType().value(), expectedJson, prepareSettingForUpdate(setting));
+  }
+
+  /**
+   * Rejects {@code updated} before anything is validated or written when it changes a field the
+   * deployment configuration owns, so a write of both security settings never stops halfway.
+   */
+  public void assertSecurityConfigurationWritable(SecurityConfiguration updated) {
+    assertDeploymentFieldsUnchanged(
+        new Settings()
+            .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(updated.getAuthenticationConfiguration()));
+    assertDeploymentFieldsUnchanged(
+        new Settings()
+            .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+            .withConfigValue(updated.getAuthorizerConfiguration()));
+  }
+
+  private static AuthenticationConfiguration decryptedAuthentication(
+      AuthenticationConfiguration stored) {
+    return JsonUtils.convertValue(
+        SettingsSecrets.decrypted(
+            SettingsType.AUTHENTICATION_CONFIGURATION, JsonUtils.valueToTree(stored)),
+        AuthenticationConfiguration.class);
   }
 
   public AssetCertificationSettings getAssetCertificationSettings() {
@@ -378,7 +466,8 @@ public class SystemRepository {
 
     try {
       updateSetting(setting);
-    } catch (BadRequestException ex) {
+    } catch (BadRequestException | SettingsManagedByEnvironmentException ex) {
+      // Callers such as administration jobs only notice a rejection that is thrown.
       throw ex;
     } catch (Exception ex) {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
@@ -396,7 +485,8 @@ public class SystemRepository {
   public Response createNewSetting(Settings setting) {
     try {
       updateSetting(setting);
-    } catch (BadRequestException ex) {
+    } catch (BadRequestException | SettingsManagedByEnvironmentException ex) {
+      // Callers such as administration jobs only notice a rejection that is thrown.
       throw ex;
     } catch (Exception ex) {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
@@ -410,6 +500,8 @@ public class SystemRepository {
   public Response deleteSettings(SettingsType type) {
     Settings oldValue = getConfigWithKey(type.toString());
     dao.delete(type.value());
+    SettingsCache.invalidateSettings(type.value());
+    SettingsChangeAnnouncer.announce(type);
     return (new RestUtil.DeleteResponse<>(oldValue, ENTITY_DELETED)).toResponse();
   }
 
@@ -498,6 +590,17 @@ public class SystemRepository {
   }
 
   private void postUpdate(SettingsType settingsType) {
+    SettingsChangeWatcher.acknowledgeLocalWrite(settingsType);
+    refreshLocalState(settingsType);
+    // Rebuilding indexes changes shared state, so only the server that wrote the setting does it.
+    if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
+      Entity.getSearchRepository().reconcileColumnIndex();
+    }
+    SettingsChangeAnnouncer.announce(settingsType);
+  }
+
+  /** Refreshes what this server derives from a setting; every server runs it after a change. */
+  public void refreshLocalState(SettingsType settingsType) {
     if (settingsType == SettingsType.WORKFLOW_SETTINGS) {
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       workflowHandler.initializeNewProcessEngine(workflowHandler.getProcessEngineConfiguration());
@@ -506,13 +609,10 @@ public class SystemRepository {
     if (settingsType == SettingsType.LOGIN_CONFIGURATION) {
       LoginAttemptCache.updateLoginConfiguration();
     }
-
-    if (settingsType == SettingsType.SEARCH_SETTINGS && Entity.getSearchRepository() != null) {
-      Entity.getSearchRepository().reconcileColumnIndex();
-    }
   }
 
   public void updateSetting(Settings setting) {
+    assertDeploymentFieldsUnchanged(setting);
     try {
       String updatedJson = prepareSettingForUpdate(setting);
       dao.insertSettings(setting.getConfigType().toString(), updatedJson);
@@ -529,6 +629,7 @@ public class SystemRepository {
   }
 
   private void updateSettingIfCurrent(Settings setting, String expectedJson) {
+    assertDeploymentFieldsUnchanged(setting);
     try {
       String updatedJson = prepareSettingForUpdate(setting);
       int updated =
@@ -594,7 +695,64 @@ public class SystemRepository {
       JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
       setting.setConfigValue(authorizerConfig);
     }
-    return JsonUtils.pojoToJson(setting.getConfigValue());
+    return storageJsonOf(setting);
+  }
+
+  /** Authentication secrets are stored Fernet-encrypted; the caller keeps the clear values. */
+  private static String storageJsonOf(Settings setting) {
+    Object value = setting.getConfigValue();
+    return setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION
+        ? JsonUtils.pojoToJson(
+            SettingsSecrets.encrypted(setting.getConfigType(), JsonUtils.valueToTree(value)))
+        : JsonUtils.pojoToJson(value);
+  }
+
+  /**
+   * A setting whose source is ENV may only change the fields its deployment configuration does
+   * not define; the next start would overwrite them otherwise.
+   */
+  private void assertDeploymentFieldsUnchanged(Settings setting) {
+    SettingsType type = setting.getConfigType();
+    if (ConfigSources.isManagedByDeployment(type)) {
+      String storedJson = dao.getConfigJsonWithKey(type.value());
+      JsonNode stored =
+          storedJson == null
+              ? null
+              : SettingsSecrets.decrypted(type, JsonUtils.readTree(storedJson));
+      SettingsWriteGuard.assertWritable(
+          type, stored, JsonUtils.valueToTree(setting.getConfigValue()));
+    }
+  }
+
+  /**
+   * Validates a value reconciled from the deployment configuration like an API write of the
+   * setting, without calling the identity provider, and returns the JSON to store.
+   */
+  @Override
+  public String prepareReconciled(SettingsType type, JsonNode value) {
+    Settings setting = settingsOf(type, value);
+    OpenMetadataBaseUrlValidator.validate(setting);
+    if (setting.getConfigValue() instanceof AuthenticationConfiguration authConfig) {
+      ActiveProviderValidator.validate(authConfig, authConfig);
+    }
+    return prepareSettingForUpdate(setting);
+  }
+
+  /** Applies the checks a first start always ran on a seeded value; returns the JSON to store. */
+  @Override
+  public String prepareSeed(SettingsType type, JsonNode value) {
+    return prepareSettingForUpdate(settingsOf(type, value));
+  }
+
+  private static Settings settingsOf(SettingsType type, JsonNode value) {
+    Class<?> valueClass =
+        DualSourceSetting.of(type)
+            .map(DualSourceSetting::valueClass)
+            .orElseThrow(
+                () -> new IllegalArgumentException(type + " is not a dual-source setting"));
+    return new Settings()
+        .withConfigType(type)
+        .withConfigValue(JsonUtils.convertValue(value, valueClass));
   }
 
   /**
@@ -749,7 +907,27 @@ public class SystemRepository {
         applicationConfig,
         PipelineServiceClientFactory.createPipelineServiceClient(
             applicationConfig.getPipelineServiceClientConfiguration()),
-        statusJwtFilter.get());
+        statusJwtFilter());
+  }
+
+  /**
+   * Built on first use, when the security configuration is loaded, and rebuilt after a reload
+   * replaces it, so the check validates tokens against the keys the server uses now.
+   */
+  private JwtFilter statusJwtFilter() {
+    AuthenticationConfiguration authentication =
+        SecurityConfigurationManager.getCurrentAuthConfig();
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    StatusJwtFilter cached = statusJwtFilter;
+    if (cached == null
+        || cached.authentication() != authentication
+        || cached.authorizer() != authorizer) {
+      cached =
+          new StatusJwtFilter(
+              authentication, authorizer, new JwtFilter(authentication, authorizer));
+      statusJwtFilter = cached;
+    }
+    return cached.filter();
   }
 
   public ValidationResponse validateSystem(
@@ -2000,6 +2178,13 @@ public class SystemRepository {
 
     if (!isOidcProvider || !isConfidentialClient) {
       LOG.debug("Skipping publicKeyUrls resolution - not OIDC confidential client");
+      return;
+    }
+
+    // In ENV mode the deployment sets the keys; replacing them would make every save a 409.
+    if (SettingsWriteGuard.isDeploymentOwned(
+        SettingsType.AUTHENTICATION_CONFIGURATION, PUBLIC_KEY_URLS_PATH)) {
+      LOG.debug("Keeping publicKeyUrls: the deployment configuration owns them");
       return;
     }
 

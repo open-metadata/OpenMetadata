@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -39,8 +40,11 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
-    LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
-    logDeprecationWarnings(config.getAuthorizerConfiguration());
+    AuthorizerConfiguration current = SecurityConfigurationManager.getCurrentAuthzConfig();
+    AuthorizerConfiguration inEffect =
+        current == null ? config.getAuthorizerConfiguration() : current;
+    LOG.info("Initializing DefaultAuthorizer with config {}", inEffect);
+    logDeprecationWarnings(inEffect);
   }
 
   private void logDeprecationWarnings(AuthorizerConfiguration config) {

@@ -35,6 +35,7 @@ import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.AdminOpsConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
 import org.openmetadata.schema.configuration.CdnConfiguration;
+import org.openmetadata.schema.configuration.ConfigSourceConfiguration;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.configuration.SentryConfiguration;
@@ -78,6 +79,17 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("authenticationConfiguration")
   private AuthenticationConfiguration authenticationConfiguration;
+
+  @JsonProperty("configSource")
+  @Valid
+  private ConfigSourceConfiguration configSourceConfiguration;
+
+  public ConfigSourceConfiguration getConfigSourceConfiguration() {
+    if (configSourceConfiguration == null) {
+      configSourceConfiguration = new ConfigSourceConfiguration();
+    }
+    return configSourceConfiguration;
+  }
 
   @JsonProperty("jwtTokenConfiguration")
   private JWTTokenConfiguration jwtTokenConfiguration;

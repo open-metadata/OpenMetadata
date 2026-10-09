@@ -19,6 +19,7 @@ import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 
 import io.dropwizard.core.setup.Environment;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +29,11 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.config.source.ConfigSources;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
@@ -152,7 +155,40 @@ public class SecurityConfigurationManager {
         .withAuthorizerConfiguration(state.authorizerConfiguration());
   }
 
-  public void reloadSecuritySystem() {
+  /**
+   * Reloads only when the stored configuration differs from the one this server runs. Used when
+   * another server, the CLI or an administration job changed the stored configuration.
+   */
+  public synchronized boolean reloadIfStoredChanged() {
+    SecurityState stored =
+        new SecurityState(
+            SettingsCache.getSetting(
+                AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class),
+            SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class));
+    MCPConfiguration storedMcp =
+        SettingsCache.getSettingOrDefault(
+            MCP_CONFIGURATION, deploymentMcpConfiguration(), MCPConfiguration.class);
+    boolean changed = !sameJson(stored, currentState) || !sameJson(storedMcp, currentMcpConfig);
+    if (changed) {
+      reloadSecuritySystem();
+    }
+    return changed;
+  }
+
+  private static boolean sameJson(Object left, Object right) {
+    return Objects.equals(JsonUtils.pojoToJson(left), JsonUtils.pojoToJson(right));
+  }
+
+  /** The MCP configuration of the configuration file; reloads must not lose it when none is stored. */
+  private MCPConfiguration deploymentMcpConfiguration() {
+    return ConfigSources.deployment()
+        .flatMap(deployment -> deployment.setting(MCP_CONFIGURATION))
+        .map(setting -> JsonUtils.convertValue(setting.value(), MCPConfiguration.class))
+        .orElse(null);
+  }
+
+  /** Synchronized: a reload requested by the API and one noticed by the watcher must not overlap. */
+  public synchronized void reloadSecuritySystem() {
     try {
       previousSecurityConfig = getCurrentSecurityConfig();
       previousMcpConfig = currentMcpConfig;
@@ -162,18 +198,9 @@ public class SecurityConfigurationManager {
                   AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class),
               SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class));
       currentMcpConfig =
-          SettingsCache.getSettingOrDefault(MCP_CONFIGURATION, null, MCPConfiguration.class);
-
-      OpenMetadataApplicationConfig appConfig = this.config;
-      SecurityState state = currentState;
-      appConfig.setAuthenticationConfiguration(state.authenticationConfiguration());
-      appConfig.setAuthorizerConfiguration(state.authorizerConfiguration());
-      if (currentMcpConfig != null) {
-        appConfig.setMcpConfiguration(currentMcpConfig);
-      }
-
-      application.reinitializeAuthSystem(appConfig, environment);
-
+          SettingsCache.getSettingOrDefault(
+              MCP_CONFIGURATION, deploymentMcpConfiguration(), MCPConfiguration.class);
+      applyToApplication();
       notifyListeners();
 
       LOG.info("Successfully reloaded security system with new configuration");
@@ -215,6 +242,23 @@ public class SecurityConfigurationManager {
     }
   }
 
+  /** Copies the current state into the application configuration and rebuilds authentication. */
+  private void applyToApplication() {
+    OpenMetadataApplicationConfig appConfig = this.config;
+    SecurityState state = currentState;
+    appConfig.setAuthenticationConfiguration(state.authenticationConfiguration());
+    appConfig.setAuthorizerConfiguration(state.authorizerConfiguration());
+    if (currentMcpConfig != null) {
+      appConfig.setMcpConfiguration(currentMcpConfig);
+    }
+    application.reinitializeAuthSystem(appConfig, environment);
+  }
+
+  /**
+   * Restores the previous configuration everywhere the failed reload reached, including the
+   * application configuration and the authenticators it may already have replaced, so this server
+   * is never left half switched.
+   */
   private void rollbackConfiguration() {
     if (previousSecurityConfig != null) {
       currentState =
@@ -222,7 +266,16 @@ public class SecurityConfigurationManager {
               previousSecurityConfig.getAuthenticationConfiguration(),
               previousSecurityConfig.getAuthorizerConfiguration());
       currentMcpConfig = previousMcpConfig;
+      restoreApplication();
       LOG.info("Rolled back to previous security configuration");
+    }
+  }
+
+  private void restoreApplication() {
+    try {
+      applyToApplication();
+    } catch (RuntimeException failure) {
+      LOG.error("Could not rebuild authentication for the previous configuration", failure);
     }
   }
 

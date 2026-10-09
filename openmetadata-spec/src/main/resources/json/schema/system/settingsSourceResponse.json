@@ -1,0 +1,81 @@
+{
+  "$id": "https://open-metadata.org/schema/system/settingsSourceResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SettingsSourceResponse",
+  "description": "Where each setting that exists both in the deployment configuration and in the database takes its values from, and which deployment values the stored configuration currently overrides.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.SettingsSourceResponse",
+  "definitions": {
+    "overriddenField": {
+      "javaType": "org.openmetadata.schema.system.OverriddenSettingField",
+      "description": "A field set deliberately in the deployment configuration whose stored value differs.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "JSON pointer of the field inside the setting, for example /oidcConfiguration/clientAuthenticationMethod.",
+          "type": "string"
+        },
+        "envVariable": {
+          "description": "Environment variable that sets the field in the deployment configuration, when the configuration file uses one.",
+          "type": "string"
+        }
+      },
+      "required": ["path"],
+      "additionalProperties": false
+    },
+    "settingSource": {
+      "javaType": "org.openmetadata.schema.system.SettingSource",
+      "description": "Source status of one setting.",
+      "type": "object",
+      "properties": {
+        "configType": {
+          "description": "The setting.",
+          "$ref": "../settings/settings.json#/definitions/settingType"
+        },
+        "source": {
+          "description": "Where the setting takes its values from.",
+          "$ref": "../configuration/configSourceConfiguration.json#/definitions/configSourceMode"
+        },
+        "sourceVariable": {
+          "description": "Environment variable that selects the source of this setting.",
+          "type": "string"
+        },
+        "editable": {
+          "description": "False when every field of the setting is owned by the deployment configuration.",
+          "type": "boolean"
+        },
+        "managedPaths": {
+          "description": "Fields owned by the deployment configuration. They cannot be changed through the API.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "overriddenFields": {
+          "description": "Fields set deliberately in the deployment configuration whose stored value differs.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/overriddenField"
+          }
+        },
+        "lastReloadError": {
+          "description": "Why this server could not apply the latest stored value of the setting, if it could not.",
+          "type": "string"
+        }
+      },
+      "required": ["configType", "source", "editable"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "settings": {
+      "description": "One entry per setting that exists both in the deployment configuration and in the database.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/settingSource"
+      }
+    }
+  },
+  "required": ["settings"],
+  "additionalProperties": false
+}

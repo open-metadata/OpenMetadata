@@ -13,7 +13,13 @@
 import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
+import { mockSettingsSource } from '../../utils/settingsSource';
 import { settingClick } from '../../utils/sidebar';
+
+const URL_SETTING = {
+  config_type: 'openMetadataBaseUrlConfiguration',
+  config_value: { openMetadataUrl: 'https://metadata.example.com' },
+};
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -64,5 +70,97 @@ test.describe('OM URL configuration', () => {
 
     await expect(page.getByText('Invalid URL format')).toBeVisible();
     expect(settingsUpdated).toBe(false);
+  });
+});
+
+test.describe('OM URL configuration source', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route(
+      '**/api/v1/system/settings/openMetadataBaseUrlConfiguration',
+      (route) => route.fulfill({ json: URL_SETTING })
+    );
+  });
+
+  test('cannot be edited when the deployment configuration sets it', async ({
+    page,
+  }) => {
+    await mockSettingsSource(page, [
+      {
+        configType: 'openMetadataBaseUrlConfiguration',
+        source: 'ENV',
+        sourceVariable: 'SERVER_URL_CONFIG_SOURCE',
+        editable: false,
+        managedPaths: ['/openMetadataUrl'],
+      },
+    ]);
+
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.OM_URL_CONFIG);
+
+    await expect(page.getByTestId('settings-source-env-alert')).toContainText(
+      'SERVER_URL_CONFIG_SOURCE=ENV'
+    );
+    await expect(page.getByTestId('open-metadata-url')).toHaveText(
+      'https://metadata.example.com'
+    );
+    await expect(page.getByTestId('edit-button')).not.toBeVisible();
+  });
+
+  test('takes the deployment value when the saved one overrides it', async ({
+    page,
+  }) => {
+    const adoptRequests = await mockSettingsSource(page, [
+      {
+        configType: 'openMetadataBaseUrlConfiguration',
+        source: 'AUTO',
+        sourceVariable: 'SERVER_URL_CONFIG_SOURCE',
+        editable: true,
+        overriddenFields: [
+          { path: '/openMetadataUrl', envVariable: 'OPENMETADATA_SERVER_URL' },
+        ],
+      },
+    ]);
+
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.OM_URL_CONFIG);
+
+    const overriddenAlert = page.getByTestId(
+      'settings-source-overridden-alert'
+    );
+
+    await expect(overriddenAlert).toContainText(
+      '/openMetadataUrl (set by OPENMETADATA_SERVER_URL)'
+    );
+    await expect(page.getByTestId('edit-button')).toBeVisible();
+
+    await overriddenAlert
+      .getByRole('button', { name: 'Use deployment value' })
+      .click();
+
+    const settingReload = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response
+          .url()
+          .endsWith('/api/v1/system/settings/openMetadataBaseUrlConfiguration')
+    );
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Use deployment value' })
+      .click();
+    await settingReload;
+
+    await expect
+      .poll(() => adoptRequests)
+      .toEqual([
+        {
+          configType: 'openMetadataBaseUrlConfiguration',
+          paths: ['/openMetadataUrl'],
+        },
+      ]);
+    await expect(page.getByTestId('open-metadata-url')).toHaveText(
+      'https://metadata.example.com'
+    );
+    await expect(overriddenAlert).not.toBeVisible();
   });
 });

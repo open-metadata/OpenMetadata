@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.settings;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,63 +30,22 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.AppConfiguration.DefaultAppMode;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.system.SystemResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 
 /**
- * Unit tests (Mockito, no infra) for the {@code appConfiguration} setting: first-boot yaml
- * seeding via {@link SettingsCache#seedAppConfiguration}, and the read/write auth gating on the
- * generic {@code /v1/system/settings/appConfiguration} endpoints on {@link SystemResource}.
+ * Unit tests (Mockito, no infra) for the read/write auth gating of the generic {@code
+ * /v1/system/settings/appConfiguration} endpoints on {@link SystemResource}. Seeding from the
+ * deployment configuration is covered by the deployment-config reconciler tests.
  */
 class AppConfigurationSettingTest {
-
-  @Test
-  void seedAppConfiguration_seedsFromYaml_whenDbRowAbsent() {
-    SystemRepository systemRepository = mock(SystemRepository.class);
-    when(systemRepository.getConfigWithKey(APP_CONFIGURATION.toString())).thenReturn(null);
-    OpenMetadataApplicationConfig config = mock(OpenMetadataApplicationConfig.class);
-    AppConfiguration yamlConfig = new AppConfiguration().withDefaultAppMode(DefaultAppMode.AI);
-    when(config.getAppConfiguration()).thenReturn(yamlConfig);
-
-    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      mockedEntity.when(Entity::getSystemRepository).thenReturn(systemRepository);
-      SettingsCache.seedAppConfiguration(config);
-    }
-
-    ArgumentCaptor<Settings> captor = ArgumentCaptor.forClass(Settings.class);
-    verify(systemRepository).createNewSetting(captor.capture());
-    assertEquals(APP_CONFIGURATION, captor.getValue().getConfigType());
-    assertEquals(yamlConfig, captor.getValue().getConfigValue());
-  }
-
-  @Test
-  void seedAppConfiguration_yamlIgnored_whenDbRowPresent() {
-    SystemRepository systemRepository = mock(SystemRepository.class);
-    Settings existing =
-        new Settings()
-            .withConfigType(APP_CONFIGURATION)
-            .withConfigValue(new AppConfiguration().withDefaultAppMode(DefaultAppMode.CLASSIC));
-    when(systemRepository.getConfigWithKey(APP_CONFIGURATION.toString())).thenReturn(existing);
-    OpenMetadataApplicationConfig config = mock(OpenMetadataApplicationConfig.class);
-    when(config.getAppConfiguration())
-        .thenReturn(new AppConfiguration().withDefaultAppMode(DefaultAppMode.AI));
-
-    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      mockedEntity.when(Entity::getSystemRepository).thenReturn(systemRepository);
-      SettingsCache.seedAppConfiguration(config);
-    }
-
-    verify(systemRepository, never()).createNewSetting(any());
-  }
 
   @Test
   void getSettingByName_appConfiguration_nonAdminAllowed_returnsDbValueVerbatim() {
