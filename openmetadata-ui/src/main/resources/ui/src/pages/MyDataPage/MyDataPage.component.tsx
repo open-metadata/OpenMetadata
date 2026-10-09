@@ -89,7 +89,7 @@ const MyDataPage = () => {
       {/* The same white panel AI mode's shell draws around routed pages
         (`assistant-content`): white in light, the canvas step in dark. Classic
         has no such shell, so without it the cards sit on the page ground. */}
-      <div className="tw:h-full tw:pr-1.5 tw:pb-1.5">
+      <div className="tw:h-full tw:pb-1.5 tw:pl-3 tw:pr-1.5">
         <div
           className="tw:h-full tw:overflow-hidden tw:rounded-2xl tw:bg-primary tw:dark:bg-canvas"
           data-testid="home-page-surface">
