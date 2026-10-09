@@ -30,6 +30,7 @@ import { borderAfter } from '@/utils/tailwindClasses';
 import { ChevronDown, ChevronUp, XClose } from '../../../icons';
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -43,7 +44,11 @@ import type {
   FilterSelectProps,
   FilterSelectTriggerVariant,
 } from './filter-select.types';
-import { TreeSelect } from '../tree-select/tree-select';
+import {
+  DROPDOWN_CHROME_WIDTH,
+  TreeSelect,
+  useDropdownPlacement,
+} from '../tree-select/tree-select';
 
 const optionText = (option: FilterSelectOption): string =>
   option.textValue ??
@@ -61,6 +66,7 @@ export const TriggerButton = ({
   className,
   icon,
   bordered,
+  isDisabled,
   size = 'sm',
 }: {
   hasSelection: boolean;
@@ -74,6 +80,7 @@ export const TriggerButton = ({
   className?: string;
   icon?: FC<{ className?: string }>;
   bordered?: boolean;
+  isDisabled?: boolean;
   size?: 'sm' | 'md';
 }) => {
   const countBadge =
@@ -97,6 +104,7 @@ export const TriggerButton = ({
         data-testid={testId}
         iconLeading={icon}
         iconTrailing={isOpen ? ChevronUp : ChevronDown}
+        isDisabled={isDisabled}
         size={bordered ? 'md' : 'sm'}>
         <span data-testid={`search-dropdown-${label}`}>{text}</span>
         {countBadge}
@@ -115,9 +123,11 @@ export const TriggerButton = ({
           'tw:flex tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:bg-surface tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-brand',
           sizes[size].root,
           isOpen && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
+          isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
           className
         )}
-        data-testid={testId}>
+        data-testid={testId}
+        isDisabled={isDisabled}>
         <span
           className={cx(
             'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
@@ -145,7 +155,8 @@ export const TriggerButton = ({
         'tw:after:outline-primary',
         className
       )}
-      data-testid={testId}>
+      data-testid={testId}
+      isDisabled={isDisabled}>
       <span data-testid={`search-dropdown-${label}`}>{text}</span>
       {countBadge}
       <ChevronDown
@@ -242,11 +253,13 @@ const OptionRow = ({
   option,
   hideCounts,
   showCheckbox,
+  showRadio,
   isNullOption,
 }: {
   option: FilterSelectOption;
   hideCounts?: boolean;
   showCheckbox: boolean;
+  showRadio?: boolean;
   /** The pinned "No <X>" row, which the design mutes relative to real options. */
   isNullOption?: boolean;
 }) => {
@@ -254,21 +267,22 @@ const OptionRow = ({
     ? (option.icon as FC<{ className?: string }>)
     : undefined;
   const iconNode = iconComponent ? undefined : (option.icon as ReactNode);
+  const hasIndicator = showCheckbox || Boolean(showRadio);
 
   return (
     <Dropdown.Item
       checkboxSize="xs"
-      // Multi select: the checkbox alone conveys selection — suppress the
-      // selected background, keeping the hover/focus tint. Single select keeps
+      // A checkbox or radio alone conveys selection — suppress the selected
+      // background, keeping the hover/focus tint. Plain single select keeps
       // Dropdown.Item's selected style, which matches the sidebar selected item.
       className={(state) =>
         cx(
-          showCheckbox &&
+          hasIndicator &&
             state.isSelected &&
             (state.isFocused
               ? 'tw:[&>div]:bg-primary_hover!'
               : 'tw:[&>div]:bg-transparent!'),
-          !showCheckbox &&
+          !hasIndicator &&
             state.isSelected &&
             'tw:[&_svg]:text-fg-brand-secondary_alt!'
         )
@@ -277,15 +291,16 @@ const OptionRow = ({
       icon={iconComponent}
       id={option.value}
       showCheckbox={showCheckbox}
+      showRadio={showRadio}
       textValue={optionText(option)}>
       {(state) => (
         <span
           className={cx(
             'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
             // Real options read at full strength whether or not they are
-            // selected; only the pinned null row is muted. Single select has no
-            // checkbox, so its selected row goes brand instead.
-            !showCheckbox && state.isSelected
+            // selected; only the pinned null row is muted. Plain single select
+            // has no indicator, so its selected row goes brand instead.
+            !hasIndicator && state.isSelected
               ? 'tw:text-brand-secondary'
               : isNullOption
               ? 'tw:text-secondary'
@@ -305,10 +320,10 @@ const OptionRow = ({
             <Typography
               className={cx(
                 'not-prose tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:tabular-nums',
-                !showCheckbox && state.isSelected
+                !hasIndicator && state.isSelected
                   ? 'tw:border-utility-brand-200 tw:text-brand-secondary'
                   : 'tw:border-secondary',
-                showCheckbox && state.isSelected && 'tw:text-tertiary',
+                hasIndicator && state.isSelected && 'tw:text-tertiary',
                 !state.isSelected && 'tw:text-placeholder'
               )}
               data-testid="filter-count"
@@ -339,11 +354,13 @@ const FilterSelect = ({
   onChange,
   bordered,
   className,
+  clearable,
   commitMode = 'immediate',
   'data-testid': testId,
   emptyState,
   helperText,
   hideCounts,
+  isDisabled,
   isLoading,
   isOpen: controlledIsOpen,
   nullOption,
@@ -353,8 +370,10 @@ const FilterSelect = ({
   resolveMissingLabel,
   searchable,
   selectionMode = 'multiple',
+  showRadio,
   showSelectAll,
   size = 'sm',
+  trigger,
   triggerDisplay = 'count',
   triggerIcon,
   triggerVariant = 'chip',
@@ -373,9 +392,31 @@ const FilterSelect = ({
   const popoverContentRef = useRef<HTMLDivElement>(null);
 
   const isMulti = selectionMode === 'multiple';
+  const isRadio = !isMulti && Boolean(showRadio);
   const isStaged = commitMode === 'staged';
   const isChips =
     isMulti && triggerVariant === 'input' && triggerDisplay === 'chips';
+
+  // The built-in trigger sits in a `display: contents` wrapper, which has no
+  // box to measure, so placement measures the element itself.
+  const placementAnchorRef = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (isChips) {
+      placementAnchorRef.current = chipsFieldRef.current;
+    } else if (trigger === undefined) {
+      placementAnchorRef.current = triggerWrapRef.current
+        ?.firstElementChild as HTMLElement | null;
+    } else {
+      placementAnchorRef.current = triggerWrapRef.current;
+    }
+  });
+  // Left-aligned to the trigger, right-aligned when it would overflow the
+  // viewport — the same rule as TreeSelect.
+  const { placement } = useDropdownPlacement(
+    placementAnchorRef,
+    isOpen,
+    DROPDOWN_CHROME_WIDTH
+  );
   const current = isStaged ? staged : selectedValues;
 
   // A persisted selection (e.g. restored from the URL) may be absent from the
@@ -548,6 +589,14 @@ const FilterSelect = ({
     );
   };
 
+  // Single select closes on any commit, a clear included.
+  const handleClear = () => {
+    onChange([]);
+    if (!isMulti) {
+      handleOpenChange(false);
+    }
+  };
+
   const handleApply = () => {
     onChange(staged);
     handleOpenChange(false);
@@ -671,7 +720,7 @@ const FilterSelect = ({
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it gets a quiet footer instead:
   // what is selected, and a way to drop it all without closing the menu.
-  const showStatusFooter = isMulti && !isStaged;
+  const showStatusFooter = (isMulti || Boolean(clearable)) && !isStaged;
   const showSelectAllRow =
     isMulti && Boolean(showSelectAll) && displayedOptions.length > 0;
   // The null row is a synthetic filter, not a search result: an unmatched
@@ -679,6 +728,174 @@ const FilterSelect = ({
   // (legacy SearchDropdown stacked exactly these two).
   const isEmpty = !isLoading && displayedOptions.length === 0;
   const showMenu = !isLoading && (!isEmpty || Boolean(displayedNullOption));
+
+  const popover = (
+    <Dropdown.Popover
+      // A filter popover is not a modal. React Aria's default blocks every
+      // pointer event outside the overlay, so with one filter open the page
+      // — including the trigger that opened it, and every sibling filter —
+      // stops taking clicks until it is dismissed. The component this
+      // replaces let those clicks through.
+      isNonModal
+      // Close without an exit animation: the closing subtree otherwise
+      // stays visible (and hit-testable) for the animation's duration, so a
+      // fast sibling swap can read or type into the dying filter instead of
+      // the one just opened. animate-none makes react-aria unmount at once;
+      // hidden covers the same frame.
+      className={(state) =>
+        cx(
+          'tw:w-80',
+          state.isExiting && 'tw:hidden tw:animate-none',
+          popoverClassName
+        )
+      }
+      data-testid="drop-down-menu"
+      placement={placement}
+      style={popoverStyle}
+      // A custom trigger has no MenuTrigger around it, so the popover takes
+      // its open state directly.
+      {...(trigger !== undefined && {
+        isOpen,
+        onOpenChange: handleOpenChange,
+      })}
+      triggerRef={
+        isChips
+          ? chipsFieldRef
+          : trigger !== undefined
+          ? triggerWrapRef
+          : undefined
+      }>
+      <div className="tw:contents" ref={popoverContentRef}>
+        {searchable && (
+          <DropdownSearchField
+            autoFocus={trigger !== undefined}
+            inputDataTestId="search-input"
+            isDisabled={!isOpen}
+            placeholder={t('label.search')}
+            value={query}
+            wrapperRef={searchWrapperRef}
+            onChange={handleSearch}
+          />
+        )}
+
+        {showSelectAllRow && (
+          <div className="tw:px-4 tw:py-2">
+            <Checkbox
+              isIndeterminate={
+                displayedSelectedCount > 0 && !allDisplayedSelected
+              }
+              isSelected={allDisplayedSelected}
+              label={
+                <span className="tw:text-sm tw:text-primary">
+                  {t('label.select-all')}
+                </span>
+              }
+              size="xs"
+              onChange={handleSelectAll}
+            />
+          </div>
+        )}
+
+        {isLoading && (
+          <div
+            aria-label={t('label.loading')}
+            className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-2"
+            role="status">
+            <Skeleton variant="text" width="80%" />
+            <Skeleton variant="text" width="60%" />
+            <Skeleton variant="text" width="70%" />
+          </div>
+        )}
+
+        {showMenu && (
+          <Dropdown.Menu
+            aria-label={label}
+            // A search box owns focus while it is there: the menu remounts
+            // whenever results land, and MenuTrigger's autofocus would pull
+            // the caret out of the box mid-query.
+            autoFocus={searchable ? false : undefined}
+            className="tw:max-h-64 tw:overflow-y-auto"
+            // A radio row cannot be unpicked by clicking it again.
+            disallowEmptySelection={isRadio}
+            selectedKeys={selectedKeySet}
+            selectionMode={selectionMode}
+            // Closing is owned by this component (immediate single-select
+            // closes on commit; staged waits for Apply/Cancel), so the menu
+            // must never close itself on selection.
+            shouldCloseOnSelect={false}
+            onSelectionChange={handleSelectionChange}>
+            {displayedNullOption && (
+              <OptionRow
+                isNullOption
+                hideCounts={hideCounts}
+                option={displayedNullOption}
+                showCheckbox={isMulti}
+                showRadio={isRadio}
+              />
+            )}
+            {displayedOptions.map((option) => (
+              <OptionRow
+                hideCounts={hideCounts}
+                key={option.value}
+                option={option}
+                showCheckbox={isMulti}
+                showRadio={isRadio}
+              />
+            ))}
+          </Dropdown.Menu>
+        )}
+
+        {isEmpty && (
+          <div className="tw:px-4 tw:py-2 tw:text-center">
+            <Typography className="not-prose" color="secondary" size="text-xs">
+              {emptyState ?? t('label.no-data-found')}
+            </Typography>
+          </div>
+        )}
+
+        {helperText !== undefined && (
+          <div className="tw:border-t tw:border-secondary tw:px-3 tw:py-2">
+            <Typography className="tw:text-tertiary" size="text-xs">
+              {helperText}
+            </Typography>
+          </div>
+        )}
+
+        {showFooter && (
+          <DropdownStagedFooter
+            count={staged.length}
+            onApply={handleApply}
+            onCancel={() => handleOpenChange(false)}
+            onClear={() => setStaged([])}
+          />
+        )}
+
+        {showStatusFooter && (
+          <DropdownStatusFooter
+            clearLabel={isMulti ? undefined : t('label.clear')}
+            count={selectedValues.length}
+            onClear={handleClear}
+          />
+        )}
+      </div>
+    </Dropdown.Popover>
+  );
+
+  // Rendered outside MenuTrigger: its press responder would otherwise bind to
+  // the first react-aria button inside the caller's trigger.
+  if (trigger !== undefined) {
+    return (
+      <>
+        <span
+          className="tw:inline-flex tw:max-w-full"
+          ref={triggerWrapRef}
+          onClickCapture={() => handleOpenChange(!isOpen)}>
+          {trigger}
+        </span>
+        {popover}
+      </>
+    );
+  }
 
   return (
     <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
@@ -705,6 +922,7 @@ const FilterSelect = ({
             count={isMulti ? selectedValues.length : undefined}
             hasSelection={selectedValues.length > 0}
             icon={triggerIcon}
+            isDisabled={isDisabled}
             isOpen={isOpen}
             label={label}
             placeholder={placeholder}
@@ -715,141 +933,7 @@ const FilterSelect = ({
           />
         )}
       </span>
-      <Dropdown.Popover
-        // A filter popover is not a modal. React Aria's default blocks every
-        // pointer event outside the overlay, so with one filter open the page
-        // — including the trigger that opened it, and every sibling filter —
-        // stops taking clicks until it is dismissed. The component this
-        // replaces let those clicks through.
-        isNonModal
-        // Close without an exit animation: the closing subtree otherwise
-        // stays visible (and hit-testable) for the animation's duration, so a
-        // fast sibling swap can read or type into the dying filter instead of
-        // the one just opened. animate-none makes react-aria unmount at once;
-        // hidden covers the same frame.
-        className={(state) =>
-          cx(
-            'tw:w-80',
-            state.isExiting && 'tw:hidden tw:animate-none',
-            popoverClassName
-          )
-        }
-        data-testid="drop-down-menu"
-        placement="bottom left"
-        style={popoverStyle}
-        triggerRef={isChips ? chipsFieldRef : undefined}>
-        <div className="tw:contents" ref={popoverContentRef}>
-          {searchable && (
-            <DropdownSearchField
-              inputDataTestId="search-input"
-              isDisabled={!isOpen}
-              placeholder={t('label.search')}
-              value={query}
-              wrapperRef={searchWrapperRef}
-              onChange={handleSearch}
-            />
-          )}
-
-          {showSelectAllRow && (
-            <div className="tw:px-4 tw:py-2">
-              <Checkbox
-                isIndeterminate={
-                  displayedSelectedCount > 0 && !allDisplayedSelected
-                }
-                isSelected={allDisplayedSelected}
-                label={
-                  <span className="tw:text-sm tw:text-primary">
-                    {t('label.select-all')}
-                  </span>
-                }
-                size="xs"
-                onChange={handleSelectAll}
-              />
-            </div>
-          )}
-
-          {isLoading && (
-            <div
-              aria-label={t('label.loading')}
-              className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-2"
-              role="status">
-              <Skeleton variant="text" width="80%" />
-              <Skeleton variant="text" width="60%" />
-              <Skeleton variant="text" width="70%" />
-            </div>
-          )}
-
-          {showMenu && (
-            <Dropdown.Menu
-              aria-label={label}
-              // A search box owns focus while it is there: the menu remounts
-              // whenever results land, and MenuTrigger's autofocus would pull
-              // the caret out of the box mid-query.
-              autoFocus={searchable ? false : undefined}
-              className="tw:max-h-64 tw:overflow-y-auto"
-              disallowEmptySelection={false}
-              selectedKeys={selectedKeySet}
-              selectionMode={selectionMode}
-              // Closing is owned by this component (immediate single-select
-              // closes on commit; staged waits for Apply/Cancel), so the menu
-              // must never close itself on selection.
-              shouldCloseOnSelect={false}
-              onSelectionChange={handleSelectionChange}>
-              {displayedNullOption && (
-                <OptionRow
-                  isNullOption
-                  hideCounts={hideCounts}
-                  option={displayedNullOption}
-                  showCheckbox={isMulti}
-                />
-              )}
-              {displayedOptions.map((option) => (
-                <OptionRow
-                  hideCounts={hideCounts}
-                  key={option.value}
-                  option={option}
-                  showCheckbox={isMulti}
-                />
-              ))}
-            </Dropdown.Menu>
-          )}
-
-          {isEmpty && (
-            <div className="tw:px-4 tw:py-2 tw:text-center">
-              <Typography
-                className="not-prose"
-                color="secondary"
-                size="text-xs">
-                {emptyState ?? t('label.no-data-found')}
-              </Typography>
-            </div>
-          )}
-
-          {helperText !== undefined && (
-            <div className="tw:border-t tw:border-secondary tw:px-3 tw:py-2">
-              <Typography className="tw:text-tertiary" size="text-xs">
-                {helperText}
-              </Typography>
-            </div>
-          )}
-
-          {showFooter && (
-            <DropdownStagedFooter
-              count={staged.length}
-              onApply={handleApply}
-              onCancel={() => handleOpenChange(false)}
-              onClear={() => setStaged([])}
-            />
-          )}
-
-          {showStatusFooter && (
-            <DropdownStatusFooter
-              count={selectedValues.length}
-              onClear={() => onChange([])}
-            />
-          )}
-        </div>
-      </Dropdown.Popover>
+      {popover}
     </Dropdown.Root>
   );
 };

@@ -20,5 +20,9 @@ export interface CertificationProps {
   onClose?: () => void;
   currentCertificate?: string;
   popoverProps?: SelectablePopoverProps;
+  /** Trigger; without one the picker renders as a form field. */
   children?: ReactNode;
+  isDisabled?: boolean;
+  /** Test id of the form-field trigger. */
+  'data-testid'?: string;
 }

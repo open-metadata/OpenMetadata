@@ -62,38 +62,30 @@ const CertificationWidget = () => {
     <WidgetEditButton
       data-testid="edit-certification"
       title={t('label.edit-entity', { entity: t('label.certification') })}
-      onClick={() => setIsEditing(true)}
     />
   ) : (
     <WidgetPlusButton
       data-testid="add-certification"
       title={t('label.add-entity', { entity: t('label.certification') })}
-      onClick={() => setIsEditing(true)}
     />
   );
 
-  const headerExtra = canEdit ? certificationButton : null;
-
-  const content = (
+  // Anchored to the header button, like the glossary and tag pickers; the
+  // button's click opens it through Certification's trigger.
+  const headerExtra = canEdit ? (
     <Certification
       currentCertificate={entity.certification?.tagLabel?.tagFQN}
       permission={canEdit}
-      popoverProps={{
-        open: isEditing,
-        onOpenChange: (visible: boolean) => {
-          if (!visible) {
-            setIsEditing(false);
-          }
-        },
-      }}
-      onCertificationUpdate={handleCertificationUpdate}
-      onClose={() => setIsEditing(false)}>
-      {entity.certification && (
-        <div data-testid="certification-label">
-          <CertificationTag showName certification={entity.certification} />
-        </div>
-      )}
+      popoverProps={{ open: isEditing, onOpenChange: setIsEditing }}
+      onCertificationUpdate={handleCertificationUpdate}>
+      {certificationButton}
     </Certification>
+  ) : null;
+
+  const content = entity.certification && (
+    <div data-testid="certification-label">
+      <CertificationTag showName certification={entity.certification} />
+    </div>
   );
 
   return (

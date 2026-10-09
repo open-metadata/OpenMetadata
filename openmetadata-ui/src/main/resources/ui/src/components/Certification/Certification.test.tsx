@@ -22,16 +22,6 @@ import { getTags } from '../../rest/tagAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Certification from './Certification.component';
 
-jest.mock('../../assets/svg/ic-certification.svg', () => ({
-  ReactComponent: () => <div data-testid="certification-icon" />,
-}));
-
-jest.mock('../common/FocusTrap/FocusTrapWithContainer', () => ({
-  FocusTrapWithContainer: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-}));
-
 jest.mock('../../rest/tagAPI', () => ({
   getTags: jest.fn(),
 }));
@@ -74,6 +64,12 @@ const defaultProps = {
   popoverProps: { open: true },
 };
 
+const FETCH_PARAMS = {
+  parent: 'Certification',
+  limit: 1000,
+  disabled: false,
+};
+
 describe('Certification', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -87,41 +83,30 @@ describe('Certification', () => {
     render(<Certification {...defaultProps} popoverProps={{ open: false }} />);
 
     expect(screen.getByTestId('certification-trigger')).toBeInTheDocument();
+    expect(mockGetTags).not.toHaveBeenCalled();
   });
 
   it('should fetch certifications when the popover opens', async () => {
     render(<Certification {...defaultProps} />);
 
     await waitFor(() => {
-      expect(mockGetTags).toHaveBeenCalledWith({
-        parent: 'Certification',
-        limit: 50,
-        after: undefined,
-        disabled: false,
-      });
+      expect(mockGetTags).toHaveBeenCalledWith(FETCH_PARAMS);
     });
   });
 
-  it('should sort certifications with Gold, Silver, and Bronze first', async () => {
+  it('should list Gold, Silver, and Bronze first as radio rows', async () => {
     render(<Certification {...defaultProps} />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('certification-cards')).toBeInTheDocument();
-    });
+    const rows = await screen.findAllByRole('menuitemradio');
 
-    const radioButtons = screen.getAllByTestId(/radio-btn-/);
-
-    expect(radioButtons[0]).toHaveAttribute(
-      'data-testid',
-      'radio-btn-Certification.Gold'
-    );
-    expect(radioButtons[1]).toHaveAttribute(
-      'data-testid',
-      'radio-btn-Certification.Silver'
-    );
-    expect(radioButtons[2]).toHaveAttribute(
-      'data-testid',
-      'radio-btn-Certification.Bronze'
+    expect(rows.map((row) => row.dataset.testid)).toEqual([
+      'Certification.Gold',
+      'Certification.Silver',
+      'Certification.Bronze',
+    ]);
+    expect(screen.getByTestId('Certification.Gold')).toHaveAttribute(
+      'aria-checked',
+      'true'
     );
   });
 
@@ -131,73 +116,44 @@ describe('Certification', () => {
       paging: { total: 0 },
     });
 
-    render(<Certification {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('label.no-entity-available')).toBeInTheDocument();
-    });
-  });
-
-  it('should select a certification when a card is clicked', async () => {
     render(<Certification {...defaultProps} currentCertificate="" />);
 
-    await waitFor(() => {
-      expect(
-        screen.getByTestId('radio-btn-Certification.Silver')
-      ).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('radio-btn-Certification.Silver'));
-
-    expect(screen.getByTestId('radio-btn-Certification.Silver')).toBeChecked();
+    expect(
+      await screen.findByText('label.no-entity-available')
+    ).toBeInTheDocument();
   });
 
-  it('should call onCertificationUpdate with the selected certification', async () => {
+  it('should update with the picked certification', async () => {
     render(<Certification {...defaultProps} />);
 
-    await waitFor(() => {
-      expect(
-        screen.getByTestId('radio-btn-Certification.Gold')
-      ).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('update-certification'));
-    });
+    fireEvent.click(await screen.findByTestId('Certification.Silver'));
 
     await waitFor(() => {
       expect(mockOnCertificationUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
-          fullyQualifiedName: 'Certification.Gold',
+          fullyQualifiedName: 'Certification.Silver',
         })
       );
     });
   });
 
-  it('should clear the certification when clear is clicked', async () => {
+  it('should clear the certification from the footer', async () => {
     render(<Certification {...defaultProps} />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('clear-certification')).toBeInTheDocument();
-    });
+    await screen.findByTestId('Certification.Gold');
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('clear-certification'));
+      fireEvent.click(screen.getByTestId('clear-filter-btn'));
     });
 
-    await waitFor(() => {
-      expect(mockOnCertificationUpdate).toHaveBeenCalledWith(undefined);
-    });
+    expect(mockOnCertificationUpdate).toHaveBeenCalledWith(undefined);
   });
 
-  it('should call onClose when the close button is clicked', async () => {
+  it('should call onClose when dismissed with Escape', async () => {
     render(<Certification {...defaultProps} />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('close-certification')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTestId('close-certification'));
+    await screen.findByTestId('Certification.Gold');
+    fireEvent.keyDown(document.body, { key: 'Escape' });
 
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
@@ -216,7 +172,7 @@ describe('Certification', () => {
     });
   });
 
-  it('should fetch certifications when the trigger is clicked', async () => {
+  it('should open and fetch when the trigger is clicked', async () => {
     render(
       <Certification
         {...defaultProps}
@@ -227,13 +183,9 @@ describe('Certification', () => {
 
     fireEvent.click(screen.getByTestId('certification-trigger'));
 
-    await waitFor(() => {
-      expect(mockGetTags).toHaveBeenCalledWith({
-        parent: 'Certification',
-        limit: 50,
-        after: undefined,
-        disabled: false,
-      });
-    });
+    expect(
+      await screen.findByTestId('Certification.Silver')
+    ).toBeInTheDocument();
+    expect(mockGetTags).toHaveBeenCalledWith(FETCH_PARAMS);
   });
 });

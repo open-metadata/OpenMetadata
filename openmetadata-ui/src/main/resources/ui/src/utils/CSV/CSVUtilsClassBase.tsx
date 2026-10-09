@@ -2432,15 +2432,18 @@ const getCsvCertificationEditor: CSVEditorFactory =
       );
     };
 
+    // The search box takes focus on open; keep its keydowns from the rdg EditCell.
     return (
-      <Certification
-        permission
-        currentCertificate={value}
-        popoverProps={{ open: true }}
-        onCertificationUpdate={handleChange}
-        onClose={() => onClose(false)}>
-        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-      </Certification>
+      <KeyDownStopPropagationWrapper>
+        <Certification
+          permission
+          currentCertificate={value}
+          popoverProps={{ open: true }}
+          onCertificationUpdate={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </Certification>
+      </KeyDownStopPropagationWrapper>
     );
   };
 

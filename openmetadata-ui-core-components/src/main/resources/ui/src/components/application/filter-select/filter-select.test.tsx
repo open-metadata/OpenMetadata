@@ -15,6 +15,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -27,6 +28,7 @@ const EN_LABELS: Record<string, string> = {
   'label.apply': 'Apply',
   'label.apply-count': 'Apply ({{count}})',
   'label.cancel': 'Cancel',
+  'label.clear': 'Clear',
   'label.clear-all': 'Clear all',
   'label.count-selected': '{{count}} selected',
   'label.loading': 'Loading…',
@@ -832,5 +834,81 @@ describe('FilterSelect', () => {
     });
 
     expect(screen.getByText('Choose services')).toBeInTheDocument();
+  });
+  it('marks single-select rows with a radio and keeps the row untinted', () => {
+    renderFilter({
+      selectionMode: 'single',
+      selectedValues: ['bigquery'],
+      showRadio: true,
+    });
+
+    const row = screen.getByTestId('bigquery');
+
+    expect(row).toHaveAttribute('aria-checked', 'true');
+    expect(row.querySelector('.tw\\:bg-brand-solid')).not.toBeNull();
+    // The indicator owns selection, so the row background is suppressed.
+    expect(row.className).toMatch(/\[&>div\]:bg-(transparent|primary_hover)!/);
+  });
+
+  it('does not unpick a radio row clicked again', () => {
+    const { onChange } = renderFilter({
+      selectionMode: 'single',
+      selectedValues: ['bigquery'],
+      showRadio: true,
+    });
+
+    fireEvent.click(screen.getByTestId('bigquery'));
+
+    expect(onChange).not.toHaveBeenCalledWith([]);
+  });
+
+  it('shows a Clear footer on a clearable single select that closes it', () => {
+    const onOpenChange = vi.fn();
+    const { onChange } = renderFilter({
+      clearable: true,
+      onOpenChange,
+      selectionMode: 'single',
+      selectedValues: ['bigquery'],
+    });
+
+    expect(screen.getByTestId('selected-count')).toHaveTextContent(
+      '1 selected'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(onChange).toHaveBeenCalledWith([]);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('opens from a custom trigger and focuses its search box', async () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      searchable: true,
+      trigger: <button type="button">Edit</button>,
+      onOpenChange,
+    });
+
+    expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    // A synthetic click reads as virtual modality, which defers focus a tick.
+    await waitFor(() =>
+      expect(screen.getByTestId('search-input')).toHaveFocus()
+    );
+  });
+
+  it('disables the built-in trigger', () => {
+    renderFilter({
+      isDisabled: true,
+      isOpen: undefined,
+      triggerVariant: 'input',
+    });
+
+    expect(screen.getByRole('button')).toBeDisabled();
   });
 });
