@@ -123,7 +123,10 @@ export const openEntitySummaryPanel = async ({
     }
   }
   const runSearch = async () => {
-    if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
+    const exploreSearchWrapper = page.getByTestId('explore-search-input');
+    const isExplore = (await exploreSearchWrapper.count()) > 0;
+    // Explore owns its entity tabs and has no navbar filter dropdown.
+    if (!isExplore && endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
       await page.getByTestId('global-search-selector').waitFor({
         state: 'visible',
       });
@@ -141,11 +144,9 @@ export const openEntitySummaryPanel = async ({
     // ever time out. Pick whichever this page actually renders.
     // `explore-search-input` marks the field wrapper, not the field, so the
     // textbox inside it is what accepts fill().
-    const exploreSearchWrapper = page.getByTestId('explore-search-input');
-    const searchBox =
-      (await exploreSearchWrapper.count()) > 0
-        ? exploreSearchWrapper.getByRole('textbox')
-        : page.getByTestId('searchBox');
+    const searchBox = isExplore
+      ? exploreSearchWrapper.getByRole('textbox')
+      : page.getByTestId('searchBox');
 
     try {
       await searchBox.waitFor({ state: 'visible', timeout: 15_000 });

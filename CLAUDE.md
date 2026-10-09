@@ -148,6 +148,9 @@ on functionality over education. Do not add unnecessary blank lines between pros
   top-level (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`) and are grouped inside by
   `domain/feature/`; new files use one stem with a role suffix (`GlossaryList.tsx`, `.types.ts`,
   `.utils.ts`, `.test.tsx`). Legacy `.component.tsx`/`.interface.ts` files stay as they are.
+- `docs/decisions/` — dated records of the choices that shape the code. **When a choice looks
+  arbitrary, find its record before re-deciding it; a PR that makes a durable decision adds the
+  record in the same PR.** Cite as `ADR:<date>-<slug>`; format and triggers in its `README.md`.
 
 ### Skills (invoke by name; procedures, not rules)
 
@@ -186,7 +189,8 @@ sign-off) when the agent-facing config decays:
   `.agents/skills`), or two same-named SKILL.md with different content;
 - **doc-size budgets** — this file > 200 lines, ARCHITECTURE.md > 300, any single rule > 100;
 - **rule globs** — a `.claude/rules/**` `paths:` glob matching zero files;
-- **generated-doc freshness** — `docs/generated/**` out of date with its source.
+- **generated-doc freshness** — `docs/generated/**` out of date with its source;
+- **decision records** — a malformed record or a dangling `ADR:` citation (also a pre-commit hook).
 
 ## Git commit conventions
 - Never add "Co-Authored-By" lines or any AI-attribution trailers to commit messages. 
