@@ -93,9 +93,9 @@ const SearchInputIcon = ({ className }: { className?: string }) => (
   <Search aria-hidden="true" className={className} />
 );
 const DEFAULT_GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
 const STUDIO_GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-color-border-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
@@ -242,7 +242,7 @@ function LoadingGraphEmptyState() {
       data-testid="ontology-graph-loading">
       <div
         aria-label={t('label.loading')}
-        className="tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-secondary tw:border-t-(--color-bg-brand-solid)"
+        className="tw:h-10 tw:w-10 tw:animate-spin tw:rounded-full tw:border-2 tw:border-secondary tw:border-t-(--tw-color-bg-brand-solid)"
         role="status"
       />
       <Typography as="p" className="tw:mt-4 tw:text-tertiary">
@@ -1039,7 +1039,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-full tw:border tw:border-utility-gray-blue-100 tw:bg-primary tw:px-4 tw:py-2 tw:shadow-md">
                   <div
                     aria-label={t('label.loading')}
-                    className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-secondary tw:border-t-(--color-bg-brand-solid)"
+                    className="tw:h-4 tw:w-4 tw:animate-spin tw:rounded-full tw:border-2 tw:border-secondary tw:border-t-(--tw-color-bg-brand-solid)"
                     role="status"
                   />
                   <Typography size="text-sm" weight="medium">

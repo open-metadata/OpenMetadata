@@ -19,7 +19,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
-
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
@@ -164,13 +163,7 @@ export const useLearningResourceFilters = (
 
   const quickFilters = useMemo(
     () => (
-      <Box
-        inline
-        align="center"
-        className="layout-space layout-space-horizontal explore-quick-filters-container"
-        itemClassName="layout-space-item"
-        style={{ columnGap: 'var(--om-space-8)', rowGap: 'var(--om-space-0)' }}
-        wrap="wrap">
+      <Box className="explore-quick-filters-container" gap={2} wrap="wrap">
         {FILTER_FIELDS.map((field) => (
           <FilterSelectDropdown
             hideCounts
@@ -188,7 +181,6 @@ export const useLearningResourceFilters = (
       </Box>
     ),
     [
-      filterState,
       optionsByKey,
       getSelectedKeys,
       handleDropdownChange,
@@ -276,7 +268,7 @@ export const useLearningResourceFilters = (
                   <Typography
                     ellipsis
                     as="p"
-                    className="tw:text-brand-600"
+                    className="tw:text-brand-secondary"
                     title={filter.value}
                     weight="medium">
                     {filter.value}

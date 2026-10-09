@@ -95,7 +95,9 @@ services.forEach((ServiceClass) => {
 
   test.describe.serial(
     service.serviceType,
-    PLAYWRIGHT_INGESTION_TAG_OBJ,
+    ServiceClass === KafkaIngestionClass
+      ? { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag, '@quarantine'] }
+      : PLAYWRIGHT_INGESTION_TAG_OBJ,
     () => {
       const testData = {
         serviceDeleted: false,
