@@ -40,3 +40,14 @@ export const getAvailableSparqlInferences = (
 
   return [...available];
 };
+
+/**
+ * Saved queries and templates can carry a level the server no longer offers (rdfs/owl predate
+ * materialized inference), so fall back to querying without inference rather than send a level
+ * the server rejects.
+ */
+export const resolveSparqlInference = (
+  requested: SparqlPlaygroundInference,
+  available: ReadonlyArray<SparqlPlaygroundInference>
+): SparqlPlaygroundInference =>
+  available.includes(requested) ? requested : 'none';
