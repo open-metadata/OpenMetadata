@@ -193,6 +193,33 @@ class EntityPatchBatchTest {
     verify(repository).insertChangeEventsBatch(argThat(events -> events.size() == 50));
   }
 
+  @Test
+  void aGroupThatCannotBeLoadedFailsAloneAndTheGroupBeforeItStaysSaved() {
+    List<DatabaseSchema> schemas = schemas(150);
+    when(repository.get(isNull(), anyList(), any(Fields.class), eq(Include.NON_DELETED)))
+        .thenAnswer(call -> load(call.getArgument(1)))
+        .thenThrow(new IllegalStateException("database unavailable"));
+
+    PatchBatchResult result = batch(false).apply(describe(schemas, EDITED));
+
+    assertEquals(ids(schemas.subList(0, 100)), result.changed());
+    assertEquals(Set.copyOf(ids(schemas.subList(100, 150))), result.failures().keySet());
+    assertTrue(result.failures().values().stream().allMatch("database unavailable"::equals));
+  }
+
+  @Test
+  void entitiesSavedBeforeTheirGroupFailsStayReportedAsChanged() {
+    List<DatabaseSchema> schemas = schemas(2);
+    doThrow(new IllegalStateException("events not recorded"))
+        .when(repository)
+        .insertChangeEventsBatch(anyList());
+
+    PatchBatchResult result = batch(false).apply(describe(schemas, EDITED));
+
+    assertEquals(ids(schemas), result.changed());
+    assertTrue(result.failures().isEmpty());
+  }
+
   private EntityPatchBatch<DatabaseSchema> batch(boolean dryRun) {
     return new EntityPatchBatch<>(repository, requester, dryRun);
   }

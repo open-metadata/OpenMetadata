@@ -81,8 +81,23 @@ final class EntityPatchBatch<T extends EntityInterface<?>> {
   }
 
   PatchBatchResult apply(List<EntityEdit<T>> edits) {
-    Lists.partition(edits, GROUP_SIZE).forEach(this::applyGroup);
+    Lists.partition(edits, GROUP_SIZE).forEach(this::applyGroupOrFailIt);
     return new PatchBatchResult(failures, changed);
+  }
+
+  // A group that cannot be loaded or recorded fails on its own. The groups before it, and the
+  // entities of this group already saved, stay reported as changed.
+  private void applyGroupOrFailIt(List<EntityEdit<T>> group) {
+    try {
+      applyGroup(group);
+    } catch (Exception e) {
+      LOG.error("Edits of {} {} entities failed", group.size(), repository.getEntityType(), e);
+      String message = messageOf(e);
+      group.stream()
+          .map(EntityEdit::id)
+          .filter(id -> !changed.contains(id))
+          .forEach(id -> failures.putIfAbsent(id, message));
+    }
   }
 
   private void applyGroup(List<EntityEdit<T>> group) {
