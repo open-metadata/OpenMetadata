@@ -130,7 +130,8 @@ import { GenericProvider } from '../../Customization/GenericProvider/GenericProv
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import { DEFAULT_DOMAIN_ICON } from '../../common/IconPicker/IconPicker.constants';
+import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -1222,7 +1223,8 @@ const DomainDetails = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <StyleModal
+      <IconColorModal
+        defaultIcon={DEFAULT_DOMAIN_ICON}
         open={isStyleEditing}
         style={domain.style}
         onCancel={() => setIsStyleEditing(false)}
