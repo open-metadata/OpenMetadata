@@ -209,7 +209,7 @@ export const useSsoConfiguration = ({
     if (securityConfig) {
       setIsInitializing(false);
     } else {
-      fetchExistingConfig();
+      void fetchExistingConfig();
     }
   }, [selectedProvider, setupConfigurationState, securityConfig]);
 
@@ -867,7 +867,7 @@ export const useSsoConfiguration = ({
     );
     resetTestLogin();
     setShowTestLoginModal(true);
-    runTestLogin(built.payload, checkConfiguration);
+    void runTestLogin(built.payload, checkConfiguration);
   };
 
   // Closing the modal abandons a test still in flight: its popup closes and polling stops. A pass

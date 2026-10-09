@@ -56,9 +56,9 @@ const getArrayFieldContainerClass = (isInvalid: boolean, isDisabled: boolean) =>
 // `scope`) is edited as tags but stored space-separated.
 const toValues = (formData: unknown, isSpaceSeparated: boolean): string[] => {
   if (isSpaceSeparated) {
-    return String(formData ?? '')
-      .split(' ')
-      .filter(Boolean);
+    return typeof formData === 'string'
+      ? formData.split(' ').filter(Boolean)
+      : [];
   }
 
   return (formData as string[] | undefined) ?? [];
