@@ -332,14 +332,15 @@ const SSOConfigurationFormRJSF = ({
     setInternalData(freshFormData);
   }, [selectedProvider]);
 
-  const scrollToFirstError = useCallback(
-    createScrollToErrorHandler({
-      scrollContainer: '.ant-card',
-      errorSelector: '.field-error.has-error, .ant-form-item-explain-error',
-      offsetTop: 100,
-      delay: 100,
-      behavior: 'smooth',
-    }),
+  const scrollToFirstError = useMemo(
+    () =>
+      createScrollToErrorHandler({
+        scrollContainer: '.ant-card',
+        errorSelector: '.field-error.has-error, .ant-form-item-explain-error',
+        offsetTop: 100,
+        delay: 100,
+        behavior: 'smooth',
+      }),
     []
   );
 
@@ -433,7 +434,7 @@ const SSOConfigurationFormRJSF = ({
         scrollToFirstError();
       }
     },
-    [parseValidationErrors]
+    [scrollToFirstError]
   );
 
   const handleValidationErrors = useCallback(
@@ -697,7 +698,6 @@ const SSOConfigurationFormRJSF = ({
     internalData?.authenticationConfiguration?.clientType,
     hasExistingConfig,
     savedData,
-    hideBorder,
   ]);
 
   // Handle form data changes

@@ -182,29 +182,38 @@ const AppRunsHistory = forwardRef(
       [expandedRowKeys, isExternalApp, appData, openLogs]
     );
 
-    const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
-      if (record.isSynthetic) {
-        return true;
-      }
+    const showLogAction = useCallback(
+      (record: AppRunRecordWithId): boolean => {
+        if (record.isSynthetic) {
+          return true;
+        }
 
-      if (appData?.appType === AppType.External) {
+        if (isExternalApp) {
+          return false;
+        }
+
+        if (
+          record.status === Status.Success &&
+          isNull(record?.successContext)
+        ) {
+          return true;
+        }
+
         return false;
-      }
+      },
+      [isExternalApp]
+    );
 
-      if (record.status === Status.Success && isNull(record?.successContext)) {
-        return true;
-      }
-
-      return false;
-    }, []);
-
-    const showAppRunConfig = (record: AppRunRecordWithId) => {
-      if (!jsonSchema) {
-        return;
-      }
-      setShowConfigModal(true);
-      setAppRunRecordConfig(record.config ?? {});
-    };
+    const showAppRunConfig = useCallback(
+      (record: AppRunRecordWithId) => {
+        if (!jsonSchema) {
+          return;
+        }
+        setShowConfigModal(true);
+        setAppRunRecordConfig(record.config ?? {});
+      },
+      [jsonSchema]
+    );
 
     const getActionButton = useCallback(
       (record: AppRunRecordWithId) => {
@@ -252,7 +261,14 @@ const AppRunsHistory = forwardRef(
           </>
         );
       },
-      [showLogAction, appData, isExternalApp, handleRowExpandable]
+      [
+        showLogAction,
+        appData,
+        handleRowExpandable,
+        jsonSchema,
+        showAppRunConfig,
+        t,
+      ]
     );
 
     const tableColumn: ColumnsType<AppRunRecordWithId> = useMemo(
@@ -348,14 +364,7 @@ const AppRunsHistory = forwardRef(
           render: (_, record) => getActionButton(record),
         },
       ],
-      [
-        appData,
-        formatDateTime,
-        handleRowExpandable,
-        getStatusTypeForApplication,
-        showLogAction,
-        getActionButton,
-      ]
+      [getActionButton, isExternalApp, t]
     );
 
     const fetchAppHistory = useCallback(
@@ -402,7 +411,7 @@ const AppRunsHistory = forwardRef(
           setIsLoading(false);
         }
       },
-      [fqn, pageSize, maxRecords, appData]
+      [fqn, pageSize, maxRecords, isExternalApp, handlePagingChange]
     );
 
     const handleAppHistoryPageChange = ({
@@ -441,7 +450,7 @@ const AppRunsHistory = forwardRef(
 
     useEffect(() => {
       fetchAppHistory();
-    }, [fqn, pageSize]);
+    }, [fetchAppHistory]);
 
     useEffect(() => {
       if (socket) {
@@ -572,15 +581,12 @@ const AppRunsHistory = forwardRef(
           width={800}>
           {jsonSchema && (
             <FormBuilderV1
-              hideCancelButton
+              hideFooter
               readonly
-              cancelText={t('label.back')}
               formData={appRunRecordConfig}
               isLoading={false}
-              okText={t('label.submit')}
               schema={jsonSchema}
               uiSchema={UiSchema}
-              onCancel={noop}
               onSubmit={noop}
             />
           )}

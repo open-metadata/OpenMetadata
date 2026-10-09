@@ -27,6 +27,7 @@ import {
   mockApplicationData,
   mockExternalApplicationData,
 } from '../../../../mocks/rests/applicationAPI.mock';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import AppRunsHistory from './AppRunsHistory.component';
 
 const mockHandlePagingChange = jest.fn();
@@ -436,6 +437,11 @@ describe('AppRunsHistory', () => {
 
     expect(screen.getByTestId('app-run-config-close')).toBeInTheDocument();
     expect(screen.getByText('Configure Save')).toBeInTheDocument();
+    // The run config is read-only, so the form must not offer a Submit.
+    expect(FormBuilderV1).toHaveBeenLastCalledWith(
+      expect.objectContaining({ readonly: true, hideFooter: true }),
+      expect.anything()
+    );
   });
 
   it('should disable config when schema is unavailable', async () => {
