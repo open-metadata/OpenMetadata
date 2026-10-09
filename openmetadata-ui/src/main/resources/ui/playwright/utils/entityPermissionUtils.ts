@@ -80,8 +80,10 @@ const checkElementVisibility = async (
     switch (type) {
       case 'direct': {
         await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`).first()
-        ).toBeVisible();
+          testUserPage
+            .locator(`[data-testid="${testId}"]`)
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
 
         break;
       }
@@ -146,7 +148,11 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).toBeVisible();
+        // A label string can legitimately appear more than once on the page, so
+        // assert that at least one visible match exists.
+        await expect(
+          testUserPage.getByText(testId).filter({ visible: true })
+        ).not.toHaveCount(0);
 
         break;
       }
@@ -223,7 +229,9 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).not.toBeVisible();
+        await expect(
+          testUserPage.getByText(testId).filter({ visible: true })
+        ).toHaveCount(0);
 
         break;
       }
@@ -529,7 +537,9 @@ export const testDashboardDataModelSpecificOperations = async (
 // after a vote action triggers the re-fetch of entity details.
 const testVotePreservesUsage = async (testUserPage: Page) => {
   await testUserPage.locator('[data-testid="up-vote-btn"]').click();
-  await expect(testUserPage.getByText('Usage').first()).toBeVisible();
+  await expect(
+    testUserPage.getByText('Usage').filter({ visible: true })
+  ).not.toHaveCount(0);
 };
 
 export const testDashboardSpecificOperations = async (
@@ -717,7 +727,7 @@ export const createCustomPropertyForEntity = async (
   adminUser: UserClass
 ) => {
   const page = await browser.newPage();
-  await adminUser.login(page);
+  await adminUser.signIn(page);
 
   // Map entity types to their correct API types (same as used in working tests)
   const entityTypeMapping: Record<string, string> = {

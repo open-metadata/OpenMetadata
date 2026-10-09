@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Divider, Drawer, Row, Tooltip, Typography } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Drawer, Tooltip } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
@@ -72,12 +73,12 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               </div>
             </Tooltip>
             <div className="version-pricing-reached">
-              <Typography.Title className="font-medium" level={4}>
+              <Typography as="h4" className="font-medium">
                 {t('message.unlock-all-version-history')}
-              </Typography.Title>
-              <Typography.Text className="text-grey-muted font-normal">
+              </Typography>
+              <Typography className="font-normal" color="secondary">
                 {t('message.upgrade-to-paid-plan-for-version-history')}
-              </Typography.Text>
+              </Typography>
 
               <Button
                 block
@@ -105,16 +106,16 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
       maskClosable={false}
       title={
         <>
-          <Row className="p-b-xss" justify="space-between">
-            <Col>
-              <Typography.Text className="font-medium">
+          <Box className="layout-row p-b-xss" justify="between" wrap="wrap">
+            <Box className="layout-column tw:block">
+              <Typography className="font-medium tw:text-primary">
                 {t('label.version-plural-history')}
-              </Typography.Text>
-            </Col>
-            <Col>
+              </Typography>
+            </Box>
+            <Box className="layout-column tw:block">
               <CloseIcon handleCancel={onBack} />
-            </Col>
-          </Row>
+            </Box>
+          </Box>
           <Divider className="m-0" />
         </>
       }

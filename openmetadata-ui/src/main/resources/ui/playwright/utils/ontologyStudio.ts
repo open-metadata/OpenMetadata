@@ -12,6 +12,7 @@
  */
 
 import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
@@ -48,7 +49,7 @@ export async function applyGlossaryFilter(page: Page, glossaryId: string) {
       response.request().method() === 'GET' &&
       response.url().includes('/api/v1/glossaryTerms'),
     200,
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
   await page.getByTestId('update-btn').click();
   await termsResponse;
@@ -62,7 +63,7 @@ export async function navigateToOntologyStudio(page: Page) {
       response.request().method() === 'GET' &&
       response.url().includes('/api/v1/glossaries'),
     200,
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
 
   await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
@@ -72,7 +73,7 @@ export async function navigateToOntologyStudio(page: Page) {
 
 export async function waitForGraphLoaded(page: Page) {
   await expect(page.getByTestId('ontology-graph-loading')).not.toBeVisible({
-    timeout: 30000,
+    timeout: ACTION_TIMEOUT,
   });
 }
 
@@ -550,7 +551,7 @@ export async function waitForMoreNodesThan(
       }
     },
     count,
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
 }
 export async function applyMultiGlossaryFilter(
@@ -567,7 +568,7 @@ export async function applyMultiGlossaryFilter(
       response.request().method() === 'GET' &&
       response.url().includes('/api/v1/glossaryTerms'),
     200,
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
   await page.getByTestId('update-btn').click();
   await termsResponse;

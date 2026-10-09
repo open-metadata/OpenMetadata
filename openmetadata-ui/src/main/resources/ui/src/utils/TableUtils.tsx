@@ -12,10 +12,11 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
-import { Fragment } from 'react';
+import { FC, Fragment } from 'react';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
 import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
@@ -242,13 +243,14 @@ export const getColumnDataTypeIcon = ({
 
 export function getTableExpandableConfig<T>(
   isDraggable?: boolean,
-  expandIconClass?: string
+  expandIconClass?: string,
+  DragIcon: FC<{ className?: string }> = IconDrag
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
         <>
-          {isDraggable && <IconDrag className="drag-icon" />}
+          {isDraggable && <DragIcon className="drag-icon" />}
           <Icon
             className={classNames(
               'table-expand-icon vertical-baseline',
@@ -262,7 +264,7 @@ export function getTableExpandableConfig<T>(
       ) : (
         isDraggable && (
           <>
-            <IconDrag className="drag-icon" />
+            <DragIcon className="drag-icon" />
             <span className="expand-cell-empty-icon-container" />
           </>
         )
@@ -361,9 +363,9 @@ export const tableConstraintRendererBasedOnType = (
 
       <Space direction="vertical" size={16}>
         {columns?.map((column) => (
-          <Typography.Text ellipsis={{ tooltip: true }} key={column}>
+          <Typography ellipsis={{ tooltip: true }} key={column}>
             {column}
-          </Typography.Text>
+          </Typography>
         ))}
       </Space>
     </div>

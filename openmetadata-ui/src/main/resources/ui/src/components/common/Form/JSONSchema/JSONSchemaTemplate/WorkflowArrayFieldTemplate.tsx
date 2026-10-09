@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
+import { Button, Select, Tooltip } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -110,15 +111,15 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   );
 
   return (
-    <Row>
-      <Col span={24}>
+    <Grid className="layout-row layout-grid">
+      <Grid.Item className="layout-column" span={24}>
         {/* Display field title only if uniqueItems is not true to remove duplicate title set
          automatically due to an unknown behavior */}
         {props.schema.uniqueItems !== true && (
-          <Typography>{startCase(props.name)}</Typography>
+          <Typography as="article">{startCase(props.name)}</Typography>
         )}
-      </Col>
-      <Col className="select-container" span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column select-container" span={24}>
         <Select
           className="m-t-xss w-full"
           data-testid={`workflow-array-field-${id}`}
@@ -164,8 +165,8 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
             }}
           />
         </Tooltip>
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

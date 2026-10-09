@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
@@ -32,17 +34,17 @@ const SummaryTagsDescription = ({
 
   return (
     <>
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
-          <Typography.Text
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
+          <Typography
             className="summary-panel-section-title"
             data-testid="tags-header">
             {t('label.tag-plural')}
-          </Typography.Text>
-        </Col>
-        <Col className="d-flex flex-wrap gap-2" span={24}>
+          </Typography>
+        </Grid.Item>
+        <Grid.Item className="layout-column d-flex flex-wrap gap-2" span={24}>
           {tags.length > 0 ? (
             <TagsViewer
               displayType={DisplayType.READ_MORE}
@@ -50,24 +52,24 @@ const SummaryTagsDescription = ({
               tags={tags}
             />
           ) : (
-            <Typography.Text className="text-sm no-data-chip-placeholder">
+            <Typography className="text-sm no-data-chip-placeholder">
               {t('label.no-tags-added')}
-            </Typography.Text>
+            </Typography>
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
-          <Typography.Text
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
+          <Typography
             className="summary-panel-section-title"
             data-testid="description-header">
             {t('label.description')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
+          </Typography>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <div>
             {entityDetail.description?.trim() ? (
               <RichTextEditorPreviewerV1
@@ -75,13 +77,13 @@ const SummaryTagsDescription = ({
                 maxLength={200}
               />
             ) : (
-              <Typography className="no-data-chip-placeholder">
+              <Typography as="article" className="no-data-chip-placeholder">
                 {t('label.no-data-found')}
               </Typography>
             )}
           </div>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </>
   );
 };

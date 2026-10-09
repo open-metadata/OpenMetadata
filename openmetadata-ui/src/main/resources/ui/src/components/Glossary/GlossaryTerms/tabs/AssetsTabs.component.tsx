@@ -11,20 +11,21 @@
  *  limitations under the License.
  */
 import {
+  ButtonUtility,
+  Dropdown,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
   Alert,
   Button,
   Checkbox,
   Col,
-  Dropdown,
   MenuProps,
   notification,
   Row,
-  Skeleton,
   Space,
-  Tooltip,
-  Typography,
 } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isObject } from 'lodash';
@@ -43,7 +44,6 @@ import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
@@ -100,6 +100,10 @@ import {
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -261,8 +265,9 @@ const queryParamBuilders: Partial<
 interface AssetsFilterBarProps {
   type: AssetsOfEntity;
   totalAssetCount: number;
-  filterMenu: ItemType[];
+  filterMenu: { key: string; label: string }[];
   selectedFilter: string[];
+  onFilterSelect: (key: string) => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
   selectedQuickFilters: ExploreQuickFilterField[];
@@ -277,6 +282,7 @@ const AssetsFilterBar = ({
   totalAssetCount,
   filterMenu,
   selectedFilter,
+  onFilterSelect,
   searchValue,
   onSearchChange,
   selectedQuickFilters,
@@ -294,20 +300,32 @@ const AssetsFilterBar = ({
   return (
     <>
       <Col className="d-flex gap-3" span={24}>
-        <Dropdown
-          menu={{
-            items: filterMenu,
-            multiple: true,
-            selectable: true,
-            selectedKeys: selectedFilter,
-          }}
-          trigger={['click']}>
-          <Button
-            className={classNames('feed-filter-icon')}
+        <Dropdown.Root>
+          <ButtonUtility
+            className="tw:size-9"
+            color="secondary"
             data-testid="asset-filter-button"
-            icon={<FilterIcon height={16} />}
+            icon={FilterIcon}
+            size="sm"
+            tooltip={t('label.filter-plural')}
           />
-        </Dropdown>
+          <Dropdown.Popover className="tw:w-auto" placement="bottom start">
+            <Dropdown.Menu
+              aria-label={t('label.filter-plural')}
+              selectedKeys={selectedFilter}
+              selectionMode="multiple"
+              onAction={(key) => onFilterSelect(String(key))}>
+              {filterMenu.map((item) => (
+                <Dropdown.Item
+                  shouldCloseOnSelect
+                  id={item.key}
+                  key={item.key}
+                  label={item.label}
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
         <div className="flex-1">
           <Searchbar
             removeMargin
@@ -331,13 +349,13 @@ const AssetsFilterBar = ({
               onFieldValueSelect={onFieldValueSelect}
             />
             {quickFilterQuery && (
-              <Typography.Text
+              <Typography
                 className="text-primary self-center cursor-pointer"
                 onClick={onClearFilters}>
                 {t('label.clear-entity', {
                   entity: '',
                 })}
-              </Typography.Text>
+              </Typography>
             )}
           </div>
         </Col>
@@ -375,9 +393,9 @@ const BulkDeleteNotification = ({
         visible: selectedItemsCount > 0,
       })}>
       <div className="d-flex items-center justify-between">
-        <Typography.Text className="text-white">
+        <Typography className="text-white">
           {selectedItemsCount} {t('label.items-selected-lowercase')}
-        </Typography.Text>
+        </Typography>
         <Button
           danger
           data-testid="delete-all-button"
@@ -483,7 +501,7 @@ const AssetsTabs = forwardRef(
       [permissions]
     );
 
-    const handleMenuClick = ({ key }: { key: string }) => {
+    const handleMenuClick = (key: string) => {
       setSelectedFilter((prevSelected) =>
         prevSelected.includes(key)
           ? prevSelected.filter((selectedKey) => selectedKey !== key)
@@ -491,13 +509,14 @@ const AssetsTabs = forwardRef(
       );
     };
 
-    const filterMenu: ItemType[] = useMemo(() => {
-      return filters.map((filter) => ({
-        key: filter.key,
-        label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
-        onClick: handleMenuClick,
-      }));
-    }, [filters]);
+    const filterMenu = useMemo(
+      () =>
+        filters.map((filter) => ({
+          key: filter.key,
+          label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
+        })),
+      [filters]
+    );
 
     const queryParam = useMemo(() => {
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
@@ -698,7 +717,7 @@ const AssetsTabs = forwardRef(
 
         return (
           <>
-            <Typography.Text>{baseMessage}</Typography.Text>
+            <Typography>{baseMessage}</Typography>
             <Alert
               showIcon
               className="m-t-sm"
@@ -733,7 +752,7 @@ const AssetsTabs = forwardRef(
       [getRemovalWarningContent]
     );
 
-    const items: ItemType[] = [
+    const getCardMenuItems = (source: SourceType): ManageMenuItem[] => [
       {
         label: (
           <ManageButtonItemLabel
@@ -746,11 +765,7 @@ const AssetsTabs = forwardRef(
           />
         ),
         key: 'delete-button',
-        onClick: () => {
-          if (selectedCard) {
-            onExploreCardDelete(selectedCard);
-          }
-        },
+        onClick: () => onExploreCardDelete(source),
       },
     ];
 
@@ -921,16 +936,14 @@ const AssetsTabs = forwardRef(
             }>
             {searchValue && type !== AssetsOfEntity.MY_DATA && (
               <div className="gap-4">
-                <Typography.Paragraph>
+                <Typography as="p">
                   {t('label.no-matching-data-asset')}
-                </Typography.Paragraph>
+                </Typography>
               </div>
             )}
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
-                <Typography.Paragraph>
-                  {noDataPlaceholder.message}
-                </Typography.Paragraph>
+                <Typography as="p">{noDataPlaceholder.message}</Typography>
               </div>
             )}
           </ErrorPlaceHolderNew>
@@ -973,10 +986,6 @@ const AssetsTabs = forwardRef(
       isEntityDeleted,
     ]);
 
-    const renderDropdownContainer = useCallback((menus: ReactNode) => {
-      return <div data-testid="manage-dropdown-list-container">{menus}</div>;
-    }, []);
-
     const handleQuickFiltersChange = useCallback(
       (data: ExploreQuickFilterField[]) => {
         setQuickFilterQuery(getQuickFilterQuery(data));
@@ -1012,27 +1021,13 @@ const AssetsTabs = forwardRef(
                 showEntityIcon
                 actionPopoverContent={
                   isRemovable && canEditAll ? (
-                    <Dropdown
-                      align={{ targetOffset: [-12, 0] }}
-                      dropdownRender={renderDropdownContainer}
-                      menu={{ items }}
-                      overlayClassName="manage-dropdown-list-container"
-                      overlayStyle={{ width: '350px' }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Tooltip
-                        placement="topRight"
-                        title={t('label.manage-entity', {
-                          entity: t('label.asset'),
-                        })}>
-                        <Button
-                          className={classNames('flex-center px-1.5')}
-                          data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                          type="text">
-                          <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                        </Button>
-                      </Tooltip>
-                    </Dropdown>
+                    <ManageMenu
+                      data-testid={`manage-button-${_source.fullyQualifiedName}`}
+                      items={getCardMenuItems(_source)}
+                      label={t('label.manage-entity', {
+                        entity: t('label.asset'),
+                      })}
+                    />
                   ) : null
                 }
                 checked={selectedItems?.has(_source.id ?? '')}
@@ -1081,6 +1076,7 @@ const AssetsTabs = forwardRef(
         assetErrorPlaceHolder,
         selectedItems,
         setSelectedCard,
+        onExploreCardDelete,
         handlePageChange,
         handlePageSizeChange,
         handleCheckboxChange,
@@ -1262,6 +1258,7 @@ const AssetsTabs = forwardRef(
               type={type}
               onClearFilters={clearFilters}
               onFieldValueSelect={handleQuickFiltersValueSelect}
+              onFilterSelect={handleMenuClick}
               onSearchChange={setSearchValue}
             />
             {isLoading ? (
@@ -1271,9 +1268,9 @@ const AssetsTabs = forwardRef(
                   data-testid="loader"
                   direction="vertical"
                   size={16}>
-                  <Skeleton />
-                  <Skeleton />
-                  <Skeleton />
+                  <SkeletonParagraph animation={false} />
+                  <SkeletonParagraph animation={false} />
+                  <SkeletonParagraph animation={false} />
                 </Space>
               </Col>
             ) : (

@@ -11,14 +11,20 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Tooltip, Typography } from 'antd';
+import {
+  ButtonUtility,
+  Divider,
+  Popover,
+  PopoverTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
-
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
@@ -119,110 +125,99 @@ const UserProfileTeams = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="text-sm font-medium p-l-xss">
+          <Typography className="text-sm font-medium p-l-xss">
             {t('label.team-plural')}
-          </Typography.Text>
+          </Typography>
 
-          <Popover
-            content={
-              <div
-                className="user-profile-edit-popover-card relative"
-                data-testid="profile-teams-edit-popover"
-                style={{
-                  height: `${popoverHeight}px`,
-                }}>
-                <div className="d-flex justify-start items-center gap-2 m-b-sm">
-                  <div className="d-flex flex-start items-center">
-                    <IconTeamsGrey height={16} />
+          {isAdminUser && !isDeletedUser && (
+            <PopoverTrigger isOpen={isTeamsEdit} onOpenChange={setIsTeamsEdit}>
+              <ButtonUtility
+                color="tertiary"
+                data-testid="edit-teams-button"
+                icon={<EditIcon height={16} width={16} />}
+                size="xs"
+                tooltip={t('label.edit-entity', {
+                  entity: t('label.team-plural'),
+                })}
+              />
+              <Popover
+                className="profile-edit-popover-card"
+                containerClassName="tw:w-95 tw:p-5"
+                placement="top end">
+                <div
+                  className="user-profile-edit-popover-card relative"
+                  data-testid="profile-teams-edit-popover"
+                  style={{
+                    height: `${popoverHeight}px`,
+                  }}>
+                  <div className="d-flex justify-start items-center gap-2 m-b-sm">
+                    <div className="d-flex flex-start items-center">
+                      <IconTeamsGrey height={16} />
+                    </div>
+
+                    <Typography className="user-profile-edit-popover-card-title">
+                      {t('label.team-plural')}
+                    </Typography>
                   </div>
 
-                  <Typography.Text className="user-profile-edit-popover-card-title">
-                    {t('label.team-plural')}
-                  </Typography.Text>
-                </div>
-
-                <div
-                  className="border p-2 bg-gray-100 rounded-md"
-                  style={{
-                    borderRadius: '5px',
-                  }}>
-                  <TeamsSelectableNew
-                    handleDropdownChange={handleDropdownChange}
-                    maxValueCount={3}
-                    open={isDropdownOpen}
-                    ref={teamsSelectableRef}
-                    selectedTeams={selectedTeams}
-                    onSelectionChange={setSelectedTeams}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button
-                    className="profile-edit-save"
-                    data-testid="teams-edit-close-btn"
-                    icon={<ClosePopoverIcon height={24} />}
-                    size="small"
+                  <div
+                    className="border p-2 bg-gray-100 rounded-md"
                     style={{
-                      width: '30px',
-                      height: '30px',
-                      background: '#0950C5',
-                      position: 'absolute',
-                      bottom: '0px',
-                      right: '38px',
-                    }}
-                    type="primary"
-                    onClick={handleCloseEditTeam}
-                  />
-                  <Button
-                    className="profile-edit-cancel"
-                    data-testid="teams-edit-save-btn"
-                    icon={<SavePopoverIcon height={24} />}
-                    loading={isLoading}
-                    size="small"
-                    style={{
-                      width: '30px',
-                      height: '30px',
-                      background: '#0950C5',
-                      position: 'absolute',
-                      bottom: '0px',
-                    }}
-                    type="primary"
-                    onClick={handleTeamsSave}
-                  />
+                      borderRadius: '5px',
+                    }}>
+                    <TeamsSelectableNew
+                      handleDropdownChange={handleDropdownChange}
+                      maxValueCount={3}
+                      open={isDropdownOpen}
+                      ref={teamsSelectableRef}
+                      selectedTeams={selectedTeams}
+                      onSelectionChange={setSelectedTeams}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button
+                      className="profile-edit-save"
+                      data-testid="teams-edit-close-btn"
+                      icon={<ClosePopoverIcon height={24} />}
+                      size="small"
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        background: '#0950C5',
+                        position: 'absolute',
+                        bottom: '0px',
+                        right: '38px',
+                      }}
+                      type="primary"
+                      onClick={handleCloseEditTeam}
+                    />
+                    <Button
+                      className="profile-edit-cancel"
+                      data-testid="teams-edit-save-btn"
+                      icon={<SavePopoverIcon height={24} />}
+                      loading={isLoading}
+                      size="small"
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        background: '#0950C5',
+                        position: 'absolute',
+                        bottom: '0px',
+                      }}
+                      type="primary"
+                      onClick={handleTeamsSave}
+                    />
+                  </div>
                 </div>
-              </div>
-            }
-            open={isTeamsEdit}
-            overlayClassName="profile-edit-popover-card"
-            placement="topRight"
-            trigger="click"
-            onOpenChange={setIsTeamsEdit}>
-            {isAdminUser && !isDeletedUser && (
-              <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.team-plural'),
-                })}>
-                <EditIcon
-                  className="cursor-pointer"
-                  data-testid="edit-teams-button"
-                  height={16}
-                  onClick={() => setIsTeamsEdit(true)}
-                />
-              </Tooltip>
-            )}
-          </Popover>
+              </Popover>
+            </PopoverTrigger>
+          )}
         </div>
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <div className="user-page-icon d-flex-center">
-          <Divider
-            style={{
-              height: '100%',
-              width: '1px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
-          />
+          <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
         </div>
         {teamsRenderElement}
       </div>

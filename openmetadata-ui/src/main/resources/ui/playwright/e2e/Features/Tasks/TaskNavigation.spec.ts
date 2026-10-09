@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
@@ -78,7 +79,7 @@ test.describe('Task Navigation - Activity Feed Widget', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('clicking task in home feed widget should navigate to entity page', async ({
@@ -219,7 +220,7 @@ test.describe('Task Navigation - Entity Page', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should display tasks in entity activity feed tab', async ({ page }) => {
@@ -373,7 +374,7 @@ test.describe('Task Navigation - Notification Box', () => {
   });
 
   test('assignee should see task in notification box', async ({ page }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -407,7 +408,7 @@ test.describe('Task Navigation - Notification Box', () => {
   test('clicking task notification should navigate correctly', async ({
     page,
   }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -475,13 +476,13 @@ test.describe('Task Navigation - URL Validation', () => {
   test('navigating to /table/TASK-XXXXX should show 404 (invalid URL pattern)', async ({
     page,
   }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
 
     // This is a regression test - /table/TASK-00001 is an invalid URL
     // because TASK-00001 is a task ID, not a table FQN
     const tableNotFound = page.waitForResponse(
       (r) => r.url().includes('/api/v1/tables/name/TASK-00001'),
-      { timeout: 30000 }
+      { timeout: ACTION_TIMEOUT }
     );
     await page.goto('/table/TASK-00001');
     const response = await tableNotFound;
@@ -516,7 +517,7 @@ test.describe('Task Navigation - URL Validation', () => {
       const task = await taskResponse.json();
 
       const page = await browser.newPage();
-      await adminUser.login(page);
+      await adminUser.signIn(page);
 
       // Navigate to task-related entity page
       // The correct pattern should be /table/{entityFqn}?activeTab=activity_feed
@@ -596,7 +597,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
     test.slow();
 
     await test.step('Log in and navigate to entity page', async () => {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       const entityFqn = table.entityResponseData?.fullyQualifiedName ?? '';
       await page.goto(`/table/${encodeURIComponent(entityFqn)}`);
       await waitForPageLoaded(page);
@@ -689,8 +690,8 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
 
     try {
       await test.step('Log in both sessions', async () => {
-        await adminUser.login(adminPage);
-        await otherUser.login(userPage);
+        await adminUser.signIn(adminPage);
+        await otherUser.signIn(userPage);
       });
 
       await test.step('Admin navigates to entity Columns (Schema) tab', async () => {

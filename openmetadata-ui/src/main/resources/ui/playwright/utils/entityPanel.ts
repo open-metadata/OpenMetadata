@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { clickOutside, redirectToExplorePage } from './common';
 import {
   applyGlossaryPicker,
@@ -122,7 +123,10 @@ export const openEntitySummaryPanel = async ({
     }
   }
   const runSearch = async () => {
-    if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
+    const exploreSearchWrapper = page.getByTestId('explore-search-input');
+    const isExplore = (await exploreSearchWrapper.count()) > 0;
+    // Explore owns its entity tabs and has no navbar filter dropdown.
+    if (!isExplore && endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
       await page.getByTestId('global-search-selector').waitFor({
         state: 'visible',
       });
@@ -140,11 +144,9 @@ export const openEntitySummaryPanel = async ({
     // ever time out. Pick whichever this page actually renders.
     // `explore-search-input` marks the field wrapper, not the field, so the
     // textbox inside it is what accepts fill().
-    const exploreSearchWrapper = page.getByTestId('explore-search-input');
-    const searchBox =
-      (await exploreSearchWrapper.count()) > 0
-        ? exploreSearchWrapper.getByRole('textbox')
-        : page.getByTestId('searchBox');
+    const searchBox = isExplore
+      ? exploreSearchWrapper.getByRole('textbox')
+      : page.getByTestId('searchBox');
 
     try {
       await searchBox.waitFor({ state: 'visible', timeout: 15_000 });
@@ -168,12 +170,12 @@ export const openEntitySummaryPanel = async ({
       // callback that hangs until the whole test times out.
       await page.waitForURL(/[?&]search=[^&]+/, {
         waitUntil: 'domcontentloaded',
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       });
 
       const tab = page
         .getByTestId('explore-left-panel')
-        .getByRole('menuitem', { name: exploreTab });
+        .getByRole('tab', { name: exploreTab });
       await tab.waitFor({ state: 'visible' });
       await tab.click();
       await waitForAllLoadersToDisappear(page);
@@ -251,10 +253,7 @@ export async function navigateToExploreAndSelectTable(
   const summaryPanel = page.getByTestId('entity-summary-panel-container');
   await summaryPanel.waitFor({ state: 'visible' });
 
-  // Wait for the loader elements count to become 0
-  await expect(summaryPanel.getByTestId('loader')).toHaveCount(0, {
-    timeout: 30000,
-  });
+  await waitForAllLoadersToDisappear(summaryPanel);
 }
 
 export const waitForPatchResponse = async (page: Page) => {
@@ -273,7 +272,7 @@ export const waitForPatchResponse = async (page: Page) => {
 
 export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   const summaryPanel = page.locator('.entity-summary-panel-container');
-  const tab = summaryPanel.getByRole('menuitem', {
+  const tab = summaryPanel.getByRole('tab', {
     name: new RegExp(tabName, 'i'),
   });
 

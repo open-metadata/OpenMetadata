@@ -12,12 +12,17 @@
  */
 
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import {
+  chartColor,
+  hexToRgba,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
+import { Progress, Tooltip } from 'antd';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
-import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../utils/DataInsightUtils';
 import { getDaysRemaining } from '../../utils/date-time/DateTimeUtils';
@@ -29,17 +34,20 @@ interface Props {
 
 const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
   const { t } = useTranslation();
-  const { kpiBackgrounds, kpiSeries } = useDataInsightChartColors();
+  const palette = useChartPalette();
   const { latestResultsList } = useMemo(() => {
     return { latestResultsList: Object.entries(kpiLatestResultsRecord) };
   }, [kpiLatestResultsRecord]);
 
   return (
-    <Space
-      className="w-full p-t-lg p-r-xs"
+    <Box
+      inline
+      align="stretch"
+      className="layout-space w-full p-t-lg p-r-xs"
       data-testid="kpi-latest-result-container"
-      direction="vertical"
-      size={48}>
+      direction="col"
+      gap={12}
+      itemClassName="layout-space-item">
       {latestResultsList.map((result, index) => {
         const name = result[0];
         const resultData = result[1];
@@ -65,12 +73,15 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
         const daysLeft = getDaysRemaining(resultData.endDate);
 
         const isTargetMet = targetResult.targetMet;
-        const seriesColor = kpiSeries[index % kpiSeries.length];
-        const backgroundColor = kpiBackgrounds[index % kpiBackgrounds.length];
+        const seriesColor = chartColor(palette, index);
+        const backgroundColor = hexToRgba(seriesColor, 0.1);
 
         return (
-          <Row data-testid={name} key={name}>
-            <Col className="d-flex items-center" span={24}>
+          <Grid
+            className="layout-row layout-grid"
+            data-testid={name}
+            key={name}>
+            <Grid.Item className="layout-column d-flex items-center" span={24}>
               <div
                 className="kpi-days-section"
                 style={{
@@ -79,30 +90,35 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                 }}>
                 {isTargetMet ? (
                   <>
-                    <Typography.Text
+                    <Typography
                       className="days-remaining"
                       data-testid="kpi-success">
                       <CheckCircleOutlined style={{ fontSize: '20px' }} />
-                    </Typography.Text>
+                    </Typography>
                   </>
                 ) : (
                   <>
-                    <Typography.Text
+                    <Typography
                       className="days-remaining"
                       data-testid="kpi-days-remaining">
                       {daysLeft <= 0 ? 0 : daysLeft}
-                    </Typography.Text>
-                    <Typography.Text className="days-left">
+                    </Typography>
+                    <Typography className="days-left">
                       {t('label.day-left', { day: 'days' })}
-                    </Typography.Text>
+                    </Typography>
                   </>
                 )}
               </div>
               <div className="m-l-sm flex-1">
-                <Space className="w-full justify-between">
-                  <Typography.Text className="text-xs">
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal w-full justify-between"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <Typography className="text-xs">
                     {resultData.displayName ?? name}
-                  </Typography.Text>
+                  </Typography>
                   {daysLeft <= 0 || isTargetMet ? (
                     <Tooltip
                       placement="bottom"
@@ -114,7 +130,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                       <InfoCircleOutlined style={{ fontSize: '14px' }} />
                     </Tooltip>
                   ) : null}
-                </Space>
+                </Box>
                 <Progress
                   percent={Number(currentProgress)}
                   showInfo={false}
@@ -123,24 +139,24 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                 />
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
-                    <Typography.Text className="text-xs">
+                    <Typography className="text-xs">
                       {targetPercentValue}
                       {suffix}
-                    </Typography.Text>
+                    </Typography>
                   </div>
                   <div>
-                    <Typography.Text className="text-xs">
+                    <Typography className="text-xs">
                       {targetMetPercentValue}
                       {suffix}
-                    </Typography.Text>
+                    </Typography>
                   </div>
                 </div>
               </div>
-            </Col>
-          </Row>
+            </Grid.Item>
+          </Grid>
         );
       })}
-    </Space>
+    </Box>
   );
 };
 

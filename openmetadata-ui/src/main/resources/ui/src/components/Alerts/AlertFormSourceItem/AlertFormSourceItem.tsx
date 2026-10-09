@@ -11,33 +11,35 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Dropdown,
-  Form,
-  MenuItemProps,
-  MenuProps,
-  Select,
-  Typography,
-} from 'antd';
-import type { MenuInfo } from 'rc-menu/lib/interface';
-import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
+import { Key, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
+import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import { useFqn } from '../../../hooks/useFqn';
+import {
+  getSourceKindLabel,
+  getSourceOptions,
+  groupSourcesByKind,
+} from '../../../utils/Alerts/AlertSelectionUtil';
 import { getSourceOptionsFromResourceList } from '../../../utils/Alerts/AlertsUtil';
-import './alert-form-source-item.less';
+import AlertSourcePicker from '../AlertSourcePicker/AlertSourcePicker';
 import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
+
+interface SourceMenuItem {
+  key: string;
+  label: ReactNode;
+}
 
 function AlertFormSourceItem({
   filterResources,
+  isViewMode = false,
 }: Readonly<AlertFormSourceItemProps>) {
   const { t } = useTranslation();
-  const newRef = useRef(null);
+  const { capabilities } = useAlertSelectionContext();
   const form = Form.useFormInstance();
   const { fqn } = useFqn();
-  const [selectedResource, setSelectedResource] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
 
   const resourcesOptions = useMemo(
@@ -51,51 +53,69 @@ function AlertFormSourceItem({
     [filterResources]
   );
 
-  const handleSourceChange = (value: string) => {
-    // Reset the filters, triggers and destination on change of source,
-    // since the options for above are source specific.
-    form.setFieldValue('input', {});
-    form.setFieldValue('destinations', []);
-    setSelectedResource([value]);
-    form.setFieldValue('resources', [value]);
-  };
-
-  const dropdownCardComponent = useCallback((menuNode: ReactNode) => {
-    return (
-      <Card
-        bodyStyle={{ padding: 0 }}
-        className="source-dropdown-card"
-        data-testid="drop-down-menu">
-        <Typography.Text className="p-l-md text-grey-muted">
-          {t('label.data-asset-plural')}
-        </Typography.Text>
-        <div className="p-t-xss">{menuNode}</div>
-      </Card>
-    );
-  }, []);
-
-  const dropdownMenuItems: MenuProps['items'] = useMemo(
-    () =>
-      resourcesOptions.map((option) => ({
-        label: option.label,
-        key: option.value,
-      })),
-    [resourcesOptions]
+  const sourceNames = useMemo(
+    () => (filterResources ?? []).map((resource) => resource.name ?? ''),
+    [filterResources]
   );
 
-  const handleMenuItemClick: MenuItemProps['onClick'] = useCallback(
-    (info: MenuInfo) => {
-      form.setFieldValue(['resources'], [info.key]);
-      setIsEditMode(true);
-    },
-    []
+  // Filters and triggers depend on the sources, so they start again. A destination is offered
+  // when any source allows it, so adding a source keeps the destinations, and taking one away
+  // starts them again, as changing the source always has.
+  const handleSourcesChange = (values: string[], previous: string[]) => {
+    const sourceTakenAway = previous.some((source) => !values.includes(source));
+
+    form.setFieldValue('input', {});
+    if (sourceTakenAway) {
+      form.setFieldValue('destinations', []);
+    }
+    form.setFieldValue('resources', values);
+  };
+
+  // Grouped by kind, as the picker groups them, once the server has said each source's kind.
+  const sourceGroups = useMemo(() => {
+    const labelOf = new Map(
+      resourcesOptions.map((option) => [option.value, option.label])
+    );
+
+    return groupSourcesByKind(
+      getSourceOptions(sourceNames, [], capabilities.selection)
+    ).map(({ kind, sources }) => ({
+      kind,
+      items: sources.map(
+        (source): SourceMenuItem => ({
+          key: source.name,
+          label: labelOf.get(source.name),
+        })
+      ),
+    }));
+  }, [resourcesOptions, sourceNames, capabilities.selection]);
+
+  const handleMenuItemClick = useCallback((key: Key) => {
+    form.setFieldValue(['resources'], [key]);
+    setIsEditMode(true);
+  }, []);
+
+  const renderMenuItems = (items: SourceMenuItem[]) =>
+    items.map((item) => (
+      <Dropdown.Item id={item.key} key={item.key} textValue={item.key}>
+        {item.label}
+      </Dropdown.Item>
+    ));
+
+  const sourceControl = (
+    <AlertSourcePicker
+      isDisabled={isViewMode}
+      selection={capabilities.selection}
+      sources={sourceNames}
+      onChange={handleSourcesChange}
+    />
   );
 
   return (
     <FormCardSection
       heading={t('label.source')}
       subHeading={t('message.alerts-source-description')}>
-      <div className="source-input-container" ref={newRef}>
+      <div className="source-input-container">
         <Form.Item
           required
           initialValue={
@@ -116,33 +136,40 @@ function AlertFormSourceItem({
             },
           ]}>
           {isEditMode || fqn ? (
-            <Select
-              className="w-full"
-              data-testid="source-select"
-              options={resourcesOptions}
-              placeholder={t('label.select-field', {
-                field: t('label.data-asset-plural'),
-              })}
-              value={selectedResource[0]}
-              onChange={handleSourceChange}
-            />
+            sourceControl
           ) : (
-            <Dropdown
-              destroyPopupOnHide
-              dropdownRender={dropdownCardComponent}
-              getPopupContainer={() => newRef.current ?? document.body}
-              menu={{
-                items: dropdownMenuItems,
-                onClick: handleMenuItemClick,
-              }}
-              placement="bottomRight"
-              trigger={['click']}>
-              <Button data-testid="add-source-button" type="primary">
+            <Dropdown.Root>
+              <Button data-testid="add-source-button" size="sm">
                 {t('label.add-entity', {
                   entity: t('label.source'),
                 })}
               </Button>
-            </Dropdown>
+              <Dropdown.Popover
+                className="tw:w-auto tw:min-w-50"
+                placement="bottom start"
+                shouldFlip={false}>
+                <div className="tw:pt-2" data-testid="drop-down-menu">
+                  <Dropdown.Menu
+                    aria-label={t('label.source')}
+                    className="tw:max-h-75 tw:overflow-y-auto"
+                    selectionMode="none"
+                    onAction={handleMenuItemClick}>
+                    {sourceGroups.map(({ kind, items }) =>
+                      kind ? (
+                        <Dropdown.Section key={kind}>
+                          <Dropdown.SectionHeader className="tw:px-4 tw:py-1.5 tw:text-xs tw:font-semibold tw:text-quaternary tw:uppercase">
+                            {getSourceKindLabel(kind)}
+                          </Dropdown.SectionHeader>
+                          {renderMenuItems(items)}
+                        </Dropdown.Section>
+                      ) : (
+                        renderMenuItems(items)
+                      )
+                    )}
+                  </Dropdown.Menu>
+                </div>
+              </Dropdown.Popover>
+            </Dropdown.Root>
           )}
         </Form.Item>
       </div>

@@ -528,6 +528,61 @@ describe('TestCaseDetail', () => {
     expect(screen.queryByTestId('result-tab-body')).not.toBeInTheDocument();
   });
 
+  describe('tab strip / body synchronization', () => {
+    const getSelectedTab = () =>
+      screen
+        .queryAllByRole('tab')
+        .find((tab) => tab.getAttribute('aria-selected') === 'true');
+
+    it('should highlight the matching tab and render its body when activeTab matches a rendered tab', () => {
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        activeTab: 'issues',
+      });
+
+      render(<TestCaseDetail />);
+
+      expect(screen.getByTestId('incident')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(getSelectedTab()).toHaveAttribute('data-testid', 'incident');
+      expect(screen.getByTestId('incident-tab-body')).toBeInTheDocument();
+      expect(screen.queryByTestId('result-tab-body')).not.toBeInTheDocument();
+    });
+
+    it('should normalize an unmatched activeTab so the strip highlight and the rendered body agree (version page omits the issues tab)', () => {
+      mockUseTestCaseDetailPage.mockReturnValue({
+        ...baseHookReturn,
+        isVersionPage: true,
+        version: '0.2',
+        tabs: [
+          {
+            key: 'test-case-results',
+            labelProps: { id: 'test-case-result', name: 'Test Case Results' },
+            LabelComponent: MockTabLabel,
+            Tab: MockResultTab,
+          },
+        ],
+        activeTab: 'issues',
+      });
+
+      render(<TestCaseDetail isVersionPage />);
+
+      expect(screen.getByTestId('test-case-result')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(getSelectedTab()).toHaveAttribute(
+        'data-testid',
+        'test-case-result'
+      );
+      expect(screen.queryByTestId('incident')).not.toBeInTheDocument();
+      expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
+      expect(screen.queryByTestId('incident-tab-body')).not.toBeInTheDocument();
+    });
+  });
+
   describe('last run banner', () => {
     const incidentHeaderWithTask = {
       ...baseIncidentHeaderData,
@@ -542,9 +597,10 @@ describe('TestCaseDetail', () => {
     it('should render the last run banner above the results tab body', () => {
       render(<TestCaseDetail />);
 
-      expect(
-        screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)
-      ).toBeInTheDocument();
+      // 22px down to the results, as in the mock.
+      expect(screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)).toHaveClass(
+        'tw:pb-5.5'
+      );
       expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toBeInTheDocument();
       expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
     });
@@ -611,7 +667,9 @@ describe('TestCaseDetail', () => {
           incidentTask: incidentHeaderWithTask.incidentTask,
           taskLinkInfo: incidentHeaderWithTask.taskLinkInfo,
           testCaseStatusData: incidentHeaderWithTask.testCaseStatusData,
-          parameterValues: [{ name: 'columnCount', value: '10' }],
+          testCase: expect.objectContaining({
+            parameterValues: [{ name: 'columnCount', value: '10' }],
+          }),
           testCaseResult: expect.objectContaining({
             testCaseStatus: 'Success',
           }),

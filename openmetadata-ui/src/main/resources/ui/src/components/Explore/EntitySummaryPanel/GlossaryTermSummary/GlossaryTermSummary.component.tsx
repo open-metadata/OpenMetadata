@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Typography } from 'antd';
+import { Box, Grid, Owner, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,18 +82,24 @@ function GlossaryTermSummary({
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <Space className="w-full" direction="vertical" size={20}>
-        <Row
-          className="p-md border-radius-card summary-panel-card"
-          gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
+      <Box
+        inline
+        align="stretch"
+        className="layout-space w-full"
+        direction="col"
+        gap={5}
+        itemClassName="layout-space-item">
+        <Grid
+          className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+          style={getLayoutGutter(0, 8)}>
+          <Grid.Item className="layout-column" span={24}>
+            <Typography
               className="summary-panel-section-title"
               data-testid="reviewer-header">
               {t('label.reviewer-plural')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
+            </Typography>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             {reviewers.length > 0 ? (
               <Owner
                 isCompactView={false}
@@ -100,26 +107,26 @@ function GlossaryTermSummary({
                 showLabel={false}
               />
             ) : (
-              <Typography.Text
+              <Typography
                 className="no-data-chip-placeholder"
                 data-testid="no-reviewer-header">
                 {t('label.no-reviewer')}
-              </Typography.Text>
+              </Typography>
             )}
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
 
-        <Row
-          className="p-md border-radius-card summary-panel-card"
-          gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
+        <Grid
+          className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+          style={getLayoutGutter(0, 8)}>
+          <Grid.Item className="layout-column" span={24}>
+            <Typography
               className="summary-panel-section-title"
               data-testid="synonyms-header">
               {t('label.synonym-plural')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
+            </Typography>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             {synonyms.length > 0 ? (
               <div className="tw:flex tw:flex-wrap tw:gap-1">
                 {synonyms.map((synonym: string) => (
@@ -127,26 +134,26 @@ function GlossaryTermSummary({
                 ))}
               </div>
             ) : (
-              <Typography.Text
+              <Typography
                 className="no-data-chip-placeholder"
                 data-testid="no-synonyms-available-header">
                 {t('message.no-synonyms-available')}
-              </Typography.Text>
+              </Typography>
             )}
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
 
-        <Row
-          className="p-md border-radius-card summary-panel-card"
-          gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
+        <Grid
+          className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+          style={getLayoutGutter(0, 8)}>
+          <Grid.Item className="layout-column" span={24}>
+            <Typography
               className="summary-panel-section-title"
               data-testid="children-header">
               {t('label.children')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
+            </Typography>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <SummaryList
               emptyPlaceholderText={t('label.no-entity', {
                 entity: t('label.children-lowercase'),
@@ -154,9 +161,9 @@ function GlossaryTermSummary({
               entityType={SummaryEntityType.COLUMN}
               formattedEntityData={formattedColumnsData}
             />
-          </Col>
-        </Row>
-      </Space>
+          </Grid.Item>
+        </Grid>
+      </Box>
     </SummaryPanelSkeleton>
   );
 }

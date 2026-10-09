@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import classNames from 'classnames';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import './form-card-section.less';
 import { FormCardSectionProps } from './FormCardSection.interface';
 
@@ -27,21 +29,24 @@ function FormCardSection({
     <Card
       className={classNames('form-card-section-container', className)}
       data-testid={`${heading}-container`}>
-      <Row gutter={[8, 8]}>
-        <Col span={24}>
-          <Typography.Text className="font-medium">{heading}</Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="text-xs text-grey-muted">
+      <Grid className="layout-row layout-grid" style={getLayoutGutter(8, 8)}>
+        <Grid.Item className="layout-column" span={24}>
+          <Typography className="font-medium">{heading}</Typography>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Typography className="text-xs" color="secondary">
             {subHeading}
-          </Typography.Text>
-        </Col>
-        <Col
-          className={classNames('p-t-sm', childrenContainerClassName)}
+          </Typography>
+        </Grid.Item>
+        <Grid.Item
+          className={`layout-column ${classNames(
+            'p-t-sm',
+            childrenContainerClassName
+          )}`}
           span={24}>
           {children}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </Card>
   );
 }

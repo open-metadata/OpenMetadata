@@ -11,37 +11,30 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import {
+  LineChart,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
-  DEFAULT_CHART_OPACITY,
-  HOVER_CHART_OPACITY,
-} from '../../constants/constants';
-import {
-  BAR_CHART_MARGIN,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { PageViewsByEntities } from '../../generated/dataInsight/type/pageViewsByEntities';
-import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
-import { entityChartColor } from '../../utils/ColorUtils';
-import { CustomTooltip } from '../../utils/DataInsightChartUtils';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+import {
+  getDataInsightLineSeries,
+  getDataInsightTooltip,
+  HIDDEN_CHART_LEGEND,
+} from '../../utils/DataInsightChartUtils';
 import {
   getGraphDataByEntityType,
   sortEntityByValue,
@@ -51,6 +44,8 @@ import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import TotalEntityInsightSummary from './TotalEntityInsightSummary.component';
+type PageViewsRow = Record<string, number | string>;
+
 interface Props {
   chartFilter: ChartFilter;
   selectedDays: number;
@@ -76,7 +71,22 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
   }, [entities, latestData]);
 
   const { t } = useTranslation();
-  const { axis, grid } = useDataInsightChartColors();
+  const palette = useChartPalette();
+
+  const series = useMemo(
+    () =>
+      getDataInsightLineSeries({
+        keys: sortedEntitiesByValue,
+        palette,
+        activeKeys,
+        hoverKey: activeMouseHoverKey,
+      }),
+    [sortedEntitiesByValue, palette, activeKeys, activeMouseHoverKey]
+  );
+  const tooltip = useMemo(
+    () => getDataInsightTooltip<PageViewsRow>({ timeKey: 'timestampValue' }),
+    []
+  );
 
   const fetchPageViewsByEntities = async () => {
     setIsLoading(true);
@@ -125,47 +135,29 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
       data-testid="entity-page-views-card"
       id={DataInsightChartType.PageViewsByEntities}
       loading={isLoading}>
-      <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-        <Col span={DI_STRUCTURE.leftContainerSpan}>
+      <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
+        <Grid.Item
+          className="layout-column"
+          span={DI_STRUCTURE.leftContainerSpan}>
           <PageHeader
             data={{
               header: t('label.page-views-by-data-asset-plural'),
               subHeader: t('message.data-insight-page-views'),
             }}
           />
-          <ResponsiveContainer debounce={1} height={GRAPH_HEIGHT}>
-            <LineChart data={data} margin={BAR_CHART_MARGIN}>
-              <CartesianGrid stroke={grid} vertical={false} />
-              <XAxis dataKey="timestamp" tick={{ fill: axis }} />
-              <YAxis tick={{ fill: axis }} />
-              <Tooltip
-                content={<CustomTooltip />}
-                wrapperStyle={{ pointerEvents: 'auto' }}
-              />
-
-              {entities.map((entity, i) => (
-                <Line
-                  dataKey={entity}
-                  hide={
-                    activeKeys.length && entity !== activeMouseHoverKey
-                      ? !activeKeys.includes(entity)
-                      : false
-                  }
-                  key={entity}
-                  stroke={entityChartColor(i)}
-                  strokeOpacity={
-                    isEmpty(activeMouseHoverKey) ||
-                    entity === activeMouseHoverKey
-                      ? DEFAULT_CHART_OPACITY
-                      : HOVER_CHART_OPACITY
-                  }
-                  type="monotone"
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </Col>
-        <Col span={DI_STRUCTURE.rightContainerSpan}>
+          <LineChart<PageViewsRow>
+            ariaLabel={t('label.page-views-by-data-asset-plural')}
+            data={data}
+            height={GRAPH_HEIGHT}
+            legend={HIDDEN_CHART_LEGEND}
+            series={series}
+            tooltip={tooltip}
+            xKey="timestamp"
+          />
+        </Grid.Item>
+        <Grid.Item
+          className="layout-column"
+          span={DI_STRUCTURE.rightContainerSpan}>
           <TotalEntityInsightSummary
             allowFilter
             activeKeys={activeKeys}
@@ -178,8 +170,8 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
             onActiveKeyMouseHover={(entity) => setActiveMouseHoverKey(entity)}
             onActiveKeysUpdate={(entities) => setActiveKeys(entities)}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </Card>
   );
 };

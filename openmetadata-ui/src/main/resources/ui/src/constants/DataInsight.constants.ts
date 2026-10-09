@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { RowProps } from 'antd/lib/grid/row';
-import { Margin } from 'recharts/types/util/types';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
@@ -26,7 +24,14 @@ import {
 } from '../utils/date-time/DateTimeUtils';
 import { DEFAULT_SELECTED_RANGE } from './profiler.constant';
 
-export const BAR_CHART_MARGIN: Margin = {
+export interface ChartMargin {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
+export const BAR_CHART_MARGIN: ChartMargin = {
   top: 20,
   right: 30,
   left: 0,
@@ -34,33 +39,13 @@ export const BAR_CHART_MARGIN: Margin = {
 };
 
 export const DI_STRUCTURE = {
-  rowContainerGutter: 32 as RowProps['gutter'],
+  rowContainerGutter: 32,
   leftContainerSpan: 16,
   rightContainerSpan: 8,
-  rightRowGutter: [8, 0] as RowProps['gutter'],
+  rightRowGutter: [8, 0] satisfies [number, number],
 };
 
 export const GRAPH_HEIGHT = 500;
-
-/**
- * Recharts and Ant Progress receive concrete colors from the theme hook. Keep
- * token references paired with fallbacks so SSR and test environments remain
- * deterministic when computed styles are unavailable.
- */
-export const DATA_INSIGHT_GRAPH_COLOR_TOKENS = [
-  { token: 'var(--om-color-warning-400)', fallback: '#E7B85D' },
-  { token: 'var(--om-color-blue-dark-700)', fallback: '#416BB3' },
-  { token: 'var(--om-color-teal-500)', fallback: '#66B5AD' },
-  { token: 'var(--om-color-violet-500)', fallback: '#8D6AF1' },
-  { token: 'var(--om-color-gray-blue-500)', fallback: '#699994' },
-  { token: 'var(--om-color-blue-500)', fallback: '#6A86EB' },
-  { token: 'var(--om-color-purple-500)', fallback: '#7A57A6' },
-  { token: 'var(--om-color-green-500)', fallback: '#7DC177' },
-  { token: 'var(--om-color-pink-600)', fallback: '#AD4F82' },
-  { token: 'var(--om-color-fuchsia-500)', fallback: '#C870C5' },
-  { token: 'var(--om-color-error-400)', fallback: '#D87F7F' },
-  { token: 'var(--om-color-orange-400)', fallback: '#DA996A' },
-];
 
 export const INITIAL_CHART_FILTER: ChartFilter = {
   startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
@@ -164,15 +149,4 @@ export const BASE_COLORS = [
   '#A5D6A7',
   '#80CBC4',
   '#F48FB1',
-];
-
-export const KPI_WIDGET_GRAPH_COLOR_TOKENS = [
-  { token: 'var(--om-color-violet-500)', fallback: '#7262F6' },
-  { token: 'var(--om-color-blue-light-400)', fallback: '#6AD2FF' },
-  { token: 'var(--om-color-teal-400)', fallback: '#2ED3B7' },
-  { token: 'var(--om-color-fuchsia-400)', fallback: '#E478FA' },
-];
-export const KPI_WIDGET_GRAPH_BG_COLOR_TOKENS = [
-  { token: 'var(--om-color-purple-50)', fallback: '#F4F2FF' },
-  { token: 'var(--om-color-blue-light-50)', fallback: '#ECFBFF' },
 ];

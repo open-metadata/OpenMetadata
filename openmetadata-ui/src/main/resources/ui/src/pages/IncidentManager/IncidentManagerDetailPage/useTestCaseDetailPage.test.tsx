@@ -297,6 +297,53 @@ describe('useTestCaseDetailPage', () => {
     expect(tabKeys).not.toContain(TestCasePageTabs.ISSUES);
   });
 
+  it('should resolve a URL tab the version page does not render to the rendered results tab', async () => {
+    mockParams = {
+      fqn: mockTestCaseFqn,
+      tab: TestCasePageTabs.ISSUES,
+      version: '0.2',
+    };
+
+    const { result } = renderDetailPageHook(true);
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.isExpandViewSupported).toBe(true);
+    expect(result.current.activeTab).toBe(TestCasePageTabs.TEST_CASE_RESULTS);
+
+    act(() => {
+      result.current.handleTabChange(TestCasePageTabs.TEST_CASE_RESULTS);
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.versionHandler('0.3');
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining(`/${TestCasePageTabs.ISSUES}`),
+      { state: mockNavigationState }
+    );
+  });
+
+  it('should resolve a URL tab hidden on the details page to the rendered results tab', async () => {
+    mockParams = {
+      fqn: mockTestCaseFqn,
+      tab: TestCasePageTabs.DIMENSIONALITY,
+    };
+
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.tabs.map((tab) => tab.key)).not.toContain(
+      TestCasePageTabs.DIMENSIONALITY
+    );
+    expect(result.current.isExpandViewSupported).toBe(true);
+    expect(result.current.activeTab).toBe(TestCasePageTabs.TEST_CASE_RESULTS);
+  });
+
   it('handleTabChange should not navigate for the active tab', async () => {
     const { result } = renderDetailPageHook();
 

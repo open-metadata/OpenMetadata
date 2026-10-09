@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +18,6 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { updateCertificationTag } from '../../../utils/TagsPureUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import Certification from '../../Certification/Certification.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import CertificationTag from '../CertificationTag/CertificationTag';
@@ -51,8 +49,10 @@ const CertificationWidget = () => {
       const updatedEntity = cloneDeep(entity);
       updatedEntity.certification = updateCertificationTag(newCertification);
       await onUpdate(updatedEntity);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+    } catch {
+      // The page-level updater already toasts before rethrowing, so toasting
+      // here would duplicate it. Swallow rather than rethrow so Certification's
+      // post-await cleanup runs and the popover doesn't stay stuck loading.
     } finally {
       setIsEditing(false);
     }

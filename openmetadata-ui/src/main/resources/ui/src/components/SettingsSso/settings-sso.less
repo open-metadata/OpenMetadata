@@ -57,22 +57,18 @@
   .generate-scim-token-btn {
     width: @size-3xl * 2 + @size-lg;
   }
-  .scim-token-card .ant-divider.scim-divider {
-    margin: 0;
-    width: 100%;
-    min-width: 100%;
-  }
 }
 
+// `scim-modal-delete` is forwarded to core Dialog's *panel*
+// (ConfirmationModal passes `className` through as `panelClassName`), so the
+// rules that used to hang off `.ant-modal-content` now apply to the panel
+// itself. The header is no longer hidden with CSS — ConfirmationModal skips
+// rendering it when `header` is empty, which is what this modal passes.
 .scim-modal-delete {
-  .ant-modal-content {
-    width: @size-2xl * 8 + @size-md !important;
-    padding-bottom: 0;
-    border-radius: @border-rad-sm;
-  }
-  .ant-modal-body {
-    padding-bottom: @size-2xl - @size-md;
-  }
+  width: @size-2xl * 8 + @size-md !important;
+  max-width: @size-2xl * 8 + @size-md !important;
+  padding-bottom: 0;
+  border-radius: @border-rad-sm;
 
   .scim-modal-header {
     display: flex;
@@ -99,35 +95,23 @@
     font-weight: @font-regular;
     color: @grey-600;
   }
-  .ant-modal-footer {
-    padding: 0;
-  }
 
-  .ant-modal-footer,
-  .ant-modal-footer .ant-btn-group {
-    display: flex;
-    justify-content: center;
-    gap: @size-md;
-    border-top: none !important;
-    padding-bottom: @size-lg;
-  }
-  .ant-btn {
-    height: @btn-height-lg;
-    font-weight: @font-semibold;
-    padding: @size-sm - 2px @size-xl;
-    border-radius: @size-md;
-  }
-  .ant-modal-header {
-    display: none !important;
-  }
-
+  // Dialog.Footer puts its children in an inner flex that owns the
+  // alignment, so centring has to reach that child rather than stopping at
+  // the element `footerClassName` lands on.
   .scim-modal-footer {
-    display: flex;
-    justify-content: center;
-    align-items: center;
     border-top: none !important;
-    padding: 0;
+    margin-top: 0;
+
+    > div {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: @size-md;
+      padding-bottom: @size-lg;
+    }
   }
+
   .scim-modal-cancel-button {
     background-color: var(--tw-color-bg-primary);
     color: @black;
@@ -137,12 +121,19 @@
     width: @size-3xl * 2 + @size-lg + @size-sm;
     font-weight: @font-medium;
   }
+
   .scim-modal-delete-button {
     background-color: @red-14;
     color: var(--tw-color-text-white);
     padding: @size-sm - 2px @size-xl;
     border-radius: @size-xs;
     width: @size-3xl * 2 + @size-lg + @size-sm;
+  }
+
+  .scim-modal-cancel-button,
+  .scim-modal-delete-button {
+    height: @btn-height-lg;
+    font-weight: @font-semibold;
   }
 }
 .enable-sso-card-container {
@@ -168,58 +159,6 @@
   }
   .enable-self-signup-desc {
     color: @grey-600;
-  }
-
-  // Custom toggle styling to match design
-  .ant-switch {
-    width: @size-xl;
-    height: @size-mlg;
-    border-radius: @size-mlg;
-    background-color: @grey-300;
-    border: none;
-    position: relative;
-
-    .ant-switch-handle {
-      width: @size-md;
-      height: @size-md;
-      border-radius: 50%;
-      background-color: var(--tw-color-bg-primary);
-      box-shadow: @box-shadow-small-dark;
-      top: @size-xxs / 2;
-      left: @size-xxs / 2;
-      border: none;
-      position: absolute;
-      transition: all var(--om-duration-200) ease;
-
-      &::before {
-        display: none;
-      }
-    }
-
-    &.ant-switch-checked {
-      background-color: @primary-6;
-
-      .ant-switch-handle {
-        left: calc(100% - @size-md - @size-xxs / 2);
-        background-color: var(--tw-color-bg-primary);
-      }
-    }
-
-    &:hover:not(.ant-switch-disabled) {
-      background-color: @grey-400;
-
-      &.ant-switch-checked {
-        background-color: @primary-7;
-      }
-    }
-
-    &:focus {
-      box-shadow: @button-box-shadow-focus;
-    }
-
-    .ant-switch-inner {
-      display: none;
-    }
   }
 }
 .settings-sso {
@@ -318,10 +257,6 @@
     }
   }
 }
-.scim-modal-delete.ant-modal {
-  width: @size-3xl * 6 + @size-md !important;
-}
-
 .sso-settings-page,
 .sso-configuration-form-card,
 .sso-field-group,

@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  EmptyPlaceholder,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tooltip } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
@@ -43,6 +48,7 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
@@ -72,6 +78,7 @@ import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElement
 import { ColumnsType, TableProps } from '../../common/Table/Table.interface';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
+
 interface ServicesProps {
   serviceName: ServiceCategory;
 }
@@ -441,25 +448,29 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const serviceCardRenderer = (service: ServicesType) => {
     return (
-      <Col key={service.name} lg={8} xl={6}>
+      <Grid.Item
+        className="layout-column tw:col-span-24 tw:min-[992px]:col-span-8 tw:min-[1200px]:col-span-6"
+        key={service.name}>
         <Card className="w-full" size="small">
           <div
             className="d-flex justify-between text-grey-muted"
             data-testid="service-card">
-            <Row gutter={[0, 6]}>
-              <Col span={24}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(0, 6) }}>
+              <Grid.Item className="layout-column" span={24}>
                 <Link
                   className="no-underline"
                   to={getServiceDetailsPath(
                     service.fullyQualifiedName ?? service.name,
                     serviceName
                   )}>
-                  <Typography.Text
+                  <Typography
                     className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
                     data-testid={`service-name-${service.name}`}
                     title={getEntityName(service)}>
                     {getEntityName(service)}
-                  </Typography.Text>
+                  </Typography>
                 </Link>
                 <div
                   className="p-t-xs text-grey-body break-all description-text"
@@ -477,16 +488,16 @@ const Services = ({ serviceName }: ServicesProps) => {
                   )}
                 </div>
                 {getOptionalFields(service, serviceName)}
-              </Col>
-              <Col span={24}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
                 <div className="m-b-xss" data-testid="service-type">
                   <span className="m-b-0">{`${t('label.type')}:`}</span>
                   <span className="font-normal m-l-xss text-grey-body">
                     {service.serviceType}
                   </span>
                 </div>
-              </Col>
-            </Row>
+              </Grid.Item>
+            </Grid>
 
             <div className="d-flex flex-col justify-between flex-none">
               <div className="d-flex justify-end" data-testid="service-icon">
@@ -495,7 +506,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             </div>
           </div>
         </Card>
-      </Col>
+      </Grid.Item>
     );
   };
 

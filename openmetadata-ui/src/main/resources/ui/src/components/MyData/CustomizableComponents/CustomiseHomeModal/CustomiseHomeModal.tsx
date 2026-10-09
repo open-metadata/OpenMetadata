@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { CheckOutlined } from '@ant-design/icons';
-import { Button, Col, Divider, Modal, Row, Typography } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -296,24 +297,23 @@ const CustomiseHomeModal = ({
       title={
         <div className="customise-home-modal-header p-box d-flex items-center gap-3">
           <Icon className="add-icon" component={AddIcon} />
-          <Typography.Text className="text-xl font-semibold text-white">
+          <Typography className="text-xl font-semibold text-white">
             {t('label.customize-entity', {
               entity: t('label.home'),
             })}
-          </Typography.Text>
+          </Typography>
         </div>
       }
       width={1800}
       onCancel={onClose}>
-      <Row className="customise-home-modal-body d-flex gap-1">
-        <Col className="sidebar p-box sticky top-0 self-start">
+      <Box
+        className="layout-row customise-home-modal-body d-flex gap-1"
+        wrap="wrap">
+        <Box className="layout-column tw:block sidebar p-box sticky top-0 self-start">
           {sidebarOptions}
-        </Col>
-        <Divider
-          className="customise-home-modal-divider h-auto self-stretch"
-          type="vertical"
-        />
-        <Col className="content p-box">
+        </Box>
+        <Divider className="h-auto self-stretch" orientation="vertical" />
+        <Box className="layout-column tw:block content p-box">
           {selectedKey === CustomiseHomeModalSelectedKey.ALL_WIDGETS &&
           isFetchingWidgets ? (
             <div className="d-flex justify-center items-center h-100">
@@ -322,10 +322,12 @@ const CustomiseHomeModal = ({
           ) : (
             selectedComponent
           )}
-        </Col>
-      </Row>
-      <Row className="customise-home-modal-footer p-box d-flex justify-end gap-3 bg-white sticky bottom-0">
-        <Col className="d-flex items-center gap-4">
+        </Box>
+      </Box>
+      <Box
+        className="layout-row customise-home-modal-footer p-box d-flex justify-end gap-3 bg-white sticky bottom-0"
+        wrap="wrap">
+        <Box className="layout-column d-flex items-center gap-4">
           <Button
             className="cancel-btn border-radius-xs font-medium text-md bg-white"
             data-testid="cancel-btn"
@@ -341,8 +343,8 @@ const CustomiseHomeModal = ({
             onClick={handleApply}>
             {t('label.apply')}
           </Button>
-        </Col>
-      </Row>
+        </Box>
+      </Box>
     </Modal>
   );
 };

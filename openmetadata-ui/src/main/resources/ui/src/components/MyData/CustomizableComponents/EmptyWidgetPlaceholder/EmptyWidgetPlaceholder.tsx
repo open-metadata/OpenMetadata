@@ -12,12 +12,14 @@
  */
 
 import { CloseOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { isUndefined } from 'lodash';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { SIZE } from '../../../../enums/common.enum';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import './empty-widget-placeholder.less';
 import { EmptyWidgetPlaceholderProps } from './EmptyWidgetPlaceholder.interface';
 
@@ -46,45 +48,55 @@ function EmptyWidgetPlaceholder({
       bodyStyle={{ height: '100%' }}
       className="empty-widget-placeholder"
       data-testid={widgetKey}>
-      <Row className="h-full">
+      <Grid className="layout-row layout-grid h-full">
         {isEditable && (
-          <Col span={24}>
-            <Row gutter={8} justify="end">
-              <Col>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              className="layout-row"
+              justify="end"
+              style={getLayoutGutter(8)}
+              wrap="wrap">
+              <Box className="layout-column tw:block">
                 <DragOutlined
                   className="drag-widget-icon cursor-pointer"
                   data-testid="drag-widget-button"
                   size={14}
                 />
-              </Col>
-              <Col>
+              </Box>
+              <Box className="layout-column tw:block">
                 <CloseOutlined
                   data-testid="remove-widget-button"
                   size={14}
                   onClick={handleCloseClick}
                 />
-              </Col>
-            </Row>
-          </Col>
+              </Box>
+            </Box>
+          </Grid.Item>
         )}
-        <Col className="h-full" span={24}>
-          <Row align="middle" className="h-full" justify="center">
-            <Col>
-              <Space
+        <Grid.Item className="layout-column h-full" span={24}>
+          <Box
+            align="center"
+            className="layout-row h-full"
+            justify="center"
+            wrap="wrap">
+            <Box className="layout-column tw:block">
+              <Box
+                inline
                 align="center"
-                className="w-full"
-                direction="vertical"
-                size={0}>
+                className="layout-space w-full"
+                direction="col"
+                gap={0}
+                itemClassName="layout-space-item">
                 <AddPlaceHolderIcon
                   data-testid="no-data-image"
                   height={iconHeight}
                   width={iconWidth}
                 />
-                <Typography.Text>
+                <Typography>
                   {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                     entity: t('label.widget'),
                   })}
-                </Typography.Text>
+                </Typography>
                 <Button
                   ghost
                   className="add-button"
@@ -94,11 +106,11 @@ function EmptyWidgetPlaceholder({
                   onClick={handleAddClick}>
                   {t('label.add')}
                 </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+              </Box>
+            </Box>
+          </Box>
+        </Grid.Item>
+      </Grid>
     </Card>
   );
 }

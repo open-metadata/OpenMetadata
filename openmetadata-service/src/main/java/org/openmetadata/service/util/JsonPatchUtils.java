@@ -44,7 +44,7 @@ public class JsonPatchUtils {
   public static Set<MetadataOperation> getMetadataOperations(
       ResourceContextInterface resourceContextInterface, JsonPatch jsonPatch) {
     Set<MetadataOperation> uniqueOperations = new HashSet<>();
-    EntityInterface originalEntity = resourceContextInterface.getEntity();
+    EntityInterface<?> originalEntity = resourceContextInterface.getEntity();
     String resourceType = resourceContextInterface.getResource();
     boolean tagsAffected = false;
 

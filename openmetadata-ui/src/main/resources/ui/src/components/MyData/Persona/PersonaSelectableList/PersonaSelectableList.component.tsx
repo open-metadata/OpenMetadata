@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 import {
-  Button,
+  Box,
+  ButtonUtility,
   Popover,
-  RefSelectProps,
-  Select,
-  Space,
-  Tooltip,
+  PopoverTrigger,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Button, RefSelectProps, Select } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -42,15 +41,20 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
   const { t } = useTranslation();
 
   return (
-    <Space>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={2}
+      itemClassName="layout-space-item">
       {props ? (
-        <Typography.Text>{getEntityName(props)}</Typography.Text>
+        <Typography>{getEntityName(props)}</Typography>
       ) : (
-        <Typography.Text className="text-grey-body">
+        <Typography className="text-grey-body">
           {t('message.no-data-available')}
-        </Typography.Text>
+        </Typography>
       )}
-    </Space>
+    </Box>
   );
 };
 
@@ -65,8 +69,6 @@ export const PersonaSelectableList = ({
   hasPermission,
   selectedPersonas = [],
   onUpdate,
-  children,
-  popoverProps,
   personaList,
   isDefaultPersona,
   multiSelect,
@@ -235,9 +237,21 @@ export const PersonaSelectableList = ({
   };
 
   return (
-    <Popover
-      destroyTooltipOnHide
-      content={
+    <PopoverTrigger isOpen={popupVisible} onOpenChange={setPopupVisible}>
+      <ButtonUtility
+        color="tertiary"
+        data-testid={`${isDefaultPersona ? 'default-' : ''}edit-user-persona`}
+        icon={<EditIcon height={16} width={16} />}
+        size="xs"
+        tooltip={t('label.edit-entity', {
+          entity: t('label.persona'),
+        })}
+      />
+      <Popover
+        className="profile-edit-popover-card"
+        containerClassName="tw:w-95 tw:p-5"
+        data-testid="persona-popover"
+        placement="bottom start">
         <div
           className="user-profile-edit-popover-card relative"
           style={{
@@ -248,11 +262,11 @@ export const PersonaSelectableList = ({
               <PersonaIcon height={16} />
             </div>
 
-            <Typography.Text className="user-profile-edit-popover-card-title">
+            <Typography className="user-profile-edit-popover-card-title">
               {isDefaultPersona
                 ? t('label.default-persona')
                 : t('label.persona')}
-            </Typography.Text>
+            </Typography>
           </div>
 
           <div className="border" id="area" style={{ borderRadius: '5px' }}>
@@ -273,6 +287,9 @@ export const PersonaSelectableList = ({
                 overflow: 'auto',
               }}
               filterOption={false}
+              getPopupContainer={(trigger) =>
+                trigger.parentElement ?? document.body
+              }
               maxTagCount={3}
               maxTagPlaceholder={(omittedValues) =>
                 renderMaxTagPlaceholder(omittedValues.length, t)
@@ -321,30 +338,7 @@ export const PersonaSelectableList = ({
             />
           </div>
         </div>
-      }
-      data-testid="persona-popover"
-      open={popupVisible}
-      overlayClassName="profile-edit-popover-card"
-      placement="bottomLeft"
-      showArrow={false}
-      style={{ borderRadius: '12px' }}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
-      {children ?? (
-        <Tooltip
-          title={t('label.edit-entity', {
-            entity: t('label.persona'),
-          })}>
-          <EditIcon
-            className="cursor-pointer"
-            data-testid={`${
-              isDefaultPersona ? 'default-' : ''
-            }edit-user-persona`}
-            height={16}
-          />
-        </Tooltip>
-      )}
-    </Popover>
+      </Popover>
+    </PopoverTrigger>
   );
 };

@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
+
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
@@ -20,7 +22,6 @@ import AppBadge from '../../../../common/Badge/Badge.component';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { SummaryListItemProps } from './SummaryListItems.interface';
-const { Text, Paragraph } = Typography;
 
 function SummaryListItem({
   entityDetails,
@@ -29,11 +30,15 @@ function SummaryListItem({
   const { t } = useTranslation();
 
   return (
-    <Col data-testid="summary-list-item" key={entityDetails.name} span={24}>
+    <Grid.Item
+      className="layout-column"
+      data-testid="summary-list-item"
+      key={entityDetails.name}
+      span={24}>
       <div className="summary-list-item-container">
-        <Row gutter={[0, 8]}>
-          <Col
-            className="d-flex items-baseline"
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(0, 8)}>
+          <Grid.Item
+            className="layout-column d-flex items-baseline"
             data-testid="title-container"
             span={24}>
             {isColumnsData &&
@@ -44,11 +49,11 @@ function SummaryListItem({
                 iconClassName: 'm-r-xss',
                 iconWidth: '14px',
               })}
-            <Typography.Text
+            <Typography
               className="m-r-xs"
               ellipsis={{ tooltip: entityDetails.title }}>
               {entityDetails.title}
-            </Typography.Text>
+            </Typography>
 
             {entityDetails.type && (
               <AppBadge
@@ -59,48 +64,56 @@ function SummaryListItem({
                 label={entityDetails.type}
               />
             )}
-          </Col>
+          </Grid.Item>
 
           {entityDetails.algorithm && (
-            <Col span={24}>
-              <Space className="h-6" size={4}>
-                <Text className="text-grey-muted">{`${t(
+            <Grid.Item className="layout-column" span={24}>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal h-6"
+                gap={1}
+                itemClassName="layout-space-item">
+                <Typography color="secondary">{`${t(
                   'label.algorithm'
-                )}:`}</Text>
-                <Text
+                )}:`}</Typography>
+                <Typography
                   className="font-medium text-grey-body"
                   data-testid="algorithm">
                   {entityDetails.algorithm}
-                </Text>
-              </Space>
-            </Col>
+                </Typography>
+              </Box>
+            </Grid.Item>
           )}
 
-          <Col span={24}>
-            <Paragraph className="text-grey-body m-y-0">
+          <Grid.Item className="layout-column" span={24}>
+            <Typography as="div" className="text-grey-body m-y-0">
               {entityDetails.description ? (
                 <RichTextEditorPreviewerV1
                   markdown={entityDetails.description || ''}
                   maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                 />
               ) : (
-                <Text className="text-sm no-data-chip-placeholder">
+                <Typography className="text-sm no-data-chip-placeholder">
                   {t('label.no-entity', { entity: t('label.description') })}
-                </Text>
+                </Typography>
               )}
-            </Paragraph>
-          </Col>
+            </Typography>
+          </Grid.Item>
           {entityDetails.tags && entityDetails.tags.length !== 0 && (
-            <Col className="flex-grow" data-testid="tags-viewer" span={24}>
+            <Grid.Item
+              className="layout-column flex-grow"
+              data-testid="tags-viewer"
+              span={24}>
               <TagsViewer
                 sizeCap={2}
                 tags={(entityDetails.tags || []).map((tag) => getTagValue(tag))}
               />
-            </Col>
+            </Grid.Item>
           )}
-        </Row>
+        </Grid>
       </div>
-    </Col>
+    </Grid.Item>
   );
 }
 

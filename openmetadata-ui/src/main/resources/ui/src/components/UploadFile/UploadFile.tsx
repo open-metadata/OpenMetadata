@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { UploadCloud01 } from '@openmetadata/ui-core-components/icons';
-import { Space, Typography, UploadProps } from 'antd';
+import { UploadProps } from 'antd';
 import type { RcFile } from 'antd/lib/upload';
 import Dragger from 'antd/lib/upload/Dragger';
 import { AxiosError } from 'axios';
@@ -81,7 +82,7 @@ const UploadFile: FC<UploadFileProps> = ({
           <span className="file-dragger-compact-icon">
             <UploadCloud01 size={22} />
           </span>
-          <Typography.Text className="file-dragger-compact-title">
+          <Typography className="file-dragger-compact-title">
             <Transi18next
               i18nKey="message.drop-csv-or-browse"
               renderElement={<span className="browse-text" />}
@@ -89,23 +90,28 @@ const UploadFile: FC<UploadFileProps> = ({
                 text: t('label.click-to-browse'),
               }}
             />
-          </Typography.Text>
-          <Typography.Text className="file-dragger-compact-description">
+          </Typography>
+          <Typography className="file-dragger-compact-description">
             {acceptedFileDescription ??
               t('message.accepts-file-up-to-size', {
                 fileType,
                 size: '10 MB',
               })}
-          </Typography.Text>
+          </Typography>
         </div>
       ) : (
-        <Space
+        <Box
+          inline
           align="center"
-          className="w-full justify-center"
-          direction="vertical"
-          size={42}>
+          className="layout-space w-full justify-center"
+          direction="col"
+          itemClassName="layout-space-item"
+          style={{
+            columnGap: 'var(--om-space-42)',
+            rowGap: 'var(--om-space-42)',
+          }}>
           <ImportIcon height={86} width={86} />
-          <Typography.Text>
+          <Typography className="file-dragger-text">
             <Transi18next
               i18nKey="message.drag-and-drop-or-browse-csv-files-here"
               renderElement={<span className="browse-text" />}
@@ -113,8 +119,8 @@ const UploadFile: FC<UploadFileProps> = ({
                 text: t('label.browse'),
               }}
             />
-          </Typography.Text>
-        </Space>
+          </Typography>
+        </Box>
       )}
     </Dragger>
   );

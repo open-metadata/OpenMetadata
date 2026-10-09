@@ -201,9 +201,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
-    Box: ({ children }: { children?: React.ReactNode }) => (
-      <div>{children}</div>
-    ),
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
+    Box: ({
+      children,
+      'data-testid': testId,
+    }: {
+      children?: React.ReactNode;
+      'data-testid'?: string;
+    }) => <div data-testid={testId}>{children}</div>,
     EmptyPlaceholder: ({
       title,
       description,

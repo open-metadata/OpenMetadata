@@ -442,8 +442,10 @@ test.describe.serial(
           .click();
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="task-feed-card"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="task-feed-card"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page.locator('[data-testid="task-feed-card"]').first().click();
         await expect(page.getByTestId('task-tab')).toBeVisible();
         await expect(page.getByTestId('task-payload-details')).toContainText(
@@ -472,16 +474,12 @@ test.describe.serial(
 
         const visibleModal = page.getByRole('dialog').first();
         await expect(visibleModal).toBeVisible();
-        const proposedTextField = visibleModal
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Proposed Text' })
-          .getByRole('textbox')
-          .first();
-        const reviewNotesField = visibleModal
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Review Notes' })
-          .getByRole('textbox')
-          .first();
+        const proposedTextField = visibleModal.getByRole('textbox', {
+          name: /Proposed Text/,
+        });
+        const reviewNotesField = visibleModal.getByRole('textbox', {
+          name: /Review Notes/,
+        });
 
         await proposedTextField.fill(updatedDescription);
         await reviewNotesField.fill(updatedReviewNotes);

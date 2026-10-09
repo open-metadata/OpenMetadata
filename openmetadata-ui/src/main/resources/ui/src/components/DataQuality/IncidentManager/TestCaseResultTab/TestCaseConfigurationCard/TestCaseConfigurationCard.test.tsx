@@ -16,16 +16,6 @@ import { TestDefinition } from '../../../../../generated/tests/testDefinition';
 import TestCaseConfigurationCard from './TestCaseConfigurationCard';
 import { TestCaseConfigurationCardProps } from './TestCaseConfigurationCard.types';
 
-jest.mock('../../../../common/IconButtons/EditIconButton', () => ({
-  // `newLook`/`size`/`title` are the real button's own props — keep them off the
-  // DOM node so they don't surface as React unknown-prop warnings.
-  EditIconButton: jest.fn(({ onClick, 'data-testid': dataTestId }) => (
-    <button data-testid={dataTestId} onClick={onClick}>
-      edit
-    </button>
-  )),
-}));
-
 const COLUMN_ENTITY_LINK =
   '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>';
 const TABLE_ENTITY_LINK =
@@ -65,6 +55,10 @@ describe('TestCaseConfigurationCard', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('configuration-test-name')).toHaveTextContent(
       'Column Values To Be Between'
+    );
+    // Titled like the rail's other cards.
+    expect(screen.getByTestId('configuration-title')).toHaveClass(
+      'tw:text-quaternary'
     );
     expect(screen.getByTestId('configuration-parameter-min')).toHaveTextContent(
       '90001'
@@ -179,7 +173,13 @@ describe('TestCaseConfigurationCard', () => {
     unmount();
     renderCard({ showEditButton: true });
 
-    fireEvent.click(screen.getByTestId('edit-parameter-icon'));
+    const editButton = screen.getByRole('button', {
+      name: 'label.edit-entity',
+    });
+
+    expect(editButton).toHaveAttribute('data-testid', 'edit-parameter-icon');
+
+    fireEvent.click(editButton);
 
     expect(mockOnEditParameter).toHaveBeenCalledTimes(1);
   });
@@ -203,6 +203,50 @@ describe('TestCaseConfigurationCard', () => {
     expect(
       screen.queryByTestId('configuration-empty-state')
     ).not.toBeInTheDocument();
+  });
+
+  it('names the data quality dimension in the category line, not as a row', () => {
+    renderCard({
+      testCaseData: {
+        entityLink: COLUMN_ENTITY_LINK,
+        dataQualityDimension: {
+          id: 'dimension',
+          type: 'dataQualityDimension',
+          name: 'Completeness',
+        },
+      } as TestCase,
+    });
+
+    expect(screen.getByTestId('configuration-category')).toHaveTextContent(
+      'label.column-test-with-column · Completeness'
+    );
+  });
+
+  it('puts a dynamic assertion callout above the rows', () => {
+    renderCard({
+      testCaseData: {
+        entityLink: COLUMN_ENTITY_LINK,
+        useDynamicAssertion: true,
+      } as TestCase,
+      parameterRows: [{ label: 'label.compute-row-count', value: 'false' }],
+    });
+
+    const callout = screen.getByTestId('dynamic-assertion');
+    const rows = screen.getByTestId('configuration-parameter-rows');
+
+    expect(
+      callout.compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('keys a row on the parameter name, and labels it with the display name', () => {
+    renderCard({
+      parameterRows: [{ name: 'minValue', label: 'Min', value: '1' }],
+    });
+
+    expect(
+      screen.getByTestId('configuration-parameter-minValue')
+    ).toHaveTextContent('Min1');
   });
 
   it('falls back to a start-cased definition name when no display name is set', () => {

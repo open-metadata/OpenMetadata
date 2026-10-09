@@ -83,7 +83,8 @@
     "openmetadata-ui/src/main/resources/ui/playwright/reporters/**",
     "openmetadata-ui/src/main/resources/ui/playwright/support/user/**",
     "openmetadata-ui/src/main/resources/ui/playwright/utils/**",
-    "openmetadata-ui/src/main/resources/ui/vite.config.ts"
+    "openmetadata-ui/src/main/resources/ui/vite.config.ts",
+    "openmetadata-ui/src/main/resources/ui/vite/**"
   ],
   "mappings": [
     {
@@ -787,6 +788,34 @@
       "projects": ["chromium"],
       "specs": [
         "playwright/e2e/Features/AppMode/**/*.spec.ts"
+      ]
+    },
+    {
+      "_comment": "AI-mode settings modal, Platform Settings panel (the modal home of the classic Settings > Preferences pages).",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Shared shell of the AI-mode settings modal: the nav registry, its ids and the section/row layout every panel renders. A change here can move or restyle any panel, so every modal spec runs.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.test.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileDetailsPanel.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/SettingsSection.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Profile.constants.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Pages/AIProfile/**/*.spec.ts",
+        "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
     {

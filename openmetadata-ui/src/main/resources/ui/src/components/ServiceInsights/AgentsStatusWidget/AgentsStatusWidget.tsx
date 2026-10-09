@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Collapse, Row, Skeleton, Space, Typography } from 'antd';
+import {
+  Box,
+  Grid,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card, Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -23,6 +29,7 @@ import {
   getAgentRunningStatusMessage,
   getIconFromStatus,
 } from '../../../utils/AgentsStatusWidgetUtils';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './agents-status-widget.less';
 import { AgentsStatusWidgetProps } from './AgentsStatusWidget.interface';
@@ -36,7 +43,7 @@ const renderAgentStatusExpandIcon = (
     className="expand-icon-container"
     data-testid="agent-status-widget-expand-icon">
     {isLoading ? (
-      <Skeleton.Input active size="small" />
+      <Skeleton height={24} variant="rounded" width={120} />
     ) : (
       <div className="agent-status-summary-container">
         {Object.entries(agentStatusSummary).map(([key, value]) => (
@@ -45,19 +52,21 @@ const renderAgentStatusExpandIcon = (
             data-testid={`agent-status-summary-item-${key}`}
             key={key}>
             {getIconFromStatus(key)}
-            <Typography.Text data-testid="pipeline-count">
+            <Typography
+              className="agent-status-summary-text"
+              data-testid="pipeline-count">
               {value}
-            </Typography.Text>
-            <Typography.Text>{key}</Typography.Text>
+            </Typography>
+            <Typography className="agent-status-summary-text">{key}</Typography>
           </div>
         ))}
       </div>
     )}
-    <Typography.Text
+    <Typography
       className="text-primary"
       data-testid="agent-status-widget-view-more">
       {t('label.view-more')}
-    </Typography.Text>
+    </Typography>
     <ArrowSvg className="text-primary" height={14} width={14} />
   </div>
 );
@@ -95,11 +104,11 @@ function AgentsStatusWidget({
         header={
           <div className="flex justify-between items-center">
             <div className="flex flex-col gap-1">
-              <Typography.Text className="font-medium text-lg">
+              <Typography className="font-medium text-lg">
                 {t('label.entity-status', {
                   entity: t('label.agent-plural'),
                 })}
-              </Typography.Text>
+              </Typography>
 
               {agentsRunningStatusMessage}
             </div>
@@ -115,35 +124,42 @@ function AgentsStatusWidget({
           </div>
         )}
 
-        <Row gutter={[16, 16]}>
+        <Grid
+          className="layout-row layout-grid"
+          style={getLayoutGutter(16, 16)}>
           {isLoading
             ? Array.from(
                 { length: 8 },
                 (_, index) => `agent-skeleton-${index}`
               ).map((skeletonKey) => (
-                <Col key={skeletonKey} span={6}>
+                <Grid.Item className="layout-column" key={skeletonKey} span={6}>
                   <Card className="agent-status-card">
-                    <Skeleton.Input active />
+                    <Skeleton height={32} variant="rounded" width={160} />
                   </Card>
-                </Col>
+                </Grid.Item>
               ))
             : agentsInfo.map((agent) => (
-                <Col key={agent.label} span={6}>
+                <Grid.Item className="layout-column" key={agent.label} span={6}>
                   <Card
                     className={classNames(
                       'agent-status-card',
                       agent.isCollateAgent ? 'collate-agent' : ''
                     )}
                     data-testid={`agent-status-card-${agent.label}`}>
-                    <Space align="center" size={8}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={2}
+                      itemClassName="layout-space-item">
                       {agent.agentIcon}
-                      <Typography.Text>{agent.label}</Typography.Text>
-                    </Space>
+                      <Typography>{agent.label}</Typography>
+                    </Box>
                     {getIconFromStatus(agent.status)}
                   </Card>
-                </Col>
+                </Grid.Item>
               ))}
-        </Row>
+        </Grid>
       </Collapse.Panel>
     </Collapse>
   );

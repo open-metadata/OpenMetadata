@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import './inline-edit.less';
 import { InlineEditProps } from './InlineEdit.interface';
@@ -33,18 +34,29 @@ const InlineEdit = ({
     }
   };
 
+  // Editing actions must not toggle the parent user/team collapsible panel.
   return (
-    <Space
-      className={classNames(className, 'inline-edit-container')}
+    <Box
+      inline
+      align={direction === 'vertical' ? 'stretch' : 'center'}
+      className={`layout-space ${
+        direction === 'horizontal' ? 'layout-space-horizontal' : ''
+      } ${classNames(className, 'inline-edit-container')}`}
       data-testid="inline-edit-container"
-      direction={direction}
-      // Used onClick to stop click propagation event anywhere in the component to parent
-      // TeamDetailsV1 and User.component collapsible panel.
+      direction={direction === 'vertical' ? 'col' : 'row'}
+      gap={2}
+      itemClassName="layout-space-item"
       onClick={(e) => e.stopPropagation()}
       onKeyDown={handleKeyDown}>
       {children}
 
-      <Space className="w-full justify-end" data-testid="buttons" size={4}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-end"
+        data-testid="buttons"
+        gap={1}
+        itemClassName="layout-space-item">
         <Button
           data-testid="inline-cancel-btn"
           disabled={isLoading}
@@ -63,8 +75,8 @@ const InlineEdit = ({
           onClick={onSave}
           {...saveButtonProps}
         />
-      </Space>
-    </Space>
+      </Box>
+    </Box>
   );
 };
 

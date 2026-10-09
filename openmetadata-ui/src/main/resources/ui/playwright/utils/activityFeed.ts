@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { getDescriptionBox, waitForAntdModalToSettle } from './common';
+import { getDescriptionBox } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import { TaskDetails } from './task';
@@ -41,12 +41,11 @@ export const checkDescriptionInEditModal = async (
 
   expect(taskContent).toContain(`Request to update description for`);
 
-  await page.getByRole('button', { name: 'down' }).click();
-  await page.locator('.ant-dropdown').waitFor({
-    state: 'visible',
-  });
+  await page.locator('[data-testid$="-task-action-trigger"]').click();
+  const taskActionMenu = page.locator('.task-action-dropdown');
+  await taskActionMenu.waitFor({ state: 'visible' });
 
-  await page.getByRole('menuitem', { name: 'edit' }).click();
+  await taskActionMenu.getByRole('menuitem', { name: 'edit' }).click();
 
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
@@ -80,8 +79,12 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
 
   await page.locator('[data-testid="delete-message"]').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
-  await waitForAntdModalToSettle(page);
+  // Same here: the delete confirm is ConfirmationModal, now a core Dialog.
+  // `waitForAntdModalToSettle` counted animating `.ant-modal` elements, so it
+  // is a no-op against a core Dialog — wait for the button this flow clicks
+  // instead, which also covers the 300ms zoom-in.
+  await expect(page.getByTestId('confirmation-modal')).toBeVisible();
+  await expect(page.getByTestId('save-button')).toBeEnabled();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/conversations/*/replies/*'
@@ -114,21 +117,21 @@ export const waitForReactionResponse = (page: Page, reaction: string) =>
 /**
  * Click a reaction inside the feed-reactions popover.
  *
- * rc-motion plays the popover's zoom-big entry over several frames, and
- * Playwright's two-frame stability check can land inside a lull in that
- * transform: it then presses coordinates the popover has already moved on
- * from, the press hits dead space, and no reaction request is ever sent — so
- * the caller's hoisted waitForResponse waits out the whole test. rc-motion
- * strips the `-appear`/`-enter` classes on `animationend`, which makes their
- * absence the deterministic "the popover has settled" signal.
+ * The popover animates in over several frames, and Playwright's two-frame
+ * stability check can land inside a lull in that transform: it then presses
+ * coordinates the popover has already moved on from, the press hits dead
+ * space, and no reaction request is ever sent — so the caller's hoisted
+ * waitForResponse waits out the whole test. react-aria removes
+ * `data-entering` once the entry animation ends, which makes its absence the
+ * deterministic "the popover has settled" signal.
  */
 export const clickFeedReaction = async (page: Page, reaction: string) => {
-  const popup = page.locator('.ant-popover-feed-reactions:visible');
+  const popup = page.getByTestId('feed-reactions-popover');
   await expect(popup).toBeVisible();
-  await expect(popup).not.toHaveClass(/ant-zoom-big-(appear|enter|leave)/);
+  await expect(popup).not.toHaveAttribute('data-entering');
 
   await popup
-    .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
+    .locator(`[data-testid="reaction-button"][aria-label="${reaction}"]`)
     .click();
 };
 
@@ -149,9 +152,9 @@ export const reactOnFeedCard = async (page: Page, message: Locator) => {
 
     await addReactionButton.click();
 
-    const popup = page.locator('.ant-popover-feed-reactions:visible');
+    const popup = page.getByTestId('feed-reactions-popover');
     await expect(popup).toBeVisible();
-    await expect(popup).not.toHaveClass(/ant-zoom-big-(appear|enter|leave)/);
+    await expect(popup).not.toHaveAttribute('data-entering');
 
     const reactionResponse = waitForReactionResponse(page, reaction);
     await popup.getByRole('button', { name: reaction, exact: true }).click();
@@ -275,7 +278,7 @@ export const reactOnActivity = async (
 export const navigateToActivityFeedTab = async (page: Page) => {
   await page.getByTestId('activity_feed').click();
   await waitForPageLoaded(page);
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 };
 
 /**

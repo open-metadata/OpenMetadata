@@ -38,6 +38,24 @@ import type {
  * Series colours are not part of the theme — they come from the palette and
  * stay the same in light and dark.
  */
+/** A colour that carries meaning, e.g. a test result. */
+export type ChartStatus =
+  | 'success'
+  | 'warning'
+  | 'failed'
+  | 'info'
+  | 'neutral'
+  | 'muted';
+
+export interface ChartPalette {
+  /** Categorical colours, cycled by series or slice index. */
+  series: readonly string[];
+  /** Colours that carry meaning. */
+  status: Readonly<Record<ChartStatus, string>>;
+  /** Low and high ends of a continuous scale, e.g. a geo map. */
+  scale: readonly [string, string];
+}
+
 export interface ChartTheme {
   isDark: boolean;
   axisText: string;
@@ -53,6 +71,8 @@ export interface ChartTheme {
   tooltipBg: string;
   tooltipText: string;
   tooltipBorder: string;
+  /** Every series, slice and scale colour comes from here. */
+  palette: ChartPalette;
 }
 
 /**
@@ -74,14 +94,40 @@ export type ChartOption = ComposeOption<
   | VisualMapComponentOption
 >;
 
-export type ChartSeriesType = 'line' | 'area' | 'bar';
+/**
+ * `band` (`ComposedChart` only) reads `datum[key]` as `[low, high]` and fills
+ * the range between them, under every other series. It takes no palette
+ * colour and is left out of the legend.
+ */
+export type ChartSeriesType = 'line' | 'area' | 'bar' | 'band';
+
+/** A position in pixels, relative to the chart's top-left corner. */
+export interface ChartPixel {
+  x: number;
+  y: number;
+}
+
+/** How one point of a line or area series is drawn. */
+export interface ChartPointStyle {
+  /** Status colour of the dot. Without one it takes the series colour. */
+  status?: ChartStatus;
+  /** A ring instead of a filled dot, e.g. for a run that produced no value. */
+  hollow?: boolean;
+  /** A faint ring around the dot, e.g. for the selected point. */
+  selected?: boolean;
+}
 
 export interface ChartSeries {
   /** Field read from each datum. */
   key: string;
   /** Legend and tooltip label. Translated by the caller. */
   name: string;
-  /** Defaults to `getSeriesColor(index)`. */
+  /** Status colour; without one the series takes the next palette colour. */
+  status?: ChartStatus;
+  /**
+   * Overrides the palette and `status`, in both colour modes. A concrete
+   * colour (hex or rgb): ECharts cannot parse CSS variables.
+   */
   color?: string;
   /** Only read by `ComposedChart`; other charts fix the type. */
   type?: ChartSeriesType;
@@ -93,6 +139,14 @@ export interface ChartSeries {
   smooth?: boolean;
   /** Line and area only. Defaults to false. */
   showDots?: boolean;
+  /**
+   * Line and area only. The dot of each point; `undefined` draws none for
+   * that point. Turns the series' dots on, whatever `showDots` says.
+   */
+  pointStyle?: (
+    datum: Record<string, unknown>,
+    index: number
+  ) => ChartPointStyle | undefined;
   /** Merged into this series' ECharts option. */
   seriesOption?: Partial<LineSeriesOption | BarSeriesOption>;
 }
@@ -110,14 +164,43 @@ export type ChartXAxisProps = ChartAxisProps<XAXisComponentOption> & {
   type?: 'category' | 'time';
 };
 
-export type ChartYAxisProps = ChartAxisProps<YAXisComponentOption>;
+export type ChartYAxisProps = ChartAxisProps<YAXisComponentOption> & {
+  /**
+   * `'category'` plots string values (e.g. the min / max of a date column);
+   * the categories are the distinct values, sorted. Defaults to `'value'`.
+   */
+  type?: 'value' | 'category';
+};
 
 export interface ChartTooltipProps {
   show?: boolean;
-  /** Formats one value. Receives the series key of the value. */
+  /**
+   * Formats one value. Receives the series key of the value. Not applied to
+   * `tooltip.render`, which receives raw values and formats its own.
+   */
   valueFormatter?: (value: number | string, seriesKey: string) => string;
   /** Replaces the whole tooltip body. */
   formatter?: (params: TooltipComponentFormatterCallbackParams) => string;
+  /**
+   * Drops ECharts' own tooltip box (padding, border, background, shadow), so
+   * content that brings its own card is not boxed twice. Set by
+   * `tooltip.render`.
+   */
+  bare?: boolean;
+}
+
+/** One series' value at the hovered point, as handed to `tooltip.render`. */
+export interface ChartTooltipItem {
+  /** `ChartSeries.key`; the slice name on a pie. */
+  seriesKey: string;
+  /** Legend label of the series, or the slice name. */
+  name: string;
+  /** `null` for a gap (missing value). */
+  value: number | string | null;
+  /** Resolved colour of the series or slice. */
+  color: string;
+  /** Index of the hovered row in the chart's `data`. */
+  dataIndex: number;
 }
 
 export interface ChartLegendProps {
@@ -130,7 +213,15 @@ export interface ChartReferenceLine {
   axis: 'x' | 'y';
   value: number | string;
   label?: string;
-  color?: string;
+  /**
+   * Which end of the line carries its label. Defaults to `'end'`; `'start'`
+   * keeps it clear of a guide drawn at the newest point.
+   */
+  labelPosition?: 'start' | 'end';
+  /** Status colour of the line. Defaults to the axis text colour. */
+  status?: ChartStatus;
+  /** `'dashed'` by default. */
+  lineType?: 'solid' | 'dashed';
 }
 
 export interface CartesianBuildInput<T extends object> {
@@ -144,14 +235,24 @@ export interface CartesianBuildInput<T extends object> {
   tooltip?: ChartTooltipProps;
   legend?: ChartLegendProps;
   referenceLines?: ChartReferenceLine[];
-  /** `'auto'` turns zoom on above 15 points. Defaults to false. */
+  /**
+   * `'auto'` turns zoom on above `zoomVisiblePoints` points (15 by default).
+   * Defaults to false.
+   */
   zoom?: boolean | 'auto';
+  /**
+   * With zoom on, how many points the window shows at first; `'auto'` turns
+   * zoom on above this many. Defaults to 15.
+   */
+  zoomVisiblePoints?: number;
+  /** Category-axis labels emit click events. Set by `onCategoryClick`. */
+  categoryClickable?: boolean;
   /** Merged into the built option last. Objects merge, arrays replace. */
   option?: ChartOption;
   /** Bar charts only. */
   layout?: 'vertical' | 'horizontal';
-  /** Bar charts only. Colour of one bar; `undefined` keeps the series colour. */
-  getBarColor?: (datum: T, index: number) => string | undefined;
+  /** Bar charts only. Status of one bar; `undefined` keeps the series colour. */
+  getBarStatus?: (datum: T, index: number) => ChartStatus | undefined;
   /** Bar charts only. */
   showValueLabels?:
     | boolean
@@ -164,7 +265,12 @@ export interface PieDatum {
   /** Slice label. Translated by the caller. */
   name: string;
   value: number;
-  /** Defaults to `getSeriesColor(index)`. */
+  /** Status colour; without one the slice takes the next palette colour. */
+  status?: ChartStatus;
+  /**
+   * Overrides the palette and `status`, in both colour modes. A concrete
+   * colour (hex or rgb): ECharts cannot parse CSS variables.
+   */
   color?: string;
 }
 
@@ -174,6 +280,19 @@ export interface PieBuildInput {
   ariaLabel: string;
   /** Set for a donut, e.g. `'55%'`. Defaults to a full pie. */
   innerRadius?: number | string;
+  /** Outer radius, e.g. `'100%'`. Defaults to `'72%'`. */
+  outerRadius?: number | string;
+  /** Smallest angle in degrees a non-zero slice is drawn with. Defaults to 0. */
+  minAngle?: number;
+  /** Gap in degrees between slices. Defaults to 0. */
+  padAngle?: number;
+  /**
+   * Draws a grey ring behind the slices. With a track, all-zero data shows
+   * the ring (and any centre label) instead of the empty state.
+   */
+  track?: boolean;
+  /** Slices show a pointer cursor. `PieChart` sets it when `onSliceClick` is given. */
+  clickable?: boolean;
   /** Whole-percent labels beside each slice. */
   showLabels?: boolean;
   legend?: ChartLegendProps;
@@ -214,8 +333,6 @@ export interface GeoMapBuildInput {
   resolveRegion?: (raw: string) => string | undefined;
   /** Colour-scale legend under the map. Defaults to true. */
   showScale?: boolean;
-  /** Low → high colours of the scale. Defaults to `GEO_COLOR_RANGE`. */
-  colorRange?: string[];
   tooltip?: ChartTooltipProps;
   /** Merged into the built option last. Objects merge, arrays replace. */
   option?: ChartOption;

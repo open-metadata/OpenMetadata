@@ -156,7 +156,11 @@ export interface GlossaryTerm {
      * User names of the reviewers for this glossary.
      */
     reviewers?: EntityReference[];
-    style?:     Style;
+    /**
+     * Context memories that supported the derivation of this glossary term.
+     */
+    sourceMemoryIds?: string[];
+    style?:           Style;
     /**
      * Alternate names that are synonyms or near-synonyms for the glossary term.
      */
@@ -441,8 +445,10 @@ export enum OntologyConceptType {
 /**
  * Approval status of the glossary term.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  *
  * Approval status of this relation edge.
  */

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
-import { DateTime, Duration } from 'luxon';
+import { DateTime, Duration, ToRelativeCalendarOptions } from 'luxon';
 import {
   DAY_SECONDS,
   HOUR_SECONDS,
@@ -225,6 +225,37 @@ export const getShortRelativeTime = (timeStamp?: number): string => {
 
   return shortForm;
 };
+const ELAPSED_UNITS = [
+  'years',
+  'months',
+  'weeks',
+  'days',
+  'hours',
+  'minutes',
+  'seconds',
+] as const;
+
+/**
+ * Time since a moment in its largest whole unit and narrowest form, e.g. "23h"
+ * or "3d", for a label that already says what the time is.
+ */
+export const getElapsedTime = (timeStamp?: number): string => {
+  if (isNil(timeStamp)) {
+    return '';
+  }
+
+  const elapsed = DateTime.now().diff(DateTime.fromMillis(timeStamp), [
+    ...ELAPSED_UNITS,
+  ]);
+  const unit = ELAPSED_UNITS.find((u) => elapsed.get(u) >= 1) ?? 'seconds';
+
+  return new Intl.NumberFormat(i18next.language, {
+    style: 'unit',
+    unit: unit.slice(0, -1),
+    unitDisplay: 'narrow',
+  }).format(Math.max(Math.floor(elapsed.get(unit)), 0));
+};
+
 /**
  *
  * @param timeStamp
@@ -233,7 +264,10 @@ export const getShortRelativeTime = (timeStamp?: number): string => {
  */
 export const getRelativeCalendar = (
   timeStamp: number,
-  baseTimeStamp?: number
+  baseTimeStamp?: number,
+  // Without a unit Luxon picks the largest that differs, so two days ago
+  // across a month boundary reads "Last month"; 'days' keeps it "2 days ago".
+  unit?: ToRelativeCalendarOptions['unit']
 ): string => {
   return capitalize(
     DateTime.fromMillis(timeStamp, {
@@ -242,6 +276,7 @@ export const getRelativeCalendar = (
       base: baseTimeStamp
         ? DateTime.fromMillis(baseTimeStamp, { locale: i18next.language })
         : DateTime.now(),
+      unit,
     }) || ''
   );
 };

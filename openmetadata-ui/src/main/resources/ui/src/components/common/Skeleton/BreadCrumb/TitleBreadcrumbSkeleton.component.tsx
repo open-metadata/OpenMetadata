@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Skeleton } from 'antd';
+import { Box, Skeleton } from '@openmetadata/ui-core-components';
+
 import { uniqueId } from 'lodash';
 import { TitleBreadcrumbSkeletonProps } from '../Skeleton.interfaces';
 
@@ -19,20 +20,15 @@ const TitleBreadcrumbSkeleton = ({
   children,
 }: TitleBreadcrumbSkeletonProps) =>
   loading ? (
-    <Row>
+    <Box className="layout-row" wrap="wrap">
       {Array(3)
         .fill(null)
         .map(() => (
-          <Col key={uniqueId()}>
-            <Skeleton
-              active
-              className="m-r-xs m-b-xss"
-              paragraph={{ rows: 1, width: 150 }}
-              title={false}
-            />
-          </Col>
+          <Box className="layout-column tw:block" key={uniqueId()}>
+            <Skeleton className="m-r-xs m-b-xss" height={16} width={150} />
+          </Box>
         ))}
-    </Row>
+    </Box>
   ) : (
     children
   );

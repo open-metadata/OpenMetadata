@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Radio, RadioChangeEvent, Row, Typography } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Radio, RadioChangeEvent } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,7 @@ import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { APIEndpoint } from '../../../../generated/entity/data/apiEndpoint';
 import { getApiEndPointByFQN } from '../../../../rest/apiEndpointsAPI';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { SchemaViewType } from '../../../APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
@@ -86,8 +88,10 @@ const APIEndpointSummary = ({
   }, [entityDetails]);
 
   return (
-    <Row className="p-md border-radius-card" gutter={[0, 8]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid p-md border-radius-card"
+      style={getLayoutGutter(0, 8)}>
+      <Grid.Item className="layout-column" span={24}>
         <Radio.Group value={viewType} onChange={handleViewChange}>
           <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
             {t('label.request')}
@@ -96,19 +100,19 @@ const APIEndpointSummary = ({
             {t('label.response')}
           </Radio.Button>
         </Radio.Group>
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         {isEmpty(activeSchema?.schemaFields) ? (
-          <Typography.Text data-testid="no-data-message">
-            <Typography.Text className="text-grey-body">
+          <Typography data-testid="no-data-message">
+            <Typography className="text-grey-body">
               {t('message.no-data-available')}
-            </Typography.Text>
-          </Typography.Text>
+            </Typography>
+          </Typography>
         ) : (
           <SummaryList formattedEntityData={formattedSchemaFieldsData} />
         )}
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

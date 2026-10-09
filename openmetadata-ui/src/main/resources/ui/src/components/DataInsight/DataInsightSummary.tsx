@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -178,18 +180,22 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   return (
     <div data-testid="summary-card">
-      <Typography.Paragraph className="font-medium">
+      <Typography as="p" className="font-medium tw:mb-3.5!">
         {t('label.data-insight-summary', {
           organization:
             getEntityName(OrganizationDetails) ?? t('label.brand-name'),
         })}
-      </Typography.Paragraph>
-      <Row data-testid="summary-card-content" gutter={[16, 16]}>
+      </Typography>
+      <Grid
+        className="layout-row layout-grid"
+        data-testid="summary-card-content"
+        style={getLayoutGutter(16, 16)}>
         {tab === DataInsightTabs.DATA_ASSETS && (
           <>
             {/* summary of entity charts */}
             {entitiesSummaryList.map((summary) => (
-              <Col
+              <Grid.Item
+                className="layout-column"
                 data-testid="data-assets-summary"
                 key={summary.id}
                 span={6}
@@ -205,7 +211,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                       summary.id === SystemChartType.TotalDataAssets ? '' : '%'
                     }`}
                 />
-              </Col>
+              </Grid.Item>
             ))}
           </>
         )}
@@ -213,7 +219,8 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
           <>
             {/* summary for web charts */}
             {webSummaryList.map((summary) => (
-              <Col
+              <Grid.Item
+                className="layout-column"
                 data-testid="app-analytics-summary"
                 key={summary.id}
                 span={6}
@@ -227,13 +234,13 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                   value={`${summary.latest}
                   ${summary.id.startsWith('Percentage') ? '%' : ''}`}
                 />
-              </Col>
+              </Grid.Item>
             ))}
 
             {/* summary of most active user */}
             {mostActiveUser?.userName && (
-              <Col
-                className="data-insight-active-user"
+              <Grid.Item
+                className="layout-column data-insight-active-user"
                 data-testid={`summary-item-${DataInsightChartType.MostActiveUsers}`}
                 key={DataInsightChartType.MostActiveUsers}
                 span={6}>
@@ -250,11 +257,11 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                     />
                   }
                 />
-              </Col>
+              </Grid.Item>
             )}
           </>
         )}
-      </Row>
+      </Grid>
     </div>
   );
 };

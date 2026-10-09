@@ -62,26 +62,12 @@ on:
         required: true
         type: boolean
         default: true
-  # Same-repo PRs run under pull_request — unprivileged, secrets absent
-  # from the runner. These jobs build PR code, populate caches, and
-  # exchange artifacts.
+  # Playwright runs only in the merge queue. PRs still trigger the workflow
+  # because `playwright-summary` is a required check: every job is skipped by
+  # its `if:` (no runner starts), and GitHub counts a skipped required check
+  # as passing. With no PR trigger the check would hang at "Expected — waiting".
   pull_request:
     types:
-      - labeled
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
-  # Fork PRs need cloud-connector secrets (TEST_SNOWFLAKE_*, TEST_BQ_*,
-  # TEST_REDSHIFT_* …) that pull_request events cannot access on forks.
-  # pull_request_target runs in the base repo's context so those secrets
-  # resolve, but requires a maintainer to apply the "safe to test" label
-  # first (enforced by the gate job in the reusable workflow). Same-repo
-  # PRs already ran under pull_request above; the reusable short-circuits
-  # on them via the head-repo check in the gate job.
-  pull_request_target:
-    types:
-      - labeled
       - opened
       - synchronize
       - reopened
@@ -94,6 +80,7 @@ permissions:
 
 jobs:
   playwright:
+    if: ${{ github.event_name != 'pull_request' }}
     uses: ./.github/workflows/playwright-e2e-reusable.yml
     # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
     # reusable without re-listing each one; the reusable only reads what it
@@ -116,24 +103,12 @@ jobs:
       coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
       # One retry everywhere while the first-attempt signal is collected: the
       # main-health job alerts Slack on every failure and flaky pass so each can
-      # be fixed. Once main runs clean, flip PRs to zero retries with:
-      #   retries: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && 1 || 0 }}
-      # (numeric, inverted so `0` is the else branch: `X && 0 || 1` would
-      # short-circuit to 1, and a string breaks the reusable's `type: number`).
+      # be fixed.
       retries: 1
 
   playwright-summary:
-    name: >-
-      ${{
-        (
-          github.event.action == 'labeled'
-          || needs.playwright.outputs.gate_result != 'success'
-          || needs.playwright.outputs.gate_should_run == 'true'
-        )
-        && 'playwright-summary'
-        || 'playwright-summary (skipped)'
-      }}
-    if: ${{ always() && !cancelled() }}
+    name: playwright-summary
+    if: ${{ always() && !cancelled() && github.event_name != 'pull_request' }}
     needs: [playwright]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -174,9 +149,13 @@ jobs:
           console.log(`${matrix.length} shards passed tests and local coverage verification.`);
           NODE
 
-      # Merge-queue failures go to #ci-cleanup. This runs before Checkout, and
-      # queue runs upload only trace reports plus failure-only results, so this
-      # is inline: the failed shards' results, the failed jobs, and the queued PRs.
+      # Merge-queue failures are not posted from here: a failed run does not
+      # always dequeue its PR (when an entry ahead leaves, GitHub rebuilds the
+      # group and lets the old run finish). This leaves the failed tests as one
+      # annotation on this check instead, and merge-queue-dequeue-report.yml adds
+      # them to its single #ci-cleanup alert, which fires only on a real dequeue.
+      # Inline because this runs before Checkout; queue runs upload results JSON
+      # only on failure.
       - name: Download failed merge-queue shard results
         if: ${{ failure() && github.event_name == 'merge_group' }}
         continue-on-error: true
@@ -188,48 +167,29 @@ jobs:
           path: queue-results
           merge-multiple: false
 
-      - name: Build the merge-queue failure message
-        id: queue-slack
+      - name: Annotate the failed merge-queue tests
         if: ${{ failure() && github.event_name == 'merge_group' }}
         continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_REF: ${{ github.event.merge_group.head_ref }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
-          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
           set -uo pipefail
-          prs=$(grep -oE 'pr-[0-9]+' <<< "$HEAD_REF" | sed 's/pr-//' | sort -u | tr '\n' ' ')
-          jobs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs" \
-            --jq '.jobs[] | select(.conclusion == "failure") | .name' 2>/dev/null | sort -u || true)
           # shellcheck disable=SC2016 # \(...) is jq interpolation, not shell
           tests=$(find queue-results -name results.json -type f -print0 2>/dev/null |
             xargs -0 -r jq -r '[.. | objects | select(has("tests") and has("title")) | . as $s | .tests[] | select(.status == "unexpected") | "\($s.file) › \($s.title)"] | .[]' 2>/dev/null |
-            sort -u || true)
-          jq -n --arg channel C0AC5T013V1 --arg prs "$prs" --arg jobs "$jobs" --arg tests "$tests" \
-            --arg run "$RUN_URL" --arg repo "$REPO_URL" '
-            def lines($s): $s | split("\n") | map(select(length > 0));
-            {channel: $channel, text: ([
-              ":red_circle: *Merge queue: Playwright failed*" +
-                (if ($prs | length) > 0 then " for " + ([$prs | split(" ")[] | select(length > 0) | "<\($repo)/pull/\(.)|#\(.)>"] | join(", ")) else "" end)
-            ] + [lines($tests)[:15][] | "• FAILED `\(.)`"]
-              + (if (lines($tests) | length) == 0 then [lines($jobs)[:10][] | "• job `\(.)`"] else [] end)
-              + ["<\($run)|run>"] | join("\n"))}' > "$RUNNER_TEMP/queue-slack.json"
-
-      - name: Post the merge-queue failure to Slack (ci-cleanup)
-        if: ${{ failure() && github.event_name == 'merge_group' && steps.queue-slack.outcome == 'success' }}
-        continue-on-error: true
-        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
-          errors: true
-          payload-file-path: ${{ runner.temp }}/queue-slack.json
+            sort -u | head -n 15 || true)
+          if [[ -z "$tests" ]]; then
+            echo "No failed tests in the results; the dequeue report lists the failed jobs."
+            exit 0
+          fi
+          # One annotation for the whole list; the dequeue report reads it by title.
+          # Workflow-command escaping: % -> %25, newline -> %0A.
+          encoded=${tests//'%'/'%25'}
+          encoded=${encoded//$'\n'/'%0A'}
+          echo "::error title=Merge queue failed tests::$encoded"
 
       # Queue flakes go to #pw-health with the daily main-run flakes. Each shard
       # leaves one "Retry pass in merge queue" annotation listing its retry
       # passes (one per line), so this reads those instead of uploading reports;
-      # inline for the same reason as the failure alert above.
+      # inline for the same reason as the failed-test annotation above.
       - name: Build the merge-queue flaky message
         id: queue-flaky
         if: ${{ always() && !cancelled() && github.event_name == 'merge_group' }}
@@ -669,21 +629,6 @@ jobs:
         run: |
           echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
           exit 1
-
-      # Short-circuit when gate explicitly decided should_run=false —
-      # every upstream job is legitimately `skipped` in that case
-      # (redundant pull_request_target for a same-repo PR, or fork PR
-      # without safe-to-test), and the renderer below counts each
-      # skipped upstream as a "CI/reporting failure" and fails the whole
-      # check. That's what turned run 30090391086 red on PR #30454 despite
-      # the pipeline correctly opting out. Match on the exact "false"
-      # string (not != 'true') so unset outputs never fall through here.
-      - name: Report gate-skipped run as green
-        if: ${{ github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'false' }}
-        run: |
-          echo "Gate decided should_run=false for event=${{ github.event_name }}."
-          echo "This run is intentionally skipped; the authoritative playwright-summary comes from the sibling event's run."
-          echo "Exiting 0 so this check does not block branch protection."
 
       - name: Render consolidated job summary and gate on results
         if: ${{ always() && github.event_name != 'merge_group' && needs.playwright.outputs.gate_should_run == 'true' }}

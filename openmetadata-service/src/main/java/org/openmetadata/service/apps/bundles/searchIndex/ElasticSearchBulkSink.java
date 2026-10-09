@@ -330,7 +330,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
       } else {
-        List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
+        List<EntityInterface<?>> entityInterfaces = (List<EntityInterface<?>>) entities;
 
         boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
 
@@ -343,7 +343,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         if (embeddingsEnabled) {
           Map<String, ElasticSearchVectorService.EntityFingerprintInput> currentById =
               new HashMap<>(entityInterfaces.size());
-          for (EntityInterface e : entityInterfaces) {
+          for (EntityInterface<?> e : entityInterfaces) {
             currentById.put(
                 e.getId().toString(),
                 new ElasticSearchVectorService.EntityFingerprintInput(
@@ -391,8 +391,8 @@ public class ElasticSearchBulkSink implements BulkSink {
         // Index columns asynchronously when processing table entities. Each submission is gated by
         // a semaphore so a fast reader cannot pin an unbounded number of Table entities in the
         // shared doc-build queue (see submitColumnIndexTask).
-        if (Entity.TABLE.equals(entityType)) {
-          for (EntityInterface entity : entityInterfaces) {
+        if (Entity.TABLE.equals(entityType) && searchRepository.isColumnIndexingEnabled()) {
+          for (EntityInterface<?> entity : entityInterfaces) {
             submitColumnIndexTask(entity, reindexContext);
           }
         }
@@ -430,7 +430,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   private static final int BULK_OPERATION_METADATA_OVERHEAD = 150;
 
   private void addEntity(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       String indexName,
       ReindexContext reindexContext,
       StageStatsTracker tracker,
@@ -695,7 +695,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   }
 
   private void recordStaleReferenceWarning(
-      EntityInterface entity, StageStatsTracker tracker, Exception e) {
+      EntityInterface<?> entity, StageStatsTracker tracker, Exception e) {
     recordStaleReferenceWarning(
         Entity.getEntityTypeFromObject(entity),
         entity.getId(),
@@ -821,7 +821,7 @@ public class ElasticSearchBulkSink implements BulkSink {
    * released exactly once when the task completes (success or failure), or here if scheduling
    * itself fails synchronously.
    */
-  private void submitColumnIndexTask(EntityInterface entity, ReindexContext reindexContext) {
+  private void submitColumnIndexTask(EntityInterface<?> entity, ReindexContext reindexContext) {
     try {
       columnTaskSemaphore.acquire();
     } catch (InterruptedException e) {
@@ -860,7 +860,7 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   // Visible for testing: overridden by the column-backpressure regression test to control task
   // timing without standing up a real cluster.
-  protected void indexTableColumns(EntityInterface entity, ReindexContext reindexContext) {
+  protected void indexTableColumns(EntityInterface<?> entity, ReindexContext reindexContext) {
     if (!(entity instanceof Table table)) {
       return;
     }
@@ -1101,7 +1101,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   }
 
   private String enrichWithEmbedding(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       String json,
       Map<String, JsonNode> existingEmbeddingsById,
       StageStatsTracker tracker) {
@@ -1153,7 +1153,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   }
 
   private Map<String, JsonNode> fetchExistingEmbeddings(
-      List<EntityInterface> entities,
+      List<EntityInterface<?>> entities,
       Map<String, ElasticSearchVectorService.EntityFingerprintInput> currentById,
       String indexName,
       ReindexContext reindexContext) {

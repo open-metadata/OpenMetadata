@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -43,6 +44,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class AnnouncementRepository extends EntityRepository<Announcement> {
 
   public static final String COLLECTION_PATH = "/v1/announcements";
+
+  /** Mirrors {@code maxLength} on {@code customTypeName} in announcement.json. */
+  private static final int MAX_CUSTOM_TYPE_NAME_LENGTH = 64;
 
   public AnnouncementRepository() {
     super(
@@ -77,25 +81,96 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
     // Backfill the default so a type is guaranteed even when the POJO initializer is bypassed
     // (e.g. an explicit "type": null on create, or a JSON Patch that removes /type).
     if (announcement.getType() == null) {
-      announcement.setType(AnnouncementType.Information);
+      announcement.setType(AnnouncementType.Notice);
     }
-    if (announcement.getStatus() == null) {
+    validateTypeFields(announcement);
+    validateTimeWindow(announcement);
+    announcement.setStatus(deriveStatus(announcement));
+  }
+
+  /**
+   * The schema requires both times, but bean validation only runs on the create/PUT body. PATCH
+   * binds the patched JSON straight to the POJO, so a remove op would otherwise store an
+   * announcement with no window.
+   */
+  private void validateTimeWindow(Announcement announcement) {
+    if (announcement.getStartTime() == null || announcement.getEndTime() == null) {
+      throw new IllegalArgumentException("startTime and endTime are required for an announcement");
+    }
+  }
+
+  /**
+   * Status is a function of the time window and is never persisted: nothing rewrites a stored
+   * value when the window opens or closes, so it is derived on every read instead. A row written
+   * before PATCH enforced the window may lack a time; it gets no status rather than failing the
+   * whole list.
+   */
+  private AnnouncementStatus deriveStatus(Announcement announcement) {
+    Long startTime = announcement.getStartTime();
+    Long endTime = announcement.getEndTime();
+    AnnouncementStatus status = null;
+    if (startTime != null && endTime != null) {
       long now = System.currentTimeMillis();
-      if (announcement.getEndTime() < now) {
-        announcement.setStatus(AnnouncementStatus.Expired);
-      } else if (announcement.getStartTime() > now) {
-        announcement.setStatus(AnnouncementStatus.Scheduled);
+      if (endTime < now) {
+        status = AnnouncementStatus.Expired;
+      } else if (startTime > now) {
+        status = AnnouncementStatus.Scheduled;
       } else {
-        announcement.setStatus(AnnouncementStatus.Active);
+        status = AnnouncementStatus.Active;
       }
     }
+    return status;
+  }
+
+  /**
+   * `color` and `customTypeName` only mean anything on a {@code Custom} announcement. The form
+   * enforces that, but API, MCP and script callers do not go through the form, so without this the
+   * server would store a colour the UI never reads, or a Custom announcement with no label and no
+   * colour that falls back to the UI's pink default — a colour its author never chose.
+   */
+  private void validateTypeFields(Announcement announcement) {
+    if (announcement.getType() != AnnouncementType.Custom) {
+      announcement.setColor(null);
+      announcement.setCustomTypeName(null);
+      return;
+    }
+
+    if (announcement.getColor() == null) {
+      throw new IllegalArgumentException("color is required when the announcement type is Custom");
+    }
+    announcement.setCustomTypeName(validCustomTypeName(announcement.getCustomTypeName()));
+  }
+
+  /**
+   * The schema's {@code minLength}/{@code maxLength} only run on {@code @Valid CreateAnnouncement},
+   * so they cover create and PUT alone — PATCH binds the patched JSON straight to the POJO with no
+   * bean validation, and a 200-character name sent that way was stored as it arrived. Checking here
+   * covers all three paths at once.
+   *
+   * <p>Length is measured after trimming, which is the value actually stored; the schema measures
+   * the value as sent. A name that is only over the limit because of surrounding whitespace is
+   * therefore accepted here and rejected by the schema on create — the stricter of the two wins,
+   * and neither can store an over-length name.
+   */
+  private String validCustomTypeName(String customTypeName) {
+    String trimmed = nullOrEmpty(customTypeName) ? "" : customTypeName.trim();
+    if (trimmed.isEmpty()) {
+      throw new IllegalArgumentException(
+          "customTypeName is required when the announcement type is Custom");
+    }
+    if (trimmed.length() > MAX_CUSTOM_TYPE_NAME_LENGTH) {
+      throw new IllegalArgumentException(
+          "customTypeName cannot be longer than " + MAX_CUSTOM_TYPE_NAME_LENGTH + " characters");
+    }
+    return trimmed;
   }
 
   @Override
   public void storeEntity(Announcement announcement, boolean update) {
     List<EntityReference> owners = announcement.getOwners();
     List<EntityReference> domains = announcement.getDomains();
-    announcement.withOwners(null).withDomains(null);
+    AnnouncementStatus status = announcement.getStatus();
+    announcement.withOwners(null).withDomains(null).withStatus(null);
 
     if (update) {
       store(announcement, true);
@@ -107,15 +182,31 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
               announcement.getFullyQualifiedName());
     }
 
-    announcement.withOwners(owners).withDomains(domains);
+    announcement.withOwners(owners).withDomains(domains).withStatus(status);
   }
 
   @Override
   public void setFields(Announcement announcement, Fields fields, RelationIncludes includes) {
+    announcement.setStatus(deriveStatus(announcement));
     announcement.setOwners(
         fields.contains(FIELD_OWNERS) ? getOwners(announcement) : announcement.getOwners());
     announcement.setDomains(
         fields.contains(FIELD_DOMAINS) ? getDomains(announcement) : announcement.getDomains());
+  }
+
+  /**
+   * The list path never reaches {@link #setFields}: {@code setFieldsInBulk} goes straight to the
+   * registered field fetchers. Deriving status only there left a row reporting {@code Expired} on a
+   * GET by id and the stored write-time snapshot in the list that the status filter had already
+   * matched it into — so the filter and the payload disagreed for exactly the rows the filter
+   * exists to find.
+   */
+  @Override
+  public void setFieldsInBulk(Fields fields, List<Announcement> entities) {
+    if (!nullOrEmpty(entities)) {
+      entities.forEach(announcement -> announcement.setStatus(deriveStatus(announcement)));
+    }
+    super.setFieldsInBulk(fields, entities);
   }
 
   @Override
@@ -211,10 +302,16 @@ public class AnnouncementRepository extends EntityRepository<Announcement> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      // The target is fixed at creation: turning an entity announcement into a system one (e.g. by
+      // dropping entityLink via PATCH) would bypass the admin check on system announcement writes.
+      if (!Objects.equals(original.getEntityLink(), updated.getEntityLink())) {
+        throw new IllegalArgumentException("entityLink cannot be changed after creation");
+      }
       recordChange("startTime", original.getStartTime(), updated.getStartTime());
       recordChange("endTime", original.getEndTime(), updated.getEndTime());
-      recordChange("status", original.getStatus(), updated.getStatus());
       recordChange("type", original.getType(), updated.getType());
+      recordChange("color", original.getColor(), updated.getColor());
+      recordChange("customTypeName", original.getCustomTypeName(), updated.getCustomTypeName());
     }
   }
 

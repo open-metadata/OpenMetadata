@@ -43,6 +43,14 @@
       "description": "Percentage of rows that failed for this dimension",
       "type": "number"
     },
+    "minBound": {
+      "description": "Lower bound this dimension was evaluated against: the configured bound, widened by the failure threshold or learned by dynamic assertion when either applies.",
+      "type": "number"
+    },
+    "maxBound": {
+      "description": "Upper bound this dimension was evaluated against: the configured bound, widened by the failure threshold or learned by dynamic assertion when either applies.",
+      "type": "number"
+    },
     "impactScore": {
       "description": "Impact score indicating the significance of this dimension for revealing data quality variations. Higher scores indicate dimensions with more variance in test results.",
       "type": "number",

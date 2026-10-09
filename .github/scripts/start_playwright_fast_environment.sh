@@ -41,6 +41,8 @@ export PW_AIRFLOW_CONTAINER=""
 export PW_AUTOPILOT_MYSQL_CONTAINER=""
 export PW_AUTH_LINK="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright/.auth"
 export PW_ENTITY_STATE_LINK="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright/output/entity-response-data.json"
+export PW_LINEAGE_STATE_LINK="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright/output/lineage-data.json"
+export PW_SHARED_INFRA_STATE_LINK="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright/output/shared-infra.json"
 
 startup_complete=false
 cleanup_failed_start() {
@@ -101,7 +103,9 @@ export PW_SEARCH_CLUSTER_ALIAS
 playwright_state="$runtime_root/data/playwright-state"
 if [[ ! -s "$playwright_state/auth/admin.json" ||
       ! -s "$playwright_state/auth/admin-api-token.json" ||
-      ! -s "$playwright_state/entity-response-data.json" ]]; then
+      ! -s "$playwright_state/entity-response-data.json" ||
+      ! -s "$playwright_state/lineage-data.json" ||
+      ! -s "$playwright_state/shared-infra.json" ]]; then
   echo "The Playwright fixture does not contain seeded auth and entity state" >&2
   exit 1
 fi
@@ -119,7 +123,11 @@ if [[ "$(jq -r .playwrightStateHash "$manifest")" != "$playwright_state_hash" ]]
 fi
 
 mkdir -p "$(dirname "$PW_ENTITY_STATE_LINK")"
-for state_link in "$PW_AUTH_LINK" "$PW_ENTITY_STATE_LINK"; do
+for state_link in \
+  "$PW_AUTH_LINK" \
+  "$PW_ENTITY_STATE_LINK" \
+  "$PW_LINEAGE_STATE_LINK" \
+  "$PW_SHARED_INFRA_STATE_LINK"; do
   if [[ -e "$state_link" || -L "$state_link" ]]; then
     echo "Refusing to replace existing Playwright state path: $state_link" >&2
     exit 1
@@ -127,6 +135,8 @@ for state_link in "$PW_AUTH_LINK" "$PW_ENTITY_STATE_LINK"; do
 done
 ln -s "$playwright_state/auth" "$PW_AUTH_LINK"
 ln -s "$playwright_state/entity-response-data.json" "$PW_ENTITY_STATE_LINK"
+ln -s "$playwright_state/lineage-data.json" "$PW_LINEAGE_STATE_LINK"
+ln -s "$playwright_state/shared-infra.json" "$PW_SHARED_INFRA_STATE_LINK"
 
 if [[ "${PW_PROTOCOL:-http}" == "h2" ]]; then
   for storage_state in "$playwright_state/auth"/*.json; do
@@ -144,6 +154,8 @@ export PW_POSTGRES_IMAGE
 export PW_OPENSEARCH_IMAGE
 PW_POSTGRES_IMAGE=$(jq -r .postgresImage "$manifest")
 PW_OPENSEARCH_IMAGE=$(jq -r .opensearchImage "$manifest")
+# Read by start_playwright_autopilot_mysql.sh.
+export PW_AUTOPILOT_MYSQL_IMAGE=mysql:8.0.42
 
 if [[ -n "$ingestion_image_path" ]]; then
   ingestion_manifest_path="${ingestion_image_path%.tar.zst}.manifest.json"
@@ -218,10 +230,21 @@ pull_image_with_retry "$PW_POSTGRES_IMAGE" &
 postgres_pull_pid=$!
 pull_image_with_retry "$PW_OPENSEARCH_IMAGE" &
 opensearch_pull_pid=$!
+# The AutoPilot MySQL source is started only after the server is healthy, so a
+# bare `docker run` there pulled it late with no retry (run 36851901152 failed
+# on `network is unreachable` after everything else was up).
+autopilot_mysql_pull_pid=
+if [[ -n "$ingestion_image_path" ]]; then
+  pull_image_with_retry "$PW_AUTOPILOT_MYSQL_IMAGE" &
+  autopilot_mysql_pull_pid=$!
+fi
 
 pull_failed=0
 wait "$postgres_pull_pid" || pull_failed=1
 wait "$opensearch_pull_pid" || pull_failed=1
+if [[ -n "$autopilot_mysql_pull_pid" ]]; then
+  wait "$autopilot_mysql_pull_pid" || pull_failed=1
+fi
 if [[ $pull_failed -ne 0 ]]; then
   exit 1
 fi
@@ -457,6 +480,8 @@ fi
   fi
   echo "PW_AUTH_LINK=$PW_AUTH_LINK"
   echo "PW_ENTITY_STATE_LINK=$PW_ENTITY_STATE_LINK"
+  echo "PW_LINEAGE_STATE_LINK=$PW_LINEAGE_STATE_LINK"
+  echo "PW_SHARED_INFRA_STATE_LINK=$PW_SHARED_INFRA_STATE_LINK"
   echo "PW_POSTGRES_IMAGE=$PW_POSTGRES_IMAGE"
   echo "PW_OPENSEARCH_IMAGE=$PW_OPENSEARCH_IMAGE"
   echo "PW_SEARCH_CLUSTER_ALIAS=$PW_SEARCH_CLUSTER_ALIAS"

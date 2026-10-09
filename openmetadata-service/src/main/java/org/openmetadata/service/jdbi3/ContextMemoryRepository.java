@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -36,8 +37,15 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.EntityLifecycle;
+import org.openmetadata.service.ontology.OntologyAiAvailability;
+import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
+import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -55,9 +63,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Repository(name = "ContextMemoryRepository")
 public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
-  static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
-  static final String FIELD_RELATED_ENTITIES = "relatedEntities";
-  static final String FIELD_SOURCE_FILE = "sourceFile";
+  public static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
+  public static final String FIELD_RELATED_ENTITIES = "relatedEntities";
+  static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
+  public static final String FIELD_SOURCE_FILE = "sourceFile";
   static final String FIELD_SOURCE_ENTITY = "sourceEntity";
   private static final String PATCH_FIELDS =
       FIELD_PRIMARY_ENTITY
@@ -80,6 +89,55 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     ContextMemoryBodyTextContributor.INSTANCE.register();
   }
 
+  /** Memory-specific stages and transitions; the shared repository validates every stage change. */
+  public static final EntityLifecycle<ContextMemoryStatus> LIFECYCLE =
+      new EntityLifecycle<>(
+          ContextMemoryStatus.class,
+          Map.of(
+              ContextMemoryStatus.UNPROCESSED,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.DEPRECATED,
+                      ContextMemoryStatus.REJECTED,
+                      ContextMemoryStatus.SUPERSEDED,
+                      ContextMemoryStatus.INVALIDATED,
+                      ContextMemoryStatus.ARCHIVED),
+              ContextMemoryStatus.DRAFT,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.APPROVED,
+                  Set.of(
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.DEPRECATED,
+                      ContextMemoryStatus.REJECTED,
+                      ContextMemoryStatus.SUPERSEDED,
+                      ContextMemoryStatus.INVALIDATED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.DEPRECATED,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.REJECTED,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.SUPERSEDED,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.INVALIDATED,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.ARCHIVED,
+                  Set.of(ContextMemoryStatus.APPROVED, ContextMemoryStatus.UNPROCESSED)));
+
   public ContextMemoryRepository() {
     super(
         ContextMemoryResource.COLLECTION_PATH,
@@ -89,6 +147,45 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    entityLifecycle = LIFECYCLE;
+    defaultEntityStatus = ContextMemoryStatus.UNPROCESSED;
+  }
+
+  @Override
+  protected void postCreate(ContextMemory memory) {
+    super.postCreate(memory);
+    ontologyQueue().enqueue(memory, memory.getUpdatedBy());
+  }
+
+  @Override
+  protected void postCreate(List<ContextMemory> memories) {
+    super.postCreate(memories);
+    if (nullOrEmpty(memories)) {
+      return;
+    }
+    OntologyMemoryDerivationQueue queue = ontologyQueue();
+    memories.forEach(memory -> queue.enqueue(memory, memory.getUpdatedBy()));
+  }
+
+  @Override
+  protected void postUpdate(ContextMemory previous, ContextMemory updated) {
+    super.postUpdate(previous, updated);
+    if (OntologyMemoryDerivationQueue.hasNewPublishedContent(previous, updated)
+        && OntologyAiAvailability.isMemoryDerivationEnabled()
+        && getDerivedEntities(updated).isEmpty()) {
+      ontologyQueue().enqueue(updated, updated.getUpdatedBy());
+    }
+  }
+
+  /** Whether the memory row exists, soft-deleted or not; provenance may point at either. */
+  static boolean memoryExists(UUID memoryId) {
+    EntityDAO<?> dao = Entity.getEntityRepository(Entity.CONTEXT_MEMORY).getDao();
+    return dao.exists(dao.getTableName(), memoryId);
+  }
+
+  private OntologyMemoryDerivationQueue ontologyQueue() {
+    return new OntologyMemoryDerivationQueue(
+        Entity.getJobDAO(), OntologyAiAvailability::isMemoryDerivationEnabled);
   }
 
   @Override
@@ -98,6 +195,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     if (fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(getRelatedEntities(entity));
+    }
+    if (fields.contains(FIELD_DERIVED_ENTITIES)) {
+      entity.setDerivedEntities(getDerivedEntities(entity));
     }
     if (fields.contains(FIELD_SOURCE_ENTITY) || fields.contains(FIELD_SOURCE_FILE)) {
       EntityReference source = getSourceEntity(entity);
@@ -118,6 +218,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (!fields.contains(FIELD_RELATED_ENTITIES)) {
       entity.setRelatedEntities(null);
     }
+    if (!fields.contains(FIELD_DERIVED_ENTITIES)) {
+      entity.setDerivedEntities(null);
+    }
     if (!fields.contains(FIELD_SOURCE_ENTITY)) {
       entity.setSourceEntity(null);
     }
@@ -133,6 +236,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     fetchAndSetPrimaryEntities(entities, fields);
     fetchAndSetRelatedEntities(entities, fields);
+    fetchAndSetDerivedEntities(entities, fields);
     fetchAndSetSources(entities, fields);
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
@@ -259,6 +363,42 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null);
   }
 
+  private List<EntityReference> getDerivedEntities(ContextMemory entity) {
+    return findFrom(
+        entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM);
+  }
+
+  private void fetchAndSetDerivedEntities(List<ContextMemory> entities, Fields fields) {
+    if (!fields.contains(FIELD_DERIVED_ENTITIES)) {
+      return;
+    }
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.DERIVED_FROM.ordinal(),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    Map<UUID, List<EntityReference>> derivedById = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      if (!Entity.GLOSSARY_TERM.equals(record.getFromEntity())) {
+        continue;
+      }
+      EntityReference ref = refById.get(record.getFromId());
+      if (ref != null) {
+        derivedById
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(ref);
+      }
+    }
+    derivedById.values().forEach(refs -> refs.sort(EntityUtil.compareEntityReference));
+    entities.forEach(
+        memory ->
+            memory.setDerivedEntities(
+                derivedById.getOrDefault(memory.getId(), Collections.emptyList())));
+  }
+
   /** The single Context Center source (file or page) a memory was extracted from, via MENTIONED_IN. */
   private EntityReference getSourceEntity(ContextMemory entity) {
     List<EntityReference> refs =
@@ -288,7 +428,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   private Map<UUID, EntityReference> batchFetchSources(List<ContextMemory> entities) {
-    Map<UUID, EntityReference> sourceById = new HashMap<>();
+    Map<UUID, List<EntityReference>> sourcesById = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
@@ -300,9 +440,17 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     for (CollectionDAO.EntityRelationshipObject record : records) {
       EntityReference ref = refById.get(record.getFromId());
       if (ref != null) {
-        sourceById.putIfAbsent(UUID.fromString(record.getToId()), ref);
+        sourcesById
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(ref);
       }
     }
+    Map<UUID, EntityReference> sourceById = new HashMap<>();
+    sourcesById.forEach(
+        (id, refs) -> {
+          refs.sort(EntityUtil.compareEntityReference);
+          sourceById.put(id, refs.getFirst());
+        });
     return sourceById;
   }
 
@@ -351,6 +499,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
     validateSharedPrincipals(entity);
     setCreatorAsDefaultOwner(entity, update);
+    prepareLifecycle(entity, update);
+    inheritAnchorDomains(entity, update);
   }
 
   private void validateNotSelfReference(ContextMemory entity, UUID referencedId, String field) {
@@ -392,6 +542,55 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         List.of(
             Entity.getEntityReferenceByName(
                 Entity.USER, entity.getUpdatedBy(), Include.NON_DELETED)));
+  }
+
+  private static void prepareLifecycle(ContextMemory memory, boolean update) {
+    if (!update) {
+      ContextMemoryLifecycle.applyCreate(
+          memory, (reference, field) -> resolveLiveMemory(reference, field, memory.getUpdatedBy()));
+    }
+  }
+
+  private static EntityReference resolveLiveMemory(
+      EntityReference reference, String field, String userName) {
+    try {
+      ContextMemory target =
+          Entity.getEntity(
+              reference,
+              ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, ""),
+              Include.NON_DELETED);
+      boolean admin = SubjectContext.getSubjectContext(userName).isAdmin();
+      if (ContextMemoryVisibility.isVisibleToUser(target, userName, admin)) {
+        return target.getEntityReference();
+      }
+    } catch (EntityNotFoundException e) {
+      // Report the same error for missing and unreadable memories.
+    }
+    throw new BadRequestException(
+        String.format("%s must reference a readable, non-deleted context memory", field));
+  }
+
+  /** A new memory follows its anchor's single domain for policy and search access. */
+  private void inheritAnchorDomains(ContextMemory memory, boolean update) {
+    if (shouldInheritAnchorDomains(memory, update)) {
+      List<EntityReference> domains = listOrEmpty(anchorDomains(memory.getPrimaryEntity()));
+      if (domains.size() == 1) {
+        memory.setDomains(validateDomainsByRef(domains));
+      }
+    }
+  }
+
+  private static boolean shouldInheritAnchorDomains(ContextMemory memory, boolean update) {
+    EntityReference anchor = memory.getPrimaryEntity();
+    return !update
+        && anchor != null
+        && nullOrEmpty(memory.getDomains())
+        && Entity.getEntityRepository(anchor.getType()).isSupportsDomains();
+  }
+
+  private static List<EntityReference> anchorDomains(EntityReference anchor) {
+    EntityInterface<?> entity = Entity.getEntity(anchor, Entity.FIELD_DOMAINS, Include.NON_DELETED);
+    return entity.getDomains();
   }
 
   @Override
@@ -462,42 +661,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   // Lifecycle enforcement
   // ------------------------------------------------------------------
 
-  /**
-   * Valid status transitions:
-   *   DRAFT → ACTIVE
-   *   DRAFT → ARCHIVED
-   *   ACTIVE → ARCHIVED
-   *   ARCHIVED → ACTIVE (re-activate)
-   *
-   * Invalid:
-   *   ARCHIVED → DRAFT (cannot revert to draft)
-   *   ACTIVE → DRAFT (cannot revert to draft)
-   */
-  private static final Map<ContextMemoryStatus, Set<ContextMemoryStatus>> VALID_TRANSITIONS =
-      Map.of(
-          ContextMemoryStatus.DRAFT,
-              Set.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ACTIVE, Set.of(ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ARCHIVED, Set.of(ContextMemoryStatus.ACTIVE));
-
-  /** Validate that a status transition is allowed. */
-  public static void validateStatusTransition(ContextMemoryStatus from, ContextMemoryStatus to) {
-    if (from == to) {
-      return; // No change
-    }
-    Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.get(from);
-    if (allowed == null) {
-      throw new BadRequestException(
-          String.format("No transitions defined for status %s", from.value()));
-    }
-    if (!allowed.contains(to)) {
-      throw new BadRequestException(
-          String.format(
-              "Invalid memory status transition from %s to %s. Allowed transitions from %s: %s",
-              from.value(), to.value(), from.value(), allowed));
-    }
-  }
-
   @Override
   public EntityUpdater getUpdater(
       ContextMemory original, ContextMemory updated, Operation operation, ChangeSource source) {
@@ -508,6 +671,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     public ContextMemoryUpdater(
         ContextMemory original, ContextMemory updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    @Override
+    void updateEntityStatus(boolean consolidatingChanges) {
+      if (operation == Operation.PATCH && updated.getEntityStatus() == null) {
+        throw new BadRequestException("A context memory requires an entityStatus");
+      }
+      super.updateEntityStatus(consolidatingChanges);
+    }
+
+    @Override
+    protected boolean consolidateChanges(
+        ContextMemory original, ContextMemory updated, Operation operation) {
+      return original.getEntityStatus() == updated.getEntityStatus()
+          && super.consolidateChanges(original, updated, operation);
     }
 
     @Override
@@ -534,13 +712,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           original.getMachineRepresentation(),
           updated.getMachineRepresentation());
 
-      // Validate lifecycle transition before recording status change
-      if (original.getStatus() != null
-          && updated.getStatus() != null
-          && original.getStatus() != updated.getStatus()) {
-        validateStatusTransition(original.getStatus(), updated.getStatus());
-      }
-      recordChange("status", original.getStatus(), updated.getStatus());
+      updateLifecycle(consolidatingChanges);
 
       recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig());
 
@@ -605,6 +777,32 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     /** True when a PATCH edited a field the extraction reconciler would otherwise overwrite. */
     private boolean extractionManagedFieldChanged() {
       return ContextMemoryRepository.extractionManagedFieldChanged(original, updated);
+    }
+
+    private void updateLifecycle(boolean consolidatingChanges) {
+      if (operation == Operation.PUT) {
+        updated.setStatusReason(original.getStatusReason());
+        updated.setSupersededBy(original.getSupersededBy());
+        updated.setDisputes(original.getDisputes());
+      }
+      if (!consolidatingChanges) {
+        ContextMemoryLifecycle.applyUpdate(
+            original,
+            updated,
+            (reference, field) -> resolveLiveMemory(reference, field, updated.getUpdatedBy()));
+      }
+      recordChange("statusReason", original.getStatusReason(), updated.getStatusReason());
+      recordChange(
+          ContextMemoryLifecycle.FIELD_SUPERSEDED_BY,
+          original.getSupersededBy(),
+          updated.getSupersededBy(),
+          true,
+          EntityUtil.entityReferenceMatch);
+      recordChange(
+          ContextMemoryLifecycle.FIELD_DISPUTES,
+          original.getDisputes(),
+          updated.getDisputes(),
+          true);
     }
 
     private void updateSourceEntityRelationship() {
@@ -696,6 +894,26 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         source.getType(),
         Entity.CONTEXT_MEMORY,
         Relationship.MENTIONED_IN);
+  }
+
+  /**
+   * Whether linking this memory to another source keeps it readable there. It stays anchored to
+   * its own file, so only a memory every reader of that file can reach is safe to share.
+   */
+  public boolean hasOrgWideAnchor(ContextMemory memory) {
+    EntityReference anchor = getPrimaryEntity(memory);
+    return anchor == null
+        || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
+  }
+
+  private static boolean isOrgWideFile(EntityReference file) {
+    boolean orgWide;
+    try {
+      orgWide = ContextFileVisibility.isOrgWide(Entity.getEntity(file, "", Include.NON_DELETED));
+    } catch (EntityNotFoundException e) {
+      orgWide = false;
+    }
+    return orgWide;
   }
 
   public boolean hasOtherSources(UUID memoryId, EntityReference source) {

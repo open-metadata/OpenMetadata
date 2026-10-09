@@ -28,6 +28,7 @@ import {
   navigateToRoleDetail,
   navigateToRolesPanel,
   openAccessControlSettings,
+  returnToAccessControlLanding,
   waitUntilAccessible,
 } from '../../utils/accessControl';
 import {
@@ -76,16 +77,7 @@ test.describe(
       });
 
       await test.step('Policies card navigates to policies list', async () => {
-        const landingVisible = page
-          .getByTestId('access-control-landing')
-          .waitFor({ state: 'visible' });
-        await page
-          .getByTestId('profile-content-header')
-          .getByLabel('Breadcrumb')
-          .getByText('Access Control', { exact: true })
-          .click();
-        await landingVisible;
-        await waitForAllLoadersToDisappear(page);
+        await returnToAccessControlLanding(page);
         const policiesResponse = page.waitForResponse('/api/v1/policies*');
         await page.getByTestId('access-control-card-policies').click();
         expect((await policiesResponse).status()).toBe(200);
@@ -94,16 +86,7 @@ test.describe(
       });
 
       await test.step('Permission Debugger card navigates to debugger panel', async () => {
-        const landingVisible = page
-          .getByTestId('access-control-landing')
-          .waitFor({ state: 'visible' });
-        await page
-          .getByTestId('profile-content-header')
-          .getByLabel('Breadcrumb')
-          .getByText('Access Control', { exact: true })
-          .click();
-        await landingVisible;
-        await waitForAllLoadersToDisappear(page);
+        await returnToAccessControlLanding(page);
         await page
           .getByTestId('access-control-card-permission-debugger')
           .click();
@@ -114,16 +97,7 @@ test.describe(
       });
 
       await test.step('Audit Logs card navigates to audit logs panel', async () => {
-        const landingVisible = page
-          .getByTestId('access-control-landing')
-          .waitFor({ state: 'visible' });
-        await page
-          .getByTestId('profile-content-header')
-          .getByLabel('Breadcrumb')
-          .getByText('Access Control', { exact: true })
-          .click();
-        await landingVisible;
-        await waitForAllLoadersToDisappear(page);
+        await returnToAccessControlLanding(page);
         const auditResponse = page.waitForResponse('/api/v1/audit/logs*');
         await page.getByTestId('access-control-card-audit-logs').click();
         expect((await auditResponse).status()).toBe(200);
@@ -756,6 +730,11 @@ test.describe(
             try {
               await option.click({ timeout: 3000 });
 
+              const chip = resourcesAutocomplete.getByTestId(
+                'autocomplete-selected-item'
+              );
+              await chip.waitFor({ state: 'visible', timeout: 2000 });
+
               return true;
             } catch {
               return false;
@@ -774,6 +753,11 @@ test.describe(
 
             try {
               await option.click({ timeout: 3000 });
+
+              const chip = operationsAutocomplete.getByTestId(
+                'autocomplete-selected-item'
+              );
+              await chip.waitFor({ state: 'visible', timeout: 2000 });
 
               return true;
             } catch {
@@ -1073,6 +1057,11 @@ test.describe(
               try {
                 await option.click({ timeout: 3000 });
 
+                const chip = resourcesAutocomplete.getByTestId(
+                  'autocomplete-selected-item'
+                );
+                await chip.waitFor({ state: 'visible', timeout: 2000 });
+
                 return true;
               } catch {
                 return false;
@@ -1092,6 +1081,11 @@ test.describe(
 
               try {
                 await option.click({ timeout: 3000 });
+
+                const chip = operationsAutocomplete.getByTestId(
+                  'autocomplete-selected-item'
+                );
+                await chip.waitFor({ state: 'visible', timeout: 2000 });
 
                 return true;
               } catch {

@@ -45,6 +45,7 @@ import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -1054,7 +1055,7 @@ public class SearchResource {
 
                       String fields =
                           String.join(",", ReindexingUtil.getSearchIndexFields(entityType));
-                      EntityInterface entity = Entity.getEntity(ref, fields, Include.ALL);
+                      EntityInterface<?> entity = Entity.getEntity(ref, fields, Include.ALL);
 
                       String indexName =
                           indexMapping.getIndexName(searchRepository.getClusterAlias());
@@ -1073,7 +1074,7 @@ public class SearchResource {
                             docSizeBytes,
                             maxContentLength);
 
-                        EntityInterface reducedEntity =
+                        EntityInterface<?> reducedEntity =
                             Entity.getEntity(
                                 ref,
                                 "id,name,fullyQualifiedName,displayName,description,owners,tags,deleted",
@@ -1272,7 +1273,8 @@ public class SearchResource {
     response.setIsSearchIndexingRunning(isSearchIndexingRunning());
 
     Map<String, org.openmetadata.search.IndexMapping> indexMap =
-        searchRepository.getEntityIndexMap();
+        new HashMap<>(searchRepository.getEntityIndexMap());
+    indexMap.keySet().removeIf(searchRepository::isIndexDisabled);
     List<String> missingIndexes = new java.util.ArrayList<>();
     for (Map.Entry<String, org.openmetadata.search.IndexMapping> entry : indexMap.entrySet()) {
       if (!searchRepository.indexExists(entry.getValue())) {

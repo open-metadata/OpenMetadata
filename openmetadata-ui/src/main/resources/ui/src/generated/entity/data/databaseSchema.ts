@@ -21,6 +21,15 @@ export interface DatabaseSchema {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * Reference to Database that contains this table.
      */
     database: EntityReference;
@@ -507,8 +516,7 @@ export interface DatabaseSchemaProfilerConfig {
     /**
      * Number of row of sample data to be generated
      */
-    sampleDataCount?:         number;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    sampleDataCount?: number;
     [property: string]: any;
 }
 
@@ -588,94 +596,12 @@ export enum SampleConfigType {
 }
 
 /**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: DataStorageConfig;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface DataStorageConfig {
-    /**
-     * Bucket Name
-     */
-    bucketName?: string;
-    /**
-     * Provide the pattern of the path where the generated sample data file needs to be stored.
-     */
-    filePathPattern?: string;
-    /**
-     * When this field enabled a single parquet file will be created to store sample data,
-     * otherwise we will create a new file per day
-     */
-    overwriteData?: boolean;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:        string;
-    storageConfig?: AwsCredentials;
-    [property: string]: any;
-}
-
-/**
- * AWS credentials configs.
- */
-export interface AwsCredentials {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
-}
-
-/**
  * Status of the DatabaseSchema.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",

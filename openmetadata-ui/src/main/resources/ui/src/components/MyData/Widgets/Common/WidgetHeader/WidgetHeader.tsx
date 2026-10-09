@@ -12,8 +12,8 @@
  */
 
 import { DragOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Typography } from 'antd';
-import { MenuInfo } from 'rc-menu/lib/interface';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { ReactNode } from 'react';
 import { Layout } from 'react-grid-layout';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
@@ -59,10 +59,6 @@ const WidgetHeader = ({
   title,
   widgetKey,
 }: WidgetHeaderProps) => {
-  const handleSortByClick = (e: MenuInfo) => {
-    onSortChange?.(e.key);
-  };
-
   const handleSizeChange = (value: number) => {
     if (handleLayoutUpdate) {
       const updatedLayout = currentLayout?.map((layout: WidgetConfig) =>
@@ -73,12 +69,12 @@ const WidgetHeader = ({
     }
   };
 
-  const handleMoreClick = (e: MenuInfo) => {
-    if (e.key === 'remove') {
+  const handleMoreClick = (key: string) => {
+    if (key === 'remove') {
       handleRemoveWidget?.(widgetKey);
-    } else if (e.key === 'half_size') {
+    } else if (key === 'half_size') {
       handleSizeChange(1);
-    } else if (e.key === 'full_size') {
+    } else if (key === 'full_size') {
       handleSizeChange(2);
     }
   };
@@ -87,31 +83,33 @@ const WidgetHeader = ({
     <WidgetSortFilter
       selectedSortBy={selectedSortBy}
       sortOptions={sortOptions}
-      onSortChange={handleSortByClick}
+      onSortChange={(key) => onSortChange?.(key)}
     />
   );
 
   return (
-    <Row
-      className={`widget-header ${className}`}
+    <Box
+      className={`layout-row widget-header ${className}`}
       data-testid="widget-header"
-      justify="space-between">
-      <Col
-        className="d-flex items-center h-full min-h-8 widget-header-left-col"
-        flex="1">
+      justify="between"
+      wrap="wrap">
+      <Box
+        className="layout-column d-flex items-center h-full min-h-8 widget-header-left-col"
+        style={{ flex: '1 1 auto' }}>
         {icon && (
           <div className="d-flex h-6 w-6 m-r-xs header-title-icon">{icon}</div>
         )}
-        <Typography.Paragraph
+        <Typography
+          as="p"
           className="widget-title cursor-pointer"
           data-testid="widget-title"
           ellipsis={{ tooltip: true }}
           onClick={onTitleClick}>
           {title}
-        </Typography.Paragraph>
-      </Col>
+        </Typography>
+      </Box>
 
-      <Col flex="none">
+      <Box className="layout-column tw:block" style={{ flex: 'none' }}>
         <div className="flex gap-2">
           {isEditView ? (
             <>
@@ -139,8 +137,8 @@ const WidgetHeader = ({
             sortFilter
           )}
         </div>
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

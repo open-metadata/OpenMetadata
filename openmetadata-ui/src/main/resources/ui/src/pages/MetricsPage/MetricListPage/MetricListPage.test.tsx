@@ -287,14 +287,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
           title,
           subtitle,
           actions,
+          variant,
           'data-testid': dataTestId,
         }: {
           title?: React.ReactNode;
           subtitle?: React.ReactNode;
           actions?: React.ReactNode;
+          variant?: string;
           'data-testid'?: string;
         }) => (
-          <div data-testid={dataTestId}>
+          <div data-testid={dataTestId} data-variant={variant}>
             <h1>{title}</h1>
             <div>{subtitle}</div>
             <div>{actions}</div>
@@ -422,6 +424,10 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../../hooks/useMetricHierarchy');
+const mockIsAiMode = jest.fn().mockReturnValue(false);
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode(),
+}));
 jest.mock('../../../components/Metric/AddMetric/useMetricCreateDrawer', () => ({
   useMetricCreateDrawer: () => ({
     formDrawer: null,
@@ -610,6 +616,24 @@ describe('MetricListPage', () => {
       'tw:font-semibold'
     );
   });
+
+  it.each([
+    [true, 'gradient'],
+    [false, 'flat'],
+  ])(
+    'uses the gradient header only in AI mode (AI mode: %s)',
+    async (isAiMode, variant) => {
+      mockIsAiMode.mockReturnValue(isAiMode);
+      renderPage();
+
+      expect(await screen.findByTestId('metric-list-header')).toHaveAttribute(
+        'data-variant',
+        variant
+      );
+
+      mockIsAiMode.mockReturnValue(false);
+    }
+  );
 
   it('matches the prototype page heading and single-line toolbar structure', async () => {
     renderPage();
@@ -848,9 +872,19 @@ describe('MetricListPage', () => {
     renderPage();
     await screen.findByText('net_sales');
 
-    for (const status of Object.values(EntityStatus)) {
+    for (const status of Object.values(EntityStatus).filter(
+      (stage) => !['Superseded', 'Invalidated'].includes(stage)
+    )) {
       expect(screen.getByTestId(`menu-item-${status}`)).toBeInTheDocument();
     }
+
+    expect(
+      screen.queryByTestId('menu-item-Superseded')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('menu-item-Invalidated')
+    ).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByTestId(`menu-item-${EntityStatus.Rejected}`));
 
     expect(await screen.findByText('rejected_metric')).toBeInTheDocument();

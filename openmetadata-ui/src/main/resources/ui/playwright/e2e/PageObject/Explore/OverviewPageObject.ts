@@ -13,6 +13,7 @@
 
 import { expect, Locator, Page } from '@playwright/test';
 import { setDomain } from '../../../utils/domainPicker';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   applyGlossaryPicker,
   glossaryPickerRow,
@@ -67,7 +68,6 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly markdownEditor: Locator;
   private readonly saveButton: Locator;
   private readonly updateButton: Locator;
-  private readonly loader: Locator;
   private readonly selectableList: Locator;
   private readonly descriptionSection: Locator;
   private readonly searchBar: Locator;
@@ -87,7 +87,6 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly lineageSection: Locator;
   private readonly selectOwnerTabs: Locator;
   private readonly selectOwnerTabsRoleTab: Locator;
-  private readonly selectOwnerTabsLoader: Locator;
   private readonly selectOwnerUsersTab: Locator;
   private readonly teamsSearchBar: Locator;
   private readonly listItem: Locator;
@@ -118,7 +117,6 @@ export class OverviewPageObject extends RightPanelBase {
     );
     this.saveButton = this.page.getByTestId('save');
     this.updateButton = this.page.getByTestId('selectable-list-update-btn');
-    this.loader = this.page.getByTestId('loader');
     this.selectableList = this.page.getByTestId('selectable-list');
     this.descriptionSection = this.getSummaryPanel().locator(
       '.description-section'
@@ -146,9 +144,6 @@ export class OverviewPageObject extends RightPanelBase {
     this.selectOwnerTabsRoleTab = this.page
       .locator('[data-testid="select-owner-tabs"] [role="tab"]')
       .first();
-    this.selectOwnerTabsLoader = this.page.locator(
-      '[data-testid="select-owner-tabs"] [data-testid="loader"]'
-    );
     this.selectOwnerUsersTab = this.selectOwnerTabs.getByRole('tab', {
       name: 'Users',
     });
@@ -233,12 +228,7 @@ export class OverviewPageObject extends RightPanelBase {
     // Use semantic search bar selector
     await this.tagSearchBar.fill(tagName);
 
-    // Scope loader to the selectable-list to avoid strict-mode violations when
-    // multiple [data-testid="loader"] elements coexist on the page during
-    // parallel test runs (e.g. one inside lineage section, one inside the popover).
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'hidden' });
+    await waitForAllLoadersToDisappear(this.selectableList);
 
     // Target the .selectable-list-item button, which carries the
     // 'active' CSS class when the tag is already selected.
@@ -310,8 +300,7 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the tier selection popover
     await this.tierListContainer.waitFor({ state: 'visible' });
 
-    // Wait for loader to disappear
-    await this.loader.waitFor({ state: 'hidden' });
+    await waitForAllLoadersToDisappear(this.tierListContainer);
 
     // Find and click the tier radio button
     const tierRadioButton = this.tierListContainer.getByTestId(
@@ -388,9 +377,8 @@ export class OverviewPageObject extends RightPanelBase {
         .toBe(true);
     }
 
-    await expect(this.selectOwnerTabsLoader).toHaveCount(0);
+    await waitForAllLoadersToDisappear(this.selectOwnerTabs);
     await this.userSearchBar.waitFor({ state: 'visible' });
-    await this.userSearchBar.scrollIntoViewIfNeeded();
 
     const searchUser = this.page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
@@ -399,7 +387,7 @@ export class OverviewPageObject extends RightPanelBase {
 
     await searchUser;
 
-    await expect(this.selectOwnerTabsLoader).toHaveCount(0);
+    await waitForAllLoadersToDisappear(this.selectOwnerTabs);
 
     const ownerOption = this.page
       .locator('[data-testid="owner-option"]')
@@ -420,9 +408,8 @@ export class OverviewPageObject extends RightPanelBase {
   async editOwners(ownerName: string): Promise<OverviewPageObject> {
     await this.openOwnerSelector();
     await expect(this.userSearchBar).toBeVisible();
-    await this.userSearchBar.scrollIntoViewIfNeeded();
     await this.userSearchBar.fill(ownerName);
-    await this.loader.waitFor({ state: 'hidden' });
+    await waitForAllLoadersToDisappear(this.selectOwnerTabs);
     await this.userListItem
       .filter({ hasText: ownerName })
       .waitFor({ state: 'visible' });
@@ -460,7 +447,7 @@ export class OverviewPageObject extends RightPanelBase {
       const searchBar =
         type === 'Users' ? this.userSearchBar : this.teamsSearchBar;
 
-      await expect(this.selectOwnerTabsLoader).toHaveCount(0);
+      await waitForAllLoadersToDisappear(this.selectOwnerTabs);
       await searchBar.waitFor({ state: 'visible' });
       await searchBar.fill(ownerName);
 
@@ -496,7 +483,6 @@ export class OverviewPageObject extends RightPanelBase {
 
   private async openOwnerSelector(): Promise<void> {
     await this.waitForLoadersToDisappear();
-    await this.editOwnersIcon.scrollIntoViewIfNeeded();
 
     await expect(this.editOwnersIcon).toBeVisible({ timeout: 10_000 });
     await expect(this.editOwnersIcon).toBeEnabled();
@@ -515,9 +501,7 @@ export class OverviewPageObject extends RightPanelBase {
   async removeTag(tagDisplayNames: string[]): Promise<OverviewPageObject> {
     await this.editTagsIcon.click();
     await this.selectableList.waitFor({ state: 'visible' });
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(this.selectableList);
 
     for (const tagName of tagDisplayNames) {
       const tagOption = this.selectableList
@@ -610,7 +594,7 @@ export class OverviewPageObject extends RightPanelBase {
    * the open click is not swallowed by a re-render on slower panels.
    */
   private async openDomainPicker(): Promise<void> {
-    await this.loader.waitFor({ state: 'detached' });
+    await this.waitForLoadersToDisappear();
     await this.addDomainIcon.waitFor({ state: 'visible' });
     await this.addDomainIcon.scrollIntoViewIfNeeded();
     await this.addDomainIcon.click();
@@ -658,7 +642,7 @@ export class OverviewPageObject extends RightPanelBase {
     const searchResponse = await searchResponsePromise;
     expect(searchResponse.status()).toBe(200);
 
-    await expect(this.selectOwnerTabsLoader).toHaveCount(0);
+    await waitForAllLoadersToDisappear(this.selectOwnerTabs);
 
     // Scope to the owner selection dropdown, not the whole page: a page-wide
     // match also hits the entity's still-assigned owner chip in the panel, whose
@@ -677,9 +661,7 @@ export class OverviewPageObject extends RightPanelBase {
   async verifyDeletedTagNotVisible(tagName: string): Promise<Locator> {
     await this.editTagsIcon.click();
     await this.selectableList.waitFor({ state: 'visible' });
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(this.selectableList);
 
     const searchResponsePromise = this.page.waitForResponse(
       (response) =>
@@ -691,9 +673,7 @@ export class OverviewPageObject extends RightPanelBase {
     const searchResponse = await searchResponsePromise;
     expect(searchResponse.status()).toBe(200);
 
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(this.selectableList);
 
     // Scope to the tag selection dropdown, not the whole page: a page-wide match
     // also hits the entity's still-assigned tag chip in the panel, whose removal
@@ -827,6 +807,12 @@ export class OverviewPageObject extends RightPanelBase {
     await this.descriptionSection
       .getByText(expectedText)
       .waitFor({ state: 'visible' });
+  }
+
+  async shouldShowEmptyDescription(): Promise<void> {
+    await expect(
+      this.descriptionSection.getByText('No description added')
+    ).toBeVisible();
   }
 
   /**

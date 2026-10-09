@@ -340,8 +340,8 @@ test.describe('Context Center Articles', () => {
       page
         .getByTestId('knowledge-page-listing')
         .locator('[data-testid^="knowledge-card-"]')
-        .first()
-    ).toBeVisible();
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
@@ -368,10 +368,10 @@ test.describe('Context Center Articles', () => {
       ).toContainText('Context Center');
 
       await page
-        .locator('.ant-tree-treenode')
-        .filter({ hasText: /^Context Center$/ })
-        .locator('svg')
-        .first()
+        .getByTestId('explore-tree')
+        .getByRole('row')
+        .filter({ has: page.getByTestId('explore-tree-title-Context Center') })
+        .getByTestId('tree-expand-btn')
         .click();
 
       await expect(
@@ -1426,7 +1426,10 @@ test.describe('Context Center Articles', () => {
               `/api/v1/conversations/${createdConversation.id}/reaction/rocket`
             ) && response.request().method() === 'PUT'
       );
-      await page.locator('[title="rocket"]:visible').click();
+      await page
+        .getByTestId('feed-reactions-popover')
+        .getByRole('button', { name: 'rocket', exact: true })
+        .click();
       await reactionResponse;
       await mainMessage.getByTestId('emoji-button').hover();
       await expect(
@@ -1634,7 +1637,7 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test('Text formatting', { tag: '@quarantine' }, async ({ page }) => {
+    test('Text formatting', async ({ page }) => {
       await runTextFormattingTest(
         page,
         editorKnowledgeCenter.knowledgePages[1]
@@ -1675,16 +1678,12 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test(
-      'Text formatting',
-      { tag: '@quarantine' },
-      async ({ dataConsumerPage }) => {
-        await runTextFormattingTest(
-          dataConsumerPage,
-          dataConsumerEditorKnowledgeCenter.knowledgePages[1]
-        );
-      }
-    );
+    test('Text formatting', async ({ dataConsumerPage }) => {
+      await runTextFormattingTest(
+        dataConsumerPage,
+        dataConsumerEditorKnowledgeCenter.knowledgePages[1]
+      );
+    });
 
     test('Editor operations', async ({ dataConsumerPage }) => {
       await runEditorOperationsTest(
@@ -1723,16 +1722,12 @@ test.describe('Context Center Articles', () => {
       );
     });
 
-    test(
-      'Text formatting',
-      { tag: '@quarantine' },
-      async ({ dataStewardPage }) => {
-        await runTextFormattingTest(
-          dataStewardPage,
-          dataStewardEditorKnowledgeCenter.knowledgePages[1]
-        );
-      }
-    );
+    test('Text formatting', async ({ dataStewardPage }) => {
+      await runTextFormattingTest(
+        dataStewardPage,
+        dataStewardEditorKnowledgeCenter.knowledgePages[1]
+      );
+    });
 
     test('Editor operations', async ({ dataStewardPage }) => {
       await runEditorOperationsTest(
@@ -1832,6 +1827,7 @@ test.describe('Context Center Articles', () => {
     test('displayName: switching articles does not bleed unsaved title into next article', async ({
       page,
     }) => {
+      test.slow();
       const newDisplayName = `Updated Title ${uuid()}`;
 
       await test.step('Navigate to draft article A and type new display name without saving', async () => {

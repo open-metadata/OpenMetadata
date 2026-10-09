@@ -15,6 +15,7 @@ package org.openmetadata.service.util;
 
 import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -52,7 +53,7 @@ public class FieldPathUtils {
    * @return true if update was successful
    */
   public static boolean updateFieldDescription(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String fieldPath,
@@ -69,7 +70,7 @@ public class FieldPathUtils {
    * @param changeSource provenance of the new text, or null to leave it defaulted
    */
   public static boolean updateFieldDescription(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String fieldPath,
@@ -107,7 +108,7 @@ public class FieldPathUtils {
    * Returns empty when the path cannot be resolved. Callers can then read/mutate the POJO via
    * its own getters/setters and generate a JSON patch against the parent entity.
    */
-  public static Optional<Object> findField(EntityInterface entity, String fieldPath) {
+  public static Optional<Object> findField(EntityInterface<?> entity, String fieldPath) {
     FieldPathComponents components = parseFieldPath(fieldPath);
     if (components == null) {
       return Optional.empty();
@@ -122,7 +123,7 @@ public class FieldPathUtils {
    * @param fieldPath The field path (e.g., "columns::customer_id::description")
    * @return the current description if the field path could be resolved
    */
-  public static Optional<String> getFieldDescription(EntityInterface entity, String fieldPath) {
+  public static Optional<String> getFieldDescription(EntityInterface<?> entity, String fieldPath) {
     if (fieldPath == null
         || fieldPath.isEmpty()
         || fieldPath.equals("description")
@@ -144,7 +145,7 @@ public class FieldPathUtils {
    * Modifies the entity in memory.
    */
   private static boolean setFieldDescription(
-      EntityInterface entity, String fieldPath, String description) {
+      EntityInterface<?> entity, String fieldPath, String description) {
 
     // Handle entity-level description
     if (fieldPath == null
@@ -242,7 +243,7 @@ public class FieldPathUtils {
 
   /** Navigate entity structure and set description on target field. */
   private static boolean navigateAndSetDescription(
-      EntityInterface entity, FieldPathComponents components, String description) {
+      EntityInterface<?> entity, FieldPathComponents components, String description) {
     List<?> fieldList = resolveContainerList(entity, components.containerName());
     if (fieldList == null) {
       LOG.warn("[FieldPathUtils] Unknown container type: {}", components.containerName());
@@ -253,7 +254,7 @@ public class FieldPathUtils {
 
   /** Navigate entity structure and get the description on the target field. */
   private static Optional<String> navigateAndGetDescription(
-      EntityInterface entity, FieldPathComponents components) {
+      EntityInterface<?> entity, FieldPathComponents components) {
     List<?> fieldList = resolveContainerList(entity, components.containerName());
     if (fieldList == null) {
       LOG.warn("[FieldPathUtils] Unknown container type: {}", components.containerName());
@@ -270,7 +271,7 @@ public class FieldPathUtils {
    * a registry type always means what the registry says it means. Falling back to the getter only
    * serves entity types the registry does not cover, for example a dashboard's charts.
    */
-  private static List<?> resolveContainerList(EntityInterface entity, String container) {
+  private static List<?> resolveContainerList(EntityInterface<?> entity, String container) {
     List<?> fromRegistry = ChildFieldResolver.containerListFor(entity, container);
     return fromRegistry != null ? fromRegistry : getFieldList(entity, container);
   }
@@ -309,14 +310,17 @@ public class FieldPathUtils {
       }
     }
 
-    // Search recursively in children
-    for (Object item : fieldList) {
-      List<?> children = getFieldListFromObject(item, "children");
-      if (children != null && !children.isEmpty()) {
-        if (setDescriptionInList(children, fieldName, description)) {
-          return true;
-        }
-      }
+    // Search the immediate children of every sibling. The recursive "descend into the first
+    // matching subtree" shape used to short-circuit on the first sibling whose children
+    // contained fieldName, so a bare leaf shared by two siblings' subtrees silently wrote to
+    // whichever sibling was iterated first and reported success. Collecting every hit across
+    // siblings first turns that first-match write into a detectable, refusable ambiguity.
+    List<Object> nestedHits = findNestedHits(fieldList, fieldName);
+    if (nestedHits.size() > 1) {
+      return false;
+    }
+    if (nestedHits.size() == 1) {
+      return setDescription(nestedHits.get(0), description);
     }
 
     LOG.warn("[FieldPathUtils] Field '{}' not found in list", fieldName);
@@ -349,14 +353,14 @@ public class FieldPathUtils {
       }
     }
 
-    for (Object item : fieldList) {
-      List<?> children = getFieldListFromObject(item, "children");
-      if (children != null && !children.isEmpty()) {
-        Optional<String> description = getDescriptionFromList(children, fieldName);
-        if (description.isPresent()) {
-          return description;
-        }
-      }
+    // Mirror setDescriptionInList: collect the immediate-children match from every sibling so a
+    // bare leaf shared by two siblings' subtrees is refused instead of returning the first hit.
+    List<Object> nestedHits = findNestedHits(fieldList, fieldName);
+    if (nestedHits.size() > 1) {
+      return Optional.empty();
+    }
+    if (nestedHits.size() == 1) {
+      return getDescription(nestedHits.get(0));
     }
 
     LOG.warn("[FieldPathUtils] Field '{}' not found in list", fieldName);
@@ -365,7 +369,7 @@ public class FieldPathUtils {
 
   /** Navigate the parsed components to the target field POJO. */
   private static Optional<Object> locateField(
-      EntityInterface entity, FieldPathComponents components) {
+      EntityInterface<?> entity, FieldPathComponents components) {
     String container = components.containerName();
     String fieldName = components.fieldName();
 
@@ -377,15 +381,15 @@ public class FieldPathUtils {
   }
 
   /**
-   * Locate a field POJO in a list by name, recursing into `children` for dotted paths and any
-   * nested subtrees, mirroring {@link #setDescriptionInList}.
+   * Locate a field POJO in a list by name, traversing `children` for dotted paths and the
+   * immediate-children fallback, mirroring {@link #setDescriptionInList}.
    */
   @SuppressWarnings("unchecked")
   private static Optional<Object> findFieldInList(List<?> fieldList, String fieldName) {
     // The tag path resolves through here (TaskWorkflowHandler.patchFieldTags), so an approved
     // `columns.<name>.tags` on an apiEndpoint would otherwise write onto whichever of the request
-    // and response schemas holds that name first. Returning early also keeps the recursive
-    // branches below from picking a grandchild of the same name.
+    // and response schemas holds that name first. The isAmbiguous guard handles the same-list
+    // form; findNestedHits below handles the cross-subtree form.
     if (isAmbiguous(fieldList, fieldName)) {
       return Optional.empty();
     }
@@ -409,14 +413,16 @@ public class FieldPathUtils {
       }
     }
 
-    for (Object item : fieldList) {
-      List<?> children = getFieldListFromObject(item, "children");
-      if (children != null && !children.isEmpty()) {
-        Optional<Object> hit = findFieldInList(children, fieldName);
-        if (hit.isPresent()) {
-          return hit;
-        }
-      }
+    // Mirror the description walkers: collect the immediate-children match from every sibling
+    // so a bare leaf shared by two siblings' subtrees is refused instead of resolving to the
+    // first sibling's child POJO. Without this, an approved `columns.<name>.tags` suggestion
+    // would write onto whichever of the two schemas' same-named fields came first.
+    List<Object> nestedHits = findNestedHits(fieldList, fieldName);
+    if (nestedHits.size() > 1) {
+      return Optional.empty();
+    }
+    if (nestedHits.size() == 1) {
+      return Optional.of(nestedHits.get(0));
     }
 
     return Optional.empty();
@@ -431,6 +437,28 @@ public class FieldPathUtils {
       }
     }
     return Optional.empty();
+  }
+
+  /**
+   * Collect every immediate {@code children} entry named {@code fieldName} across the siblings in
+   * {@code fieldList}, so the caller can refuse an ambiguous name instead of writing to the first
+   * match.
+   *
+   * <p>Only the immediate {@code children} lists are scanned (one level deep). The previous
+   * depth-first "descend into the first matching subtree" fallback resolved a bare leaf shared by
+   * two siblings' subtrees to whichever sibling was iterated first and reported success;
+   * collecting every sibling's hit first turns that silent first-match write into a detectable
+   * ambiguity (size {@code > 1}) the callers refuse to guess.
+   */
+  private static List<Object> findNestedHits(List<?> fieldList, String fieldName) {
+    List<Object> hits = new ArrayList<>();
+    for (Object item : fieldList) {
+      List<?> children = getFieldListFromObject(item, "children");
+      if (children != null && !children.isEmpty()) {
+        findFieldByName(children, fieldName).ifPresent(hits::add);
+      }
+    }
+    return hits;
   }
 
   /**
@@ -481,7 +509,7 @@ public class FieldPathUtils {
   }
 
   /** Get a field list from entity by name (columns, fields, schemaFields, etc.). */
-  private static List<?> getFieldList(EntityInterface entity, String listName) {
+  private static List<?> getFieldList(EntityInterface<?> entity, String listName) {
     Object result =
         ChildFieldResolver.invokeGetter(entity, ChildFieldResolver.getterName(listName));
     return result instanceof List<?> ? (List<?>) result : null;

@@ -631,13 +631,16 @@ export interface PipelineServiceClientConfiguration {
      */
     authorizerConfiguration?: AuthorizerConfiguration;
     /**
-     * Automatically create Table and Pipeline entities when they are referenced in OpenLineage
-     * events but don't exist in OpenMetadata.
+     * Create a Table that an OpenLineage event references but OpenMetadata lacks, along with
+     * its missing Database and Database Schema, when the dataset namespace maps to a Database
+     * Service through namespaceToServiceMapping and the event carries the table's columns in
+     * its schema facet. Pipelines are never created.
      */
     autoCreateEntities?: boolean;
     /**
-     * Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage
-     * jobs. This service must exist in OpenMetadata.
+     * Name of the Pipeline Service searched for the Pipeline of an OpenLineage job, named
+     * '<namespace>-<job name>'. Pipelines are never created from OpenLineage events; a job
+     * without one is reported in the response and its edges carry no pipeline.
      */
     defaultPipelineService?: string;
     /**
@@ -646,9 +649,10 @@ export interface PipelineServiceClientConfiguration {
      */
     eventTypeFilter?: EventTypeFilter[];
     /**
-     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to
-     * resolve dataset references to existing tables. Example: 'postgresql://prod-db:5432' ->
-     * 'prod-postgres'
+     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names, matched
+     * exactly and then by the longest namespace prefix. Used to resolve dataset references to
+     * existing tables, and the only way a missing table can be created (see
+     * autoCreateEntities). Example: 'postgresql://prod-db:5432' -> 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
     /**
@@ -673,6 +677,13 @@ export interface PipelineServiceClientConfiguration {
      * 30000ms (30 seconds)
      */
     connectTimeout?: number;
+    /**
+     * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
+     * it bounds how much of the MCP client's context one call can use. A saved change applies
+     * right away on the server that handled the save; other servers in a cluster pick it up on
+     * restart.
+     */
+    maxResponseChars?: number;
     /**
      * Name of the MCP server
      */
@@ -1626,11 +1637,23 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
+     * End the OpenMetadata session when the identity provider ends its own. OpenMetadata then
+     * renews the provider's tokens on the provider's schedule while the user is active, and
+     * signs the user out once the provider rejects its refresh token: after the provider's idle
+     * or maximum session lifetime, or a sign-out on providers that revoke refresh tokens with
+     * the session (Keycloak does; Microsoft Entra ID does not). When off, a session lasts the
+     * configured session expiry whatever the provider does. Applies to confidential clients.
+     */
+    endSessionWithProvider?: boolean;
+    /**
      * Client ID.
      */
     id: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * OIDC max_age authentication request parameter: the maximum time in seconds since the user
+     * last actively authenticated at the identity provider. Leave empty so the identity
+     * provider can reuse its own session; '0' is treated as unset. To force re-authentication
+     * on every login, set prompt to 'login' instead.
      */
     maxAge?: string;
     /**
@@ -1642,7 +1665,9 @@ export interface OidcClientConfig {
      */
     preferredJwsAlgorithm?: string;
     /**
-     * Prompt whether login/consent
+     * OIDC prompt authentication request parameter (for example 'login', 'consent' or
+     * 'select_account'). Leaving it empty is recommended: OpenMetadata sends prompt=none on its
+     * own when it re-authenticates a user silently.
      */
     prompt?: string;
     /**
@@ -2045,6 +2070,12 @@ export interface GlobalSettings {
      * Flag to enable or disable RBAC Search Configuration globally.
      */
     enableAccessControl?: boolean;
+    /**
+     * Index table columns as standalone search documents in the column search index. Disabling
+     * it stops column indexing and deletes the column search index; enabling it creates the
+     * index again, and a reindex of tables fills it.
+     */
+    enableColumnIndexing?: boolean;
     /**
      * Optional list of numeric field-based boosts applied globally.
      */

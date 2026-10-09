@@ -148,6 +148,9 @@ on functionality over education. Do not add unnecessary blank lines between pros
   top-level (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`) and are grouped inside by
   `domain/feature/`; new files use one stem with a role suffix (`GlossaryList.tsx`, `.types.ts`,
   `.utils.ts`, `.test.tsx`). Legacy `.component.tsx`/`.interface.ts` files stay as they are.
+- `docs/decisions/` — dated records of the choices that shape the code. **When a choice looks
+  arbitrary, find its record before re-deciding it; a PR that makes a durable decision adds the
+  record in the same PR.** Cite as `ADR:<date>-<slug>`; format and triggers in its `README.md`.
 
 ### Skills (invoke by name; procedures, not rules)
 
@@ -158,6 +161,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `tdd` | implementing a feature or bug fix (RED→GREEN→REFACTOR) |
 | `systematic-debugging` | a failing test/build/runtime issue whose cause isn't obvious |
 | `test-enforcement` | before a PR — 90% changed-class coverage, ITs for new endpoints, Playwright for UI |
+| `java-affected-tests` | before a PR touching Java/schemas/migrations — runs the impacted unit tests + ITs (PR CI runs no ITs) |
 | `verification` | before claiming "done" — run real commands, show evidence |
 | `code-review` | reviewing a diff/PR — spec compliance then code quality |
 | `java-checkstyle` | after touching `.java` — runs `mvn spotless:apply` and verifies |
@@ -167,6 +171,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `connector-standards` / `connector-building` / `connector-review` | building or reviewing an ingestion connector |
 | `playwright` / `writing-playwright-tests` / `playwright-validation` | authoring or validating Playwright E2E tests |
 | `pr-checklist` | opening/finalizing a PR (fills the repo PR template) |
+| `openmetadata-pr-review` | reviewing a real GitHub PR (number/URL/batch) — maintainer merge verdict: live diff, CI, meaningful-test rubric |
 
 > `openmetadata-workflow` is a meta-skill that routes tasks to the skills above; it is auto-loaded at
 > session start when the `openmetadata-skills` plugin is installed.
@@ -184,7 +189,8 @@ sign-off) when the agent-facing config decays:
   `.agents/skills`), or two same-named SKILL.md with different content;
 - **doc-size budgets** — this file > 200 lines, ARCHITECTURE.md > 300, any single rule > 100;
 - **rule globs** — a `.claude/rules/**` `paths:` glob matching zero files;
-- **generated-doc freshness** — `docs/generated/**` out of date with its source.
+- **generated-doc freshness** — `docs/generated/**` out of date with its source;
+- **decision records** — a malformed record or a dangling `ADR:` citation (also a pre-commit hook).
 
 ## Git commit conventions
 - Never add "Co-Authored-By" lines or any AI-attribution trailers to commit messages. 

@@ -39,7 +39,18 @@ verdict cites an artifact that was checked to still exist):
 | `docs/rdf-scale-validation.md` | Full catalog RDF rebuild, query latency, resource sampling, interrupted rebuild, and restart validation | Reproducing RDF capacity measurements or evaluating #32057 | 2026-09-08 | CURRENT |
 | `docs/csv-relation-types-plan.md` | Carry glossary term relation types through CSV export/import via a `relationType:termFQN` prefix (default `relatedTo`) | Modifying glossary CSV round-tripping — `CsvUtil.addTermRelations`, `GlossaryRepository.getTermRelationsFromCsv` | 2026-03-17 | CURRENT |
 | `docs/auto-classification/add-support-for-another-entity.md` | Step-by-step: extend auto-classification (PII + sample data) to a new entity across schema/Java/Python/UI via the `EntityAdapter` registry | Adding auto-classification/sample-data support for a new entity type | 2026-05-19 | CURRENT |
+| `docs/perf/lineage-scale-validation.md` | Lineage scene p95 + first-render benchmark: what each scenario measures, why cold vs warm differs, the `jpw.lineage.*` knobs, and how to compare two releases | Running or reading the lineage scale benchmark — `LineageScenePerformanceScaleIT`, `scripts/lineage-scale-benchmark.sh`, `compare_benchmark_metrics.py`; evaluating #32050 | 2026-09-23 | CURRENT (no numbers published yet) |
 | `docs/perf/cdn-deployment-guide.md` | AWS design proposal: per-customer/per-release UI bundles from one CloudFront + S3 via an embedded CloudFront Function router (no Lambda@Edge) | Planning/reviewing CDN delivery of the UI bundle + per-customer version pinning — infra design, not existing code | 2026-05-25 | CURRENT (unimplemented proposal) |
+
+## Decision records (`docs/decisions/`)
+
+Dated, append-only records of the choices that shape the code. `ls docs/decisions/` is their
+index, so only the entry point is listed here. A comment citing `ADR:<date>-<slug>` points at
+`docs/decisions/<date>-<slug>.md`; read it before re-deciding what it settled.
+
+| Doc | Purpose | Read when | Modified | Freshness |
+|---|---|---|---|---|
+| `docs/decisions/README.md` | When a PR needs a record, the record format, `ADR:` citations (also into Collate's repos), and what checks them | Writing or citing a record; a choice in the code looks arbitrary | 2026-10-08 | CURRENT |
 
 ## Plans & specs (`docs/plans/`, `docs/superpowers/`)
 

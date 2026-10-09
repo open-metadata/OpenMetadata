@@ -21,6 +21,7 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitUserProfilePage } from '../../utils/user';
 import { redirectToUserPage } from '../../utils/userDetails';
 
@@ -43,13 +44,13 @@ const test = base.extend<{
 }>({
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await admin.login(page);
+    await admin.signIn(page);
     await use(page);
     await page.close();
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user1.login(page);
+    await user1.signIn(page);
     await use(page);
     await page.close();
   },
@@ -197,10 +198,7 @@ test.describe('User with different Roles', () => {
     await visitUserProfilePage(adminPage, user3.getUserName());
 
     // Wait for the team to be visible in the teams section
-    await adminPage
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(adminPage);
 
     await adminPage
       .getByTestId('user-profile-teams')

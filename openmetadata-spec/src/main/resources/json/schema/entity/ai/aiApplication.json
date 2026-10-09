@@ -6,7 +6,7 @@
   "description": "AI Application entity representing AI systems including chatbots, agents, copilots, and other AI-powered applications. Applications can use multiple LLM models and integrate with various tools and data sources.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.ai.AIApplication",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "applicationType": {
       "javaType": "org.openmetadata.schema.entity.ai.ApplicationType",
@@ -523,6 +523,10 @@
     "updatedBy": {
       "description": "User who made the update",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to this resource",

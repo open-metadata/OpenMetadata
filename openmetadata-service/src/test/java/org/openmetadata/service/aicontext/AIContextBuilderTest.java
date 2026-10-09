@@ -278,18 +278,54 @@ class AIContextBuilderTest {
   }
 
   @Test
-  void isActivePill_gatesNonActiveStatusesButTreatsMissingStatusAsActive() {
+  void isActivePill_admitsOnlyApprovedMemories() {
     assertTrue(
-        AIContextBuilder.isActivePill(new ContextMemory()),
-        "pre-lifecycle memories (no status) stay visible");
-    assertTrue(
-        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.ACTIVE)));
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.APPROVED)));
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.DRAFT)),
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.DRAFT)),
         "Draft memories are not settled knowledge");
     assertFalse(
-        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.ARCHIVED)),
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.ARCHIVED)),
         "Archived memories must not reach agents as current context");
+    assertFalse(
+        AIContextBuilder.isActivePill(
+            new ContextMemory().withEntityStatus(ContextMemoryStatus.REJECTED)),
+        "Rejected memories were found to be wrong");
+  }
+
+  @Test
+  void pillsForContext_dropsRetiredAndHiddenPillsBeforeTheCap() {
+    List<ContextMemory> attached = new ArrayList<>();
+    for (int i = 0; i < 20; i++) {
+      attached.add(pill("retired-" + i, ContextMemoryStatus.REJECTED));
+    }
+    ContextMemory hidden = pill("hidden", ContextMemoryStatus.APPROVED);
+    ContextMemory usable = pill("usable", ContextMemoryStatus.APPROVED);
+    attached.add(hidden);
+    attached.add(usable);
+
+    List<ContextMemory> selected =
+        AIContextBuilder.pillsForContext(
+            attached, pills -> pills.stream().filter(pill -> pill != hidden).toList());
+
+    assertEquals(List.of(usable), selected);
+  }
+
+  @Test
+  void pillsForContext_capsTheUsablePills() {
+    List<ContextMemory> attached = new ArrayList<>();
+    for (int i = 0; i < 25; i++) {
+      attached.add(pill("approved-" + i, ContextMemoryStatus.APPROVED));
+    }
+
+    assertEquals(20, AIContextBuilder.pillsForContext(attached, pills -> pills).size());
+  }
+
+  private static ContextMemory pill(String name, ContextMemoryStatus status) {
+    return new ContextMemory().withId(UUID.randomUUID()).withName(name).withEntityStatus(status);
   }
 
   @Test

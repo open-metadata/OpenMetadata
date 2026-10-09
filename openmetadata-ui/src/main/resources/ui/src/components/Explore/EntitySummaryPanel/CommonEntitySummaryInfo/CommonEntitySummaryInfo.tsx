@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row, Typography } from 'antd';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +23,7 @@ import { ICON_DIMENSION } from '../../../../constants/constants';
 import { getSafeHttpUrl } from '../../../../utils/StringUtils';
 import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interface';
 
+import { Grid, Typography } from '@openmetadata/ui-core-components';
 import './common-entity-summary.less';
 
 function CommonEntitySummaryInfo({
@@ -32,7 +34,9 @@ function CommonEntitySummaryInfo({
   const { t } = useTranslation();
 
   return (
-    <Row className="text-sm common-entity-summary-info" gutter={[0, 4]}>
+    <Grid
+      className="layout-row layout-grid text-sm common-entity-summary-info"
+      style={getLayoutGutter(0, 4)}>
       {entityInfo.map((info) => {
         const isDomain =
           isDomainVisible && info.name === t('label.domain-plural');
@@ -70,30 +74,34 @@ function CommonEntitySummaryInfo({
           );
         } else {
           valueContent = (
-            <Typography.Text
+            <Typography
               className={classNames('summary-item-value text-grey-body')}
               data-testid={`${info.name}-value`}>
               {info.value}
-            </Typography.Text>
+            </Typography>
           );
         }
 
         return (
-          <Col key={info.name} span={24}>
-            <Row gutter={[16, 32]}>
-              <Col span={8}>
-                <Typography.Text
+          <Grid.Item className="layout-column" key={info.name} span={24}>
+            <Grid
+              className="layout-row layout-grid"
+              style={getLayoutGutter(16, 32)}>
+              <Grid.Item className="layout-column" span={8}>
+                <Typography
                   className="summary-item-key font-semibold"
                   data-testid={`${info.name}-label`}>
                   {info.name}
-                </Typography.Text>
-              </Col>
-              <Col span={16}>{valueContent}</Col>
-            </Row>
-          </Col>
+                </Typography>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={16}>
+                {valueContent}
+              </Grid.Item>
+            </Grid>
+          </Grid.Item>
         );
       })}
-    </Row>
+    </Grid>
   );
 }
 

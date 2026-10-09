@@ -19,9 +19,23 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
+import { testAlertDestination } from '../../../rest/alertsAPI';
 import DestinationFormItemFormBridge, {
   DestinationFormFields,
 } from './DestinationFormItemFormBridge';
+
+jest.mock('../../../rest/alertsAPI', () => ({
+  ...jest.requireActual('../../../rest/alertsAPI'),
+  testAlertDestination: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 const OAUTH_DESTINATION_VALUES: Partial<DestinationFormFields> = {
   destinations: [
@@ -47,12 +61,14 @@ interface ValidationHarnessProps {
   initialValues?: Partial<DestinationFormFields>;
   isRequired?: boolean;
   onFinish: jest.Mock;
+  selection?: AlertSelection;
 }
 
 function ValidationHarness({
   initialValues,
   isRequired,
   onFinish,
+  selection,
 }: ValidationHarnessProps) {
   const [values, setValues] = useState<Partial<DestinationFormFields>>(
     initialValues ?? {}
@@ -60,7 +76,7 @@ function ValidationHarness({
   const [isBlocked, setIsBlocked] = useState(false);
   const [validationError, setValidationError] = useState('');
 
-  return (
+  const form = (
     <>
       <DestinationFormItemFormBridge
         isRequired={isRequired}
@@ -88,6 +104,12 @@ function ValidationHarness({
       </output>
     </>
   );
+
+  return selection ? (
+    <AlertSelectionProvider value={selection}>{form}</AlertSelectionProvider>
+  ) : (
+    form
+  );
 }
 
 function ParentFormFocusHarness() {
@@ -108,10 +130,41 @@ function ParentFormFocusHarness() {
 function ParentFormDestinationChangeHarness() {
   const [values, setValues] = useState<Partial<DestinationFormFields>>({
     destinations: OAUTH_DESTINATION_VALUES.destinations,
-    resources: ['table'],
   });
 
   return <DestinationFormItemFormBridge values={values} onChange={setValues} />;
+}
+
+// The page provides the chosen sources; the destination form holds only its own fields.
+const TABLE_SELECTION = {
+  sources: ['table'],
+  support: {},
+  capabilities: { loading: false },
+  loading: false,
+  search: {
+    indexes: [],
+    containerEntities: [],
+    byName: jest.fn(),
+    byId: jest.fn(),
+  },
+} as AlertSelection;
+
+function UnconfiguredEmailDestinationHarness() {
+  const [values, setValues] = useState<Partial<DestinationFormFields>>({
+    destinations: [
+      {
+        category: SubscriptionCategory.External,
+        destinationType: SubscriptionType.Email,
+        type: SubscriptionType.Email,
+      },
+    ],
+  });
+
+  return (
+    <AlertSelectionProvider value={TABLE_SELECTION}>
+      <DestinationFormItemFormBridge values={values} onChange={setValues} />
+    </AlertSelectionProvider>
+  );
 }
 
 describe('DestinationFormItem validation', () => {
@@ -255,5 +308,144 @@ describe('DestinationFormItem validation', () => {
         )
       ).toHaveValue('')
     );
+  });
+
+  it('shows required errors instead of testing an unconfigured destination', async () => {
+    render(<UnconfiguredEmailDestinationHarness />);
+
+    fireEvent.click(await screen.findByTestId('test-destination-button'));
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+    expect(testAlertDestination).not.toHaveBeenCalled();
+  });
+
+  it('keeps nested destination errors visible after adding a destination row (Test path)', async () => {
+    render(<UnconfiguredEmailDestinationHarness />);
+
+    fireEvent.click(await screen.findByTestId('test-destination-button'));
+
+    expect(
+      await screen.findByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+    expect(testAlertDestination).not.toHaveBeenCalled();
+
+    // Adding an unrelated empty sibling row must not wipe the existing row's
+    // nested field errors surfaced by `trigger('destinations')`.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument();
+    });
+
+    expect(testAlertDestination).not.toHaveBeenCalled();
+  });
+
+  it('keeps nested destination errors visible after adding a destination row (Save path)', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              destinationType: SubscriptionType.Email,
+              type: SubscriptionType.Email,
+            },
+          ],
+        }}
+        selection={TABLE_SELECTION}
+        onFinish={onFinish}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('parent-form-blocked');
+
+    expect(
+      screen.getByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+
+    // Adding an unrelated empty sibling row must not wipe the existing row's
+    // nested field errors surfaced by the bridge's full `trigger()`.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument();
+    });
+
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('keeps nested destination errors visible after removing a sibling destination row (Save path)', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              destinationType: SubscriptionType.Email,
+              type: SubscriptionType.Email,
+            },
+          ],
+        }}
+        selection={TABLE_SELECTION}
+        onFinish={onFinish}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('parent-form-blocked');
+
+    expect(
+      screen.getByText('message.field-text-is-required')
+    ).toBeInTheDocument();
+
+    // Add an unrelated empty sibling row (preserves the existing error), then
+    // remove that sibling. Neither mutation may wipe the invalid row's error.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+    await waitFor(() =>
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('remove-destination-1'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('clears the stale minimum destination count error when a destination is added', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness selection={TABLE_SELECTION} onFinish={onFinish} />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('message.length-validator-error')
+    ).toHaveClass('tw:text-error-primary');
+
+    // Adding a destination addresses the missing-destination error; the
+    // `clearErrors` effect must still remove that stale array-root error
+    // (now stored under the `root.*` sentinel) without waiting for re-Save.
+    fireEvent.click(screen.getByTestId('add-destination-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('message.length-validator-error')
+      ).not.toBeInTheDocument();
+    });
   });
 });

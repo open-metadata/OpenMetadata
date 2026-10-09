@@ -13,12 +13,9 @@
 
 import { expect } from '@playwright/test';
 import { toLower } from 'lodash';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import {
-  clickOutside,
-  redirectToHomePage,
-  waitForAntdPopupToSettle,
-} from '../../utils/common';
+import { clickOutside, redirectToHomePage } from '../../utils/common';
 import {
   followEntity,
   validateFollowedEntityToWidget,
@@ -32,20 +29,15 @@ test.describe('Verify RTL Layout for landing page', () => {
     await redirectToHomePage(page);
 
     await page.getByTestId('language-selector-button').click();
-    // The language menu is long enough that Ant's scaleY(0.8)->scaleY(1) entry
-    // shifts every item; clicking mid-animation computes the point against the
-    // scaled menu and lands on the option above Hebrew, so the handler never
-    // runs and the `load` below waits out the hook.
-    await waitForAntdPopupToSettle(page);
     await Promise.all([
       page.waitForEvent('load'),
-      page.locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]').click(),
+      page.getByRole('menu').locator('[data-key="he-HE"]').click(),
     ]);
     await expect(page.getByTestId('domain-selector')).toBeVisible();
     // wait for translation to reflect in the UI
     await expect(page.getByTestId('domain-selector')).toHaveText(
       'כל הדומיינים',
-      { timeout: 30_000 }
+      { timeout: ACTION_TIMEOUT }
     );
   });
 
@@ -70,10 +62,10 @@ test.describe('Verify RTL Layout for landing page', () => {
     await expect(
       page
         .getByTestId('explore-tree')
-        .locator('span')
+        .getByRole('row')
         .filter({ hasText: serviceType })
         .first()
-    ).toHaveClass(/ant-tree-node-selected/);
+    ).toHaveAttribute('aria-selected', 'true');
   });
 
   test('Verify Following widget functionality', async ({ page }) => {

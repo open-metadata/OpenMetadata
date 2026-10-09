@@ -12,16 +12,9 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import {
-  Button,
-  Card,
-  Input,
-  Select,
-  Space,
-  Typography as AntDTypography,
-} from 'antd';
+import { Button, Card, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -31,8 +24,6 @@ import { Role } from '../../../../../../generated/entity/teams/role';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import './ldap-role-mapping-widget.less';
-
-const { Text } = AntDTypography;
 
 interface RoleMappingEntry {
   id: string;
@@ -282,7 +273,14 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
 
   return (
     <div className="ldap-role-mapping-widget" data-testid={id}>
-      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space"
+        direction="col"
+        gap={2}
+        itemClassName="layout-space-item"
+        style={{ width: '100%' }}>
         {mappings.length > 0 && (
           <Grid className="tw:mb-1" gap="2">
             <Grid.Item span={11}>
@@ -319,12 +317,12 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   }
                 />
                 {errors[mapping.id] && (
-                  <Text
+                  <Typography
                     className="text-xs m-t-xss"
-                    data-testid={`ldap-group-error-${mapping.id}`}
-                    type="danger">
+                    color="danger"
+                    data-testid={`ldap-group-error-${mapping.id}`}>
                     {errors[mapping.id]}
-                  </Text>
+                  </Typography>
                 )}
               </Grid.Item>
 
@@ -376,9 +374,11 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
         )}
 
         {mappings.length === 0 && readonly && (
-          <Text type="secondary">{t('message.no-ldap-role-mappings')}</Text>
+          <Typography color="secondary">
+            {t('message.no-ldap-role-mappings')}
+          </Typography>
         )}
-      </Space>
+      </Box>
     </div>
   );
 };

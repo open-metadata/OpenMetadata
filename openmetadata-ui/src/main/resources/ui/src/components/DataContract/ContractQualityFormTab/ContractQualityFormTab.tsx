@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Card, Dropdown, Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import {
+  Button as CoreButton,
+  Dropdown,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -209,26 +215,16 @@ export const ContractQualityFormTab: React.FC<{
     fetchAllTests();
   }, [testType]);
 
-  const filterMenu = useMemo(() => {
-    return {
-      items: Object.entries(ContractTestTypeLabelMap).map(([key]) => ({
-        key,
-        label: ContractTestTypeLabelMap[key as TestCaseType],
-        onClick: () => setTestType(key as TestCaseType),
-      })),
-    };
-  }, []);
-
   return (
     <Card className="contract-quality-form-tab-container container bg-grey p-box">
       <div className="d-flex justify-between">
         <div>
-          <Typography.Text className="contract-detail-form-tab-title">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.quality')}
-          </Typography.Text>
-          <Typography.Text className="contract-detail-form-tab-description">
+          </Typography>
+          <Typography className="contract-detail-form-tab-description">
             {t('message.quality-contract-description')}
-          </Typography.Text>
+          </Typography>
         </div>
 
         <Button
@@ -248,11 +244,26 @@ export const ContractQualityFormTab: React.FC<{
           customPaginationProps={paginationProps}
           dataSource={allTestCases}
           extraTableFilters={
-            <Dropdown menu={filterMenu}>
-              <Button icon={<DownOutlined />} type="default">
+            <Dropdown.Root>
+              <CoreButton
+                color="secondary"
+                iconTrailing={<ChevronDown size={14} />}
+                size="sm">
                 {t('label.filter-plural')}
-              </Button>
-            </Dropdown>
+              </CoreButton>
+              <Dropdown.Popover className="tw:w-auto">
+                <Dropdown.Menu
+                  aria-label={t('label.filter-plural')}
+                  selectedKeys={[testType]}
+                  onAction={(key) => setTestType(key as TestCaseType)}>
+                  {Object.entries(ContractTestTypeLabelMap).map(
+                    ([key, label]) => (
+                      <Dropdown.Item id={key} key={key} label={label} />
+                    )
+                  )}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
           }
           loading={isTestsLoading}
           pagination={false}

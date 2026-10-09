@@ -11,19 +11,13 @@
  *  limitations under the License.
  */
 import {
+  Box,
   ClassificationTag,
   GlossaryTag,
   Tooltip,
-} from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Empty,
-  Form,
-  Select,
-  SelectProps,
-  Space,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Button, Empty, Form, Select, SelectProps } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEmpty, pick } from 'lodash';
@@ -137,14 +131,20 @@ const AsyncSelectList: FC<
       return {
         label: tag.label,
         displayName: (
-          <Space className="w-full" direction="vertical" size={0}>
-            <Typography.Paragraph ellipsis className="text-grey-muted m-0 p-0">
+          <Box
+            inline
+            align="stretch"
+            className="layout-space w-full"
+            direction="col"
+            gap={0}
+            itemClassName="layout-space-item">
+            <Typography ellipsis as="p" className="m-0 p-0" color="secondary">
               {parts.join(FQN_SEPARATOR_CHAR)}
-            </Typography.Paragraph>
-            <Typography.Text ellipsis style={{ color: tag.data?.style?.color }}>
+            </Typography>
+            <Typography ellipsis style={{ color: tag.data?.style?.color }}>
               {lastPartOfTag}
-            </Typography.Text>
-          </Space>
+            </Typography>
+          </Box>
         ),
         value: tag.value,
         data: tag.data,
@@ -186,7 +186,12 @@ const AsyncSelectList: FC<
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
       {onCancel && (
-        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal p-sm p-b-xss p-l-xs custom-dropdown-render"
+          gap={2}
+          itemClassName="layout-space-item">
           <Button
             className="update-btn"
             data-testid="saveAssociatedTag"
@@ -205,7 +210,7 @@ const AsyncSelectList: FC<
             onClick={onCancel}>
             {t('label.cancel')}
           </Button>
-        </Space>
+        </Box>
       )}
     </div>
   );

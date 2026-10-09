@@ -14,6 +14,7 @@
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import {
+  ContextMemoryStatus,
   MemoryType,
   ShareVisibility,
 } from '../generated/entity/context/contextMemory';
@@ -103,6 +104,13 @@ export const MEMORY_TYPE_OPTIONS = [
 
 export const VISIBILITY_OPTIONS = [
   {
+    id: ShareVisibility.Public,
+    labelKey: 'label.visibility-public',
+    descriptionKey: 'message.visible-to-everyone-in-workspace',
+    badgeColor: 'blue' as const,
+    iconName: 'Share07' as const,
+  },
+  {
     id: ShareVisibility.Shared,
     labelKey: 'label.shared',
     descriptionKey: 'message.visible-to-specific-people',
@@ -127,7 +135,23 @@ export const VISIBILITY_OPTIONS = [
 
 export const MEMORIES_PER_PAGE = 10;
 export const MEMORY_FIELDS =
-  'owners,tags,domains,primaryEntity,relatedEntities,sourceEntity';
+  'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
+
+export const DEFAULT_MEMORY_STATUSES = [
+  ContextMemoryStatus.Approved,
+  ContextMemoryStatus.Unprocessed,
+];
+
+export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
+  [ContextMemoryStatus.Unprocessed]: 'label.unprocessed',
+  [ContextMemoryStatus.Approved]: 'label.approved',
+  [ContextMemoryStatus.Archived]: 'label.archived',
+  [ContextMemoryStatus.Draft]: 'label.draft',
+  [ContextMemoryStatus.Deprecated]: 'label.deprecated',
+  [ContextMemoryStatus.Rejected]: 'label.rejected',
+  [ContextMemoryStatus.Superseded]: 'label.superseded',
+  [ContextMemoryStatus.Invalidated]: 'label.invalidated',
+};
 
 export const FILTER_TABS = [
   { id: 'all', label: 'label.all' },

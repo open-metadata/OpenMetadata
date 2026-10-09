@@ -195,7 +195,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
               }
               try {
                 // Get the asset entity
-                EntityInterface asset =
+                EntityInterface<?> asset =
                     Entity.getEntity(
                         assetRef.getType(), assetRef.getId(), "*", Include.NON_DELETED);
 
@@ -254,7 +254,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
   private static DataContractResult validateWithInheritance(
       DataContractRepository repository, DataContract dataContract) {
     EntityReference entityRef = dataContract.getEntity();
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntity(entityRef.getType(), entityRef.getId(), "*", Include.NON_DELETED);
     return repository
         .validateEntityContract(entity, SYSTEM_USER)

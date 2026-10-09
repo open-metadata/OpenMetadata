@@ -44,6 +44,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityFieldUtils;
 
 @Slf4j
 final class AIGovernanceWorkflowService {
@@ -66,18 +67,18 @@ final class AIGovernanceWorkflowService {
     return IntakeChecks.compute(loadEntityByFqn(entityType, fqn));
   }
 
-  EntityInterface submitForReview(
+  EntityInterface<?> submitForReview(
       SecurityContext securityContext, String entityType, String id, String user) {
     return transitionRegistration(
         securityContext, entityType, id, STATUS_PENDING_APPROVAL, user, null);
   }
 
-  EntityInterface approve(
+  EntityInterface<?> approve(
       SecurityContext securityContext, String entityType, String id, String user, String comment) {
     return transitionRegistration(securityContext, entityType, id, STATUS_APPROVED, user, comment);
   }
 
-  EntityInterface reject(
+  EntityInterface<?> reject(
       SecurityContext securityContext, String entityType, String id, String user, String comment) {
     return transitionRegistration(securityContext, entityType, id, STATUS_REJECTED, user, comment);
   }
@@ -151,15 +152,17 @@ final class AIGovernanceWorkflowService {
     return new AIGovernanceBulkTriageResponse().withResults(results);
   }
 
-  private EntityInterface loadEntityByFqn(String entityType, String fqn) {
+  private EntityInterface<?> loadEntityByFqn(String entityType, String fqn) {
     assertSupported(entityType);
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
     return repository.getByName(null, fqn, repository.getFields("owners,tags,domains,extension"));
   }
 
-  private EntityInterface loadEntity(String entityType, String id) {
+  private EntityInterface<?> loadEntity(String entityType, String id) {
     assertSupported(entityType);
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
     return repository.get(
         null, UUID.fromString(id), repository.getFields("owners,tags,domains,extension"));
   }
@@ -174,21 +177,22 @@ final class AIGovernanceWorkflowService {
     }
   }
 
-  private EntityInterface transitionRegistration(
+  private EntityInterface<?> transitionRegistration(
       SecurityContext securityContext,
       String entityType,
       String id,
       String newStatus,
       String user,
       String comment) {
-    EntityInterface entity = loadEntity(entityType, id);
+    EntityInterface<?> entity = loadEntity(entityType, id);
     String originalJson = JsonUtils.pojoToJson(entity);
     applyStatusTransition(entity, newStatus, user, comment);
     String updatedJson = JsonUtils.pojoToJson(entity);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
     authorizePatch(securityContext, entityType, entity.getId(), patch);
 
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository =
+        Entity.getEntityRepository(entityType);
     return repository.patch(null, entity.getId(), user, patch).entity();
   }
 
@@ -232,8 +236,8 @@ final class AIGovernanceWorkflowService {
   }
 
   private void applyStatusTransition(
-      EntityInterface entity, String newStatus, String user, String comment) {
-    entity.setEntityStatus(mapToEntityStatus(newStatus));
+      EntityInterface<?> entity, String newStatus, String user, String comment) {
+    EntityFieldUtils.setEntityStatus(entity, mapToEntityStatus(newStatus).value());
     if (entity instanceof LLMModel llm) {
       llm.setGovernanceStatus(mapToGovernanceStatus(newStatus));
     } else if (entity instanceof AIApplication app) {

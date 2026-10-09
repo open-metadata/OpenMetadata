@@ -12,17 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Image,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Image, Radio, RadioChangeEvent, Tooltip } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageType } from '../../../../generated/system/ui/page';
@@ -73,10 +64,15 @@ function AddWidgetTabContent({
   }, []);
 
   return (
-    <Row data-testid={widget.id}>
-      <Col span={24}>
-        <Space>
-          <Typography.Text>{`${t('label.size')}:`}</Typography.Text>
+    <Grid className="layout-row layout-grid" data-testid={widget.id}>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Typography>{`${t('label.size')}:`}</Typography>
           <Radio.Group
             data-testid="size-selector-button"
             defaultValue={selectedWidgetSize}
@@ -84,23 +80,30 @@ function AddWidgetTabContent({
             options={widgetSizeOptions}
             onChange={handleSizeChange}
           />
-        </Space>
-      </Col>
-      <Col span={24}>
-        <Row className="h-min-480" justify="center">
-          <Col>
-            <Space align="center" direction="vertical">
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
+        <Box className="layout-row h-min-480" justify="center" wrap="wrap">
+          <Box className="layout-column tw:block">
+            <Box
+              inline
+              align="center"
+              className="layout-space"
+              direction="col"
+              gap={2}
+              itemClassName="layout-space-item">
               <Image
                 className="p-y-md"
                 data-testid="widget-image"
                 preview={false}
                 src={widgetImage}
               />
-              <Typography.Paragraph
+              <Typography
+                as="p"
                 className="d-block text-center"
                 data-testid="widget-description">
                 {widget.description}
-              </Typography.Paragraph>
+              </Typography>
               <Tooltip
                 placement="bottom"
                 title={widgetAddable ? '' : t('message.can-not-add-widget')}>
@@ -114,11 +117,11 @@ function AddWidgetTabContent({
                   {t('label.add')}
                 </Button>
               </Tooltip>
-            </Space>
-          </Col>
-        </Row>
-      </Col>
-    </Row>
+            </Box>
+          </Box>
+        </Box>
+      </Grid.Item>
+    </Grid>
   );
 }
 
