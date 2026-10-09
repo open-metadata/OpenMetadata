@@ -113,7 +113,7 @@ export interface ChartPointStyle {
   status?: ChartStatus;
   /** A ring instead of a filled dot, e.g. for a run that produced no value. */
   hollow?: boolean;
-  /** A soft halo around the dot, e.g. for the selected point. */
+  /** A faint ring around the dot, e.g. for the selected point. */
   selected?: boolean;
 }
 
@@ -220,6 +220,8 @@ export interface ChartReferenceLine {
   labelPosition?: 'start' | 'end';
   /** Status colour of the line. Defaults to the axis text colour. */
   status?: ChartStatus;
+  /** `'dashed'` by default. */
+  lineType?: 'solid' | 'dashed';
 }
 
 export interface CartesianBuildInput<T extends object> {

@@ -210,6 +210,7 @@ Refuse to open the PR if any of these are missing — surface them to the user i
 - [ ] Manual test steps are concrete and reproducible
 - [ ] `ingestion/` changes: affected unit **and** integration tests were run locally (Step 3), with results in the PR body
 - [ ] Cross-layer checks for the change type pass (`make generate`, `mvn spotless:apply`, `yarn lint`, etc.)
+- [ ] A PR that makes a durable decision — a contract another component or repo must agree with, a new default or limit, an ordering that must hold, a rule stated only in the description — adds its record under `docs/decisions/` (see `docs/decisions/README.md`), and the template's Decision check box reflects it
 
 ## Common Gaps to Watch For
 
@@ -220,3 +221,4 @@ Refuse to open the PR if any of these are missing — surface them to the user i
 - Bug fix without a regression test that fails before the fix
 - Large refactor with `N/A` in the design section — push back and ask for the design
 - Coverage % copy-pasted from another PR — re-run the tool
+- A default, limit, contract or ordering explained only in the PR description — the squash-merge drops the description, so the rule belongs in a `docs/decisions/` record

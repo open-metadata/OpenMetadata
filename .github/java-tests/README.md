@@ -97,10 +97,19 @@ silently tests old code. Unit steps run `package` because the relocated `es.*`/`
 clients only exist once `openmetadata-shaded-deps` is packaged. IT steps pass a `-Dtest` filter
 that matches nothing, so `-am` doesn't also run every upstream unit suite.
 
+`-am` doesn't refresh generated code. jsonschema2pojo reuses any `javaType` class it finds
+already compiled in `openmetadata-spec/target/classes`, so after a pull, merge or branch switch
+that changes a schema, an incremental build compiles the old class. The run then tests old
+models, or a test that uses the new ones fails to compile. `--run` first cleans each module in
+`maven.generatedSources` whose inputs (schemas, the annotator, the poms) are newer than its oldest
+generated file. When you run the steps by hand, `make java_affected` prints the clean command.
+
 `--run` clears the report directories before each step and fails a step that ran zero tests or
 left a selected class without a report. It refuses to start the ITs while another Testcontainers
 stack is running (`--allow-concurrent` overrides), because two stacks rarely fit in Docker's
-memory.
+memory. The block's step totals are Maven's own counts. Its per-class counts come from the test
+reports, which can credit a test to the wrong class when classes run concurrently, and keep only
+the last run of a nested class that several ITs inherit (`BaseEntityIT$…`).
 
 ## What the author adds
 
@@ -120,8 +129,8 @@ them to the run, not only the plan: nothing is saved between the two.
 - New code in an owned directory, and a new IT whose name matches an area's pattern, need no edit.
 - `make java_affected ARGS=--check-map` and the `java-impact-map` harness check report an IT or a
   production file (under `ownedRoots`) no area owns, an area that names a single test, patterns
-  that match nothing, and engines the IT pom lacks. Until someone assigns an unowned file, a
-  change to it runs the full suite.
+  that match nothing, engines the IT pom lacks, and `generatedSources` paths that no longer
+  exist. Until someone assigns an unowned file, a change to it runs the full suite.
 - Test patterns without a `/` match the class's simple name (`Search*IT`). Patterns with a `/`
   match its path under `openmetadata-integration-tests/src/test/java`. Source and test globs use
   `fnmatch`, where `*` crosses directories: `…/java/org/openmetadata/*.java` matches every Java
@@ -132,5 +141,6 @@ them to the run, not only the plan: nothing is saved between the two.
 
 The script holds no repo-specific knowledge beyond these defaults. `maven.lanes` (membership read
 from `pomProperties` or a failsafe execution's `pomExecutionIncludes`), `maven.suites`,
-`maven.unitPhase`, `maven.testSideSources`, `maven.ciWorkflows`, `ownedRoots` and `prHeading` let
-openmetadata-collate run the same file with its own map. Keep the two copies identical.
+`maven.unitPhase`, `maven.testSideSources`, `maven.generatedSources`, `maven.ciWorkflows`,
+`ownedRoots` and `prHeading` let openmetadata-collate run the same file with its own map. Keep
+the two copies identical.

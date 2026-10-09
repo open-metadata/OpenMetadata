@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
-import { Card, Col, Row } from 'antd';
+import { Grid, Skeleton } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 /**
  * Widget-grid placeholder shown while persona / layout data loads.
@@ -23,9 +24,13 @@ import { Card, Col, Row } from 'antd';
  */
 export const HomeLandingPageSkeleton = () => {
   return (
-    <Row className="p-x-box" gutter={[16, 16]}>
+    <Grid
+      className="layout-row layout-grid p-x-box"
+      style={getLayoutGutter(16, 16)}>
       {[0, 1, 2, 3].map((i) => (
-        <Col key={i} lg={12} md={24} sm={24} xl={12} xs={24}>
+        <Grid.Item
+          className="layout-column tw:col-span-24 tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-24 tw:min-[992px]:col-span-12 tw:min-[1200px]:col-span-12"
+          key={i}>
           <Card className="landing-page-skeleton-card">
             <div className="tw:flex tw:flex-col tw:gap-3">
               {['30%', '90%', '85%', '80%', '70%'].map((width, index) => (
@@ -34,9 +39,9 @@ export const HomeLandingPageSkeleton = () => {
               ))}
             </div>
           </Card>
-        </Col>
+        </Grid.Item>
       ))}
-    </Row>
+    </Grid>
   );
 };
 

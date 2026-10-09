@@ -812,6 +812,34 @@
       ]
     },
     {
+      "_comment": "AI-mode settings modal, Platform Settings panel (the modal home of the classic Settings > Preferences pages).",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/platform-settings/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Shared shell of the AI-mode settings modal: the nav registry, its ids and the section/row layout every panel renders. A change here can move or restyle any panel, so every modal spec runs.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.test.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileDetailsPanel.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/SettingsSection.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Profile.constants.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Pages/AIProfile/**/*.spec.ts",
+        "playwright/e2e/Pages/BotsProfile.spec.ts"
+      ]
+    },
+    {
       "_comment": "Backend integration tests are a test-only Maven module — not packaged into the server the suite runs against, nor into the UI bundle — so no change here can alter a spec outcome. Mapped to no specs rather than left unmapped: openmetadata-integration-tests/ is in UNMAPPED_CODE_ROOTS, so without this every backend-IT change escalates to a full-suite run.",
       "sources": ["openmetadata-integration-tests/**"],
       "projects": [],

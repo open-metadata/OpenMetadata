@@ -42,17 +42,18 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const EXPECTED = {
     'om-playwright/justified-rule-disable': 10,
     'om-playwright/no-blanket-test-slow': 1,
-    // Two independent reductions, now both in the baseline. From main:
-    // named-element fixes in replyAnnouncement, DomainFilterQueryFilter,
-    // ActivityFeed and SearchExport, one the core Popover/Dropdown migration
-    // removed, the S3 sample-data storage tests going away, and scoping
-    // ChangeSummaryBadge's button lookup. From this branch: the landing page's
-    // FeedWidget, Data Assets and My Tasks suites went with the widgets they
-    // drove, taking their suppressed positional locators with them.
-    'om-playwright/no-positional-locator': 596,
+    // The merged fixes target named elements in replyAnnouncement,
+    // DomainFilterQueryFilter, ActivityFeed, and SearchExport; the core
+    // Popover/Dropdown migration also removed a positional locator.
+    // Removing the S3 sample-data storage tests and scoping
+    // ChangeSummaryBadge's button lookup remove three more positional locators;
+    // the core assignee/schema-field selectors in the task and incident specs
+    // remove three more. The landing page's FeedWidget, Data Assets and My
+    // Tasks suites went with the widgets they drove, taking six more with them.
+    'om-playwright/no-positional-locator': 592,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
-    'playwright/no-wait-for-selector': 18,
+    'playwright/no-wait-for-selector': 14,
   };
 
   assert.deepStrictEqual(
