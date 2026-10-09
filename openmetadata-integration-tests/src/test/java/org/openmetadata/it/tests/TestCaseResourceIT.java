@@ -60,6 +60,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.DimensionValue;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseErrorDetails;
+import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -68,6 +69,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -2906,6 +2908,65 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertEquals(156.0, stored.getMaxBound());
   }
 
+  /**
+   * The UI shows which rows a verdict was measured on from the result's scope, never from its
+   * English message. The scope has to survive the write, and every dimension of the run inherits
+   * it: ingestion sends it once, on the run.
+   */
+  @Test
+  void post_testCaseResultWithEvaluationScope_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_evaluation_scope");
+    long timestamp = System.currentTimeMillis();
+    TestCaseEvaluationScope scope =
+        new TestCaseEvaluationScope()
+            .withSampled(true)
+            .withProfileSample(10.0)
+            .withProfileSampleType(ProfileSampleType.PERCENTAGE)
+            .withPartitioned(true)
+            .withPartitionColumnName("event_date");
+
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(timestamp);
+    create.setTestCaseStatus(TestCaseStatus.Failed);
+    create.setResult("failed");
+    create.setEvaluationScope(scope);
+    create.setDimensionResults(
+        List.of(
+            new TestCaseDimensionResult()
+                .withId(UUID.randomUUID())
+                .withTestCaseResultId(UUID.randomUUID())
+                .withTimestamp(timestamp)
+                .withDimensionKey("channel=web")
+                .withDimensionValues(
+                    List.of(new DimensionValue().withName("channel").withValue("web")))
+                .withTestCaseStatus(TestCaseStatus.Failed)));
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    assertEquals(
+        scope,
+        listTestCaseResults(testCase.getFullyQualifiedName()).getFirst().getEvaluationScope());
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/dimensionResults/"
+                    + URLEncoder.encode(testCase.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                        .replace("+", "%20"),
+                null,
+                RequestOptions.builder()
+                    .queryParam("startTs", String.valueOf(timestamp - 1))
+                    .queryParam("endTs", String.valueOf(timestamp + 1))
+                    .build());
+    TestCaseDimensionResult dimension =
+        JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseDimensionResult>>() {})
+            .getData()
+            .getFirst();
+    assertEquals(scope, dimension.getEvaluationScope());
+  }
+
   private String searchTestCaseResults(String path, String query) {
     return SdkClients.adminClient()
         .getHttpClient()
@@ -4398,6 +4459,38 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   "latest test case result must be returned once indexed");
               assertDurationAndErrorDetails(
                   create, JsonUtils.readValue(response, TestCaseResult.class));
+            });
+  }
+
+  @Test
+  void get_testCaseResultSearchLatestWithEvaluationScope_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_latest_evaluation_scope");
+    TestCaseEvaluationScope scope =
+        new TestCaseEvaluationScope()
+            .withSampled(true)
+            .withProfileSample(1000.0)
+            .withProfileSampleType(ProfileSampleType.ROWS);
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(System.currentTimeMillis());
+    create.setTestCaseStatus(TestCaseStatus.Success);
+    create.setResult("passed");
+    create.setEvaluationScope(scope);
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    Awaitility.await()
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response =
+                  searchLatestTestCaseResult(
+                      testCase.getFullyQualifiedName(), TEST_CASE_RESULT_FIELDS);
+              assertTrue(
+                  response != null && !response.isBlank(),
+                  "latest test case result must be returned once indexed");
+              assertEquals(
+                  scope, JsonUtils.readValue(response, TestCaseResult.class).getEvaluationScope());
             });
   }
 

@@ -15,9 +15,30 @@ import { TestDefinition } from '../../../../../generated/tests/testDefinition';
 import {
   getCategoryTranslation,
   getConfigurationShapes,
+  getConfiguredThresholdSentence,
   getDefinitionDisplayName,
   toSqlLines,
 } from './TestCaseConfigurationCard.utils';
+
+// The sentence is the feature, so it is read in English rather than as keys.
+// A hoisted function, as constants translate when their module is imported.
+function mockTranslate(key: string, options?: Record<string, unknown>) {
+  const catalog: Record<string, Record<string, string>> = jest.requireActual(
+    '../../../../../locale/languages/en-us.json'
+  );
+  const [namespace, ...rest] = key.split('.');
+  const template = catalog[namespace]?.[rest.join('.')] ?? key;
+
+  return Object.entries(options ?? {}).reduce(
+    (result, [name, value]) => result.split(`{{${name}}}`).join(String(value)),
+    template
+  );
+}
+
+jest.mock('../../../../../utils/i18next/LocalUtil', () => ({
+  t: (key: string, options?: Record<string, unknown>) =>
+    mockTranslate(key, options),
+}));
 
 const baseArgs = {
   testCaseData: {} as TestCase,
@@ -154,5 +175,76 @@ describe('getCategoryTranslation', () => {
     expect(getCategoryTranslation(undefined)).toEqual({
       key: 'label.table-test',
     });
+  });
+});
+
+describe('getConfiguredThresholdSentence', () => {
+  const thresholdDefinition = (name: string) =>
+    ({
+      name,
+      parameterDefinition: [
+        { name: 'threshold' },
+        { name: 'thresholdUnit', optionValues: ['ABSOLUTE', 'PERCENTAGE'] },
+      ],
+    } as TestDefinition);
+
+  it('restates a row tolerance on the column it is about', () => {
+    expect(
+      getConfiguredThresholdSentence(
+        {
+          entityLink: '<#E::table::svc.db.schema.users::columns::email>',
+          parameterValues: [
+            { name: 'threshold', value: '1' },
+            { name: 'thresholdUnit', value: 'PERCENTAGE' },
+          ],
+        } as TestCase,
+        thresholdDefinition('columnValuesToMatchRegex')
+      )
+    ).toBe(
+      'Fail when more than 1% of non-null values in email fail this test.'
+    );
+  });
+
+  it('restates a deviation on a table test with its widened range', () => {
+    expect(
+      getConfiguredThresholdSentence(
+        {
+          entityLink: '<#E::table::svc.db.schema.users>',
+          parameterValues: [
+            { name: 'minValue', value: '90' },
+            { name: 'maxValue', value: '110' },
+            { name: 'threshold', value: '5' },
+            { name: 'thresholdUnit', value: 'PERCENTAGE' },
+          ],
+        } as TestCase,
+        thresholdDefinition('tableRowCountToBeBetween')
+      )
+    ).toBe(
+      'Fail when the measured value falls outside 90 – 110, allowing a deviation of 5% (effective range 85.5 – 115.5).'
+    );
+  });
+
+  it('reads a test case with no threshold set as tolerating nothing', () => {
+    expect(
+      getConfiguredThresholdSentence(
+        {
+          entityLink: '<#E::table::svc.db.schema.users::columns::email>',
+          parameterValues: [],
+        } as unknown as TestCase,
+        thresholdDefinition('columnValuesToBeNotNull')
+      )
+    ).toBe('Fail when more than 0 row(s) in email fail this test.');
+  });
+
+  it('says nothing for a test that has no threshold parameter', () => {
+    expect(
+      getConfiguredThresholdSentence(
+        { entityLink: '<#E::table::svc.db.schema.users>' } as TestCase,
+        {
+          name: 'tableColumnNameToExist',
+          parameterDefinition: [],
+        } as unknown as TestDefinition
+      )
+    ).toBeUndefined();
   });
 });

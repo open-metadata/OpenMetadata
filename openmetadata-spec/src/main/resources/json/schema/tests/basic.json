@@ -214,9 +214,43 @@
         "errorDetails": {
           "description": "Structured error details when the run was aborted by an error.",
           "$ref": "#/definitions/testCaseErrorDetails"
+        },
+        "evaluationScope": {
+          "description": "Which rows the run was measured on. Absent for a run that recorded no scope.",
+          "$ref": "#/definitions/testCaseEvaluationScope"
         }
       },
       "required": ["timestamp"]
+    },
+    "testCaseEvaluationScope": {
+      "description": "Which rows a test case run was measured on. The verdict is the subset's: nothing extrapolates it back to the table.",
+      "javaType": "org.openmetadata.schema.tests.type.TestCaseEvaluationScope",
+      "type": "object",
+      "properties": {
+        "sampled": {
+          "description": "Whether the run read a sample of the table. False when the test runs its own SQL, which ignores the configured sample.",
+          "type": "boolean",
+          "default": false
+        },
+        "profileSample": {
+          "description": "Size of the sample read, in the unit `profileSampleType` names.",
+          "type": "number"
+        },
+        "profileSampleType": {
+          "description": "Whether `profileSample` is a percentage of the table or a number of rows. Read only when `sampled` is true.",
+          "$ref": "../type/basic.json#/definitions/profileSampleType"
+        },
+        "partitioned": {
+          "description": "Whether the rows read were restricted to a partition. False when the test runs its own SQL, which ignores the configured partition.",
+          "type": "boolean",
+          "default": false
+        },
+        "partitionColumnName": {
+          "description": "Column the partition filter was applied on.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",
@@ -329,6 +363,10 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        },
+        "evaluationScope": {
+          "description": "Which rows the parent run was measured on. Every dimension of a run shares it.",
+          "$ref": "#/definitions/testCaseEvaluationScope"
         }
       },
       "required": ["id", "testCaseResultId", "timestamp", "dimensionValues", "dimensionKey", "testCaseStatus"],

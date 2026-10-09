@@ -22,6 +22,7 @@ import {
 import {
   getCategoryTranslation,
   getConfigurationShapes,
+  getConfiguredThresholdSentence,
   getDefinitionDisplayName,
   toSqlLines,
 } from './TestCaseConfigurationCard.utils';
@@ -165,6 +166,25 @@ function DynamicAssertionCallout() {
   );
 }
 
+/** What the test fails on, in the words the form's preview used. */
+function ThresholdSentence({
+  testCaseData,
+  testDefinition,
+}: Readonly<
+  Pick<TestCaseConfigurationCardProps, 'testCaseData' | 'testDefinition'>
+>) {
+  const sentence = getConfiguredThresholdSentence(testCaseData, testDefinition);
+
+  return sentence ? (
+    <Typography
+      as="p"
+      className="tw:text-xs tw:text-secondary"
+      data-testid="configuration-threshold-sentence">
+      {sentence}
+    </Typography>
+  ) : null;
+}
+
 const TestCaseConfigurationCard = ({
   testCaseData,
   testDefinition,
@@ -255,6 +275,13 @@ const TestCaseConfigurationCard = ({
         <div className="tw:flex tw:flex-col tw:gap-2.5">
           {/* The callout says how the test is checked; the rows below it are settings. */}
           {isDynamicAssertion && <DynamicAssertionCallout />}
+          {/* The version page shows the parameters' diff, not the configuration as it stands. */}
+          {!isVersionPage && (
+            <ThresholdSentence
+              testCaseData={testCaseData}
+              testDefinition={testDefinition}
+            />
+          )}
           {hasParameterRows && <ParameterRows rows={parameterRows} />}
           {hasVersionDiff && (
             <div data-testid="configuration-version-diff">
