@@ -14,13 +14,15 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   BadgeWithButton,
   Box,
+  Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space } from 'antd';
+import { Button } from 'antd';
 import { FC, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import i18n from '../../../utils/i18next/LocalUtil';
 
 interface RelatedDataAssetsFormProps {
@@ -83,9 +85,18 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
 
   return (
     <div data-testid="dataAssetsForm">
-      <Row gutter={[0, 8]}>
-        <Col className="gutter-row d-flex justify-end" span={24}>
-          <Space align="center">
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 8) }}>
+        <Grid.Item
+          className="layout-column gutter-row d-flex justify-end"
+          span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <Button
               className="p-x-05"
               data-testid="cancelDataAssets"
@@ -103,10 +114,10 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
               type="primary"
               onClick={handleSubmit}
             />
-          </Space>
-        </Col>
+          </Box>
+        </Grid.Item>
 
-        <Col className="gutter-row" span={24}>
+        <Grid.Item className="layout-column gutter-row" span={24}>
           <DataAssetSelectList
             initialOptions={initialOptions}
             placeholder={placeholder}
@@ -158,8 +169,8 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             value={selected}
             onChange={handleChange}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </div>
   );
 };
