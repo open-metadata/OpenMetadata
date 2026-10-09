@@ -12,15 +12,18 @@
 Test datalake utils
 """
 
+import io
 import json
 import os
 import random
 from unittest import TestCase
 
+import fastavro
 import pandas as pd
 import pytest
 
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.dsv import DSVDataFrameReader
 from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.utils.datalake.datalake_utils import (
@@ -1384,3 +1387,37 @@ class TestSchemaInferenceLimits:
             "maxSchemaInferenceDepth=2 cut the children of 1 column(s): deep.l1.l2. "
             "maxChildrenPerColumn=3 cut the children of 3 column(s): items, meta.lines, payload."
         )
+
+    def test_avro_records_keep_their_declared_fields(self):
+        """Avro reaches the generic parser too, but its nested records come from the file's schema."""
+        schema = {
+            "type": "record",
+            "name": "event",
+            "fields": [
+                {"name": "id", "type": "long"},
+                {
+                    "name": "address",
+                    "type": {
+                        "type": "record",
+                        "name": "address",
+                        "fields": [{"name": f"f{n}", "type": "string"} for n in range(5)],
+                    },
+                },
+            ],
+        }
+        buffer = io.BytesIO()
+        fastavro.writer(buffer, fastavro.parse_schema(schema), [{"id": 1, "address": {f"f{n}": "x" for n in range(5)}}])
+        buffer.seek(0)
+        frame = next(AvroDataFrameReader._stream_avro_records(buffer))
+
+        columns = DataFrameColumnParser.create(
+            frame, SupportedTypes.AVRO, limits=InferenceLimits(max_depth=0, max_children=1)
+        ).get_columns()
+
+        address = self._by_name(columns)["address"]
+        assert [child.name.root for child in address.children] == [f"f{n}" for n in range(5)]
+
+    def test_mf4_frames_are_not_limited(self):
+        payload = self._by_name(self._columns(self._records(), SupportedTypes.MF4, max_children=1))["payload"]
+
+        assert len(payload.children) == 12

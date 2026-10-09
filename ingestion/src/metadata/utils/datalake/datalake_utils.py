@@ -219,6 +219,24 @@ def get_file_format_type(key_name, metadata_entry=None):
     return False
 
 
+# File types whose nested columns are inferred from sampled JSON values (JSON objects,
+# JSON Lines records, or JSON strings in delimited cells), the only ones schema
+# inference limits apply to.
+_SAMPLED_JSON_TYPES = frozenset(
+    {
+        SupportedTypes.CSV,
+        SupportedTypes.CSVGZ,
+        SupportedTypes.TSV,
+        SupportedTypes.JSON,
+        SupportedTypes.JSONGZ,
+        SupportedTypes.JSONZIP,
+        SupportedTypes.JSONL,
+        SupportedTypes.JSONLGZ,
+        SupportedTypes.JSONLZIP,
+    }
+)
+
+
 # pylint: disable=import-outside-toplevel
 class DataFrameColumnParser:
     """A column parser object. This serves as a Creator class for the appropriate column parser object parser
@@ -255,11 +273,15 @@ class DataFrameColumnParser:
                 If sample is False, we will concatenate the dataframes, which can be cause OOM error for large dataset.
                 (default: True)
             shuffle: whether to shuffle the dataframe list or not if sample is True. (default: False)
-            limits: bounds for children inferred from sampled JSON values. Declared schemas
-                (Parquet, JSON Schema documents, Iceberg/Delta metadata) are not bounded.
+            limits: bounds for children inferred from sampled JSON values. Formats with a declared
+                structure (Avro, MF4, Parquet, JSON Schema documents, Iceberg/Delta metadata) are not bounded.
             report: collects the columns whose inferred children the limits cut.
         """
         data_frame = cls._get_data_frame(data_frame, sample, shuffle)
+        # Avro and MF4 share the generic parser below, but their nested records come from the
+        # file's own schema. Documents with no file type come from NoSQL sources.
+        if file_type is not None and file_type not in _SAMPLED_JSON_TYPES:
+            limits = NO_LIMITS
         if file_type in {
             SupportedTypes.PARQUET,
             SupportedTypes.PARQUET_PQ,
