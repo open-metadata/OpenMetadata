@@ -12,11 +12,11 @@
  */
 
 import {
-    Box,
-    Dialog,
-    Modal,
-    ModalOverlay,
-    Tabs
+  Box,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Tabs,
 } from '@openmetadata/ui-core-components';
 import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -24,8 +24,8 @@ import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    LIGHT_GREEN_COLOR,
-    PAGE_SIZE_MEDIUM
+  LIGHT_GREEN_COLOR,
+  PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
@@ -39,8 +39,8 @@ import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHol
 import Loader from '../../../common/Loader/Loader';
 import './add-widget-modal.less';
 import {
-    AddWidgetModalProps,
-    WidgetSizeInfo
+  AddWidgetModalProps,
+  WidgetSizeInfo,
 } from './AddWidgetModal.interface';
 import AddWidgetTabContent from './AddWidgetTabContent';
 

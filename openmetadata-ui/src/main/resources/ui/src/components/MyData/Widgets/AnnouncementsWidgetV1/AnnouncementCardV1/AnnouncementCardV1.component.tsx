@@ -17,8 +17,8 @@ import { useTranslation } from 'react-i18next';
 import { AnnouncementEntity } from '../../../../../rest/announcementsAPI';
 import { getEntityIcon } from '../../../../../utils/EntityIconUtils';
 import {
-    getEntityFQN,
-    getEntityType
+  getEntityFQN,
+  getEntityType,
 } from '../../../../../utils/FeedUtilsPure';
 import './announcement-card-v1.less';
 import AnnouncementCardV1Content from './AnnouncementCardV1Content.component';

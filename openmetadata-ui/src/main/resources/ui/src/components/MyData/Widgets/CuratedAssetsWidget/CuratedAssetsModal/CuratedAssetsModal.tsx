@@ -12,14 +12,14 @@
  */
 
 import {
-    Box,
-    Button,
-    Dialog,
-    HookForm,
-    Input,
-    Modal,
-    ModalOverlay,
-    Typography
+  Box,
+  Button,
+  Dialog,
+  HookForm,
+  Input,
+  Modal,
+  ModalOverlay,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isUndefined } from 'lodash';
@@ -28,14 +28,14 @@ import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { isValidElasticsearchQuery } from '../../../../../utils/CuratedAssetsPureUtils';
 import {
-    CuratedAssetsFormSelectedAssetsInfo,
-    getSelectedResourceCount
+  CuratedAssetsFormSelectedAssetsInfo,
+  getSelectedResourceCount,
 } from '../../../../../utils/CuratedAssetsUtils';
 import { AdvancedAssetsFilterField } from '../AdvancedAssetsFilterField/AdvancedAssetsFilterField.component';
 import { SelectAssetTypeField } from '../SelectAssetTypeField/SelectAssetTypeField.component';
 import {
-    CuratedAssetsConfig,
-    CuratedAssetsModalProps
+  CuratedAssetsConfig,
+  CuratedAssetsModalProps,
 } from './CuratedAssetsModal.interface';
 
 type CuratedAssetsFormProps = Omit<CuratedAssetsModalProps, 'isOpen'> & {

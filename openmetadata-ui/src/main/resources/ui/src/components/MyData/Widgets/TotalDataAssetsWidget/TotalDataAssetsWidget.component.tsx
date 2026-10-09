@@ -15,13 +15,13 @@ import { PieChart } from '@openmetadata/ui-core-components/charts';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
-    groupBy,
-    isEmpty,
-    omit,
-    orderBy,
-    reduce,
-    sortBy,
-    startCase
+  groupBy,
+  isEmpty,
+  omit,
+  orderBy,
+  reduce,
+  sortBy,
+  startCase,
 } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,15 +34,15 @@ import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
-    DataInsightCustomChartResult,
-    getChartPreviewByName
+  DataInsightCustomChartResult,
+  getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
 import { generatePalette } from '../../../../styles/colorPallet';
 import { getDataInsightPathWithFqn } from '../../../../utils/DataInsightPureUtils';
 import {
-    customFormatDateTime,
-    getCurrentMillis,
-    getEpochMillisForPastDays
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -50,8 +50,8 @@ import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import {
-    DATA_ASSETS_SORT_BY_KEYS,
-    DATA_ASSETS_SORT_BY_OPTIONS
+  DATA_ASSETS_SORT_BY_KEYS,
+  DATA_ASSETS_SORT_BY_OPTIONS,
 } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 

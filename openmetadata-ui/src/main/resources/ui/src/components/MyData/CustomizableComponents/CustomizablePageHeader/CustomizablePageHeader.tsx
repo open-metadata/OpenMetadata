@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    Breadcrumbs,
-    Button,
-    ButtonUtility,
-    Card,
-    Typography
+  Box,
+  Breadcrumbs,
+  Button,
+  ButtonUtility,
+  Card,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    Minimize01,
-    Plus,
-    RefreshCcw01,
-    XClose
+  Minimize01,
+  Plus,
+  RefreshCcw01,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState, type Key } from 'react';
@@ -38,8 +38,8 @@ import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import './customizable-page-header.less';
 import {
-    CUSTOMIZE_CHROME_BACK_ID,
-    useCustomizePageChrome
+  CUSTOMIZE_CHROME_BACK_ID,
+  useCustomizePageChrome,
 } from './CustomizePageChrome.context';
 
 export const CustomizablePageHeader = ({

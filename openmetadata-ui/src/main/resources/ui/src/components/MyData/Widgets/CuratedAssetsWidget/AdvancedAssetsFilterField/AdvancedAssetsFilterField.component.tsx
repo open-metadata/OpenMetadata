@@ -20,13 +20,13 @@ import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
-    getExpandedResourceList,
-    getExploreURLForAdvancedFilter,
-    getModifiedQueryFilterWithSelectedAssets
+  getExpandedResourceList,
+  getExploreURLForAdvancedFilter,
+  getModifiedQueryFilterWithSelectedAssets,
 } from '../../../../../utils/CuratedAssetsPureUtils';
 import {
-    AlertMessage,
-    CuratedAssetsFormSelectedAssetsInfo
+  AlertMessage,
+  CuratedAssetsFormSelectedAssetsInfo,
 } from '../../../../../utils/CuratedAssetsUtils';
 import { getJsonTreeFromQueryFilter } from '../../../../../utils/QueryBuilderPureUtils';
 import QueryBuilder from '../../../../common/QueryBuilder/QueryBuilder';

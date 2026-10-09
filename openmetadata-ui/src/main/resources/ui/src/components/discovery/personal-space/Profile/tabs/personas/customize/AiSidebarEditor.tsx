@@ -12,10 +12,10 @@
  */
 
 import {
-    Box,
-    Toggle,
-    Tree,
-    Typography
+  Box,
+  Toggle,
+  Tree,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { DotsGrid } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -24,27 +24,27 @@ import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavigationItem } from '../../../../../../../generated/system/ui/uiCustomization';
 import {
-    getSidebarHiddenKeys,
-    getSidebarNavigationItems,
-    getSidebarTreeData,
-    moveSidebarNode,
-    moveSidebarNodeToRoot,
-    SidebarDropPosition,
-    SidebarTreeNode
+  getSidebarHiddenKeys,
+  getSidebarNavigationItems,
+  getSidebarTreeData,
+  moveSidebarNode,
+  moveSidebarNodeToRoot,
+  SidebarDropPosition,
+  SidebarTreeNode,
 } from '../../../../../../../pages/CustomizeAppModeSidebarPage/CustomizeAppModeSidebarPage.utils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
 import { useAllAppModules } from '../../../../../../platform/ai-shell/sharedAppModules';
 import {
-    APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT,
-    APP_MODE_SIDEBAR_CUSTOMIZATION_KEY,
-    APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT
+  APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT,
+  APP_MODE_SIDEBAR_CUSTOMIZATION_KEY,
+  APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT,
 } from '../../../../../../platform/ai-shell/Sidebar/appModeSidebar.constants';
 import {
-    buildMainNavItems,
-    MORE_NAV_KEY
+  buildMainNavItems,
+  MORE_NAV_KEY,
 } from '../../../../../../platform/ai-shell/Sidebar/navConfig';
 import { CustomizeEditorProps } from './customizeEditor.types';
 import { savePersonaDocument } from './customizeEditor.utils';

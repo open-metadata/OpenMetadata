@@ -12,9 +12,9 @@
  */
 
 import {
-    Box,
-    Button,
-    EmptyPlaceholder
+  Box,
+  Button,
+  EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
@@ -36,8 +36,8 @@ import { isFullscreenPersonaCategory } from '../Personas.utils';
 import AiSidebarEditor from './AiSidebarEditor';
 import AppLayoutEditor from './AppLayoutEditor';
 import {
-    CustomizeEditorActions,
-    CustomizeEditorProps
+  CustomizeEditorActions,
+  CustomizeEditorProps,
 } from './customizeEditor.types';
 import EntityCustomizeOverlay from './EntityCustomizeOverlay';
 import LandingPageEditor from './LandingPageEditor';

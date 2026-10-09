@@ -30,9 +30,9 @@ import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-    KnowledgePage,
-    PageType,
-    QuickLink
+  KnowledgePage,
+  PageType,
+  QuickLink,
 } from '../../../interface/knowledge-center.interface';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';

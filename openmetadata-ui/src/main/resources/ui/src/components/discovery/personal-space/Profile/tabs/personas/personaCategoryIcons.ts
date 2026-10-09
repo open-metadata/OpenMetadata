@@ -12,13 +12,13 @@
  */
 
 import {
-    AssetsOwned,
-    Building01,
-    Building02,
-    GridView,
-    Home02,
-    Menu03 as MenuIcon,
-    Stars01
+  AssetsOwned,
+  Building01,
+  Building02,
+  GridView,
+  Home02,
+  Menu03 as MenuIcon,
+  Stars01,
 } from '@openmetadata/ui-core-components/icons';
 
 /**

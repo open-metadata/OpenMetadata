@@ -12,10 +12,10 @@
  */
 
 import {
-    Box,
-    Toggle,
-    Tree,
-    Typography
+  Box,
+  Toggle,
+  Tree,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { DotsGrid } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -24,22 +24,22 @@ import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavigationItem } from '../../../../../../../generated/system/ui/uiCustomization';
 import {
-    getHiddenKeysFromNavigationItems,
-    getTreeDataForNavigationItems
+  getHiddenKeysFromNavigationItems,
+  getTreeDataForNavigationItems,
 } from '../../../../../../../utils/CustomizaNavigation/CustomizeNavigation';
 import { getNavigationItems } from '../../../../../../../utils/SettingsNavigationPageUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { CustomizeEditorProps } from './customizeEditor.types';
 import { savePersonaDocument } from './customizeEditor.utils';
 import {
-    getParentKeys,
-    moveNavNode,
-    moveNavNodeToRoot,
-    NavigationTreeNode
+  getParentKeys,
+  moveNavNode,
+  moveNavNodeToRoot,
+  NavigationTreeNode,
 } from './NavigationEditor.utils';
 
 const NavigationEditor = ({

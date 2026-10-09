@@ -12,10 +12,10 @@
  */
 
 import {
-    getParentKeys,
-    moveNavNode,
-    moveNavNodeToRoot,
-    NavigationTreeNode
+  getParentKeys,
+  moveNavNode,
+  moveNavNodeToRoot,
+  NavigationTreeNode,
 } from './NavigationEditor.utils';
 
 const tree = (): NavigationTreeNode[] => [

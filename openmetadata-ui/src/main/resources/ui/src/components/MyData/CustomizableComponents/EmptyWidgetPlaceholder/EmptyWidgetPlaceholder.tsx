@@ -12,11 +12,11 @@
  */
 
 import {
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    Typography
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { DotsGrid, Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';

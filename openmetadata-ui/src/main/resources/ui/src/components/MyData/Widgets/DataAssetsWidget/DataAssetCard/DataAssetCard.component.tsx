@@ -16,9 +16,9 @@ import type { Bucket } from 'Models';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-    DataAssetServiceLogo,
-    getDataAssetExploreTab,
-    getFormattedDataAssetServiceType
+  DataAssetServiceLogo,
+  getDataAssetExploreTab,
+  getFormattedDataAssetServiceType,
 } from '../../../../../utils/DataAssetServiceUtils';
 import { getServiceTypeExploreQueryFilter } from '../../../../../utils/FilterQueryUtils';
 import { getExplorePath } from '../../../../../utils/RouterUtils';

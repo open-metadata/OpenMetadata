@@ -18,8 +18,8 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/widget/my-task.svg';
 import {
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_MEDIUM
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import { MY_TASK_WIDGET_FILTER_OPTIONS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';

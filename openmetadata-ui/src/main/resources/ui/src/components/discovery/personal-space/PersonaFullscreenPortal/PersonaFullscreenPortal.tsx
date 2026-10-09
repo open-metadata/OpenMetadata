@@ -17,18 +17,18 @@ import { useTranslation } from 'react-i18next';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import {
-    getCustomizePageCategories,
-    getCustomizePageOptions
+  getCustomizePageCategories,
+  getCustomizePageOptions,
 } from '../../../../utils/Persona/PersonaUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import {
-    CustomizePageChrome,
-    CustomizePageChromeContext,
-    CUSTOMIZE_CHROME_BACK_ID
+  CustomizePageChrome,
+  CustomizePageChromeContext,
+  CUSTOMIZE_CHROME_BACK_ID,
 } from '../../../MyData/CustomizableComponents/CustomizablePageHeader/CustomizePageChrome.context';
 import {
-    hashSubPathToView,
-    isFullscreenPersonaHash
+  hashSubPathToView,
+  isFullscreenPersonaHash,
 } from '../Profile/tabs/personas/Personas.utils';
 
 const PersonaCustomizeView = withSuspenseFallback(

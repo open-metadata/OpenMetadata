@@ -12,9 +12,9 @@
  */
 
 import {
-    Badge,
-    TreeSelect,
-    TreeSelectNode
+  Badge,
+  TreeSelect,
+  TreeSelectNode,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo } from 'react';

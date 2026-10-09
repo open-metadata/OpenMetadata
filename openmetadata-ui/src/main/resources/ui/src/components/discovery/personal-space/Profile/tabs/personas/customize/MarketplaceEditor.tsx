@@ -16,16 +16,16 @@ import { DotsGrid } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import RGL, {
-    Layout,
-    ReactGridLayoutProps,
-    WidthProvider
+  Layout,
+  ReactGridLayoutProps,
+  WidthProvider,
 } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { TAB_GRID_MAX_COLUMNS } from '../../../../../../../constants/CustomizeWidgets.constants';
@@ -35,14 +35,14 @@ import { useGridLayoutDirection } from '../../../../../../../hooks/useGridLayout
 import { WidgetConfig } from '../../../../../../../interface/customization.interface';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import {
-    normalizePersonaDocument,
-    updatePersonaDocumentPage
+  normalizePersonaDocument,
+  updatePersonaDocumentPage,
 } from '../../../../../../../utils/CustomizePage/PersonaPage.utils';
 import dataMarketplaceClassBase from '../../../../../../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { getDataMarketplaceWidgetsFromKey } from '../../../../../../../utils/DataMarketplace/DataMarketplaceUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
 import MarketplaceOverviewHeader from '../../../../../../governance/marketplace/MarketplaceOverviewHeader/MarketplaceOverviewHeader';
 import '../../../../../../MyData/CustomizableComponents/CustomizeMyData/customize-my-data.less';

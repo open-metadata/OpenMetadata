@@ -12,12 +12,12 @@
  */
 
 import {
-    Box,
-    ButtonUtility,
-    Divider,
-    Input,
-    SelectPopover,
-    Tooltip
+  Box,
+  ButtonUtility,
+  Divider,
+  Input,
+  SelectPopover,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { isAppleDevice } from '@react-aria/utils';

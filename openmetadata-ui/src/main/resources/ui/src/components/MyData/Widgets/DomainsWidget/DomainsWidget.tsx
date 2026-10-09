@@ -19,34 +19,34 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/svg/domain-no-data-placeholder.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/entity/domain.svg';
 import {
-    INITIAL_PAGING_VALUE,
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_MEDIUM
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import {
-    applySortToData,
-    getSortField,
-    getSortOrder
+  applySortToData,
+  getSortField,
+  getSortOrder,
 } from '../../../../constants/Widgets.constant';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import {
-    WidgetCommonProps,
-    WidgetConfig
+  WidgetCommonProps,
+  WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { queryClient } from '../../../../queryClient';
 import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
 import {
-    domainAssetsCountQueryKey,
-    domainWidgetSearchQueryKey,
-    DOMAIN_WIDGET_STALE_TIME
+  domainAssetsCountQueryKey,
+  domainWidgetSearchQueryKey,
+  DOMAIN_WIDGET_STALE_TIME,
 } from '../../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
 import {
-    getDomainDetailsPath,
-    getDomainPath
+  getDomainDetailsPath,
+  getDomainPath,
 } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
@@ -55,8 +55,8 @@ import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './domains-widget.less';
 import {
-    DOMAIN_SORT_BY_KEYS,
-    DOMAIN_SORT_BY_OPTIONS
+  DOMAIN_SORT_BY_KEYS,
+  DOMAIN_SORT_BY_OPTIONS,
 } from './DomainsWidget.constants';
 
 const DomainsWidget = ({

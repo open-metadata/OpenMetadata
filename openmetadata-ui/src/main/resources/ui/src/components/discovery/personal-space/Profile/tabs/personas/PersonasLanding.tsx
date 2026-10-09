@@ -12,21 +12,21 @@
  */
 
 import {
-    Badge,
-    Box,
-    Card,
-    EmptyPlaceholder,
-    PaginationCardWithControls,
-    Skeleton,
-    Typography
+  Badge,
+  Box,
+  Card,
+  EmptyPlaceholder,
+  PaginationCardWithControls,
+  Skeleton,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_LARGE,
-    PAGE_SIZE_MEDIUM
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Persona } from '../../../../../../generated/entity/teams/persona';

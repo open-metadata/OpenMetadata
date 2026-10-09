@@ -18,8 +18,8 @@ import { Page, PageType } from '../../../../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import { updatePersonaDocumentPage } from '../../../../../../../utils/CustomizePage/PersonaPage.utils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../../AppRouter/withSuspenseFallback';
 import { CustomizeEditorProps } from './customizeEditor.types';

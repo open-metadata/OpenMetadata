@@ -11,22 +11,22 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    ButtonUtility,
-    Input,
-    SelectPopover
+  Box,
+  ButtonUtility,
+  Input,
+  SelectPopover,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
 import {
-    lazy,
-    Suspense,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useInteractOutside } from 'react-aria';
 import { useTranslation } from 'react-i18next';
@@ -41,9 +41,9 @@ import { useSearchStore } from '../../../../hooks/useSearchStore';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { addToRecentSearched } from '../../../../utils/RecentActivityUtils';
 import {
-    getExplorePath,
-    inPageSearchOptions,
-    isInPageSearchAllowed
+  getExplorePath,
+  inPageSearchOptions,
+  isInPageSearchAllowed,
 } from '../../../../utils/RouterUtils';
 
 const SearchOptions = lazy(() => import('../../../AppBar/SearchOptions'));

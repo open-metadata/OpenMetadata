@@ -15,8 +15,8 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep } from 'lodash';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import {
-    createDocument,
-    updateDocument
+  createDocument,
+  updateDocument,
 } from '../../../../../../../rest/DocStoreAPI';
 
 /**

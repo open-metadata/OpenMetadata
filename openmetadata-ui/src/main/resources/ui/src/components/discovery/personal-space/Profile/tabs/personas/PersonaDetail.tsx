@@ -12,29 +12,29 @@
  */
 
 import {
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    Input,
-    Tabs,
-    Typography
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Input,
+  Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    CheckCircle,
-    Copy01,
-    Edit01 as Edit,
-    Trash01 as Delete
+  CheckCircle,
+  Copy01,
+  Edit01 as Edit,
+  Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, {
-    FC,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
@@ -45,14 +45,14 @@ import { EntityReference } from '../../../../../../generated/entity/type';
 import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
-    getPersonaByName,
-    updatePersona
+  getPersonaByName,
+  updatePersona,
 } from '../../../../../../rest/PersonaAPI';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import Loader from '../../../../../common/Loader/Loader';

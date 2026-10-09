@@ -12,9 +12,9 @@
  */
 
 import {
-    Box,
-    ButtonUtility,
-    Typography
+  Box,
+  ButtonUtility,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { DotsGrid, Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';

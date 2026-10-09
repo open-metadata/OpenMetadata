@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    ProgressBarBase,
-    Tooltip,
-    Typography
+  Box,
+  ProgressBarBase,
+  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    chartColor,
-    useChartPalette
+  chartColor,
+  useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
 import {
-    AlertTriangle,
-    CheckCircle,
-    InfoCircle
+  AlertTriangle,
+  CheckCircle,
+  InfoCircle,
 } from '@openmetadata/ui-core-components/icons';
 import { clamp, toNumber } from 'lodash';
 import React, { CSSProperties } from 'react';

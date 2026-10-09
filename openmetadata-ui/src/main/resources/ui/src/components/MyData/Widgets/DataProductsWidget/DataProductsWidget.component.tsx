@@ -19,22 +19,22 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataProductNoDataPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/widget/data-products.svg';
 import {
-    INITIAL_PAGING_VALUE,
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_MEDIUM,
-    ROUTES
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
 } from '../../../../constants/constants';
 import {
-    applySortToData,
-    getSortField,
-    getSortOrder
+  applySortToData,
+  getSortField,
+  getSortOrder,
 } from '../../../../constants/Widgets.constant';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import {
-    WidgetCommonProps,
-    WidgetConfig
+  WidgetCommonProps,
+  WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getAllDataProductsWithAssetsCount } from '../../../../rest/dataProductAPI';
 import { searchData } from '../../../../rest/miscAPI';
@@ -47,8 +47,8 @@ import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './data-products-widget.less';
 import {
-    DATA_PRODUCTS_SORT_BY_KEYS,
-    DATA_PRODUCTS_SORT_BY_OPTIONS
+  DATA_PRODUCTS_SORT_BY_KEYS,
+  DATA_PRODUCTS_SORT_BY_OPTIONS,
 } from './DataProductsWidget.constants';
 
 const DataProductsWidget = ({

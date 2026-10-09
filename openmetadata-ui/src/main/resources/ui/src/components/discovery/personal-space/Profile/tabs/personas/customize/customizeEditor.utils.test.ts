@@ -13,8 +13,8 @@
 
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import {
-    createDocument,
-    updateDocument
+  createDocument,
+  updateDocument,
 } from '../../../../../../../rest/DocStoreAPI';
 import { savePersonaDocument } from './customizeEditor.utils';
 

@@ -13,10 +13,10 @@
 
 import type { PersonaView } from './Personas.types';
 import {
-    hashSubPathToView,
-    isFullscreenPersonaCategory,
-    isFullscreenPersonaHash,
-    viewToSubPath
+  hashSubPathToView,
+  isFullscreenPersonaCategory,
+  isFullscreenPersonaHash,
+  viewToSubPath,
 } from './Personas.utils';
 
 describe('Personas.utils', () => {
