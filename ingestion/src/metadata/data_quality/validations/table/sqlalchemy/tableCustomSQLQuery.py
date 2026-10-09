@@ -316,7 +316,11 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             stmt = select(func.count()).select_from(self.runner.table)
             if partition_expression:
                 stmt = stmt.filter(text(partition_expression))
-            return self.runner.session.execute(stmt).scalar()
+            try:
+                return self.runner.session.execute(stmt).scalar()
+            except Exception:
+                self.runner.session.rollback()
+                raise
 
         if partition_expression:
             custom_sql = self.get_test_case_param_value(

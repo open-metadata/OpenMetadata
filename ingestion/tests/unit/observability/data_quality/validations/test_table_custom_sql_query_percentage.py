@@ -114,6 +114,19 @@ def test_percentage_accepts_a_fractional_threshold(create_sqlite_table):
     assert result.testCaseStatus == TestCaseStatus.Success
 
 
+def test_percentage_preserves_an_exact_integer_boundary(create_sqlite_table):
+    with patch.object(TableCustomSQLQueryValidator, "compute_row_count", return_value=100):
+        _, result = _run(
+            create_sqlite_table,
+            sqlExpression="SELECT * FROM users LIMIT 7",
+            operator="<=",
+            threshold="7",
+            thresholdUnit="PERCENTAGE",
+        )
+
+    assert result.testCaseStatus == TestCaseStatus.Success
+
+
 def test_percentage_applies_to_a_count_strategy(create_sqlite_table):
     """30 of 80 is 37.5%: it breaches a 37% ceiling that 30 rows would not."""
     _, result = _run(
@@ -143,6 +156,27 @@ def test_count_strategy_uses_the_partitioned_table_as_its_denominator(create_sql
 
     assert result.testCaseStatus == TestCaseStatus.Success, result.result
     assert result.result.startswith("Found 30 row(s), 50% of the 60 row(s) counted.")
+
+
+def test_percentage_row_count_failure_rolls_back_the_session(create_sqlite_table):
+    validator, _ = _run(
+        create_sqlite_table,
+        sqlExpression=SIXTY_ROWS,
+        operator="<=",
+        threshold="75",
+        thresholdUnit="PERCENTAGE",
+        partitionExpression="age > 20",
+    )
+    session = validator.runner.session
+
+    with (
+        patch.object(session, "execute", side_effect=RuntimeError("invalid partition")),
+        patch.object(session, "rollback") as rollback,
+        pytest.raises(RuntimeError, match="invalid partition"),
+    ):
+        validator.compute_row_count()
+
+    rollback.assert_called_once_with()
 
 
 def test_percentage_message_states_the_share_and_the_denominator(create_sqlite_table):

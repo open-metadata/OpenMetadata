@@ -160,7 +160,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         if len_rows == 0:
             return 0.0
         if row_count:
-            return len_rows / row_count * 100
+            return len_rows * 100 / row_count
         return None
 
     @abstractmethod
