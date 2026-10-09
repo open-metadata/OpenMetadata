@@ -521,7 +521,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             }}
             layout="vertical">
             <Form.Item
-              label={t('label.profile-sample-type')}
+              label={t('label.profile-sample-type', {
+                type: '',
+              })}
               name="profileSampleType">
               <Select
                 allowClear
@@ -543,7 +545,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             {state?.selectedProfileSampleType ===
               ProfileSampleType.Percentage && (
               <Form.Item
-                label={t('label.profile-sample')}
+                label={t('label.profile-sample-type', {
+                  type: t('label.value'),
+                })}
                 name="profileSamplePercentage">
                 <SliderWithInput
                   className="p-x-xs"
@@ -556,7 +560,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
             {state?.selectedProfileSampleType === ProfileSampleType.Rows && (
               <Form.Item
-                label={t('label.profile-sample')}
+                label={t('label.profile-sample-type', {
+                  type: t('label.value'),
+                })}
                 name="profileSampleRows">
                 <InputNumber
                   className="w-full"
@@ -587,7 +593,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           className="layout-column"
           data-testid="sql-editor-container"
           span={24}>
-          <p className="m-b-xs">{t('label.sql-query')}</p>
+          <p className="m-b-xs">
+            {t('label.profile-sample-type', {
+              type: t('label.query'),
+            })}{' '}
+          </p>
 
           <SchemaEditor
             className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
