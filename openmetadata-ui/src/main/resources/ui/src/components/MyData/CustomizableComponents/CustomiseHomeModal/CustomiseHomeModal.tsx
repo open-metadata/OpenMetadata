@@ -23,7 +23,7 @@ import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
@@ -103,31 +103,34 @@ const CustomiseHomeModal = ({
     }
   }, [onHomePage]);
 
-  const handleSelectWidget = (id: string) => {
-    const widget = widgets.find((w) => w.id === id);
-    if (!widget) {
-      return;
-    }
-    const isAlreadyAdded = addedWidgetsList?.some(
-      (addedWidgetId) =>
-        addedWidgetId.startsWith(widget.fullyQualifiedName ?? '') &&
-        !addedWidgetId.includes(LandingPageWidgetKeys.CURATED_ASSETS)
-    );
+  const handleSelectWidget = useCallback(
+    (id: string) => {
+      const widget = widgets.find((w) => w.id === id);
+      if (!widget) {
+        return;
+      }
+      const isAlreadyAdded = addedWidgetsList?.some(
+        (addedWidgetId) =>
+          addedWidgetId.startsWith(widget.fullyQualifiedName ?? '') &&
+          !addedWidgetId.includes(LandingPageWidgetKeys.CURATED_ASSETS)
+      );
 
-    if (isAlreadyAdded) {
-      return;
-    }
+      if (isAlreadyAdded) {
+        return;
+      }
 
-    setSelectedWidgets((prev) => {
-      const newSelection = prev.includes(id)
-        ? prev.filter((w) => w !== id)
-        : [...prev, id];
+      setSelectedWidgets((prev) => {
+        const newSelection = prev.includes(id)
+          ? prev.filter((w) => w !== id)
+          : [...prev, id];
 
-      return newSelection;
-    });
-  };
+        return newSelection;
+      });
+    },
+    [widgets, addedWidgetsList]
+  );
 
-  const handleSidebarClick = (key: string) => {
+  const handleSidebarClick = useCallback((key: string) => {
     if (
       [
         CustomiseHomeModalSelectedKey.HEADER_THEME,
@@ -143,7 +146,7 @@ const CustomiseHomeModal = ({
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
-  };
+  }, []);
 
   const customiseOptions = useMemo(() => {
     return [
@@ -183,6 +186,7 @@ const CustomiseHomeModal = ({
     selectedWidgets,
     widgets,
     handleSelectWidget,
+    t,
   ]);
 
   const sidebarItems = useMemo(() => {
@@ -262,7 +266,13 @@ const CustomiseHomeModal = ({
         })}
       </div>
     );
-  }, [sidebarItems, selectedKey, handleSidebarClick, selectedWidgets]);
+  }, [
+    sidebarItems,
+    selectedKey,
+    handleSidebarClick,
+    selectedWidgets,
+    widgets.length,
+  ]);
 
   const handleApply = async () => {
     try {

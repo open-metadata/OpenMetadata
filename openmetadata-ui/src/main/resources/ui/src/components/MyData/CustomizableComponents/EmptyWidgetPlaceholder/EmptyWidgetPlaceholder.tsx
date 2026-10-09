@@ -40,12 +40,12 @@ function EmptyWidgetPlaceholder({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
-  }, []);
+  }, [handleRemoveWidget, widgetKey]);
 
   const handleAddClick = useCallback(() => {
     handlePlaceholderWidgetKey(widgetKey);
     handleOpenAddWidgetModal();
-  }, []);
+  }, [handlePlaceholderWidgetKey, handleOpenAddWidgetModal, widgetKey]);
 
   return (
     <Card

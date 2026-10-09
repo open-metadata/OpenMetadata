@@ -12,7 +12,7 @@
  */
 import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { expect, test as base } from '../../support/fixtures/base';
+import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -40,20 +40,11 @@ type LandingPageTestFixtures = {
 // per test: a shared persona makes layout saves last-write-wins across tests,
 // and previously only one test set the default persona, leaving the others to
 // assert the persona layout against a session that rendered the stock layout.
+// The user is the worker's isolated admin (tests within a worker run serially);
+// the persona stays per test.
 const test = base.extend<LandingPageTestFixtures>({
-  testUser: async ({ browser }, use) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    const user = new UserClass();
-    await user.create(apiContext);
-    await user.setAdminRole(apiContext);
-    await afterAction();
-
-    await use(user);
-
-    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
-      await performAdminLogin(browser);
-    await user.delete(cleanupContext);
-    await cleanupAfterAction();
+  testUser: async ({ isolatedUser }, use) => {
+    await use(isolatedUser);
   },
 
   persona: async ({ browser, testUser }, use) => {
@@ -89,18 +80,18 @@ const test = base.extend<LandingPageTestFixtures>({
     await cleanupAfterAction();
   },
 
-  adminPage: async ({ browser, testUser, persona }, use) => {
+  adminPage: async ({ isolatedUserPage, persona }, use) => {
     // `persona` is depended on for its side effect - the default persona has to
-    // be attached to the user before login, otherwise the session starts with
-    // the stock layout instead of the persona's customizable one.
+    // be attached to the user before the app loads, otherwise the session starts
+    // with the stock layout instead of the persona's customizable one.
     void persona;
 
-    const adminPage = await browser.newPage();
-    await testUser.signIn(adminPage);
-    await use(adminPage);
-    await adminPage.close();
+    await redirectToHomePage(isolatedUserPage);
+    await use(isolatedUserPage);
   },
 });
+
+test.use({ isolatedUserOptions: { isAdmin: true } });
 
 test.describe(
   'Customize Landing Page Flow',
