@@ -53,7 +53,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // remove three more.
     'om-playwright/no-positional-locator': 595,
     'om-playwright/require-assertion-per-test': 1,
-    'playwright/no-skipped-test': 2,
+    'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
   };
 
