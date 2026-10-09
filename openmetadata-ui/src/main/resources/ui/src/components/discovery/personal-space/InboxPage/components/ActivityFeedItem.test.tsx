@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ComponentType, ReactNode, SVGProps } from 'react';
 
 const mockSendReaction = jest.fn();
@@ -238,19 +238,37 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  // Each badge icon names itself, so a test can tell which one a card drew.
+  ...Object.fromEntries(
+    [
+      'ActivityAssetCreated',
+      'ActivityAssetDeleted',
+      'ActivityAssetRestored',
+      'ActivityAssetSoftDeleted',
+      'ActivityAssetUpdated',
+      'ActivityColumnDescriptionUpdated',
+      'ActivityColumnTagsUpdated',
+      'ActivityConversation',
+      'ActivityCustomPropertyUpdated',
+      'ActivityDescriptionUpdated',
+      'ActivityDomainChanged',
+      'ActivityOwnerChanged',
+      'ActivityPipelineStatusChanged',
+      'ActivityTagsUpdated',
+      'ActivityTestCaseStatusChanged',
+      'ActivityTierChanged',
+    ].map((name) => [name, () => <span data-testid={name} />])
+  ),
   ChevronDown: () => <span />,
   ChevronUp: () => <span />,
   Edit05: () => <span />,
   File02: () => <span />,
   Globe01: () => <span />,
   MessageDotsCircle: () => <span />,
-  Plus: () => <span />,
-  RefreshCcw01: () => <span />,
   Tag01: () => <span />,
   ThumbsUp: (props: SVGProps<SVGSVGElement>) => (
     <svg data-testid="thumbs-up-icon" {...props} />
   ),
-  Trash01: () => <span />,
   UserCheck01: () => <span />,
 }));
 
@@ -289,6 +307,59 @@ describe('ActivityFeedItem', () => {
     jest.clearAllMocks();
     mockReplies = [];
     mockRepliesCached = false;
+  });
+
+  describe('kind badge', () => {
+    const badgeFor = (eventType: string) => {
+      render(
+        <ActivityFeedItem
+          activity={{ ...baseActivity, eventType } as ActivityEvent}
+        />
+      );
+
+      return screen.getByTestId('activity-kind-badge');
+    };
+
+    it.each([
+      ['EntityCreated', 'ActivityAssetCreated', 'tw:bg-utility-pink-700'],
+      [
+        'EntitySoftDeleted',
+        'ActivityAssetSoftDeleted',
+        'tw:bg-utility-blue-dark-700',
+      ],
+      [
+        'ColumnTagsUpdated',
+        'ActivityColumnTagsUpdated',
+        'tw:bg-utility-purple-600',
+      ],
+      [
+        'PipelineStatusChanged',
+        'ActivityPipelineStatusChanged',
+        'tw:bg-utility-gray-800',
+      ],
+    ])('draws %s with its own icon and fill', (eventType, icon, fill) => {
+      const badge = badgeFor(eventType);
+
+      expect(badge).toHaveClass(fill);
+      expect(within(badge).getByTestId(icon)).toBeInTheDocument();
+    });
+
+    // A newer server may send a type this UI does not know yet.
+    it('reads an unknown event type as a plain update', () => {
+      expect(
+        within(badgeFor('SomethingNew')).getByTestId('ActivityAssetUpdated')
+      ).toBeInTheDocument();
+    });
+
+    it('marks a conversation with the conversation badge', () => {
+      render(<ActivityFeedItem feed={baseFeed} />);
+
+      expect(
+        within(screen.getByTestId('activity-kind-badge')).getByTestId(
+          'ActivityConversation'
+        )
+      ).toBeInTheDocument();
+    });
   });
 
   it('renders actor, action, entity and message', () => {

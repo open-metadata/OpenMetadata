@@ -22,10 +22,7 @@ import {
   ChevronDown,
   ChevronUp,
   MessageDotsCircle,
-  Plus,
-  RefreshCcw01,
   ThumbsUp,
-  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
@@ -71,18 +68,21 @@ import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { ActivityKind, ACTIVITY_TYPE_KIND } from '../activityKind';
+import {
+  ActivityBadge,
+  ACTIVITY_EVENT_BADGE,
+  CONVERSATION_BADGE,
+} from '../activityKind';
 import {
   ACTIVITY_CLOCK_FORMAT,
   ACTIVITY_DATE_FORMAT,
   applyReaction,
   getActivityChange,
   getActivityEventLabel,
-  getActivityTypeKey,
   getFeedSortTimestamp,
+  INBOX_ENTITY_ICON_CLASS,
   isSameLocalDay,
   sendReaction,
-  INBOX_ENTITY_ICON_CLASS,
 } from '../inbox.utils';
 import { createThreadReply, useActivityReplies } from '../useActivityReplies';
 import { writeInboxReactions } from '../useInboxActivity';
@@ -156,36 +156,12 @@ const getEventEntity = (
   };
 };
 
-type ActivityBadge = Pick<ActivityKind, 'icon' | 'badgeClassName'>;
-
-const DELETED_BADGE = {
-  icon: Trash01,
-  badgeClassName: 'tw:bg-utility-error-600',
-};
-const CONVERSATION_BADGE = {
-  icon: MessageDotsCircle,
-  badgeClassName: 'tw:bg-utility-gray-600',
-};
-
-// Lifecycle events filter as Other but read better with their own badge.
-const LIFECYCLE_BADGE: Partial<Record<ActivityEventType, ActivityBadge>> = {
-  [ActivityEventType.EntityCreated]: {
-    icon: Plus,
-    badgeClassName: 'tw:bg-utility-success-600',
-  },
-  [ActivityEventType.EntityRestored]: {
-    icon: RefreshCcw01,
-    badgeClassName: 'tw:bg-utility-success-600',
-  },
-  [ActivityEventType.EntityDeleted]: DELETED_BADGE,
-  [ActivityEventType.EntitySoftDeleted]: DELETED_BADGE,
-};
-
-// The badge on the actor's avatar that says what kind of change this is.
+// The badge on the actor's avatar that says what kind of change this is; an
+// event type this UI does not know yet reads as a plain update.
 const getActivityBadge = (activity?: ActivityEvent): ActivityBadge =>
   activity
-    ? LIFECYCLE_BADGE[activity.eventType] ??
-      ACTIVITY_TYPE_KIND[getActivityTypeKey(activity)]
+    ? ACTIVITY_EVENT_BADGE[activity.eventType] ??
+      ACTIVITY_EVENT_BADGE[ActivityEventType.EntityUpdated]
     : CONVERSATION_BADGE;
 
 /**
