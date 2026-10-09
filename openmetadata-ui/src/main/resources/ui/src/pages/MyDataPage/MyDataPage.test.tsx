@@ -137,6 +137,19 @@ describe('MyDataPage component', () => {
     );
   });
 
+  // Classic has no app shell to draw the white panel AI mode sits in, so the
+  // page draws its own.
+  it('should render the landing page inside the white surface panel', () => {
+    localStorage.setItem('loggedInUsers', mockUserData.name);
+
+    render(<MyDataPage />);
+
+    const surface = screen.getByTestId('home-page-surface');
+
+    expect(surface).toHaveClass('tw:bg-primary', 'tw:rounded-2xl');
+    expect(surface).toContainElement(screen.getByTestId('home-landing-page'));
+  });
+
   it('should wrap the landing page in the asset LimitWrapper', () => {
     localStorage.setItem('loggedInUsers', mockUserData.name);
 
