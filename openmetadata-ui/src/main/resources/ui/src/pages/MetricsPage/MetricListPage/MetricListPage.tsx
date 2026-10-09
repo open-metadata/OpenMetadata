@@ -32,6 +32,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import type { BoxProps } from '@openmetadata/ui-core-components';
 import {
   BarChart03,
   ChevronDown,
@@ -144,6 +145,7 @@ type MetricColumnId =
   | 'updatedAt';
 
 type MetricViewMode = 'card' | 'table';
+type BoxWrap = BoxProps['wrap'];
 
 // ADR:2026-10-09-metric-list-column-prefs-live-in-user-preferences
 const METRIC_TABLE_PREFERENCE_KEY = 'metricList';
@@ -626,9 +628,13 @@ const MetricListPage = () => {
     [loadingGroupIds, loadingParentIds]
   );
 
-  const renderTagBadges = (tags: Array<Pick<TagLabel, 'name' | 'tagFQN'>>) =>
+  // Table cells stay on one line; narrow cards must wrap or the overflow is clipped.
+  const renderTagBadges = (
+    tags: Array<Pick<TagLabel, 'name' | 'tagFQN'>>,
+    wrap: BoxWrap = 'nowrap'
+  ) =>
     tags.length ? (
-      <Box align="center" gap={1} wrap="nowrap">
+      <Box align="center" gap={1} wrap={wrap}>
         {tags.slice(0, MAX_VISIBLE_BADGES).map((tag) => (
           <Badge color="blue" key={tag.tagFQN} size="sm">
             {tag.name ?? tag.tagFQN}
@@ -693,7 +699,11 @@ const MetricListPage = () => {
     );
   };
 
-  const renderMetricName = (metric: MetricTreeNode, depth: number) => (
+  const renderMetricName = (
+    metric: MetricTreeNode,
+    depth: number,
+    wrap: BoxWrap = 'nowrap'
+  ) => (
     <Box
       align="center"
       className={`${getDepthClassName(depth)} tw:min-w-0`}
@@ -719,7 +729,7 @@ const MetricListPage = () => {
           )}>
           {getEntityName(metric)}
         </Link>
-        <Box align="center" className="tw:font-mono" gap={2} wrap="nowrap">
+        <Box align="center" className="tw:font-mono" gap={2} wrap={wrap}>
           {metric.metricType && (
             <Badge
               className={METRIC_TYPE_BADGE_CLASS_NAME}
@@ -960,8 +970,9 @@ const MetricListPage = () => {
         {visibleColumns.includes('owners') && renderOwners(metric.owners)}
       </Box>
       {visibleColumns.includes('glossary') &&
-        renderTagBadges(getGlossaryTerms(metric.tags))}
-      {visibleColumns.includes('tags') && renderTagBadges(getTags(metric.tags))}
+        renderTagBadges(getGlossaryTerms(metric.tags), 'wrap')}
+      {visibleColumns.includes('tags') &&
+        renderTagBadges(getTags(metric.tags), 'wrap')}
       {visibleColumns.includes('updatedAt') && (
         <span className="tw:text-xs tw:text-tertiary">
           {metric.updatedAt
@@ -998,7 +1009,7 @@ const MetricListPage = () => {
                 }
               />
             )}
-            {renderMetricName(metric, depth)}
+            {renderMetricName(metric, depth, 'wrap')}
           </Box>
           {renderMetricCardMetadata(metric)}
         </Box>
