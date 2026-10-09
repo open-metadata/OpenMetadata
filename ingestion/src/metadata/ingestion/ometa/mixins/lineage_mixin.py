@@ -46,7 +46,6 @@ logger = ometa_logger()
 T = TypeVar("T", bound=BaseModel)
 
 
-search_cache = LRUCache(LRU_CACHE_SIZE)
 LINEAGE_ROUTE = "/lineage"
 
 
@@ -58,6 +57,16 @@ class OMetaLineageMixin(Generic[T]):
     """
 
     client: REST
+
+    @functools.cached_property
+    def _lineage_edge_cache(self) -> LRUCache[dict[str, Any] | None]:
+        """
+        Edges read from the server, cached per client. A client lives for one workflow,
+        the same span over which delete_lineage_by_source runs once per entity. Cached for
+        the whole process, a later workflow would find an edge its own override run had
+        just deleted, take it as still stored, and never write it back.
+        """
+        return LRUCache(LRU_CACHE_SIZE)
 
     @staticmethod
     def _lineage_reference_cache_key(entity_reference: EntityReference) -> str:
@@ -137,13 +146,13 @@ class OMetaLineageMixin(Generic[T]):
     ) -> dict[str, Any] | None:
         try:
             cache_key = self._lineage_edge_cache_key(from_entity, to_entity)
-            if cache_key in search_cache:
-                return search_cache.get(cache_key)
+            if cache_key in self._lineage_edge_cache:
+                return self._lineage_edge_cache.get(cache_key)
             res = cast(
                 "dict[str, Any]",
                 self.client.get(f"{LINEAGE_ROUTE}/{self._lineage_edge_lookup_path(from_entity, to_entity)}"),
             )
-            search_cache.put(cache_key, res)
+            self._lineage_edge_cache.put(cache_key, res)
             return res  # noqa: TRY300
         except ValueError as err:
             logger.debug(str(err))
@@ -170,8 +179,8 @@ class OMetaLineageMixin(Generic[T]):
                 to_entity_type,
                 to_entity_fqn,
             )
-            if cache_key in search_cache:
-                return search_cache.get(cache_key)
+            if cache_key in self._lineage_edge_cache:
+                return self._lineage_edge_cache.get(cache_key)
             res = cast(
                 "dict[str, Any]",
                 self.client.get(
@@ -179,7 +188,7 @@ class OMetaLineageMixin(Generic[T]):
                     f"{self._lineage_edge_lookup_path_by_name(from_entity_type, from_entity_fqn, to_entity_type, to_entity_fqn)}"
                 ),
             )
-            search_cache.put(cache_key, res)
+            self._lineage_edge_cache.put(cache_key, res)
             return res  # noqa: TRY300
         except APIError as err:
             if err.status_code != 404:
@@ -221,7 +230,7 @@ class OMetaLineageMixin(Generic[T]):
             cache_key = self._lineage_edge_cache_key(request.edge.fromEntity, request.edge.toEntity)
             for res in response.get("downstreamEdges", []):
                 if self._is_matching_lineage_target(request.edge.toEntity, res.get("toEntity"), response):
-                    search_cache.put(
+                    self._lineage_edge_cache.put(
                         cache_key,
                         {"edge": res.get("lineageDetails")},
                     )
@@ -229,7 +238,7 @@ class OMetaLineageMixin(Generic[T]):
         except Exception as e:
             logger.debug(f"Error while updating cache: {e}")
 
-        search_cache.put(self._lineage_edge_cache_key(request.edge.fromEntity, request.edge.toEntity), None)
+        self._lineage_edge_cache.put(self._lineage_edge_cache_key(request.edge.fromEntity, request.edge.toEntity), None)
 
     @staticmethod
     def _is_matching_lineage_target(
@@ -416,10 +425,11 @@ class OMetaLineageMixin(Generic[T]):
             Optional[Dict[str, Any]]: The lineage edge if found, None otherwise.
         """
         try:
-            if (from_id, to_id) in search_cache:
-                return search_cache.get((from_id, to_id))
-            res = self.client.get(f"{self.get_suffix(AddLineageRequest)}/getLineageEdge/{from_id}/{to_id}")
-            search_cache.put((from_id, to_id), res)
+            cache_key = f"id:{from_id}->id:{to_id}"
+            if cache_key in self._lineage_edge_cache:
+                return self._lineage_edge_cache.get(cache_key)
+            res = cast("dict[str, Any]", self.client.get(f"{LINEAGE_ROUTE}/getLineageEdge/{from_id}/{to_id}"))
+            self._lineage_edge_cache.put(cache_key, res)
             return res  # noqa: TRY300
         except APIError as err:
             if err.status_code != 404:

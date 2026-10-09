@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { Col, Drawer, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { Drawer } from 'antd';
 import classNames from 'classnames';
 import { FC, lazy, useMemo } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ActivityPanelBody from '../ActivityFeedPanel/ActivityPanelBody';
 import ActivityPanelHeader from '../ActivityFeedPanel/ActivityPanelHeader';
@@ -73,16 +75,19 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
         }
         width={576}
         onClose={hideDrawer}>
-        <Row gutter={[0, 16]} id="feed-panel">
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid"
+          id="feed-panel"
+          style={{ ...getLayoutGutter(0, 16) }}>
+          <Grid.Item className="layout-column" span={24}>
             <TaskTabNew
               isForFeedTab
               isOpenInDrawer
               entityType={entityType}
               task={selectedTask}
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       </Drawer>
     );
   }
@@ -102,11 +107,14 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
         }
         width={576}
         onClose={hideDrawer}>
-        <Row gutter={[0, 16]} id="feed-panel">
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid"
+          id="feed-panel"
+          style={{ ...getLayoutGutter(0, 16) }}>
+          <Grid.Item className="layout-column" span={24}>
             <ActivityPanelBody activity={selectedActivity} />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       </Drawer>
     );
   }
@@ -130,16 +138,19 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       }
       width={576}
       onClose={hideDrawer}>
-      <Row gutter={[0, 16]} id="feed-panel">
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        id="feed-panel"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <FeedPanelBodyV1
             isForFeedTab
             isOpenInDrawer
             showThread
             feed={selectedThread}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </Drawer>
   );
 };

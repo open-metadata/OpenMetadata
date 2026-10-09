@@ -36,7 +36,11 @@ export type MembersView =
   | { type: 'users' }
   | { type: 'admins' }
   | { type: 'user-create'; isAdmin?: boolean }
-  | { type: 'online-users' };
+  | { type: 'online-users' }
+  // A downstream-contributed section (EXTENSION_POINTS.MEMBERS_LANDING_SECTIONS).
+  // `subPath` carries the section's own internal route, as the Notification
+  // panel's section view does.
+  | { type: 'section'; key: string; subPath?: string };
 
 export interface MembersLandingCard {
   id: string;

@@ -330,11 +330,12 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
       <Card
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
+          'tw:bg-canvas': isAiMode,
           'tw:mb-5': !isAiMode,
           // Compact layout pads 8px; AI content sits on the 16px gutter.
           'tw:mx-2': isAiMode,
         })}
-        variant={isAiMode ? 'default' : 'elevated'}>
+        variant={isAiMode ? 'ghost' : 'elevated'}>
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"

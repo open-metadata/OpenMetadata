@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../../../utils/common/layout.utils';
+
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { getIngestionStatusCountData } from '../../../../../../utils/IngestionConfigUtils';
@@ -29,21 +30,23 @@ function IngestionStatusCount({
   );
 
   return (
-    <Row
-      align="middle"
-      className="ingestion-status-count"
-      gutter={[4, 4]}
-      justify="space-evenly"
-      wrap={false}>
+    <Box
+      align="center"
+      className="layout-row ingestion-status-count"
+      justify="evenly"
+      style={{ ...getLayoutGutter(4, 4) }}
+      wrap="nowrap">
       {records.map((record) => (
-        <Col key={`${record.label}-${runId}`}>
+        <Box
+          className="layout-column tw:block"
+          key={`${record.label}-${runId}`}>
           <div className={classNames('status-count', record.type)}>
             <Typography className="record-count">{record.value}</Typography>
             <Typography className="record-label">{record.label}</Typography>
           </div>
-        </Col>
+        </Box>
       ))}
-    </Row>
+    </Box>
   );
 }
 

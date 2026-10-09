@@ -22,6 +22,7 @@ import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { createChunkClassifier } from './vite/chunks';
 import {
+  bundleGraphReport,
   htmlBasePathTransform,
   injectCriticalPreloads,
   noEnumOnlyChunks,
@@ -81,6 +82,7 @@ export default defineConfig(async ({ mode }) => {
     },
     plugins: [
       isProductionBundle && !isPlaywrightBundle && noEnumOnlyChunks(),
+      isProductionBundle && !isPlaywrightBundle && bundleGraphReport(),
       htmlBasePathTransform(),
       tailwindcss(),
       react(),
