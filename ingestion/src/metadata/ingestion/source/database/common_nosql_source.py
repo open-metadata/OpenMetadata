@@ -61,6 +61,7 @@ from metadata.utils.datalake.datalake_utils import DataFrameColumnParser
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.schema_inference import InferenceLimits, InferenceReport
 from metadata.utils.ssl_manager import check_ssl_and_init
 
 logger = ingestion_logger()
@@ -90,6 +91,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
+        self.inference_limits = InferenceLimits.from_source_config(self.source_config)
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.ssl_manager = check_ssl_and_init(self.service_connection)
@@ -264,8 +266,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         df = pd.DataFrame.from_records(list(self.get_table_columns_dict(schema_name, table_name)))
-        column_parser = DataFrameColumnParser.create(df)
-        return column_parser.get_columns()
+        inference_report = InferenceReport()
+        column_parser = DataFrameColumnParser.create(df, limits=self.inference_limits, report=inference_report)
+        columns = column_parser.get_columns()
+        inference_report.emit(self.status, f"{schema_name}.{table_name}", self.inference_limits)
+        return columns
 
     def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
