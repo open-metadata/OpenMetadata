@@ -55,6 +55,7 @@ import {
   PreviewPanel,
   RequestHistory,
 } from '../ChangeRequestTools/ChangeRequestTools.component';
+import { shownOps } from '../ReviewPendingChanges/ReviewPendingChanges.utils';
 import {
   PendingChangesModalProps,
   RequestDetailProps,
@@ -102,7 +103,7 @@ const RequestSummary = ({ request }: { request: ChangeRequest }) => {
             Fqn.split(request.entityFullyQualifiedName).pop(),
             request.status,
             t('label.field-changed-count', {
-              count: countChangedFields(request.activeRevision?.ops),
+              count: countChangedFields(shownOps(request)),
             }),
           ].join(' · ')}
         </Typography>
@@ -178,7 +179,7 @@ const DetailSection = ({
 
 const RequestDetail = ({ request, onChange }: RequestDetailProps) => {
   const { t } = useTranslation();
-  const ops = request.activeRevision?.ops;
+  const ops = shownOps(request);
   const canWithdraw =
     useIsOwn(request) && request.status === ChangeRequestStatus.Pending;
   const isAdmin = Boolean(useApplicationStore().currentUser?.isAdmin);

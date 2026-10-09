@@ -455,7 +455,7 @@ public final class ChangeRequestService {
 
   /** Re-checks the open requests on an asset after it changed, once committed and off-thread. */
   public static void afterEntityChanged(String entityType, UUID entityId) {
-    if (entityId != null && GovernanceApprovalRegistry.hasCachedRules(entityType)) {
+    if (entityId != null && GovernanceApprovalRegistry.mayHaveRules(entityType)) {
       PostCommitActionQueue.runOrDefer(
           () -> AsyncService.getInstance().execute(() -> recheckOpenRequests(entityId)));
     }
@@ -720,8 +720,7 @@ public final class ChangeRequestService {
     ChangeRequest request = active == null ? create(staged) : supersede(repository, active, staged);
     UUID id = request.getId();
     int revision = request.getActiveRevisionNumber();
-    PostCommitActionQueue.runOrDefer(
-        () -> ChangeRequestMetrics.admission(staged.entityType(), false));
+    PostCommitActionQueue.runOrDefer(() -> ChangeRequestMetrics.admission(staged.entityType()));
     // Off the request thread, the review task of a superseded revision is closed and then delivery
     // starts the review workflow up to its new task; the recovery scheduler retries any delivery
     // that does not complete.

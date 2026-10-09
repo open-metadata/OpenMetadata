@@ -31,7 +31,6 @@ interface WorkflowConfigFormV1Props {
   allowFullStartNodeConfiguration: boolean;
   allowStartNodeFilterScheduleAndBatchEdit: boolean;
   allowScheduledTrigger: boolean;
-  hasPendingChangeHook?: boolean;
   updateConfig: <K extends keyof NodeConfig>(
     key: K,
     value: NodeConfig[K]
@@ -65,7 +64,6 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   allowFullStartNodeConfiguration,
   allowStartNodeFilterScheduleAndBatchEdit,
   allowScheduledTrigger,
-  hasPendingChangeHook = false,
   updateConfig,
   removeFromArray,
   handleEventTypeChange,
@@ -162,16 +160,15 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
         />
       )}
 
-      {config.triggerType === WorkflowType.EVENT_BASED &&
-        hasPendingChangeHook && (
-          <ApprovalModeSection
-            approvalMode={config.approvalMode}
-            lockFields={lockFilterSections}
-            onApprovalModeChange={(approvalMode) =>
-              updateConfig('approvalMode', approvalMode)
-            }
-          />
-        )}
+      {config.triggerType === WorkflowType.EVENT_BASED && (
+        <ApprovalModeSection
+          approvalMode={config.approvalMode}
+          lockFields={lockFilterSections}
+          onApprovalModeChange={(approvalMode) =>
+            updateConfig('approvalMode', approvalMode)
+          }
+        />
+      )}
     </div>
   );
 };

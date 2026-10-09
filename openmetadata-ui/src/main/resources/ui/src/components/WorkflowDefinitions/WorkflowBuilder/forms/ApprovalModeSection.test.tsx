@@ -29,25 +29,25 @@ const renderSection = (approvalMode?: ApprovalMode) =>
   );
 
 describe('ApprovalModeSection', () => {
-  it('explains Enforce when no mode was saved', () => {
+  it('explains Default when no mode was saved', () => {
     renderSection();
 
     expect(
-      screen.getByText('message.approval-mode-enforce-description')
+      screen.getByText('message.approval-mode-default-description')
     ).toBeInTheDocument();
     expect(
       screen.getByText('message.approval-mode-description')
     ).toBeInTheDocument();
   });
 
-  it('explains Shadow when Shadow is selected', () => {
-    renderSection(ApprovalMode.Shadow);
+  it('explains Enforce when Enforce is selected', () => {
+    renderSection(ApprovalMode.Enforce);
 
     expect(
-      screen.getByText('message.approval-mode-shadow-description')
+      screen.getByText('message.approval-mode-enforce-description')
     ).toBeInTheDocument();
     expect(
-      screen.queryByText('message.approval-mode-enforce-description')
+      screen.queryByText('message.approval-mode-default-description')
     ).not.toBeInTheDocument();
   });
 });

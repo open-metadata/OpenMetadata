@@ -19,6 +19,7 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.Edge;
 import org.openmetadata.service.governance.workflows.elements.NodeFactory;
@@ -51,7 +52,8 @@ public class MainWorkflow {
           NodeFactory.createNode(
               nodeDefinitionObj,
               workflowDefinition.getConfig(),
-              workflowDefinition.getFullyQualifiedName());
+              workflowDefinition.getFullyQualifiedName(),
+              GovernanceApprovalRegistry.holdsChanges(workflowDefinition));
       node.addToWorkflow(model, process);
 
       Optional.ofNullable(node.getRuntimeExceptionBoundaryEvent())

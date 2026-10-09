@@ -29,7 +29,6 @@ import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Task } from '../../../generated/entity/tasks/task';
 import {
-  ChangeOutcome,
   ChangeRequest,
   MutationOpType,
 } from '../../../generated/governance/changeRequest/changeRequest';
@@ -152,15 +151,6 @@ const useMyVotes = (requests: ChangeRequest[]) => {
     voteOn(votes.get(suggestion.request.id), suggestion.op);
 };
 
-const OUTCOME_COLORS: Record<ChangeOutcome, BadgeColors> = {
-  [ChangeOutcome.Applied]: 'success',
-  [ChangeOutcome.Rejected]: 'error',
-  [ChangeOutcome.AlreadyPublished]: 'gray',
-  [ChangeOutcome.NotAgreed]: 'warning',
-  [ChangeOutcome.Superseded]: 'gray',
-  [ChangeOutcome.Pending]: 'gray',
-};
-
 const VERBS: Record<MutationOpType, string> = {
   [MutationOpType.Add]: 'label.added',
   [MutationOpType.Remove]: 'label.removed',
@@ -260,19 +250,9 @@ const SuggestionControls = ({
 }: SuggestionRowProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { request, op } = suggestion;
+  const { request } = suggestion;
   const conflicted = isConflicted(suggestion);
 
-  if (!isOpen(op)) {
-    return (
-      <Badge
-        color={OUTCOME_COLORS[op.outcome ?? ChangeOutcome.Pending]}
-        size="sm"
-        type="color">
-        {t(`label.change-outcome-${op.outcome}`)}
-      </Badge>
-    );
-  }
   if (currentUser?.name === request.requestedBy) {
     return (
       <Button color="secondary" size="sm" onClick={onWithdraw}>

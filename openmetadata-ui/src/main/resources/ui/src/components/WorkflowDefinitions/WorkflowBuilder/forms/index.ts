@@ -25,7 +25,6 @@ export { EventTriggerFilterSection } from './EventTriggerFilterSection';
 export { FormActionButtons } from './FormActionButtons';
 export { MetadataFormSection } from './MetadataFormSection';
 export { QueryBuilderSection } from './QueryBuilderSection';
-export { ResolvePendingChangeForm } from './ResolvePendingChangeForm';
 export { RevertBackForm } from './RevertBackForm';
 export { SchemaBasedNodeForm } from './SchemaBasedNodeForm';
 export { SetActionForm } from './SetActionForm';

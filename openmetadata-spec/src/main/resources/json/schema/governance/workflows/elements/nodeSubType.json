@@ -24,7 +24,6 @@
     "rejectRecognizerFeedbackTask",
     "checkChangeDescriptionTask",
     "policyAgentTask",
-    "createAndRunAIAutomationTask",
-    "resolvePendingChangeTask"
+    "createAndRunAIAutomationTask"
   ]
 }

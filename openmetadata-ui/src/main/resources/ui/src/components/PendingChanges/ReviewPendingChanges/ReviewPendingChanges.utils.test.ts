@@ -21,6 +21,7 @@ import {
 import {
   ChangeOutcome,
   ChangeRequest,
+  ChangeRequestStatus,
   MutationOpType,
 } from '../../../generated/governance/changeRequest/changeRequest';
 import {
@@ -28,6 +29,7 @@ import {
   groupSuggestions,
   incompleteRequests,
   isCompeting,
+  shownOps,
   suggestionId,
   valueText,
   Verdict,
@@ -149,6 +151,26 @@ describe('ReviewPendingChanges utils', () => {
     expect(description?.current).toBe('published');
     expect(description && isCompeting(description)).toBe(true);
     expect(tags && isCompeting(tags)).toBe(false);
+  });
+
+  it('offers only the changes still under review', () => {
+    const appliedTag = { ...TAG, outcome: ChangeOutcome.Applied };
+    const groups = groupSuggestions([
+      request('a', true, [DESCRIPTION, appliedTag]),
+    ]);
+
+    expect(groups.map((group) => group.field)).toEqual(['description']);
+  });
+
+  it('shows an open request its pending changes and a closed one all of them', () => {
+    const appliedTag = { ...TAG, outcome: ChangeOutcome.Applied };
+    const open = request('a', true, [DESCRIPTION, appliedTag]);
+    const closed = { ...open, status: ChangeRequestStatus.Applied };
+
+    expect(shownOps({ ...open, status: ChangeRequestStatus.Pending })).toEqual([
+      DESCRIPTION,
+    ]);
+    expect(shownOps(closed)).toEqual([DESCRIPTION, appliedTag]);
   });
 
   it('compares descriptions by their words, not their markup', () => {

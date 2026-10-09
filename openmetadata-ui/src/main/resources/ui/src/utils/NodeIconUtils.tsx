@@ -40,7 +40,6 @@ const CANVAS_NODE_ICON_MAP: Partial<Record<NodeSubType, SvgIcon>> = {
   [NodeSubType.UserApprovalTask]: WorkflowRequestApproval,
   [NodeSubType.DataCompletenessTask]: WorkflowDataCompleteness,
   [NodeSubType.RollbackEntityTask]: WorkflowRevertChanges,
-  [NodeSubType.ResolvePendingChangeTask]: WorkflowSetAction,
   [NodeSubType.PolicyAgentTask]: WorkflowPolicyEnforcement,
   [NodeSubType.SinkTask]: WorkflowGitSync,
 };
@@ -55,7 +54,6 @@ const NODE_ICON_MAP: Partial<Record<NodeSubType, SvgIcon>> = {
   [NodeSubType.UserApprovalTask]: WorkflowRequestApproval,
   [NodeSubType.DataCompletenessTask]: WorkflowDataCompleteness,
   [NodeSubType.RollbackEntityTask]: WorkflowRevertChanges,
-  [NodeSubType.ResolvePendingChangeTask]: WorkflowSetAction,
   [NodeSubType.PolicyAgentTask]: WorkflowPolicyEnforcement,
   [NodeSubType.SinkTask]: WorkflowGitSync,
 };

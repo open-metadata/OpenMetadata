@@ -335,6 +335,6 @@ export interface NodeConfigSidebarProps {
   setNodes?: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges?: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
   triggerFieldsConfig: WorkflowTriggerFieldsConfig;
-  /** The workflow has a Resolve Pending Change step, so its trigger takes an approval mode. */
-  hasPendingChangeHook?: boolean;
+  /** The start node holds edits for approval, so an approval task can allow partial decisions. */
+  isEnforceMode?: boolean;
 }

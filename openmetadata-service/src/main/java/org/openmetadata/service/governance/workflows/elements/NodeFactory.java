@@ -9,7 +9,6 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTaskDefinition;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
@@ -28,7 +27,6 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.DataCompletenessTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTask;
-import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RollbackEntityTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
@@ -49,6 +47,18 @@ public class NodeFactory {
       WorkflowNodeDefinitionInterface nodeDefinition,
       WorkflowConfiguration config,
       String workflowDefinitionName) {
+    return createNode(nodeDefinition, config, workflowDefinitionName, false);
+  }
+
+  /**
+   * Builds a node. In a workflow that holds edits ({@code holdsChanges}), an approval step also
+   * publishes the edit it approves and drops the edit it rejects.
+   */
+  public static NodeInterface createNode(
+      WorkflowNodeDefinitionInterface nodeDefinition,
+      WorkflowConfiguration config,
+      String workflowDefinitionName,
+      boolean holdsChanges) {
     return switch (NodeSubType.fromValue(nodeDefinition.getSubType())) {
       case START_EVENT -> new StartEvent((StartEventDefinition) nodeDefinition, config);
       case END_EVENT -> new EndEvent((EndEventDefinition) nodeDefinition, config);
@@ -66,14 +76,13 @@ public class NodeFactory {
           (UserApprovalTaskDefinition) nodeDefinition,
           config,
           resolveUserApprovalTaskType(workflowDefinitionName),
-          resolveUserApprovalTaskCategory(workflowDefinitionName));
+          resolveUserApprovalTaskCategory(workflowDefinitionName),
+          holdsChanges);
       case CREATE_AND_RUN_INGESTION_PIPELINE_TASK -> new CreateAndRunIngestionPipelineTask(
           (CreateAndRunIngestionPipelineTaskDefinition) nodeDefinition, config);
       case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition, config);
       case ROLLBACK_ENTITY_TASK -> new RollbackEntityTask(
           (RollbackEntityTaskDefinition) nodeDefinition, config);
-      case RESOLVE_PENDING_CHANGE_TASK -> new ResolvePendingChangeTask(
-          (ResolvePendingChangeTaskDefinition) nodeDefinition, config);
       case DATA_COMPLETENESS_TASK -> new DataCompletenessTask(
           (DataCompletenessTaskDefinition) nodeDefinition, config);
       case PARALLEL_GATEWAY -> new ParallelGateway(

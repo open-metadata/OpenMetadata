@@ -54,11 +54,17 @@ const DECIDED_ORDER = [
   ChangeOutcome.Superseded,
 ];
 
+// A request still under review: its decided changes have left the review.
+const OPEN_STATUSES = new Set([
+  ChangeRequestStatus.Pending,
+  ChangeRequestStatus.Approved,
+]);
+
 /**
- * The changes a review task's change request proposes, at its active revision: the ones still
- * under review first, then the decided ones grouped by what happened to them, so a closed task
- * still shows what was proposed and how each change ended. Read again whenever {@code version}
- * changes, so a decision on the task shows at once.
+ * The changes a review task's change request proposes, at its active revision. While the request
+ * is open, only the changes still under review; once it ends, every change grouped by what
+ * happened to it, so a closed task still shows what was proposed and how each change ended. Read
+ * again whenever {@code version} changes, so a decision on the task shows at once.
  */
 const ChangeRequestChangesById = ({
   changeRequestId,
@@ -84,12 +90,14 @@ const ChangeRequestChangesById = ({
     outcomeOf(request, op)
   );
   const pending = byOutcome[ChangeOutcome.Pending] ?? [];
+  const decided = OPEN_STATUSES.has(request.status) ? [] : DECIDED_ORDER;
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-3">
       {pending.length > 0 && <ChangeRequestChanges ops={pending} />}
-      {DECIDED_ORDER.filter((outcome) => byOutcome[outcome]?.length).map(
-        (outcome) => (
+      {decided
+        .filter((outcome) => byOutcome[outcome]?.length)
+        .map((outcome) => (
           <div
             className="tw:flex tw:flex-col tw:gap-2"
             data-testid={`decided-changes-${outcome}`}
@@ -103,8 +111,7 @@ const ChangeRequestChangesById = ({
             </Badge>
             <ChangeRequestChanges ops={byOutcome[outcome]} />
           </div>
-        )
-      )}
+        ))}
     </div>
   );
 };

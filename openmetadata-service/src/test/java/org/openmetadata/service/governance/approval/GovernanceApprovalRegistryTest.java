@@ -26,10 +26,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.ws.rs.BadRequestException;
@@ -57,18 +53,15 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.GatingRule;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.slf4j.LoggerFactory;
 
 /**
  * Unit tests for how {@link GovernanceApprovalRegistry} turns a workflow's trigger config into a
  * {@link GatingRule}. The field-selection logic itself (include/exclude/trigger-field/filter) lives
  * in {@code WorkflowTriggerFilters} and is tested there; here we assert the rule carries the right
- * include, exclude, and resolved filter, and that only hook-bearing eventBasedEntity workflows
+ * include, exclude, and resolved filter, and that only Enforce-mode eventBasedEntity workflows
  * targeting the entity type produce a rule at all.
  */
 class GovernanceApprovalRegistryTest {
-  private static final String HOOK =
-      "{\"subType\":\"resolvePendingChangeTask\",\"name\":\"resolve\",\"config\":{\"action\":\"commit\"}}";
   private static final String STATUS_NODE =
       "{\"subType\":\"setEntityAttributeTask\",\"name\":\"setStatus\",\"config\":{\"fieldName\":\"status\",\"fieldValue\":\"Approved\"}}";
 
@@ -97,46 +90,40 @@ class GovernanceApprovalRegistryTest {
   }
 
   private static String trigger(String entityTypes, String include, String exclude, String filter) {
-    return ("{\"type\":\"eventBasedEntity\",\"config\":{\"entityTypes\":[%s],"
-            + "\"include\":[%s],\"exclude\":[%s],\"filter\":%s}}")
+    return ("{\"type\":\"eventBasedEntity\",\"config\":{\"approvalMode\":\"Enforce\","
+            + "\"entityTypes\":[%s],\"include\":[%s],\"exclude\":[%s],\"filter\":%s}}")
         .formatted(entityTypes, include, exclude, filter);
   }
 
   @Test
-  void gatesWhenHookPresentAndFieldIncluded() {
-    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "", "{}"), HOOK);
+  void gatesInEnforceModeWhenFieldIncluded() {
+    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "", "{}"));
     assertEquals(List.of("description"), onlyRule("table", wd).includedFields());
   }
 
   @Test
   void doesNotGateWhileSuspended() {
     WorkflowDefinition wd =
-        workflow(trigger("\"table\"", "\"description\"", "", "{}"), HOOK).withSuspended(true);
-    assertTrue(rulesFor("table", wd).isEmpty());
-  }
-
-  @Test
-  void doesNotGateWithoutHook() {
-    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "", "{}"));
+        workflow(trigger("\"table\"", "\"description\"", "", "{}")).withSuspended(true);
     assertTrue(rulesFor("table", wd).isEmpty());
   }
 
   @Test
   void doesNotGateForOtherEntityType() {
-    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "", "{}"), HOOK);
+    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "", "{}"));
     assertTrue(rulesFor("dashboard", wd).isEmpty());
   }
 
   @Test
   void gatesAnyListedField_notJustCovered() {
-    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"displayName\"", "", "{}"), HOOK);
+    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"displayName\"", "", "{}"));
     assertEquals(List.of("displayName"), onlyRule("table", wd).includedFields());
   }
 
   @Test
   void unionsAllIncludedFields() {
     WorkflowDefinition wd =
-        workflow(trigger("\"table\"", "\"description\",\"tags\",\"displayName\"", "", "{}"), HOOK);
+        workflow(trigger("\"table\"", "\"description\",\"tags\",\"displayName\"", "", "{}"));
     assertEquals(
         List.of("description", "tags", "displayName"), onlyRule("table", wd).includedFields());
   }
@@ -145,7 +132,7 @@ class GovernanceApprovalRegistryTest {
   void emptyIncludeStillGatesAsCatchAll() {
     // Empty include is the most permissive config: it holds every changed trigger field. The rule
     // must be produced (previously it was dropped), carrying an empty include and empty exclude.
-    WorkflowDefinition wd = workflow(trigger("\"table\"", "", "", "{}"), HOOK);
+    WorkflowDefinition wd = workflow(trigger("\"table\"", "", "", "{}"));
     GatingRule rule = onlyRule("table", wd);
     assertTrue(rule.includedFields().isEmpty());
     assertTrue(rule.excludedFields().isEmpty());
@@ -153,7 +140,7 @@ class GovernanceApprovalRegistryTest {
 
   @Test
   void carriesExcludeOntoRuleWhenIncludeEmpty() {
-    WorkflowDefinition wd = workflow(trigger("\"table\"", "", "\"tags\",\"owners\"", "{}"), HOOK);
+    WorkflowDefinition wd = workflow(trigger("\"table\"", "", "\"tags\",\"owners\"", "{}"));
     GatingRule rule = onlyRule("table", wd);
     assertTrue(rule.includedFields().isEmpty());
     assertEquals(List.of("tags", "owners"), rule.excludedFields());
@@ -161,8 +148,7 @@ class GovernanceApprovalRegistryTest {
 
   @Test
   void carriesBothIncludeAndExclude() {
-    WorkflowDefinition wd =
-        workflow(trigger("\"table\"", "\"description\"", "\"tags\"", "{}"), HOOK);
+    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "\"tags\"", "{}"));
     GatingRule rule = onlyRule("table", wd);
     assertEquals(List.of("description"), rule.includedFields());
     assertEquals(List.of("tags"), rule.excludedFields());
@@ -171,22 +157,22 @@ class GovernanceApprovalRegistryTest {
   @Test
   void doesNotGateForNonEventBasedTrigger() {
     String periodic = "{\"type\":\"periodicBatchEntity\",\"config\":{\"entityTypes\":[\"table\"]}}";
-    WorkflowDefinition wd = workflow(periodic, HOOK);
+    WorkflowDefinition wd = workflow(periodic);
     assertTrue(rulesFor("table", wd).isEmpty());
   }
 
   @Test
   void gatesViaDeprecatedSingleEntityTypeField() {
     String t =
-        "{\"type\":\"eventBasedEntity\",\"config\":{\"entityType\":\"table\",\"include\":[\"description\"],\"filter\":{}}}";
-    WorkflowDefinition wd = workflow(t, HOOK);
+        "{\"type\":\"eventBasedEntity\",\"config\":{\"approvalMode\":\"Enforce\",\"entityType\":\"table\",\"include\":[\"description\"],\"filter\":{}}}";
+    WorkflowDefinition wd = workflow(t);
     assertEquals(List.of("description"), onlyRule("table", wd).includedFields());
   }
 
   @Test
   void gatesWhenOneOfMultipleEntityTypesMatches() {
     WorkflowDefinition wd =
-        workflow(trigger("\"dashboard\",\"table\"", "\"description\"", "", "{}"), HOOK);
+        workflow(trigger("\"dashboard\",\"table\"", "\"description\"", "", "{}"));
     assertEquals(1, rulesFor("table", wd).size());
     assertEquals(1, rulesFor("dashboard", wd).size());
     assertTrue(rulesFor("topic", wd).isEmpty());
@@ -196,23 +182,23 @@ class GovernanceApprovalRegistryTest {
   void plainStringFilterIsUnsupportedAndYieldsNull() {
     // FilterEntityImpl rejects plain (non-object) string filters; the gate must resolve the same.
     WorkflowDefinition wd =
-        workflow(trigger("\"table\"", "\"description\"", "", "\"{\\\"==\\\":[1,1]}\""), HOOK);
+        workflow(trigger("\"table\"", "\"description\"", "", "\"{\\\"==\\\":[1,1]}\""));
     assertNull(onlyRule("table", wd).filterLogic());
   }
 
   @Test
   void resolvesPerEntityTypeFilterObject() {
     String t =
-        "{\"type\":\"eventBasedEntity\",\"config\":{\"entityTypes\":[\"table\"],\"include\":[\"description\"],\"filter\":{\"table\":\"T_LOGIC\",\"default\":\"D_LOGIC\"}}}";
-    WorkflowDefinition wd = workflow(t, HOOK);
+        "{\"type\":\"eventBasedEntity\",\"config\":{\"approvalMode\":\"Enforce\",\"entityTypes\":[\"table\"],\"include\":[\"description\"],\"filter\":{\"table\":\"T_LOGIC\",\"default\":\"D_LOGIC\"}}}";
+    WorkflowDefinition wd = workflow(t);
     assertEquals("T_LOGIC", onlyRule("table", wd).filterLogic());
   }
 
   @Test
   void resolvesDefaultFilterWhenEntityTypeAbsent() {
     String t =
-        "{\"type\":\"eventBasedEntity\",\"config\":{\"entityTypes\":[\"table\"],\"include\":[\"description\"],\"filter\":{\"default\":\"D_LOGIC\"}}}";
-    WorkflowDefinition wd = workflow(t, HOOK);
+        "{\"type\":\"eventBasedEntity\",\"config\":{\"approvalMode\":\"Enforce\",\"entityTypes\":[\"table\"],\"include\":[\"description\"],\"filter\":{\"default\":\"D_LOGIC\"}}}";
+    WorkflowDefinition wd = workflow(t);
     assertEquals("D_LOGIC", onlyRule("table", wd).filterLogic());
   }
 
@@ -221,39 +207,55 @@ class GovernanceApprovalRegistryTest {
     // A per-entity filter object serialized as a JSON-object STRING is still honored.
     WorkflowDefinition wd =
         workflow(
-            trigger("\"table\"", "\"description\"", "", "\"{\\\"table\\\":\\\"T_LOGIC\\\"}\""),
-            HOOK);
+            trigger("\"table\"", "\"description\"", "", "\"{\\\"table\\\":\\\"T_LOGIC\\\"}\""));
     assertEquals("T_LOGIC", onlyRule("table", wd).filterLogic());
   }
 
   @Test
   void emptyFilterObjectYieldsNullFilterLogic() {
-    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "", "{}"), HOOK);
+    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "", "{}"));
     assertNull(onlyRule("table", wd).filterLogic());
   }
 
   @Test
-  void approvalModeDefaultsToEnforce() {
-    WorkflowDefinition wd = workflow(trigger("\"table\"", "\"description\"", "", "{}"), HOOK);
-    assertFalse(onlyRule("table", wd).shadow());
+  void defaultModeDoesNotGate() {
+    String absent =
+        "{\"type\":\"eventBasedEntity\",\"config\":{\"entityTypes\":[\"table\"],\"include\":[\"description\"],\"filter\":{}}}";
+    String explicit =
+        "{\"type\":\"eventBasedEntity\",\"config\":{\"approvalMode\":\"Default\",\"entityTypes\":[\"table\"],\"include\":[\"description\"],\"filter\":{}}}";
+    assertTrue(rulesFor("table", workflow(absent)).isEmpty());
+    assertTrue(rulesFor("table", workflow(explicit)).isEmpty());
+    assertFalse(GovernanceApprovalRegistry.holdsChanges(workflow(absent)));
+    assertFalse(GovernanceApprovalRegistry.holdsChanges(workflow(explicit)));
   }
 
   @Test
-  void shadowApprovalModeYieldsAShadowRule() {
-    String t =
-        "{\"type\":\"eventBasedEntity\",\"config\":{\"entityTypes\":[\"table\"],\"approvalMode\":\"Shadow\",\"include\":[\"description\"],\"filter\":{}}}";
-    assertTrue(onlyRule("table", workflow(t, HOOK)).shadow());
+  void enforceModeHoldsChangesOnlyOnAnEntityEventTrigger() {
+    String periodic = "{\"type\":\"periodicBatchEntity\",\"config\":{\"entityTypes\":[\"table\"]}}";
+    assertTrue(
+        GovernanceApprovalRegistry.holdsChanges(
+            workflow(trigger("\"table\"", "\"description\"", "", "{}"))));
+    assertFalse(GovernanceApprovalRegistry.holdsChanges(workflow(periodic)));
+    assertFalse(GovernanceApprovalRegistry.holdsChanges(workflow(null)));
   }
 
   @Test
-  void hookAlongsideStatusNodeStillGates() {
+  void openRequestsAreRecheckedWhileNoRulesAreCached() {
+    // A workflow change clears the cached rules; an asset edited before they are read again must
+    // still have its open requests re-checked.
+    GovernanceApprovalRegistry.invalidate();
+    assertTrue(GovernanceApprovalRegistry.mayHaveRules("glossary"));
+  }
+
+  @Test
+  void enforceModeGatesWhateverNodesTheWorkflowHas() {
     WorkflowDefinition wd =
-        workflow(trigger("\"table\"", "\"description\"", "", "{}"), STATUS_NODE, HOOK);
+        workflow(trigger("\"table\"", "\"description\"", "", "{}"), STATUS_NODE);
     assertEquals(1, rulesFor("table", wd).size());
   }
 
   /**
-   * {@link ApprovalGate#admit} against rules resolved from hook workflows: which requests are held,
+   * {@link ApprovalGate#admit} against rules resolved from Enforce-mode workflows: which requests are held,
    * that a held request carries every changed field, and which actors are exempt.
    */
   @Nested
@@ -356,10 +358,6 @@ class GovernanceApprovalRegistryTest {
             .thenReturn(new User().withName(user).withIsBot(userIsBot));
         return gate.get();
       }
-    }
-
-    private GatingRule shadowRule(UUID workflowId, List<String> include) {
-      return new GatingRule(workflowId, "wf-" + workflowId, include, List.of(), null, true);
     }
 
     private Optional<StagedChange> admitAsHuman(
@@ -565,47 +563,21 @@ class GovernanceApprovalRegistryTest {
     }
 
     @Test
-    void shadowWorkflowDoesNotHoldTheEdit() {
-      Glossary original = published();
-      Glossary updated = edited(original).withDescription("proposed");
-      assertTrue(
-          admitAsHuman(List.of(shadowRule(WORKFLOW_A, List.of("description"))), original, updated)
-              .isEmpty());
-    }
-
-    @Test
-    void shadowWorkflowNeitherHoldsNorConflictsWithAnEnforcingOne() {
-      Glossary original = published();
-      Glossary updated = edited(original).withDescription("proposed").withDisplayName("new name");
-      List<GatingRule> rules =
-          List.of(
-              rule(WORKFLOW_A, List.of("description"), List.of()),
-              shadowRule(WORKFLOW_B, List.of("displayName")));
-      StagedChange change = admitAsHuman(rules, original, updated).orElseThrow();
-      assertEquals(WORKFLOW_A, change.workflowDefinitionId());
-      assertEquals(Set.of("description"), gatedFields(change));
-    }
-
-    @Test
-    void gateCountsShadowHoldsAndTimesAdmissionButLeavesHeldEditsToSubmission() {
+    void gateTimesAdmissionButLeavesHeldEditsToSubmission() {
       SimpleMeterRegistry meters = new SimpleMeterRegistry();
       Metrics.addRegistry(meters);
       try {
         Glossary original = published();
         Glossary updated = edited(original).withDescription("proposed");
         List<GatingRule> enforcing = List.of(rule(WORKFLOW_A, List.of("description"), List.of()));
-        List<GatingRule> shadow = List.of(shadowRule(WORKFLOW_A, List.of("description")));
 
         admitAsHuman(enforcing, original, updated);
-        admitAsHuman(shadow, original, updated);
         preview(enforcing, original, updated);
-        preview(shadow, original, updated);
 
         // A held edit is counted when its change request commits (ChangeRequestService.submit).
         assertEquals(0, admissions(meters, "held"));
-        assertEquals(1, admissions(meters, "shadow"));
         assertEquals(
-            2,
+            1,
             meters
                 .get("change_request_admission_latency")
                 .tags("entityType", Entity.GLOSSARY)
@@ -613,41 +585,6 @@ class GovernanceApprovalRegistryTest {
                 .count());
       } finally {
         Metrics.removeRegistry(meters);
-      }
-    }
-
-    @Test
-    void shadowHoldIsLoggedWithWorkflowFieldsEntityAndUser() {
-      Logger gateLog = (Logger) LoggerFactory.getLogger(ApprovalGate.class);
-      ListAppender<ILoggingEvent> appender = new ListAppender<>();
-      appender.start();
-      Level previous = gateLog.getLevel();
-      gateLog.setLevel(Level.INFO);
-      gateLog.addAppender(appender);
-      try {
-        Glossary original = published();
-        admitAsHuman(
-            List.of(shadowRule(WORKFLOW_A, List.of("description"))),
-            original,
-            edited(original).withDescription("proposed"));
-        preview(
-            List.of(shadowRule(WORKFLOW_A, List.of("description"))),
-            original,
-            edited(original).withDescription("previewed"));
-
-        List<String> shadowLines =
-            appender.list.stream()
-                .map(ILoggingEvent::getFormattedMessage)
-                .filter(m -> m.contains("Shadow mode"))
-                .toList();
-        assertEquals(1, shadowLines.size(), "one line for the edit, none for the preview");
-        assertEquals(
-            "[ApprovalGate] Shadow mode: workflow wf-%s would hold [description] on glossary g by alice"
-                .formatted(WORKFLOW_A),
-            shadowLines.get(0));
-      } finally {
-        gateLog.detachAppender(appender);
-        gateLog.setLevel(previous);
       }
     }
 
@@ -662,47 +599,6 @@ class GovernanceApprovalRegistryTest {
             original,
             edited(original).withDisplayName("new name"));
         assertEquals(0, admissions(meters, "held"));
-        assertEquals(0, admissions(meters, "shadow"));
-      } finally {
-        Metrics.removeRegistry(meters);
-      }
-    }
-
-    @Test
-    void shadowWorkflowGatingEveryFieldStillPublishes() {
-      Glossary original = published();
-      Glossary updated = edited(original).withDescription("proposed").withDisplayName("new name");
-      assertTrue(
-          admitAsHuman(List.of(shadowRule(WORKFLOW_A, List.of())), original, updated).isEmpty());
-    }
-
-    @Test
-    void twoShadowWorkflowsOnDifferentFieldsDoNotConflict() {
-      Glossary original = published();
-      Glossary updated = edited(original).withDescription("proposed").withDisplayName("new name");
-      List<GatingRule> rules =
-          List.of(
-              shadowRule(WORKFLOW_A, List.of("description")),
-              shadowRule(WORKFLOW_B, List.of("displayName")));
-      assertTrue(admitAsHuman(rules, original, updated).isEmpty());
-    }
-
-    @Test
-    void botEditIsNeitherHeldNorCountedUnderShadow() {
-      SimpleMeterRegistry meters = new SimpleMeterRegistry();
-      Metrics.addRegistry(meters);
-      try {
-        Glossary original = published();
-        assertTrue(
-            admit(
-                    List.of(shadowRule(WORKFLOW_A, List.of("description"))),
-                    original,
-                    edited(original).withDescription("by bot"),
-                    "ingestion-bot",
-                    null,
-                    true)
-                .isEmpty());
-        assertEquals(0, admissions(meters, "shadow"));
       } finally {
         Metrics.removeRegistry(meters);
       }

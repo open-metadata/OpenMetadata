@@ -135,11 +135,11 @@ export interface NodeConfiguration {
      */
     fieldValue?: string;
     /**
-     * In an approval workflow that holds changes, let reviewers approve or reject some of a
-     * change request's changes and leave the rest pending. Agreed approvals leave through the
-     * 'partialApprove' edge, agreed rejections through 'partialReject'; both lead back to this
-     * task, which stays open with the remaining changes. A change is agreed once it reaches the
-     * approval or rejection threshold.
+     * In a workflow in Enforce approval mode, let reviewers approve or reject some of a change
+     * request's changes and leave the rest pending. Changes reviewers agree to approve are
+     * published and changes they agree to reject are dropped, while this task stays open with
+     * the remaining changes; the workflow leaves it through approve or reject once nothing is
+     * pending. A change is agreed once it reaches the approval or rejection threshold.
      */
     allowPartialDecisions?: boolean;
     /**
@@ -433,9 +433,9 @@ export interface EntityTriggerDefinition {
  */
 export interface TriggerConfiguration {
     /**
-     * How a workflow with a resolvePendingChange hook treats edits to the fields it gates.
-     * Enforce (also when absent) holds them for review; Shadow lets them publish and only
-     * records that they would have been held.
+     * How the workflow treats edits to the fields it watches. Default runs it after the edit is
+     * published. Enforce holds the edit for review: the workflow's user approval task publishes
+     * it when approved and discards it when rejected.
      */
     approvalMode?: ApprovalMode;
     /**
@@ -482,13 +482,13 @@ export interface TriggerConfiguration {
 }
 
 /**
- * How a workflow with a resolvePendingChange hook treats edits to the fields it gates.
- * Enforce (also when absent) holds them for review; Shadow lets them publish and only
- * records that they would have been held.
+ * How the workflow treats edits to the fields it watches. Default runs it after the edit is
+ * published. Enforce holds the edit for review: the workflow's user approval task publishes
+ * it when approved and discards it when rejected.
  */
 export enum ApprovalMode {
+    Default = "Default",
     Enforce = "Enforce",
-    Shadow = "Shadow",
 }
 
 /**

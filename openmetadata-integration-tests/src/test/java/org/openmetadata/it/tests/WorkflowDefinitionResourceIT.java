@@ -4654,39 +4654,95 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
-  void test_partialDecisionEdgesNeedAnApprovalStepThatAllowsThem(TestNamespace ns)
-      throws Exception {
+  void test_partialDecisionsAreSettledInsideTheApprovalStep(TestNamespace ns) throws Exception {
     Glossary glossary = createReviewedGlossary(ns, "partialEdges");
-    ObjectNode withoutFlag = partialDecisionWorkflow(glossary, 1, List.of("description"));
-    ((ObjectNode) withoutFlag.get("nodes").get(1).get("config"))
-        .put("allowPartialDecisions", false);
-    OpenMetadataException notAllowed =
-        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(withoutFlag));
-    assertEquals(400, notAllowed.getStatusCode());
+    ObjectNode defaultMode = partialDecisionWorkflow(glossary, 1, List.of("description"));
+    ((ObjectNode) defaultMode.at("/trigger/config")).put("approvalMode", "Default");
+    OpenMetadataException notEnforced =
+        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(defaultMode));
+    assertEquals(400, notEnforced.getStatusCode());
     assertTrue(
-        notAllowed.getMessage().contains("does not allow partial decisions"),
-        notAllowed.getMessage());
+        notEnforced.getMessage().contains("Enforce approval mode"), notEnforced.getMessage());
 
-    // Drop the partialReject path entirely (edge and node) so only the new rule can refuse it.
-    ObjectNode missingEdge = partialDecisionWorkflow(glossary, 1, List.of("description"));
-    ArrayNode edges = (ArrayNode) missingEdge.get("edges");
-    for (int i = edges.size() - 1; i >= 0; i--) {
-      JsonNode edge = edges.get(i);
-      if ("PartialDiscard".equals(edge.path("from").asText())
-          || "PartialDiscard".equals(edge.path("to").asText())) {
-        edges.remove(i);
-      }
-    }
-    ArrayNode nodes = (ArrayNode) missingEdge.get("nodes");
-    for (int i = nodes.size() - 1; i >= 0; i--) {
-      if ("PartialDiscard".equals(nodes.get(i).path("name").asText())) {
-        nodes.remove(i);
-      }
-    }
+    ObjectNode partialEdge = partialDecisionWorkflow(glossary, 1, List.of("description"));
+    addEdge((ArrayNode) partialEdge.get("edges"), "Approve", "ApprovedEnd", "partialApprove");
     OpenMetadataException refused =
-        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(missingEdge));
+        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(partialEdge));
     assertEquals(400, refused.getStatusCode());
-    assertTrue(refused.getMessage().contains("partialReject"), refused.getMessage());
+    assertTrue(refused.getMessage().contains("'partialApprove'"), refused.getMessage());
+  }
+
+  @Test
+  void test_enforceModeAllowsOneApprovalTaskPerPath(TestNamespace ns) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "approvalPaths");
+
+    ObjectNode sequential = twoApprovalWorkflow(glossary);
+    ArrayNode sequentialEdges = sequential.putArray("edges");
+    addEdge(sequentialEdges, "Start", "Approve", null);
+    addEdge(sequentialEdges, "Approve", "SecondApprove", "approve");
+    addEdge(sequentialEdges, "Approve", "RejectedEnd", "reject");
+    addEdge(sequentialEdges, "SecondApprove", "ApprovedEnd", "approve");
+    addEdge(sequentialEdges, "SecondApprove", "RejectedEnd", "reject");
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(sequential));
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("on the same path"), refused.getMessage());
+
+    ObjectNode branched = twoApprovalWorkflow(glossary);
+    ObjectNode route = ((ArrayNode) branched.get("nodes")).addObject();
+    route.put("type", "automatedTask").put("subType", "checkEntityAttributesTask");
+    route.put("name", "Route");
+    route.putObject("config").put("rules", "{\"==\":[1,1]}");
+    route.putObject("inputNamespaceMap").put("relatedEntity", "global");
+    ArrayNode branchedEdges = branched.putArray("edges");
+    addEdge(branchedEdges, "Start", "Route", null);
+    addEdge(branchedEdges, "Route", "Approve", "true");
+    addEdge(branchedEdges, "Route", "SecondApprove", "false");
+    addEdge(branchedEdges, "Approve", "ApprovedEnd", "approve");
+    addEdge(branchedEdges, "Approve", "RejectedEnd", "reject");
+    addEdge(branchedEdges, "SecondApprove", "ApprovedEnd", "approve");
+    addEdge(branchedEdges, "SecondApprove", "RejectedEnd", "reject");
+    assertDoesNotThrow(() -> createWorkflowOrFail(branched));
+  }
+
+  @Test
+  void test_enforceModeRefusesAPathWithoutAnApprovalTask(TestNamespace ns) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "skipApproval");
+    String name = "skipApproval" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    name, "glossary", glossary.getFullyQualifiedName(), List.of("description")));
+    ObjectNode route = ((ArrayNode) workflow.get("nodes")).addObject();
+    route.put("type", "automatedTask").put("subType", "checkEntityAttributesTask");
+    route.put("name", "Route");
+    route.putObject("config").put("rules", "{\"==\":[1,1]}");
+    route.putObject("inputNamespaceMap").put("relatedEntity", "global");
+    ArrayNode edges = workflow.putArray("edges");
+    addEdge(edges, "Start", "Route", null);
+    addEdge(edges, "Route", "Approve", "true");
+    addEdge(edges, "Route", "ApprovedEnd", "false");
+    addEdge(edges, "Approve", "ApprovedEnd", "approve");
+    addEdge(edges, "Approve", "RejectedEnd", "reject");
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(workflow));
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("without a user approval task"), refused.getMessage());
+  }
+
+  // The Enforce-mode hook workflow with a second approval task; the caller wires the edges.
+  private ObjectNode twoApprovalWorkflow(Glossary glossary) throws Exception {
+    String name = "approvalPaths" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    name, "glossary", glossary.getFullyQualifiedName(), List.of("description")));
+    ArrayNode nodes = (ArrayNode) workflow.get("nodes");
+    nodes.add(((ObjectNode) nodes.get(1)).deepCopy().put("name", "SecondApprove"));
+    return workflow;
   }
 
   @Test
@@ -5117,11 +5173,9 @@ public class WorkflowDefinitionResourceIT {
     ((ArrayNode) workflow.get("nodes")).add(statusNode("SetDraft", "Draft", "global"));
     ArrayNode edges = workflow.putArray("edges");
     addEdge(edges, "Start", "Approve", null);
-    addEdge(edges, "Approve", "CommitChange", "approve");
-    addEdge(edges, "CommitChange", "ApprovedEnd", null);
+    addEdge(edges, "Approve", "ApprovedEnd", "approve");
     addEdge(edges, "Approve", "SetDraft", "reject");
-    addEdge(edges, "SetDraft", "DiscardChange", null);
-    addEdge(edges, "DiscardChange", "RejectedEnd", null);
+    addEdge(edges, "SetDraft", "RejectedEnd", null);
     createWorkflow(workflow, workflowName);
     EntityStatus published = glossaryById(glossary).getEntityStatus();
 
@@ -5138,7 +5192,8 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(EntityStatus.DEPRECATED, glossaryById(glossary).getEntityStatus());
   }
 
-  // Start -> In Review -> Approve -> commit -> Approved (as the approver); reject -> discard.
+  // Start -> In Review -> Approve -> Approved (as the approver); the approval step publishes the
+  // request on approve and discards it on reject.
   private void deployStatusHookWorkflow(Glossary glossary) throws Exception {
     String workflowName = "statusHook" + UUID.randomUUID().toString().substring(0, 8);
     ObjectNode workflow =
@@ -5153,11 +5208,9 @@ public class WorkflowDefinitionResourceIT {
     ArrayNode edges = workflow.putArray("edges");
     addEdge(edges, "Start", "SetInReview", null);
     addEdge(edges, "SetInReview", "Approve", null);
-    addEdge(edges, "Approve", "CommitChange", "approve");
-    addEdge(edges, "CommitChange", "SetApproved", null);
+    addEdge(edges, "Approve", "SetApproved", "approve");
     addEdge(edges, "SetApproved", "ApprovedEnd", null);
-    addEdge(edges, "Approve", "DiscardChange", "reject");
-    addEdge(edges, "DiscardChange", "RejectedEnd", null);
+    addEdge(edges, "Approve", "RejectedEnd", "reject");
     createWorkflow(workflow, workflowName);
   }
 
@@ -5190,22 +5243,6 @@ public class WorkflowDefinitionResourceIT {
     if (condition != null) {
       edge.put("condition", condition);
     }
-  }
-
-  @Test
-  void test_shadowModeWorkflowPublishesTheEdit(TestNamespace ns) throws Exception {
-    Glossary glossary = createReviewedGlossary(ns, "shadow");
-    deployHookWorkflow(
-        SdkClients.adminClient(),
-        "glossary",
-        glossary.getFullyQualifiedName(),
-        List.of("description"),
-        "Shadow");
-
-    patchAs(SdkClients.user2Client(), glossary, descriptionPatch("published in shadow mode"));
-
-    assertEquals("published in shadow mode", descriptionOf(glossary));
-    assertEquals(0, changeRequestsOn(glossary).size(), "Shadow mode must not hold the edit");
   }
 
   @Test
@@ -5529,8 +5566,8 @@ public class WorkflowDefinitionResourceIT {
     return glossary;
   }
 
-  // A hold workflow whose approval step lets reviewers decide change by change: agreed approvals
-  // are committed and agreed rejections discarded, both looping back to the same step.
+  // An Enforce-mode workflow whose approval step lets reviewers decide change by change: the step
+  // publishes agreed approvals and drops agreed rejections, and stays open for the rest.
   private ObjectNode partialDecisionWorkflow(Glossary glossary, int threshold, List<String> include)
       throws Exception {
     String name = "partialGate" + UUID.randomUUID().toString().substring(0, 8);
@@ -5543,23 +5580,7 @@ public class WorkflowDefinitionResourceIT {
         .put("allowPartialDecisions", true)
         .put("approvalThreshold", threshold)
         .put("rejectionThreshold", threshold);
-    ArrayNode nodes = (ArrayNode) workflow.get("nodes");
-    nodes.add(resolveNode("PartialCommit", "commit"));
-    nodes.add(resolveNode("PartialDiscard", "discard"));
-    ArrayNode edges = (ArrayNode) workflow.get("edges");
-    addEdge(edges, "Approve", "PartialCommit", "partialApprove");
-    addEdge(edges, "PartialCommit", "Approve", null);
-    addEdge(edges, "Approve", "PartialDiscard", "partialReject");
-    addEdge(edges, "PartialDiscard", "Approve", null);
     return workflow;
-  }
-
-  private static ObjectNode resolveNode(String name, String action) {
-    ObjectNode node = MAPPER.createObjectNode();
-    node.put("type", "automatedTask").put("subType", "resolvePendingChangeTask").put("name", name);
-    node.putObject("config").put("action", action);
-    node.putObject("inputNamespaceMap").put("relatedEntity", "global");
-    return node;
   }
 
   // USER2 requests; USER1 reviews, joined by USER3 when two reviewers must agree.
@@ -5893,25 +5914,15 @@ public class WorkflowDefinitionResourceIT {
     return match;
   }
 
-  // A hook workflow gating {@code include} on one entity: the filter excludes every other one.
+  // An Enforce-mode workflow gating {@code include} on one entity: the filter excludes every other
+  // one.
   private String deployHookWorkflow(
       OpenMetadataClient client, String entityType, String entityFqn, List<String> include)
-      throws Exception {
-    return deployHookWorkflow(client, entityType, entityFqn, include, "Enforce");
-  }
-
-  private String deployHookWorkflow(
-      OpenMetadataClient client,
-      String entityType,
-      String entityFqn,
-      List<String> include,
-      String approvalMode)
       throws Exception {
     String workflowName = "hookGate" + UUID.randomUUID().toString().substring(0, 8);
     ObjectNode workflow =
         (ObjectNode)
             MAPPER.readTree(hookWorkflowJson(workflowName, entityType, entityFqn, include));
-    ((ObjectNode) workflow.at("/trigger/config")).put("approvalMode", approvalMode);
     String createResponse =
         client
             .getHttpClient()
@@ -5942,6 +5953,7 @@ public class WorkflowDefinitionResourceIT {
           "trigger": {
             "type": "eventBasedEntity",
             "config": {
+              "approvalMode": "Enforce",
               "entityTypes": ["%s"],
               "events": ["Updated"],
               "include": %s,
@@ -5956,19 +5968,13 @@ public class WorkflowDefinitionResourceIT {
              "config": {"assignees": {"addReviewers": true, "addOwners": false, "candidates": []},
                         "approvalThreshold": 1, "rejectionThreshold": 1},
              "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "CommitChange",
-             "config": {"action": "commit"}, "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "DiscardChange",
-             "config": {"action": "discard"}, "inputNamespaceMap": {"relatedEntity": "global"}},
             {"type": "endEvent", "subType": "endEvent", "name": "ApprovedEnd"},
             {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"}
           ],
           "edges": [
             {"from": "Start", "to": "Approve"},
-            {"from": "Approve", "to": "CommitChange", "condition": "approve"},
-            {"from": "Approve", "to": "DiscardChange", "condition": "reject"},
-            {"from": "CommitChange", "to": "ApprovedEnd"},
-            {"from": "DiscardChange", "to": "RejectedEnd"}
+            {"from": "Approve", "to": "ApprovedEnd", "condition": "approve"},
+            {"from": "Approve", "to": "RejectedEnd", "condition": "reject"}
           ]
         }
         """

@@ -14,7 +14,6 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.PolicyAgentTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RejectRecognizerFeedbackTaskDefinition;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
@@ -67,10 +66,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
   @JsonSubTypes.Type(
       value = RejectRecognizerFeedbackTaskDefinition.class,
       name = "rejectRecognizerFeedbackTask"),
-  @JsonSubTypes.Type(value = PolicyAgentTaskDefinition.class, name = "policyAgentTask"),
-  @JsonSubTypes.Type(
-      value = ResolvePendingChangeTaskDefinition.class,
-      name = "resolvePendingChangeTask")
+  @JsonSubTypes.Type(value = PolicyAgentTaskDefinition.class, name = "policyAgentTask")
 })
 public interface WorkflowNodeDefinitionInterface {
   String getType();

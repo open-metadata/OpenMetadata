@@ -12,6 +12,7 @@
  */
 import { Node } from 'reactflow';
 import { WorkflowType } from '../constants/WorkflowBuilder.constants';
+import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
 import {
   Type,
@@ -71,22 +72,22 @@ describe('WorkflowValidationService.buildWorkflowForSave', () => {
   it('keeps the approval mode when the start node is untouched', async () => {
     const { config } = await savedConfig(
       [startNode({})],
-      savedWorkflow({ approvalMode: 'Shadow' })
+      savedWorkflow({ approvalMode: 'Enforce' })
     );
 
-    expect(config.approvalMode).toBe('Shadow');
+    expect(config.approvalMode).toBe('Enforce');
   });
 
   it('keeps the approval mode when the start node is edited', async () => {
     const { config } = await savedConfig(
       [editedStartNode(SAVED_FILTER)],
       savedWorkflow({
-        approvalMode: 'Shadow',
+        approvalMode: 'Enforce',
         filter: { glossary: SAVED_FILTER },
       })
     );
 
-    expect(config.approvalMode).toBe('Shadow');
+    expect(config.approvalMode).toBe('Enforce');
   });
 
   it('saves the approval mode chosen on the start node', async () => {
@@ -100,10 +101,39 @@ describe('WorkflowValidationService.buildWorkflowForSave', () => {
           approvalMode: 'Enforce',
         }),
       ],
-      savedWorkflow({ approvalMode: 'Shadow' })
+      savedWorkflow({ approvalMode: 'Default' })
     );
 
     expect(config.approvalMode).toBe('Enforce');
+  });
+
+  it('keeps partial decisions only on approval steps of an Enforce workflow', async () => {
+    const approvalStep = {
+      id: 'review',
+      type: NodeType.UserTask,
+      position: { x: 0, y: 0 },
+      data: {
+        subType: NodeSubType.UserApprovalTask,
+        label: 'Review',
+        config: {
+          allowPartialDecisions: true,
+          assignees: { addReviewers: true },
+        },
+      },
+    } as Node;
+    const partialFlagFor = async (approvalMode: string) => {
+      const { nodes } = (await buildWorkflowForSave(
+        [startNode({}), approvalStep],
+        [],
+        savedWorkflow({ approvalMode })
+      )) as { nodes: { subType: string; config?: Record<string, unknown> }[] };
+
+      return nodes.find((node) => node.subType === NodeSubType.UserApprovalTask)
+        ?.config?.allowPartialDecisions;
+    };
+
+    expect(await partialFlagFor('Enforce')).toBe(true);
+    expect(await partialFlagFor('Default')).toBeUndefined();
   });
 
   it('writes no approval mode when none was saved', async () => {

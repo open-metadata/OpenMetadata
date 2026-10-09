@@ -14,8 +14,6 @@
 
 package org.openmetadata.service.governance.approval;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.ArrayList;
@@ -37,8 +35,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * Resolves the field-gating rules for an entity type from deployed governance workflows. A workflow
- * contributes a rule only when it uses an {@code eventBasedEntity} trigger, targets the entity type,
- * and carries a resolvePendingChange hook. Each rule mirrors the trigger's own field selection: the
+ * contributes a rule only when it uses an {@code eventBasedEntity} trigger in Enforce approval mode
+ * and targets the entity type. Each rule mirrors the trigger's own field selection: the
  * {@code include} fields (opt-in), the {@code exclude} fields (used when {@code include} is empty),
  * and the workflow's entity {@code filter}.
  *
@@ -50,8 +48,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public final class GovernanceApprovalRegistry {
   private static final String EVENT_BASED_ENTITY = "eventBasedEntity";
-  private static final String RESOLVE_PENDING_CHANGE_SUBTYPE = "resolvePendingChangeTask";
-  private static final String SHADOW_MODE = "Shadow";
+  private static final String APPROVAL_MODE = "approvalMode";
+  private static final String ENFORCE_MODE = "Enforce";
 
   // Each server re-reads the stored workflow definitions at most this often, so an ordinary write
   // does not query them. A workflow change made on this server applies at once (invalidate()).
@@ -74,18 +72,7 @@ public final class GovernanceApprovalRegistry {
       String workflowName,
       List<String> includedFields,
       List<String> excludedFields,
-      String filterLogic,
-      boolean shadow) {
-    /** An enforcing rule: gated edits are held for review. */
-    public GatingRule(
-        UUID workflowDefinitionId,
-        String workflowName,
-        List<String> includedFields,
-        List<String> excludedFields,
-        String filterLogic) {
-      this(workflowDefinitionId, workflowName, includedFields, excludedFields, filterLogic, false);
-    }
-  }
+      String filterLogic) {}
 
   /** Hook workflows gating this entity type, ordered by workflow name. */
   public static List<GatingRule> gatingRules(String entityType) {
@@ -107,20 +94,29 @@ public final class GovernanceApprovalRegistry {
    * Whether the most recently resolved rules gate {@code entityType}, without querying workflow
    * definitions. Used on hot write paths; admission and review always resolve rules afresh.
    */
-  public static boolean hasCachedRules(String entityType) {
+  /**
+   * False only when the cached rules show no workflow gates the entity type. Without a snapshot,
+   * for example right after a workflow changed, it cannot tell, so it answers true.
+   */
+  public static boolean mayHaveRules(String entityType) {
     Snapshot snapshot = SNAPSHOT.get();
-    return snapshot != null && snapshot.rulesByEntityType().containsKey(entityType);
+    return snapshot == null || snapshot.rulesByEntityType().containsKey(entityType);
   }
 
   public static void invalidate() {
     SNAPSHOT.set(null);
   }
 
-  // A workflow only gates a change if it opts in by placing a resolvePendingChange hook node.
-  // Reactive workflows - auto-tag, notify, run pipelines - never gate.
-  public static boolean hasPendingChangeHook(WorkflowDefinition definition) {
-    return listOrEmpty(definition.getNodes()).stream()
-        .anyMatch(node -> RESOLVE_PENDING_CHANGE_SUBTYPE.equals(node.getSubType()));
+  /**
+   * Whether the workflow holds edits for approval: an {@code eventBasedEntity} trigger in Enforce
+   * approval mode. Any other workflow runs after the edit is published - auto-tag, notify, run
+   * pipelines - and never gates it.
+   */
+  public static boolean holdsChanges(WorkflowDefinition definition) {
+    JsonNode trigger = JsonUtils.valueToTree(definition.getTrigger());
+    return trigger != null
+        && EVENT_BASED_ENTITY.equals(trigger.path("type").asText(null))
+        && ENFORCE_MODE.equals(trigger.path("config").path(APPROVAL_MODE).asText(null));
   }
 
   public static List<String> targetEntityTypes(JsonNode config) {
@@ -165,12 +161,10 @@ public final class GovernanceApprovalRegistry {
   }
 
   static void addRules(WorkflowDefinition definition, Map<String, List<GatingRule>> rules) {
-    JsonNode trigger = JsonUtils.valueToTree(definition.getTrigger());
-    JsonNode config = trigger.path("config");
-    boolean eventBased = EVENT_BASED_ENTITY.equals(trigger.path("type").asText(null));
+    JsonNode config = JsonUtils.valueToTree(definition.getTrigger()).path("config");
     // A suspended workflow reviews nothing, so it holds nothing back.
     boolean active = !Boolean.TRUE.equals(definition.getSuspended());
-    if (eventBased && active && hasPendingChangeHook(definition)) {
+    if (active && holdsChanges(definition)) {
       for (String entityType : targetEntityTypes(config)) {
         rules
             .computeIfAbsent(entityType, ignored -> new ArrayList<>())
@@ -180,8 +174,7 @@ public final class GovernanceApprovalRegistry {
                     definition.getName(),
                     stringList(config.path("include")),
                     stringList(config.path("exclude")),
-                    resolveFilter(config, entityType),
-                    SHADOW_MODE.equals(config.path("approvalMode").asText(null))));
+                    resolveFilter(config, entityType)));
       }
     }
   }

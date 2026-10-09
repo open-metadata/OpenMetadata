@@ -246,23 +246,15 @@ class ChangeRequestLifecycleTest {
   @Nested
   class MetricsRecorded {
     @Test
-    void admissionIsCountedAsHeldOrShadow() {
-      ChangeRequestMetrics.admission(Entity.GLOSSARY, false);
-      ChangeRequestMetrics.admission(Entity.GLOSSARY, true);
-      ChangeRequestMetrics.admission(Entity.GLOSSARY, true);
+    void admissionIsCountedAsHeld() {
+      ChangeRequestMetrics.admission(Entity.GLOSSARY);
+      ChangeRequestMetrics.admission(Entity.GLOSSARY);
 
-      assertEquals(
-          1,
-          meters
-              .get("change_request_admission")
-              .tags("entityType", Entity.GLOSSARY, "outcome", "held")
-              .counter()
-              .count());
       assertEquals(
           2,
           meters
               .get("change_request_admission")
-              .tags("entityType", Entity.GLOSSARY, "outcome", "shadow")
+              .tags("entityType", Entity.GLOSSARY, "outcome", "held")
               .counter()
               .count());
     }

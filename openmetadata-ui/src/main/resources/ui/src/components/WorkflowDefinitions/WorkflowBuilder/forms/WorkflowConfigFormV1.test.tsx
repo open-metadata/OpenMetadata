@@ -252,10 +252,10 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
       triggerType: WorkflowType.EVENT_BASED,
       eventType: ['Updated'],
       dataAssetFilters: [],
-      approvalMode: ApprovalMode.Shadow,
+      approvalMode: ApprovalMode.Enforce,
     };
 
-    const renderForm = (config: NodeConfig, hasPendingChangeHook: boolean) =>
+    const renderForm = (config: NodeConfig) =>
       renderWithWorkflowMode(
         <WorkflowConfigFormV1
           {...baseHandlers}
@@ -266,32 +266,20 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
           availableEventTypes={[]}
           availableExcludeFields={[]}
           config={config}
-          hasPendingChangeHook={hasPendingChangeHook}
         />
       );
 
-    it('shows the saved approval mode for a workflow with a Resolve Pending Change step', () => {
-      renderForm(eventConfig, true);
+    it('shows the saved approval mode for an event based trigger', () => {
+      renderForm(eventConfig);
 
       expect(screen.getByTestId('approval-mode-section-mock')).toHaveAttribute(
         'data-approval-mode',
-        ApprovalMode.Shadow
+        ApprovalMode.Enforce
       );
-    });
-
-    it('hides the approval mode for a workflow without a Resolve Pending Change step', () => {
-      renderForm(eventConfig, false);
-
-      expect(
-        screen.queryByTestId('approval-mode-section-mock')
-      ).not.toBeInTheDocument();
     });
 
     it('hides the approval mode for a periodic batch trigger', () => {
-      renderForm(
-        { ...eventConfig, triggerType: WorkflowType.PERIODIC_BATCH },
-        true
-      );
+      renderForm({ ...eventConfig, triggerType: WorkflowType.PERIODIC_BATCH });
 
       expect(
         screen.queryByTestId('approval-mode-section-mock')

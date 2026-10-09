@@ -279,11 +279,12 @@ class ChangeRequestApplyIT {
         {
           "name": "Wf%s",
           "displayName": "Draft on reject",
-          "description": "Rejecting sets Draft and a display name, then discards the request.",
+          "description": "Rejecting discards the request, then sets Draft and a display name.",
           "config": {"storeStageStatus": true},
           "trigger": {
             "type": "eventBasedEntity",
             "config": {
+              "approvalMode": "Enforce",
               "entityTypes": ["glossary"],
               "events": ["Updated"],
               "exclude": [],
@@ -313,21 +314,15 @@ class ChangeRequestApplyIT {
             {"type": "automatedTask", "subType": "setEntityAttributeTask", "name": "MarkRejected",
              "config": {"fieldName": "displayName", "fieldValue": "rejected by review"},
              "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}},
-            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "CommitChange",
-             "config": {"action": "commit"}, "inputNamespaceMap": {"relatedEntity": "global"}},
-            {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "DiscardChange",
-             "config": {"action": "discard"}, "inputNamespaceMap": {"relatedEntity": "global"}},
             {"type": "endEvent", "subType": "endEvent", "name": "ApprovedEnd"},
             {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"}
           ],
           "edges": [
             {"from": "Start", "to": "Approve"},
-            {"from": "Approve", "to": "CommitChange", "condition": "approve"},
+            {"from": "Approve", "to": "ApprovedEnd", "condition": "approve"},
             {"from": "Approve", "to": "SetDraft", "condition": "reject"},
             {"from": "SetDraft", "to": "MarkRejected"},
-            {"from": "MarkRejected", "to": "DiscardChange"},
-            {"from": "CommitChange", "to": "ApprovedEnd"},
-            {"from": "DiscardChange", "to": "RejectedEnd"}
+            {"from": "MarkRejected", "to": "RejectedEnd"}
           ]
         }
         """
@@ -352,6 +347,11 @@ class ChangeRequestApplyIT {
     resolveAs(SdkClients.user1Client(), task, "reject", TaskResolutionType.Rejected, null);
 
     awaitStatus(request.getId(), ChangeRequestStatus.REJECTED);
+    // The approval step discards the request; the steps after the reject flow run next.
+    Awaitility.await("steps after the rejection ran")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> "rejected by review".equals(fetch(glossary.getId()).getDisplayName()));
     Glossary after = fetch(glossary.getId());
     assertEquals(PUBLISHED, after.getDescription());
     assertEquals(EntityStatus.DRAFT, after.getEntityStatus());

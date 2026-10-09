@@ -65,8 +65,8 @@ public final class ApprovalDecisionService {
    * What a reviewer's decision means for the workflow waiting on the task. {@code NONE}: the task
    * does not decide a change request change by change, so it resolves as requested. {@code WAIT}:
    * the vote is recorded but no change is agreed yet, so the task stays open. The partial outcomes
-   * leave the task through the {@code partialApprove} or {@code partialReject} edge and come back to
-   * it with the changes still pending; {@code APPROVE} and {@code REJECT} end the review.
+   * publish or drop the agreed changes inside the approval step, which keeps the task open with the
+   * changes still pending; {@code APPROVE} and {@code REJECT} end the review.
    */
   public enum ReviewOutcome {
     NONE(null),
@@ -76,7 +76,7 @@ public final class ApprovalDecisionService {
     APPROVE(null),
     REJECT(null);
 
-    /** The approval node's outgoing edge condition a partial outcome leaves through. */
+    /** The approval step's internal result a partial outcome is routed by. */
     private final String transition;
 
     ReviewOutcome(String transition) {

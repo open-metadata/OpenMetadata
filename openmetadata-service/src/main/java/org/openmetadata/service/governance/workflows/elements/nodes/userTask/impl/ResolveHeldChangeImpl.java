@@ -12,10 +12,9 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
+package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -27,33 +26,36 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ResolvePendingChangeAction;
 import org.openmetadata.service.governance.approval.ChangeApplyService;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 
 /**
- * Workflow hook node that resolves the change request the run reviews. {@code commit} asks the
- * catalog to apply the revision, which it does only when an eligible approval of that exact revision
- * is recorded; {@code discard} rejects it. Place it where the workflow decides the outcome.
+ * The step of an approval task, in a workflow that holds edits, that settles the change request the
+ * run reviews once reviewers decide it. {@code publish} asks the catalog to apply the changes the
+ * reviewers agreed on, which it does only when an eligible approval of that exact revision is
+ * recorded; {@code discard} drops the changes they rejected. The outcome is kept in the approval
+ * task's {@value #HELD_CHANGE_RESULT} variable, apart from the approve or reject result that leads
+ * the workflow on.
  */
 @Slf4j
-public class ResolvePendingChangeImpl implements JavaDelegate {
-  private static final String REJECTED_REASON = "Rejected by the review workflow";
-  private static final String APPLIED = "applied";
+public class ResolveHeldChangeImpl implements JavaDelegate {
+  public static final String PUBLISH = "publish";
+  public static final String DISCARD = "discard";
+  public static final String HELD_CHANGE_RESULT = "heldChangeResult";
   public static final String NOT_APPLIED = "notApplied";
+  private static final String APPLIED = "applied";
   private static final String DISCARDED = "discarded";
+  private static final String REJECTED_REASON = "Rejected by the review workflow";
   private Expression actionExpr;
-  private Expression inputNamespaceMapExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      ResolvePendingChangeAction action =
-          ResolvePendingChangeAction.fromValue((String) actionExpr.getValue(execution));
+      String action = (String) actionExpr.getValue(execution);
       varHandler.setNodeVariable(
-          RESULT_VARIABLE, resolve(action, ChangeRequestRun.required(varHandler)));
+          HELD_CHANGE_RESULT, resolve(action, ChangeRequestRun.required(varHandler)));
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -62,13 +64,13 @@ public class ResolvePendingChangeImpl implements JavaDelegate {
     }
   }
 
-  // "applied" when this commit published the revision, or the part of it its reviewers agreed on,
-  // or the request already ended applied; "notApplied" when it could not (the request stays open
-  // with its conflicts and the node ends the run); "discarded" when the reviewers' rejections were
-  // dropped. Parts published by earlier commits of the same run do not count as this commit's.
-  private String resolve(ResolvePendingChangeAction action, ChangeRequestRun run) {
+  // "applied" when this step published the agreed changes, or the request already ended applied;
+  // "notApplied" when it could not (the request stays open with its conflicts and the run ends);
+  // "discarded" when the rejected changes were dropped. Parts published earlier in the same review
+  // do not count as this step's.
+  private String resolve(String action, ChangeRequestRun run) {
     String result = DISCARDED;
-    if (action == ResolvePendingChangeAction.COMMIT) {
+    if (PUBLISH.equals(action)) {
       int publishedBefore = ChangeApplyService.publishedCount(run.changeRequestId());
       ChangeRequest request =
           ChangeApplyService.approveAndApply(run.changeRequestId(), run.revisionNumber());

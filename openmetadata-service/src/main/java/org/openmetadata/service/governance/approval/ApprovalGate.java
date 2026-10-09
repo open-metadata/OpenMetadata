@@ -92,7 +92,7 @@ public final class ApprovalGate {
         && !isBotChange(user, null);
   }
 
-  /** What {@link #admit} would decide for this edit, without recording metrics or shadow holds. */
+  /** What {@link #admit} would decide for this edit, without recording metrics. */
   public static Optional<StagedChange> preview(
       EntityInterface original, EntityInterface updated, String user) {
     return evaluate(original, updated, user, null, false);
@@ -321,7 +321,6 @@ public final class ApprovalGate {
         (type, refs) -> {
           List<GatingRule> rules =
               GovernanceApprovalRegistry.gatingRules(type).stream()
-                  .filter(rule -> !rule.shadow())
                   .filter(
                       rule ->
                           WorkflowTriggerFilters.fieldTriggers(
@@ -360,7 +359,7 @@ public final class ApprovalGate {
     // The bot check reads the acting user, so it runs only for an entity type a workflow gates.
     if (!rules.isEmpty() && !isBotChange(user, impersonatedBy)) {
       Timer.Sample sample = ChangeRequestMetrics.startAdmission();
-      staged = planStage(rules, entityType, original, updated, user, impersonatedBy, record);
+      staged = planStage(rules, entityType, original, updated, user, impersonatedBy);
       if (record) {
         ChangeRequestMetrics.stopAdmission(sample, entityType);
       }
@@ -376,21 +375,13 @@ public final class ApprovalGate {
       EntityInterface original,
       EntityInterface updated,
       String user,
-      String impersonatedBy,
-      boolean record) {
+      String impersonatedBy) {
     keepStoredStatusWhenOmitted(original, updated);
     JsonNode base = JsonUtils.valueToTree(original);
     JsonNode proposed = JsonUtils.valueToTree(updated);
     Set<String> changed = changedFields(entityType, base, proposed);
-    List<GatedBy> matched =
+    List<GatedBy> gating =
         gatingWorkflows(rules, entityType, updated, triggerNames(base, proposed, changed));
-    // Shadow-mode workflows only record that they would have held the edit; the write publishes.
-    List<GatedBy> gating = matched.stream().filter(g -> !g.rule().shadow()).toList();
-    if (record) {
-      matched.stream()
-          .filter(g -> g.rule().shadow())
-          .forEach(g -> recordShadowHold(g, entityType, original, user));
-    }
     Optional<StagedChange> staged = Optional.empty();
     if (!gating.isEmpty()) {
       rejectAmbiguousReview(gating);
@@ -410,18 +401,6 @@ public final class ApprovalGate {
                   MutationPlanner.plan(base, proposed, changed, review.fields())));
     }
     return staged;
-  }
-
-  private static void recordShadowHold(
-      GatedBy gatedBy, String entityType, EntityInterface original, String user) {
-    ChangeRequestMetrics.admission(entityType, true);
-    LOG.info(
-        "[ApprovalGate] Shadow mode: workflow {} would hold {} on {} {} by {}",
-        gatedBy.rule().workflowName(),
-        gatedBy.fields(),
-        entityType,
-        original.getFullyQualifiedName(),
-        user);
   }
 
   private static List<GatedBy> gatingWorkflows(

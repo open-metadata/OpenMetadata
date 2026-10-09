@@ -28,10 +28,9 @@ public final class ChangeRequestMetrics {
 
   private ChangeRequestMetrics() {}
 
-  /** An edit that touched gated fields: held for review, or only recorded under shadow mode. */
-  public static void admission(String entityType, boolean shadow) {
-    Metrics.counter(ADMISSION, "entityType", entityType, "outcome", shadow ? "shadow" : "held")
-        .increment();
+  /** An edit that touched gated fields and was held for review. */
+  public static void admission(String entityType) {
+    Metrics.counter(ADMISSION, "entityType", entityType, "outcome", "held").increment();
   }
 
   public static Timer.Sample startAdmission() {

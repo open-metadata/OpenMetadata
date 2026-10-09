@@ -25,7 +25,6 @@ export enum NodeSubType {
     ParallelGateway = "parallelGateway",
     PolicyAgentTask = "policyAgentTask",
     RejectRecognizerFeedbackTask = "rejectRecognizerFeedbackTask",
-    ResolvePendingChangeTask = "resolvePendingChangeTask",
     RollbackEntityTask = "rollbackEntityTask",
     RunAppTask = "runAppTask",
     SetEntityAttributeTask = "setEntityAttributeTask",

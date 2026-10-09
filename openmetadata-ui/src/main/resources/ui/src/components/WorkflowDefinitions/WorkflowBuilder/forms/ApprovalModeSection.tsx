@@ -24,13 +24,13 @@ interface ApprovalModeSectionProps {
 }
 
 const MODE_DESCRIPTIONS: Record<ApprovalMode, string> = {
+  [ApprovalMode.Default]: 'message.approval-mode-default-description',
   [ApprovalMode.Enforce]: 'message.approval-mode-enforce-description',
-  [ApprovalMode.Shadow]: 'message.approval-mode-shadow-description',
 };
 
-/** Enforce or Shadow, for a workflow whose Resolve Pending Change step gates edits. */
+/** Default runs the workflow after an edit; Enforce holds the edit for its approval task. */
 export const ApprovalModeSection: React.FC<ApprovalModeSectionProps> = ({
-  approvalMode = ApprovalMode.Enforce,
+  approvalMode = ApprovalMode.Default,
   lockFields = false,
   onApprovalModeChange,
 }) => {
@@ -47,14 +47,14 @@ export const ApprovalModeSection: React.FC<ApprovalModeSectionProps> = ({
         value={approvalMode}
         onChange={(key) => onApprovalModeChange(key as ApprovalMode)}>
         <Select.Item
+          data-testid="approval-mode-default"
+          id={ApprovalMode.Default}
+          label={t('label.default')}
+        />
+        <Select.Item
           data-testid="approval-mode-enforce"
           id={ApprovalMode.Enforce}
           label={t('label.enforce')}
-        />
-        <Select.Item
-          data-testid="approval-mode-shadow"
-          id={ApprovalMode.Shadow}
-          label={t('label.shadow')}
         />
       </Select>
       <Typography as="p" className="tw:mt-2 tw:text-tertiary" size="text-sm">

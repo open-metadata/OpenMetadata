@@ -189,8 +189,8 @@ public class TaskWorkflowHandler {
       return refreshTask(taskId);
     }
     // A review decided change by change routes the workflow by what the reviewers agreed on: a
-    // partial outcome leaves through its own edge without resolving the task, which the workflow
-    // brings back with the changes still pending.
+    // partial outcome is settled inside the approval step without resolving the task, which stays
+    // open with the changes still pending.
     String routedTransition = outcome == ReviewOutcome.NONE ? transitionId : outcome.transition();
     TaskResolutionType routedResolution = routedResolution(outcome, effectiveResolutionType);
     TaskAvailableTransition routedSelection =

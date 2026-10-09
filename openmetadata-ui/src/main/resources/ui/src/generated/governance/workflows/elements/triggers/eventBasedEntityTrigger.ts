@@ -24,9 +24,9 @@ export interface EventBasedEntityTrigger {
  */
 export interface TriggerConfiguration {
     /**
-     * How a workflow with a resolvePendingChange hook treats edits to the fields it gates.
-     * Enforce (also when absent) holds them for review; Shadow lets them publish and only
-     * records that they would have been held.
+     * How the workflow treats edits to the fields it watches. Default runs it after the edit is
+     * published. Enforce holds the edit for review: the workflow's user approval task publishes
+     * it when approved and discards it when rejected.
      */
     approvalMode?: ApprovalMode;
     /**
@@ -60,13 +60,13 @@ export interface TriggerConfiguration {
 }
 
 /**
- * How a workflow with a resolvePendingChange hook treats edits to the fields it gates.
- * Enforce (also when absent) holds them for review; Shadow lets them publish and only
- * records that they would have been held.
+ * How the workflow treats edits to the fields it watches. Default runs it after the edit is
+ * published. Enforce holds the edit for review: the workflow's user approval task publishes
+ * it when approved and discards it when rejected.
  */
 export enum ApprovalMode {
+    Default = "Default",
     Enforce = "Enforce",
-    Shadow = "Shadow",
 }
 
 /**

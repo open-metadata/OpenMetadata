@@ -118,9 +118,7 @@ class ChangeRequestResourceIT {
             Entity.GLOSSARY,
             "\"description\"",
             "",
-            filterScopedTo(glossary.getFullyQualifiedName()),
-            "commit",
-            true);
+            filterScopedTo(glossary.getFullyQualifiedName()));
     suspendWorkflow(suspended);
 
     ChangeRequest request = stageAsUser2(glossary);

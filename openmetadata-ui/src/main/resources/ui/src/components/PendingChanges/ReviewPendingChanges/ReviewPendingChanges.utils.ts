@@ -24,6 +24,7 @@ import {
 import {
   ChangeOutcome,
   ChangeRequest,
+  ChangeRequestStatus,
   MutationOp,
   MutationOpType,
 } from '../../../generated/governance/changeRequest/changeRequest';
@@ -137,6 +138,21 @@ export const voteOn = (
 export const isOpen = (op: MutationOp) =>
   !op.outcome || op.outcome === ChangeOutcome.Pending;
 
+const OPEN_REQUEST_STATUSES = new Set([
+  ChangeRequestStatus.Pending,
+  ChangeRequestStatus.Approved,
+]);
+
+/**
+ * The changes of a request to show: while it is open, the ones still under review; once it ends,
+ * all of them, with how each one ended.
+ */
+export const shownOps = (request: ChangeRequest): MutationOp[] => {
+  const ops = request.activeRevision?.ops ?? [];
+
+  return OPEN_REQUEST_STATUSES.has(request.status) ? ops.filter(isOpen) : ops;
+};
+
 /** A change whose field moved since it was proposed: it can be rejected, not accepted. */
 export const isConflicted = ({ request, op }: Suggestion) =>
   (request.conflicts ?? []).some((conflict) => conflict.field === op.field);
@@ -153,10 +169,13 @@ export const elementLabel = (op: MutationOp): string => {
 
 export const valueText = (json?: string) => textOf(parse(json));
 
-/** The pending requests' changes grouped by field, in the order the fields first appear. */
+/**
+ * The pending requests' changes still under review, grouped by field, in the order the fields first
+ * appear.
+ */
 export const groupSuggestions = (requests: ChangeRequest[]): FieldGroup[] => {
   const suggestions = requests.flatMap((request) =>
-    (request.activeRevision?.ops ?? []).map((op) => ({
+    (request.activeRevision?.ops ?? []).filter(isOpen).map((op) => ({
       id: suggestionId(request, op),
       request,
       op,

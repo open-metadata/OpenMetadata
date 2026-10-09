@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
+import { omit } from 'lodash';
 import { Edge, Node } from 'reactflow';
 import {
   ScheduleConfig,
@@ -20,6 +21,7 @@ import {
 } from '../constants/WorkflowBuilder.constants';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
+import { ApprovalMode } from '../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
 import { ScheduleTimeline } from '../generated/governance/workflows/elements/triggers/periodicBatchEntityTrigger';
 import {
   TriggerObject,
@@ -36,7 +38,6 @@ import {
   getNodeConfiguration,
   getNodeName,
 } from '../utils/WorkflowNodeConfigUtils';
-import { syncPartialDecisionLoops } from '../utils/WorkflowPartialDecisionUtils';
 import { deserializeEventBasedFilters } from '../utils/WorkflowSerializationUtils';
 
 type NodeConfigWithMetadata = NodeConfig & {
@@ -545,15 +546,6 @@ const buildWorkflowNodes = (nodes: Node[], validEdges: Edge[]) => {
   });
 };
 
-// The builder's own conditions are lowercase ("true", "approve"); any other condition, such as an
-// approval step's "partialApprove", is matched exactly by the server and is kept as written.
-const BUILDER_CONDITIONS = new Set(['true', 'false', 'approve', 'reject']);
-
-const normalizedCondition = (condition: string) =>
-  BUILDER_CONDITIONS.has(condition.toLowerCase())
-    ? condition.toLowerCase()
-    : condition;
-
 const buildWorkflowEdges = (edges: Edge[], nodes: Node[]) => {
   const nodesWithMetadata = nodes.map((n) => ({ ...n.data, id: n.id }));
 
@@ -587,7 +579,7 @@ const buildWorkflowEdges = (edges: Edge[], nodes: Node[]) => {
         // For data completeness, preserve the original quality band name (e.g., "Gold", "Silver")
         edgeObj.condition = condition;
       } else {
-        edgeObj.condition = normalizedCondition(condition);
+        edgeObj.condition = condition.toLowerCase();
       }
     }
 
@@ -697,6 +689,11 @@ const migrateNode = (
     },
   };
 };
+
+const withoutPartialDecisions = (node: BackendNode): BackendNode =>
+  'config' in node && node.config?.allowPartialDecisions !== undefined
+    ? { ...node, config: omit(node.config, 'allowPartialDecisions') }
+    : node;
 
 const migrateInputNamespaceMap = (
   nodes: BackendNode[],
@@ -819,12 +816,14 @@ export const buildWorkflowForSave = async (
   const triggerEntityTypes = resolveTriggerEntityTypes(finalTriggerConfig);
   assertTriggerHasEntityTypes(triggerType, triggerEntityTypes);
 
-  const synced = syncPartialDecisionLoops(
-    buildWorkflowNodes(nodes, validEdges),
-    buildWorkflowEdges(validEdges as Edge[], nodes)
-  );
-  const workflowEdges = synced.edges;
-  const workflowNodes = migrateInputNamespaceMap(synced.nodes, workflowEdges);
+  let workflowNodes = buildWorkflowNodes(nodes, validEdges);
+  const workflowEdges = buildWorkflowEdges(validEdges as Edge[], nodes);
+
+  workflowNodes = migrateInputNamespaceMap(workflowNodes, workflowEdges);
+  // Only a workflow in Enforce approval mode settles partial decisions.
+  if (finalTriggerConfig.approvalMode !== ApprovalMode.Enforce) {
+    workflowNodes = workflowNodes.map(withoutPartialDecisions);
+  }
 
   const backendReadyJSON = {
     name: workflowName,

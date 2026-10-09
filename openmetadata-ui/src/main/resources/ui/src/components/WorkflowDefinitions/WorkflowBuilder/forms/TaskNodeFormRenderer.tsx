@@ -20,7 +20,6 @@ import { CheckChangeDescriptionForm } from './CheckChangeDescriptionForm';
 import { CheckConditionForm } from './CheckConditionForm';
 import { DataCompletenessForm } from './DataCompletenessForm';
 import { EndNodeForm } from './EndNodeForm';
-import { ResolvePendingChangeForm } from './ResolvePendingChangeForm';
 import { RevertBackForm } from './RevertBackForm';
 import { SchemaBasedNodeForm } from './SchemaBasedNodeForm';
 import { SetActionForm } from './SetActionForm';
@@ -34,7 +33,7 @@ interface TaskNodeFormRendererProps {
   onDelete?: (nodeId: string) => void;
   entityTypes?: EntityType[];
   /** Whether the workflow holds changes for approval; only then can a step allow partial decisions. */
-  hasPendingChangeHook?: boolean;
+  isEnforceMode?: boolean;
 }
 
 export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
@@ -43,7 +42,7 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
   onClose,
   onDelete,
   entityTypes,
-  hasPendingChangeHook,
+  isEnforceMode,
 }) => {
   if (
     node.type === NodeType.EndEvent ||
@@ -100,7 +99,7 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
     ),
     [NodeSubType.UserApprovalTask]: (
       <UserApprovalForm
-        hasPendingChangeHook={hasPendingChangeHook}
+        isEnforceMode={isEnforceMode}
         node={node}
         onClose={onClose}
         onDelete={onDelete}
@@ -109,14 +108,6 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
     ),
     [NodeSubType.RollbackEntityTask]: (
       <RevertBackForm
-        node={node}
-        onClose={onClose}
-        onDelete={onDelete}
-        onSave={onSave}
-      />
-    ),
-    [NodeSubType.ResolvePendingChangeTask]: (
-      <ResolvePendingChangeForm
         node={node}
         onClose={onClose}
         onDelete={onDelete}

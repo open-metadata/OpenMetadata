@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
-import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -72,7 +71,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
     GovernanceApprovalRegistry.invalidate();
-    if (GovernanceApprovalRegistry.hasPendingChangeHook(updated)) {
+    if (GovernanceApprovalRegistry.holdsChanges(updated)) {
       ChangeRequestService.redeliverStuck(updated.getId());
     } else {
       ChangeRequestService.cancelAllForWorkflow(
@@ -218,46 +217,127 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateNodeInputOutputMapping(workflowDefinition);
     // 5. Conditional task validations
     validateConditionalTasks(workflowDefinition);
-    // 6. Change-request hook workflows resolve the request on every terminal path
-    validatePendingChangeResolution(workflowDefinition);
+    // 6. Workflows that hold edits decide them in exactly one approval step per path
+    validateEnforceMode(workflowDefinition);
     // 7. Restrict the values interpolated into conditional-edge JUEL expressions
     validateEdgeConditions(workflowDefinition);
   }
 
   /**
-   * A workflow that reviews change requests (by carrying at least one {@code
-   * resolvePendingChangeTask} hook) must resolve the request on every path that can reach an end
-   * event, must start from edits, and must use a JSON Logic filter.
+   * A workflow in Enforce approval mode holds edits until an approval step decides them: it starts
+   * from edits, filters with JSON Logic, and has exactly one approval step on every path, since each
+   * one publishes or drops the edit it decides.
    */
-  private void validatePendingChangeResolution(WorkflowDefinition workflowDefinition) {
-    List<WorkflowNodeDefinitionInterface> nodes = listOrEmpty(workflowDefinition.getNodes());
-    Set<String> hooks = new HashSet<>();
-    Set<String> ends = new HashSet<>();
-    String start = null;
-    for (WorkflowNodeDefinitionInterface node : nodes) {
-      String subType = node.getSubType();
-      if (NodeSubType.RESOLVE_PENDING_CHANGE_TASK.value().equals(subType)) {
-        hooks.add(node.getName());
-      } else if (NodeSubType.END_EVENT.value().equals(subType)) {
-        ends.add(node.getName());
-      } else if (NodeSubType.START_EVENT.value().equals(subType)) {
-        start = node.getName();
-      }
-    }
-    if (!hooks.isEmpty()) {
+  private void validateEnforceMode(WorkflowDefinition workflowDefinition) {
+    if (GovernanceApprovalRegistry.holdsChanges(workflowDefinition)) {
       validateHookTrigger(workflowDefinition);
       validateJsonLogicFilter(workflowDefinition);
+      Set<String> approvals = new HashSet<>();
+      listOrEmpty(workflowDefinition.getNodes()).stream()
+          .filter(node -> USER_APPROVAL_TASK.equals(node.getSubType()))
+          .forEach(
+              node -> {
+                requireApproveAndRejectOnly(workflowDefinition, node);
+                approvals.add(node.getName());
+              });
+      if (approvals.isEmpty()) {
+        throw BadRequestException.of(
+            "Workflow '%s' holds edits for approval but has no user approval task to decide them"
+                .formatted(workflowDefinition.getName()));
+      }
+      Map<String, List<String>> outgoing = outgoingNodes(workflowDefinition);
+      requireOneApprovalPerPath(workflowDefinition, approvals, outgoing);
+      requireApprovalOnEveryPath(workflowDefinition, approvals, outgoing);
     }
-    if (!hooks.isEmpty()
-        && start != null
-        && reachesEndWithoutHook(workflowDefinition, start, hooks, ends)) {
+  }
+
+  private static final Set<String> HELD_EDIT_TRANSITIONS =
+      Set.of(Workflow.APPROVE_CONDITION, Workflow.REJECT_CONDITION);
+
+  // An approval step of a workflow that holds edits publishes the edit on approve and drops it on
+  // reject, so it offers no other transition.
+  private void requireApproveAndRejectOnly(
+      WorkflowDefinition workflowDefinition, WorkflowNodeDefinitionInterface node) {
+    getConfiguredUserApprovalTransitions(node).stream()
+        .filter(transition -> !HELD_EDIT_TRANSITIONS.contains(transition))
+        .findFirst()
+        .ifPresent(
+            transition -> {
+              throw BadRequestException.of(
+                  String.format(
+                      "Workflow '%s': User approval task '%s' has a '%s' transition; in a workflow "
+                          + "that holds edits an approval task only approves or rejects",
+                      workflowDefinition.getName(), node.getNodeDisplayName(), transition));
+            });
+  }
+
+  // An approval step publishes or drops the edit it decides, so no approval step may follow
+  // another.
+  private static void requireOneApprovalPerPath(
+      WorkflowDefinition workflowDefinition,
+      Set<String> approvals,
+      Map<String, List<String>> outgoing) {
+    for (String approval : approvals) {
+      Deque<String> pending = new ArrayDeque<>(listOrEmpty(outgoing.get(approval)));
+      Set<String> visited = new HashSet<>();
+      while (!pending.isEmpty()) {
+        String node = pending.pop();
+        if (approvals.contains(node)) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s': user approval tasks '%s' and '%s' are on the same path. In a "
+                      + "workflow that holds edits each path has one approval task, which "
+                      + "publishes or discards the edit.",
+                  workflowDefinition.getName(), approval, node));
+        }
+        if (visited.add(node)) {
+          pending.addAll(listOrEmpty(outgoing.get(node)));
+        }
+      }
+    }
+  }
+
+  // An edit is held until an approval task publishes or discards it, so a run that ends without
+  // passing one would leave the edit pending.
+  private static void requireApprovalOnEveryPath(
+      WorkflowDefinition workflowDefinition,
+      Set<String> approvals,
+      Map<String, List<String>> outgoing) {
+    Deque<String> pending = new ArrayDeque<>(nodeNamesOfSubType(workflowDefinition, "startEvent"));
+    Set<String> ends = new HashSet<>(nodeNamesOfSubType(workflowDefinition, "endEvent"));
+    Set<String> visited = new HashSet<>();
+    String unsettledEnd = null;
+    while (!pending.isEmpty() && unsettledEnd == null) {
+      String node = pending.pop();
+      if (ends.contains(node)) {
+        unsettledEnd = node;
+      } else if (!approvals.contains(node) && visited.add(node)) {
+        pending.addAll(listOrEmpty(outgoing.get(node)));
+      }
+    }
+    if (unsettledEnd != null) {
       throw BadRequestException.of(
           String.format(
-              "Workflow '%s' reviews change requests but at least one path reaches an end event "
-                  + "without a commit or discard. Every terminal path must resolve the change "
-                  + "request or it would stay pending forever.",
-              workflowDefinition.getName()));
+              "Workflow '%s' holds edits for approval, but a path reaches '%s' without a user "
+                  + "approval task. Every path needs one to publish or discard the held edit.",
+              workflowDefinition.getName(), unsettledEnd));
     }
+  }
+
+  private static Map<String, List<String>> outgoingNodes(WorkflowDefinition workflowDefinition) {
+    Map<String, List<String>> outgoing = new HashMap<>();
+    for (EdgeDefinition edge : listOrEmpty(workflowDefinition.getEdges())) {
+      outgoing.computeIfAbsent(edge.getFrom(), key -> new ArrayList<>()).add(edge.getTo());
+    }
+    return outgoing;
+  }
+
+  private static List<String> nodeNamesOfSubType(
+      WorkflowDefinition workflowDefinition, String subType) {
+    return listOrEmpty(workflowDefinition.getNodes()).stream()
+        .filter(node -> subType.equals(node.getSubType()))
+        .map(WorkflowNodeDefinitionInterface::getName)
+        .toList();
   }
 
   // Change requests are submitted by edits, and hook workflows start only from them.
@@ -301,31 +381,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       query = parsed.has("query") || parsed.has("bool");
     }
     return query;
-  }
-
-  private boolean reachesEndWithoutHook(
-      WorkflowDefinition workflowDefinition, String start, Set<String> hooks, Set<String> ends) {
-    Map<String, List<String>> outgoing = new HashMap<>();
-    for (EdgeDefinition edge : listOrEmpty(workflowDefinition.getEdges())) {
-      outgoing.computeIfAbsent(edge.getFrom(), key -> new ArrayList<>()).add(edge.getTo());
-    }
-    Deque<Map.Entry<String, Boolean>> stack = new ArrayDeque<>();
-    Set<String> visited = new HashSet<>();
-    stack.push(Map.entry(start, hooks.contains(start)));
-    boolean orphanFound = false;
-    while (!stack.isEmpty() && !orphanFound) {
-      Map.Entry<String, Boolean> current = stack.pop();
-      String node = current.getKey();
-      boolean hookSeen = current.getValue();
-      if (ends.contains(node) && !hookSeen) {
-        orphanFound = true;
-      } else if (visited.add(node + "|" + hookSeen)) {
-        for (String next : listOrEmpty(outgoing.get(node))) {
-          stack.push(Map.entry(next, hookSeen || hooks.contains(next)));
-        }
-      }
-    }
-    return orphanFound;
   }
 
   private void validateEdgeConditions(WorkflowDefinition workflowDefinition) {
@@ -879,8 +934,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         }
 
         if (USER_APPROVAL_TASK.equals(node.getSubType())) {
-          List<EdgeDefinition> decisionEdges =
-              validatePartialDecisionEdges(workflowDefinition, node, outgoingEdges);
+          validatePartialDecisions(workflowDefinition, node, outgoingEdges);
+          List<EdgeDefinition> decisionEdges = outgoingEdges;
           List<String> configuredTransitions = getConfiguredUserApprovalTransitions(node);
           if (!configuredTransitions.isEmpty()) {
             validateUserApprovalTransitions(
@@ -946,116 +1001,37 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       Set.of(ReviewOutcome.PARTIAL_APPROVE.transition(), ReviewOutcome.PARTIAL_REJECT.transition());
 
   /**
-   * An approval step that lets reviewers decide a change request change by change leaves through
-   * a {@code partialApprove} and a {@code partialReject} edge besides approve and reject; only such
-   * a step, in a workflow that holds changes, may have them. Returns the step's other edges.
+   * Partial decisions publish or drop a change request's changes one by one inside the approval
+   * step, so only a workflow in Enforce approval mode can allow them, and the step still leaves the
+   * workflow only through its approve and reject edges.
    */
-  private List<EdgeDefinition> validatePartialDecisionEdges(
+  private static void validatePartialDecisions(
       WorkflowDefinition workflowDefinition,
       WorkflowNodeDefinitionInterface node,
       List<EdgeDefinition> outgoingEdges) {
-    String workflowName = workflowDefinition.getName();
-    Set<String> partialConditions = new java.util.HashSet<>();
-    List<EdgeDefinition> decisionEdges = new ArrayList<>();
-    for (EdgeDefinition edge : outgoingEdges) {
-      String condition = edge.getCondition() == null ? null : edge.getCondition().trim();
-      requireExactPartialCondition(workflowName, node, condition);
-      if (condition != null && PARTIAL_DECISION_CONDITIONS.contains(condition)) {
-        partialConditions.add(condition);
-      } else {
-        decisionEdges.add(edge);
-      }
-    }
-    if (allowsPartialDecisions(node)) {
-      if (!GovernanceApprovalRegistry.hasPendingChangeHook(workflowDefinition)) {
-        throw BadRequestException.of(
-            String.format(
-                "Workflow '%s': User approval task '%s' allows partial decisions, which only a "
-                    + "workflow that holds changes for approval supports",
-                workflowName, node.getNodeDisplayName()));
-      }
-      if (!partialConditions.containsAll(PARTIAL_DECISION_CONDITIONS)) {
-        throw BadRequestException.of(
-            String.format(
-                "Workflow '%s': User approval task '%s' allows partial decisions and must have "
-                    + "outgoing sequence flows for both %s",
-                workflowName, node.getNodeDisplayName(), PARTIAL_DECISION_CONDITIONS));
-      }
-      outgoingEdges.stream()
-          .filter(edge -> PARTIAL_DECISION_CONDITIONS.contains(edge.getCondition().trim()))
-          .forEach(edge -> requireLoopBack(workflowDefinition, node, edge));
-    } else if (!partialConditions.isEmpty()) {
+    if (allowsPartialDecisions(node)
+        && !GovernanceApprovalRegistry.holdsChanges(workflowDefinition)) {
       throw BadRequestException.of(
           String.format(
-              "Workflow '%s': User approval task '%s' has %s sequence flows but does not allow "
-                  + "partial decisions",
-              workflowName, node.getNodeDisplayName(), partialConditions));
+              "Workflow '%s': User approval task '%s' allows partial decisions, which only a "
+                  + "workflow in Enforce approval mode supports",
+              workflowDefinition.getName(), node.getNodeDisplayName()));
     }
-    return decisionEdges;
-  }
-
-  private static final Map<String, String> PARTIAL_DECISION_ACTIONS =
-      Map.of(
-          ReviewOutcome.PARTIAL_APPROVE.transition(), "commit",
-          ReviewOutcome.PARTIAL_REJECT.transition(), "discard");
-
-  // A partial decision publishes or drops part of the request and returns to the same review: the
-  // edge leads to a resolve-pending-change step with the matching action, whose every outgoing
-  // edge goes back to the approval step. Anything else would end the run while the review task
-  // stays open.
-  @SuppressWarnings("unchecked")
-  private static void requireLoopBack(
-      WorkflowDefinition workflowDefinition,
-      WorkflowNodeDefinitionInterface approval,
-      EdgeDefinition edge) {
-    String condition = edge.getCondition().trim();
-    String action = PARTIAL_DECISION_ACTIONS.get(condition);
-    WorkflowNodeDefinitionInterface step =
-        listOrEmpty(workflowDefinition.getNodes()).stream()
-            .filter(candidate -> candidate.getName().equals(edge.getTo()))
-            .findFirst()
-            .orElse(null);
-    Map<String, Object> config =
-        step == null || step.getConfig() == null
-            ? Map.of()
-            : JsonUtils.readOrConvertValue(step.getConfig(), Map.class);
-    List<EdgeDefinition> exits =
-        listOrEmpty(workflowDefinition.getEdges()).stream()
-            .filter(exit -> exit.getFrom().equals(edge.getTo()))
-            .toList();
-    boolean loopsBack =
-        step != null
-            && NodeSubType.RESOLVE_PENDING_CHANGE_TASK.value().equals(step.getSubType())
-            && action.equals(String.valueOf(config.get("action")))
-            && !exits.isEmpty()
-            && exits.stream().allMatch(exit -> approval.getName().equals(exit.getTo()));
-    if (!loopsBack) {
-      throw BadRequestException.of(
-          String.format(
-              "Workflow '%s': the %s sequence flow of user approval task '%s' must lead to a "
-                  + "resolve pending change step with action '%s' that returns only to '%s'",
-              workflowDefinition.getName(),
-              condition,
-              approval.getNodeDisplayName(),
-              action,
-              approval.getName()));
-    }
-  }
-
-  // Transitions are matched exactly, so a partialApprove or partialReject edge spelled in another
-  // case would never be taken; it is refused instead of saved.
-  private static void requireExactPartialCondition(
-      String workflowName, WorkflowNodeDefinitionInterface node, String condition) {
-    PARTIAL_DECISION_CONDITIONS.stream()
-        .filter(expected -> expected.equalsIgnoreCase(condition) && !expected.equals(condition))
+    outgoingEdges.stream()
+        .map(EdgeDefinition::getCondition)
+        .filter(Objects::nonNull)
+        .map(String::trim)
+        .filter(
+            condition -> PARTIAL_DECISION_CONDITIONS.stream().anyMatch(condition::equalsIgnoreCase))
         .findFirst()
         .ifPresent(
-            expected -> {
+            condition -> {
               throw BadRequestException.of(
                   String.format(
-                      "Workflow '%s': User approval task '%s' has a '%s' sequence flow; the "
-                          + "condition is case-sensitive and must be '%s'",
-                      workflowName, node.getNodeDisplayName(), condition, expected));
+                      "Workflow '%s': User approval task '%s' has a '%s' sequence flow; partial "
+                          + "decisions are handled inside the approval step, which leaves only "
+                          + "through its approve and reject flows",
+                      workflowDefinition.getName(), node.getNodeDisplayName(), condition));
             });
   }
 

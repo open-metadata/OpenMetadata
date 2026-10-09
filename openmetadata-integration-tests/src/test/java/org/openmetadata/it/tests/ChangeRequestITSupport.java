@@ -77,7 +77,6 @@ final class ChangeRequestITSupport {
   static final String ORIGINAL_DN = "original display name";
   static final String INCLUDE_DESCRIPTION = "\"description\"";
   static final String EXCLUDE_STATUS = "\"entityStatus\"";
-  static final String COMMIT = "commit";
   // Object-form filter whose JsonLogic is always TRUE -> the entity is excluded, nothing is held.
   static final String FILTER_EXCLUDES_ALL =
       JsonUtils.pojoToJson(Map.of("glossary", "{\"==\":[1,1]}"));
@@ -90,28 +89,18 @@ final class ChangeRequestITSupport {
     return JsonUtils.pojoToJson(Map.of("glossary", logic));
   }
 
-  /** Deploys a hook workflow: Start -> Approve -> (approve) commit hook, (reject) discard hook. */
-  static void deployHookWorkflow(TestNamespace ns, String include, String exclude, String filter) {
-    deployWorkflow(ns, include, exclude, filter, COMMIT, true);
-  }
-
   /**
-   * @param approveAction action of the hook on the approve path (commit/hold)
-   * @param withHook when false, no resolvePendingChange hook is present (the change is never held)
+   * Deploys a workflow in Enforce approval mode: Start -> Approve -> (approve) ApprovedEnd,
+   * (reject) RejectedEnd. The approval step publishes the held edit on approve and drops it on
+   * reject.
    */
-  static void deployWorkflow(
-      TestNamespace ns,
-      String include,
-      String exclude,
-      String filter,
-      String approveAction,
-      boolean withHook) {
-    deployWorkflow(ns, Entity.GLOSSARY, include, exclude, filter, approveAction, withHook);
+  static void deployHookWorkflow(TestNamespace ns, String include, String exclude, String filter) {
+    deployWorkflow(ns, Entity.GLOSSARY, include, exclude, filter);
   }
 
   static void deployHookWorkflowFor(
       TestNamespace ns, String entityType, String include, String exclude, String filter) {
-    deployWorkflow(ns, entityType, include, exclude, filter, "commit", true);
+    deployWorkflow(ns, entityType, include, exclude, filter);
   }
 
   static String filterScopedTo(String entityType, String fqn) {
@@ -120,33 +109,10 @@ final class ChangeRequestITSupport {
   }
 
   static WorkflowDefinition deployWorkflow(
-      TestNamespace ns,
-      String entityType,
-      String include,
-      String exclude,
-      String filter,
-      String approveAction,
-      boolean withHook) {
+      TestNamespace ns, String entityType, String include, String exclude, String filter) {
     // Workflow name becomes the BPMN process id, which must be a valid XML NCName (no leading
     // digit).
     String name = "Wf" + ns.shortPrefix("pendinghook" + SEQUENCE.incrementAndGet());
-    String approveTarget = withHook ? "CommitChange" : "ApprovedEnd";
-    String rejectTarget = withHook ? "DiscardChange" : "RejectedEnd";
-    String hookNodes =
-        withHook
-            ? """
-              ,{"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "CommitChange",
-               "config": {"action": "%s"}, "inputNamespaceMap": {"relatedEntity": "global"}},
-              {"type": "automatedTask", "subType": "resolvePendingChangeTask", "name": "DiscardChange",
-               "config": {"action": "discard"}, "inputNamespaceMap": {"relatedEntity": "global"}}
-              """
-                .formatted(approveAction)
-            : "";
-    String hookEdges =
-        withHook
-            ? ",{\"from\": \"CommitChange\", \"to\": \"ApprovedEnd\"},"
-                + "{\"from\": \"DiscardChange\", \"to\": \"RejectedEnd\"}"
-            : "";
     String json =
         """
         {
@@ -157,6 +123,7 @@ final class ChangeRequestITSupport {
           "trigger": {
             "type": "eventBasedEntity",
             "config": {
+              "approvalMode": "Enforce",
               "entityTypes": ["%s"],
               "events": ["Updated"],
               "exclude": [%s],
@@ -181,25 +148,16 @@ final class ChangeRequestITSupport {
                            "formRef": "reject", "requiresComment": true}]},
              "inputNamespaceMap": {"relatedEntity": "global"}},
             {"type": "endEvent", "subType": "endEvent", "name": "ApprovedEnd"},
-            {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"}%s
+            {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"}
           ],
           "edges": [
             {"from": "Start", "to": "Approve"},
-            {"from": "Approve", "to": "%s", "condition": "approve"},
-            {"from": "Approve", "to": "%s", "condition": "reject"}%s
+            {"from": "Approve", "to": "ApprovedEnd", "condition": "approve"},
+            {"from": "Approve", "to": "RejectedEnd", "condition": "reject"}
           ]
         }
         """
-            .formatted(
-                name,
-                entityType,
-                exclude,
-                include,
-                filter,
-                hookNodes,
-                approveTarget,
-                rejectTarget,
-                hookEdges);
+            .formatted(name, entityType, exclude, include, filter);
     CreateWorkflowDefinition request = JsonUtils.readValue(json, CreateWorkflowDefinition.class);
     return ns.trackRoot(
         Entity.WORKFLOW_DEFINITION, SdkClients.adminClient().workflowDefinitions().create(request));

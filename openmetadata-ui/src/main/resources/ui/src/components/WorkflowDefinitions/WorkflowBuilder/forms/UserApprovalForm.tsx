@@ -44,7 +44,7 @@ interface UserApprovalFormProps {
   onSave: (nodeId: string, config: Record<string, unknown>) => void;
   onClose: () => void;
   onDelete?: (nodeId: string) => void;
-  hasPendingChangeHook?: boolean;
+  isEnforceMode?: boolean;
 }
 
 const DEFAULT_USER_APPROVAL_TRANSITIONS = [
@@ -118,7 +118,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   onSave,
   onClose,
   onDelete,
-  hasPendingChangeHook = false,
+  isEnforceMode = false,
 }) => {
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
@@ -180,7 +180,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
         // Keep the settings this form does not edit, so saving the step never drops them.
         ...(node?.data?.config as Record<string, unknown> | undefined),
         // Only a workflow that holds changes can decide them one by one.
-        allowPartialDecisions: hasPendingChangeHook && allowPartialDecisions,
+        allowPartialDecisions: isEnforceMode && allowPartialDecisions,
         approvalThreshold,
         rejectionThreshold,
         assignees: {
@@ -274,7 +274,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
           />
         </div>
 
-        {hasPendingChangeHook && (
+        {isEnforceMode && (
           <div className="tw:mb-6">
             <Toggle
               data-testid="user-approval-allow-partial-decisions"
