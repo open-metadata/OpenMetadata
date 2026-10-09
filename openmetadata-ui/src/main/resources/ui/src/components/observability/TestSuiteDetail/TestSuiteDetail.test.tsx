@@ -240,6 +240,7 @@ const baseHookReturn = {
   canAddMultipleUserOwners: true,
   canAddMultipleTeamOwner: false,
   fetchTestCases: jest.fn(),
+  handleTestCasesRemoved: jest.fn(),
   handleSortTestCase: jest.fn(),
   handleAddTestCaseSubmit: jest.fn(),
   onUpdateOwner: jest.fn(),

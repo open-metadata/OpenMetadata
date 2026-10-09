@@ -39,7 +39,7 @@ public interface SinkProvider {
    * @param entity the entity to write
    * @return the result of the write operation
    */
-  SinkResult write(SinkContext context, EntityInterface entity);
+  SinkResult write(SinkContext context, EntityInterface<?> entity);
 
   /**
    * Writes multiple entities to the sink destination in a batch operation.
@@ -51,7 +51,7 @@ public interface SinkProvider {
    * @param entities the list of entities to write
    * @return the result of the batch write operation
    */
-  SinkResult writeBatch(SinkContext context, List<EntityInterface> entities);
+  SinkResult writeBatch(SinkContext context, List<EntityInterface<?>> entities);
 
   /**
    * Releases any resources held by the sink provider.

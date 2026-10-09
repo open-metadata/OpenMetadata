@@ -45,11 +45,16 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // The merged fixes target named elements in replyAnnouncement,
     // DomainFilterQueryFilter, ActivityFeed, and SearchExport; the core
     // Popover/Dropdown migration also removed a positional locator.
-    // Two below that again: this branch deletes the S3 sample-data storage tests.
-    'om-playwright/no-positional-locator': 603,
+    // Removing the S3 sample-data storage tests and scoping
+    // ChangeSummaryBadge's button lookup remove three more positional locators,
+    // the profile-menu helper no longer hovers the first avatar, the Glossary
+    // language switch targets the core language selector by test id, and the
+    // core assignee/schema-field selectors in the task and incident specs
+    // remove three more.
+    'om-playwright/no-positional-locator': 595,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
-    'playwright/no-wait-for-selector': 18,
+    'playwright/no-wait-for-selector': 14,
   };
 
   assert.deepStrictEqual(

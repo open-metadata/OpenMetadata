@@ -88,7 +88,7 @@ public final class RdfWritePathScaleHarness {
     RdfRepository repository = new RdfRepository(config, storage, translator);
 
     long before = triples(endpoint);
-    List<EntityInterface> batch = new ArrayList<>();
+    List<EntityInterface<?>> batch = new ArrayList<>();
     long translateNanos = 0;
     long writeNanos = 0;
     long triplesWritten = 0;

@@ -52,7 +52,6 @@ from metadata.utils.filters import filter_by_chart
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -73,7 +72,6 @@ class RedashSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.dashboard_list = []  # We will populate this in `prepare`
-        self.tags = []  # To create the tags before yielding final entities
 
     @classmethod
     def create(
@@ -93,19 +91,13 @@ class RedashSource(DashboardServiceSource):
 
         self.dashboard_list = self.client.paginate(self.client.dashboards)
 
-        # Collecting all the tags
-        if self.source_config.includeTags:
-            for dashboard in self.dashboard_list:
-                self.tags.extend(dashboard.get("tags") or [])
-
     def yield_bulk_tags(self, *_, **__) -> Iterable[Either[OMetaTagAndClassification]]:
         """Fetch Dashboard Tags"""
-        yield from get_ometa_tag_and_classification(
-            tags=self.tags,
+        yield from self.yield_tag_definitions(
+            tags=(tag for dashboard in self.dashboard_list for tag in dashboard.get("tags") or []),
             classification_name=REDASH_TAG_CATEGORY,
             tag_description="Redash Tag",
             classification_description="Tags associated with redash entities",
-            include_tags=self.source_config.includeTags,
         )
 
     def get_dashboards_list(self) -> list[dict] | None:
@@ -170,11 +162,10 @@ class RedashSource(DashboardServiceSource):
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
-                tags=get_tag_labels(
-                    metadata=self.metadata,
+                tags=self.get_tag_labels(
+                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], str(dashboard_details["id"])),
                     tags=dashboard_details.get("tags"),
                     classification_name=REDASH_TAG_CATEGORY,
-                    include_tags=self.source_config.includeTags,
                 ),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )

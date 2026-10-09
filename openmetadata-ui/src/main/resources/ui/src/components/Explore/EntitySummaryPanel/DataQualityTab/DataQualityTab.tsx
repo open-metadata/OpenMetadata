@@ -876,10 +876,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <Tabs.List
           className={classNames(
             'tw:sticky tw:z-3 tw:gap-8 tw:bg-surface tw:px-4 tw:pt-2.5',
-            // Sits below the sticky entity title, which the column panel and the side drawer do not render.
+            // Sits below the 44px sticky entity title, which the column panel and the side drawer do not render.
             isColumnDetailPanel
               ? 'tw:top-0'
-              : 'tw:top-[54px] tw:[.drawer-summary-panel-container_&]:top-0'
+              : 'tw:top-11 tw:[.drawer-summary-panel-container_&]:top-0'
           )}
           size="sm"
           type="underline">

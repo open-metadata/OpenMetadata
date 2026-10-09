@@ -61,7 +61,7 @@ class ElasticSearchIndexSinkTest {
 
   @Test
   void writeDoesNotSendEmptyOverflowBatchAndCountsEntitySuccessOnce() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
 
@@ -110,8 +110,8 @@ class ElasticSearchIndexSinkTest {
 
   @Test
   void writeTracksBulkItemFailuresWithoutDoubleCountingStats() {
-    EntityInterface firstEntity = mock(EntityInterface.class);
-    EntityInterface secondEntity = mock(EntityInterface.class);
+    EntityInterface<?> firstEntity = mock(EntityInterface.class);
+    EntityInterface<?> secondEntity = mock(EntityInterface.class);
     when(firstEntity.getId()).thenReturn(UUID.randomUUID());
     when(secondEntity.getId()).thenReturn(UUID.randomUUID());
 
@@ -144,7 +144,7 @@ class ElasticSearchIndexSinkTest {
 
   @Test
   void writeTracksConversionFailuresWithoutDoubleCountingBulkResults() {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
     try (MockedConstruction<ElasticsearchAsyncClient> asyncConstruction =
@@ -173,7 +173,7 @@ class ElasticSearchIndexSinkTest {
 
   @Test
   void writeThrowsWhenInterruptedWhileWaitingForPendingBulkResponses() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
     try (MockedConstruction<ElasticsearchAsyncClient> asyncConstruction =

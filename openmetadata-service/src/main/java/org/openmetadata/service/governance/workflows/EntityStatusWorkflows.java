@@ -65,7 +65,7 @@ public final class EntityStatusWorkflows implements StageOwnership {
   }
 
   @Override
-  public Optional<String> owningStageOf(String entityType, EntityInterface entity) {
+  public Optional<String> owningStageOf(String entityType, EntityInterface<?> entity) {
     return ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY).stream()
         .filter(workflow -> appliesTo(workflow, entityType, entity))
         .map(WorkflowDefinition::getName)
@@ -74,7 +74,7 @@ public final class EntityStatusWorkflows implements StageOwnership {
   }
 
   /** Workflows change entities as, or impersonating, the governance bot. */
-  public static boolean isWorkflowChange(EntityInterface entity) {
+  public static boolean isWorkflowChange(EntityInterface<?> entity) {
     return GOVERNANCE_BOT.equals(entity.getUpdatedBy())
         || GOVERNANCE_BOT.equals(entity.getImpersonatedBy());
   }
@@ -95,12 +95,13 @@ public final class EntityStatusWorkflows implements StageOwnership {
         && triggerEntityTypes(trigger.getConfig()).contains(entityType);
   }
 
-  static boolean appliesTo(WorkflowDefinition workflow, String entityType, EntityInterface entity) {
+  static boolean appliesTo(
+      WorkflowDefinition workflow, String entityType, EntityInterface<?> entity) {
     return startsOn(workflow, entityType) && !excludedByTriggerFilter(workflow, entityType, entity);
   }
 
   private static boolean excludedByTriggerFilter(
-      WorkflowDefinition workflow, String entityType, EntityInterface entity) {
+      WorkflowDefinition workflow, String entityType, EntityInterface<?> entity) {
     Object filter =
         ((EventBasedEntityTriggerDefinition) workflow.getTrigger()).getConfig().getFilter();
     return TriggerEntityFilter.excludes(

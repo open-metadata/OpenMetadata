@@ -33,6 +33,7 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
@@ -92,6 +93,10 @@ public class Migration extends MigrationProcessImpl {
         () -> removeCreatedSentinel(handle, POSTGRES));
     // Alerts the previous release stopped sending, because it could not build one of their
     // destinations, send again from this release; they start from the upgrade, not their backlog.
-    skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO);
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        AlertBacklogMigration.STEP_NAME,
+        () -> skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO));
   }
 }

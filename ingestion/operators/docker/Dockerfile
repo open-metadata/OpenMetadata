@@ -207,8 +207,8 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # are not reachable at runtime, but scanners flag the installed version anyway.
 # trixie-security carries the fixed 6.12.105-1 (DSA-6466-1), so this clears the
 # finding on the next build rather than being a speculative no-op. Purging it
-# instead would cascade through libc6-dev to build-essential and break runtime
-# pip builds of C extensions.
+# instead would cascade through libc6-dev, which the -dev packages installed at
+# the top of this file still depend on.
 # The package sets are computed from dpkg rather than hand-listed. One source
 # package produces many binaries -- here util-linux, bsdutils, login, mount,
 # liblastlog2-2, libblkid1, libmount1, libsmartcols1 and libuuid1 -- and scanners
@@ -228,6 +228,23 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # key never changes, so an upgrade placed there freezes its Debian index with it
 # and the image keeps shipping whatever was current when the layer was first
 # built. Below the COPY and pip layers, the index is re-read on every build.
+#
+# The C/C++ toolchain is build-only and goes in this layer, the first point after
+# the last pip install that compiles: psycopg2 and mysqlclient above, kerberos and
+# mysql-connector-python through the extras. Scanners attribute src:gcc-NN CVEs to
+# every installed binary of that source, and most of those binaries are the
+# compilers and their sanitizer libraries. Nothing compiles at runtime: the DB2
+# connector switches clidriver versions by swapping the driver files, not by
+# rebuilding ibm_db (see ingestion/src/metadata/ingestion/source/database/db2/utils.py).
+# Only build-essential and gcc are purged by name. autoremove takes what they pulled
+# in, so the gcc major version is never hand-listed and nothing another package
+# still needs is removed. What stays: libstdc++6, libgcc-s1 and gcc-NN-base, which
+# libc6, apt, msodbcsql18, the JRE and most native wheels need; libgomp1, which
+# backs numba's OpenMP threading layer in images built on this one; and xz-utils
+# and bzip2, general-purpose tools that arrived with dpkg-dev. The checks after
+# autoremove fail the build if any other src:gcc-NN binary survives or a compiler
+# is still on PATH. The surviving runtime libraries are then upgraded, so a Debian
+# fix for them ships on the next build.
 USER root
 RUN set -eu; \
     ul="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="util-linux"{print $2}')"; \
@@ -240,10 +257,21 @@ RUN set -eu; \
     cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2)$/ {print $2}')"; \
     apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl $cve_pkgs; \
     apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
-    apt-mark manual libmariadb3 mariadb-common; \
+    apt-get -qq purge -y build-essential gcc; \
+    apt-mark manual libmariadb3 mariadb-common libgomp1 xz-utils bzip2; \
     apt-get -qq autoremove -y --purge; \
+    cc_left="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '($1=="gcc-defaults" || $1 ~ /^gcc-[0-9]+$/) && $2 !~ /^(gcc-[0-9]+-base|libgcc-s1|libstdc\+\+6|libgomp1)$/ {print $2}')"; \
+    [ -z "$cc_left" ] || { echo "compiler packages survived the purge: $cc_left" >&2; exit 1; }; \
+    for cc in cc c++ gcc g++ cpp; do if command -v "$cc" >/dev/null; then echo "$cc is still on PATH" >&2; exit 1; fi; done; \
+    gcc_rt="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^gcc-[0-9]+$/ {print $2}')"; \
+    apt-get -qq install -y --only-upgrade $gcc_rt; \
     rm -rf /var/lib/apt/lists/*
 USER openmetadata
+
+# Fail the build if the purge above took a runtime library from an extension that was
+# compiled earlier, or from the DB2 driver on amd64. Modules that a slimmer
+# INGESTION_DEPENDENCY does not install are skipped.
+RUN python -c "import importlib, importlib.util as u; [importlib.import_module(m) for m in ('MySQLdb', 'psycopg2', 'kerberos', '_mysql_connector', 'ibm_db') if u.find_spec(m)]"
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
