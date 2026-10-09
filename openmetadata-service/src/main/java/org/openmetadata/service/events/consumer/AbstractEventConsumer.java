@@ -232,7 +232,7 @@ public abstract class AbstractEventConsumer implements Job {
    *     until 2.3, so that a job a previous release stored under a consumer's class, which still
    *     loads, never names a class that is not a job: one such row stops the whole scheduler.
    */
-  @Deprecated(since = "2.2", forRemoval = true)
+  @Deprecated(since = "2.1", forRemoval = true)
   @Override
   public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
     new ConsumerJob(dependencies).execute(jobExecutionContext);

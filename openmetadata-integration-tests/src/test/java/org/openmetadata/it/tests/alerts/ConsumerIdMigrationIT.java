@@ -16,7 +16,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.consumer.Consumers;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.utils.DataMigrationStep;
-import org.openmetadata.service.migration.utils.v220.ConsumerIdMigration;
+import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 
 /**
  * The upgrade to the release where an alert names its consumer by id. An alert stored under its
@@ -43,7 +43,7 @@ class ConsumerIdMigrationIT {
 
   /**
    * The suite's bootstrap ran the real migration workflow, so the step already recorded its marker,
-   * and a later re-run of 2.2.0 does not run it again.
+   * and a later re-run of 2.1.0 does not run it again.
    */
   @Test
   void theUpgradeRecordedTheStepSoAReRunLeavesTheAlertsAlone() {
@@ -51,7 +51,7 @@ class ConsumerIdMigrationIT {
     AtomicInteger runs = new AtomicInteger();
 
     DataMigrationStep.runOnce(
-        migrationDAO, "2.2.0", ConsumerIdMigration.STEP_NAME, runs::incrementAndGet);
+        migrationDAO, "2.1.0", ConsumerIdMigration.STEP_NAME, runs::incrementAndGet);
 
     assertEquals(0, runs.get(), "the upgrade already stored the ids, a re-run must not");
   }
