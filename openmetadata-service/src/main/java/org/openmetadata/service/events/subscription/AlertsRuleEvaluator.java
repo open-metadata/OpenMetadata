@@ -53,8 +53,8 @@ import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -468,7 +468,7 @@ public class AlertsRuleEvaluator {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
-    Set<String> fields = FormatterUtil.getUpdatedField(changeEvent);
+    Set<String> fields = ChangeEvents.getUpdatedField(changeEvent);
     for (String name : fieldChangeUpdate) {
       if (fields.contains(name)) {
         return true;

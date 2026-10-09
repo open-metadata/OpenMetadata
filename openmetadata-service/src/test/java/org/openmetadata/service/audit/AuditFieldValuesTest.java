@@ -1,4 +1,4 @@
-package org.openmetadata.service.formatter.field;
+package org.openmetadata.service.audit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -9,38 +9,38 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 
-class DefaultFieldFormatterTest {
+class AuditFieldValuesTest {
 
   @Test
   void getFieldValueParsesSupportedJsonShapes() {
-    assertEquals("", DefaultFieldFormatter.getFieldValue(null));
-    assertEquals("", DefaultFieldFormatter.getFieldValue(""));
+    assertEquals("", AuditFieldValues.getFieldValue(null));
+    assertEquals("", AuditFieldValues.getFieldValue(""));
     assertEquals(
         "PII.Sensitive",
-        DefaultFieldFormatter.getFieldValue(
+        AuditFieldValues.getFieldValue(
             JsonUtils.pojoToJson(List.of(new TagLabel().withTagFQN("PII.Sensitive")))));
     assertEquals(
         "Data Steward",
-        DefaultFieldFormatter.getFieldValue(
+        AuditFieldValues.getFieldValue(
             JsonUtils.pojoToJson(List.of(new EntityReference().withDisplayName("Data Steward")))));
     assertEquals(
         "Glossary.Term",
-        DefaultFieldFormatter.getFieldValue(
+        AuditFieldValues.getFieldValue(
             JsonUtils.pojoToJson(List.of(Map.of("name", "Glossary.Term")))));
     assertEquals(
         "PRIMARY_KEY",
-        DefaultFieldFormatter.getFieldValue(
+        AuditFieldValues.getFieldValue(
             JsonUtils.pojoToJson(List.of(Map.of("constraintType", "PRIMARY_KEY")))));
     assertEquals(
         "first, second",
-        DefaultFieldFormatter.getFieldValue(JsonUtils.pojoToJson(List.of(" first ", "second"))));
+        AuditFieldValues.getFieldValue(JsonUtils.pojoToJson(List.of(" first ", "second"))));
     assertEquals(
         "Display Name",
-        DefaultFieldFormatter.getFieldValue(
+        AuditFieldValues.getFieldValue(
             JsonUtils.pojoToJson(Map.of("displayName", "Display Name"))));
     assertEquals(
         "entity-name",
-        DefaultFieldFormatter.getFieldValue(JsonUtils.pojoToJson(Map.of("name", "entity-name"))));
-    assertEquals("plain text", DefaultFieldFormatter.getFieldValue("plain text"));
+        AuditFieldValues.getFieldValue(JsonUtils.pojoToJson(Map.of("name", "entity-name"))));
+    assertEquals("plain text", AuditFieldValues.getFieldValue("plain text"));
   }
 }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.formatter.util;
+package org.openmetadata.service.events;
 
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.service.Entity.DATA_CONTRACT_RESULT;
@@ -51,7 +51,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class FormatterUtil {
+public class ChangeEvents {
 
   ////// used in alerts rule evaluator///
   public static Set<String> getUpdatedField(ChangeEvent event) {

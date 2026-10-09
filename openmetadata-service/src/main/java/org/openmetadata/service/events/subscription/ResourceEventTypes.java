@@ -67,7 +67,7 @@ public final class ResourceEventTypes {
   /**
    * Values no resource can advertise: {@code ENTITY_NO_CHANGE} is a sentinel that ChangeEventHandler
    * never inserts, {@code USER_LOGIN}/{@code USER_LOGOUT} are written to the audit log only, and
-   * {@code ENTITY_FIELDS_CHANGED} only ever reaches the X-OpenMetadata-Change header (FormatterUtil
+   * {@code ENTITY_FIELDS_CHANGED} only ever reaches the X-OpenMetadata-Change header (ChangeEvents
    * returns the pre-built ChangeEvent, whose eventType is entityUpdated, before the header is read).
    * Values that lost their emitter were deleted from {@link EventType} outright (#29039).
    */

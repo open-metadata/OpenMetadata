@@ -30,7 +30,7 @@ import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelp
 import org.openmetadata.service.util.email.EmailUtil;
 
 /**
- * Handlebars helper that replicates the URL building logic from MessageDecorator.buildEntityUrl()
+ * Handlebars helper that replicates the URL building logic from EntityUrls.buildEntityUrl()
  * This ensures consistent URL generation across legacy and Handlebars-based notification systems.
  *
  * <p>Usage in templates:
@@ -133,7 +133,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
   }
 
   /**
-   * Builds the entity URL following the same logic as MessageDecorator.buildEntityUrl()
+   * Builds the entity URL following the same logic as EntityUrls.buildEntityUrl()
    * Handles special cases for different entity types.
    */
   private String buildEntityUrl(String entityType, String fqn, Map<String, Object> entityMap) {
@@ -243,7 +243,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
 
   /**
    * Builds URL for ingestion pipeline entities
-   * Replicates IngestionPipelineFormatter.getIngestionPipelineUrl()
+   * Replicates EntityUrls.getIngestionPipelineUrl()
    */
   @SuppressWarnings("unchecked")
   private String buildIngestionPipelineUrl(String baseUrl, Map<String, Object> entityMap) {
@@ -293,7 +293,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
   /**
    * Builds URL for data contract entities
    * Redirects to the table's contract tab
-   * Replicates IngestionPipelineFormatter.getDataContractUrl()
+   * Replicates EntityUrls.getDataContractUrl()
    */
   @SuppressWarnings("unchecked")
   private String buildDataContractUrl(String baseUrl, Map<String, Object> entityMap) {

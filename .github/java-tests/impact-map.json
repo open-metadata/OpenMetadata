@@ -518,7 +518,6 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/events/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/alerting/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/notifications/**",
-        "openmetadata-service/src/main/java/org/openmetadata/service/formatter/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/events/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/changeEvent/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EventSubscription*",

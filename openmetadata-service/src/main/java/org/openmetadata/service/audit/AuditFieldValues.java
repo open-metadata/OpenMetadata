@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.formatter.field;
+package org.openmetadata.service.audit;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
@@ -28,8 +28,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /** How a changed field's value reads in the audit log. */
-public final class DefaultFieldFormatter {
-  private DefaultFieldFormatter() {}
+public final class AuditFieldValues {
+  private AuditFieldValues() {}
 
   public static String getFieldValue(Object fieldValue) {
     if (nullOrEmpty(fieldValue)) {

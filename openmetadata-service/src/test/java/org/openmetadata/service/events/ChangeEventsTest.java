@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.formatter.util;
+package org.openmetadata.service.events;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -41,7 +41,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.RestUtil;
 
-class FormatterUtilTest {
+class ChangeEventsTest {
 
   @Test
   void getUpdatedFieldNormalizesNestedFieldsAndExtensions() {
@@ -52,7 +52,7 @@ class FormatterUtilTest {
             .withFieldsDeleted(List.of(new FieldChange().withName("owners")));
 
     Set<String> updatedFields =
-        FormatterUtil.getUpdatedField(new ChangeEvent().withChangeDescription(description));
+        ChangeEvents.getUpdatedField(new ChangeEvent().withChangeDescription(description));
 
     assertEquals(Set.of("description", Entity.FIELD_EXTENSION, "owners"), updatedFields);
   }
@@ -68,7 +68,7 @@ class FormatterUtilTest {
     when(responseContext.getEntity()).thenReturn(changeEvent);
 
     Optional<ChangeEvent> result =
-        FormatterUtil.getChangeEventFromResponseContext(responseContext, "alice");
+        ChangeEvents.getChangeEventFromResponseContext(responseContext, "alice");
 
     assertTrue(result.isPresent());
     assertSame(changeEvent, result.get());
@@ -99,7 +99,7 @@ class FormatterUtilTest {
     when(entityResponse.getEntity()).thenReturn(entity);
 
     Optional<ChangeEvent> entityEvent =
-        FormatterUtil.getChangeEventFromResponseContext(entityResponse, "alice");
+        ChangeEvents.getChangeEventFromResponseContext(entityResponse, "alice");
     assertTrue(entityEvent.isPresent());
     assertEquals(Entity.TABLE, entityEvent.get().getEntityType());
     assertEquals("service.sales.orders", entityEvent.get().getEntityFullyQualifiedName());
@@ -118,7 +118,7 @@ class FormatterUtilTest {
                 .withDataContractFQN("service.sales.orders.contract")
                 .withContractExecutionStatus(ContractExecutionStatus.Running));
 
-    assertTrue(FormatterUtil.getChangeEventFromResponseContext(runningResponse, "alice").isEmpty());
+    assertTrue(ChangeEvents.getChangeEventFromResponseContext(runningResponse, "alice").isEmpty());
 
     UUID tableId = UUID.randomUUID();
     String contractFqn = "service.sales.orders.contract";
@@ -162,7 +162,7 @@ class FormatterUtilTest {
           .thenReturn(fullEntityReference);
 
       ChangeEvent changeEvent =
-          FormatterUtil.getDataContractResultEvent(result, "alice", EventType.ENTITY_UPDATED);
+          ChangeEvents.getDataContractResultEvent(result, "alice", EventType.ENTITY_UPDATED);
 
       assertEquals(contractFqn, changeEvent.getEntityFullyQualifiedName());
       assertEquals("alice", changeEvent.getUserName());

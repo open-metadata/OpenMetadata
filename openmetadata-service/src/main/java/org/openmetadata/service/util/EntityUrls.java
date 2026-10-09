@@ -11,25 +11,93 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.formatter.entity;
+package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.formatter.decorators.MessageDecorator;
 
-/** Where a message links for an ingestion pipeline or a data contract. */
-public final class IngestionPipelineFormatter {
-  private IngestionPipelineFormatter() {}
+/**
+ * Where the UI shows an entity, for a message that links to it. The caller's {@link
+ * LinkFormatter} writes the link in its own markup.
+ */
+@Slf4j
+public final class EntityUrls {
+  private EntityUrls() {}
+
+  /** Writes a link to the UI page at {@code prefix/fqn}, followed by {@code additionalInput}. */
+  @FunctionalInterface
+  public interface LinkFormatter {
+    String getEntityUrl(String prefix, String fqn, String additionalInput);
+  }
+
+  public static String buildEntityUrl(
+      String entityType, EntityInterface<?> entityInterface, LinkFormatter formatter) {
+    String fqn = resolveFullyQualifiedName(entityType, entityInterface);
+    String entityUrl = "";
+    switch (entityType) {
+      case Entity.TEST_CASE:
+        if (entityInterface instanceof TestCase testCase) {
+          entityUrl =
+              formatter.getEntityUrl(
+                  "test-case", testCase.getFullyQualifiedName(), "test-case-results");
+        }
+        break;
+
+      case Entity.GLOSSARY_TERM:
+        entityUrl = formatter.getEntityUrl(Entity.GLOSSARY, fqn, "");
+        break;
+
+      case Entity.TAG:
+        entityUrl = formatter.getEntityUrl("tags", fqn.split("\\.")[0], "");
+        break;
+
+      case Entity.USER:
+        entityUrl = formatter.getEntityUrl("users", fqn, "");
+        break;
+
+      case Entity.TEAM:
+        entityUrl = formatter.getEntityUrl("settings/members/teams", fqn, "");
+        break;
+
+      case Entity.INGESTION_PIPELINE:
+        entityUrl = getIngestionPipelineUrl(formatter, entityType, entityInterface);
+        break;
+
+      case Entity.DATA_CONTRACT:
+        entityUrl = getDataContractUrl(formatter, entityType, entityInterface);
+        break;
+
+      default:
+        entityUrl = formatter.getEntityUrl(entityType, fqn, "");
+    }
+
+    LOG.debug("buildEntityUrl for Alert: {}", entityUrl);
+    return entityUrl;
+  }
+
+  // Helper function to resolve FQN if null or empty
+  private static String resolveFullyQualifiedName(
+      String entityType, EntityInterface<?> entityInterface) {
+    String fqn = entityInterface.getFullyQualifiedName();
+    if (nullOrEmpty(fqn)) {
+      EntityInterface<?> result =
+          Entity.getEntity(entityType, entityInterface.getId(), "id", Include.NON_DELETED);
+      fqn = result.getFullyQualifiedName();
+    }
+    return fqn;
+  }
 
   public static String getIngestionPipelineUrl(
-      MessageDecorator<?> formatter, String entityType, EntityInterface<?> entityInterface) {
+      LinkFormatter formatter, String entityType, EntityInterface<?> entityInterface) {
     if (entityType.equals(Entity.INGESTION_PIPELINE)) {
       // Tags need to be redirected to Classification Page
       IngestionPipeline ingestionPipeline = (IngestionPipeline) entityInterface;
@@ -71,7 +139,7 @@ public final class IngestionPipelineFormatter {
 
   // Provide the URL of the table the Data Contract belongs to
   public static String getDataContractUrl(
-      MessageDecorator<?> formatter, String entityType, EntityInterface<?> entityInterface) {
+      LinkFormatter formatter, String entityType, EntityInterface<?> entityInterface) {
     if (entityType.equals(Entity.DATA_CONTRACT)) {
       DataContract contract = (DataContract) entityInterface;
       EntityReference tableRef = contract.getEntity();

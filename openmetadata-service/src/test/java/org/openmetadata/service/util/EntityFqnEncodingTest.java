@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.formatter.decorators;
+package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.service.util.EntityUtil.encodeEntityFqnSafe;
@@ -21,11 +21,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 /**
- * Test class for SlackMessageDecorator, focusing on the URL encoding fix for Slack events.
+ * Tests the FQN encoding the entity links in messages use, focusing on the URL encoding fix for
+ * Slack events.
  * This test validates that the encodeEntityFqnSafe method properly handles URL encoding
  * to prevent issues with email security systems like Outlook SafeLinks.
  */
-public class SlackMessageDecoratorTest {
+public class EntityFqnEncodingTest {
 
   @Test
   void testEncodeEntityFqnSafe_ComplexFqnFromDatabricks() {
