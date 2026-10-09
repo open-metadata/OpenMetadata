@@ -102,6 +102,7 @@ const IMPORT_TEAM = 'import-team';
 const IMPORT_USER = 'import-user';
 // View-type discriminants reused across the route parser and the header maps;
 // consts (not repeated literals) keep no-duplicate-string happy.
+const SECTION = 'section';
 const TEAM_DETAIL = 'team-detail';
 const TEAMS_ADD = 'teams-add';
 const TEAMS_IMPORT = 'teams-import';
@@ -153,6 +154,17 @@ function parseTeamsSubPath(parts: string[]): MembersView {
   return { type: TEAM_DETAIL, fqn, name: fqn };
 }
 
+// `section/<key>[/<subPath>]` — a contributed section owns everything below its
+// key, so the remainder is handed through untouched. Extracted (like
+// parseTeamsSubPath) to keep hashSubPathToView within the complexity budget.
+function parseSectionSubPath(parts: string[]): MembersView {
+  const [, key, ...rest] = parts;
+
+  return key
+    ? { type: SECTION, key, subPath: rest.join('/') || undefined }
+    : { type: 'landing' };
+}
+
 export function hashSubPathToView(subPath: string): MembersView {
   if (!subPath) {
     return { type: 'landing' };
@@ -173,6 +185,8 @@ export function hashSubPathToView(subPath: string): MembersView {
         : { type: 'admins' };
     case ONLINE_USERS:
       return { type: 'online-users' };
+    case SECTION:
+      return parseSectionSubPath(parts);
     default:
       return { type: 'landing' };
   }
@@ -210,6 +224,11 @@ export function viewToSubPath(view: MembersView): string | undefined {
   }
   if (view.type === USER_CREATE) {
     return view.isAdmin ? `${ADMINS}/${CREATE}` : `${USERS}/${CREATE}`;
+  }
+  if (view.type === SECTION) {
+    return view.subPath
+      ? `${SECTION}/${view.key}/${view.subPath}`
+      : `${SECTION}/${view.key}`;
   }
 
   // teams, team-detail, teams-add, teams-import
@@ -288,8 +307,10 @@ export const getCsvFileSizeLabel = (bytes = 0): string => {
 // Per-view icon map for the members header (pure data; keeps the header effect's
 // complexity within budget).
 export const getMembersIcons = (
-  createUserIsAdmin: boolean
+  createUserIsAdmin: boolean,
+  sectionIcon?: FC<{ className?: string }>
 ): Record<MembersView['type'], FC<{ className?: string }>> => ({
+  section: sectionIcon ?? Users01,
   landing: Users01,
   teams: Users01,
   [TEAM_DETAIL]: Users01,
@@ -303,8 +324,10 @@ export const getMembersIcons = (
 
 export const getMembersDescriptions = (
   t: (key: string) => string,
-  createUserIsAdmin: boolean
+  createUserIsAdmin: boolean,
+  sectionDescription?: string
 ): Record<MembersView['type'], string> => ({
+  section: sectionDescription ?? '',
   landing: t('message.team-member-management-description'),
   teams: t('message.members-teams-description'),
   [TEAM_DETAIL]: t('message.members-teams-description'),
@@ -339,7 +362,14 @@ export const isTeamsOrDetailView = (view: MembersView): boolean =>
 export const buildMembersHeaderMaps = (
   view: MembersView,
   t: (key: string, opts?: Record<string, unknown>) => string,
-  resolvedTeamName: string
+  resolvedTeamName: string,
+  // A contributed section supplies its own label/description/icon (there is no
+  // settings-menu entry to borrow them from), so the panel passes them in.
+  section?: {
+    title: string;
+    description?: string;
+    icon?: FC<{ className?: string }>;
+  }
 ) => {
   const membersLabel = t('label.member-plural');
   const organizationLabel = t('label.organization');
@@ -392,6 +422,7 @@ export const buildMembersHeaderMaps = (
       { id: 'current', label: createUserLabel },
     ],
     'online-users': [...base, { id: 'current', label: onlineUsersLabel }],
+    section: [...base, { id: 'current', label: section?.title ?? '' }],
   };
 
   const titleByType: Record<MembersView['type'], string> = {
@@ -404,12 +435,17 @@ export const buildMembersHeaderMaps = (
     admins: adminsLabel,
     'user-create': createUserLabel,
     'online-users': onlineUsersLabel,
+    section: section?.title ?? '',
   };
 
   return {
     crumbsByType,
     titleByType,
-    iconByType: getMembersIcons(createUserIsAdmin),
-    descByType: getMembersDescriptions(t, createUserIsAdmin),
+    iconByType: getMembersIcons(createUserIsAdmin, section?.icon),
+    descByType: getMembersDescriptions(
+      t,
+      createUserIsAdmin,
+      section?.description
+    ),
   };
 };

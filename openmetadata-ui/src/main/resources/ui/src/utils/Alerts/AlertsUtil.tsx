@@ -15,8 +15,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Divider, Skeleton } from '@openmetadata/ui-core-components';
-import { AlertProps, Checkbox, Col, Select, Tooltip } from 'antd';
+import { Divider, Grid, Skeleton } from '@openmetadata/ui-core-components';
+import { AlertProps, Checkbox, Select, Tooltip } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import { isEmpty, uniq, uniqBy } from 'lodash';
@@ -502,7 +502,7 @@ export const getFieldByArgumentType = (
 
   return (
     <>
-      <Col key={argument} span={12}>
+      <Grid.Item className="layout-column" key={argument} span={12}>
         <Form.Item
           name={[fieldName, 'arguments', index, 'input']}
           rules={[
@@ -513,7 +513,7 @@ export const getFieldByArgumentType = (
           ]}>
           {field}
         </Form.Item>
-      </Col>
+      </Grid.Item>
       <Form.Item
         hidden
         dependencies={[fieldName, 'arguments', index, 'input']}

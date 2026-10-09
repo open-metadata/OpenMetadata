@@ -12,11 +12,12 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
+import { Box } from '@openmetadata/ui-core-components';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse, Space } from 'antd';
+import { Button, Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
@@ -365,7 +366,12 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
   const fieldElement = (
     <Fragment>
       {title && title.trim() !== '' && (
-        <Space className="w-full justify-between header-title-wrapper">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-between header-title-wrapper"
+          gap={2}
+          itemClassName="layout-space-item">
           {/* eslint-disable-next-line jsx-a11y/label-has-for -- field-group title caption, not a form control */}
           <label
             className={classNames('control-label', {
@@ -395,7 +401,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
               }}
             />
           )}
-        </Space>
+        </Box>
       )}
 
       {AdditionalField &&

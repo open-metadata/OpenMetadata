@@ -18,7 +18,7 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { Alert, Button } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AlertIcon } from '../../../assets/svg/alert.svg';
 import { ReactComponent as ErrorExclamationIcon } from '../../../assets/svg/error-exclamation.svg';
@@ -39,6 +39,10 @@ function InlineAlert({
   const { t } = useTranslation();
   const { inlineAlertDetails, setInlineAlertDetails } = useApplicationStore();
   const [showMore, setShowMore] = useState(false);
+  const mounted = useRef(false);
+  // Latest alert this form showed; a later failed submit replaces the first one.
+  const ownedAlert = useRef(inlineAlertDetails);
+  ownedAlert.current = inlineAlertDetails ?? ownedAlert.current;
 
   const { alertContainerClass, alertIconClass } = useMemo(
     () => ({
@@ -84,13 +88,24 @@ function InlineAlert({
   }, [type, alertIconClass]);
 
   useEffect(() => {
-    // Clear the inline alert details when the component is unmounted
+    mounted.current = true;
+
     return () => {
-      if (!isUndefined(inlineAlertDetails)) {
-        setInlineAlertDetails(undefined);
-      }
+      mounted.current = false;
+      // Strict Mode replays effect cleanup before remounting. Defer the clear
+      // so that replay keeps the error visible, and preserve a newer form's alert.
+      queueMicrotask(() => {
+        const alert = ownedAlert.current;
+        if (
+          !mounted.current &&
+          !isUndefined(alert) &&
+          useApplicationStore.getState().inlineAlertDetails === alert
+        ) {
+          setInlineAlertDetails(undefined);
+        }
+      });
     };
-  }, []);
+  }, [setInlineAlertDetails]);
 
   return (
     <Alert

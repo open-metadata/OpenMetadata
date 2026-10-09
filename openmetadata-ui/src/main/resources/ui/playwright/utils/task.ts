@@ -122,10 +122,12 @@ export const createDescriptionTask = async (
     );
 
     await expect(
-      page.locator('[data-testid="select-assignee"] input')
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
-    const assigneeField = page.locator('[data-testid="select-assignee"] input');
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     await assigneeField.fill(value.assignee);
 
@@ -163,11 +165,13 @@ export const createTagTask = async (
     );
 
     await expect(
-      page.locator('[data-testid="select-assignee"] input')
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
     // select assignee
-    const assigneeField = page.locator('[data-testid="select-assignee"] input');
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     await assigneeField.fill(value.assignee);
 

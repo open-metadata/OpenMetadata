@@ -50,6 +50,7 @@ const ViewToggle: FC<ViewToggleProps> = ({
   return (
     <ButtonGroup
       disallowEmptySelection
+      className="tw:shrink-0"
       selectedKeys={new Set([value])}
       size="sm"
       onSelectionChange={(keys) => {
@@ -64,7 +65,7 @@ const ViewToggle: FC<ViewToggleProps> = ({
         return (
           <ButtonGroupItem
             aria-label={mode}
-            className={isActive ? '!tw:bg-brand-primary' : ''}
+            className={isActive ? 'tw:bg-brand-primary!' : ''}
             data-testid={`${mode}-view-toggle`}
             iconLeading={getIconElement(mode, isActive)}
             id={mode}

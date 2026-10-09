@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
-import { Col, Input, Modal, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -27,6 +28,7 @@ import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getPolicies, getRoles } from '../../../rest/rolesAPIV1';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   highlightSearchText,
@@ -157,8 +159,8 @@ const AddAttributeModal: FC<Props> = ({
         <Loader />
       ) : (
         <>
-          <Row className="ant-search-box-row">
-            <Col span={24}>
+          <Grid className="layout-row layout-grid ant-search-box-row">
+            <Grid.Item className="layout-column" span={24}>
               <Input
                 data-testid="search-input"
                 placeholder={t('label.search-entity', {
@@ -167,8 +169,8 @@ const AddAttributeModal: FC<Props> = ({
                 prefix={<SearchOutlined style={{ color: '#37352F4D' }} />}
                 onChange={(e) => handleSearch(e.target.value)}
               />
-            </Col>
-          </Row>
+            </Grid.Item>
+          </Grid>
           {isEmpty(searchedData) ? (
             <ErrorPlaceHolder
               className="mt-0-important p-y-lg"
@@ -176,33 +178,33 @@ const AddAttributeModal: FC<Props> = ({
             />
           ) : (
             searchedData.map((option) => (
-              <Row
-                className={classNames({
+              <Grid
+                className={`layout-row layout-grid ${classNames({
                   selected: selectedValues.includes(option.id),
-                })}
+                })}`}
                 data-testid="policy-row"
-                gutter={[16, 16]}
                 key={option.id}
+                style={{ ...getLayoutGutter(16, 16) }}
                 onClick={() => handleValueSelect(option.id)}>
-                <Col span={6}>
+                <Grid.Item className="layout-column" span={6}>
                   {renderHighlightedText(
                     highlightSearchText(getEntityName(option), searchTerm)
                   )}
-                </Col>
-                <Col span={16}>
+                </Grid.Item>
+                <Grid.Item className="layout-column" span={16}>
                   <RichTextEditorPreviewerV1
                     markdown={highlightSearchText(
                       option.description ?? '',
                       searchTerm
                     )}
                   />
-                </Col>
-                <Col span={2}>
+                </Grid.Item>
+                <Grid.Item className="layout-column" span={2}>
                   {selectedValues.includes(option.id) && (
                     <CheckOutlined className="text-primary" />
                   )}
-                </Col>
-              </Row>
+                </Grid.Item>
+              </Grid>
             ))
           )}
         </>

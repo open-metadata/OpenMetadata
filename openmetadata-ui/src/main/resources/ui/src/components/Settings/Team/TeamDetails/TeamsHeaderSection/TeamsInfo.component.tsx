@@ -15,8 +15,13 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Space, Tooltip } from 'antd';
+import {
+  Box,
+  Divider,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -175,7 +180,11 @@ const TeamsInfo = ({
 
   const emailRender = useMemo(
     () => (
-      <Space align="start" className="d-flex flex-col gap-2">
+      <Box
+        align="start"
+        className="layout-space layout-space-horizontal d-flex flex-col"
+        gap={2}
+        itemClassName="layout-space-item">
         <div className="d-flex gap-1">
           <Typography className="text-primary" weight="medium">{`${t(
             'label.email'
@@ -213,7 +222,12 @@ const TeamsInfo = ({
             //  TeamsDetailV1 collapsible panel
             onClick={(e) => e.stopPropagation()}
             onFinish={onEmailSave}>
-            <Space align="baseline">
+            <Box
+              inline
+              align="baseline"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <Form.Item
                 className="m-b-0"
                 name="email"
@@ -234,7 +248,12 @@ const TeamsInfo = ({
                   })}
                 />
               </Form.Item>
-              <Space size={4}>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={1}
+                itemClassName="layout-space-item">
                 <Button
                   className="h-8 p-x-xss"
                   data-testid="cancel-edit-email"
@@ -253,20 +272,25 @@ const TeamsInfo = ({
                   type="primary">
                   <CheckOutlined />
                 </Button>
-              </Space>
-            </Space>
+              </Box>
+            </Box>
           </Form>
         ) : (
-          <Space align="center">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <Typography
               className="text-grey-700"
               data-testid="email-value"
               weight="medium">
               {email ?? NO_DATA_PLACEHOLDER}
             </Typography>
-          </Space>
+          </Box>
         )}
-      </Space>
+      </Box>
     ),
     [email, isEmailEdit, hasEditPermission, isLoading]
   );
@@ -279,7 +303,11 @@ const TeamsInfo = ({
     return (
       <>
         <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
-        <Space align="start" className="d-flex flex-col gap-2">
+        <Box
+          align="start"
+          className="layout-space layout-space-horizontal d-flex flex-col"
+          gap={2}
+          itemClassName="layout-space-item">
           <div className="d-flex  gap-2">
             <Typography className="text-primary" weight="medium">
               {`${t('label.type')}`}
@@ -329,7 +357,7 @@ const TeamsInfo = ({
               {teamType}
             </Typography>
           )}
-        </Space>
+        </Box>
       </>
     );
   }, [
@@ -351,7 +379,11 @@ const TeamsInfo = ({
     return (
       <>
         <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
-        <Space align="start" className="d-flex flex-col gap-2">
+        <Box
+          align="start"
+          className="layout-space layout-space-horizontal d-flex flex-col"
+          gap={2}
+          itemClassName="layout-space-item">
           <div className="d-flex gap-2">
             <Typography className="text-primary" weight="medium">
               {t('label.persona')}
@@ -382,7 +414,7 @@ const TeamsInfo = ({
               </Typography>
             )}
           </div>
-        </Space>
+        </Box>
       </>
     );
   }, [
@@ -394,10 +426,12 @@ const TeamsInfo = ({
   ]);
 
   return (
-    <Space
-      className="teams-info-header-container"
+    <Box
+      align="center"
+      className="layout-space layout-space-horizontal teams-info-header-container"
       data-testid="teams-info-header"
-      size={0}>
+      gap={0}
+      itemClassName="layout-space-item">
       <DomainLabel
         headerLayout
         multiple
@@ -439,7 +473,11 @@ const TeamsInfo = ({
 
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
 
-      <Space align="start" className="d-flex flex-col gap-2">
+      <Box
+        align="start"
+        className="layout-space layout-space-horizontal d-flex flex-col"
+        gap={2}
+        itemClassName="layout-space-item">
         <Typography
           className="text-primary d-flex items-center"
           weight="medium">
@@ -461,8 +499,8 @@ const TeamsInfo = ({
           weight="medium">
           {currentTeam.userCount}
         </Typography>
-      </Space>
-    </Space>
+      </Box>
+    </Box>
   );
 };
 
