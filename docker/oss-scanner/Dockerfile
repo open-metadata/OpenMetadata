@@ -1,5 +1,10 @@
 # Build image for Anthropic's OSS Scanner (https://github.com/anthropics/oss-scanner).
 #
+# anthropics/oss-scanner's projects/openmetadata/project.yaml reads this file and
+# threat_model.md by path. Moving or renaming them, changing the build context or /src, or
+# excluding sources in the root .dockerignore breaks the enrolment; see
+# ADR:2026-10-09-oss-scanner-build-image-paths-are-a-cross-repo-contract.
+#
 # The scanner builds this file with the repository checkout as the build context, then
 # audits /src as root with NO network access. Anything needed to compile the server or run
 # its unit tests must therefore be downloaded here, at build time.

@@ -1,3 +1,5 @@
+<!-- Maintainers: anthropics/oss-scanner reads this file by path. See
+ADR:2026-10-09-oss-scanner-build-image-paths-are-a-cross-repo-contract before moving or renaming it. -->
 # OpenMetadata threat model for Anthropic's OSS Scanner
 
 The scanner reads this file before it starts. It covers the OpenMetadata **server**, the part
