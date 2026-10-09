@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Grid, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -53,6 +53,7 @@ import { Paging } from '../../generated/type/paging';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -333,11 +334,13 @@ const NotificationListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.alert-plural')}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <div className="d-flex justify-between">
             <PageHeader
               data={{
@@ -366,8 +369,8 @@ const NotificationListPage = () => {
               </LimitWrapper>
             )}
           </div>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             columns={columns}
             customPaginationProps={{
@@ -407,8 +410,8 @@ const NotificationListPage = () => {
             rowKey="id"
             size="small"
           />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <DeleteModal
             entityTitle={getEntityName(selectedAlert)}
             isDeleting={isDeleting}
@@ -421,8 +424,8 @@ const NotificationListPage = () => {
             }}
             onDelete={handleAlertHardDelete}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

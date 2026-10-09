@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce, isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -56,14 +56,21 @@ const withName = (option: { label: string; value: string }): FetchedOption => ({
 });
 
 const optionLabel = (name: string, fqn?: string, testId?: string) => (
-  <Space data-testid={testId ?? fqn} direction="vertical" size={0}>
+  <Box
+    inline
+    align="stretch"
+    className="layout-space"
+    data-testid={testId ?? fqn}
+    direction="col"
+    gap={0}
+    itemClassName="layout-space-item">
     {fqn && (
       <Typography className="text-xs" color="secondary">
         {fqn}
       </Typography>
     )}
     <Typography className="text-sm">{name}</Typography>
-  </Space>
+  </Box>
 );
 
 /**

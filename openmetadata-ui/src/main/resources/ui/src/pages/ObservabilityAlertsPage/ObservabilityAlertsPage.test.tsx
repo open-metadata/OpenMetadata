@@ -137,6 +137,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Table: MockTable,
     TableCard: MockTableCard,
     Box: Passthrough,
