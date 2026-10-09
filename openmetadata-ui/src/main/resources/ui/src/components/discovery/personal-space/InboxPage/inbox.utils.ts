@@ -222,6 +222,42 @@ const getTagChange = (before: string[], after: string[]): TagChange => {
 const isTierChange = (tags: string[]) =>
   tags.length > 0 && tags.every((tag) => tag.startsWith(TIER_TAG_PREFIX));
 
+const TAG_EVENTS = new Set([
+  ActivityEventType.TagsUpdated,
+  ActivityEventType.ColumnTagsUpdated,
+]);
+
+const getTagEventType = (activity: ActivityEvent): ActivityEventType => {
+  const { before = [], after = [] } = getActivityChange(activity) ?? {};
+  if (isTierChange([...before, ...after])) {
+    return ActivityEventType.TierUpdated;
+  }
+
+  return getChangeTarget(activity) === 'column'
+    ? ActivityEventType.ColumnTagsUpdated
+    : ActivityEventType.TagsUpdated;
+};
+
+/**
+ * The kind of change a card shows, as its sentence reads it: a tier arrives
+ * as a tags change, and a column's change can arrive as its asset's.
+ */
+export const getActivityKindType = (
+  activity: ActivityEvent
+): ActivityEventType => {
+  const { eventType } = activity;
+  if (TAG_EVENTS.has(eventType)) {
+    return getTagEventType(activity);
+  }
+  if (DESCRIPTION_EVENTS.has(eventType)) {
+    return getChangeTarget(activity) === 'column'
+      ? ActivityEventType.ColumnDescriptionUpdated
+      : ActivityEventType.DescriptionUpdated;
+  }
+
+  return eventType;
+};
+
 const getTagsLabel = (activity: ActivityEvent, t: TFunction): string => {
   const { before = [], after = [] } = getActivityChange(activity) ?? {};
   if (isTierChange([...before, ...after])) {
@@ -243,10 +279,7 @@ export const getActivityEventLabel = (
   t: TFunction
 ): string => {
   const { eventType, fieldName } = activity;
-  if (
-    eventType === ActivityEventType.TagsUpdated ||
-    eventType === ActivityEventType.ColumnTagsUpdated
-  ) {
+  if (TAG_EVENTS.has(eventType)) {
     return getTagsLabel(activity, t);
   }
   if (DESCRIPTION_EVENTS.has(eventType)) {

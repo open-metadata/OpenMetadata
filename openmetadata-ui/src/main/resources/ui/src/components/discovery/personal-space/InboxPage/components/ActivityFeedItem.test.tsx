@@ -76,6 +76,8 @@ jest.mock('../inbox.utils', () => ({
   formatActivityTime: () => '12 min ago',
   getActivityChange: (...args: unknown[]) => mockGetActivityChange(...args),
   getActivityEventLabel: () => 'updated description for',
+  // The kind as sent; how a kind is read is inbox.utils' own test.
+  getActivityKindType: ({ eventType }: { eventType: string }) => eventType,
   getActivityTypeKey: () => 'label.other',
   ACTIVITY_TYPE_OTHER: 'label.other',
   ACTIVITY_CLOCK_FORMAT: 'hh:mm a',
