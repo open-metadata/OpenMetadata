@@ -80,14 +80,13 @@ public final class CreationAuditMigration {
 
   private CreationAuditMigration() {}
 
-  public static int backfillCreationAudit(
+  public static void backfillCreationAudit(
       final Handle handle, final ConnectionType connectionType) {
     int total = 0;
     for (final AuditedEntity entity : AUDITED_ENTITIES) {
       total += backfillEntity(handle, connectionType, entity);
     }
     LOG.info("Backfilled creation audit fields on {} rows across {} entity types", total, size());
-    return total;
   }
 
   static List<AuditedEntity> auditedEntities() {
