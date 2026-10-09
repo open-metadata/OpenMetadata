@@ -1814,6 +1814,7 @@ public class TableRepository extends EntityRepository<Table> {
         new ArrayList<>(super.getSearchPropagationDescriptors());
     // A column entry carries only its own tags and no data products: ColumnSearchIndex builds it,
     // and propagation racing that build is how table tags leaked onto columns.
+    // ADR:2026-10-08-column-entries-carry-only-their-own-tags
     descriptors.add(
         new PropagationDescriptor(
                 FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null)

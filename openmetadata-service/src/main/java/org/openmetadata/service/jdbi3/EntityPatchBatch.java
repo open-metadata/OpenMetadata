@@ -49,6 +49,8 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
  *
  * <p>An entity that fails (authorization, rule, validation or save) is reported with its message and
  * keeps no change; the others go on. A dry run authorizes and prepares each patch and saves nothing.
+ * See ADR:2026-10-09-bulk-edits-compose-single-entity-writes and
+ * ADR:2026-10-09-bulk-edits-authorize-each-entity-as-its-patch.
  */
 @Slf4j
 final class EntityPatchBatch<T extends EntityInterface<?>> {
