@@ -18,8 +18,6 @@ import {
   expect,
   test as isolatedTest,
 } from '../../../support/fixtures/isolatedUser';
-import { Glossary } from '../../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { okJson, settleAll } from '../../../utils/apiResponse';
 import {
@@ -41,8 +39,11 @@ import { waitForSearchIndexed } from '../../../utils/polling';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 /**
- * Every task type the Inbox Triage queue holds, in every state its workflow
- * reaches, plus the transitions the Inbox drives itself.
+ * The Inbox Triage queue against a real workflow: one task type driven through
+ * every state its workflow reaches, and the transitions the Inbox drives
+ * itself, checked by their effect on the asset. How the panel renders every
+ * other type in every state is pure rendering of the task, and is covered by
+ * the task matrix in TaskDetailPanel.test.tsx.
  *
  * The tasks are filed by the admin API and assigned to the worker's isolated
  * admin, so the viewer is never the requester and its queue holds only its own
@@ -51,16 +52,6 @@ import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
  */
 
 const COMMENT = 'Playwright task matrix';
-
-type TypeCase = {
-  key: string;
-  label: string;
-  category: string;
-  type: string;
-  typeBadge: string;
-  approveLabel: string | RegExp;
-  rejectLabel: string;
-};
 
 type MatrixSeed = {
   cells: Map<string, InboxTask>;
@@ -85,116 +76,15 @@ const APPROVAL_STATES: Record<string, string[]> = {
   Cancelled: ['close'],
 };
 
-const INCIDENT_STATES: Record<string, string[]> = {
-  Open: [],
-  'In Progress': ['ack'],
-  Completed: ['ack', 'resolve'],
+// The task types the approval tests file and act on.
+const ACT_TYPES = {
+  tag: { category: 'MetadataUpdate', type: 'TagUpdate' },
+  ownership: { category: 'MetadataUpdate', type: 'OwnershipUpdate' },
+  tier: { category: 'MetadataUpdate', type: 'TierUpdate' },
+  domain: { category: 'MetadataUpdate', type: 'DomainUpdate' },
 };
 
-// RecognizerFeedbackApproval is left out: its workflow reads the feedback the
-// recognizer flow submits, so a task filed directly starts a workflow that
-// fails on every run.
-const TYPE_CASES: TypeCase[] = [
-  {
-    key: 'tag',
-    label: 'Tag request',
-    category: 'MetadataUpdate',
-    type: 'TagUpdate',
-    typeBadge: 'Tag request',
-    approveLabel: 'Approve Tag',
-    rejectLabel: 'Reject',
-  },
-  {
-    key: 'description',
-    label: 'Description',
-    category: 'MetadataUpdate',
-    type: 'DescriptionUpdate',
-    typeBadge: 'Description',
-    approveLabel: 'Approve',
-    rejectLabel: 'Reject',
-  },
-  {
-    key: 'ownership',
-    label: 'Ownership',
-    category: 'MetadataUpdate',
-    type: 'OwnershipUpdate',
-    typeBadge: 'Ownership',
-    approveLabel: /^Assign /,
-    rejectLabel: 'Dismiss',
-  },
-  {
-    key: 'tier',
-    label: 'Tier',
-    category: 'MetadataUpdate',
-    type: 'TierUpdate',
-    typeBadge: 'Tier',
-    approveLabel: 'Approve',
-    rejectLabel: 'Reject',
-  },
-  {
-    key: 'domain',
-    label: 'Domain',
-    category: 'MetadataUpdate',
-    type: 'DomainUpdate',
-    typeBadge: 'Domain',
-    approveLabel: 'Approve',
-    rejectLabel: 'Reject',
-  },
-  {
-    key: 'suggestion',
-    label: 'Suggestion',
-    category: 'MetadataUpdate',
-    type: 'Suggestion',
-    typeBadge: 'Suggestion',
-    approveLabel: 'Approve',
-    rejectLabel: 'Reject',
-  },
-  {
-    key: 'approval',
-    label: 'Approval request',
-    category: 'Approval',
-    type: 'RequestApproval',
-    typeBadge: 'Approval',
-    approveLabel: 'Approve',
-    rejectLabel: 'Reject',
-  },
-  {
-    key: 'custom',
-    label: 'Custom task',
-    category: 'Custom',
-    type: 'CustomTask',
-    typeBadge: 'Custom task',
-    approveLabel: 'Approve',
-    rejectLabel: 'Reject',
-  },
-  {
-    key: 'dq-review',
-    label: 'Data quality review',
-    category: 'Review',
-    type: 'DataQualityReview',
-    typeBadge: 'Data quality review',
-    approveLabel: 'Approve',
-    rejectLabel: 'Reject',
-  },
-  {
-    key: 'pipeline-review',
-    label: 'Pipeline review',
-    category: 'Review',
-    type: 'PipelineReview',
-    typeBadge: 'Pipeline review',
-    approveLabel: 'Approve',
-    rejectLabel: 'Reject',
-  },
-  {
-    key: 'glossary',
-    label: 'Glossary approval',
-    category: 'Approval',
-    type: 'GlossaryApproval',
-    typeBadge: 'Glossary',
-    approveLabel: 'Approve',
-    rejectLabel: 'Reject',
-  },
-];
+type ActKey = keyof typeof ACT_TYPES;
 
 const tagLabel = (tagFQN: string) => ({
   tagFQN,
@@ -270,7 +160,7 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
       };
 
       const otherUser = new UserClass();
-      // One table serves every rendered task: those are only read, never
+      // One table serves the rendered Tag requests: those are only read, never
       // approved. Each approval test changes, and so owns, its own table.
       const matrixTable = new TableClass();
       const incidentTable = new TableClass();
@@ -283,7 +173,6 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
         domain: new TableClass(),
       };
       const domain = new Domain();
-      const glossary = new Glossary();
       const allTables = [
         matrixTable,
         incidentTable,
@@ -291,7 +180,6 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
         ...Object.values(tables),
       ];
 
-      const glossaryTerm = new GlossaryTerm(glossary);
       // Removes what was created, also when seeding fails part way: a fixture
       // whose setup throws never reaches the code after `use`.
       const cleanup = async () => {
@@ -309,11 +197,8 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
             .filter((table) => table.entityResponseData?.id)
             .map((table) => table.delete(apiContext))
         );
-        if (glossaryTerm.responseData?.id) {
-          await glossaryTerm.delete(apiContext);
-        }
         await settleAll(
-          [glossary, domain, otherUser]
+          [domain, otherUser]
             .filter((entity) => entity.responseData?.id)
             .map((entity) => entity.delete(apiContext))
         );
@@ -323,10 +208,8 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
         await settleAll([
           otherUser.create(apiContext),
           domain.create(apiContext),
-          glossary.create(apiContext),
           ...allTables.map((table) => table.create(apiContext)),
         ]);
-        await glossaryTerm.create(apiContext);
         // The tier replacement starts from an existing tier.
         await tables.tierReplace.patch({
           apiContext,
@@ -335,16 +218,11 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
           ],
         });
 
-        const payloads: Record<string, () => Record<string, unknown>> = {
+        const payloads: Record<ActKey, () => Record<string, unknown>> = {
           tag: () => ({
             operation: 'Add',
             currentTags: [],
             tagsToAdd: [tagLabel('PII.Sensitive')],
-          }),
-          description: () => ({
-            fieldPath: 'description',
-            currentDescription: '',
-            newDescription: 'Described by the task matrix.',
           }),
           ownership: () => ({
             currentOwners: [],
@@ -360,25 +238,7 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
           domain: () => ({
             newDomain: { id: domain.responseData.id, type: 'domain' },
           }),
-          suggestion: () => ({
-            suggestionType: 'Description',
-            fieldPath: 'description',
-            suggestedValue: 'Suggested by the task matrix.',
-          }),
-          'dq-review': () => ({ reviewType: 'DataQuality' }),
-          'pipeline-review': () => ({ reviewType: 'Pipeline' }),
-          glossary: () => ({
-            glossaryTerm: {
-              id: glossaryTerm.responseData.id,
-              type: 'glossaryTerm',
-            },
-            action: 'Create',
-          }),
         };
-        const aboutOf = (key: string) =>
-          key === 'glossary'
-            ? `<#E::glossaryTerm::${glossaryTerm.responseData.fullyQualifiedName}>`
-            : tableLink(matrixTable);
 
         const cells = new Map<string, InboxTask>();
         const seedCell = async (
@@ -393,36 +253,21 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
         };
 
         // One task at a time: see inSequence.
-        for (const { key, category, type } of TYPE_CASES) {
-          for (const [state, steps] of Object.entries(APPROVAL_STATES)) {
-            await seedCell(key, state, steps, {
-              category,
-              type,
-              about: aboutOf(key),
-              payload: payloads[key]?.() ?? {},
-            });
-          }
-        }
-        for (const [state, steps] of Object.entries(INCIDENT_STATES)) {
-          await seedCell('incident', state, steps, {
-            category: 'Incident',
-            type: 'IncidentResolution',
-            about: tableLink(incidentTable),
-            payload: { incidentType: 'Freshness', severity: 'High' },
+        for (const [state, steps] of Object.entries(APPROVAL_STATES)) {
+          await seedCell('tag', state, steps, {
+            ...ACT_TYPES.tag,
+            about: tableLink(matrixTable),
+            payload: payloads.tag(),
           });
         }
 
         // Open tasks the transition tests act on through the UI.
-        const actSpec = (key: string, table: TableClass) => {
-          const typeCase = TYPE_CASES.find((c) => c.key === key) as TypeCase;
-
-          return file(`act-${key}`, 'Open', {
-            category: typeCase.category,
-            type: typeCase.type,
+        const actSpec = (key: ActKey, table: TableClass) =>
+          file(`act-${key}`, 'Open', {
+            ...ACT_TYPES[key],
             about: tableLink(table),
             payload: payloads[key](),
           });
-        };
         const [
           tag,
           ownership,
@@ -537,7 +382,7 @@ const test = isolatedTest.extend<object, { matrix: MatrixSeed }>({
         await cleanup();
       }
     },
-    // Seeding drives some 60 tasks through their workflows over the API.
+    // Seeding drives a dozen tasks through their workflows over the API.
     { scope: 'worker', timeout: 300_000 },
   ],
 });
@@ -551,86 +396,42 @@ test.describe(
   'Inbox task matrix',
   { tag: ['@Features', DOMAIN_TAGS.GOVERNANCE] },
   () => {
-    for (const typeCase of TYPE_CASES) {
-      test(`shows a ${typeCase.label} task in every state`, async ({
-        isolatedUserPage: page,
-        matrix,
-      }) => {
-        await openTriage(page);
-
-        await test.step('Open: waiting on the viewer, with its own actions', async () => {
-          const panel = await openInboxTask(
-            page,
-            matrix.cells.get(cellKey(typeCase.key, 'Open')) as InboxTask
-          );
-          await expect(panel.getByTestId('task-type-badge')).toHaveText(
-            typeCase.typeBadge
-          );
-          await expect(panel.getByTestId('task-status-badge')).toContainText(
-            'Pending approval'
-          );
-          await expect(panel.getByTestId('task-approve')).toHaveText(
-            typeCase.approveLabel
-          );
-          await expect(panel.getByTestId('task-reject')).toHaveText(
-            typeCase.rejectLabel
-          );
-        });
-
-        for (const state of ['Approved', 'Rejected', 'Cancelled'] as const) {
-          await test.step(`${state}: reads as ${state}, with nothing left to do`, async () => {
-            const panel = await openInboxTask(
-              page,
-              matrix.cells.get(cellKey(typeCase.key, state)) as InboxTask
-            );
-            await expect(panel.getByTestId('task-status-badge')).toContainText(
-              state
-            );
-            await expect(panel.getByTestId('task-approve')).toHaveCount(0);
-            await expect(panel.getByTestId('task-reject')).toHaveCount(0);
-          });
-        }
-      });
-    }
-
-    test('shows an incident in every state of its workflow', async ({
+    test('shows a Tag request task in every state', async ({
       isolatedUserPage: page,
       matrix,
     }) => {
       await openTriage(page);
 
-      const expected: Record<string, string[]> = {
-        Open: ['task-transition-ack'],
-        'In Progress': ['task-transition-resolve'],
-        Completed: [],
-      };
+      await test.step('Open: waiting on the viewer, with its own actions', async () => {
+        const panel = await openInboxTask(
+          page,
+          matrix.cells.get(cellKey('tag', 'Open')) as InboxTask
+        );
+        await expect(panel.getByTestId('task-type-badge')).toHaveText(
+          'Tag request'
+        );
+        await expect(panel.getByTestId('task-status-badge')).toContainText(
+          'Pending approval'
+        );
+        await expect(panel.getByTestId('task-approve')).toHaveText(
+          'Approve Tag'
+        );
+        await expect(panel.getByTestId('task-reject')).toHaveText('Reject');
+      });
 
-      for (const [state, actions] of Object.entries(expected)) {
-        await test.step(`${state}: offers ${
-          actions.join(', ') || 'nothing'
-        }`, async () => {
+      for (const state of ['Approved', 'Rejected', 'Cancelled'] as const) {
+        await test.step(`${state}: reads as ${state}, with nothing left to do`, async () => {
           const panel = await openInboxTask(
             page,
-            matrix.cells.get(cellKey('incident', state)) as InboxTask
+            matrix.cells.get(cellKey('tag', state)) as InboxTask
           );
-          await expect(panel.getByTestId('task-type-badge')).toHaveText(
-            'Incident'
+          await expect(panel.getByTestId('task-status-badge')).toContainText(
+            state
           );
-          for (const action of actions) {
-            await expect(panel.getByTestId(action)).toBeVisible();
-          }
-          // An incident resolves through its own transitions, never a generic
-          // approve or reject.
           await expect(panel.getByTestId('task-approve')).toHaveCount(0);
           await expect(panel.getByTestId('task-reject')).toHaveCount(0);
         });
       }
-
-      await test.step('Completed: reads as completed', async () => {
-        await expect(
-          page.getByTestId('task-detail-panel').getByTestId('task-status-badge')
-        ).toContainText('Completed');
-      });
     });
 
     test('approving a tag request tags the asset', async ({
