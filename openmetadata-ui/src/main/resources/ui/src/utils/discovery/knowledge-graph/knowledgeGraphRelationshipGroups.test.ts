@@ -29,7 +29,9 @@ describe('groupRelationshipTypeChoices', () => {
       'governance',
       'ownership',
     ]);
+
     const lineage = sections.find((s) => s.key === 'lineage');
+
     expect(lineage?.choices.map((c) => c.id).sort()).toEqual([
       'downstream',
       'upstream',
@@ -45,6 +47,7 @@ describe('groupRelationshipTypeChoices', () => {
 
     const lineage = sections.find((s) => s.key === 'lineage');
     const ownership = sections.find((s) => s.key === 'ownership');
+
     expect(lineage?.count).toBe(10);
     expect(ownership?.count).toBe(2);
   });
