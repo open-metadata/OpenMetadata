@@ -121,7 +121,6 @@ export const getOwnerField = ({
   props: {
     filterOption: () => true,
     multiple: canAddMultipleUserOwners,
-    popoverClassName: 'tw:bg-raised',
     onFocus,
     onSearchChange,
     options,
@@ -148,7 +147,6 @@ export const getDomainField = ({
     'data-testid': 'domain-select',
     filterOption: () => true,
     multiple: canAddMultipleDomains,
-    popoverClassName: 'tw:bg-raised',
     onFocus,
     onSearchChange,
     options,

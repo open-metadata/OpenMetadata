@@ -519,7 +519,6 @@ export const UserTeamSelectableList = ({
     <>
       {triggerElement}
       <Popover
-        className="tw:bg-raised"
         containerClassName={classNames(
           'tw:max-h-[inherit] tw:overflow-y-auto tw:p-0',
           overlayClassName

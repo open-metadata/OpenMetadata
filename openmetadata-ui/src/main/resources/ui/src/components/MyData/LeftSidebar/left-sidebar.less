@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 @import (reference) '../../../styles/variables.less';
-@selected-color: var(--tw-color-bg-brand-solid);
-@hover-color: var(--tw-color-bg-brand-primary);
-@active-color: var(--tw-color-fg-brand-primary);
+@selected-color: @primary-color;
+@hover-color: @primary-1;
+@active-color: @primary-7;
 @left-sidebar-icon-size: 28px;
 
 .logo-container {
@@ -36,11 +36,6 @@
 }
 
 .left-sidebar-menu {
-  &.ant-menu-sub,
-  .ant-menu-sub {
-    background: var(--tw-color-bg-primary);
-  }
-
   &:not(.ant-menu-submenu-hidden) {
     display: flex;
     flex-direction: column;
@@ -48,7 +43,7 @@
 
   .ant-menu-item,
   .ant-menu-submenu {
-    color: var(--tw-color-text-secondary);
+    color: @grey-600;
   }
 
   &.ant-menu.ant-menu-vertical[dir='rtl'] {
@@ -208,13 +203,13 @@
   .ant-menu-submenu.ant-menu-submenu-open {
     border-width: 0px 1px 1px 1px;
     border-style: solid;
-    border-color: var(--tw-color-border-brand);
+    border-color: @primary-4;
     color: var(--tw-color-text-white);
     border-radius: var(--om-radius-xl);
     overflow: hidden;
 
     .ant-menu-submenu-title {
-      background-color: @selected-color;
+      background-color: @active-color;
       font-weight: var(--om-font-weight-semibold);
       line-height: 20px;
       font-size: var(--om-font-size-sm);
@@ -279,7 +274,7 @@
       color: @active-color;
 
       .ant-menu-submenu-title {
-        background: @selected-color;
+        background: @active-color;
         color: var(--tw-color-text-white);
         border-radius: var(--om-radius-xl);
 
