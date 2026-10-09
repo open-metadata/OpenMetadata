@@ -5253,6 +5253,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedDrawer/ActivityFeedDrawer.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew.tsx"
       ],
       "specs": [
