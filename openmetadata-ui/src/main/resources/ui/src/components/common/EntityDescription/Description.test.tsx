@@ -226,7 +226,8 @@ describe('Description', () => {
       .map(([props]) => props)
       .find((props) => props['data-testid'] === 'edit-description');
 
-    // Same pencil as WidgetEditButton, so every edit affordance on an entity page matches.
+    // Same pencil as WidgetEditButton, which the widgets beside the description on entity
+    // detail pages use. Other edit buttons still use edit-new.svg until they move to Edit01.
     expect(editButtonProps?.iconLeading).toBe(Edit01);
   });
 
