@@ -4125,7 +4125,6 @@
     "dq-threshold-preview-sampling-dynamic": "이 테이블을 프로파일링할 때 사용하는, 크기가 동적으로 결정되는 샘플에서 측정됩니다.",
     "dq-threshold-preview-statistical": "측정값이 {{bound}} 범위를 벗어나면 실패합니다.",
     "dq-threshold-preview-statistical-deviation": "측정값이 {{bound}} 범위를 벗어나면 실패하며, {{amount}}의 편차를 허용합니다(유효 범위 {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "이 테스트는 임계값을 단순 행 수로 비교하므로 임계값 단위가 적용되지 않습니다.",
     "dq-threshold-preview-zero-bound": "경계값이 0일 때 백분율 편차를 주어도 경계값은 0으로 유지됩니다. 절대 편차를 사용하세요.",
     "dq-unresolved-incidents-count": "<0>미해결 인시던트 {{count}}개</0>",
     "dq-unresolved-incidents-count-plural": "<0>미해결 인시던트 {{count}}개</0>",

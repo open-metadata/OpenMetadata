@@ -4125,7 +4125,6 @@
     "dq-threshold-preview-sampling-dynamic": "Измеряется на выборке динамического размера, по которой профилируется эта таблица.",
     "dq-threshold-preview-statistical": "Не проходит, когда измеренное значение выходит за пределы {{bound}}.",
     "dq-threshold-preview-statistical-deviation": "Не проходит, когда измеренное значение выходит за пределы {{bound}}, с допуском {{amount}} (эффективный диапазон {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "Этот тест сравнивает порог как обычное число строк, поэтому единица порога не применяется.",
     "dq-threshold-preview-zero-bound": "Процентное отклонение вокруг границы 0 оставляет эту границу равной 0 — используйте абсолютное отклонение.",
     "dq-unresolved-incidents-count": "<0>{{count}} нерешённый</0> инцидент",
     "dq-unresolved-incidents-count-plural": "<0>Нерешённых инцидентов: {{count}}</0>",

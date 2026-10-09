@@ -4125,7 +4125,6 @@
     "dq-threshold-preview-sampling-dynamic": "يُقاس على العينة ذات الحجم المحدَّد ديناميكيًا التي يُحلَّل بها هذا الجدول.",
     "dq-threshold-preview-statistical": "يفشل عندما تخرج القيمة المقاسة عن {{bound}}.",
     "dq-threshold-preview-statistical-deviation": "يفشل عندما تخرج القيمة المقاسة عن {{bound}}، مع السماح بانحراف {{amount}} (النطاق الفعلي {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "يقارن هذا الاختبار الحدّ كعدد صفوف خام، لذا لا تُطبَّق وحدة الحدّ.",
     "dq-threshold-preview-zero-bound": "الانحراف بالنسبة المئوية حول حد قيمته 0 يُبقي الحد عند 0 — استخدم انحرافًا مطلقًا بدلًا من ذلك.",
     "dq-unresolved-incidents-count": "<0>{{count}} حادث</0> غير محلول",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} حوادث</0> غير محلولة",

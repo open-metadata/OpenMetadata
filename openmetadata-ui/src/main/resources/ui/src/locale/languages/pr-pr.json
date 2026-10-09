@@ -4125,7 +4125,6 @@
     "dq-threshold-preview-sampling-dynamic": "بر روی نمونه‌ای با اندازهٔ پویا که این جدول با آن پروفایل می‌شود اندازه‌گیری می‌شود.",
     "dq-threshold-preview-statistical": "ناموفق وقتی مقدار اندازه‌گیری‌شده خارج از {{bound}} باشد.",
     "dq-threshold-preview-statistical-deviation": "ناموفق وقتی مقدار اندازه‌گیری‌شده خارج از {{bound}} باشد، با انحراف مجاز {{amount}} (بازهٔ مؤثر {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "این آزمون آستانه را به‌صورت شمار خام ردیف‌ها مقایسه می‌کند، پس واحد آستانه اعمال نمی‌شود.",
     "dq-threshold-preview-zero-bound": "انحراف درصدی حول کران ۰ آن کران را روی ۰ نگه می‌دارد — به جای آن از انحراف مطلق استفاده کنید.",
     "dq-unresolved-incidents-count": "<0>{{count}} رخداد</0> حل‌نشده",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} رخداد</0> حل‌نشده",
