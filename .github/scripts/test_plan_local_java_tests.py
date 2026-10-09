@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import fnmatch
 import importlib.util
 import json
@@ -52,6 +53,86 @@ def lane_its() -> set[str]:
 
 def test_impact_map_owns_every_test_and_production_file() -> None:
     assert PLANNER.audit_impact_map(REPO, IMPACT_MAP) == []
+
+
+def unowning(*paths: str) -> dict:
+    """The impact map with every area source that owns one of `paths` removed."""
+    impact_map = copy.deepcopy(IMPACT_MAP)
+    for area in impact_map["areas"]:
+        area["sources"] = [
+            source
+            for source in area["sources"]
+            if not any(fnmatch.fnmatchcase(path, source) for path in paths)
+        ]
+    return impact_map
+
+
+def test_the_branch_check_blames_the_branch_only_for_what_it_touched() -> None:
+    touched = f"{SERVICE}/apps/bundles/insights/DataInsightsApp.java"
+    untouched = f"{SERVICE}/util/AsciiTable.java"
+    impact_map = unowning(touched, untouched)
+
+    problems = PLANNER.branch_map_problems(REPO, impact_map, impact_map, [touched], [])
+
+    assert len(problems) == 1
+    assert f'add "{SERVICE}/apps/bundles/insights/**"' in problems[0]
+    assert "the code it imports belongs to" in problems[0]
+    assert PLANNER.branch_map_problems(REPO, impact_map, impact_map, [], []) == []
+
+
+def test_the_branch_check_flags_patterns_the_branch_empties_or_adds_dead() -> None:
+    impact_map = copy.deepcopy(IMPACT_MAP)
+    area = impact_map["areas"][0]
+    area["tests"].append("org/openmetadata/it/tests/gone/**")
+    deleted = [f"{IT_TESTS}/gone/GoneIT.java"]
+
+    emptied = PLANNER.branch_map_problems(REPO, impact_map, impact_map, [], deleted)
+    already_dead = PLANNER.branch_map_problems(REPO, impact_map, impact_map, [], [])
+    added = PLANNER.branch_map_problems(REPO, impact_map, IMPACT_MAP, [], [])
+
+    assert len(emptied) == 1 and "this branch deleted what it matched" in emptied[0]
+    assert already_dead == []
+    assert len(added) == 1 and "this branch added it" in added[0]
+
+
+def test_a_map_edit_that_breaks_a_rule_is_the_branch_problem() -> None:
+    impact_map = copy.deepcopy(IMPACT_MAP)
+    area = impact_map["areas"][0]
+    area["tests"].append("TableResourceIT")
+    changed = [PLANNER.IMPACT_MAP]
+    single = "'TableResourceIT' names a single test; match tests by pattern"
+
+    assert PLANNER.branch_map_problems(REPO, impact_map, IMPACT_MAP, changed, []) == [
+        f"area '{area['name']}': {single}"
+    ]
+    assert PLANNER.branch_map_problems(REPO, impact_map, impact_map, changed, []) == []
+
+
+def test_a_written_file_no_area_owns_is_reported_with_where_it_belongs() -> None:
+    stems = {PLANNER.convention_stem(path) for path in REPO.files} - {None}
+    relative, name = next(
+        (relative, name)
+        for relative, name in sorted(REPO.it_classes.items())
+        if relative not in REPO.never_run
+        and relative not in REPO.conditional
+        and not any(PLANNER.stem_matches(stem, name) for stem in stems)
+    )
+    it = f"{REPO.it_root}/{relative}"
+    production = f"{SERVICE}/apps/bundles/insights/DataInsightsApp.java"
+    impact_map = unowning(production)
+    for area in impact_map["areas"]:
+        area["tests"] = [
+            pattern
+            for pattern in area["tests"]
+            if not PLANNER.Planner._it_pattern_matches(relative, name, pattern)
+        ]
+
+    problems = PLANNER.owner_problems(REPO, impact_map, [production, it])
+
+    assert len(problems) == 2
+    assert problems[0].startswith("no area owns 1 file in ")
+    assert problems[1].startswith(f"{name} ({it}): no area owns it")
+    assert PLANNER.owner_problems(REPO, IMPACT_MAP, [production, it]) == []
 
 
 def test_audit_reports_single_tests_unowned_code_and_dead_patterns() -> None:

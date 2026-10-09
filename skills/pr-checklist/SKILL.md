@@ -83,7 +83,9 @@ make java_affected_run ARGS="--update-pr"   # once the PR exists: upsert the blo
 ```
 Before the PR exists, paste `target/java-tests/local-pr-results.md` between the
 `local-java-test-results` markers under "Backend integration tests". Resolve every impact-map gap
-and every "no unit test references" class the planner lists (the skill says how). Coverage on
+and every "no unit test references" class the planner lists (the skill says how). Code and ITs
+the branch adds must be owned in the impact map before the PR: `git push` and `gh pr create` are
+blocked until `python3 .github/scripts/plan_local_java_tests.py --check-branch` passes. Coverage on
 changed classes:
 ```bash
 mvn jacoco:report -pl openmetadata-service

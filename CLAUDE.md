@@ -126,6 +126,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | Rule file | Reach for it when you are editing… |
 |---|---|
 | `java.md` | any `**/*.java` — style, spotless, no-wildcard, Kafka-grade method/class rules, ITs |
+| `java-impact-map.md` | `**/*.java`, schemas, the impact map — own new code and ITs in `.github/java-tests/impact-map.json` before the PR |
 | `frontend-react.md` | UI `*.{ts,tsx}` — components, hooks, state, types, and the CI lint code-rules |
 | `frontend-styling.md` | UI `*.{ts,tsx,less,css}` — `tw:` prefix, design tokens, ring→border, token-audit |
 | `component-library.md` | UI `*.{ts,tsx}` — prefer `ui-core-components`, do not add Ant Design for new work |

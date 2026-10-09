@@ -1,5 +1,9 @@
 default_language_version:
   python: python3
+# `pre-commit install` also installs the pre-push hook java-impact-map needs; every other
+# hook keeps running at commit only.
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -93,3 +97,11 @@ repos:
         language: system
         files: ^openmetadata-ui-core-components/src/main/resources/ui/src/.*\.(ts|tsx|json)$
         pass_filenames: false
+      - id: java-impact-map
+        name: Java impact map owns the code and ITs this branch adds
+        description: Fails the push while the branch leaves Java code or ITs without an area in .github/java-tests/impact-map.json, empties a pattern or breaks a map rule. The message names the glob to add and the likely area.
+        entry: python3 .github/scripts/plan_local_java_tests.py --check-branch
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
