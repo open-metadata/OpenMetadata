@@ -826,25 +826,52 @@ class DbtSource(DbtServiceSource):
         # instead of sniffing the parsed object downstream
         self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.IS_FRESHNESS.value] = True
 
-    def _get_table_entity(self, table_fqn) -> Table | None:
-        def search_table(fqn_search_string: str) -> Table | None:
-            table_entities = get_entity_from_es_result(
-                entity_list=self.metadata.es_search_from_fqn(
-                    entity_type=Table,
-                    fqn_search_string=fqn_search_string,
-                    fields="sourceHash",
-                ),
-                fetch_multiple_entities=True,
+    def _search_tables(self, fqn_search_string: str) -> list[Table]:
+        table_entities = get_entity_from_es_result(
+            entity_list=self.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=fqn_search_string,
+                fields="sourceHash",
+            ),
+            fetch_multiple_entities=True,
+        )
+        logger.debug(f"Found table entities from {fqn_search_string}: {len(table_entities or [])} entities")
+        return table_entities or []
+
+    def _get_table_entity_ignoring_database(self, schema_name: str, table_name: str) -> Table | None:
+        """
+        The manifest database is the name the dbt adapter knows, which need not be the
+        database the table was ingested under: dbt-trino writes the Trino catalog name, while
+        the BigQuery connector ingests the same table under the GCP project id. Matching on
+        schema and table alone is only safe when exactly one table answers, so an ambiguous
+        match resolves to nothing rather than to an arbitrary table.
+        """
+        search_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name="*",
+            database_name="*",
+            schema_name=schema_name,
+            table_name=table_name,
+            # an ES-backed build would already pick one of the matches, hiding any ambiguity
+            skip_es_search=True,
+        )
+        wanted = [schema_name.casefold(), table_name.casefold()]
+        candidates = [
+            table
+            for table in self._search_tables(search_fqn)
+            if [part.casefold() for part in fqn.split(model_str(table.fullyQualifiedName))[-2:]] == wanted
+        ]
+        if len(candidates) > 1:
+            logger.warning(
+                f"Table '{search_fqn}' matches more than one table in OpenMetadata, so it is left unresolved: "
+                f"{', '.join(model_str(table.fullyQualifiedName) for table in candidates)}"
             )
+        return candidates[0] if len(candidates) == 1 else None
 
-            if not table_entities:
-                return None
-
-            logger.debug(f"Found table entities from {fqn_search_string}: {len(table_entities)} entities")
-            return next(iter(filter(None, table_entities)), None) if table_entities else None
-
+    def _get_table_entity(self, table_fqn) -> Table | None:
         try:
-            table_entity = search_table(table_fqn)
+            table_entity = next(iter(self._search_tables(table_fqn)), None)
             if table_entity:
                 logger.debug(f"Using Table Entity: {table_entity.fullyQualifiedName.root}with id {table_entity.id}")
                 return table_entity
@@ -863,7 +890,9 @@ class DbtSource(DbtServiceSource):
                     schema_name=schema_name,
                     table_name=table_name,
                 )
-                table_entity = search_table(table_fqn)
+                table_entity = next(iter(self._search_tables(table_fqn)), None) or (
+                    self._get_table_entity_ignoring_database(schema_name, table_name)
+                )
                 if table_entity:
                     return table_entity
 
@@ -1131,8 +1160,16 @@ class DbtSource(DbtServiceSource):
 
                         # check if the parent table exists in OM before adding it to the upstream list
                         table_entity = self._get_table_entity(table_fqn=parent_fqn) if parent_fqn else None
+                        # searchAcrossDatabases can resolve the parent under another service or
+                        # database, so lineage and tests follow the table that was actually found
                         if parent_fqn and table_entity:
-                            upstream_nodes.append(build_upstream_node(parent_node, parent_fqn, table_entity.id.root))
+                            upstream_nodes.append(
+                                build_upstream_node(
+                                    parent_node,
+                                    model_str(table_entity.fullyQualifiedName),
+                                    table_entity.id.root,
+                                )
+                            )
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")
