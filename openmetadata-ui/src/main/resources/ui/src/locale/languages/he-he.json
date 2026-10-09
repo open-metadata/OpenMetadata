@@ -1158,6 +1158,7 @@
     "exclude-fields": "החרגת שדות",
     "exclude-filter": "מסנן החרגה",
     "exclude-system-entity": "לא לכלול {{entity}} של המערכת",
+    "excluded-from-roll-up": "לא נכלל בסיכום",
     "execution-date": "תאריך ביצוע",
     "execution-error": "שגיאת הרצה",
     "execution-history": "היסטוריית ביצוע",

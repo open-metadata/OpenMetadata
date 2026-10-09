@@ -1158,6 +1158,7 @@
     "exclude-fields": "Exclure les Champs",
     "exclude-filter": "Filtre d'Exclusion",
     "exclude-system-entity": "Exclure les {{entity}} système",
+    "excluded-from-roll-up": "Exclu de l'agrégation",
     "execution-date": "Date d'Exécution",
     "execution-error": "Erreur d'exécution",
     "execution-history": "Historique d'Exécution",

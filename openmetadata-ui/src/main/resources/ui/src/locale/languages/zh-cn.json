@@ -1158,6 +1158,7 @@
     "exclude-fields": "排除字段",
     "exclude-filter": "排除过滤器",
     "exclude-system-entity": "排除系统 {{entity}}",
+    "excluded-from-roll-up": "已排除在汇总之外",
     "execution-date": "执行日期",
     "execution-error": "执行错误",
     "execution-history": "执行历史",

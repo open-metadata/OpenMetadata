@@ -1158,6 +1158,7 @@
     "exclude-fields": "Excluír campos",
     "exclude-filter": "Filtro de exclusión",
     "exclude-system-entity": "Excluír {{entity}} do sistema",
+    "excluded-from-roll-up": "Excluído do resumo",
     "execution-date": "Data de execución",
     "execution-error": "Erro de execución",
     "execution-history": "Historial de execución",

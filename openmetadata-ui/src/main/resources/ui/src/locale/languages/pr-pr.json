@@ -1158,6 +1158,7 @@
     "exclude-fields": "حذف فیلدها",
     "exclude-filter": "فیلتر حذف",
     "exclude-system-entity": "Excluir {{entity}} do sistema",
+    "excluded-from-roll-up": "Excluído do resumo",
     "execution-date": "تاریخ اجرا",
     "execution-error": "خطای اجرا",
     "execution-history": "تاریخچه اجرا",

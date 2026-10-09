@@ -1158,6 +1158,7 @@
     "exclude-fields": "排除欄位",
     "exclude-filter": "排除過濾器",
     "exclude-system-entity": "排除系統 {{entity}}",
+    "excluded-from-roll-up": "已排除在彙總之外",
     "execution-date": "執行日期",
     "execution-error": "執行錯誤",
     "execution-history": "執行歷程",
