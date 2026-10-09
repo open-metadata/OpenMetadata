@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Collapse, Form, Row, Select, TreeSelect } from 'antd';
+import {
+  Box,
+  Grid,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Collapse, Form, Select, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';
@@ -40,6 +45,7 @@ import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './profiler-configuration-page.style.less';
@@ -82,9 +88,9 @@ const ProfilerConfigurationPage = () => {
       profilerConfigurationClassBase.getSparkAgentConfigComponent();
 
     return SparkAgentConfig ? (
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <SparkAgentConfig />
-      </Col>
+      </Grid.Item>
     ) : null;
   }, []);
 
@@ -166,8 +172,10 @@ const ProfilerConfigurationPage = () => {
         id="profiler-config"
         layout="vertical"
         onFinish={handleSubmit}>
-        <Row className="profiler-configuration-page-container" gutter={[0, 24]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid profiler-configuration-page-container"
+          style={{ ...getLayoutGutter(0, 24) }}>
+          <Grid.Item className="layout-column" span={24}>
             <PageHeader
               data={{
                 header: t('label.profiler-configuration'),
@@ -178,8 +186,8 @@ const ProfilerConfigurationPage = () => {
               learningPageId={LEARNING_PAGE_IDS.PROFILER_CONFIGURATION}
               title={t('label.profiler-configuration')}
             />
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <Collapse
               className="profiler-configuration-collapse"
               defaultActiveKey={['profileConfig']}
@@ -197,16 +205,22 @@ const ProfilerConfigurationPage = () => {
                 <Form.List name="metricConfiguration">
                   {(fields, { add, remove }) => {
                     return (
-                      <Row gutter={[16, 16]}>
-                        <Col span={10}>
+                      <Grid
+                        className="layout-row layout-grid"
+                        style={{ ...getLayoutGutter(16, 16) }}>
+                        <Grid.Item className="layout-column" span={10}>
                           {t('label.data-type')}
                           <span className="text-failure">*</span>
-                        </Col>
-                        <Col span={11}>{t('label.metric-type')}</Col>
-                        <Col span={3}>{t('label.disable')}</Col>
+                        </Grid.Item>
+                        <Grid.Item className="layout-column" span={11}>
+                          {t('label.metric-type')}
+                        </Grid.Item>
+                        <Grid.Item className="layout-column" span={3}>
+                          {t('label.disable')}
+                        </Grid.Item>
                         {fields.map(({ key, name }) => (
                           <Fragment key={key}>
-                            <Col span={10}>
+                            <Grid.Item className="layout-column" span={10}>
                               <Form.Item
                                 name={[name, 'dataType']}
                                 rules={[
@@ -230,8 +244,8 @@ const ProfilerConfigurationPage = () => {
                                   })}
                                 />
                               </Form.Item>
-                            </Col>
-                            <Col span={11}>
+                            </Grid.Item>
+                            <Grid.Item className="layout-column" span={11}>
                               <Form.Item
                                 noStyle
                                 shouldUpdate={(prevValues, currentValues) => {
@@ -267,8 +281,10 @@ const ProfilerConfigurationPage = () => {
                                   </Form.Item>
                                 )}
                               </Form.Item>
-                            </Col>
-                            <Col className="d-flex justify-between" span={3}>
+                            </Grid.Item>
+                            <Grid.Item
+                              className="layout-column d-flex justify-between"
+                              span={3}>
                               <Form.Item
                                 name={[name, 'disabled']}
                                 valuePropName="isSelected">
@@ -282,11 +298,11 @@ const ProfilerConfigurationPage = () => {
                                   onClick={() => remove(name)}
                                 />
                               </Form.Item>
-                            </Col>
+                            </Grid.Item>
                           </Fragment>
                         ))}
 
-                        <Col span={24}>
+                        <Grid.Item className="layout-column" span={24}>
                           <div className="matrix-collapse-footer">
                             <Button
                               className="text-primary p-0"
@@ -297,16 +313,16 @@ const ProfilerConfigurationPage = () => {
                               {t('label.add-new-field')}
                             </Button>
                           </div>
-                        </Col>
-                      </Row>
+                        </Grid.Item>
+                      </Grid>
                     );
                   }}
                 </Form.List>
               </Collapse.Panel>
             </Collapse>
-          </Col>
+          </Grid.Item>
 
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <Collapse
               className="profiler-configuration-collapse"
               defaultActiveKey={['sampleDataConfig']}
@@ -323,20 +339,29 @@ const ProfilerConfigurationPage = () => {
                   />
                 }
                 key="sampleDataConfig">
-                <Row
+                <Grid
+                  className="layout-row layout-grid"
                   data-testid="sample-data-ingestion-config"
-                  gutter={[0, 24]}>
-                  <Col span={24}>
-                    <Row align="middle" justify="space-between" wrap={false}>
-                      <Col flex="auto">
+                  style={{ ...getLayoutGutter(0, 24) }}>
+                  <Grid.Item className="layout-column" span={24}>
+                    <Box
+                      align="center"
+                      className="layout-row"
+                      justify="between"
+                      wrap="nowrap">
+                      <Box
+                        className="layout-column tw:block"
+                        style={{ flex: 'auto' }}>
                         <Typography weight="semibold">
                           {t('label.enable-storing-of-sample-data')}
                         </Typography>
                         <Typography as="p" className="m-b-0" color="secondary">
                           {t('message.enable-storing-sample-data-description')}
                         </Typography>
-                      </Col>
-                      <Col className="p-l-lg" flex="none">
+                      </Box>
+                      <Box
+                        className="layout-column tw:block p-l-lg"
+                        style={{ flex: 'none' }}>
                         <Form.Item
                           name={['sampleDataConfig', 'storeSampleData']}
                           valuePropName="isSelected">
@@ -352,34 +377,42 @@ const ProfilerConfigurationPage = () => {
                             }}
                           />
                         </Form.Item>
-                      </Col>
-                    </Row>
-                  </Col>
-                  <Col span={24}>
-                    <Row align="middle" justify="space-between" wrap={false}>
-                      <Col flex="auto">
+                      </Box>
+                    </Box>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={24}>
+                    <Box
+                      align="center"
+                      className="layout-row"
+                      justify="between"
+                      wrap="nowrap">
+                      <Box
+                        className="layout-column tw:block"
+                        style={{ flex: 'auto' }}>
                         <Typography weight="semibold">
                           {t('label.enable-reading-of-sample-data')}
                         </Typography>
                         <Typography as="p" className="m-b-0" color="secondary">
                           {t('message.enable-reading-sample-data-description')}
                         </Typography>
-                      </Col>
-                      <Col className="p-l-lg" flex="none">
+                      </Box>
+                      <Box
+                        className="layout-column tw:block p-l-lg"
+                        style={{ flex: 'none' }}>
                         <Form.Item
                           name={['sampleDataConfig', 'readSampleData']}
                           valuePropName="isSelected">
                           <Toggle data-testid="read-sample-data-switch" />
                         </Form.Item>
-                      </Col>
-                    </Row>
-                  </Col>
-                </Row>
+                      </Box>
+                    </Box>
+                  </Grid.Item>
+                </Grid>
               </Collapse.Panel>
             </Collapse>
-          </Col>
+          </Grid.Item>
 
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <div className="d-flex justify-end gap-2">
               <Button data-testid="cancel-button" onClick={() => navigate(-1)}>
                 {t('label.cancel')}
@@ -392,10 +425,10 @@ const ProfilerConfigurationPage = () => {
                 {t('label.save')}
               </Button>
             </div>
-          </Col>
+          </Grid.Item>
 
           {sparkAgentConfigComponent}
-        </Row>
+        </Grid>
       </Form>
     </PageLayoutV1>
   );

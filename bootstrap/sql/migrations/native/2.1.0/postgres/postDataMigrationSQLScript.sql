@@ -439,6 +439,30 @@ WHERE extension IN ('database.databaseProfilerConfig',
                     'databaseSchema.databaseSchemaProfilerConfig')
   AND json::jsonb #> '{sampleDataStorageConfig}' IS NOT NULL;
 
+-- Microsoft Fabric service principals now choose a client secret or a certificate under
+-- authType. Services saved before keep their client secret as the client secret option.
+UPDATE dbservice_entity
+SET json = jsonb_set(
+    json #- '{connection,config,clientSecret}',
+    '{connection,config,authType}',
+    jsonb_build_object('clientSecret', json #> '{connection,config,clientSecret}'),
+    true
+)
+WHERE serviceType = 'MicrosoftFabric'
+  AND jsonb_exists(json -> 'connection' -> 'config', 'clientSecret');
+
+-- Version history goes through the same connection converter on read, so its snapshots move too.
+UPDATE entity_extension
+SET json = jsonb_set(
+    json #- '{connection,config,clientSecret}',
+    '{connection,config,authType}',
+    jsonb_build_object('clientSecret', json #> '{connection,config,clientSecret}'),
+    true
+)
+WHERE extension LIKE 'databaseService.version.%'
+  AND json ->> 'serviceType' = 'MicrosoftFabric'
+  AND jsonb_exists(json -> 'connection' -> 'config', 'clientSecret');
+
 -- Context memories move from their own Draft/Active/Archived `status` onto `entityStatus`, the
 -- lifecycle stage every entity type shares: Active becomes Approved, and a memory with no status
 -- was documented as Active, so it becomes Approved too. Version history is rewritten as well:

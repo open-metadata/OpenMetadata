@@ -10,14 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholderAction,
+  Grid,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Col, Form, Row, Select, Space } from 'antd';
+import { Form, Select } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getPopupContainer } from '../../../../utils/formPureUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
@@ -101,10 +106,18 @@ export const TestSuites = () => {
   }
 
   return (
-    <Row data-testid="test-suite-container" gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      data-testid="test-suite-container"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <Form className="new-form-style" layout="inline">
-          <Space align="center" className="w-full justify-between" size={16}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-between"
+            gap={4}
+            itemClassName="layout-space-item">
             <Form.Item className="m-0" label={t('label.owner')} name="owner">
               <UserTeamSelectableList
                 hasPermission
@@ -121,18 +134,18 @@ export const TestSuites = () => {
                 />
               </UserTeamSelectableList>
             </Form.Item>
-          </Space>
+          </Box>
         </Form>
-      </Col>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <PieChartSummaryPanel
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />
-      </Col>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <TestSuiteListPanel
           columnList={columnList}
           currentPage={currentPage}
@@ -152,7 +165,7 @@ export const TestSuites = () => {
           onSortChange={setSortDescriptor}
           onSubTabChange={handleSubTabChange}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };

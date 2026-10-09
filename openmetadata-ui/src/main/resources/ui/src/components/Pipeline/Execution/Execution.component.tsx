@@ -13,12 +13,14 @@
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
 import {
+  Box,
   Button as CoreButton,
   ButtonGroup,
   ButtonGroupItem,
   Dropdown,
+  Grid,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
@@ -37,6 +39,7 @@ import {
 } from '../../../constants/SegmentToggle.constants';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
 import { getPipelineStatus } from '../../../rest/pipelineAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -133,9 +136,16 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     <div
       className="h-full p-md border-default border-radius-sm"
       data-testid="execution-tab">
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <Space className="justify-between w-full">
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal justify-between w-full"
+            gap={2}
+            itemClassName="layout-space-item">
             <ButtonGroup
               disallowEmptySelection
               className={SEGMENT_TOGGLE_GROUP_CLASS}
@@ -158,7 +168,12 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               ))}
             </ButtonGroup>
 
-            <Space>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <Dropdown.Root>
                 <CoreButton
                   className="tw:text-brand-secondary tw:after:outline-brand"
@@ -214,10 +229,10 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                   </Button>
                 </>
               ) : null}
-            </Space>
-          </Space>
-        </Col>
-        <Col span={24}>
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
             <ListView
               executions={executions}
@@ -235,8 +250,8 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               tasks={tasks}
             />
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </div>
   );
 };

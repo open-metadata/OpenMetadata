@@ -4122,7 +4122,6 @@
     "dq-threshold-preview-sampling-dynamic": "Measured on the dynamically sized sample this table is profiled with.",
     "dq-threshold-preview-statistical": "Fail when the measured value falls outside {{bound}}.",
     "dq-threshold-preview-statistical-deviation": "Fail when the measured value falls outside {{bound}}, allowing a deviation of {{amount}} (effective range {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "This test compares the threshold as a raw row count, so the threshold unit is not applied.",
     "dq-threshold-preview-zero-bound": "A percentage deviation around a bound of 0 leaves that bound at 0 — use an absolute deviation instead.",
     "dq-unresolved-incidents-count": "<0>{{count}} unresolved</0> incident",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} unresolved</0> incidents",

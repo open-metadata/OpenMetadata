@@ -472,6 +472,28 @@ WHERE extension IN ('database.databaseProfilerConfig',
                     'databaseSchema.databaseSchemaProfilerConfig')
   AND JSON_CONTAINS_PATH(json, 'one', '$.sampleDataStorageConfig');
 
+-- Microsoft Fabric service principals now choose a client secret or a certificate under
+-- authType. Services saved before keep their client secret as the client secret option.
+UPDATE dbservice_entity
+SET json = JSON_SET(
+    JSON_REMOVE(json, '$.connection.config.clientSecret'),
+    '$.connection.config.authType',
+    JSON_OBJECT('clientSecret', JSON_EXTRACT(json, '$.connection.config.clientSecret'))
+)
+WHERE serviceType = 'MicrosoftFabric'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.connection.config.clientSecret');
+
+-- Version history goes through the same connection converter on read, so its snapshots move too.
+UPDATE entity_extension
+SET json = JSON_SET(
+    JSON_REMOVE(json, '$.connection.config.clientSecret'),
+    '$.connection.config.authType',
+    JSON_OBJECT('clientSecret', JSON_EXTRACT(json, '$.connection.config.clientSecret'))
+)
+WHERE extension LIKE 'databaseService.version.%'
+  AND json->>'$.serviceType' = 'MicrosoftFabric'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.connection.config.clientSecret');
+
 -- Context memories move from their own Draft/Active/Archived `status` onto `entityStatus`, the
 -- lifecycle stage every entity type shares: Active becomes Approved, and a memory with no status
 -- was documented as Active, so it becomes Approved too. Version history is rewritten as well:
