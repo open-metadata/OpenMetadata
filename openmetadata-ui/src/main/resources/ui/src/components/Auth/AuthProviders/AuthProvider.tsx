@@ -215,6 +215,9 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
 
   const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
   setAppDefaultMode(appDefault);
+  useApplicationStore.getState().setAppPreferences({
+    defaultColumnOrder: appConfig?.defaultColumnOrder ?? undefined,
+  });
 
   // Skip the boot-time write when this tab already has a stickier
   // signal:

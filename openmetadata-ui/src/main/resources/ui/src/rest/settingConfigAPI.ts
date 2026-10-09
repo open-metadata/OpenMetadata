@@ -93,16 +93,17 @@ export const getAppConfiguration = async (): Promise<AppConfiguration> => {
 };
 
 /**
- * Admin-only. Writes through the generic `/system/settings` PUT, matching
- * the `config_type`/`config_value` shape the backend's `createOrUpdateSetting`
- * expects (see how `updateGlossaryTermRelationSettings` above writes).
+ * Admin-only. Updates only the given keys: the generic `/system/settings` PUT
+ * replaces the whole document, and several pages (Default App Mode, Table &
+ * Schema) each own one key of it, so the stored value is merged first.
  */
 export const patchAppConfiguration = async (
   patch: Partial<AppConfiguration>
 ): Promise<AppConfiguration> => {
+  const current = await getAppConfiguration();
   const response = await axiosClient.put<Settings>(`/system/settings`, {
     config_type: SettingType.AppConfiguration,
-    config_value: patch,
+    config_value: { ...current, ...patch },
   });
 
   return (response.data.config_value as AppConfiguration) ?? {};

@@ -12,6 +12,7 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/base';
 import {
   chooseSelectOption,
@@ -146,6 +147,7 @@ test.describe(
         ['learning-resources', 'learning-resources-settings'],
         ['search', 'search-settings'],
         ['app-mode', 'default-app-mode-page'],
+        ['table-schema', 'table-schema-settings'],
       ];
 
       for (const [cardId, contentTestId] of pages) {
@@ -865,6 +867,57 @@ test.describe(
         .getByText('Search', { exact: true })
         .click();
       await expect(page.getByTestId('search-settings')).toBeVisible();
+    });
+
+    test('table & schema: the default column order saves and table pages open in it', async ({
+      page,
+    }) => {
+      // Creates a table and reloads into it, behind the settings round trip.
+      test.slow();
+      // appConfiguration is tenant-wide: stub it, and start from a stored app
+      // mode so the save can be checked for keeping it.
+      const settings = await stubSettingRoundTrip(page, 'appConfiguration', {
+        initial: { defaultAppMode: 'ai' },
+      });
+      await openPlatformSettings(page);
+      // The API context reads the session token, so it needs the app loaded.
+      const table = new TableClass();
+      const { apiContext, afterAction } = await getApiContext(page);
+      await table.create(apiContext);
+
+      try {
+        await openCard(page, 'table-schema');
+        await expect(page.getByTestId('default-column-order-value')).toHaveText(
+          'Alphabetical (A → Z)'
+        );
+
+        await header(page).getByTestId('edit-button').click();
+        await expect(page.getByTestId('save-button')).toBeDisabled();
+        await page.getByTestId('column-order-option-sourceOrder').click();
+        await saveSettings(page);
+
+        expect(settings.puts[0].config_value).toEqual({
+          defaultAppMode: 'ai',
+          defaultColumnOrder: 'sourceOrder',
+        });
+        await expect(page.getByTestId('default-column-order-value')).toHaveText(
+          'Original Order'
+        );
+
+        // A fresh load reads the stored default at login.
+        const fqn = table.entityResponseData.fullyQualifiedName ?? '';
+        const columnsInSourceOrder = page.waitForRequest(
+          (request) =>
+            request.url().includes('/columns') &&
+            new URL(request.url()).searchParams.get('sortBy') ===
+              'ordinalPosition'
+        );
+        await page.goto(`/table/${encodeURIComponent(fqn)}`);
+        await columnsInSourceOrder;
+      } finally {
+        await table.delete(apiContext);
+        await afterAction();
+      }
     });
   }
 );
