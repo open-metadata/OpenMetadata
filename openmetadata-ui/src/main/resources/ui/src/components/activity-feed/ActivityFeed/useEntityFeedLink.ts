@@ -23,9 +23,12 @@ export const useEntityFeedLink = (
   entityType: EntityType,
   fallbackFqn = ''
 ): string => {
-  // Read as the existing tab reads it, so both open the same entity.
-  const { fqn: routeFqn } = useFqn();
-  const fqn = routeFqn || fallbackFqn;
+  // Read as the entity's page reads it: a column or field deep link names the
+  // entity first, except a worksheet's, which nests under its spreadsheet at
+  // any depth and is read whole.
+  const { fqn: routeFqn, entityFqn } = useFqn({ type: entityType });
+  const fqn =
+    (entityType === EntityType.WORKSHEET ? routeFqn : entityFqn) || fallbackFqn;
 
   return entityType === EntityType.USER || !fqn
     ? ''

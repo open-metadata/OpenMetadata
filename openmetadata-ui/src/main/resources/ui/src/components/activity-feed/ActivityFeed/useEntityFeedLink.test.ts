@@ -16,8 +16,9 @@ import { useEntityFeedLink } from './useEntityFeedLink';
 
 let mockRouteFqn = '';
 
-jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: () => ({ fqn: mockRouteFqn }),
+// The route alone is mocked, so useFqn splits it as on the page.
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: () => ({ fqn: mockRouteFqn }),
 }));
 
 const linkFor = (entityType: EntityType, fallbackFqn?: string) =>
@@ -33,6 +34,13 @@ describe('useEntityFeedLink', () => {
     expect(linkFor(EntityType.WORKSHEET)).toBe(
       '<#E::worksheet::drive.sales.q3.summary>'
     );
+  });
+
+  // A column deep link names the table, then the column.
+  it('links the table, not the column, on a column link', () => {
+    mockRouteFqn = 'svc.db.schema.orders.customer_id';
+
+    expect(linkFor(EntityType.TABLE)).toBe('<#E::table::svc.db.schema.orders>');
   });
 
   it('prefers the route over the fallback', () => {

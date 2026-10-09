@@ -43,6 +43,7 @@ import { enableAiAppMode } from '../../Utils/appMode';
 
 type FeedSeed = {
   table: TableClass;
+  column: string;
   tasks: { table: InboxTask; column: InboxTask; other: InboxTask };
   messages: {
     event: string;
@@ -234,6 +235,7 @@ const test = isolatedTest.extend<object, { feed: FeedSeed }>({
 
         await use({
           table,
+          column: column ?? '',
           tasks: { table: tableTask, column: columnTask, other: otherTask },
           messages,
         });
@@ -406,6 +408,38 @@ test.describe(
         await expect(page).toHaveURL(/\/activity_feed\/all\?taskStatus=closed/);
         await expectPageCountToMatchFeed(page);
       });
+    });
+
+    // A column link opens the table page; the tab counts the table, not a
+    // column the feed knows nothing about.
+    test("a column link counts the table's feed", async ({
+      isolatedUserPage: page,
+      feed,
+    }) => {
+      await enableAiAppMode(page);
+      const columnFqn = `${feed.table.entityResponseData.fullyQualifiedName}.${feed.column}`;
+      // The tab's task count asks about the table's own FQN.
+      const tableTaskCount = waitForResponseWithStatus(
+        page,
+        (r) => {
+          const url = new URL(r.url());
+
+          return (
+            url.pathname === '/api/v1/tasks' &&
+            url.searchParams.get('aboutEntity') ===
+              feed.table.entityResponseData.fullyQualifiedName
+          );
+        },
+        200
+      );
+      await page.goto(`/table/${getEncodedFqn(columnFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
+
+      await expect(pageTabCount(page)).toHaveText(/^[1-9]\d*\+?$/, {
+        timeout: AI_SHELL_TIMEOUT,
+      });
+      await tableTaskCount;
     });
 
     test('another entity page shows the same tab', async ({

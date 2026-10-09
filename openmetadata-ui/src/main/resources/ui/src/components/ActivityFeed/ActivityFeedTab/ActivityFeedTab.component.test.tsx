@@ -84,7 +84,7 @@ jest.mock('../../activity-feed/ActivityFeed/ActivityFeedEntityTab', () => ({
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: () => ({ fqn: 'test.db.table' }),
+  useFqn: () => ({ fqn: 'test.db.table', entityFqn: 'test.db.table' }),
 }));
 
 jest.mock('../../../utils/useRequiredParams', () => ({
