@@ -17,7 +17,12 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, GitMerge, Trash01, X } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  GitMerge,
+  Trash01,
+  X,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';

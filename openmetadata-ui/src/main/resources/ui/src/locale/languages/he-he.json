@@ -4507,7 +4507,7 @@
     "lineage-map-domain-lens-description": "לרוחב תחומי העסק",
     "lineage-map-field-count": "{{count}} שדות",
     "lineage-map-onboarding-altitude-description": "סקירה ← קבוצה ← טבלאות ← עמודות. הזום משנה את רמת הפירוט, כמו במפות: מדינה ← עיר ← רחוב.",
-    "lineage-map-onboarding-description": "כיום הזום רק משנה קנה מידה של פיקסלים. כאן שני פקדים נפרדים שומרים עליכם מכוונים בגרפים בכל גודל.",
+    "lineage-map-onboarding-description": "נווטו בשושלת כמו במפה. גררו בחופשיות, הגדילו או הקטינו כדי לכוונן את רמת הפירוט, או עברו בין תצוגות שונות",
     "lineage-map-onboarding-hint": "גללו כדי לְזוּם, גררו כדי להזיז, לחצו כדי להעמיק",
     "lineage-map-onboarding-layer-description": "שירות, תחום או מוצר דאטה — המכולה שדרכה אתם צופים, כמו שכבות שטח או תחבורה במפות.",
     "lineage-map-recenter-origin": "מרכוז מחדש על נכס הבסיס",

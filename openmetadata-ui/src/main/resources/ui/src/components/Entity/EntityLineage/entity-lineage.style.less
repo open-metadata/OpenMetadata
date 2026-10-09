@@ -210,6 +210,13 @@
   margin: 0 !important;
 }
 
+// The Lineage map's breadcrumb and status overlays sit inset from the canvas
+// corners, clear of its edge.
+.react-flow__panel.lineage-map-breadcrumb-panel,
+.react-flow__panel.lineage-map-status-panel {
+  margin: var(--om-space-16) !important;
+}
+
 .react-flow__minimap {
   height: 150px;
   border: 1px solid var(--tw-border-color-secondary);

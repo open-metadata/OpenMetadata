@@ -4507,7 +4507,7 @@
     "lineage-map-domain-lens-description": "비즈니스 도메인 전반",
     "lineage-map-field-count": "{{count}}개 필드",
     "lineage-map-onboarding-altitude-description": "개요 → 그룹 → 테이블 → 열. 확대/축소하면 지도의 국가 → 도시 → 거리처럼 세부 수준이 바뀝니다.",
-    "lineage-map-onboarding-description": "지금까지 확대/축소는 픽셀만 키웠습니다. 여기서는 두 개의 독립된 컨트롤이 어떤 크기의 그래프에서도 방향을 잃지 않게 해 줍니다.",
+    "lineage-map-onboarding-description": "지도처럼 계보를 탐색하세요. 자유롭게 이동하고, 확대 또는 축소하여 세부 수준을 조정하거나, 다른 보기로 전환할 수 있습니다",
     "lineage-map-onboarding-hint": "스크롤하여 확대/축소, 드래그하여 이동, 클릭하여 파고들기",
     "lineage-map-onboarding-layer-description": "서비스, 도메인 또는 데이터 제품 — 지도의 지형이나 대중교통 오버레이처럼 들여다보는 컨테이너입니다.",
     "lineage-map-recenter-origin": "기준 자산으로 다시 중앙 정렬",

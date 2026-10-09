@@ -564,6 +564,45 @@ export const getSceneLevelLabelKey = (scene: LineageScene) => {
     : getBandLabelKey(scene.band);
 };
 
+// The level rail has three stops. Everything between the lens containers
+// (service / domain / data product) and fields — databases, schemas, tables —
+// reads as "Data Assets", whichever band the scene is drawn in.
+export const LINEAGE_MAP_RAIL_STOPS = [
+  LineageBand.Layer,
+  LineageBand.Asset,
+  LineageBand.Field,
+];
+
+export const getRailStop = (scene: LineageScene): LineageBand => {
+  if (scene.band === LineageBand.Field) {
+    return LineageBand.Field;
+  }
+  const showsOnlyLensContainers = scene.nodes.every((node) =>
+    LENS_CONTAINER_LEVEL_KINDS.has(node.levelKind)
+  );
+
+  return scene.band === LineageBand.Layer && showsOnlyLensContainers
+    ? LineageBand.Layer
+    : LineageBand.Asset;
+};
+
+export const getRailStopLabelKey = (stop: LineageBand, lens: LineageLens) => {
+  if (stop === LineageBand.Field) {
+    return 'label.field-level-lineage';
+  }
+  if (stop === LineageBand.Asset) {
+    return 'label.data-asset-plural';
+  }
+  switch (lens) {
+    case LineageLens.Domain:
+      return 'label.domain';
+    case LineageLens.DataProduct:
+      return 'label.data-product';
+    default:
+      return 'label.service-level-view';
+  }
+};
+
 export const getDrillBand = (node: LineageSceneNode) => {
   if (node.band === LineageBand.Layer) {
     return LineageBand.Asset;

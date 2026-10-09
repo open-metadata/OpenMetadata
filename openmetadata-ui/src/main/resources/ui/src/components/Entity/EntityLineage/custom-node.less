@@ -38,6 +38,21 @@
   }
 }
 
+// Temp tables are transient lineage hops (no service, no columns): a lighter,
+// dashed card rather than a full asset node.
+.lineage-node.lineage-temp-node {
+  border-style: dashed;
+}
+
+// Keep an asset node's header row clear of the drill button. Only the header
+// row: the footer below it still spans the full node. Container
+// cards reserve the cue's space in their own padding instead.
+.lineage-node:not(.lineage-scene-layer-node)
+  .lineage-node-content.has-scene-drill-button:not(.has-lineage-node-menu)
+  .lineage-node-label-row {
+  margin-right: var(--om-space-36);
+}
+
 // Node default state
 .lineage-node {
   width: 100%;
@@ -84,7 +99,7 @@
         height: 22px;
         border: none;
         border-radius: var(--om-radius-md);
-        background: var(--tw-color-utility-brand-100);
+        background: var(--tw-background-color-tertiary);
         box-shadow: none;
         transform: translateY(-50%);
         opacity: 1;
@@ -209,8 +224,8 @@
       padding: 0;
       border: 1px solid var(--tw-border-color-secondary);
       border-radius: var(--om-radius-md);
-      background: var(--tw-color-utility-brand-100);
-      color: var(--tw-color-fg-brand-primary);
+      background: var(--tw-background-color-tertiary);
+      color: var(--tw-color-fg-tertiary);
       cursor: pointer;
       opacity: 0;
       box-shadow: var(--om-shadow-md);
@@ -241,13 +256,6 @@
     // menu with enough gap that the two hit areas never overlap.
     &.has-lineage-node-menu .lineage-scene-drill-button {
       right: 34px;
-    }
-
-    // Keep the label row, and a container's count pill, clear of the drill
-    // button. With a ⋮ menu the drill button sits left of it, so the gap goes
-    // before the menu rather than after it.
-    &.has-scene-drill-button:not(.has-lineage-node-menu) .label-container {
-      padding-right: var(--om-space-36);
     }
 
     &.has-scene-drill-button .label-container .lineage-node-menu {
@@ -283,15 +291,6 @@
             height: 32px;
             width: 32px;
             margin-bottom: var(--om-space-6);
-          }
-
-          &.with-footer::after {
-            display: block;
-            width: 100%;
-            height: 1px;
-
-            background: var(--tw-background-color-quaternary);
-            content: '';
           }
         }
 
@@ -404,7 +403,6 @@
       }
 
       .outside-current-page-items:has(.custom-node-header-column-tracing) {
-        border-top: 1px solid silver;
         margin-top: var(--om-space-8);
         padding-top: var(--om-space-8);
       }
@@ -435,8 +433,8 @@
         position: relative;
         font-size: var(--om-font-size-xs);
         font-weight: var(--om-font-weight-regular);
-        border: 1px solid var(--tw-border-color-secondary);
-        border-left: 6px solid transparent;
+        border: 1px solid transparent;
+        border-left-width: 6px;
         border-radius: var(--om-radius-sm);
         border-top-left-radius: var(--om-radius-md);
         border-bottom-left-radius: var(--om-radius-md);
@@ -630,6 +628,24 @@
           border-left-color: var(--tw-color-fg-brand-primary);
         }
       }
+    }
+  }
+}
+
+// The base node is a light brand card; selected / DQ states above still win.
+.lineage-node.lineage-base-node {
+  --lineage-node-border: var(--tw-border-color-brand);
+  background-color: var(--tw-background-color-brand-primary);
+
+  &:not(.custom-node-header-active) {
+    .lineage-node-badge-container,
+    .lineage-node-content .label-container,
+    .lineage-node-content .column-container,
+    .lineage-node-content
+      .label-container
+      .custom-node-label-container
+      .entity-footer {
+      background-color: var(--tw-background-color-brand-primary);
     }
   }
 }

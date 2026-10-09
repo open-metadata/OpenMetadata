@@ -241,9 +241,9 @@ describe('CanvasUtils', () => {
         // Y uses node.height (100) from createMockNode, so midpoint = 50
         expect(result).toEqual({
           sourceX: 400,
-          sourceY: 33,
-          targetX: 500,
-          targetY: 33,
+          sourceY: 50,
+          targetX: 490,
+          targetY: 50,
         });
       });
 
@@ -258,9 +258,9 @@ describe('CanvasUtils', () => {
 
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(500);
-        expect(result?.sourceY).toBe(233); // 200 + 100/2
-        expect(result?.targetX).toBe(600);
-        expect(result?.targetY).toBe(333); // 300 + 100/2
+        expect(result?.sourceY).toBe(250); // 200 + min(58, 100/2)
+        expect(result?.targetX).toBe(590);
+        expect(result?.targetY).toBe(350); // 300 + min(58, 100/2)
       });
     });
 
@@ -409,7 +409,7 @@ describe('CanvasUtils', () => {
 
         expect(result).not.toBeNull();
         expect(result?.sourceX).toBe(400);
-        expect(result?.targetX).toBe(500);
+        expect(result?.targetX).toBe(490);
       });
     });
 
@@ -440,11 +440,11 @@ describe('CanvasUtils', () => {
         const result = getEdgeCoordinates(edge, tempNode, targetNode);
 
         expect(result).not.toBeNull();
-        expect(result?.sourceY).toBe(20); // 0 + 40/2 (Fixed height for temp nodes)
-        expect(result?.targetY).toBe(33); // 0 + 100/2 - 17 since target is not rootNode
+        expect(result?.sourceY).toBe(29); // 0 + 58/2 (fixed height for temp nodes)
+        expect(result?.targetY).toBe(50); // 0 + min(58, 100/2)
       });
 
-      it('centers edge at actual midpoint when measured height differs from computed height', () => {
+      it('anchors edges at the handle height (min(58px, half the measured height))', () => {
         const edge = createMockEdge('edge1', 'node1', 'node2', false);
         const sourceNode = createMockNode('node1');
         sourceNode.height = 150;
@@ -456,9 +456,23 @@ describe('CanvasUtils', () => {
         const result = getEdgeCoordinates(edge, sourceNode, targetNode);
 
         expect(result).not.toBeNull();
-        expect(result?.sourceY).toBe(133); // 100 + 150/2 - 17 since source node is rootNode
-        expect(result?.targetY).toBe(133); // 100 + 200/2 - 17 since target is not rootNode
+        expect(result?.sourceY).toBe(158); // 100 + min(58, 150/2)
+        expect(result?.targetY).toBe(158); // 100 + min(58, 200/2)
       });
+    });
+  });
+
+  describe('scene map nodes', () => {
+    it('ends node edges at the node border when the target draws no handle', () => {
+      const edge = createMockEdge('edge1', 'node1', 'node2', false);
+      const sourceNode = createMockNode('node1');
+      const targetNode = createMockNode('node2');
+      targetNode.position = { x: 500, y: 0 };
+      targetNode.data = { ...targetNode.data, sceneNode: { id: 'node2' } };
+
+      const result = getEdgeCoordinates(edge, sourceNode, targetNode);
+
+      expect(result?.targetX).toBe(500);
     });
   });
 
@@ -487,7 +501,7 @@ describe('CanvasUtils', () => {
       expect(bounds.minX).toBeLessThan(351);
       expect(bounds.maxX).toBeGreaterThan(500);
       // sourceY = 50 (node.height=100 / 2), padding=50 → minY = 0
-      expect(bounds.minY).toBeLessThan(0);
+      expect(bounds.minY).toBe(0);
       expect(bounds.maxY).toBeGreaterThan(100);
     });
   });

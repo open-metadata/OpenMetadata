@@ -23,7 +23,7 @@ import {
   type RefObject,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NodeProps } from 'reactflow';
+import { Handle, NodeProps, Position } from 'reactflow';
 import { ReactComponent as ZoomInIcon } from '../../../assets/svg/ic-zoom-in.svg';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
@@ -34,6 +34,7 @@ import {
 } from '../../../generated/api/lineage/lineageScene';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
+import { isContainerSceneNode } from '../../Lineage/LineageMap/LineageMap.utils';
 import LineageNodeMenu from '../../Lineage/LineageNodeMenu/LineageNodeMenu';
 import './custom-node.less';
 import {
@@ -49,10 +50,47 @@ import LineageNodeLabelV1 from './LineageNodeLabelV1';
 import NodeChildren from './NodeChildren/NodeChildren.component';
 
 const NodeHandles = memo(
-  ({ nodeType, expandCollapseHandles }: NodeHandlesProps) =>
-    nodeType === EntityLineageNodeType.NOT_CONNECTED ? null : (
-      <>{expandCollapseHandles}</>
-    )
+  ({
+    nodeType,
+    id,
+    showEdgeHandles,
+    expandCollapseHandles,
+  }: NodeHandlesProps) => {
+    if (nodeType === EntityLineageNodeType.NOT_CONNECTED) {
+      return null;
+    }
+    // Lineage is added from the node menus, so these only mark where the
+    // classic graph's edges meet the node; the expand / collapse buttons sit
+    // over them. Scene map nodes draw no handles.
+    const showTarget =
+      showEdgeHandles && nodeType !== EntityLineageNodeType.INPUT;
+    const showSource =
+      showEdgeHandles && nodeType !== EntityLineageNodeType.OUTPUT;
+
+    return (
+      <>
+        {showTarget && (
+          <Handle
+            className="lineage-node-handle"
+            id={id}
+            isConnectable={false}
+            position={Position.Left}
+            type="target"
+          />
+        )}
+        {showSource && (
+          <Handle
+            className="lineage-node-handle"
+            id={id}
+            isConnectable={false}
+            position={Position.Right}
+            type="source"
+          />
+        )}
+        {expandCollapseHandles}
+      </>
+    );
+  }
 );
 
 const getHandleVisibility = ({
@@ -236,9 +274,13 @@ const CustomNodeV1 = (props: NodeProps) => {
       isChildrenListExpanded: columnsExpanded || isColumnLevelLineage,
     }),
     {
+      'lineage-temp-node': Boolean(node.isTempTable),
       'lineage-scene-node': Boolean(sceneNode),
+      // Container nodes (service, database, schema, domain, data product) use
+      // the container card, with its centred drill cue, in every band.
       'lineage-scene-layer-node tw:bg-surface':
-        Boolean(sceneNode) && sceneBand === LineageBand.Layer,
+        Boolean(sceneNode) &&
+        (sceneBand === LineageBand.Layer || isContainerSceneNode(sceneNode)),
     }
   );
   const onExpand = useCallback(
@@ -419,7 +461,9 @@ const CustomNodeV1 = (props: NodeProps) => {
         </Box>
         <NodeHandles
           expandCollapseHandles={handlesElement}
+          id={id}
           nodeType={nodeType}
+          showEdgeHandles={!sceneNode}
         />
         {childElement}
       </div>

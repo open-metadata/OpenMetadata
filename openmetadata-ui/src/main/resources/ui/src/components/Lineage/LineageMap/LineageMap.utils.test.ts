@@ -31,6 +31,8 @@ import {
   getDrillBand,
   getLensRootLabelKey,
   getParentSceneRequest,
+  getRailStop,
+  getRailStopLabelKey,
   getSceneFocus,
   getSceneLevelLabelKey,
   getSceneNodeCount,
@@ -297,6 +299,46 @@ const createTableFocusedScene = (band = LineageBand.Asset): LineageScene => ({
 });
 
 describe('LineageMap utils', () => {
+  it('maps scenes onto the three rail stops', () => {
+    expect(
+      getRailStop(createScene(LineageBand.Layer, [LineageLevelKind.Service]))
+    ).toBe(LineageBand.Layer);
+    // A drilled-into service lists databases / schemas in the Layer band;
+    // the rail reads those as Data Assets.
+    expect(
+      getRailStop(
+        createScene(LineageBand.Layer, [
+          LineageLevelKind.Service,
+          LineageLevelKind.Database,
+        ])
+      )
+    ).toBe(LineageBand.Asset);
+    expect(
+      getRailStop(createScene(LineageBand.Layer, [LineageLevelKind.Schema]))
+    ).toBe(LineageBand.Asset);
+    expect(
+      getRailStop(createScene(LineageBand.Asset, [LineageLevelKind.Table]))
+    ).toBe(LineageBand.Asset);
+    expect(
+      getRailStop(createScene(LineageBand.Field, [LineageLevelKind.Table]))
+    ).toBe(LineageBand.Field);
+  });
+
+  it('labels the first rail stop after the lens', () => {
+    expect(getRailStopLabelKey(LineageBand.Layer, LineageLens.Service)).toBe(
+      'label.service-level-view'
+    );
+    expect(getRailStopLabelKey(LineageBand.Layer, LineageLens.Domain)).toBe(
+      'label.domain'
+    );
+    expect(getRailStopLabelKey(LineageBand.Asset, LineageLens.Domain)).toBe(
+      'label.data-asset-plural'
+    );
+    expect(getRailStopLabelKey(LineageBand.Field, LineageLens.Service)).toBe(
+      'label.field-level-lineage'
+    );
+  });
+
   it('returns the visible hierarchy level for single-level asset scenes', () => {
     expect(
       getSceneLevelLabelKey(

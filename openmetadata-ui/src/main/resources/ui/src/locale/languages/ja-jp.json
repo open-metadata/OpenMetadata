@@ -4507,7 +4507,7 @@
     "lineage-map-domain-lens-description": "ビジネスドメイン全体を横断",
     "lineage-map-field-count": "{{count}} 個のフィールド",
     "lineage-map-onboarding-altitude-description": "概要 → グループ → テーブル → カラム。ズームで詳細度が変わります。地図の国 → 都市 → 通りと同じ感覚です。",
-    "lineage-map-onboarding-description": "従来、ズームはピクセルを拡大するだけでした。ここでは2つの独立したコントロールが、どんな規模のグラフでも現在地を見失わせません。",
+    "lineage-map-onboarding-description": "地図のようにリネージを操作できます。自由にパンし、ズームイン・アウトで詳細レベルを調整したり、表示を切り替えたりできます",
     "lineage-map-onboarding-hint": "スクロールでズーム、ドラッグでパン、クリックでドリルダウン",
     "lineage-map-onboarding-layer-description": "サービス、ドメイン、データプロダクト — 地図の地形図や路線図のように、視点となるコンテナです。",
     "lineage-map-recenter-origin": "基点アセットに再センタリング",

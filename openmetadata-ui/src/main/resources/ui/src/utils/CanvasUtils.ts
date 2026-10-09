@@ -254,19 +254,37 @@ function getColumnLineageCoordinates(
   };
 }
 
+// The expand / collapse handles sit at `top: min(58px, 50%)` of the node
+// (custom-node.less `.react-flow .lineage-node-handle`); node edges meet them.
+const NODE_HANDLE_MAX_TOP = 58;
+
+const getNodeAnchorY = (node: Node, isColumnLineage: boolean) => {
+  const computedHeight = getNodeHeight(node, isColumnLineage, 0);
+  // Temp table nodes carry no handles and have a fixed height.
+  if (node.data?.node?.isTempTable) {
+    return node.position.y + computedHeight / 2;
+  }
+
+  return (
+    node.position.y +
+    Math.min(NODE_HANDLE_MAX_TOP, (node.height ?? computedHeight) / 2)
+  );
+};
+
+// Classic lineage nodes draw a 20px handle box centred on their left edge and
+// edges end on its outer side; scene map nodes draw none.
+const getTargetHandleInset = (node: Node) => (node.data?.sceneNode ? 0 : 10);
+
 function getEntityLineageCoordinates(
   sourceNode: Node,
   targetNode: Node,
   isColumnLineage: boolean
 ): EdgeCoordinates {
-  const sourceHeight = getNodeHeight(sourceNode, isColumnLineage, 0);
-  const targetHeight = getNodeHeight(targetNode, isColumnLineage, 0);
-
   return {
     sourceX: sourceNode.position.x + (sourceNode.width ?? 0),
-    sourceY: sourceNode.position.y + sourceHeight / 2,
-    targetX: targetNode.position.x,
-    targetY: targetNode.position.y + targetHeight / 2,
+    sourceY: getNodeAnchorY(sourceNode, isColumnLineage),
+    targetX: targetNode.position.x - getTargetHandleInset(targetNode),
+    targetY: getNodeAnchorY(targetNode, isColumnLineage),
   };
 }
 

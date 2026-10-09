@@ -4507,7 +4507,7 @@
     "lineage-map-domain-lens-description": "عبر نطاقات الأعمال",
     "lineage-map-field-count": "{{count}} حقل",
     "lineage-map-onboarding-altitude-description": "نظرة عامة ← مجموعة ← جداول ← أعمدة. يغيّر التكبير مستوى التفصيل، تمامًا كما في الخرائط: دولة ← مدينة ← شارع.",
-    "lineage-map-onboarding-description": "اليوم، لا يؤدي التكبير سوى إلى تحجيم البكسل. هنا، يبقيك عنصرا تحكم منفصلان متمركزًا في الرسوم البيانية أيًا كان حجمها.",
+    "lineage-map-onboarding-description": "تنقّل في سلسلة البيانات كما تتنقّل في خريطة. حرّك العرض بحرية، أو كبّر أو صغّر لضبط مستوى التفاصيل، أو بدّل بين طرق العرض المختلفة",
     "lineage-map-onboarding-hint": "مرّر للتكبير، اسحب للتحريك، انقر للتعمّق",
     "lineage-map-onboarding-layer-description": "خدمة أو نطاق أو منتج بيانات — الحاوية التي تشاهد من خلالها، مثل طبقات التضاريس أو النقل في الخرائط.",
     "lineage-map-recenter-origin": "إعادة التمركز على الأصل الأساسي",

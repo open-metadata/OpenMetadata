@@ -346,7 +346,7 @@ const LineageLayers = ({
     <Dropdown.Root isOpen={isLayersOpen} onOpenChange={setIsLayersOpen}>
       <Button
         className={classNames(
-          'lineage-scene-layer-trigger tw:min-w-[232px] tw:justify-start! tw:gap-3! tw:rounded-xl! tw:bg-surface tw:px-3! tw:py-2! tw:text-left tw:shadow-md',
+          'lineage-scene-layer-trigger tw:justify-start! tw:gap-3! tw:rounded-xl! tw:bg-surface tw:px-3! tw:py-2! tw:text-left tw:shadow-md',
           { 'tw:after:outline-brand': isLayersOpen }
         )}
         color="secondary"
@@ -386,9 +386,7 @@ const LineageLayers = ({
           </Box>
         </Box>
       </Button>
-      <Dropdown.Popover
-        className="lineage-layers-popover tw:w-auto tw:min-w-[264px] tw:p-1.5"
-        placement="top start">
+      <Dropdown.Popover className=" " placement="top start">
         {menu}
       </Dropdown.Popover>
     </Dropdown.Root>

@@ -74,6 +74,8 @@ export interface LineageConfigModalProps {
 
 export interface NodeHandlesProps {
   nodeType: string;
+  id: string;
+  showEdgeHandles: boolean;
   expandCollapseHandles: ReactNode;
 }
 

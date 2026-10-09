@@ -4507,7 +4507,7 @@
     "lineage-map-domain-lens-description": "À travers les domaines métier",
     "lineage-map-field-count": "{{count}} champs",
     "lineage-map-onboarding-altitude-description": "Vue d'ensemble → groupe → tables → colonnes. Le zoom change le niveau de détail, comme sur les cartes de pays → ville → rue.",
-    "lineage-map-onboarding-description": "Aujourd'hui, le zoom ne fait qu'agrandir les pixels. Ici, deux contrôles distincts vous gardent orienté dans des graphes de toute taille.",
+    "lineage-map-onboarding-description": "Parcourez le lignage comme une carte. Déplacez-vous librement, zoomez ou dézoomez pour ajuster le niveau de détail, ou basculez entre différentes vues",
     "lineage-map-onboarding-hint": "Faites défiler pour zoomer, glissez pour déplacer, cliquez pour explorer",
     "lineage-map-onboarding-layer-description": "Service, domaine ou produit de données : le conteneur à travers lequel vous regardez, comme les couches de relief ou de transport sur les cartes.",
     "lineage-map-recenter-origin": "Recentrer sur l'actif de base",

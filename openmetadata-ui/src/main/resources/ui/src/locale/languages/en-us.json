@@ -4507,7 +4507,7 @@
     "lineage-map-domain-lens-description": "Across business domains",
     "lineage-map-field-count": "{{count}} fields",
     "lineage-map-onboarding-altitude-description": "Overview -> group -> tables -> columns. Zooming changes detail, like Maps country -> city -> street.",
-    "lineage-map-onboarding-description": "Today, zoom only scales pixels. Here, two separate controls keep you oriented in graphs of any size.",
+    "lineage-map-onboarding-description": "Navigate lineage like a map. Pan freely, zoom in or out to adjust your level of detail, or switch between different views",
     "lineage-map-onboarding-hint": "Scroll to zoom, drag to pan, click to drill in",
     "lineage-map-onboarding-layer-description": "Service, Domain, or Data Product - the container you view through, like Maps terrain or transit overlays.",
     "lineage-map-recenter-origin": "Recenter on base asset",

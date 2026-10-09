@@ -4507,7 +4507,7 @@
     "lineage-map-domain-lens-description": "Över affärsdomäner",
     "lineage-map-field-count": "{{count}} fält",
     "lineage-map-onboarding-altitude-description": "Översikt → grupp → tabeller → kolumner. Zoomning ändrar detaljnivån, som på kartor från land → stad → gata.",
-    "lineage-map-onboarding-description": "Idag skalar zoomning bara pixlar. Här håller två separata kontroller dig orienterad i grafer av alla storlekar.",
+    "lineage-map-onboarding-description": "Navigera i härkomsten som på en karta. Panorera fritt, zooma in eller ut för att justera detaljnivån eller växla mellan olika vyer",
     "lineage-map-onboarding-hint": "Rulla för att zooma, dra för att panorera, klicka för att borra ned",
     "lineage-map-onboarding-layer-description": "Tjänst, domän eller dataprodukt – behållaren du ser genom, som terräng- eller transportlager på kartor.",
     "lineage-map-recenter-origin": "Centrera om på bastillgången",

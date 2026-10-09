@@ -4507,7 +4507,7 @@
     "lineage-map-domain-lens-description": "İş alanları genelinde",
     "lineage-map-field-count": "{{count}} alan",
     "lineage-map-onboarding-altitude-description": "Genel bakış → grup → tablolar → sütunlar. Yakınlaştırma, haritalardaki ülke → şehir → sokak gibi ayrıntı düzeyini değiştirir.",
-    "lineage-map-onboarding-description": "Bugün yakınlaştırma yalnızca pikselleri ölçekler. Burada iki ayrı denetim, her boyuttaki grafikte yönünüzü korumanızı sağlar.",
+    "lineage-map-onboarding-description": "Veri soyunda bir haritadaymış gibi gezinin. Serbestçe kaydırın, ayrıntı düzeyini ayarlamak için yakınlaştırın veya uzaklaştırın ya da farklı görünümler arasında geçiş yapın",
     "lineage-map-onboarding-hint": "Yakınlaştırmak için kaydırın, kaydırmak için sürükleyin, ayrıntıya inmek için tıklayın",
     "lineage-map-onboarding-layer-description": "Servis, alan adı veya veri ürünü — haritalardaki arazi ya da ulaşım katmanları gibi, içinden baktığınız konteyner.",
     "lineage-map-recenter-origin": "Taban varlığa yeniden ortala",

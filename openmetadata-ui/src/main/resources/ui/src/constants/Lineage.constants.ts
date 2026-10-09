@@ -107,7 +107,7 @@ export const entityData = [
 
 export const NODE_WIDTH = 400;
 export const NODE_HEIGHT = 66;
-export const TEMP_LINEAGE_NODE_HEIGHT = 40;
+export const TEMP_LINEAGE_NODE_HEIGHT = 58;
 export const NODE_BASE_HEIGHT = 48;
 export const NODE_HEIGHT_WITH_CHILDREN = 109;
 export const COLUMN_NODE_HEIGHT = 32.85;

@@ -4507,7 +4507,7 @@
     "lineage-map-domain-lens-description": "A través de los dominios de negocio",
     "lineage-map-field-count": "{{count}} campos",
     "lineage-map-onboarding-altitude-description": "Resumen → grupo → tablas → columnas. El zoom cambia el nivel de detalle, como en los mapas de país → ciudad → calle.",
-    "lineage-map-onboarding-description": "Hoy, el zoom solo escala píxeles. Aquí, dos controles independientes te mantienen orientado en grafos de cualquier tamaño.",
+    "lineage-map-onboarding-description": "Navega por el linaje como en un mapa. Desplázate libremente, acerca o aleja el zoom para ajustar el nivel de detalle o cambia entre distintas vistas",
     "lineage-map-onboarding-hint": "Desplázate para hacer zoom, arrastra para moverte, haz clic para profundizar",
     "lineage-map-onboarding-layer-description": "Servicio, dominio o producto de datos: el contenedor a través del cual ves, como las capas de relieve o transporte en los mapas.",
     "lineage-map-recenter-origin": "Recentrar en el activo base",

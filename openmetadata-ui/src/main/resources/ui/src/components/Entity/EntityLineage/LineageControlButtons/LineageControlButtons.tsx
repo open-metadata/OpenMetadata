@@ -12,8 +12,9 @@
  */
 import {
   Box,
-  Button,
+  ButtonUtility,
   Card,
+  Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FC, useCallback } from 'react';
@@ -61,25 +62,31 @@ const LineageControlButtons: FC<{
   }, [onFitView, reactFlowInstance]);
 
   return (
-    <Card size="sm" variant="elevated">
-      <Card.Content>
-        <Box align="center" gap={4}>
-          <Button
+    <Card variant="elevated">
+      <Card.Content className="tw:p-1.5!">
+        <Box align="center" className="tw:gap-1.5">
+          <ButtonUtility
             aria-label={t('label.mind-map')}
             aria-pressed={miniMapVisible}
-            color={miniMapVisible ? 'link-color' : 'link-gray'}
+            className={
+              miniMapVisible
+                ? 'tw:text-link tw:hover:text-link tw:hover:bg-primary_hover'
+                : ''
+            }
+            color="tertiary"
             data-testid="toggle-mind-map"
-            iconLeading={MapIcon as IconComponent}
-            size="sm"
+            icon={MapIcon as IconComponent}
+            size="xs"
             tooltip={t('label.mind-map')}
             onClick={onToggleMiniMap}
           />
-          <Button
+          <Divider orientation="vertical" />
+          <ButtonUtility
             aria-label={t('label.zoom-in')}
-            color="link-gray"
+            color="tertiary"
             data-testid="zoom-in"
-            iconLeading={ZoomInIcon as IconComponent}
-            size="sm"
+            icon={ZoomInIcon as IconComponent}
+            size="xs"
             tooltip={t('label.zoom-in')}
             onClick={handleZoomIn}
           />
@@ -90,21 +97,22 @@ const LineageControlButtons: FC<{
             size="text-sm">
             {`${Math.round(zoom * 100)}%`}
           </Typography>
-          <Button
+          <ButtonUtility
             aria-label={t('label.zoom-out')}
-            color="link-gray"
+            color="tertiary"
             data-testid="zoom-out"
-            iconLeading={ZoomOutIcon as IconComponent}
-            size="sm"
+            icon={ZoomOutIcon as IconComponent}
+            size="xs"
             tooltip={t('label.zoom-out')}
             onClick={handleZoomOut}
           />
-          <Button
+          <Divider orientation="vertical" />
+          <ButtonUtility
             aria-label={t('label.fit-to-screen')}
-            color="link-gray"
+            color="tertiary"
             data-testid="fit-screen"
-            iconLeading={FitScreenIcon as IconComponent}
-            size="sm"
+            icon={FitScreenIcon as IconComponent}
+            size="xs"
             tooltip={t('label.fit-to-screen')}
             onClick={handleFitView}
           />

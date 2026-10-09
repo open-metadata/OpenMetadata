@@ -19,6 +19,10 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Dataflow01,
+  Table as TableIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import {
@@ -32,7 +36,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-filter.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
 import {
@@ -105,18 +108,26 @@ const EntityLabel = ({
 
   const childrenCount = useMemo(() => getFooterChildrenCount(node), [node]);
 
+  // Temp tables have no service / database / schema to show, so their
+  // breadcrumb would only be empty separators.
   const breadcrumbItems = useMemo(
     () =>
-      getEntityBreadcrumbs(
-        node as unknown as Table,
-        node.entityType as EntityType,
-        false
-      ).map((breadcrumb, index) => ({
-        id: `${index}-${breadcrumb.name}`,
-        label: (
-          <span className="lineage-breadcrumb-item">{breadcrumb.name}</span>
-        ),
-      })),
+      node.isTempTable
+        ? []
+        : getEntityBreadcrumbs(
+            node as unknown as Table,
+            node.entityType as EntityType,
+            false
+          )
+            .filter((breadcrumb) => Boolean(breadcrumb.name))
+            .map((breadcrumb, index) => ({
+              id: `${index}-${breadcrumb.name}`,
+              label: (
+                <span className="lineage-breadcrumb-item">
+                  {breadcrumb.name}
+                </span>
+              ),
+            })),
     [node]
   );
   const serviceSubtitle = useMemo(
@@ -135,11 +146,20 @@ const EntityLabel = ({
           'with-footer': childrenCount > 0,
           // Container nodes have no footer, so centre the name, subtitle and
           // count pill instead of the leaf layout's top-weighted padding.
-          'tw:flex tw:items-center tw:py-3!': Boolean(node.lineageMapCount),
+          'tw:flex tw:items-center tw:py-3!': Boolean(
+            node.lineageMapCount || node.isTempTable
+          ),
         }
       )}>
-      <div className="d-flex items-center flex-auto">
-        {!node.isTempTable && (
+      <div className="lineage-node-label-row d-flex items-center flex-auto tw:min-w-0">
+        {node.isTempTable ? (
+          <Box
+            align="center"
+            className="tw:mr-2 tw:size-8 tw:shrink-0 tw:rounded-lg tw:bg-tertiary tw:text-fg-quaternary"
+            justify="center">
+            <TableIcon aria-hidden="true" className="tw:size-4" />
+          </Box>
+        ) : (
           <div className="d-flex entity-service-icon m-r-xs">
             {getServiceIcon(node)}
           </div>
@@ -340,7 +360,7 @@ const EntityFooter = ({
           )}
           color="tertiary"
           data-testid="lineage-filter-button"
-          icon={FilterIcon}
+          icon={Dataflow01}
           tooltip={t('message.only-show-columns-with-lineage')}
           tooltipPlacement="right"
           onClick={handleOnlyShowColumnsWithLineage}

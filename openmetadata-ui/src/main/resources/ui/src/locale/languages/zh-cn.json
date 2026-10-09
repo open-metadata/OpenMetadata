@@ -4507,7 +4507,7 @@
     "lineage-map-domain-lens-description": "跨业务域",
     "lineage-map-field-count": "{{count}} 个字段",
     "lineage-map-onboarding-altitude-description": "概览 → 分组 → 数据表 → 列。缩放会改变细节层级，就像地图从国家 → 城市 → 街道。",
-    "lineage-map-onboarding-description": "如今，缩放只是放大像素。在这里，两个独立的控件让你在任意规模的图中都不迷失方向。",
+    "lineage-map-onboarding-description": "像浏览地图一样浏览血缘关系。自由平移，放大或缩小以调整细节层级，或在不同视图之间切换",
     "lineage-map-onboarding-hint": "滚动缩放，拖动平移，点击深入",
     "lineage-map-onboarding-layer-description": "服务、域或数据产品——你透过它进行观察的容器，就像地图的地形或交通图层。",
     "lineage-map-recenter-origin": "重新居中到基准资产",

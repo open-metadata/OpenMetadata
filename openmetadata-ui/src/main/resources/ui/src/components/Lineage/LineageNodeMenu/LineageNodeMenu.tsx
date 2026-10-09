@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { Dropdown } from '@openmetadata/ui-core-components';
-import { ArrowLeft, ArrowRight, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { RefObject, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';

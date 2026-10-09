@@ -121,7 +121,6 @@ import LineageNodeDeleteModal from '../LineageNodeDeleteModal/LineageNodeDeleteM
 import LineageSkeleton from '../LineageSkeleton.component';
 import {
   buildLineagePathHighlightIndex,
-  getBandLabelKey,
   getBreadcrumbSceneRequest,
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
@@ -130,6 +129,8 @@ import {
   getLensRootLabelKey,
   getLineageEditColumnPair,
   getParentSceneRequest,
+  getRailStop,
+  getRailStopLabelKey,
   getSceneFocus,
   getSceneLevelLabelKey,
   getSceneNodeCount,
@@ -138,6 +139,7 @@ import {
   getSceneRequestFromSearch,
   getSceneSearch,
   isContainerSceneNode,
+  LINEAGE_MAP_RAIL_STOPS,
   useCloseOnViewportMove,
   type LineageSceneRequest,
 } from './LineageMap.utils';
@@ -176,13 +178,23 @@ const SCENE_LAYER_NODE_HEIGHT = 66;
 const LINEAGE_MAP_EMPTY_CLASSES =
   'lineage-map-empty tw:absolute tw:inset-0 tw:z-1 tw:grid tw:place-items-center tw:bg-transparent tw:text-tertiary';
 const LINEAGE_MAP_RAIL_CLASSES = [
-  'lineage-map-rail tw:absolute tw:top-1/2 tw:right-6 tw:z-10 tw:flex tw:w-8 tw:-translate-y-1/2',
-  'tw:flex-col tw:items-center tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:py-1.5 tw:shadow-lg',
+  'lineage-map-rail tw:group tw:absolute tw:top-1/2 tw:right-6 tw:z-10 tw:flex tw:-translate-y-1/2',
+  'tw:items-stretch tw:gap-2',
 ].join(' ');
+const LINEAGE_MAP_RAIL_TRACK_CLASSES = [
+  'tw:relative tw:flex tw:h-[138px] tw:w-[30px] tw:flex-col tw:items-center tw:justify-between tw:py-1',
+  'tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:shadow-sm',
+].join(' ');
+// Hidden labels slide in while the rail is hovered or holds keyboard focus;
+// a mouse click's lingering focus does not keep them open.
 const LINEAGE_MAP_RAIL_LABEL_CLASSES = [
-  'lineage-map-rail-label tw:absolute tw:right-10 tw:max-w-[164px] tw:whitespace-nowrap tw:rounded-full',
-  'tw:border tw:border-brand tw:bg-surface tw:px-2.5 tw:py-1 tw:text-sm tw:font-semibold tw:leading-normal',
-  'tw:text-brand-tertiary',
+  'lineage-map-rail-label tw:h-auto! tw:whitespace-nowrap tw:rounded-full! tw:px-2.5! tw:py-0.5!',
+  'tw:text-xs tw:shadow-xs tw:transition-[opacity,transform] tw:duration-150',
+].join(' ');
+const LINEAGE_MAP_RAIL_LABEL_HIDDEN_CLASSES = [
+  'tw:pointer-events-none tw:translate-x-1.5 tw:opacity-0',
+  'tw:group-hover:pointer-events-auto tw:group-hover:translate-x-0 tw:group-hover:opacity-100',
+  'tw:group-has-[:focus-visible]:pointer-events-auto tw:group-has-[:focus-visible]:translate-x-0 tw:group-has-[:focus-visible]:opacity-100',
 ].join(' ');
 const FIELD_NODE_HEIGHT =
   NODE_HEIGHT_WITH_CHILDREN +
@@ -735,60 +747,75 @@ const LineageMapOnboardingDialog = ({
 const LineageMapControls = ({
   canDrill,
   scene,
-  onBandChange,
+  onStopSelect,
 }: {
   canDrill: boolean;
   scene: LineageScene;
-  onBandChange: (band: LineageBand) => void;
+  onStopSelect: (stop: LineageBand) => void;
 }) => {
   const { t } = useTranslation();
-  const bandOptions = [LineageBand.Layer, LineageBand.Asset, LineageBand.Field];
+  const activeStop = getRailStop(scene);
+  const stops = LINEAGE_MAP_RAIL_STOPS.map((stop) => ({
+    stop,
+    label: t(getRailStopLabelKey(stop, scene.lens)),
+    isActive: stop === activeStop,
+    isDisabled: isDeeperBand(activeStop, stop) && !canDrill,
+  }));
 
   return (
     <div className={LINEAGE_MAP_RAIL_CLASSES}>
-      <span
-        aria-hidden="true"
-        className="tw:absolute tw:top-5 tw:bottom-5 tw:left-1/2 tw:w-px tw:-translate-x-1/2 tw:bg-border-secondary"
-      />
-      {bandOptions.map((band) => {
-        const isDeeperBandUnavailable =
-          isDeeperBand(scene.band, band) && !canDrill;
-        const isDisabled = isDeeperBandUnavailable;
-
-        return (
+      <div className="tw:flex tw:h-[138px] tw:flex-col tw:items-end tw:justify-between tw:py-1">
+        {stops.map(({ stop, label, isActive, isDisabled }) => (
+          <div className="tw:flex tw:h-6 tw:items-center" key={stop}>
+            <Button
+              className={classNames(LINEAGE_MAP_RAIL_LABEL_CLASSES, {
+                'active tw:font-semibold tw:text-brand-secondary! tw:after:outline-brand':
+                  isActive,
+                [LINEAGE_MAP_RAIL_LABEL_HIDDEN_CLASSES]: !isActive,
+              })}
+              color="secondary"
+              data-testid={`lineage-map-band-label-${stop}`}
+              isDisabled={isDisabled}
+              size="sm"
+              onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                event.stopPropagation();
+                onStopSelect(stop);
+              }}>
+              {label}
+            </Button>
+          </div>
+        ))}
+      </div>
+      <div className={LINEAGE_MAP_RAIL_TRACK_CLASSES}>
+        <span
+          aria-hidden="true"
+          className="tw:absolute tw:top-3.5 tw:bottom-3.5 tw:left-1/2 tw:w-0.5 tw:-translate-x-1/2 tw:bg-quaternary"
+        />
+        {stops.map(({ stop, label, isActive, isDisabled }) => (
           <ButtonUtility
-            className="lineage-map-rail-button tw:z-1 tw:h-[30px] tw:w-6 tw:p-0!"
+            aria-label={label}
+            className="lineage-map-rail-button tw:z-1 tw:size-6 tw:p-0!"
             color="tertiary"
-            data-testid={`lineage-map-band-${band}`}
+            data-testid={`lineage-map-band-${stop}`}
             icon={
               <span
                 className={classNames(
-                  'lineage-map-rail-dot tw:size-2 tw:rounded-full tw:border-2 tw:border-primary tw:bg-surface tw:transition-all tw:duration-150',
-                  {
-                    'active tw:size-3.5 tw:border-brand tw:bg-brand-solid':
-                      scene.band === band,
-                  }
+                  'lineage-map-rail-dot tw:rounded-full tw:border-2 tw:transition-all tw:duration-150',
+                  isActive
+                    ? 'active tw:size-3.5 tw:border-brand tw:bg-brand-solid'
+                    : 'tw:size-2.5 tw:border-primary tw:bg-surface'
                 )}
               />
             }
             isDisabled={isDisabled}
-            key={band}
-            tooltip={
-              isDeeperBandUnavailable
-                ? t('label.zoom-in')
-                : t(getBandLabelKey(band))
-            }
-            tooltipPlacement="left"
+            key={stop}
             onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
               event.stopPropagation();
-              onBandChange(band);
+              onStopSelect(stop);
             }}
           />
-        );
-      })}
-      <span className={LINEAGE_MAP_RAIL_LABEL_CLASSES}>
-        {t(getSceneLevelLabelKey(scene))}
-      </span>
+        ))}
+      </div>
     </div>
   );
 };
@@ -809,22 +836,15 @@ const LineageMapBreadcrumbs = ({
   const breadcrumbById = new Map(
     scene.breadcrumb.map((breadcrumb) => [breadcrumb.id, breadcrumb])
   );
-  const items = scene.breadcrumb.map((breadcrumb, index) => {
+  const items = scene.breadcrumb.map((breadcrumb) => {
     const isRootBreadcrumb = !breadcrumb.fullyQualifiedName;
-    const label = isRootBreadcrumb
-      ? t(getLensRootLabelKey(scene.lens))
-      : breadcrumb.label;
 
     return {
       id: breadcrumb.id,
       icon: isRootBreadcrumb ? Home02 : undefined,
-      label: (
-        <Typography
-          data-testid={`lineage-map-breadcrumb-${index}`}
-          tooltip={label}>
-          {label}
-        </Typography>
-      ),
+      label: isRootBreadcrumb
+        ? t(getLensRootLabelKey(scene.lens))
+        : breadcrumb.label,
     };
   });
 
@@ -833,7 +853,7 @@ const LineageMapBreadcrumbs = ({
       <Breadcrumbs
         autoCollapse
         aria-label={t('label.navigation')}
-        className="lineage-map-breadcrumbs tw:max-w-[min(760px,calc(100vw-520px))] tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-2 tw:shadow-lg"
+        className="lineage-map-breadcrumbs tw:max-w-[min(760px,calc(100vw-520px))] tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-2"
         data-testid="lineage-map-breadcrumbs"
         items={items}
         maxItemWidth={180}
@@ -1731,6 +1751,34 @@ const LineageMapCanvas = ({
     ]
   );
 
+  const handleRailStopSelect = useCallback(
+    (stop: LineageBand) => {
+      if (!scene || stop === getRailStop(scene)) {
+        return;
+      }
+      // Databases and schemas are drawn in the Layer band but read as Data
+      // Assets, so the first stop always returns to the lens's root level.
+      if (stop === LineageBand.Layer) {
+        updateRequest({ lens: scene.lens, band: LineageBand.Layer });
+
+        return;
+      }
+      // Going deeper drills one level into a node, like zooming in: the one
+      // the zoom would pick (selected / nearest the centre), else the first.
+      if (isDeeperBand(getRailStop(scene), stop)) {
+        const target =
+          pickZoomTargetNode().target ?? scene.nodes.find(isSceneNodeDrillable);
+        if (target) {
+          handleDrill(target);
+        }
+
+        return;
+      }
+      handleBandChange(stop);
+    },
+    [handleBandChange, handleDrill, pickZoomTargetNode, scene, updateRequest]
+  );
+
   const handleSemanticZoomIn = useCallback(
     (event: MouseEvent | TouchEvent | null) => {
       const { target, leaf } = pickZoomTargetNode(event);
@@ -2167,7 +2215,7 @@ const LineageMapCanvas = ({
           <LineageMapControls
             canDrill={canDrillScene}
             scene={scene}
-            onBandChange={handleBandChange}
+            onStopSelect={handleRailStopSelect}
           />
           <LineageMapBreadcrumbs
             scene={scene}
