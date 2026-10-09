@@ -4121,7 +4121,6 @@
     "dq-threshold-preview-sampling-dynamic": "Gemessen an der dynamisch dimensionierten Stichprobe, mit der diese Tabelle profiliert wird.",
     "dq-threshold-preview-statistical": "Fehlgeschlagen, wenn der gemessene Wert außerhalb von {{bound}} liegt.",
     "dq-threshold-preview-statistical-deviation": "Fehlgeschlagen, wenn der gemessene Wert außerhalb von {{bound}} liegt, mit einer erlaubten Abweichung von {{amount}} (effektiver Bereich {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "Dieser Test vergleicht den Schwellenwert als reine Zeilenanzahl, daher wird die Schwellenwerteinheit nicht angewendet.",
     "dq-threshold-preview-zero-bound": "Eine prozentuale Abweichung um eine Grenze von 0 lässt diese Grenze bei 0 — verwenden Sie stattdessen eine absolute Abweichung.",
     "dq-unresolved-incidents-count": "<0>{{count}} ungelöster</0> Vorfall",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} ungelöste</0> Vorfälle",
