@@ -108,6 +108,57 @@ def test_a_push_is_checked_at_the_commit_it_sends_not_the_working_tree(
     assert {"map.json", "scratch/Scratch.java", "svc/New.java"} <= set(changed)
 
 
+def test_the_pre_pr_hook_checks_the_ref_the_command_sends(tmp_path: Path) -> None:
+    def git(*args: str) -> None:
+        isolated = ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"]
+        author = ["-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run(
+            ["git", *isolated, *author, *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+
+    # A planner that fails the check it is asked for, so the hook prints which one.
+    planner = tmp_path / ".github/scripts/plan_local_java_tests.py"
+    planner.parent.mkdir(parents=True)
+    planner.write_text('import sys  # "--head"\nprint(*sys.argv[1:])\nsys.exit(1)\n')
+    git("init", "-q", "-b", "work")
+    git("add", ".")
+    git("commit", "-qm", "base")
+    git("branch", "feature")
+    git("update-ref", "refs/remotes/origin/main", "HEAD")
+    git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(tmp_path)}
+    env.pop("CLAUDE_TOOL_INPUT", None)
+
+    def checked(command: str) -> str:
+        hook = subprocess.run(
+            ["bash", str(SCRIPT_PATH.with_name("java_impact_map_hook.sh")), "pre-pr"],
+            input=json.dumps({"tool_input": {"command": command}}),
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert hook.returncode == 2, command
+        return hook.stderr.strip()
+
+    sends = {
+        "git push -o ci.skip origin feature": "feature",
+        "git push --push-option ci.skip origin +feature:other": "feature",
+        "git push origin feature -o ci.skip": "feature",
+        # A bundled option's value is taken for the remote, and the remote's name for the
+        # source; a remote's name is never checked.
+        "git push -fo ci.skip origin feature": "HEAD",
+        "git push": "HEAD",
+        "gh pr create --head someone:feature --title t": "feature",
+    }
+    for command, ref in sends.items():
+        expected = f"--check-branch --base origin/main --head {ref}"
+        assert checked(command) == expected, command
+
+
 def unowning(*paths: str) -> dict:
     """The impact map with every area source that owns one of `paths` removed."""
     impact_map = copy.deepcopy(IMPACT_MAP)

@@ -70,11 +70,16 @@ case "$mode" in
     else
       args=$(printf '%s' "$cmd" | sed -nE 's/.*git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+push([[:space:]].*)?$/\2/p' | head -n 1)
       args="${args%%[;&|]*}"
-      sent="" positional=0
+      sent="" positional=0 value=0
       set -f
       # shellcheck disable=SC2086 # split the push arguments into words
       for word in $args; do
-        case "$word" in -*) continue ;; esac
+        if [ "$value" -eq 1 ]; then value=0; continue; fi
+        case "$word" in
+          # The options git push reads a value for from the next word.
+          -o | --push-option | --repo | --receive-pack | --exec) value=1; continue ;;
+          -*) continue ;;
+        esac
         positional=$((positional + 1))
         if [ "$positional" -eq 2 ]; then
           sent="${word%%:*}"
@@ -85,7 +90,10 @@ case "$mode" in
       set +f
     fi
     head=HEAD
-    if [ -n "$sent" ] && git -C "$root" rev-parse --verify --quiet "$sent^{commit}" >/dev/null; then
+    # Never a remote-tracking ref: a remote's name taken for the source resolves to the base,
+    # so the check would compare the base with itself and pass.
+    if [ -n "$sent" ] && git -C "$root" rev-parse --verify --quiet "$sent^{commit}" >/dev/null &&
+      ! git -C "$root" rev-parse --symbolic-full-name "$sent" | grep -q '^refs/remotes/'; then
       head="$sent"
     fi
     out=$(cd "$root" && python3 .github/scripts/plan_local_java_tests.py --check-branch --base "origin/${base:-main}" --head "$head" 2>&1) && exit 0
