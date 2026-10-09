@@ -13,7 +13,6 @@
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
-import { SidebarItem } from '../../../constant/sidebar';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { TableClass } from '../../../support/entity/TableClass';
@@ -31,7 +30,6 @@ import {
   performZoomOut,
   visitLineageTab,
 } from '../../../utils/lineage';
-import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
 
 const table = new TableClass();
@@ -201,7 +199,8 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.describe('Error Handling', () => {
     test('Verify invalid entity search handling', async ({ page }) => {
       const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
-      await sidebarClick(page, SidebarItem.LINEAGE);
+      // The retained global lineage page has no entry in the current sidebar.
+      await page.goto('/lineage');
       expect((await sceneResponse).ok()).toBeTruthy();
       await dismissLineageMapOnboarding(page);
 

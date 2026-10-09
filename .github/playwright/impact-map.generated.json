@@ -547,7 +547,6 @@
         "playwright/e2e/Pages/GlossaryImportExport.spec.ts",
         "playwright/e2e/Pages/InputOutputPorts.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
         "playwright/e2e/Pages/SubDomainPagination.spec.ts",
@@ -2378,7 +2377,8 @@
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/PersonaOverviewCardWidgets.spec.ts",
-        "playwright/e2e/Pages/DataInsight.spec.ts"
+        "playwright/e2e/Pages/DataInsight.spec.ts",
+        "playwright/e2e/Pages/Domains.spec.ts"
       ]
     },
     {
@@ -4925,7 +4925,6 @@
         "playwright/e2e/Pages/HealthCheck.spec.ts",
         "playwright/e2e/Pages/InputOutputPorts.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts",
-        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LiveIndexingTab.spec.ts",
         "playwright/e2e/Pages/OmdURLConfiguration.spec.ts",

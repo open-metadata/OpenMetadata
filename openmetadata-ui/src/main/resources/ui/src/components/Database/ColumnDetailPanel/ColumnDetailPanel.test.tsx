@@ -87,7 +87,7 @@ jest.mock('antd', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Button: jest.fn().mockImplementation(
     ({
       children,

@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { Card, Drawer, Space, Tooltip } from 'antd';
+import { Card, Drawer, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -692,7 +692,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Space className="tw:w-full" direction="vertical" size="large">
+      <Box
+        inline
+        align="stretch"
+        className="layout-space tw:w-full"
+        direction="col"
+        gap={6}
+        itemClassName="layout-space-item">
         {renderDescriptionBlock()}
 
         {renderKeyProfileMetrics()}
@@ -717,7 +723,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           tags={classificationTags}
           onTagsUpdate={handleTagsUpdate}
         />
-      </Space>
+      </Box>
     );
   };
 
