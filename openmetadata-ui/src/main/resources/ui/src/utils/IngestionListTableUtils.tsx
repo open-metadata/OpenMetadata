@@ -12,8 +12,9 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Badge, Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from './common/layout.utils';
+
 import classNames from 'classnames';
 import { isUndefined, startCase } from 'lodash';
 import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
@@ -88,21 +89,26 @@ const ScheduleFieldCell = ({
     useScheduleDescriptionTexts(scheduleInterval);
 
   return (
-    <Row gutter={[8, 8]} wrap={false}>
-      <Col flex="none">
+    <Box
+      className="layout-row"
+      style={{ ...getLayoutGutter(8, 8) }}
+      wrap="nowrap">
+      <Box className="layout-column tw:block" style={{ flex: 'none' }}>
         <TimeDateIcon className="m-t-xss" height={20} width={20} />
-      </Col>
-      <Col className="tw:min-w-0" flex="auto">
-        <Row className="line-height-16">
-          <Col span={24}>
+      </Box>
+      <Box
+        className="layout-column tw:block tw:min-w-0"
+        style={{ flex: 'auto' }}>
+        <Grid className="layout-row layout-grid line-height-16">
+          <Grid.Item className="layout-column" span={24}>
             <Typography
               className="font-medium"
               data-testid="schedule-primary-details"
               ellipsis={{ tooltip: descriptionFirstPart }}>
               {descriptionFirstPart}
             </Typography>
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <Typography
               className="text-xs"
               color="secondary"
@@ -110,10 +116,10 @@ const ScheduleFieldCell = ({
               ellipsis={{ tooltip: descriptionSecondPart }}>
               {descriptionSecondPart}
             </Typography>
-          </Col>
-        </Row>
-      </Col>
-    </Row>
+          </Grid.Item>
+        </Grid>
+      </Box>
+    </Box>
   );
 };
 

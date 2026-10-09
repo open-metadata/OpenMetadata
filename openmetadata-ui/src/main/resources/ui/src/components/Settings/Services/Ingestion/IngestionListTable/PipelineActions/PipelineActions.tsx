@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';
@@ -20,6 +21,7 @@ import { EntityType } from '../../../../../../enums/entity.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/rule';
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useLogsModal } from '../../../../../../hooks/useLogsModal';
+import { getLayoutGutter } from '../../../../../../utils/common/layout.utils';
 import { getLoadingStatus } from '../../../../../../utils/EntityDisplayPureUtils';
 import './pipeline-actions.less';
 import { PipelineActionsProps } from './PipelineActions.interface';
@@ -98,7 +100,7 @@ function PipelineActions({
   const playPauseButton = useMemo(() => {
     if (editStatusPermission) {
       return (
-        <Col>
+        <Box className="layout-column tw:block">
           {pipeline.enabled ? (
             <Tooltip
               title={
@@ -138,7 +140,7 @@ function PipelineActions({
               </Button>
             </Tooltip>
           )}
-        </Col>
+        </Box>
       );
     }
 
@@ -146,17 +148,21 @@ function PipelineActions({
   }, [editStatusPermission, isDisabled, pipeline, currPauseId, pipelineId]);
 
   return (
-    <Row
-      align="middle"
-      className="pipeline-actions-container"
+    <Box
+      align="center"
+      className="layout-row pipeline-actions-container"
       data-tesid="pipeline-actions"
-      gutter={[8, 8]}
-      justify="space-between"
-      wrap={false}>
+      justify="between"
+      style={{ ...getLayoutGutter(8, 8) }}
+      wrap="nowrap">
       {playPauseButton}
-      <Col>
-        <Row align="middle" gutter={[8, 8]} wrap={false}>
-          <Col>
+      <Box className="layout-column tw:block">
+        <Box
+          align="center"
+          className="layout-row"
+          style={{ ...getLayoutGutter(8, 8) }}
+          wrap="nowrap">
+          <Box className="layout-column tw:block">
             <Button
               data-testid="logs-button"
               disabled={isDisabled}
@@ -164,9 +170,9 @@ function PipelineActions({
               onClick={handleLogsClick}>
               {t('label.log-plural')}
             </Button>
-          </Col>
+          </Box>
           {hasDropdownPermission && (
-            <Col>
+            <Box className="layout-column tw:block">
               <PipelineActionsDropdown
                 deployIngestion={deployIngestion}
                 handleDeleteSelection={handleDeleteSelection}
@@ -182,12 +188,12 @@ function PipelineActions({
                 triggerIngestion={triggerIngestion}
                 onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
               />
-            </Col>
+            </Box>
           )}
-        </Row>
-      </Col>
+        </Box>
+      </Box>
       {logsModal}
-    </Row>
+    </Box>
   );
 }
 

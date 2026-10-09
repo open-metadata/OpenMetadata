@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -198,13 +198,19 @@ const ActivityFeedActions = ({
 
   return (
     <>
-      <Space
+      <Box
+        inline
+        align="center"
         aria-label={t('label.action-plural')}
-        className={classNames('feed-actions', className)}
+        className={`layout-space layout-space-horizontal ${classNames(
+          'feed-actions',
+          className
+        )}`}
         data-testid="feed-actions"
         dir={dir}
-        role="group"
-        size={12}>
+        gap={3}
+        itemClassName="layout-space-item"
+        role="group">
         {!isReply && conversation && (
           <ButtonUtility
             className="toolbar-button"
@@ -254,7 +260,7 @@ const ActivityFeedActions = ({
             onClick={() => setShowDeleteDialog(true)}
           />
         )}
-      </Space>
+      </Box>
       <ConfirmationModal
         bodyText={t('message.confirm-delete-message')}
         cancelText={t('label.cancel')}

@@ -181,11 +181,18 @@ class DashboardServiceTopology(ServiceTopology):
                 store_all_in_context=True,
                 clear_context=True,
             ),
-            NodeStage(
+            NodeStage(  # pyright: ignore[reportCallIssue]
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
                 consumer=["dashboard_service"],
+                clear_context=True,
+            ),
+            NodeStage(  # pyright: ignore[reportCallIssue]
+                type_=AddLineageRequest,
+                processor="yield_dashboard_chart_lineage",
+                consumer=["dashboard_service"],
+                nullable=True,
             ),
             NodeStage(
                 type_=AddLineageRequest,
@@ -462,6 +469,60 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         prefix_parts = (db_service_prefix or "").split(".")
         return prefix_parts + ([None] * (4 - len(prefix_parts)))
+
+    def yield_dashboard_chart_lineage(self, _) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        One Dashboard -> Chart edge per chart the server holds under the dashboard, so the
+        visual hierarchy can be walked through lineage. It is a stage of its own so that a
+        connector replacing yield_dashboard_lineage still draws these edges.
+
+        The charts are read back from the server instead of taken from the context: a chart
+        that was filtered out, failed in the connector or was rejected by the server is not
+        under the dashboard and gets no edge. The read returns chart references, which is
+        all an edge needs, so no chart is fetched on its own.
+        """
+        dashboard_name = self.context.get().dashboard  # pyright: ignore[reportAttributeAccessIssue]
+        if not dashboard_name:
+            return
+        # Flush the sink buffer so the dashboard and its charts are persisted before
+        # they are read back.
+        yield Either(right=Barrier(reason="dashboard_chart_lineage_flush"))  # pyright: ignore[reportCallIssue]
+        try:
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
+                dashboard_name=dashboard_name,
+            )
+            dashboard = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=dashboard_fqn,  # pyright: ignore[reportArgumentType]
+                fields=["charts"],
+            )
+            if not dashboard or not dashboard.charts:
+                return
+            dashboard_reference = EntityReference(  # pyright: ignore[reportCallIssue]
+                id=dashboard.id,
+                type=LINEAGE_MAP[Dashboard],
+                fullyQualifiedName=model_str(dashboard.fullyQualifiedName),
+            )
+            for chart in dashboard.charts.root:
+                lineage = AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=dashboard_reference,
+                        toEntity=chart,
+                        lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
+                    )
+                )
+                yield from self.yield_lineage_request(Either(right=lineage))  # pyright: ignore[reportCallIssue]
+        except Exception as exc:
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=dashboard_name,
+                    error=f"Error to yield dashboard chart lineage for [{dashboard_name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def yield_dashboard_lineage(self, dashboard_details: Any) -> Iterable[Either[OMetaLineageRequest]]:
         """

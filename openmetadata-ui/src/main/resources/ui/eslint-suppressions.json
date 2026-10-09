@@ -532,11 +532,6 @@
       "count": 3
     }
   },
-  "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts": {
-    "playwright/no-skipped-test": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Pages/IntakeForm.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 12
@@ -554,7 +549,7 @@
   },
   "playwright/e2e/Pages/Policies.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 11
+      "count": 10
     }
   },
   "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts": {

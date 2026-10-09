@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback } from 'react';
@@ -50,8 +51,11 @@ function ActivityEventFooter({
   }, [onActivityClick, activity]);
 
   return (
-    <Row align="top" className={classNames({ 'm-y-md': isForFeedTab })}>
-      <Col className="footer-container" span={24}>
+    <Grid
+      className={`layout-row layout-grid tw:items-start ${classNames({
+        'm-y-md': isForFeedTab,
+      })}`}>
+      <Grid.Item className="layout-column footer-container" span={24}>
         <div>
           <div className="flex items-center gap-2 w-full rounded-8">
             <Button
@@ -67,8 +71,8 @@ function ActivityEventFooter({
             />
           </div>
         </div>
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 }
 

@@ -17,6 +17,7 @@
     "build:release": "yarn build && yarn compress:brotli",
     "analyze": "vite build --mode analyze",
     "bundle:check": "node scripts/check-bundle-chunks.mjs",
+    "bundle:runtime": "node scripts/check-bundle-runtime.mjs",
     "compress:brotli": "node scripts/compress-brotli.mjs",
     "preview": "vite preview",
     "postinstall": "yarn run build-check",

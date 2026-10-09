@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +32,7 @@ import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.co
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { getLoginConfig } from '../../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -80,33 +81,39 @@ const LoginConfigurationPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.login-configuration')}>
-      <Row className="p-lg bg-white border-radius-sm" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-lg bg-white border-radius-sm"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Row align="middle" justify="space-between">
-            <Col>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-row"
+            justify="between"
+            wrap="wrap">
+            <Box className="layout-column tw:block">
               <PageHeader
                 data={{
                   header: t(PAGE_HEADERS.LOGIN_CONFIGURATION.header),
                   subHeader: t(PAGE_HEADERS.LOGIN_CONFIGURATION.subHeader),
                 }}
               />
-            </Col>
-            <Col>
+            </Box>
+            <Box className="layout-column tw:block">
               <Button
                 data-testid="edit-button"
                 icon={<Icon component={IconEdit} size={12} />}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Grid className="layout-row layout-grid tw:items-center">
+            <Grid.Item className="layout-column" span={24}>
               <Typography className="m-0" color="secondary">
                 {t('label.max-login-fail-attempt-plural')}
                 <Tooltip
@@ -120,17 +127,17 @@ const LoginConfigurationPage = () => {
                   />
                 </Tooltip>
               </Typography>
-            </Col>
-            <Col span={24}>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
               <Typography data-testid="max-login-fail-attampts">
                 {loginConfig?.maxLoginFailAttempts ?? NO_DATA_PLACEHOLDER}
               </Typography>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
+            </Grid.Item>
+          </Grid>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Grid className="layout-row layout-grid tw:items-center">
+            <Grid.Item className="layout-column" span={24}>
               <Typography className="m-0" color="secondary">
                 {t('label.access-block-time')}
                 <Tooltip
@@ -144,17 +151,17 @@ const LoginConfigurationPage = () => {
                   />
                 </Tooltip>
               </Typography>
-            </Col>
-            <Col span={24}>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
               <Typography data-testid="access-block-time">
                 {loginConfig?.accessBlockTime ?? NO_DATA_PLACEHOLDER}
               </Typography>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
+            </Grid.Item>
+          </Grid>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Grid className="layout-row layout-grid tw:items-center">
+            <Grid.Item className="layout-column" span={24}>
               <Typography className="m-0" color="secondary">
                 {t('label.jwt-token-expiry-time')}
                 <Tooltip
@@ -168,16 +175,16 @@ const LoginConfigurationPage = () => {
                   />
                 </Tooltip>
               </Typography>
-            </Col>
-            <Col span={24}>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
               <Typography data-testid="jwt-token-expiry-time">
                 {loginConfig?.jwtTokenExpiryTime ?? NO_DATA_PLACEHOLDER}{' '}
                 {t('label.second-plural')}
               </Typography>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+            </Grid.Item>
+          </Grid>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };
