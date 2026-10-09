@@ -12,6 +12,7 @@
  */
 import {
   Alert,
+  Box,
   FormField,
   RadioButton,
   RadioGroup,
@@ -109,7 +110,7 @@ const TableSchemaSettingsForm = ({
       onCancel={backToView}
       onSubmit={handleSubmit}>
       <SettingsFormSection title={t('label.default-column-order')}>
-        <div className="tw:flex tw:flex-col tw:gap-4 tw:md:col-span-2">
+        <Box className="tw:md:col-span-2" direction="col" gap={4}>
           <Typography className="tw:text-tertiary" size="text-sm">
             {t('message.default-column-order-description')}
           </Typography>
@@ -135,7 +136,7 @@ const TableSchemaSettingsForm = ({
           <Alert icon={Table} variant="gray">
             {t('message.default-column-order-note')}
           </Alert>
-        </div>
+        </Box>
       </SettingsFormSection>
     </SettingsFormLayout>
   );
