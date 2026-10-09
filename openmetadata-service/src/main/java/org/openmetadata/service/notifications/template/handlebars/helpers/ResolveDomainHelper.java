@@ -7,9 +7,9 @@ import java.util.UUID;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

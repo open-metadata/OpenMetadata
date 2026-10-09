@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import jakarta.ws.rs.BadRequestException;
@@ -41,6 +40,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.events.consumer.Consumers;
 import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.subscription.AlertDefinitionPolicy;
@@ -311,7 +311,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                 recordChange(
                     "destinations",
                     original.getDestinations(),
-                    encryptWebhookSecretKey(updated.getDestinations()),
+                    DestinationSecrets.encrypt(updated.getDestinations()),
                     true,
                     objectMatch,
                     false));

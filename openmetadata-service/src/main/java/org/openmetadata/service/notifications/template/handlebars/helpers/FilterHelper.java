@@ -5,9 +5,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to filter arrays by property value.

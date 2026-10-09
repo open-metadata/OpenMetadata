@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.notifications.recipients.Lookup;
 import org.openmetadata.service.notifications.recipients.Recipients;
@@ -40,12 +41,15 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
 
   @Override
   public Recipients resolve(
-      ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
+      ChangeEvent event,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
     return isTask(event.getEntityType())
         ? assigneesOf(
             Lookup.of(
                 "the task of event " + event.getId(), () -> AlertsRuleEvaluator.getTask(event)),
-            destination)
+            directory)
         : Recipients.none();
   }
 
@@ -54,7 +58,8 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
       UUID entityId,
       String entityType,
       SubscriptionAction action,
-      SubscriptionDestination destination) {
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
     return isTask(entityType)
         ? assigneesOf(
             Lookup.of(
@@ -62,13 +67,13 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
                 () ->
                     Entity.<Task>getEntity(
                         Entity.TASK, entityId, "assignees", Include.NON_DELETED)),
-            destination)
+            directory)
         : Recipients.none();
   }
 
-  private Recipients assigneesOf(Lookup<Task> task, SubscriptionDestination destination) {
+  private Recipients assigneesOf(Lookup<Task> task, AddressDirectory directory) {
     return Recipients.from(
-        task, found -> Principals.of(found.getAssignees(), users, teams, destination));
+        task, found -> Principals.of(found.getAssignees(), users, teams, directory));
   }
 
   private static boolean isTask(String entityType) {

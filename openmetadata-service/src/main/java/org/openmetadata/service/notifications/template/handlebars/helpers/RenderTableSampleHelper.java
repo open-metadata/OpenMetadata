@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Handlebars helper that renders a table sample for test case notifications.

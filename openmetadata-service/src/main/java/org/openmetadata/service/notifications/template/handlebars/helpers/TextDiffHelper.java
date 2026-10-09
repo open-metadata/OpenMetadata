@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to generate inline text diff with add/remove markers.

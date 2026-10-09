@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -44,9 +45,8 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.AlertingSettings.Sending;
 import org.openmetadata.service.events.subscription.channels.Channel;
-import org.openmetadata.service.events.subscription.channels.builtin.BuiltInChannels;
-import org.openmetadata.service.events.subscription.targets.TargetResolver;
 import org.openmetadata.service.notifications.EventContent;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -75,8 +75,8 @@ class ChannelDispatchTest {
     Destination<ChangeEvent> email = publisher(true);
     when(channel.unavailableBecause()).thenReturn(Optional.of("the mail server is not enabled"));
     List<SubscriptionDestination> asked = new ArrayList<>();
-    TargetResolver resolver =
-        new TargetResolver(
+    RecipientResolver resolver =
+        recipients(
             (event, destination) -> {
               asked.add(destination);
               return Recipients.none();
@@ -103,8 +103,8 @@ class ChannelDispatchTest {
     when(reportChannel.acceptsFiles()).thenReturn(true);
     Destination<ChangeEvent> report = publisher(true);
     Destination<ChangeEvent> email = publisher(true);
-    TargetResolver alice =
-        new TargetResolver(
+    RecipientResolver alice =
+        recipients(
             (event, destination) -> Recipients.of(new EmailRecipient("alice@corp.com", "alice")));
 
     ChannelResult reportResult =
@@ -230,7 +230,7 @@ class ChannelDispatchTest {
         new ChannelDispatch(
             channel,
             List.of(owners),
-            new TargetResolver(
+            recipients(
                 (event, destination) ->
                     Recipients.of(alice).and(Recipients.failed("team A: no answer"))),
             health);
@@ -255,7 +255,7 @@ class ChannelDispatchTest {
     return new ChannelDispatch(
         channel,
         List.of(publisher),
-        new TargetResolver((event, destination) -> Recipients.of(found)),
+        recipients((event, destination) -> Recipients.of(found)),
         health);
   }
 
@@ -283,12 +283,22 @@ class ChannelDispatchTest {
       boolean requiresRecipients, SubscriptionCategory category) throws Exception {
     Destination<ChangeEvent> publisher = mock(Destination.class);
     SubscriptionDestination destination =
-        BuiltInChannels.previewDestination()
+        new SubscriptionDestination()
+            .withType(SubscriptionDestination.SubscriptionType.EMAIL)
             .withId(UUID.randomUUID())
             .withEnabled(true)
             .withCategory(category);
     when(publisher.getSubscriptionDestination()).thenReturn(destination);
     when(publisher.requiresRecipients()).thenReturn(requiresRecipients);
     return publisher;
+  }
+
+  // Answers every lookup the way the test says, whatever the channel's directory and receivers.
+  private static RecipientResolver recipients(
+      BiFunction<ChangeEvent, SubscriptionDestination, Recipients> answer) {
+    RecipientResolver resolver = mock(RecipientResolver.class);
+    when(resolver.recipientsOf(any(), any(), any(), any()))
+        .thenAnswer(lookup -> answer.apply(lookup.getArgument(0), lookup.getArgument(1)));
+    return resolver;
   }
 }

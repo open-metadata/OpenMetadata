@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
 
 /**
  * Interface for abstracting template engine operations.

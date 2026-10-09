@@ -20,14 +20,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.channels.Channels;
-import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.alerting.content.TemplateLookup;
 import org.openmetadata.service.notifications.channels.ChannelRenderer;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.template.NotificationTemplateProcessor;
@@ -39,31 +35,31 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  private final NotificationTemplateRepository templateRepository;
+  private final TemplateLookup templates;
   private final NotificationTemplateProcessor templateProcessor;
 
-  public HandlebarsNotificationMessageEngine(NotificationTemplateRepository templateRepository) {
-    this.templateRepository = templateRepository;
+  public HandlebarsNotificationMessageEngine(TemplateLookup templates) {
+    this.templates = templates;
     this.templateProcessor = new HandlebarsNotificationTemplateProcessor();
   }
 
   @Override
   public NotificationMessage generateMessage(
-      ChangeEvent event, EventSubscription subscription, SubscriptionDestination destination) {
+      ChangeEvent event, EventSubscription subscription, ChannelRenderer renderer) {
 
     // Resolve the template for this event
     NotificationTemplate template = resolveTemplate(event, subscription);
 
-    return generateMessageWithTemplate(event, subscription, destination, template);
+    return generateMessageWithTemplate(event, subscription, renderer, template);
   }
 
   @Override
   public NotificationMessage generateMessageWithTemplate(
       ChangeEvent event,
       EventSubscription subscription,
-      SubscriptionDestination destination,
+      ChannelRenderer renderer,
       NotificationTemplate template) {
-    return format(renderWith(event, subscription, template), destination);
+    return format(renderWith(event, subscription, template), renderer);
   }
 
   /** The template that applies to the event, rendered to Markdown. No channel is involved yet. */
@@ -71,10 +67,9 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
     return renderWith(event, subscription, resolveTemplate(event, subscription));
   }
 
-  /** Markdown made once, in the format of the destination's channel. */
-  public NotificationMessage format(
-      EventContent.Rendered content, SubscriptionDestination destination) {
-    return rendererOf(destination).render(content.body(), content.subject());
+  /** Markdown made once, in the format of the channel the renderer belongs to. */
+  public NotificationMessage format(EventContent.Rendered content, ChannelRenderer renderer) {
+    return renderer.render(content.body(), content.subject());
   }
 
   // From a copy of the event, so no template helper can change what a webhook sends or what the
@@ -97,15 +92,6 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
     settings.put("baseUrl", EmailUtil.getOMBaseURL());
     settings.put("emailingEntity", EmailUtil.getSmtpSettings().getEmailingEntity());
     return settings;
-  }
-
-  private static ChannelRenderer rendererOf(SubscriptionDestination destination) {
-    return Channels.required(destination)
-        .renderer()
-        .orElseThrow(
-            () ->
-                new IllegalArgumentException(
-                    "Unsupported destination type: " + destination.getType()));
   }
 
   private Map<String, Object> buildEventContext(ChangeEvent event, EventSubscription subscription) {
@@ -141,8 +127,7 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
     EntityReference templateRef = subscription.getNotificationTemplate();
     if (templateRef != null) {
       try {
-        NotificationTemplate customTemplate =
-            Entity.getEntity(Entity.NOTIFICATION_TEMPLATE, templateRef.getId(), "", Include.ALL);
+        NotificationTemplate customTemplate = templates.byId(templateRef.getId());
         if (customTemplate != null) {
           LOG.debug(
               "Using custom template {} for subscription {}",
@@ -169,23 +154,20 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
     String entitySpecificTemplateName =
         String.format(
             "system-notification-%s-%s", event.getEntityType().toLowerCase(), eventTypeKebab);
-    NotificationTemplate entitySpecificTemplate =
-        templateRepository.findByNameOrNull(entitySpecificTemplateName, Include.ALL);
+    NotificationTemplate entitySpecificTemplate = templates.byName(entitySpecificTemplateName);
     if (entitySpecificTemplate != null) {
       return entitySpecificTemplate;
     }
 
     // Try generic event template: system-notification-{eventType}
     String genericTemplateName = String.format("system-notification-%s", eventTypeKebab);
-    NotificationTemplate genericTemplate =
-        templateRepository.findByNameOrNull(genericTemplateName, Include.ALL);
+    NotificationTemplate genericTemplate = templates.byName(genericTemplateName);
     if (genericTemplate != null) {
       return genericTemplate;
     }
 
     // Guaranteed fallback to default template
-    NotificationTemplate defaultTemplate =
-        templateRepository.findByNameOrNull("system-notification-entity-default", Include.ALL);
+    NotificationTemplate defaultTemplate = templates.byName("system-notification-entity-default");
 
     if (defaultTemplate == null) {
       throw new IllegalStateException(

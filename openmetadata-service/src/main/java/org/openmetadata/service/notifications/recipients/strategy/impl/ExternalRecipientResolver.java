@@ -17,7 +17,7 @@ import java.util.UUID;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.events.subscription.channels.Channels;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.notifications.recipients.Lookup;
 import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
@@ -30,8 +30,11 @@ public class ExternalRecipientResolver implements RecipientResolutionStrategy {
 
   @Override
   public Recipients resolve(
-      ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-    return configured(action, destination);
+      ChangeEvent event,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
+    return configured(action, destination, directory);
   }
 
   @Override
@@ -39,16 +42,17 @@ public class ExternalRecipientResolver implements RecipientResolutionStrategy {
       UUID entityId,
       String entityType,
       SubscriptionAction action,
-      SubscriptionDestination destination) {
-    return configured(action, destination);
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
+    return configured(action, destination, directory);
   }
 
   private static Recipients configured(
-      SubscriptionAction action, SubscriptionDestination destination) {
+      SubscriptionAction action, SubscriptionDestination destination, AddressDirectory directory) {
     return Recipients.from(
         Lookup.of(
             "the receivers of destination " + destination.getId(),
-            () -> Channels.required(destination).directory().configured(action, destination)),
+            () -> directory.configured(action, destination)),
         Recipients::of);
   }
 

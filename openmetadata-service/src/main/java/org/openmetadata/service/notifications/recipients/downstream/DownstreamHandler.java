@@ -16,6 +16,7 @@ package org.openmetadata.service.notifications.recipients.downstream;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.notifications.recipients.Recipients;
 
 /**
@@ -36,6 +37,7 @@ public interface DownstreamHandler {
    *
    * @param action the subscription action
    * @param destination the subscription destination with type and configuration
+   * @param directory where the destination's channel reaches a user or a team
    * @param changeEvent the ChangeEvent containing entity snapshot and ID/type information
    * @param maxDepth the maximum depth to traverse (null for unlimited with cycle protection)
    * @return the recipients of downstream entities, and the lookups that failed
@@ -43,6 +45,7 @@ public interface DownstreamHandler {
   Recipients resolveDownstreamRecipients(
       SubscriptionAction action,
       SubscriptionDestination destination,
+      AddressDirectory directory,
       ChangeEvent changeEvent,
       Integer maxDepth);
 }

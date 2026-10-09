@@ -17,9 +17,9 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.List;
 import java.util.UUID;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.notifications.recipients.Recipients;
 
 /** The users and teams a list of references names, as recipients of one destination. */
@@ -30,10 +30,10 @@ final class Principals {
       List<EntityReference> references,
       UserRecipientResolver users,
       TeamRecipientResolver teams,
-      SubscriptionDestination destination) {
+      AddressDirectory directory) {
     return users
-        .resolve(idsOf(references, Entity.USER), destination)
-        .and(teams.resolve(idsOf(references, Entity.TEAM), destination));
+        .resolve(idsOf(references, Entity.USER), directory)
+        .and(teams.resolve(idsOf(references, Entity.TEAM), directory));
   }
 
   private static List<UUID> idsOf(List<EntityReference> references, String type) {

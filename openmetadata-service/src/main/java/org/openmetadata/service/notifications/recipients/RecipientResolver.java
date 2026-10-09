@@ -13,17 +13,13 @@
 
 package org.openmetadata.service.notifications.recipients;
 
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.channels.Channels;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.notifications.recipients.downstream.EntityLineageResolver;
 import org.openmetadata.service.notifications.recipients.downstream.impl.ConversationLineageResolver;
 import org.openmetadata.service.notifications.recipients.downstream.impl.DataContractLineageResolver;
@@ -98,49 +94,26 @@ public class RecipientResolver {
   }
 
   /**
-   * The recipients of several destinations for one event, deduplicated, for callers that send to
-   * whoever could be found. A lookup that failed is logged and costs only what it could not find.
+   * The recipients of one destination for one event, and the lookups that failed.
+   *
+   * @param directory where the destination's channel reaches a user or a team
+   * @param receivers what the destination's configuration names, as its channel reads it
    */
-  public Set<Recipient> resolveRecipients(
-      ChangeEvent event, List<SubscriptionDestination> destinations) {
-    Recipients reached =
-        destinations.stream()
-            .map(destination -> guarded(event, destination))
-            .collect(Recipients.combined());
-    reached
-        .failures()
-        .forEach(
-            failure ->
-                LOG.warn(
-                    "A recipient of event {} could not be looked up: {}", event.getId(), failure));
-    return new HashSet<>(reached.found());
-  }
-
-  // An unexpected error costs its own destination only.
-  private Recipients guarded(ChangeEvent event, SubscriptionDestination destination) {
-    Recipients reached;
-    try {
-      reached = recipientsOf(event, destination);
-    } catch (RuntimeException e) {
-      LOG.error("Recipients of destination {} could not be resolved", destination.getId(), e);
-      reached = Recipients.failed(String.valueOf(e.getMessage()));
-    }
-    return reached;
-  }
-
-  /** The recipients of one destination for one event, and the lookups that failed. */
-  public Recipients recipientsOf(ChangeEvent event, SubscriptionDestination destination) {
+  public Recipients recipientsOf(
+      ChangeEvent event,
+      SubscriptionDestination destination,
+      AddressDirectory directory,
+      SubscriptionAction receivers) {
     Recipients reached = Recipients.none();
     SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
     RecipientResolutionStrategy strategy = STRATEGIES.get(category);
     if (strategy == null) {
       LOG.error("No strategy found for category {}", category);
     } else {
-      SubscriptionAction action = extractActionConfig(destination);
       reached =
           strategy
-              .resolve(event, action, destination)
-              .and(downstreamRecipients(event, action, destination, strategy));
+              .resolve(event, receivers, destination, directory)
+              .and(downstreamRecipients(event, receivers, destination, directory, strategy));
     }
     return reached;
   }
@@ -150,6 +123,7 @@ public class RecipientResolver {
       ChangeEvent event,
       SubscriptionAction action,
       SubscriptionDestination destination,
+      AddressDirectory directory,
       RecipientResolutionStrategy strategy) {
     boolean wanted =
         Boolean.TRUE.equals(destination.getNotifyDownstream())
@@ -157,23 +131,7 @@ public class RecipientResolver {
     return wanted
         ? new LineageBasedDownstreamHandler(LINEAGE_RESOLVERS, strategy)
             .resolveDownstreamRecipients(
-                action, destination, event, destination.getDownstreamDepth())
+                action, destination, directory, event, destination.getDownstreamDepth())
         : Recipients.none();
-  }
-
-  /**
-   * Extracts the action configuration from the destination config based on destination type.
-   */
-  private SubscriptionAction extractActionConfig(SubscriptionDestination destination) {
-    Object config = destination.getConfig();
-    if (config == null) {
-      return null;
-    }
-
-    if (config instanceof SubscriptionAction action) {
-      return action;
-    }
-
-    return Channels.required(destination).configRules().receiversOf(destination);
   }
 }

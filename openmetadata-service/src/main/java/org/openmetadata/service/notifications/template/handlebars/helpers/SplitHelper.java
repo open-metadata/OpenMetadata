@@ -3,9 +3,9 @@ package org.openmetadata.service.notifications.template.handlebars.helpers;
 import com.github.jknack.handlebars.Handlebars;
 import java.util.List;
 import java.util.regex.Pattern;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to split a string by a delimiter.

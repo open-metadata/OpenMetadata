@@ -29,6 +29,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.notifications.recipients.Lookup;
 import org.openmetadata.service.notifications.recipients.Recipients;
@@ -47,18 +48,21 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
 
   @Override
   public Recipients resolve(
-      ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
+      ChangeEvent event,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
     String what = "the " + event.getEntityType() + " of event " + event.getId();
     return switch (typeOf(event.getEntityType())) {
       case Entity.CONVERSATION -> Recipients.from(
           Lookup.of(what, () -> AlertsRuleEvaluator.getConversation(event)),
-          conversation -> inConversation(conversation, destination));
+          conversation -> inConversation(conversation, directory));
       case Entity.ANNOUNCEMENT -> Recipients.from(
           Lookup.of(what, () -> (Announcement) AlertsRuleEvaluator.getEntity(event)),
-          announcement -> inText(announcement.getDescription(), destination));
+          announcement -> inText(announcement.getDescription(), directory));
       case Entity.TASK -> Recipients.from(
           Lookup.of(what, () -> AlertsRuleEvaluator.getTask(event)),
-          task -> inTask(task, destination));
+          task -> inTask(task, directory));
       default -> unsupported(event.getEntityType());
     };
   }
@@ -68,71 +72,68 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
       UUID entityId,
       String entityType,
       SubscriptionAction action,
-      SubscriptionDestination destination) {
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
     String what = entityType + " " + entityId;
     return switch (typeOf(entityType)) {
       case Entity.CONVERSATION -> Recipients.from(
           Lookup.of(what, () -> Entity.getConversationRepository().getEventPayload(entityId)),
-          conversation -> inConversation(conversation, destination));
+          conversation -> inConversation(conversation, directory));
       case Entity.ANNOUNCEMENT -> Recipients.from(
           Lookup.of(
               what,
               () ->
                   Entity.<Announcement>getEntity(
                       Entity.ANNOUNCEMENT, entityId, "description", Include.NON_DELETED)),
-          announcement -> inText(announcement.getDescription(), destination));
+          announcement -> inText(announcement.getDescription(), directory));
       case Entity.TASK -> Recipients.from(
           Lookup.of(
               what,
               () -> Entity.<Task>getEntity(Entity.TASK, entityId, "comments", Include.NON_DELETED)),
-          task -> inTask(task, destination));
+          task -> inTask(task, directory));
       default -> unsupported(entityType);
     };
   }
 
-  private static Recipients inConversation(
-      Conversation conversation, SubscriptionDestination destination) {
+  private static Recipients inConversation(Conversation conversation, AddressDirectory directory) {
     String latest =
         nullOrEmpty(conversation.getReplies())
             ? conversation.getMessage()
             : conversation.getReplies().getLast().getMessage();
-    return inText(latest, destination);
+    return inText(latest, directory);
   }
 
   // The same mentions the filter matches (AlertsRuleEvaluator.getTaskMentions): the latest
   // comment's only, so earlier comments are not notified again on every new one.
-  private static Recipients inTask(Task task, SubscriptionDestination destination) {
-    return ofLinks(AlertsRuleEvaluator.getTaskMentions(task), destination);
+  private static Recipients inTask(Task task, AddressDirectory directory) {
+    return ofLinks(AlertsRuleEvaluator.getTaskMentions(task), directory);
   }
 
-  private static Recipients inText(String text, SubscriptionDestination destination) {
+  private static Recipients inText(String text, AddressDirectory directory) {
     return text == null
         ? Recipients.none()
-        : ofLinks(MessageParser.getEntityLinks(text), destination);
+        : ofLinks(MessageParser.getEntityLinks(text), directory);
   }
 
   private static Recipients ofLinks(
-      List<MessageParser.EntityLink> links, SubscriptionDestination destination) {
-    return links.stream().map(link -> ofLink(link, destination)).collect(Recipients.combined());
+      List<MessageParser.EntityLink> links, AddressDirectory directory) {
+    return links.stream().map(link -> ofLink(link, directory)).collect(Recipients.combined());
   }
 
-  private static Recipients ofLink(
-      MessageParser.EntityLink link, SubscriptionDestination destination) {
+  private static Recipients ofLink(MessageParser.EntityLink link, AddressDirectory directory) {
     String what = "mentioned " + link.getEntityType() + " " + link.getEntityFQN();
     Lookup<Recipient> mentioned =
         switch (typeOf(link.getEntityType())) {
           case Entity.USER -> Lookup.of(
               what,
               () ->
-                  Recipient.fromUser(
-                      Entity.<User>getEntity(link, PRINCIPAL_FIELDS, Include.NON_DELETED),
-                      destination));
+                  directory.ofUser(
+                      Entity.<User>getEntity(link, PRINCIPAL_FIELDS, Include.NON_DELETED)));
           case Entity.TEAM -> Lookup.of(
               what,
               () ->
-                  Recipient.fromTeam(
-                      Entity.<Team>getEntity(link, PRINCIPAL_FIELDS, Include.NON_DELETED),
-                      destination));
+                  directory.ofTeam(
+                      Entity.<Team>getEntity(link, PRINCIPAL_FIELDS, Include.NON_DELETED)));
           default -> new Lookup.Absent<>();
         };
     return Recipients.from(mentioned, Recipients::of);

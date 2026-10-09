@@ -32,7 +32,6 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.service.events.subscription.channels.builtin.BuiltInChannels;
 
 class TickChannelsTest {
   private static final ChangeEvent EVENT = new ChangeEvent().withId(UUID.randomUUID());
@@ -147,7 +146,10 @@ class TickChannelsTest {
   }
 
   private static SubscriptionDestination emailDestination() {
-    return BuiltInChannels.previewDestination().withId(UUID.randomUUID()).withEnabled(true);
+    return new SubscriptionDestination()
+        .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+        .withId(UUID.randomUUID())
+        .withEnabled(true);
   }
 
   private static SubscriptionDestination webhookDestination() {

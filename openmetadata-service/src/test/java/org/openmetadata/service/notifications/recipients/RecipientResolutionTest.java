@@ -28,7 +28,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.entity.teams.Team;
@@ -39,6 +38,9 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
+import org.openmetadata.service.events.subscription.channels.Channel;
+import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -71,7 +73,7 @@ class RecipientResolutionTest {
           new TeamRecipientResolver()
               .resolve(
                   List.of(TEAM_WITHOUT_CONTACT_ID, TEAM_WITH_CONTACT_ID),
-                  destination(SubscriptionType.EMAIL))
+                  directory(SubscriptionType.EMAIL))
               .found();
 
       assertEquals(Set.of(TEAM_EMAIL), emailsOf(recipients));
@@ -93,7 +95,7 @@ class RecipientResolutionTest {
           new TeamRecipientResolver()
               .resolve(
                   List.of(TEAM_WITHOUT_CONTACT_ID, TEAM_WITH_CONTACT_ID),
-                  destination(SubscriptionType.EMAIL))
+                  directory(SubscriptionType.EMAIL))
               .found();
 
       assertEquals(Set.of(TEAM_EMAIL), emailsOf(recipients));
@@ -117,34 +119,11 @@ class RecipientResolutionTest {
           new TeamRecipientResolver()
               .resolve(
                   List.of(TEAM_WITHOUT_CONTACT_ID, TEAM_WITH_CONTACT_ID),
-                  destination(SubscriptionType.EMAIL));
+                  directory(SubscriptionType.EMAIL));
 
       assertEquals(Set.of(TEAM_EMAIL), emailsOf(reached.found()));
       assertEquals(1, reached.failures().size());
       assertTrue(reached.failures().getFirst().contains("the database did not answer"));
-    }
-  }
-
-  // What Collate's report senders use: whoever could be found gets the report.
-  @Test
-  void legacyResolveReturnsWhatWasFound() {
-    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      stubUserByName(entityMock, "alice", user("alice", USER_EMAIL));
-      entityMock
-          .when(
-              () ->
-                  Entity.getEntityByName(
-                      eq(Entity.USER), eq("bob"), any(), eq(Include.NON_DELETED)))
-          .thenThrow(new IllegalStateException("the database did not answer"));
-      SubscriptionDestination users =
-          destination(SubscriptionType.EMAIL)
-              .withCategory(SubscriptionDestination.SubscriptionCategory.USERS)
-              .withConfig(new EmailAlertConfig().withReceivers(Set.of("alice", "bob")));
-
-      Set<Recipient> recipients =
-          new RecipientResolver().resolveRecipients(new ChangeEvent(), List.of(users));
-
-      assertEquals(Set.of(USER_EMAIL), emailsOf(recipients));
     }
   }
 
@@ -164,7 +143,8 @@ class RecipientResolutionTest {
                   UUID.randomUUID(),
                   Entity.TABLE,
                   new Webhook().withReceivers(Set.of("no-webhook", "with-webhook")),
-                  destination(SubscriptionType.SLACK))
+                  destination(SubscriptionType.SLACK),
+                  directory(SubscriptionType.SLACK))
               .found();
 
       assertEquals(1, recipients.size());
@@ -188,7 +168,8 @@ class RecipientResolutionTest {
                   UUID.randomUUID(),
                   Entity.TABLE,
                   new Webhook().withReceivers(Set.of("no-webhook", "with-webhook")),
-                  destination(SubscriptionType.SLACK))
+                  destination(SubscriptionType.SLACK),
+                  directory(SubscriptionType.SLACK))
               .found();
 
       assertEquals(1, recipients.size());
@@ -206,7 +187,7 @@ class RecipientResolutionTest {
 
       Set<Recipient> recipients =
           new UserRecipientResolver()
-              .resolve(List.of(USER_ID), destination(SubscriptionType.EMAIL))
+              .resolve(List.of(USER_ID), directory(SubscriptionType.EMAIL))
               .found();
 
       assertTrue(recipients.isEmpty());
@@ -221,7 +202,8 @@ class RecipientResolutionTest {
                 UUID.randomUUID(),
                 Entity.TABLE,
                 new Webhook().withReceivers(Set.of(VALID_RECEIVER, "{{SLACK_WEBHOOK_URL}}")),
-                externalDestination())
+                externalDestination(),
+                Channels.required(externalDestination()).directory())
             .found();
 
     assertEquals(Set.of(VALID_RECEIVER), endpointsOf(recipients));
@@ -235,7 +217,8 @@ class RecipientResolutionTest {
                 UUID.randomUUID(),
                 Entity.TABLE,
                 new Webhook().withReceivers(Set.of(VALID_RECEIVER, "  ")),
-                externalDestination())
+                externalDestination(),
+                Channels.required(externalDestination()).directory())
             .found();
 
     assertEquals(Set.of(VALID_RECEIVER), endpointsOf(recipients));
@@ -255,10 +238,14 @@ class RecipientResolutionTest {
                     "httpMethod", "POST",
                     "endpoint", "https://hooks.example.com/unused"));
 
+    Channel email = Channels.required(stored);
     Recipients reached =
         new RecipientResolver()
             .recipientsOf(
-                new ChangeEvent().withId(UUID.randomUUID()).withEntityType(Entity.TABLE), stored);
+                new ChangeEvent().withId(UUID.randomUUID()).withEntityType(Entity.TABLE),
+                stored,
+                email.directory(),
+                email.configRules().receiversOf(stored));
 
     assertTrue(reached.failures().isEmpty(), String.valueOf(reached.failures()));
     assertEquals(
@@ -274,6 +261,11 @@ class RecipientResolutionTest {
     assertNull(EmailRecipient.fromTeam(team("no-email-team", null)));
     assertNull(EmailRecipient.fromTeam(team("blank-email-team", "")));
     assertEquals(TEAM_EMAIL, EmailRecipient.fromTeam(team("data-platform", TEAM_EMAIL)).getEmail());
+  }
+
+  // Where the channel of a destination of this type reaches a user or a team.
+  private static AddressDirectory directory(SubscriptionType type) {
+    return Channels.required(destination(type)).directory();
   }
 
   private static void stubTeamById(MockedStatic<Entity> entityMock, UUID teamId, Team team) {

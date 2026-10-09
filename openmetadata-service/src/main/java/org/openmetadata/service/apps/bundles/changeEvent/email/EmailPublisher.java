@@ -35,6 +35,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.EventContent;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.notifications.channels.ChannelRenderer;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -43,6 +44,7 @@ import org.openmetadata.service.util.email.EmailUtil;
 @Slf4j
 public class EmailPublisher implements Destination<ChangeEvent> {
   private final HandlebarsNotificationMessageEngine messageEngine;
+  private final ChannelRenderer renderer;
   private final EmailAlertConfig emailAlertConfig;
 
   @Getter private final SubscriptionDestination subscriptionDestination;
@@ -51,10 +53,12 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   public EmailPublisher(
       EventSubscription eventSubscription,
       SubscriptionDestination subscriptionDestination,
-      EmailAlertConfig emailAlertConfig) {
+      EmailAlertConfig emailAlertConfig,
+      ChannelRenderer renderer) {
     this.eventSubscription = eventSubscription;
     this.subscriptionDestination = subscriptionDestination;
     this.emailAlertConfig = emailAlertConfig;
+    this.renderer = renderer;
     this.messageEngine =
         new HandlebarsNotificationMessageEngine(
             (NotificationTemplateRepository)
@@ -111,7 +115,7 @@ public class EmailPublisher implements Destination<ChangeEvent> {
 
   @Override
   public EmailMessage prepare(ChangeEvent event, EventContent content) {
-    return (EmailMessage) messageEngine.format(content.by(messageEngine), subscriptionDestination);
+    return (EmailMessage) messageEngine.format(content.by(messageEngine), renderer);
   }
 
   @Override

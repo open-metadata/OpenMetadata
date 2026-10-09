@@ -1,6 +1,7 @@
 package org.openmetadata.service.notifications.template.handlebars;
 
 import com.github.jknack.handlebars.Handlebars;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
 
 /**
  * Interface for all Handlebars helpers. Each helper should implement this interface to provide a

@@ -14,10 +14,6 @@
 package org.openmetadata.service.notifications.recipients.context;
 
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.teams.Team;
-import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.service.events.subscription.channels.Channels;
 
 /**
  * Base class for notification recipients.
@@ -52,15 +48,5 @@ public abstract sealed class Recipient permits EmailRecipient, WebhookRecipient 
   @Override
   public final int hashCode() {
     return identity().hashCode();
-  }
-
-  /** Where the destination's channel reaches this user, or null when it has no address. */
-  public static Recipient fromUser(User user, SubscriptionDestination destination) {
-    return Channels.required(destination).directory().ofUser(user);
-  }
-
-  /** Where the destination's channel reaches this team, or null when it has no address. */
-  public static Recipient fromTeam(Team team, SubscriptionDestination destination) {
-    return Channels.required(destination).directory().ofTeam(team);
   }
 }

@@ -27,6 +27,7 @@ import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
@@ -40,6 +41,8 @@ import org.openmetadata.service.events.subscription.targets.Target;
 import org.openmetadata.service.events.subscription.targets.TargetResolver;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.notifications.EventContent;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.Recipients;
 
 /**
  * Sends one event through one channel. The channel's destinations become targets, what is sent
@@ -53,18 +56,18 @@ final class ChannelDispatch {
 
   private final Channel channel;
   private final Map<UUID, Destination<ChangeEvent>> publishers = new LinkedHashMap<>();
-  private final TargetResolver resolver;
+  private final RecipientResolver recipients;
   private final TickHealth health;
 
   ChannelDispatch(
       Channel channel,
       List<Destination<ChangeEvent>> ofOneChannel,
-      TargetResolver resolver,
+      RecipientResolver recipients,
       TickHealth health) {
     this.channel = channel;
     ofOneChannel.forEach(
         publisher -> publishers.put(publisher.getSubscriptionDestination().getId(), publisher));
-    this.resolver = resolver;
+    this.recipients = recipients;
     this.health = health;
   }
 
@@ -181,8 +184,25 @@ final class ChannelDispatch {
 
   private TargetResolver.Resolved resolve(ChangeEvent event, Destination<ChangeEvent> first) {
     return first.requiresRecipients()
-        ? resolver.resolve(event, destinations())
+        ? new TargetResolver(this::recipientsOf).resolve(event, destinations())
         : TargetResolver.themselves(destinations());
+  }
+
+  // Reached where this channel reaches people, among what the destination's configuration names.
+  private Recipients recipientsOf(ChangeEvent event, SubscriptionDestination destination) {
+    return recipients.recipientsOf(
+        event, destination, channel.directory(), receiversOf(destination));
+  }
+
+  private SubscriptionAction receiversOf(SubscriptionDestination destination) {
+    Object config = destination.getConfig();
+    SubscriptionAction receivers = null;
+    if (config instanceof SubscriptionAction action) {
+      receivers = action;
+    } else if (config != null) {
+      receivers = channel.configRules().receiversOf(destination);
+    }
+    return receivers;
   }
 
   private record Outcome(Target target, Exception failure, SubscriptionStatus left) {}

@@ -32,6 +32,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
@@ -48,7 +49,7 @@ class LineageBasedDownstreamHandlerTest {
   @Test
   void lineageQueryFailureIsAFailureOtherBranchesResolve() {
     RecipientResolutionStrategy owners = mock(RecipientResolutionStrategy.class);
-    when(owners.resolve(any(UUID.class), any(), any(), any()))
+    when(owners.resolve(any(UUID.class), any(), any(), any(), any()))
         .thenAnswer(ask -> Recipients.of(ownerOf(ask.getArgument(0))));
     EntityLineageResolver roots = mock(EntityLineageResolver.class);
     when(roots.resolveTraversalEntities(any(ChangeEvent.class)))
@@ -72,6 +73,7 @@ class LineageBasedDownstreamHandlerTest {
               .resolveDownstreamRecipients(
                   null,
                   new SubscriptionDestination(),
+                  AddressDirectory.NONE,
                   new ChangeEvent().withEntityType("table"),
                   2);
     }

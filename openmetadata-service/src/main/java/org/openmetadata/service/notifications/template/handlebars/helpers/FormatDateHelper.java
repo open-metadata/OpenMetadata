@@ -6,9 +6,9 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

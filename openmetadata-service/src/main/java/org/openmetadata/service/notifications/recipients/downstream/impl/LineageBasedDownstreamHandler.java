@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.notifications.recipients.Lookup;
 import org.openmetadata.service.notifications.recipients.Recipients;
 import org.openmetadata.service.notifications.recipients.downstream.DownstreamHandler;
@@ -50,6 +51,7 @@ public class LineageBasedDownstreamHandler implements DownstreamHandler {
   private record Walk(
       SubscriptionAction action,
       SubscriptionDestination destination,
+      AddressDirectory directory,
       Integer maxDepth,
       Set<String> visited) {}
 
@@ -64,9 +66,10 @@ public class LineageBasedDownstreamHandler implements DownstreamHandler {
   public Recipients resolveDownstreamRecipients(
       SubscriptionAction action,
       SubscriptionDestination destination,
+      AddressDirectory directory,
       ChangeEvent changeEvent,
       Integer maxDepth) {
-    Walk walk = new Walk(action, destination, maxDepth, new HashSet<>());
+    Walk walk = new Walk(action, destination, directory, maxDepth, new HashSet<>());
     EntityLineageResolver resolver = resolverFor(changeEvent.getEntityType());
     return Recipients.from(
         Lookup.of(
@@ -87,7 +90,7 @@ public class LineageBasedDownstreamHandler implements DownstreamHandler {
       return Recipients.none();
     }
     return downstreamStrategy
-        .resolve(id, type, walk.action(), walk.destination())
+        .resolve(id, type, walk.action(), walk.destination(), walk.directory())
         .and(downstreamOf(id, type, walk))
         .and(ancestorsOf(id, type, walk));
   }
@@ -104,7 +107,11 @@ public class LineageBasedDownstreamHandler implements DownstreamHandler {
                 .map(
                     entity ->
                         downstreamStrategy.resolve(
-                            entity.getId(), entity.getType(), walk.action(), walk.destination()))
+                            entity.getId(),
+                            entity.getType(),
+                            walk.action(),
+                            walk.destination(),
+                            walk.directory()))
                 .collect(Recipients.combined()));
   }
 

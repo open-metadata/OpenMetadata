@@ -15,13 +15,12 @@ package org.openmetadata.service.events.subscription.channels.builtin;
 
 import com.google.common.base.Suppliers;
 import java.util.Optional;
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
-import org.openmetadata.service.events.subscription.channels.AddressDirectory;
 import org.openmetadata.service.events.subscription.channels.Channel;
 import org.openmetadata.service.events.subscription.channels.ConfigRules;
 import org.openmetadata.service.events.subscription.channels.Transport;
@@ -34,8 +33,15 @@ record BuiltInChannel(
     Transport transportOrNull,
     AddressDirectory directory,
     ConfigRules configRules,
-    BiFunction<EventSubscription, SubscriptionDestination, Destination<ChangeEvent>> publishers)
+    Publishers publishers)
     implements Channel {
+
+  /** Builds a destination's publisher, handed the channel's renderer, or null when it has none. */
+  @FunctionalInterface
+  interface Publishers {
+    Destination<ChangeEvent> of(
+        EventSubscription alert, SubscriptionDestination destination, ChannelRenderer renderer);
+  }
 
   // Built once, when first asked for: the email renderer reads its envelope as it is built.
   BuiltInChannel {
@@ -60,6 +66,6 @@ record BuiltInChannel(
   @Override
   public Destination<ChangeEvent> publisher(
       EventSubscription alert, SubscriptionDestination destination) {
-    return publishers.apply(alert, destination);
+    return publishers.of(alert, destination, renderer().orElse(null));
   }
 }

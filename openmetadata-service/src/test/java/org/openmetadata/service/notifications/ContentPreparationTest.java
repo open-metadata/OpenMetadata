@@ -17,9 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -30,7 +28,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -38,19 +35,19 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination.Subscriptio
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.content.TemplateLookup;
 import org.openmetadata.service.apps.bundles.changeEvent.generic.GenericPublisher;
+import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.notifications.channels.ChannelRenderer;
 
 class ContentPreparationTest {
   private static final String SYSTEM_TEMPLATE = "system-notification-table-entity-updated";
 
-  private final NotificationTemplateRepository templates =
-      mock(NotificationTemplateRepository.class);
+  private final TemplateLookup templates = mock(TemplateLookup.class);
   private final EventSubscription alert =
       new EventSubscription().withId(UUID.randomUUID()).withName("an-alert");
   private final ChangeEvent event =
@@ -65,7 +62,7 @@ class ContentPreparationTest {
 
   @BeforeEach
   void aSystemTemplateExists() {
-    when(templates.findByNameOrNull(eq(SYSTEM_TEMPLATE), eq(Include.ALL)))
+    when(templates.byName(SYSTEM_TEMPLATE))
         .thenReturn(template("The {{event.entityType}} was changed by {{event.userName}}"));
   }
 
@@ -78,12 +75,12 @@ class ContentPreparationTest {
         new SubscriptionType[] {
           SubscriptionType.SLACK, SubscriptionType.MS_TEAMS, SubscriptionType.G_CHAT
         }) {
-      String message = JsonUtils.pojoToJson(engine.format(content.by(engine), destinationOf(type)));
+      String message = JsonUtils.pojoToJson(engine.format(content.by(engine), rendererOf(type)));
       assertTrue(message.contains("was changed by alice"), type.value());
     }
 
     verify(engine, times(1)).render(any(), any());
-    verify(templates, times(1)).findByNameOrNull(eq(SYSTEM_TEMPLATE), any());
+    verify(templates, times(1)).byName(SYSTEM_TEMPLATE);
   }
 
   @Test
@@ -114,23 +111,19 @@ class ContentPreparationTest {
     alert.withNotificationTemplate(
         new EntityReference().withId(deleted).withType(Entity.NOTIFICATION_TEMPLATE));
 
-    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
-      entities
-          .when(() -> Entity.getEntity(eq(Entity.NOTIFICATION_TEMPLATE), eq(deleted), any(), any()))
-          .thenThrow(EntityNotFoundException.byId(deleted.toString()));
+    when(templates.byId(deleted)).thenThrow(EntityNotFoundException.byId(deleted.toString()));
 
-      EventContent.Rendered rendered = engine().render(event, alert);
+    EventContent.Rendered rendered = engine().render(event, alert);
 
-      assertTrue(rendered.body().contains("was changed by alice"));
-    }
+    assertTrue(rendered.body().contains("was changed by alice"));
   }
 
   // Preview and test send go through the entry point delivery uses.
   @Test
   void previewEqualsDeliveredBody() {
     HandlebarsNotificationMessageEngine engine = engine();
-    SubscriptionDestination slack = destinationOf(SubscriptionType.SLACK);
-    NotificationTemplate template = templates.findByNameOrNull(SYSTEM_TEMPLATE, Include.ALL);
+    ChannelRenderer slack = rendererOf(SubscriptionType.SLACK);
+    NotificationTemplate template = templates.byName(SYSTEM_TEMPLATE);
 
     String previewed =
         JsonUtils.pojoToJson(engine.generateMessageWithTemplate(event, alert, slack, template));
@@ -192,6 +185,10 @@ class ContentPreparationTest {
         return Map.of("baseUrl", "http://localhost:8585", "emailingEntity", "OpenMetadata");
       }
     };
+  }
+
+  private static ChannelRenderer rendererOf(SubscriptionType type) {
+    return Channels.required(destinationOf(type)).renderer().orElseThrow();
   }
 
   private static SubscriptionDestination destinationOf(SubscriptionType type) {

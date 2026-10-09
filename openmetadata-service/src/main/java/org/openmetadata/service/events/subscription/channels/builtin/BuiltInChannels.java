@@ -22,18 +22,19 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
 import java.util.List;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.feed.ActivityStreamPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.generic.GenericPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.MSTeamsPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackEventPublisher;
-import org.openmetadata.service.events.subscription.channels.AddressDirectory;
 import org.openmetadata.service.events.subscription.channels.Channel;
 import org.openmetadata.service.events.subscription.channels.ChannelProvider;
+import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
+import org.openmetadata.service.notifications.channels.ChannelRenderer;
 import org.openmetadata.service.notifications.channels.email.EmailHtmlRenderer;
 import org.openmetadata.service.notifications.channels.gchat.GChatCardRenderer;
 import org.openmetadata.service.notifications.channels.slack.SlackBlockKitRenderer;
@@ -49,9 +50,9 @@ public final class BuiltInChannels implements ChannelProvider {
     return List.of(email(), slack(), msTeams(), gChat(), webhook(), activityFeed(), workflows());
   }
 
-  /** A destination of the channel whose rendering a template preview shows, which is HTML. */
-  public static SubscriptionDestination previewDestination() {
-    return new SubscriptionDestination().withType(EMAIL);
+  /** How the channel whose rendering a template preview shows renders, which is HTML. */
+  public static ChannelRenderer previewRenderer() {
+    return Channels.of(EMAIL.value()).flatMap(Channel::renderer).orElseThrow();
   }
 
   private static Channel email() {
@@ -61,8 +62,8 @@ public final class BuiltInChannels implements ChannelProvider {
         new SmtpTransport(),
         new Mailboxes(),
         new EmailConfigRules(),
-        (alert, destination) ->
-            new EmailPublisher(alert, destination, EmailConfigRules.stored(destination)));
+        (alert, destination, renderer) ->
+            new EmailPublisher(alert, destination, EmailConfigRules.stored(destination), renderer));
   }
 
   private static Channel slack() {
@@ -72,8 +73,9 @@ public final class BuiltInChannels implements ChannelProvider {
         HttpWebhookTransport.shared(),
         new WebhookAddresses(SubscriptionConfig::getSlack),
         new WebhookConfigRules(),
-        (alert, destination) ->
-            new SlackEventPublisher(alert, destination, WebhookConfigRules.stored(destination)));
+        (alert, destination, renderer) ->
+            new SlackEventPublisher(
+                alert, destination, WebhookConfigRules.stored(destination), renderer));
   }
 
   private static Channel msTeams() {
@@ -83,8 +85,9 @@ public final class BuiltInChannels implements ChannelProvider {
         HttpWebhookTransport.shared(),
         new WebhookAddresses(SubscriptionConfig::getMsTeams),
         new WebhookConfigRules(),
-        (alert, destination) ->
-            new MSTeamsPublisher(alert, destination, WebhookConfigRules.stored(destination)));
+        (alert, destination, renderer) ->
+            new MSTeamsPublisher(
+                alert, destination, WebhookConfigRules.stored(destination), renderer));
   }
 
   private static Channel gChat() {
@@ -94,8 +97,9 @@ public final class BuiltInChannels implements ChannelProvider {
         HttpWebhookTransport.shared(),
         new WebhookAddresses(SubscriptionConfig::getgChat),
         new WebhookConfigRules(),
-        (alert, destination) ->
-            new GChatPublisher(alert, destination, WebhookConfigRules.stored(destination)));
+        (alert, destination, renderer) ->
+            new GChatPublisher(
+                alert, destination, WebhookConfigRules.stored(destination), renderer));
   }
 
   private static Channel webhook() {
@@ -105,7 +109,7 @@ public final class BuiltInChannels implements ChannelProvider {
         HttpWebhookTransport.shared(),
         new WebhookAddresses(SubscriptionConfig::getGeneric),
         new SecretWebhookConfigRules(),
-        (alert, destination) ->
+        (alert, destination, renderer) ->
             new GenericPublisher(alert, destination, WebhookConfigRules.stored(destination)));
   }
 
@@ -116,7 +120,7 @@ public final class BuiltInChannels implements ChannelProvider {
         null,
         AddressDirectory.NONE,
         new NoConfigRules(),
-        ActivityStreamPublisher::new);
+        (alert, destination, renderer) -> new ActivityStreamPublisher(alert, destination));
   }
 
   private static Channel workflows() {
@@ -126,6 +130,6 @@ public final class BuiltInChannels implements ChannelProvider {
         null,
         AddressDirectory.NONE,
         new NoConfigRules(),
-        WorkflowEventConsumer::new);
+        (alert, destination, renderer) -> new WorkflowEventConsumer(alert, destination));
   }
 }

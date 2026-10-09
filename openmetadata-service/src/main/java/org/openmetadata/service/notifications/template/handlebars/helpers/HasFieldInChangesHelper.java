@@ -4,9 +4,9 @@ import com.github.jknack.handlebars.Handlebars;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 import org.openmetadata.service.notifications.template.handlebars.helpers.GroupEventChangesHelper.ChangeGroups;
 
 /**

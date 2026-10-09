@@ -178,7 +178,8 @@ class DispatchOrderTest {
             mockConstruction(
                 RecipientResolver.class,
                 (resolver, construction) ->
-                    when(resolver.recipientsOf(any(), any())).thenReturn(Recipients.of(SHARED)))) {
+                    when(resolver.recipientsOf(any(), any(), any(), any()))
+                        .thenReturn(Recipients.of(SHARED)))) {
       entity.when(Entity::getCollectionDAO).thenReturn(dao);
       rows.when(() -> AlertRows.readOrNull(alert.getId())).thenReturn(alert);
       alertUtil

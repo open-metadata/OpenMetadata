@@ -17,6 +17,7 @@ import java.util.UUID;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.notifications.recipients.Recipients;
 
 /**
@@ -32,14 +33,18 @@ public interface RecipientResolutionStrategy {
    * holds a deleted entity as it was.
    */
   Recipients resolve(
-      ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination);
+      ChangeEvent event,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      AddressDirectory directory);
 
   /** The recipients for an entity read from the store, for downstream resolution. */
   Recipients resolve(
       UUID entityId,
       String entityType,
       SubscriptionAction action,
-      SubscriptionDestination destination);
+      SubscriptionDestination destination,
+      AddressDirectory directory);
 
   SubscriptionDestination.SubscriptionCategory getCategory();
 }

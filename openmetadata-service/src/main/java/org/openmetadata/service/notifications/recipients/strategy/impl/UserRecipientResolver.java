@@ -25,9 +25,9 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.notifications.recipients.Lookup;
 import org.openmetadata.service.notifications.recipients.Recipients;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
 /**
@@ -44,8 +44,11 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
 
   @Override
   public Recipients resolve(
-      ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-    return byName(action, destination);
+      ChangeEvent event,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
+    return byName(action, directory);
   }
 
   @Override
@@ -53,22 +56,23 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
       UUID entityId,
       String entityType,
       SubscriptionAction action,
-      SubscriptionDestination destination) {
-    return byName(action, destination);
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
+    return byName(action, directory);
   }
 
-  public Recipients resolve(List<UUID> userIds, SubscriptionDestination destination) {
+  public Recipients resolve(List<UUID> userIds, AddressDirectory directory) {
     return listOrEmpty(userIds).stream()
         .map(
             id ->
                 reached(
                     "user " + id,
                     () -> Entity.<User>getEntity(Entity.USER, id, USER_FIELDS, Include.NON_DELETED),
-                    destination))
+                    directory))
         .collect(Recipients.combined());
   }
 
-  private Recipients byName(SubscriptionAction action, SubscriptionDestination destination) {
+  private Recipients byName(SubscriptionAction action, AddressDirectory directory) {
     Collection<String> names =
         action == null || action.getReceivers() == null ? List.of() : action.getReceivers();
     return names.stream()
@@ -79,14 +83,12 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
                     () ->
                         Entity.<User>getEntityByName(
                             Entity.USER, name, USER_FIELDS, Include.NON_DELETED),
-                    destination))
+                    directory))
         .collect(Recipients.combined());
   }
 
-  private static Recipients reached(
-      String what, Supplier<User> read, SubscriptionDestination destination) {
-    return Recipients.from(
-        Lookup.of(what, () -> Recipient.fromUser(read.get(), destination)), Recipients::of);
+  private static Recipients reached(String what, Supplier<User> read, AddressDirectory directory) {
+    return Recipients.from(Lookup.of(what, () -> directory.ofUser(read.get())), Recipients::of);
   }
 
   @Override

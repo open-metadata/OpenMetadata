@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.events.subscription.channels;
+package org.openmetadata.service.alerting.audience;
 
 import java.util.Set;
 import org.openmetadata.schema.SubscriptionAction;

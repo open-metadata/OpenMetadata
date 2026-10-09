@@ -26,7 +26,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.channels.Channel;
 import org.openmetadata.service.events.subscription.channels.ChannelResolution;
-import org.openmetadata.service.events.subscription.targets.TargetResolver;
 import org.openmetadata.service.notifications.EventContent;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 
@@ -42,17 +41,16 @@ final class TickChannels implements ChannelDelivery {
   private final EventSubscription alert;
   private final Map<UUID, Destination<ChangeEvent>> destinations;
   private final TickHealth health;
-  private final TargetResolver resolver;
+  private final RecipientResolver recipients;
 
   TickChannels(
       EventSubscription alert,
       Map<UUID, Destination<ChangeEvent>> destinations,
       TickHealth health) {
-    RecipientResolver recipients = new RecipientResolver();
     this.alert = alert;
     this.destinations = destinations;
     this.health = health;
-    this.resolver = new TargetResolver(recipients::recipientsOf);
+    this.recipients = new RecipientResolver();
   }
 
   @Override
@@ -133,7 +131,7 @@ final class TickChannels implements ChannelDelivery {
     ChannelResult result;
     try {
       result =
-          new ChannelDispatch(servingChannel(group.getFirst()), group, resolver, health)
+          new ChannelDispatch(servingChannel(group.getFirst()), group, recipients, health)
               .send(event, content);
     } catch (EventPublisherException e) {
       LOG.error("Failed to send alert: {}", e.getMessage());

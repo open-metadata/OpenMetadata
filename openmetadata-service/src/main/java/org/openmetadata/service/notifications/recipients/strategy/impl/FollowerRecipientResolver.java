@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.notifications.recipients.Lookup;
 import org.openmetadata.service.notifications.recipients.Recipients;
@@ -43,17 +44,20 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
 
   @Override
   public Recipients resolve(
-      ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
+      ChangeEvent event,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
     return Entity.CONVERSATION.equalsIgnoreCase(event.getEntityType())
         ? Recipients.from(
             Lookup.of(
                 "the conversation of event " + event.getId(),
                 () -> AlertsRuleEvaluator.getConversation(event)),
-            conversation -> ofConversation(conversation, destination))
+            conversation -> ofConversation(conversation, directory))
         : Recipients.from(
             Lookup.of(
                 "the entity of event " + event.getId(), () -> AlertsRuleEvaluator.getEntity(event)),
-            entity -> of(entity, destination));
+            entity -> of(entity, directory));
   }
 
   @Override
@@ -61,27 +65,27 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
       UUID entityId,
       String entityType,
       SubscriptionAction action,
-      SubscriptionDestination destination) {
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
     return Entity.CONVERSATION.equalsIgnoreCase(entityType)
         ? Recipients.from(
             Lookup.of(
                 "conversation " + entityId,
                 () -> Entity.getConversationRepository().getEventPayload(entityId)),
-            conversation -> ofConversation(conversation, destination))
-        : Recipients.from(stored(entityType, entityId), entity -> of(entity, destination));
+            conversation -> ofConversation(conversation, directory))
+        : Recipients.from(stored(entityType, entityId), entity -> of(entity, directory));
   }
 
-  private Recipients ofConversation(
-      Conversation conversation, SubscriptionDestination destination) {
+  private Recipients ofConversation(Conversation conversation, AddressDirectory directory) {
     EntityReference subject = conversation.getEntityRef();
     return subject == null
         ? Recipients.none()
         : Recipients.from(
-            stored(subject.getType(), subject.getId()), entity -> of(entity, destination));
+            stored(subject.getType(), subject.getId()), entity -> of(entity, directory));
   }
 
-  private Recipients of(EntityInterface<?> entity, SubscriptionDestination destination) {
-    return Principals.of(entity.getFollowers(), users, teams, destination);
+  private Recipients of(EntityInterface<?> entity, AddressDirectory directory) {
+    return Principals.of(entity.getFollowers(), users, teams, directory);
   }
 
   private static Lookup<EntityInterface<?>> stored(String entityType, UUID entityId) {

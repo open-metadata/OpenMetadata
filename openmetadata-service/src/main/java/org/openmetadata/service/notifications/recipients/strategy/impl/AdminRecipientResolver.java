@@ -23,11 +23,11 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.notifications.recipients.Lookup;
 import org.openmetadata.service.notifications.recipients.Recipients;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
 /**
@@ -39,8 +39,11 @@ public class AdminRecipientResolver implements RecipientResolutionStrategy {
 
   @Override
   public Recipients resolve(
-      ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-    return admins(destination);
+      ChangeEvent event,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
+    return admins(directory);
   }
 
   @Override
@@ -48,16 +51,17 @@ public class AdminRecipientResolver implements RecipientResolutionStrategy {
       UUID entityId,
       String entityType,
       SubscriptionAction action,
-      SubscriptionDestination destination) {
-    return admins(destination);
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
+    return admins(directory);
   }
 
-  private static Recipients admins(SubscriptionDestination destination) {
+  private static Recipients admins(AddressDirectory directory) {
     return Recipients.from(
         Lookup.of("the admins", AdminRecipientResolver::everyAdmin),
         admins ->
             admins.stream()
-                .map(admin -> Recipients.of(Recipient.fromUser(admin, destination)))
+                .map(admin -> Recipients.of(directory.ofUser(admin)))
                 .collect(Recipients.combined()));
   }
 

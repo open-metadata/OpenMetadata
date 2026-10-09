@@ -28,12 +28,14 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.subscription.channels.builtin.BuiltInChannels;
 
 class DispatchTest {
   private final EventSubscription alert = new EventSubscription().withId(UUID.randomUUID());
   private final SubscriptionDestination destination =
-      BuiltInChannels.previewDestination().withId(UUID.randomUUID()).withEnabled(true);
+      new SubscriptionDestination()
+          .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+          .withId(UUID.randomUUID())
+          .withEnabled(true);
   private final String type = destination.getType().value();
 
   @BeforeEach
@@ -65,7 +67,8 @@ class DispatchTest {
   @Test
   void namedChannelThatIsNotRegisteredIsNeverServedByItsType() {
     SubscriptionDestination named =
-        BuiltInChannels.previewDestination()
+        new SubscriptionDestination()
+            .withType(SubscriptionDestination.SubscriptionType.EMAIL)
             .withId(UUID.randomUUID())
             .withChannel("not.registered.here");
 

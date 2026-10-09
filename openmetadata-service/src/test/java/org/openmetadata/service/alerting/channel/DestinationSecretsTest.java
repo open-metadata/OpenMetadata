@@ -1,4 +1,4 @@
-package org.openmetadata.service.fernet;
+package org.openmetadata.service.alerting.channel;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -14,8 +14,9 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.fernet.Fernet;
 
-class FernetEncryptWebhookOAuth2Test {
+class DestinationSecretsTest {
 
   private static final String TEST_FERNET_KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
 
@@ -25,10 +26,10 @@ class FernetEncryptWebhookOAuth2Test {
   }
 
   @Test
-  void encryptWebhookSecretKey_oauth2_encryptsClientIdAndSecret() {
+  void encrypt_oauth2_encryptsClientIdAndSecret() {
     SubscriptionDestination dest = buildOAuth2Destination("my-client-id", "my-client-secret");
 
-    List<SubscriptionDestination> result = Fernet.encryptWebhookSecretKey(List.of(dest));
+    List<SubscriptionDestination> result = DestinationSecrets.encrypt(List.of(dest));
 
     Map<String, Object> config = JsonUtils.convertValue(result.get(0).getConfig(), Map.class);
     Map<String, Object> authMap = (Map<String, Object>) config.get("authType");
@@ -44,13 +45,13 @@ class FernetEncryptWebhookOAuth2Test {
   }
 
   @Test
-  void encryptWebhookSecretKey_oauth2_alreadyEncrypted_noDoubleEncryption() {
+  void encrypt_oauth2_alreadyEncrypted_noDoubleEncryption() {
     String preEncryptedId = Fernet.getInstance().encrypt("my-client-id");
     String preEncryptedSecret = Fernet.getInstance().encrypt("my-client-secret");
 
     SubscriptionDestination dest = buildOAuth2Destination(preEncryptedId, preEncryptedSecret);
 
-    List<SubscriptionDestination> result = Fernet.encryptWebhookSecretKey(List.of(dest));
+    List<SubscriptionDestination> result = DestinationSecrets.encrypt(List.of(dest));
 
     Map<String, Object> config = JsonUtils.convertValue(result.get(0).getConfig(), Map.class);
     Map<String, Object> authMap = (Map<String, Object>) config.get("authType");
@@ -60,7 +61,7 @@ class FernetEncryptWebhookOAuth2Test {
   }
 
   @Test
-  void encryptWebhookSecretKey_bearer_stillWorks() {
+  void encrypt_bearer_stillWorks() {
     Map<String, Object> bearerAuth = new LinkedHashMap<>();
     bearerAuth.put("type", "bearer");
     bearerAuth.put("secretKey", "my-secret-key");
@@ -76,7 +77,7 @@ class FernetEncryptWebhookOAuth2Test {
             .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
             .withConfig(webhookConfig);
 
-    List<SubscriptionDestination> result = Fernet.encryptWebhookSecretKey(List.of(dest));
+    List<SubscriptionDestination> result = DestinationSecrets.encrypt(List.of(dest));
 
     Map<String, Object> config = JsonUtils.convertValue(result.get(0).getConfig(), Map.class);
     Map<String, Object> authMap = (Map<String, Object>) config.get("authType");
@@ -87,7 +88,7 @@ class FernetEncryptWebhookOAuth2Test {
   }
 
   @Test
-  void encryptWebhookSecretKey_nonWebhook_passesThrough() {
+  void encrypt_nonWebhook_passesThrough() {
     SubscriptionDestination dest =
         new SubscriptionDestination()
             .withId(UUID.randomUUID())
@@ -95,18 +96,18 @@ class FernetEncryptWebhookOAuth2Test {
             .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
             .withConfig(Map.of("endpoint", "http://slack.example.com"));
 
-    List<SubscriptionDestination> result = Fernet.encryptWebhookSecretKey(List.of(dest));
+    List<SubscriptionDestination> result = DestinationSecrets.encrypt(List.of(dest));
 
     assertEquals(1, result.size());
     assertEquals(SubscriptionDestination.SubscriptionType.SLACK, result.get(0).getType());
   }
 
   @Test
-  void encryptWebhookSecretKey_assignsIdIfMissing() {
+  void encrypt_assignsIdIfMissing() {
     SubscriptionDestination dest = buildOAuth2Destination("cid", "csecret");
     dest.withId(null);
 
-    List<SubscriptionDestination> result = Fernet.encryptWebhookSecretKey(List.of(dest));
+    List<SubscriptionDestination> result = DestinationSecrets.encrypt(List.of(dest));
 
     assertNotNull(result.get(0).getId());
   }

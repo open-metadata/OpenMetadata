@@ -39,6 +39,7 @@ import org.openmetadata.service.formatter.decorators.MSTeamsMessageDecorator;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.EventContent;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.notifications.channels.ChannelRenderer;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
@@ -46,6 +47,7 @@ import org.openmetadata.service.notifications.recipients.context.WebhookRecipien
 @Slf4j
 public class MSTeamsPublisher implements Destination<ChangeEvent> {
   private final HandlebarsNotificationMessageEngine messageEngine;
+  private final ChannelRenderer renderer;
   private final Webhook webhook;
   private final Client client;
 
@@ -55,7 +57,8 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
   public MSTeamsPublisher(
       EventSubscription eventSubscription,
       SubscriptionDestination subscriptionDestination,
-      Webhook webhook) {
+      Webhook webhook,
+      ChannelRenderer renderer) {
     this.eventSubscription = eventSubscription;
     this.subscriptionDestination = subscriptionDestination;
     this.webhook = webhook;
@@ -63,6 +66,7 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
         HttpWebhookTransport.shared()
             .clientFor(
                 subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
+    this.renderer = renderer;
     this.messageEngine =
         new HandlebarsNotificationMessageEngine(
             (NotificationTemplateRepository)
@@ -96,8 +100,7 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
 
   // Rendered once for an event, whatever the number of targets it is sent to.
   private String payloadOf(ChangeEvent event, EventContent content) {
-    NotificationMessage message =
-        messageEngine.format(content.by(messageEngine), subscriptionDestination);
+    NotificationMessage message = messageEngine.format(content.by(messageEngine), renderer);
     return JsonUtils.pojoToJson((TeamsMessage) message);
   }
 

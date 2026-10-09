@@ -14,8 +14,8 @@ package org.openmetadata.service.notifications;
 
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.notifications.channels.ChannelRenderer;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 
 /**
@@ -28,11 +28,11 @@ public interface NotificationMessageEngine {
    *
    * @param event The change event that triggered the notification
    * @param subscription The event subscription containing template configuration
-   * @param destination The specific destination to generate the message for
+   * @param renderer How the channel the message goes to makes its message
    * @return Channel-specific message implementing NotificationMessage
    */
   NotificationMessage generateMessage(
-      ChangeEvent event, EventSubscription subscription, SubscriptionDestination destination);
+      ChangeEvent event, EventSubscription subscription, ChannelRenderer renderer);
 
   /**
    * Generate notification message using a specific template (for testing).
@@ -42,13 +42,13 @@ public interface NotificationMessageEngine {
    *
    * @param event The ChangeEvent to render
    * @param subscription The EventSubscription context
-   * @param destination The target destination
+   * @param renderer How the channel the message goes to makes its message
    * @param template The NotificationTemplate to use (not resolved from DB)
-   * @return Rendered NotificationMessage for the destination type
+   * @return Rendered NotificationMessage for the renderer's channel
    */
   NotificationMessage generateMessageWithTemplate(
       ChangeEvent event,
       EventSubscription subscription,
-      SubscriptionDestination destination,
+      ChannelRenderer renderer,
       NotificationTemplate template);
 }

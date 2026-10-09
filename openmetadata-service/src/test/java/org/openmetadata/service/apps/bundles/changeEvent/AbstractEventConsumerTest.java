@@ -340,8 +340,9 @@ class AbstractEventConsumerTest {
             mockConstruction(
                 RecipientResolver.class,
                 (mock, ctx) -> {
-                  when(mock.recipientsOf(any(), eq(subA))).thenReturn(Recipients.of(Set.of(r1)));
-                  when(mock.recipientsOf(any(), eq(subB)))
+                  when(mock.recipientsOf(any(), eq(subA), any(), any()))
+                      .thenReturn(Recipients.of(Set.of(r1)));
+                  when(mock.recipientsOf(any(), eq(subB), any(), any()))
                       .thenReturn(Recipients.of(Set.of(r1, r2)));
                 })) {
       consumer.openTick(destinations);
@@ -381,7 +382,8 @@ class AbstractEventConsumerTest {
             mockConstruction(
                 RecipientResolver.class,
                 (mock, ctx) ->
-                    when(mock.recipientsOf(any(), any())).thenReturn(Recipients.none()))) {
+                    when(mock.recipientsOf(any(), any(), any(), any()))
+                        .thenReturn(Recipients.none()))) {
       consumer.openTick(Map.of(id, slack));
       alertUtil
           .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
@@ -419,7 +421,7 @@ class AbstractEventConsumerTest {
       consumer.handle(List.copyOf(events.keySet()));
 
       RecipientResolver resolver = resolverCtor.constructed().getFirst();
-      verify(resolver, never()).recipientsOf(any(), any());
+      verify(resolver, never()).recipientsOf(any(), any(), any(), any());
     }
 
     verify(destination).sendMessage(eq(event), eq(Set.of()));
