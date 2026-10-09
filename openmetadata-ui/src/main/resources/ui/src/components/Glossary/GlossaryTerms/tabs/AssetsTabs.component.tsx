@@ -696,6 +696,7 @@ const AssetsTabs = forwardRef(
             <Alert
               showIcon
               className="tw:mt-2"
+              data-testid="output-port-removal-warning"
               title={
                 assetsInOutputPorts.length === 1 && assetsToRemove.length === 1
                   ? t('message.remove-asset-will-also-remove-from-output-ports')

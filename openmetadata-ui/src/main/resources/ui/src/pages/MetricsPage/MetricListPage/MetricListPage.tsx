@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { BoxProps } from '@openmetadata/ui-core-components';
 import {
   Avatar,
   Badge,
@@ -32,7 +33,6 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import type { BoxProps } from '@openmetadata/ui-core-components';
 import {
   BarChart03,
   ChevronDown,
