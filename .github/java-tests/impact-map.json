@@ -1059,6 +1059,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/logging/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/dbtune/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/System*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/StoredSecurityConfiguration.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/OpenMetadataServerHealthCheck.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/StartupTimer*",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/OMMicroMeter*",
