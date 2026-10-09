@@ -58,14 +58,15 @@ import { ONTOLOGY_STUDIO_STYLE } from '../../components/OntologyExplorer/Ontolog
 import OntologyStudioQueryConsole from '../../components/OntologyExplorer/OntologyStudioQueryConsole';
 import OntologyVisualQueryBuilder from '../../components/OntologyExplorer/OntologyVisualQueryBuilder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import {
+  getGlossaryHomeCrumb,
+  getHomeCrumb,
+} from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
-import { ROUTES } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -493,28 +494,20 @@ const OntologyExplorerPage: React.FC = () => {
 
     return `${label.charAt(0)}${label.slice(1).toLocaleLowerCase()}`;
   }, [t]);
-  // AI mode renders the breadcrumb inside the gradient header; classic renders
-  // the legacy TitleBreadcrumb above it. Same split as the Workflow builder.
-  const headerBreadcrumb = useMemo(
-    () =>
-      isAiMode ? (
-        <HeaderBreadcrumb
-          noMargin
-          items={[
-            getGlossaryHomeCrumb(t),
-            { label: t('label.ontology-studio') },
-          ]}
-          showHome={false}
-        />
-      ) : undefined,
+  // Same split as ColumnBulkOperations: the base crumb is chosen per mode, and
+  // AI mode renders the trail inside the gradient header.
+  const breadcrumbEl = useMemo(
+    () => (
+      <HeaderBreadcrumb
+        noMargin
+        items={[
+          isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
+          { label: t('label.ontology-studio') },
+        ]}
+        showHome={false}
+      />
+    ),
     [isAiMode, t]
-  );
-  const classicBreadcrumbs = useMemo(
-    () => [
-      { activeTitle: false, name: t('label.govern'), url: ROUTES.GLOSSARY },
-      { activeTitle: true, name: t('label.ontology-studio'), url: '' },
-    ],
-    [t]
   );
 
   const glossaryOptions = useMemo(
@@ -913,18 +906,6 @@ const OntologyExplorerPage: React.FC = () => {
     return null;
   }
 
-  function renderClassicBreadcrumb() {
-    if (isAiMode) {
-      return null;
-    }
-
-    return (
-      <div className="tw:mb-4 tw:shrink-0">
-        <TitleBreadcrumb titleLinks={classicBreadcrumbs} />
-      </div>
-    );
-  }
-
   function renderMainSection() {
     return (
       <section
@@ -964,7 +945,7 @@ const OntologyExplorerPage: React.FC = () => {
         className="tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:font-body tw:antialiased"
         data-testid="ontology-studio-shell"
         style={ONTOLOGY_STUDIO_STYLE}>
-        {renderClassicBreadcrumb()}
+        {!isAiMode && <div className="tw:mb-3 tw:shrink-0">{breadcrumbEl}</div>}
 
         <PageHeader
           actions={
@@ -988,7 +969,7 @@ const OntologyExplorerPage: React.FC = () => {
               </Button>
             </>
           }
-          breadcrumb={headerBreadcrumb}
+          breadcrumb={isAiMode ? breadcrumbEl : undefined}
           className="tw:shrink-0 tw:pb-0!"
           footer={renderModeTabsBar()}
           icon={LayersThree01}

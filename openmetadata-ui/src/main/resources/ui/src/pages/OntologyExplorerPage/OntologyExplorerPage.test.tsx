@@ -99,10 +99,10 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock(
-  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
   () => ({
     __esModule: true,
-    default: jest.fn(() => <div data-testid="title-breadcrumb" />),
+    default: jest.fn(() => <div data-testid="header-breadcrumb" />),
   })
 );
 
