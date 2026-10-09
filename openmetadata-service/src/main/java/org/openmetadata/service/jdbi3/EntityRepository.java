@@ -4723,11 +4723,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
-    if (entityUpdater.fieldsChanged()) {
-      try (var ignored = phase("patchSetInheritedFields")) {
-        setInheritedFields(updated, patchFields);
-      }
-    }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
     return new PatchResponse<>(
         Status.OK, withHref(uriInfo, updated), entityUpdater.getChangeType());
@@ -9733,6 +9728,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // needs to be reconciled in ES even when the consolidated version doesn't change.
       if (!versionChanged && !entityChanged && !incrementalFieldsChanged()) {
         return;
+      }
+      // A PATCH's post-update work, search included, sees the entity as a read returns it: one
+      // that drops its own domain is indexed, and hands down to its children, the domain it now
+      // inherits. A PUT fills inherited fields once it returns, as before.
+      if (operation.isPatch()) {
+        try (var ignored = phase("patchSetInheritedFields")) {
+          setInheritedFields(updated, patchFields);
+        }
       }
       try (var ignored = phase("entityUpdatePostUpdate")) {
         postUpdate(original, updated);
