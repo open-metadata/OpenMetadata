@@ -1364,7 +1364,12 @@ class OpenlineageSource(PipelineServiceSource):
             pool_timeout = DEFAULT_NATS_POOL_TIMEOUT if broker.poolTimeout is None else broker.poolTimeout
             session_timeout = DEFAULT_NATS_SESSION_TIMEOUT if broker.sessionTimeout is None else broker.sessionTimeout
             batch_size = DEFAULT_NATS_BATCH_SIZE if broker.batchSize is None else broker.batchSize
-            ack_wait = DEFAULT_NATS_ACK_WAIT if broker.ackWait is None else broker.ackWait
+            # A reused durable keeps its own ackWait and the configured one is only
+            # warned about, so pacing the keep-alive off the config would leave the
+            # heartbeat slower than the deadline the server is actually applying
+            ack_wait = getattr(client, "effective_ack_wait", None)
+            if ack_wait is None:
+                ack_wait = DEFAULT_NATS_ACK_WAIT if broker.ackWait is None else broker.ackWait
             while idle_time <= session_timeout:
                 messages = client.fetch(batch_size, timeout=pool_timeout)
                 if not messages:
@@ -1433,7 +1438,10 @@ class OpenlineageSource(PipelineServiceSource):
         pending: dict[int, Any] = {id(message): message for message in messages}
         lock = threading.Lock()
         stop = threading.Event()
-        interval = max(ack_wait / 2.0, MIN_NATS_KEEPALIVE_INTERVAL)
+        # Below the deadline as well as above the floor: the schema allows an ackWait of
+        # 1, where the floor alone would schedule the first refresh at the very moment
+        # the server gives up on the message
+        interval = min(max(ack_wait / 2.0, MIN_NATS_KEEPALIVE_INTERVAL), ack_wait * 0.8)
 
         def _leaving_batch(message: Any) -> None:
             with lock:
