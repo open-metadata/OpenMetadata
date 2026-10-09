@@ -1098,6 +1098,8 @@ const DomainDetails = ({
                           'text-primary border-primary': version,
                         })}
                         data-testid="version-button"
+                        // Not wrapped in antd <Icon component>: it forces fill=currentColor, which fills
+                        // stroke-only core icons. ADR:2026-10-09-core-stroke-icons-skip-the-antd-icon-wrapper
                         icon={<Version className="anticon" size={14} />}
                         onClick={handleVersionClick}>
                         <Typography
