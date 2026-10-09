@@ -52,14 +52,27 @@ const getArrayFieldContainerClass = (isInvalid: boolean, isDisabled: boolean) =>
 
 // Plain derivations of the RJSF props; pulled out so the component body stays a
 // render function rather than a chain of defaulting expressions.
+// A string schema rendered with `'ui:field': 'ArrayField'` (e.g. an OIDC
+// `scope`) is edited as tags but stored space-separated.
+const toValues = (formData: unknown, isSpaceSeparated: boolean): string[] => {
+  if (isSpaceSeparated) {
+    return String(formData ?? '')
+      .split(' ')
+      .filter(Boolean);
+  }
+
+  return (formData as string[] | undefined) ?? [];
+};
+
 const getCoreArrayFieldState = (
   id: string,
-  formData: string[] | undefined,
+  formData: unknown,
+  isSpaceSeparated: boolean,
   disabled?: boolean,
   readonly?: boolean
 ) => ({
   fieldName: id.split('/').pop() ?? '',
-  value: formData ?? [],
+  value: toValues(formData, isSpaceSeparated),
   isDisabled: Boolean(disabled || readonly),
 });
 
@@ -126,11 +139,18 @@ const CoreArrayField = (props: FieldProps) => {
   const { t } = useTranslation();
   const id = idSchema.$id;
   const isFilterPattern = /FilterPattern/.test(id);
+  const isSpaceSeparated = schema.type === 'string';
   const { fieldName, value, isDisabled } = getCoreArrayFieldState(
     id,
     formData,
+    isSpaceSeparated,
     disabled,
     readonly
+  );
+  const emitValues = useCallback(
+    (values: string[]) =>
+      onChange(isSpaceSeparated ? values.join(' ') : values),
+    [isSpaceSeparated, onChange]
   );
   const [inputValue, setInputValue] = useState('');
 
@@ -154,9 +174,9 @@ const CoreArrayField = (props: FieldProps) => {
       if (isEmpty(filtered)) {
         return;
       }
-      onChange(Array.from(new Set([...value, ...filtered])));
+      emitValues(Array.from(new Set([...value, ...filtered])));
     },
-    [value, onChange]
+    [value, emitValues]
   );
 
   const commitInput = useCallback(() => {
@@ -206,7 +226,7 @@ const CoreArrayField = (props: FieldProps) => {
             isDisabled={isDisabled}
             key={v}
             value={v}
-            onRemove={() => onChange(value.filter((val) => val !== v))}
+            onRemove={() => emitValues(value.filter((val) => val !== v))}
           />
         ))}
         {!isDisabled && (

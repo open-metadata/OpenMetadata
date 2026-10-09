@@ -120,41 +120,33 @@ test.describe(
       ).toHaveValue(SAML_ENTITY_ID);
     });
 
-    test('LDAP role mappings are searched and saved with the configuration', async ({
+    test('LDAP role mappings and reassigned roles are saved with the configuration', async ({
       page,
     }) => {
       await stubSecurityConfig(page, BASIC_CONFIG);
       await openProfileSso(page);
       await configureProvider(page, 'ldap');
 
-      await page.getByTestId('add-mapping-btn').click();
       await page
-        .getByTestId(/^ldap-group-input-/)
-        .locator('input')
-        .fill('cn=admins,ou=groups,dc=example,dc=com');
-
-      const rolesSearch = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/roles/search') &&
-          response.url().includes('q=Data')
+        .getByRole('textbox', { name: /Auth Roles Mapping/ })
+        .fill('{"cn=admins,ou=groups,dc=example,dc=com":["DataConsumer"]}');
+      const reassignRoles = ssoField(
+        page,
+        'authenticationConfiguration/ldapConfiguration/authReassignRoles'
       );
-      await page
-        .getByTestId(/^roles-select-/)
-        .getByRole('combobox')
-        .fill('Data');
-      await rolesSearch;
-      await page.getByRole('option', { name: 'Data Consumer' }).click();
+      await reassignRoles.fill('DataSteward');
+      await reassignRoles.press('Enter');
 
       const putRequest = waitForSecurityConfigWrite(page, 'PUT');
       await page.getByTestId('save-anyway-sso-configuration').click();
       const put = await putRequest;
+      const { ldapConfiguration } =
+        put.postDataJSON().authenticationConfiguration;
 
-      expect(
-        JSON.parse(
-          put.postDataJSON().authenticationConfiguration.ldapConfiguration
-            .authRolesMapping
-        )
-      ).toEqual({ 'cn=admins,ou=groups,dc=example,dc=com': ['DataConsumer'] });
+      expect(JSON.parse(ldapConfiguration.authRolesMapping)).toEqual({
+        'cn=admins,ou=groups,dc=example,dc=com': ['DataConsumer'],
+      });
+      expect(ldapConfiguration.authReassignRoles).toEqual(['DataSteward']);
     });
   }
 );

@@ -152,6 +152,34 @@ describe('CoreArrayField', () => {
     );
   });
 
+  it('edits a space-separated string as tags and saves it back as a string', () => {
+    const onChange = jest.fn();
+
+    render(
+      <CoreArrayField
+        {...baseFieldProps}
+        formData="openid email"
+        schema={{ type: 'string' }}
+        onChange={onChange}
+      />
+    );
+
+    expect(screen.getByText('openid')).toBeInTheDocument();
+    expect(screen.getByText('email')).toBeInTheDocument();
+
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'profile' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onChange).toHaveBeenCalledWith('openid email profile');
+
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'label.remove-entity' })[0]
+    );
+
+    expect(onChange).toHaveBeenLastCalledWith('email');
+  });
+
   it('adds a tag on Enter key', () => {
     const onChange = jest.fn();
 

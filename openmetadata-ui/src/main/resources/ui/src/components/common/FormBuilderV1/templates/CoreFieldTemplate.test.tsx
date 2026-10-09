@@ -16,39 +16,36 @@ import {
 } from '@openmetadata/ui-core-components';
 import { RJSFSchema } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
-import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
-import SsoFieldTemplate from './SsoFieldTemplate';
+import FormBuilderV1 from '../FormBuilderV1';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const SCHEMA: RJSFSchema = {
+// `deprecated` is JSON Schema 2019-09; RJSF's draft-07 type does not name it.
+const SCHEMA = {
   type: 'object',
   properties: {
     clientId: { type: 'string', title: 'Client ID' },
-    principalDomain: { type: 'string', title: 'Principal Domain' },
-    hiddenField: { type: 'string' },
+    principalDomain: {
+      type: 'string',
+      title: 'Principal Domain',
+      deprecated: true,
+    },
   },
-};
+} as RJSFSchema;
 
-const renderForm = (fieldDocs: Record<string, string>, showHint = true) =>
+const renderForm = (fieldDocs?: Record<string, string>, showHint = true) =>
   render(
     <FieldDocProvider enabled={showHint}>
-      <FormBuilderV1
-        hideFooter
-        formContext={{ fieldDocs }}
-        schema={SCHEMA}
-        templates={{ FieldTemplate: SsoFieldTemplate }}
-        uiSchema={{ hiddenField: { 'ui:widget': 'hidden' } }}
-      />
+      <FormBuilderV1 hideFooter fieldDocs={fieldDocs} schema={SCHEMA} />
       <FieldDocPopover />
     </FieldDocProvider>
   );
 
-describe('SsoFieldTemplate', () => {
-  it('marks deprecated SSO properties with a badge', () => {
-    renderForm({});
+describe('CoreFieldTemplate', () => {
+  it('marks fields the schema deprecates', () => {
+    renderForm();
 
     expect(
       screen.getByTestId('deprecated-badge-principalDomain')
@@ -58,7 +55,7 @@ describe('SsoFieldTemplate', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows the doc mapped to the focused field', async () => {
+  it('shows the focused field doc when the form passes field docs', async () => {
     renderForm({ clientId: 'The client id from your IdP.' });
 
     fireEvent.focus(screen.getByRole('textbox', { name: /^Client ID/ }));
@@ -68,8 +65,26 @@ describe('SsoFieldTemplate', () => {
     );
   });
 
-  it('registers no doc while hints are off', () => {
-    renderForm({ clientId: 'The client id from your IdP.' }, false);
+  it('picks up docs that arrive after the first render', async () => {
+    const { rerender } = renderForm();
+    rerender(
+      <FieldDocProvider enabled>
+        <FormBuilderV1
+          hideFooter
+          fieldDocs={{ clientId: 'Loaded later.' }}
+          schema={SCHEMA}
+        />
+        <FieldDocPopover />
+      </FieldDocProvider>
+    );
+
+    fireEvent.focus(screen.getByRole('textbox', { name: /^Client ID/ }));
+
+    expect(await screen.findByRole('note')).toHaveTextContent('Loaded later.');
+  });
+
+  it('adds nothing for forms without field docs', () => {
+    renderForm();
 
     fireEvent.focus(screen.getByRole('textbox', { name: /^Client ID/ }));
 
@@ -77,12 +92,11 @@ describe('SsoFieldTemplate', () => {
     expect(document.querySelector('[data-field-doc]')).toBeNull();
   });
 
-  it('keeps hidden fields out of the layout', () => {
-    renderForm({});
+  it('registers no doc while hints are off', () => {
+    renderForm({ clientId: 'The client id.' }, false);
 
-    expect(
-      screen.queryByRole('textbox', { name: /hidden field/i })
-    ).not.toBeInTheDocument();
-    expect(screen.getAllByRole('textbox')).toHaveLength(2);
+    fireEvent.focus(screen.getByRole('textbox', { name: /^Client ID/ }));
+
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
   });
 });

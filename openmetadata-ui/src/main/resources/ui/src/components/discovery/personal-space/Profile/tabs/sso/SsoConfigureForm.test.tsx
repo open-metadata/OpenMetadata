@@ -226,6 +226,20 @@ describe('SsoConfigureForm', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders the LDAP role fields with FormBuilderV1 renderers', async () => {
+    renderForm({ selectedProvider: AuthProvider.LDAP });
+
+    const mapping = await screen.findByRole('textbox', {
+      name: /Auth Roles Mapping/,
+    });
+
+    expect(mapping.tagName).toBe('TEXTAREA');
+    expect(screen.getByText('Auth Reassign Roles')).toBeInTheDocument();
+    expect(
+      field('authenticationConfiguration/ldapConfiguration/authReassignRoles')
+    ).toBeInTheDocument();
+  });
+
   it('shows the SAML metadata drop zone only for SAML', async () => {
     renderForm({ selectedProvider: AuthProvider.Saml });
 
@@ -252,6 +266,26 @@ describe('SsoConfigureForm', () => {
 
     expect(await screen.findByRole('note')).toHaveTextContent(
       'A display name for this SSO setup.'
+    );
+  });
+
+  it('finds docs whose section is named differently from the field', async () => {
+    (fetchMarkdownFile as jest.Mock).mockResolvedValue(
+      '$$section\n### Self Signup $(id="selfSignup")\nLets new users create an account.\n$$'
+    );
+    renderForm({ selectedProvider: AuthProvider.Auth0, showHint: true });
+
+    const selfSignup = await screen.findByRole('switch', {
+      name: /Enable Self Sign Up/i,
+    });
+    await waitFor(() =>
+      expect(selfSignup.closest('[data-field-doc]')).not.toBeNull()
+    );
+
+    fireEvent.focus(selfSignup);
+
+    expect(await screen.findByRole('note')).toHaveTextContent(
+      'Lets new users create an account.'
     );
   });
 

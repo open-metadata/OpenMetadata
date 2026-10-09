@@ -18,6 +18,7 @@ import {
   Dialog,
   FieldDocPopover,
   FieldDocProvider,
+  FileUpload,
   Modal,
   ModalOverlay,
   Typography,
@@ -26,6 +27,7 @@ import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
+import type { SecurityConfiguration } from '../../../../../../rest/securityConfigAPI';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { PROVIDER_FILE_MAP } from '../../../../../SettingsSso/SSODocPanel/SSODocPanel.constants';
@@ -33,30 +35,22 @@ import SsoTestLoginModal from '../../../../../SettingsSso/SsoTestLogin/SsoTestLo
 import { useSsoConfiguration } from '../../../../../SettingsSso/useSsoConfiguration';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
 import { useFormFieldDocs } from '../platform-settings/useFormFieldDocs';
-import SsoArrayField from './SsoArrayField';
-import type {
-  SsoConfigureFormProps,
-  SsoFormContext,
-} from './SsoConfigureForm.types';
-import SsoFieldTemplate from './SsoFieldTemplate';
-import SsoLdapRoleMappingWidget from './SsoLdapRoleMappingWidget';
-import SsoObjectFieldTemplate from './SsoObjectFieldTemplate';
-import SsoRolesSelectField from './SsoRolesSelectField';
-import SsoSamlMetadataUpload from './SsoSamlMetadataUpload';
+import { getFieldDocsByName, toCoreUiSchema } from './SsoConfigureForm.utils';
 
 const FORM_BODY_TEST_ID = 'sso-configure-form-body';
 
-const FIELDS = {
-  ArrayField: SsoArrayField,
-  RolesSelectField: SsoRolesSelectField,
-};
-const WIDGETS = { LdapRoleMappingWidget: SsoLdapRoleMappingWidget };
-const TEMPLATES = {
-  FieldTemplate: SsoFieldTemplate,
-  ObjectFieldTemplate: SsoObjectFieldTemplate,
-};
 // Actions live in the sticky footer; RJSF's own submit button is never shown.
 const SUBMIT_BUTTON_OPTIONS = { norender: true, submitText: '' };
+
+export interface SsoConfigureFormProps {
+  /** Saved configuration to edit; omit when setting up `selectedProvider`. */
+  securityConfig?: SecurityConfiguration;
+  /** Provider for a new configuration. */
+  selectedProvider?: string;
+  showHint: boolean;
+  /** Leaves a new setup (cancel/discard) — back to the provider grid. */
+  onChangeProvider: () => void;
+}
 
 interface UnsavedChangesDialogProps {
   isOpen: boolean;
@@ -235,24 +229,63 @@ const SsoConfigureForm = ({
     errorSelector: `[data-testid="${FORM_BODY_TEST_ID}"] [aria-invalid="true"]`,
   });
 
-  const fieldDocs = useFormFieldDocs(
+  const docsBySection = useFormFieldDocs(
     PROVIDER_FILE_MAP[currentProvider ?? ''] ?? PROVIDER_FILE_MAP.general,
     'SSO'
   );
 
-  const formContext = useMemo<SsoFormContext>(
-    () => ({
-      fieldDocs,
-      clearFieldError: handleClearFieldError,
-      currentProvider,
-    }),
-    [fieldDocs, handleClearFieldError, currentProvider]
+  const fieldDocs = useMemo(
+    () => getFieldDocsByName(docsBySection),
+    [docsBySection]
+  );
+  const formContext = useMemo(
+    () => ({ clearFieldError: handleClearFieldError, currentProvider }),
+    [handleClearFieldError, currentProvider]
   );
 
   const formUiSchema = useMemo(
-    () => ({ ...uiSchema, 'ui:submitButtonOptions': SUBMIT_BUTTON_OPTIONS }),
-    [uiSchema]
+    () =>
+      toCoreUiSchema(schema, {
+        ...uiSchema,
+        'ui:submitButtonOptions': SUBMIT_BUTTON_OPTIONS,
+      }),
+    [schema, uiSchema]
   );
+
+  // IdP metadata XML: a drop zone until a file is parsed, then its result.
+  const renderSamlUpload = () =>
+    metadataUploadStatus === null ? (
+      <FileUpload.DropZone
+        accept=".xml,application/xml,text/xml"
+        allowsMultiple={false}
+        clickToUploadLabel={t('label.click-to-upload')}
+        data-testid="sso-saml-metadata-upload"
+        hint={t('message.upload-saml-metadata-xml-description')}
+        input-data-testid="sso-saml-metadata-input"
+        orDragAndDropLabel={t('label.or-drag-and-drop-an-xml-file-here')}
+        onDropFiles={handleMetadataFileUpload}
+      />
+    ) : (
+      <Alert
+        data-testid="sso-saml-metadata-status"
+        rightContent={
+          <Button
+            color="link-color"
+            data-testid="change-metadata-xml-btn"
+            size="sm"
+            onPress={() => setMetadataUploadStatus(null)}>
+            {t('label.change-entity', { entity: t('label.file') })}
+          </Button>
+        }
+        title={t(
+          metadataUploadStatus === 'success'
+            ? 'message.metadata-xml-file-parsed-success'
+            : 'message.metadata-xml-file-parsed-error',
+          { fileName: metadataUploadFileName }
+        )}
+        variant={metadataUploadStatus}
+      />
+    );
 
   if (isInitializing) {
     return (
@@ -271,20 +304,13 @@ const SsoConfigureForm = ({
         className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-6"
         data-testid={FORM_BODY_TEST_ID}>
         <Box className="tw:w-full tw:max-w-[50%]" direction="col" gap={5}>
-          {currentProvider === AuthProvider.Saml && (
-            <SsoSamlMetadataUpload
-              fileName={metadataUploadFileName}
-              status={metadataUploadStatus}
-              onChangeFile={() => setMetadataUploadStatus(null)}
-              onUpload={handleMetadataFileUpload}
-            />
-          )}
+          {currentProvider === AuthProvider.Saml && renderSamlUpload()}
 
           <FieldDocProvider enabled={showHint}>
             <FormBuilderV1
               hideFooter
               customValidate={customValidate}
-              fields={FIELDS}
+              fieldDocs={fieldDocs}
               formContext={formContext}
               formData={internalData}
               liveValidate={
@@ -292,9 +318,7 @@ const SsoConfigureForm = ({
                 errorClearTrigger > 0
               }
               schema={schema}
-              templates={TEMPLATES}
               uiSchema={formUiSchema}
-              widgets={WIDGETS}
               onChange={handleOnChange}
             />
             {showHint && (

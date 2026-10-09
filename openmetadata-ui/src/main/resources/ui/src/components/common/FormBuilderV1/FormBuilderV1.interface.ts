@@ -23,4 +23,9 @@ export interface FormBuilderV1Props extends Omit<FormProps, 'validator'> {
   hideFooter?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
+  /**
+   * Markdown doc per field name. Render the form inside a `FieldDocProvider`
+   * to show the focused field's doc in its popover or panel.
+   */
+  fieldDocs?: Record<string, string>;
 }
