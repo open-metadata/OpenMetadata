@@ -21,7 +21,7 @@ import {
   getTestCaseParams,
   getThresholdPreviewData,
 } from '../../../../../utils/observability/data-quality/testCaseThreshold.utils';
-import { formatThresholdSentence } from '../../../../observability/data-quality/ThresholdPreview/ThresholdPreview.utils';
+import { formatThresholdSentence } from '../../../../../utils/observability/data-quality/testCaseThresholdSentence.utils';
 import { TestCaseConfigurationCardProps } from './TestCaseConfigurationCard.types';
 
 export interface ConfigurationShapes {
@@ -96,15 +96,17 @@ export const getCategoryTranslation = (
  * What the test fails on, in the words the form's preview uses, so the saved
  * configuration reads the same as it did when it was set — without opening
  * the edit drawer. Built from the parameters, never from a run's message.
- * `undefined` when the test has no threshold to describe, or a statistical one
- * has no bound yet (a dynamic assertion learns it).
+ * `undefined` when the test has no threshold to describe, a statistical one
+ * has no bound yet, or a dynamic assertion learns its bounds.
  */
 export const getConfiguredThresholdSentence = (
   testCase: TestCase | undefined,
   testDefinition: TestDefinition | undefined,
   t: TFunction
 ): string | undefined => {
-  if (!testCase || !testDefinition) {
+  // A dynamic assertion learns its bounds, so any left in the parameters are
+  // not what the test checks — the run card says nothing about them either.
+  if (!testCase || !testDefinition || testCase.useDynamicAssertion) {
     return undefined;
   }
 

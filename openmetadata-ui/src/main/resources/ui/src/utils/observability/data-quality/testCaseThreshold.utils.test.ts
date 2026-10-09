@@ -647,23 +647,23 @@ describe('getRunThresholdData', () => {
   it.each([TestCaseStatus.Failed, TestCaseStatus.Success])(
     'sets a %s row-countable run beside its percentage threshold',
     (testCaseStatus) => {
-      expect(
-        getRunThresholdData(NOT_NULL_ONE_PERCENT, {
-          testCaseStatus,
-          passedRows: 9861,
-          failedRows: 120,
-          failedRowsPercentage: 1.2,
-        })
-      ).toEqual({
+      const data = getRunThresholdData(NOT_NULL_ONE_PERCENT, {
+        testCaseStatus,
+        passedRows: 9861,
+        failedRows: 120,
+        failedRowsPercentage: 1.2,
+      });
+
+      expect(data).toMatchObject({
         semantic: ThresholdTestSemantic.RowCountable,
         threshold: 1,
         isPercentage: true,
         noun: ThresholdNoun.Rows,
         failedRows: 120,
-        failedPercentage: 1.2,
         evaluatedRows: 9981,
         populationNoun: ThresholdNoun.Rows,
       });
+      expect(data?.failedPercentage).toBeCloseTo(1.2023, 4);
     }
   );
 
@@ -680,6 +680,29 @@ describe('getRunThresholdData', () => {
       failedPercentage: 10,
       evaluatedRows: 100,
       // Uniqueness is a share of the non-null values, not of every row.
+      populationNoun: ThresholdNoun.NonNullValues,
+    });
+  });
+
+  it('takes the failing share of the population the threshold is judged on', () => {
+    // Regex compares its violations to the non-null values, while ingestion's
+    // failedRowsPercentage divides by every row: 5 of 50 values, 100 rows.
+    const data = getRunThresholdData(
+      testCaseOf('columnValuesToMatchRegex', [
+        { name: 'threshold', value: '7' },
+        { name: 'thresholdUnit', value: 'PERCENTAGE' },
+      ]),
+      {
+        testCaseStatus: TestCaseStatus.Failed,
+        passedRows: 45,
+        failedRows: 5,
+        failedRowsPercentage: 5,
+      }
+    );
+
+    expect(data).toMatchObject({
+      failedPercentage: 10,
+      evaluatedRows: 50,
       populationNoun: ThresholdNoun.NonNullValues,
     });
   });

@@ -105,14 +105,18 @@ class EvaluationScopeRuntimeParameters(BaseModel):
         """The scope as recorded on the result, so the UI never has to parse the message
 
         A test that runs its own SQL reads the table as written, so whatever sample or partition
-        is configured, none of it was applied to the rows behind its verdict.
+        is configured, none of it was applied to the rows behind its verdict. A sample query is
+        returned as written too, before any configured sample size or partition: the rows were
+        sampled, but by the query, so neither is recorded.
         """
         sampled = self.is_sampled and not bypasses_sampler
-        partition = self.partition_details if self.is_partitioned and not bypasses_sampler else None
+        by_query = bool(self.sample_query)
+        partition = self.partition_details if self.is_partitioned and not bypasses_sampler and not by_query else None
+        sized = sampled and not by_query
         return TestCaseEvaluationScope(
             sampled=sampled,
-            profileSample=self.profile_sample if sampled else None,
-            profileSampleType=self.profile_sample_type if sampled else None,
+            profileSample=self.profile_sample if sized else None,
+            profileSampleType=self.profile_sample_type if sized else None,
             partitioned=partition is not None,
             partitionColumnName=partition.partitionColumnName if partition else None,
         )

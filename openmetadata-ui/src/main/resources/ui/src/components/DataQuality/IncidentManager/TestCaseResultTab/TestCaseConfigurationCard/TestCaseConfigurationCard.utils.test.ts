@@ -237,6 +237,25 @@ describe('getConfiguredThresholdSentence', () => {
     ).toBe('Fail when more than 0 row(s) in email fail this test.');
   });
 
+  it('says nothing for a dynamic assertion, whose bounds are learned', () => {
+    // Stale bounds left in the parameters are not what the test checks.
+    expect(
+      getConfiguredThresholdSentence(
+        {
+          entityLink: '<#E::table::svc.db.schema.users>',
+          useDynamicAssertion: true,
+          parameterValues: [
+            { name: 'minValue', value: '90' },
+            { name: 'maxValue', value: '110' },
+            { name: 'threshold', value: '5' },
+          ],
+        } as TestCase,
+        thresholdDefinition('tableRowCountToBeBetween'),
+        translate
+      )
+    ).toBeUndefined();
+  });
+
   it('says nothing for a test that has no threshold parameter', () => {
     expect(
       getConfiguredThresholdSentence(

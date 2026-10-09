@@ -21,6 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import type { TFunction } from 'i18next';
 import { isUndefined, maxBy } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
@@ -39,9 +40,9 @@ import {
   ThresholdTestSemantic,
   THRESHOLD_COUNT_NOUN_KEYS,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import { formatThresholdAmount } from '../../../../utils/observability/data-quality/testCaseThresholdSentence.utils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
-import { formatThresholdAmount } from '../../../observability/data-quality/ThresholdPreview/ThresholdPreview.utils';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
 import { useTestCaseStore } from '../useTestCase.store';
@@ -229,8 +230,6 @@ const RunScopeBadges = ({ scope }: { scope?: TestCaseEvaluationScope }) => {
 
 const PRIMARY_VALUE = 'tw:text-primary';
 
-type Translate = ReturnType<typeof useTranslation>['t'];
-
 const knownOrQuiet = (
   labelKey: string,
   testId: string,
@@ -247,7 +246,7 @@ const knownOrQuiet = (
 const formatFailed = (
   { isPercentage, failedRows, failedPercentage }: RunThresholdData,
   countOf: (value: number) => string,
-  t: Translate
+  t: TFunction
 ): string | undefined => {
   const share = isUndefined(failedPercentage)
     ? undefined
@@ -261,7 +260,7 @@ const formatFailed = (
 const getRowCountableCells = (
   data: RunThresholdData,
   valueClassName: string,
-  t: Translate
+  t: TFunction
 ): DetailCell[] => {
   const { evaluatedRows, populationNoun = ThresholdNoun.Rows } = data;
   const countOf = (value: number) =>

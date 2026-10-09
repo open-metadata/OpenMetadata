@@ -21,7 +21,7 @@ import {
   ThresholdTestSemantic,
   THRESHOLD_COUNT_NOUN_KEYS,
   THRESHOLD_NOUN_KEYS,
-} from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+} from './testCaseThreshold.utils';
 
 /**
  * The threshold restated as "10 row(s)" / "1% of non-null values". Composed

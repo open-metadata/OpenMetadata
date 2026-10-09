@@ -16,11 +16,11 @@ import { FC, useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { getThresholdPreviewData } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
-import { ThresholdPreviewProps } from './ThresholdPreview.types';
 import {
   formatSamplingNote,
   formatThresholdSentence,
-} from './ThresholdPreview.utils';
+} from '../../../../utils/observability/data-quality/testCaseThresholdSentence.utils';
+import { ThresholdPreviewProps } from './ThresholdPreview.types';
 
 /**
  * Live, plain-English restatement of what the configured threshold does, so

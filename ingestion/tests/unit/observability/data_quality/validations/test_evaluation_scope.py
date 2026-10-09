@@ -347,6 +347,21 @@ class TestRecordedScope:
 
         assert scope.to_result_scope(bypasses_sampler=False).sampled is False
 
+    def test_a_sample_query_records_neither_the_configured_size_nor_the_partition(self):
+        """The sampler returns the user's query as written, before any sample size or partition"""
+        scope = self.PARTITIONED.model_copy(
+            update={
+                "sample_query": "SELECT * FROM users WHERE active",
+                "profile_sample": 10.0,
+                "profile_sample_type": ProfileSampleType.PERCENTAGE,
+                "sampling_applied": True,
+            }
+        )
+
+        assert scope.to_result_scope(bypasses_sampler=False) == TestCaseEvaluationScope(
+            sampled=True, profileSampleType=None, partitioned=False
+        )
+
     def test_a_test_running_its_own_sql_records_neither_sample_nor_partition(self):
         scope = self.PARTITIONED.model_copy(update={"profile_sample": 10.0, "sampling_applied": True})
 

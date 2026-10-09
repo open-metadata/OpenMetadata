@@ -712,13 +712,22 @@ const getRowCountableRun = (
       ? undefined
       : passedRows + failedRows;
 
+  const populationNoun = ROW_COUNTABLE_DENOMINATORS[definitionName];
+  // The share is taken of the population the threshold is judged on.
+  // `failedRowsPercentage` divides by the table's rows, which for a test
+  // counted over non-null values (regex, unique) is a different, smaller share.
+  let failedPercentage: number | undefined;
+  if (evaluatedRows) {
+    failedPercentage = ((failedRows ?? 0) / evaluatedRows) * 100;
+  } else if (populationNoun === ThresholdNoun.Rows) {
+    failedPercentage = failedRowsPercentage ?? undefined;
+  }
+
   return {
     failedRows: failedRows ?? undefined,
-    failedPercentage:
-      failedRowsPercentage ??
-      (evaluatedRows ? ((failedRows ?? 0) / evaluatedRows) * 100 : undefined),
+    failedPercentage,
     evaluatedRows,
-    populationNoun: ROW_COUNTABLE_DENOMINATORS[definitionName],
+    populationNoun,
   };
 };
 
