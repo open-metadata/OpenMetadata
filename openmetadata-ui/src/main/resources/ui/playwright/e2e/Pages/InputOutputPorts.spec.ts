@@ -1662,9 +1662,13 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
-        await page.getByTestId('output-port-removal-warning').waitFor({ state: 'visible' });
+        await page
+          .getByTestId('output-port-removal-warning')
+          .waitFor({ state: 'visible' });
 
-        await expect(page.getByTestId('output-port-removal-warning')).toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).toBeVisible();
         await expect(
           page.locator('text=This asset is also configured as an Output Port')
         ).toBeVisible();
@@ -1710,7 +1714,9 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
-        await expect(page.getByTestId('output-port-removal-warning')).not.toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).not.toBeVisible();
         await expect(
           page.getByText('Are you sure you want to remove')
         ).toBeVisible();
@@ -1751,7 +1757,9 @@ test.describe('Input Output Ports', () => {
 
         await page.getByTestId('delete-all-button').click();
 
-        await expect(page.getByTestId('output-port-removal-warning')).toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).toBeVisible();
         await expect(
           page.locator(
             'text=The following asset(s) are also configured as Output Ports'
@@ -1804,7 +1812,9 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
-        await expect(page.getByTestId('output-port-removal-warning')).not.toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).not.toBeVisible();
       });
     });
 
@@ -1860,7 +1870,9 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId('delete-all-button').click();
 
         // Confirmation modal with output port warning should appear
-        await expect(page.getByTestId('output-port-removal-warning')).toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).toBeVisible();
 
         const dialog = page.getByRole('dialog');
         await waitForAntOverlayToOpen(dialog);
