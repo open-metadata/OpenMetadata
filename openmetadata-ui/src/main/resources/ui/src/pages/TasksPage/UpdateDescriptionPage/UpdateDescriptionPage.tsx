@@ -11,12 +11,21 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Input } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+import {
+  Box,
+  Button,
+  Card,
+  FieldTypes,
+  FormField,
+  getField,
+  HintText,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -26,7 +35,6 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { TASK_SANITIZE_VALUE_REGEX } from '../../../constants/regex.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
@@ -65,13 +73,14 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
 import TaskPayloadSchemaFields from '../shared/TaskPayloadSchemaFields';
-import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateDescription = () => {
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const [form] = useForm();
+  const form = useForm<{ title: string; assignees: Option[] }>({
+    defaultValues: { title: '', assignees: [] },
+  });
 
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
@@ -144,7 +153,10 @@ const UpdateDescription = () => {
     return getDescriptionTaskFieldPath(field, value);
   };
 
-  const onCreateTask: FormProps['onFinish'] = async (formValues) => {
+  const onCreateTask = async (formValues: {
+    title: string;
+    assignees: Option[];
+  }) => {
     setIsLoading(true);
 
     try {
@@ -200,12 +212,9 @@ const UpdateDescription = () => {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
-    form.setFieldsValue({
-      title: taskMessage.trimEnd(),
-      assignees: defaultAssignee,
-      description: getDescription(),
-    });
-  }, [entityData]);
+    form.setValue('title', taskMessage.trimEnd());
+    form.setValue('assignees', defaultAssignee ?? []);
+  }, [entityData, form, taskMessage]);
 
   useEffect(() => {
     const description = getDescription();
@@ -231,95 +240,107 @@ const UpdateDescription = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
-        cardClassName: 'max-width-md m-x-auto',
+        wrapInCard: false,
         allowScroll: true,
         minWidth: 700,
         flex: 0.6,
         children: (
-          <div className="d-grid gap-4">
-            <TitleBreadcrumb
-              titleLinks={[
-                ...getBreadCrumbList(entityData, entityType),
-                {
-                  name: t('label.create-entity', {
-                    entity: t('label.task'),
-                  }),
-                  activeTitle: true,
-                  url: '',
-                },
-              ]}
-            />
-
-            <div className="m-t-0 request-description" key="update-description">
-              <Typography as="p" className="text-base" data-testid="form-title">
-                {t('label.create-entity', {
-                  entity: t('label.task'),
-                })}
-              </Typography>
-              <Form
-                data-testid="form-container"
-                form={form}
-                layout="vertical"
-                validateMessages={VALIDATION_MESSAGES}
-                onFinish={onCreateTask}>
-                <Form.Item
-                  data-testid="title"
-                  label={`${t('label.title')}:`}
-                  name="title">
-                  <Input
-                    disabled
-                    placeholder={t('label.task-entity', {
-                      entity: t('label.title'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  data-testid="assignees"
-                  label={`${t('label.assignee-plural')}:`}
-                  name="assignees"
-                  rules={[{ required: true }]}>
-                  <Assignees
-                    options={options}
-                    value={assignees}
-                    onChange={setAssignees}
-                    onSearch={onSearch}
-                  />
-                </Form.Item>
-
-                <TaskPayloadSchemaFields
-                  payload={payload}
-                  schema={taskFormSchema?.formSchema}
-                  uiSchema={taskFormSchema?.uiSchema}
-                  onChange={setPayload}
+          <Card className="tw:mx-auto tw:max-w-3xl">
+            <Card.Content>
+              <Box direction="col" gap={4}>
+                <TitleBreadcrumb
+                  titleLinks={[
+                    ...getBreadCrumbList(entityData, entityType),
+                    {
+                      name: t('label.create-entity', {
+                        entity: t('label.task'),
+                      }),
+                      activeTitle: true,
+                      url: '',
+                    },
+                  ]}
                 />
 
-                <Form.Item>
-                  <Box
-                    inline
-                    align="center"
-                    className="layout-space layout-space-horizontal w-full justify-end"
-                    data-testid="cta-buttons"
-                    gap={4}
-                    itemClassName="layout-space-item">
-                    <Button data-testid="cancel-btn" type="link" onClick={back}>
-                      {t('label.back')}
-                    </Button>
-                    <Button
-                      data-testid="submit-btn"
-                      htmlType="submit"
-                      loading={isLoading}
-                      type="primary">
-                      {t('label.save')}
-                    </Button>
-                  </Box>
-                </Form.Item>
-              </Form>
-            </div>
-          </div>
+                <div key="update-description">
+                  <Typography as="p" data-testid="form-title" size="text-md">
+                    {t('label.create-entity', {
+                      entity: t('label.task'),
+                    })}
+                  </Typography>
+                  <HookForm
+                    className="tw:flex tw:flex-col tw:gap-6"
+                    data-testid="form-container"
+                    form={form}
+                    onSubmit={form.handleSubmit(onCreateTask)}>
+                    {getField({
+                      name: 'title',
+                      type: FieldTypes.TEXT,
+                      label: t('label.task-entity', {
+                        entity: t('label.title'),
+                      }),
+                      props: { 'data-testid': 'title', isDisabled: true },
+                    })}
+                    <FormField
+                      control={form.control}
+                      name="assignees"
+                      rules={{
+                        required: t('message.field-text-is-required', {
+                          fieldText: t('label.assignee-plural'),
+                        }),
+                      }}>
+                      {({ field, fieldState }) => (
+                        <Box data-testid="assignees" direction="col" gap={1}>
+                          <Assignees
+                            isRequired
+                            isInvalid={fieldState.invalid}
+                            label={t('label.assignee-plural')}
+                            options={options}
+                            value={field.value}
+                            onBlur={field.onBlur}
+                            onChange={(values) => {
+                              field.onChange(values);
+                              setAssignees(values);
+                            }}
+                            onSearch={onSearch}
+                          />
+                          {fieldState.error?.message && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
+                    <TaskPayloadSchemaFields
+                      payload={payload}
+                      schema={taskFormSchema?.formSchema}
+                      uiSchema={taskFormSchema?.uiSchema}
+                      onChange={setPayload}
+                    />
+                    <Box data-testid="cta-buttons" gap={4} justify="end">
+                      <Button
+                        color="link-gray"
+                        data-testid="cancel-btn"
+                        onPress={back}>
+                        {t('label.back')}
+                      </Button>
+                      <Button
+                        data-testid="submit-btn"
+                        isLoading={isLoading}
+                        type="submit">
+                        {t('label.save')}
+                      </Button>
+                    </Box>
+                  </HookForm>
+                </div>
+              </Box>
+            </Card.Content>
+          </Card>
         ),
       }}
       pageTitle={t('label.update-description')}
       secondPanel={{
+        wrapInCard: false,
         className: 'content-resizable-panel-container',
         minWidth: 60,
         flex: 0.4,

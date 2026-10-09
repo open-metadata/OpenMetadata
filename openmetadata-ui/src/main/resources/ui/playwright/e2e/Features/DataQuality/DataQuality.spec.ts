@@ -801,7 +801,7 @@ test.describe(
           const banner = await verifyTestCaseLastRunBanner(page, 'not-run-yet');
 
           await expect(banners).toHaveCount(1);
-          await expect(banner).toContainText('Last Run Not run yet');
+          await expect(banner).toContainText('Last run Not run yet');
           await expect(banner).toContainText(
             'This test has not run yet. Add it to a pipeline to start collecting results.'
           );
@@ -850,7 +850,7 @@ test.describe(
 
             await expect(banners).toHaveCount(1);
             await expect(banner).toContainText(
-              `Last Run ${runResult.testCaseStatus}`
+              `Last run ${runResult.testCaseStatus}`
             );
             await expect(banner).toContainText(runResult.result);
 
@@ -929,7 +929,7 @@ test.describe(
         ).toBeVisible();
         await expect(
           banner.getByTestId('test-case-last-run-prefix')
-        ).toHaveText('Last Run');
+        ).toHaveText('Last run');
         await expect(
           banner.getByTestId('test-case-last-run-status')
         ).toHaveText('Failed');
@@ -943,7 +943,10 @@ test.describe(
           '0 / 1 – 100'
         );
         await expect(banner.getByTestId('test-case-last-run-time')).toHaveText(
-          customFormatDateTime(failedTimestamp, 'MMM d, yyyy, h:mm a')
+          customFormatDateTime(
+            failedTimestamp,
+            "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"
+          )
         );
         await expect(banner.getByTestId('test-case-next-run')).toContainText(
           'Next · in '
@@ -959,19 +962,21 @@ test.describe(
         await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
           /^INC-\d+$/
         );
+        // What the test checks, and on which table, not the task's name. The
+        // generated table name clamps the title, whose "more" toggle sits in
+        // the same element.
         await expect(
           incident.getByTestId('test-case-incident-description')
-        ).toContainText('Request TestCase Failure Resolution for');
-        await expect(
-          incident.getByTestId('test-case-incident-description')
-        ).toContainText(testCase.name);
+        ).toContainText(
+          `Row count vs. allowed range 1–100 on ${failedRunTable.entity.name}`
+        );
         await expect(
           incident.getByTestId('test-case-incident-status')
         ).toHaveText('New');
 
         const viewIncidentButton = incident.getByTestId('view-incident-button');
 
-        await expect(viewIncidentButton).toHaveText('View Incident');
+        await expect(viewIncidentButton).toHaveText('View incident');
         await viewIncidentButton.click();
         await expect(page).toHaveURL(/\/issues$/);
         await expect(page.getByTestId('issue-tab-container')).toBeVisible();
