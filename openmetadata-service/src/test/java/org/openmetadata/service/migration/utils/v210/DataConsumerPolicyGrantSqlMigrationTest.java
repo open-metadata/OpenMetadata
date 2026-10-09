@@ -14,8 +14,13 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -30,6 +35,7 @@ import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.testcontainers.containers.GenericContainer;
@@ -38,31 +44,49 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Runs the 2.1.0 statement that gives an existing {@code DataConsumerPolicy} the agent SPARQL grant
- * (#34231) against real MySQL and PostgreSQL. The statement is read from the shipped {@code
- * schemaChanges.sql}, so the test fails if either dialect drifts from what upgrades really run.
+ * Runs the 2.1.0 statements that give an existing {@code DataConsumerPolicy} a default grant against
+ * real MySQL and PostgreSQL: the agent SPARQL grant (#34231) and context memory creation
+ * (ai-platform#1580). Each statement is read from the shipped {@code schemaChanges.sql}, so the test
+ * fails if either dialect drifts from what upgrades really run.
  *
- * <p>The grant is only added while some allow rule of Data Consumer still lists {@code ViewAll},
- * which is the premise the grant's risk acceptance rests on. The check is deliberately as simple as
- * the 2.0 policy backfills: it does not look at conditions or resources, and it cannot see deny
- * rules in other policies. The "known limit" scenarios pin those gaps so they stay visible.
+ * <p>A grant is only added while some allow rule of Data Consumer still lists the operation its risk
+ * acceptance rests on: {@code ViewAll} for SPARQL, which can only expose what Data Consumers already
+ * view, and {@code EditDescription} for memories, which are the same kind of contribution as a
+ * description. The check is deliberately as simple as the 2.0 policy backfills: it does not look at
+ * conditions or resources, and it cannot see deny rules in other policies. The "known limit"
+ * scenarios pin those gaps so they stay visible.
  *
- * <p>That the statement runs only once per installation is the migration framework's guarantee for
+ * <p>That a statement runs only once per installation is the migration framework's guarantee for
  * schema-changes statements, not something SQL can show, so it is not asserted here.
  */
 @Testcontainers(disabledWithoutDocker = true)
-class DataConsumerSparqlGrantSqlMigrationTest {
-  private static final String PASSWORD = "sparql-grant-test";
+class DataConsumerPolicyGrantSqlMigrationTest {
+  private static final String PASSWORD = "policy-grant-test";
   private static final String DATABASE = "grant_test";
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
   private static final String OTHER_POLICY = "OtherPolicy";
-  private static final String GRANT_RULE = "DataConsumerPolicy-ExecuteSparqlQuery-Rule";
   private static final String EDIT_RULE = "DataConsumerPolicy-EditRule";
   private static final String OTHER_RULE = "OtherPolicy-Rule";
   private static final String STATEMENT = "UPDATE policy_entity";
   private static final String ALL_RESOURCES = "all";
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
+
+  private static final Grant SPARQL_GRANT =
+      new Grant(
+          "DataConsumerPolicy-ExecuteSparqlQuery-Rule",
+          MetadataOperation.VIEW_ALL,
+          ALL_RESOURCES,
+          MetadataOperation.EXECUTE_SPARQL_QUERY);
+  private static final Grant CONTEXT_MEMORY_GRANT =
+      new Grant(
+          "DataConsumerPolicy-CreateContextMemory-Rule",
+          MetadataOperation.EDIT_DESCRIPTION,
+          Entity.CONTEXT_MEMORY,
+          MetadataOperation.CREATE);
+  private static final List<Grant> GRANTS = List.of(SPARQL_GRANT, CONTEXT_MEMORY_GRANT);
+  private static final List<String> DIALECTS = List.of(MYSQL_DIALECT, POSTGRES_DIALECT);
+  private static final String SEEDED_POLICY = "/json/data/policy/DataConsumerPolicy.json";
 
   @Container
   static final GenericContainer<?> MYSQL =
@@ -78,6 +102,18 @@ class DataConsumerSparqlGrantSqlMigrationTest {
           .withEnv("POSTGRES_PASSWORD", PASSWORD)
           .withExposedPorts(5432);
 
+  /**
+   * A rule a 2.1.0 statement appends, and the operation an allow rule of Data Consumer must still
+   * list for it to be appended.
+   */
+  private record Grant(
+      String rule, MetadataOperation premise, String resource, MetadataOperation operation) {
+    @Override
+    public String toString() {
+      return rule;
+    }
+  }
+
   private record Scenario(String description, List<Rule> rules, boolean granted) {
     @Override
     public String toString() {
@@ -92,71 +128,95 @@ class DataConsumerSparqlGrantSqlMigrationTest {
   }
 
   static Stream<Arguments> scenarios() {
-    return Stream.of(MYSQL_DIALECT, POSTGRES_DIALECT)
+    return GRANTS.stream()
         .flatMap(
-            dialect -> grantScenarios().stream().map(scenario -> Arguments.of(dialect, scenario)));
+            grant ->
+                DIALECTS.stream()
+                    .flatMap(
+                        dialect ->
+                            grantScenarios(grant).stream()
+                                .map(scenario -> Arguments.of(grant, dialect, scenario))));
   }
 
-  private static List<Scenario> grantScenarios() {
+  static Stream<Arguments> grantsByDialect() {
+    return GRANTS.stream()
+        .flatMap(grant -> DIALECTS.stream().map(dialect -> Arguments.of(grant, dialect)));
+  }
+
+  private static List<Scenario> grantScenarios(Grant grant) {
+    String premise = grant.premise().value();
     return List.of(
-        new Scenario("seeded policy", List.of(viewRule(ALL_RESOURCES, null)), true),
-        new Scenario("capitalised resource", List.of(viewRule("All", null)), true),
-        new Scenario("ViewAll dropped", List.of(ruleWithout(MetadataOperation.EDIT_TAGS)), false),
-        new Scenario("ViewAll denied", List.of(deniedViewRule()), false),
+        new Scenario("seeded policy", seededRulesBefore(grant), true),
+        new Scenario("only " + premise, List.of(premiseRule(grant, ALL_RESOURCES, null)), true),
+        new Scenario("capitalised resource", List.of(premiseRule(grant, "All", null)), true),
         new Scenario(
-            "wildcard operation without ViewAll",
+            premise + " dropped", List.of(ruleWithout(MetadataOperation.EDIT_TAGS)), false),
+        new Scenario(premise + " denied", List.of(deniedPremiseRule(grant)), false),
+        new Scenario(
+            "wildcard operation without " + premise,
             List.of(ruleWithout(MetadataOperation.ALL)),
             false),
         new Scenario(
-            "known limit: conditional ViewAll is not detected",
-            List.of(viewRule(ALL_RESOURCES, "isOwner()")),
+            "known limit: conditional " + premise + " is not detected",
+            List.of(premiseRule(grant, ALL_RESOURCES, "isOwner()")),
             true),
         new Scenario(
-            "known limit: ViewAll on one resource is not detected",
-            List.of(viewRule("table", null)),
+            "known limit: " + premise + " on one resource is not detected",
+            List.of(premiseRule(grant, "table", null)),
             true));
   }
 
-  @ParameterizedTest(name = "{0}: {1}")
+  @ParameterizedTest(name = "{0} on {1}: {2}")
   @MethodSource("scenarios")
-  void grantsOnlyWhereDataConsumerStillHasUnconditionalViewAll(String dialect, Scenario scenario) {
+  void grantsOnlyWhereDataConsumerStillHasItsPremise(
+      Grant grant, String dialect, Scenario scenario) {
     try (Handle handle = open(dialect)) {
       Database db = new Database(handle, dialect);
       createPolicyTable(db);
       insertPolicy(db, DATA_CONSUMER_POLICY, scenario.rules());
 
-      handle.execute(grantStatement(dialect));
+      handle.execute(grantStatement(grant, dialect));
 
-      assertEquals(scenario.granted(), hasGrantRule(db));
+      assertEquals(scenario.granted(), ruleNames(db, DATA_CONSUMER_POLICY).contains(grant.rule()));
     }
   }
 
-  @ParameterizedTest
-  @MethodSource("dialects")
-  void addsTheRuleOnceToTheDataConsumerPolicyOnly(String dialect) {
+  @ParameterizedTest(name = "{0} on {1}")
+  @MethodSource("grantsByDialect")
+  void addsTheRuleOnceToTheDataConsumerPolicyOnly(Grant grant, String dialect) {
     try (Handle handle = open(dialect)) {
       Database db = new Database(handle, dialect);
       createPolicyTable(db);
-      insertPolicy(db, DATA_CONSUMER_POLICY, List.of(viewRule(ALL_RESOURCES, null)));
-      insertPolicy(db, OTHER_POLICY, List.of(viewRule(ALL_RESOURCES, null)));
-      String statement = grantStatement(dialect);
+      insertPolicy(db, DATA_CONSUMER_POLICY, List.of(premiseRule(grant, ALL_RESOURCES, null)));
+      insertPolicy(db, OTHER_POLICY, List.of(premiseRule(grant, ALL_RESOURCES, null)));
+      String statement = grantStatement(grant, dialect);
 
       handle.execute(statement);
-      assertEquals(List.of(EDIT_RULE, GRANT_RULE), ruleNames(db, DATA_CONSUMER_POLICY));
+      assertEquals(List.of(EDIT_RULE, grant.rule()), ruleNames(db, DATA_CONSUMER_POLICY));
       assertEquals(List.of(EDIT_RULE), ruleNames(db, OTHER_POLICY));
-      assertGrantsOnlyTheNamedOperation(db);
+      assertGrantsOnlyTheNamedOperation(db, grant);
 
       handle.execute(statement);
-      assertEquals(List.of(EDIT_RULE, GRANT_RULE), ruleNames(db, DATA_CONSUMER_POLICY));
+      assertEquals(List.of(EDIT_RULE, grant.rule()), ruleNames(db, DATA_CONSUMER_POLICY));
     }
   }
 
-  static Stream<String> dialects() {
-    return Stream.of(MYSQL_DIALECT, POSTGRES_DIALECT);
+  /** The shipped seed as an install created before {@code grant} existed holds it. */
+  private static List<Rule> seededRulesBefore(Grant grant) {
+    try (InputStream seed =
+        DataConsumerPolicyGrantSqlMigrationTest.class.getResourceAsStream(SEEDED_POLICY)) {
+      assertNotNull(seed, "Missing seed " + SEEDED_POLICY);
+      String json = new String(seed.readAllBytes(), StandardCharsets.UTF_8);
+      return JsonUtils.readValue(json, Policy.class).getRules().stream()
+          .filter(rule -> !grant.rule().equals(rule.getName()))
+          .toList();
+    } catch (IOException e) {
+      throw new UncheckedIOException("Cannot read seed " + SEEDED_POLICY, e);
+    }
   }
 
-  private static Rule viewRule(String resource, String condition) {
-    return rule(List.of(resource), MetadataOperation.VIEW_ALL, Rule.Effect.ALLOW, condition)
+  private static Rule premiseRule(Grant grant, String resource, String condition) {
+    return rule(List.of(resource), grant.premise(), Rule.Effect.ALLOW, condition)
         .withName(EDIT_RULE);
   }
 
@@ -164,8 +224,8 @@ class DataConsumerSparqlGrantSqlMigrationTest {
     return rule(List.of(ALL_RESOURCES), operation, Rule.Effect.ALLOW, null);
   }
 
-  private static Rule deniedViewRule() {
-    return rule(List.of(ALL_RESOURCES), MetadataOperation.VIEW_ALL, Rule.Effect.DENY, null);
+  private static Rule deniedPremiseRule(Grant grant) {
+    return rule(List.of(ALL_RESOURCES), grant.premise(), Rule.Effect.DENY, null);
   }
 
   private static Rule rule(
@@ -236,19 +296,15 @@ class DataConsumerSparqlGrantSqlMigrationTest {
         .execute();
   }
 
-  private static boolean hasGrantRule(Database db) {
-    return ruleNames(db, DATA_CONSUMER_POLICY).contains(GRANT_RULE);
-  }
-
-  private static void assertGrantsOnlyTheNamedOperation(Database db) {
-    Rule grant =
+  private static void assertGrantsOnlyTheNamedOperation(Database db, Grant grant) {
+    Rule added =
         policy(db, DATA_CONSUMER_POLICY).getRules().stream()
-            .filter(rule -> GRANT_RULE.equals(rule.getName()))
+            .filter(rule -> grant.rule().equals(rule.getName()))
             .findFirst()
             .orElseThrow();
-    assertEquals(List.of(MetadataOperation.EXECUTE_SPARQL_QUERY), grant.getOperations());
-    assertEquals(List.of(ALL_RESOURCES), grant.getResources());
-    assertEquals(Rule.Effect.ALLOW, grant.getEffect());
+    assertEquals(List.of(grant.operation()), added.getOperations());
+    assertEquals(List.of(grant.resource()), added.getResources());
+    assertEquals(Rule.Effect.ALLOW, added.getEffect());
   }
 
   private static List<String> ruleNames(Database db, String policyName) {
@@ -267,14 +323,14 @@ class DataConsumerSparqlGrantSqlMigrationTest {
   }
 
   /** Parsed with the migration framework's own splitter, so it is what an upgrade would execute. */
-  private static String grantStatement(String dialect) {
+  private static String grantStatement(Grant grant, String dialect) {
     ConnectionType connectionType =
         MYSQL_DIALECT.equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES;
     List<String> statements =
         MigrationFile.parseSQLFile(migrationFile(dialect).toFile(), connectionType).stream()
-            .filter(sql -> sql.contains(GRANT_RULE) && sql.contains(STATEMENT))
+            .filter(sql -> sql.contains(grant.rule()) && sql.contains(STATEMENT))
             .toList();
-    assertEquals(1, statements.size(), "Expected one grant statement in " + dialect);
+    assertEquals(1, statements.size(), "Expected one " + grant + " statement in " + dialect);
     return statements.getFirst();
   }
 

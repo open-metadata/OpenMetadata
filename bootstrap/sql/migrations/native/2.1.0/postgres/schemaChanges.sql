@@ -398,6 +398,27 @@ WHERE json->>'name' = 'DataConsumerPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'))
   AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('ViewAll')));
 
+-- Allow Data Consumer to create context memories by default (ai-platform#1580). Seed data never
+-- updates a policy that already exists, so existing installs get the rule here. A memory is knowledge
+-- about an asset, the same kind of contribution as its description, so the rule is only added while an
+-- allow rule of the policy still lists EditDescription: an install that took that away keeps its Data
+-- Consumers read-only. ADR:2026-10-09-data-consumers-create-context-memories
+UPDATE policy_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{rules}',
+    (json->'rules') || jsonb_build_object(
+        'name', 'DataConsumerPolicy-CreateContextMemory-Rule',
+        'description', 'Allow authenticated users to create context memories, including the ones the AI agent saves from their conversations. The creator owns a new memory and can edit or delete it. An Entity memory is shown to everyone who can view its asset, or to everyone when it has no asset, so remove this rule if only admins should create memories.',
+        'resources', jsonb_build_array('contextMemory'),
+        'operations', jsonb_build_array('Create'),
+        'effect', 'allow'
+    )
+)
+WHERE json->>'name' = 'DataConsumerPolicy'
+  AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-CreateContextMemory-Rule'))
+  AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('EditDescription')));
+
 -- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
 -- the result polls, the credentials) that can reach different servers, so its state lives here
 -- rather than in one server's memory. pending_state holds the candidate configuration with its
