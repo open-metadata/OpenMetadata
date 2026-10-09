@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
@@ -3645,10 +3646,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // each target asset. Before the fix they called the repository with no
   // authorizer, so any authenticated caller could apply/strip a glossary
   // term on arbitrary assets (GHSA-jmw6-578h-gw4r).
+  //
+  // Each asset is authorized as its own PATCH: an asset the caller may not
+  // edit is reported as a failed row and keeps its labels, while the
+  // request itself is answered.
   // ===================================================================
 
   @Test
-  void test_bulkRemoveGlossaryFromAssets_deniedUser_isForbidden(TestNamespace ns) throws Exception {
+  void test_bulkRemoveGlossaryFromAssets_deniedUser_isRefused(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_rm_deny");
     Table table = createTableTaggedWithTerm(ns, term, "authz_rm_deny");
@@ -3656,17 +3661,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     HttpResponse<String> response = putAssets(term.getId(), "remove", assetsBody(table), token);
 
-    assertEquals(
-        403,
-        response.statusCode(),
-        "A user denied EDIT_GLOSSARY_TERMS must not remove the glossary term: " + response.body());
+    assertRefusedAsset(response);
     assertTrue(
         tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
         "Glossary term must remain on the asset when removal is rejected");
   }
 
   @Test
-  void test_bulkAddGlossaryToAssets_deniedUser_isForbidden(TestNamespace ns) throws Exception {
+  void test_bulkAddGlossaryToAssets_deniedUser_isRefused(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_add_deny");
     Table table = createBareTable(ns, "authz_add_deny");
@@ -3674,10 +3676,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     HttpResponse<String> response = putAssets(term.getId(), "add", assetsBody(table), token);
 
-    assertEquals(
-        403,
-        response.statusCode(),
-        "A user denied EDIT_GLOSSARY_TERMS must not apply the glossary term: " + response.body());
+    assertRefusedAsset(response);
     assertFalse(
         tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
         "Glossary term must not be applied to the asset when the add is rejected");
@@ -3725,7 +3724,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
-  void test_bulkRemoveGlossaryFromAssets_columnAsset_deniedUser_isForbidden(TestNamespace ns)
+  void test_bulkRemoveGlossaryFromAssets_columnAsset_deniedUser_isRefused(TestNamespace ns)
       throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_col_deny");
@@ -3735,10 +3734,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     HttpResponse<String> response =
         putAssets(term.getId(), "remove", columnAssetBody(table), token);
 
-    assertEquals(
-        403,
-        response.statusCode(),
-        "A user denied EDIT_GLOSSARY_TERMS must not remove a column's term: " + response.body());
+    assertRefusedAsset(response);
     assertTrue(
         columnHasTag(admin, table.getId(), "id", term.getFullyQualifiedName()),
         "Glossary term must remain on the column when the caller is denied");
@@ -3827,6 +3823,18 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertTrue(
         result.getFailedRequest() == null || result.getFailedRequest().isEmpty(),
         "No asset must fail for an authorized caller: " + response.body());
+  }
+
+  /** The only asset of the request is reported as refused: a failed row naming the operation. */
+  private void assertRefusedAsset(HttpResponse<String> response) {
+    assertEquals(200, response.statusCode(), response.body());
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(ApiStatus.FAILURE, result.getStatus(), response.body());
+    assertEquals(0, result.getNumberOfRowsPassed(), response.body());
+    assertEquals(1, result.getFailedRequest().size(), response.body());
+    assertTrue(
+        result.getFailedRequest().getFirst().getMessage().contains("EditGlossaryTerms"),
+        response.body());
   }
 
   /**
