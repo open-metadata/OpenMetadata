@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /**
  * This schema defines the Settings. A Settings represents a generic Setting.
  */
