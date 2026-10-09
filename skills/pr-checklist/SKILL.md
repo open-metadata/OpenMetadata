@@ -83,7 +83,9 @@ make java_affected_run ARGS="--update-pr"   # once the PR exists: upsert the blo
 ```
 Before the PR exists, paste `target/java-tests/local-pr-results.md` between the
 `local-java-test-results` markers under "Backend integration tests". Resolve every impact-map gap
-and every "no unit test references" class the planner lists (the skill says how). Coverage on
+and every "no unit test references" class the planner lists (the skill says how). Code and ITs
+the branch adds must be owned in the impact map before the PR: `git push` and `gh pr create` are
+blocked until `python3 .github/scripts/plan_local_java_tests.py --check-branch` passes. Coverage on
 changed classes:
 ```bash
 mvn jacoco:report -pl openmetadata-service
@@ -210,6 +212,7 @@ Refuse to open the PR if any of these are missing — surface them to the user i
 - [ ] Manual test steps are concrete and reproducible
 - [ ] `ingestion/` changes: affected unit **and** integration tests were run locally (Step 3), with results in the PR body
 - [ ] Cross-layer checks for the change type pass (`make generate`, `mvn spotless:apply`, `yarn lint`, etc.)
+- [ ] A PR that makes a durable decision — a contract another component or repo must agree with, a new default or limit, an ordering that must hold, a rule stated only in the description — adds its record under `docs/decisions/` (see `docs/decisions/README.md`), and the template's Decision check box reflects it
 
 ## Common Gaps to Watch For
 
@@ -220,3 +223,4 @@ Refuse to open the PR if any of these are missing — surface them to the user i
 - Bug fix without a regression test that fails before the fix
 - Large refactor with `N/A` in the design section — push back and ask for the design
 - Coverage % copy-pasted from another PR — re-run the tool
+- A default, limit, contract or ordering explained only in the PR description — the squash-merge drops the description, so the rule belongs in a `docs/decisions/` record

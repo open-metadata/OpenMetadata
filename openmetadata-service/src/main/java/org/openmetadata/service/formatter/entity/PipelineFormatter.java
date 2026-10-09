@@ -45,7 +45,7 @@ public class PipelineFormatter implements EntityFormatter {
 
   private String transformPipelineStatus(
       MessageDecorator<?> messageFormatter, FormattedMessage thread, FieldChange fieldChange) {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
     String pipelineName = entity.getName();

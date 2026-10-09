@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -26,17 +28,18 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.EntityFieldUtils;
 
 /**
  * Lifecycle of a context memory over the REST API. A memory is patched at most once per principal
@@ -48,48 +51,74 @@ public class ContextMemoryLifecycleIT {
 
   private static final String SUPERSEDE =
       """
-      [{"op":"replace","path":"/entityStatus","value":"Deprecated"},
+      [{"op":"replace","path":"/entityStatus","value":"%s"},
        {"op":"add","path":"/supersededBy","value":{"id":"%s","type":"%s"}},
        {"op":"add","path":"/statusReason","value":"%s"}]""";
+
+  @Test
+  void workflowFieldSetterResolvesMemoryStatusesAndRejectsOtherVocabularies(TestNamespace ns) {
+    ContextMemory memory = admin().create(memory(ns, "workflow-memory-status"));
+    EntityFieldUtils.setEntityField(
+        memory,
+        Entity.CONTEXT_MEMORY,
+        Entity.ADMIN_USER_NAME,
+        Entity.FIELD_ENTITY_STATUS,
+        ContextMemoryStatus.INVALIDATED.value(),
+        true);
+    assertEquals(ContextMemoryStatus.INVALIDATED, admin().get(idOf(memory)).getEntityStatus());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> EntityFieldUtils.setEntityStatus(memory, "In Review"));
+    assertEquals(ContextMemoryStatus.INVALIDATED, admin().get(idOf(memory)).getEntityStatus());
+  }
 
   private static final String ADD_DISPUTE =
       """
       [{"op":"add","path":"/disputes","value":[{"memory":{"id":"%s","type":"contextMemory"},\
       "reason":"%s","detectedAt":1700000000000}]}]""";
 
-  @Test
-  void superseding_storesTheSuccessorAndTheOwnersRestoreClearsIt(TestNamespace ns) {
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void superseding_storesTheSuccessorAndTheOwnersRestoreClearsIt(
+      ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory keeper = admin().create(memory(ns, "keeper"));
     ContextMemory duplicate =
         admin().create(memory(ns, "duplicate").withOwners(List.of(SharedEntities.get().USER1_REF)));
 
     ContextMemory superseded =
-        admin().patch(idOf(duplicate), supersede(keeper, "Same fact as the keeper"));
+        admin()
+            .patch(idOf(duplicate), supersede(keeper, "Same fact as the keeper", retirementStage));
 
-    assertEquals(EntityStatus.DEPRECATED, superseded.getEntityStatus());
+    assertEquals(retirementStage, superseded.getEntityStatus());
     assertEquals(keeper.getName(), superseded.getSupersededBy().getName(), "stored resolved");
     assertEquals("Same fact as the keeper", superseded.getStatusReason());
     assertTrue(
         changedFields(superseded)
             .containsAll(Set.of("entityStatus", "supersededBy", "statusReason")));
 
-    ContextMemory restored = user1().patch(idOf(duplicate), status(EntityStatus.APPROVED));
+    ContextMemory restored = user1().patch(idOf(duplicate), status(ContextMemoryStatus.APPROVED));
 
-    assertEquals(EntityStatus.APPROVED, restored.getEntityStatus());
-    assertNull(restored.getSupersededBy(), "leaving Deprecated clears supersededBy");
+    assertEquals(ContextMemoryStatus.APPROVED, restored.getEntityStatus());
+    assertNull(restored.getSupersededBy(), "leaving a superseded stage clears supersededBy");
     assertNull(restored.getStatusReason(), "a status change without a reason drops the stale one");
     ContextMemory previous = admin().getVersion(idOf(duplicate), superseded.getVersion());
     assertEquals(keeper.getId(), previous.getSupersededBy().getId(), "history keeps the successor");
   }
 
-  @Test
-  void superseding_withoutASuccessor_isRejected(TestNamespace ns) {
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void superseding_withoutASuccessor_isRejected(
+      ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory memory = admin().create(memory(ns, "no-successor"));
 
     InvalidRequestException error =
         assertThrows(
             InvalidRequestException.class,
-            () -> admin().patch(idOf(memory), status(EntityStatus.DEPRECATED)));
+            () -> admin().patch(idOf(memory), status(retirementStage)));
 
     assertTrue(error.getMessage().contains("requires supersededBy"));
   }
@@ -110,7 +139,7 @@ public class ContextMemoryLifecycleIT {
     assertThrows(
         InvalidRequestException.class,
         () -> admin().patch(idOf(memory), supersede(userId, Entity.USER, "not a memory")));
-    assertEquals(EntityStatus.APPROVED, admin().get(idOf(memory)).getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, admin().get(idOf(memory)).getEntityStatus());
     assertNull(admin().get(idOf(memory)).getSupersededBy());
   }
 
@@ -131,30 +160,38 @@ public class ContextMemoryLifecycleIT {
     assertTrue(error.getMessage().contains("only allowed on a Deprecated memory"));
   }
 
-  @Test
-  void invalidating_keepsTheReasonAndTheOwnersRestoreDropsIt(TestNamespace ns) {
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"REJECTED", "INVALIDATED"})
+  void invalidating_keepsTheReasonAndTheOwnersRestoreDropsIt(
+      ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory memory =
         admin()
             .create(memory(ns, "invalidated").withOwners(List.of(SharedEntities.get().USER1_REF)));
     String invalidate =
         """
-        [{"op":"replace","path":"/entityStatus","value":"Rejected"},
-         {"op":"add","path":"/statusReason","value":"Anchor table sales.orders was deleted"}]""";
+        [{"op":"replace","path":"/entityStatus","value":"%s"},
+         {"op":"add","path":"/statusReason","value":"Anchor table sales.orders was deleted"}]"""
+            .formatted(retirementStage.value());
 
     ContextMemory invalidated = admin().patch(idOf(memory), JsonUtils.readTree(invalidate));
-    ContextMemory restored = user1().patch(idOf(memory), status(EntityStatus.APPROVED));
+    ContextMemory restored = user1().patch(idOf(memory), status(ContextMemoryStatus.APPROVED));
 
+    assertEquals(retirementStage, invalidated.getEntityStatus());
     assertEquals("Anchor table sales.orders was deleted", invalidated.getStatusReason());
-    assertEquals(EntityStatus.APPROVED, restored.getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, restored.getEntityStatus());
     assertNull(restored.getStatusReason());
   }
 
   @Test
   void transitionsOutsideTheTable_areRejected(TestNamespace ns) {
     ContextMemory keeper = admin().create(memory(ns, "table-keeper"));
-    ContextMemory draft = admin().create(memory(ns, "draft").withEntityStatus(EntityStatus.DRAFT));
+    ContextMemory draft =
+        admin().create(memory(ns, "draft").withEntityStatus(ContextMemoryStatus.DRAFT));
     ContextMemory invalidated =
-        admin().create(memory(ns, "born-invalidated").withEntityStatus(EntityStatus.REJECTED));
+        admin()
+            .create(memory(ns, "born-invalidated").withEntityStatus(ContextMemoryStatus.REJECTED));
 
     assertThrows(
         InvalidRequestException.class,
@@ -164,26 +201,80 @@ public class ContextMemoryLifecycleIT {
         () -> admin().patch(idOf(invalidated), supersede(keeper, "invalidated")));
   }
 
-  @Test
-  void creatingADeprecatedMemory_isRejected(TestNamespace ns) {
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void creatingASupersededMemoryWithoutASuccessor_isRejected(
+      ContextMemoryStatus retirementStage, TestNamespace ns) {
     assertThrows(
         InvalidRequestException.class,
-        () ->
-            admin()
-                .create(memory(ns, "born-superseded").withEntityStatus(EntityStatus.DEPRECATED)));
+        () -> admin().create(memory(ns, "born-superseded").withEntityStatus(retirementStage)));
   }
 
   @Test
   void creatingWithoutStatus_defaultsToUnprocessed(TestNamespace ns) {
     ContextMemory memory = admin().create(memory(ns, "default-unprocessed").withEntityStatus(null));
 
-    assertEquals(EntityStatus.UNPROCESSED, memory.getEntityStatus());
+    assertEquals(ContextMemoryStatus.UNPROCESSED, memory.getEntityStatus());
+  }
+
+  @Test
+  void anUnprocessedConflictCanBeDraftedWithoutLosingItsReason(TestNamespace ns) {
+    ContextMemory pending =
+        withReviewReason(
+            admin()
+                .create(
+                    memory(ns, "pending-conflict")
+                        .withEntityStatus(ContextMemoryStatus.UNPROCESSED)));
+
+    ContextMemory draft = admin().patch(idOf(pending), status(ContextMemoryStatus.DRAFT));
+
+    assertEquals(ContextMemoryStatus.DRAFT, draft.getEntityStatus());
+    assertEquals(pending.getAnswer(), draft.getAnswer());
+    assertEquals(pending.getStatusReason(), draft.getStatusReason());
+    assertEquals(draft.getStatusReason(), admin().get(idOf(draft)).getStatusReason());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "REJECTED", "UNPROCESSED"})
+  void aDraftConflictCanBeResolvedOrExplicitlyRequeued(
+      ContextMemoryStatus stage, TestNamespace ns) {
+    ContextMemory draft =
+        withReviewReason(
+            admin()
+                .create(memory(ns, "draft-conflict").withEntityStatus(ContextMemoryStatus.DRAFT)));
+
+    ContextMemory resolved = admin().patch(idOf(draft), status(stage));
+
+    assertEquals(stage, resolved.getEntityStatus());
+    assertEquals(draft.getAnswer(), resolved.getAnswer());
+    assertNull(resolved.getStatusReason());
+    assertEquals(stage, admin().get(idOf(resolved)).getEntityStatus());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"SUPERSEDED", "INVALIDATED"})
+  void anUnprocessedMemoryCanBeRetired(ContextMemoryStatus stage, TestNamespace ns) {
+    ContextMemory pending = admin().create(memory(ns, "pending").withEntityStatus(null));
+    ContextMemory keeper = admin().create(memory(ns, "pending-keeper"));
+    JsonNode patch =
+        stage == ContextMemoryStatus.SUPERSEDED ? supersede(keeper, "Duplicate") : status(stage);
+
+    ContextMemory retired = admin().patch(idOf(pending), patch);
+
+    assertEquals(stage, retired.getEntityStatus());
+    assertEquals(stage, admin().get(idOf(pending)).getEntityStatus());
   }
 
   @Test
   void approvingAndAmending_preservesApprovalUntilExplicitlyRequeued(TestNamespace ns) {
     ContextMemory pending = admin().create(memory(ns, "reviewed-memory").withEntityStatus(null));
-    ContextMemory approved = admin().patch(idOf(pending), status(EntityStatus.APPROVED));
+    ContextMemory approved = admin().patch(idOf(pending), status(ContextMemoryStatus.APPROVED));
     ContextMemory amended =
         admin()
             .patch(
@@ -192,16 +283,20 @@ public class ContextMemoryLifecycleIT {
                     """
                     [{"op":"replace","path":"/answer","value":"The user-approved definition."}]"""));
 
-    assertEquals(EntityStatus.APPROVED, amended.getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, amended.getEntityStatus());
     assertEquals("The user-approved definition.", amended.getAnswer());
 
-    ContextMemory requeued = admin().patch(idOf(amended), status(EntityStatus.UNPROCESSED));
-    assertEquals(EntityStatus.UNPROCESSED, requeued.getEntityStatus());
+    ContextMemory requeued = admin().patch(idOf(amended), status(ContextMemoryStatus.UNPROCESSED));
+    assertEquals(ContextMemoryStatus.UNPROCESSED, requeued.getEntityStatus());
     assertEquals(amended.getAnswer(), requeued.getAnswer());
   }
 
-  @Test
-  void statusSelectionCombinesWithSearchAndAuthorWithoutChangingOrdinarySearch(TestNamespace ns) {
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"REJECTED", "INVALIDATED"})
+  void statusSelectionCombinesWithSearchAndAuthorWithoutChangingOrdinarySearch(
+      ContextMemoryStatus retirementStage, TestNamespace ns) {
     String query = "statusfilter" + UUID.randomUUID().toString().substring(0, 8);
     ContextMemory active =
         admin()
@@ -215,7 +310,7 @@ public class ContextMemoryLifecycleIT {
                 memory(ns, "status-invalidated")
                     .withQuestion(query)
                     .withOwners(List.of(SharedEntities.get().USER1_REF)));
-    admin().patch(idOf(invalidated), status(EntityStatus.REJECTED));
+    admin().patch(idOf(invalidated), status(retirementStage));
     admin().create(memory(ns, "other-author").withQuestion(query));
 
     ListParams ordinary = new ListParams().setLimit(20).addFilter("q", query);
@@ -224,7 +319,7 @@ public class ContextMemoryLifecycleIT {
             .setLimit(20)
             .addFilter("q", query)
             .addFilter("author", SharedEntities.get().USER1_REF.getId().toString())
-            .addFilter("statuses", "Approved,Rejected");
+            .addFilter("statuses", "Approved," + retirementStage.value());
     Awaitility.await()
         .atMost(Duration.ofSeconds(120))
         .ignoreExceptions()
@@ -261,7 +356,8 @@ public class ContextMemoryLifecycleIT {
                     ADD_DISPUTE.formatted(other.getId(), "Fiscal Q1 starts in Feb")));
 
     assertEquals(other.getName(), disputed.getDisputes().getFirst().getMemory().getName());
-    assertEquals(EntityStatus.APPROVED, disputed.getEntityStatus(), "a dispute keeps both Active");
+    assertEquals(
+        ContextMemoryStatus.APPROVED, disputed.getEntityStatus(), "a dispute keeps both Active");
     assertTrue(changedFields(disputed).contains("disputes"));
     assertThrows(
         InvalidRequestException.class,
@@ -279,12 +375,17 @@ public class ContextMemoryLifecycleIT {
                     JsonUtils.readTree(ADD_DISPUTE.formatted(untouched.getId(), "self"))));
   }
 
-  @Test
-  void putPreservesLifecycleWhenStatusIsOmitted(TestNamespace ns) {
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void putPreservesLifecycleWhenStatusIsOmitted(
+      ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory keeper = admin().create(memory(ns, "put-keeper"));
     ContextMemory other = admin().create(memory(ns, "put-dispute"));
     ContextMemory original = admin().create(memory(ns, "put-lifecycle"));
-    ContextMemory superseded = admin().patch(idOf(original), supersede(keeper, "Duplicate fact"));
+    ContextMemory superseded =
+        admin().patch(idOf(original), supersede(keeper, "Duplicate fact", retirementStage));
     admin()
         .patch(
             idOf(original), JsonUtils.readTree(ADD_DISPUTE.formatted(other.getId(), "Conflicts")));
@@ -296,12 +397,12 @@ public class ContextMemoryLifecycleIT {
                     .withEntityStatus(null)
                     .withAnswer("Re-extracted answer"));
 
-    assertEquals(EntityStatus.DEPRECATED, updated.getEntityStatus());
+    assertEquals(retirementStage, updated.getEntityStatus());
     assertEquals(keeper.getId(), updated.getSupersededBy().getId());
     assertEquals("Duplicate fact", updated.getStatusReason());
     assertEquals(other.getId(), updated.getDisputes().getFirst().getMemory().getId());
     assertEquals("Re-extracted answer", updated.getAnswer());
-    assertEquals(EntityStatus.DEPRECATED, superseded.getEntityStatus());
+    assertEquals(retirementStage, superseded.getEntityStatus());
   }
 
   @Test
@@ -333,7 +434,7 @@ public class ContextMemoryLifecycleIT {
     assertTrue(supersedeError.getMessage().contains("readable, non-deleted"));
     assertTrue(disputeError.getMessage().contains("readable, non-deleted"));
     ContextMemory unchanged = admin().get(idOf(editable));
-    assertEquals(EntityStatus.APPROVED, unchanged.getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, unchanged.getEntityStatus());
     assertNull(unchanged.getSupersededBy());
     assertTrue(listOrEmpty(unchanged.getDisputes()).isEmpty());
   }
@@ -342,12 +443,12 @@ public class ContextMemoryLifecycleIT {
   @Test
   void inSessionConsolidation_doesNotReplayTransitionsBackwards(TestNamespace ns) {
     ContextMemory draft =
-        admin().create(memory(ns, "consolidated").withEntityStatus(EntityStatus.DRAFT));
+        admin().create(memory(ns, "consolidated").withEntityStatus(ContextMemoryStatus.DRAFT));
 
-    admin().patch(idOf(draft), status(EntityStatus.APPROVED));
-    ContextMemory archived = admin().patch(idOf(draft), status(EntityStatus.REJECTED));
+    admin().patch(idOf(draft), status(ContextMemoryStatus.APPROVED));
+    ContextMemory archived = admin().patch(idOf(draft), status(ContextMemoryStatus.REJECTED));
 
-    assertEquals(EntityStatus.REJECTED, archived.getEntityStatus());
+    assertEquals(ContextMemoryStatus.REJECTED, archived.getEntityStatus());
   }
 
   @Test
@@ -361,7 +462,7 @@ public class ContextMemoryLifecycleIT {
                 .patch(
                     idOf(memory),
                     JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/entityStatus\"}]")));
-    assertEquals(EntityStatus.APPROVED, admin().get(idOf(memory)).getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, admin().get(idOf(memory)).getEntityStatus());
   }
 
   @Test
@@ -382,8 +483,12 @@ public class ContextMemoryLifecycleIT {
     assertEquals(ContextMemoryType.LEARNING, edited.getMemoryType());
   }
 
-  @Test
-  void aDeprecatedMemory_disappearsFromSearchButRemainsReadableById(TestNamespace ns) {
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"DEPRECATED", "SUPERSEDED"})
+  void aSupersededMemory_disappearsFromSearchButRemainsReadableById(
+      ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory keeper = admin().create(memory(ns, "search-keeper"));
     ContextMemory duplicate = admin().create(memory(ns, "search-duplicate"));
 
@@ -394,7 +499,8 @@ public class ContextMemoryLifecycleIT {
         .untilAsserted(
             () -> assertTrue(searchMemoryById(duplicate.getId()).contains(idOf(duplicate))));
 
-    admin().patch(idOf(duplicate), supersede(keeper, "Indexed with its successor"));
+    admin()
+        .patch(idOf(duplicate), supersede(keeper, "Indexed with its successor", retirementStage));
 
     Awaitility.await("the superseded memory is removed from search results")
         .pollInterval(Duration.ofSeconds(2))
@@ -402,11 +508,15 @@ public class ContextMemoryLifecycleIT {
         .ignoreExceptions()
         .untilAsserted(
             () -> assertFalse(searchMemoryById(duplicate.getId()).contains(idOf(duplicate))));
-    assertEquals(EntityStatus.DEPRECATED, admin().get(idOf(duplicate)).getEntityStatus());
+    assertEquals(retirementStage, admin().get(idOf(duplicate)).getEntityStatus());
   }
 
-  @Test
-  void aRejectedMemory_disappearsFromSearchButRemainsReadableById(TestNamespace ns) {
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"REJECTED", "INVALIDATED"})
+  void anInvalidatedMemory_disappearsFromSearchButRemainsReadableById(
+      ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory memory = admin().create(memory(ns, "search-invalidated"));
 
     Awaitility.await("the Active memory is searchable")
@@ -415,14 +525,14 @@ public class ContextMemoryLifecycleIT {
         .ignoreExceptions()
         .untilAsserted(() -> assertTrue(searchMemoryById(memory.getId()).contains(idOf(memory))));
 
-    admin().patch(idOf(memory), status(EntityStatus.REJECTED));
+    admin().patch(idOf(memory), status(retirementStage));
 
     Awaitility.await("the invalidated memory is removed from search results")
         .pollInterval(Duration.ofSeconds(2))
         .atMost(Duration.ofSeconds(120))
         .ignoreExceptions()
         .untilAsserted(() -> assertFalse(searchMemoryById(memory.getId()).contains(idOf(memory))));
-    assertEquals(EntityStatus.REJECTED, admin().get(idOf(memory)).getEntityStatus());
+    assertEquals(retirementStage, admin().get(idOf(memory)).getEntityStatus());
   }
 
   private static String searchMemoryById(UUID id) {
@@ -436,23 +546,41 @@ public class ContextMemoryLifecycleIT {
 
   private static CreateContextMemory memory(TestNamespace ns, String name) {
     return new CreateContextMemory()
-        .withName(ns.prefix(name))
-        .withEntityStatus(EntityStatus.APPROVED)
+        .withName(ns.prefix(ns.shortPrefix(name)))
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withQuestion("Which table holds the canonical orders?")
         .withAnswer("sales.orders is the canonical orders table.");
   }
 
   private static JsonNode supersede(ContextMemory successor, String reason) {
-    return supersede(successor.getId(), Entity.CONTEXT_MEMORY, reason);
+    return supersede(successor, reason, ContextMemoryStatus.SUPERSEDED);
+  }
+
+  private static JsonNode supersede(
+      ContextMemory successor, String reason, ContextMemoryStatus retirementStage) {
+    return JsonUtils.readTree(
+        SUPERSEDE.formatted(
+            retirementStage.value(), successor.getId(), Entity.CONTEXT_MEMORY, reason));
   }
 
   private static JsonNode supersede(UUID successorId, String successorType, String reason) {
-    return JsonUtils.readTree(SUPERSEDE.formatted(successorId, successorType, reason));
+    return JsonUtils.readTree(
+        SUPERSEDE.formatted(
+            ContextMemoryStatus.SUPERSEDED.value(), successorId, successorType, reason));
   }
 
-  private static JsonNode status(EntityStatus status) {
+  private static JsonNode status(ContextMemoryStatus status) {
     return JsonUtils.readTree(
         "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"" + status.value() + "\"}]");
+  }
+
+  private static ContextMemory withReviewReason(ContextMemory memory) {
+    return admin()
+        .patch(
+            idOf(memory),
+            JsonUtils.readTree(
+                """
+                [{"op":"add","path":"/statusReason","value":"contradicts: threshold differs"}]"""));
   }
 
   private static Set<String> changedFields(ContextMemory memory) {

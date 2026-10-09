@@ -19,7 +19,10 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import {
+  Announcement02 as IconAnnouncementsBlack,
+  ChevronDown,
+} from '@openmetadata/ui-core-components/icons';
 import { Button, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
@@ -29,7 +32,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -125,12 +127,13 @@ import {
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import { DEFAULT_DOMAIN_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -1222,7 +1225,8 @@ const DomainDetails = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <StyleModal
+      <IconColorModal
+        defaultIcon={DEFAULT_DOMAIN_ICON}
         open={isStyleEditing}
         style={domain.style}
         onCancel={() => setIsStyleEditing(false)}

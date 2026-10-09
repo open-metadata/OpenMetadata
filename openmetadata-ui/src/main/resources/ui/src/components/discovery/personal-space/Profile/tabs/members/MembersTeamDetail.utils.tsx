@@ -29,6 +29,8 @@ import type { TeamTab } from './MembersTeamDetail.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash, ProfileHashTarget } from './profileHash.utils';
 
+const CUSTOM_PROPERTIES = 'custom-properties' as const;
+
 export const TEAM_FIELDS = [
   TabSpecificField.USERS,
   TabSpecificField.DEFAULT_ROLES,
@@ -60,11 +62,11 @@ export const isTeamDropTarget = (target: {
 export const getAvailableTabs = (teamType?: TeamType): TeamTab[] => {
   switch (teamType) {
     case TeamType.Organization:
-      return ['teams', 'roles', 'policies'];
+      return ['teams', 'roles', 'policies', CUSTOM_PROPERTIES];
     case TeamType.Group:
-      return ['users', 'assets', 'roles', 'policies'];
+      return ['users', 'assets', 'roles', 'policies', CUSTOM_PROPERTIES];
     default:
-      return ['teams', 'users', 'roles', 'policies'];
+      return ['teams', 'users', 'roles', 'policies', CUSTOM_PROPERTIES];
   }
 };
 
@@ -76,6 +78,11 @@ export const getTabLabel = (
   assetCount: number
 ): string => {
   switch (tab) {
+    // No count: custom properties are fetched by the table itself, so the tab
+    // has no number to show at render time (the other tabs read theirs off the
+    // already-loaded team).
+    case CUSTOM_PROPERTIES:
+      return t('label.custom-property-plural');
     case 'teams':
       return `${t('label.team-plural')} (${childTeamsCount})`;
     case 'users':

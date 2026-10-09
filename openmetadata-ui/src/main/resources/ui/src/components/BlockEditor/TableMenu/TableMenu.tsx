@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@openmetadata/ui-core-components';
 import type { Editor } from '@tiptap/react';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
 import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
@@ -158,7 +159,12 @@ const TableMenu = (props: TableMenuProps) => {
 
   return (
     <div className="table-menu" ref={menuRef}>
-      <Space size="middle">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={4}
+        itemClassName="layout-space-item">
         <Tooltip showArrow={false} title="Add row after current row">
           <Button
             data-testid="Add row after current row"
@@ -206,7 +212,7 @@ const TableMenu = (props: TableMenuProps) => {
             <IconDeleteTable style={{ verticalAlign: 'middle' }} width={14} />
           </Button>
         </Tooltip>
-      </Space>
+      </Box>
     </div>
   );
 };

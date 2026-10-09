@@ -4,8 +4,8 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.search.SearchRequest;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -173,7 +173,7 @@ public interface SearchManagementClient {
       String q,
       String queryString,
       SubjectContext subjectContext,
-      List<EntityStatus> memoryStatuses)
+      List<ContextMemoryStatus> memoryStatuses)
       throws IOException;
 
   /**

@@ -95,6 +95,35 @@ describe('TreeSelect', () => {
     expect(fetchData).toHaveBeenCalledTimes(1);
   });
 
+  it('opens the dropdown below the trigger by default', async () => {
+    renderCustomTrigger(fetchNodes(), true);
+
+    const node = await screen.findByText('Node A');
+
+    expect(node.closest('[data-placement]')).toHaveAttribute(
+      'data-placement',
+      'bottom'
+    );
+  });
+
+  it('opens the dropdown at a fixed placement when one is given', async () => {
+    render(
+      <TreeSelect
+        isOpen
+        fetchData={fetchNodes()}
+        placement="right top"
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    const node = await screen.findByText('Node A');
+
+    expect(node.closest('[data-placement]')).toHaveAttribute(
+      'data-placement',
+      'right'
+    );
+  });
+
   it('walks defaultExpandedKeys down a lazy tree to reveal a nested selection', async () => {
     // 'a.b.c' is selected, so the ancestor chain is ['a', 'a.b']. 'a.b' does not
     // exist until 'a' is expanded *and* fetched, so this only passes if default

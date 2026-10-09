@@ -65,7 +65,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
   ContextMemory,
-  EntityStatus,
+  ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
@@ -101,12 +101,10 @@ const getSortLabel = (
 ): string => options.find((option) => option.id === sortBy)?.label ?? '';
 
 const MEMORY_STATUSES = [
-  EntityStatus.Approved,
-  EntityStatus.Unprocessed,
-  EntityStatus.Draft,
-  EntityStatus.Deprecated,
-  EntityStatus.Rejected,
-  EntityStatus.Archived,
+  ...DEFAULT_MEMORY_STATUSES,
+  ...Object.values(ContextMemoryStatus).filter(
+    (status) => !DEFAULT_MEMORY_STATUSES.includes(status)
+  ),
 ];
 const CREATED_BY_ME_FILTER = 'created-by-me' as const;
 
@@ -157,7 +155,7 @@ const getMemoriesViewFlags = ({
   selectedAsset?: DataAssetOption;
   selectedAuthor?: MemoryFilterOption;
   activeFilter: MemoryFilterTab;
-  selectedStatuses: EntityStatus[];
+  selectedStatuses: ContextMemoryStatus[];
   debouncedSearch: string;
   isMemoriesLoading: boolean;
   memoriesLength: number;
@@ -308,9 +306,9 @@ const ContextCenterMemoriesPage: FC = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [activeFilter, setActiveFilter] = useState<MemoryFilterTab>('all');
-  const [selectedStatuses, setSelectedStatuses] = useState<EntityStatus[]>(
-    DEFAULT_MEMORY_STATUSES
-  );
+  const [selectedStatuses, setSelectedStatuses] = useState<
+    ContextMemoryStatus[]
+  >(DEFAULT_MEMORY_STATUSES);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
   const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
@@ -589,7 +587,7 @@ const ContextCenterMemoriesPage: FC = () => {
     setCurrentPage(1);
   }, []);
 
-  const handleStatusChange = useCallback((status: EntityStatus) => {
+  const handleStatusChange = useCallback((status: ContextMemoryStatus) => {
     setSelectedStatuses((current) => {
       if (current.includes(status)) {
         return current.length > 1
@@ -765,6 +763,10 @@ const ContextCenterMemoriesPage: FC = () => {
     entity: t('label.asset-plural'),
   });
   const allAuthorsLabel = t('label.all-entity', { entity: t('label.author') });
+  const selectedStatusLabelKey = MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]];
+  const selectedStatusLabel = selectedStatusLabelKey
+    ? t(selectedStatusLabelKey)
+    : selectedStatuses[0];
 
   const headerActions = (
     <Button
@@ -779,7 +781,7 @@ const ContextCenterMemoriesPage: FC = () => {
 
   return (
     <Box
-      className={`tw:w-full tw:h-full tw:bg-secondary tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:w-full tw:h-full tw:bg-canvas tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-memories-page"
       direction="col">
       <DocumentTitle title={t('label.memory-plural')} />
@@ -930,7 +932,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       size="md">
                       {t('label.status')}:{' '}
                       {selectedStatuses.length === 1
-                        ? t(MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]])
+                        ? selectedStatusLabel
                         : `${selectedStatuses.length} ${t(
                             'label.status-plural'
                           )}`}
@@ -940,13 +942,17 @@ const ContextCenterMemoriesPage: FC = () => {
                         selectedKeys={selectedStatuses}
                         selectionMode="multiple"
                         onAction={(key) =>
-                          handleStatusChange(key as EntityStatus)
+                          handleStatusChange(key as ContextMemoryStatus)
                         }>
                         {MEMORY_STATUSES.map((status) => (
                           <Dropdown.Item
                             id={status}
                             key={status}
-                            label={t(MEMORY_STATUS_LABEL_KEYS[status])}
+                            label={
+                              MEMORY_STATUS_LABEL_KEYS[status]
+                                ? t(MEMORY_STATUS_LABEL_KEYS[status])
+                                : status
+                            }
                           />
                         ))}
                       </Dropdown.Menu>

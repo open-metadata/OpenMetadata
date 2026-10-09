@@ -12,10 +12,11 @@
  */
 import {
   Badge,
+  Box,
   ButtonUtility,
   Dropdown,
 } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
@@ -149,10 +150,13 @@ const QueryCardExtraOption = ({
   };
 
   return (
-    <Space
-      className="query-card-extra-option"
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal query-card-extra-option"
       data-testid="extra-option-container"
-      size={8}>
+      gap={2}
+      itemClassName="layout-space-item">
       {QueryHeaderButton && (
         <QueryHeaderButton onClickHandler={onExpandClick} />
       )}
@@ -250,7 +254,7 @@ const QueryCardExtraOption = ({
         onCancel={() => setShowDeleteModal(false)}
         onConfirm={onDeleteClick}
       />
-    </Space>
+    </Box>
   );
 };
 

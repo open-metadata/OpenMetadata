@@ -12,8 +12,8 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
@@ -53,7 +53,16 @@ const CreateErrorPlaceHolder = ({
         'h-full flex-center border-default border-radius-sm bg-white w-full'
       )}
       data-testid={`create-error-placeholder-${heading}`}>
-      <Space align="center" className="w-full" direction="vertical" size={10}>
+      <Box
+        inline
+        align="center"
+        className="layout-space w-full"
+        direction="col"
+        itemClassName="layout-space-item"
+        style={{
+          columnGap: 'var(--om-space-10)',
+          rowGap: 'var(--om-space-10)',
+        }}>
         <AddPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
@@ -102,7 +111,7 @@ const CreateErrorPlaceHolder = ({
             </Tooltip>
           )}
         </div>
-      </Space>
+      </Box>
     </div>
   );
 };

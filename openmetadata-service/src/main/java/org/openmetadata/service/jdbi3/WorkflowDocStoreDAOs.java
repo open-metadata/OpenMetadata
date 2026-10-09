@@ -110,7 +110,7 @@ public interface WorkflowDocStoreDAOs {
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String workflowType = filter.getQueryParam("workflowType");
       String workflowStatus = filter.getQueryParam("workflowStatus");
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
 
       if (workflowType == null && workflowStatus == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
@@ -140,7 +140,7 @@ public interface WorkflowDocStoreDAOs {
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String workflowType = filter.getQueryParam("workflowType");
       String workflowStatus = filter.getQueryParam("workflowStatus");
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
 
       if (workflowType == null && workflowStatus == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
@@ -170,7 +170,7 @@ public interface WorkflowDocStoreDAOs {
     default int listCount(ListFilter filter) {
       String workflowType = filter.getQueryParam("workflowType");
       String workflowStatus = filter.getQueryParam("workflowStatus");
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
 
       if (workflowType == null && workflowStatus == null) {
         return EntityDAO.super.listCount(filter);
@@ -279,7 +279,7 @@ public interface WorkflowDocStoreDAOs {
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
       String excludedEntityType =
           filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
-      String cond = filter.getCondition();
+      String cond = filter.getConditionForEntity(getTableName());
       if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
@@ -320,7 +320,7 @@ public interface WorkflowDocStoreDAOs {
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
       String excludedEntityType =
           filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
-      String cond = filter.getCondition();
+      String cond = filter.getConditionForEntity(getTableName());
 
       if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
@@ -361,7 +361,7 @@ public interface WorkflowDocStoreDAOs {
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
       String excludedEntityType =
           filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
-      String cond = filter.getCondition();
+      String cond = filter.getConditionForEntity(getTableName());
 
       if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listCount(filter);
@@ -490,6 +490,25 @@ public interface WorkflowDocStoreDAOs {
   }
 
   interface ContextMemoryDAO extends EntityDAO<ContextMemory> {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_memory SET json = :json, nameHash = :nameHash "
+                + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
+                + "AND JSON_EXTRACT(json, '$.updatedAt') = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_memory SET json = :json::jsonb, nameHash = :nameHash "
+                + "WHERE id = :id AND json->>'version' = :version "
+                + "AND (json->>'updatedAt')::bigint = :updatedAt",
+        connectionType = POSTGRES)
+    int updateWithVersionAndTimestamp(
+        @BindUUID("id") UUID id,
+        @BindFQN("nameHash") String fullyQualifiedName,
+        @BindJson("json") String json,
+        @Bind("version") String version,
+        @Bind("updatedAt") Long updatedAt);
+
     @Override
     default String getTableName() {
       return "context_memory";

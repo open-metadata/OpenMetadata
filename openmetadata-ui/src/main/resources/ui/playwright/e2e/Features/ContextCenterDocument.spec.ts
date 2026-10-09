@@ -181,8 +181,8 @@ test.describe('Context Center - Documents Page', () => {
           })
         );
       const results = [
-        ...(await deleteIds('files', contextFileIdsToCleanup)),
         ...(await deleteIds('folders', contextFolderIdsToCleanup)),
+        ...(await deleteIds('files', contextFileIdsToCleanup)),
       ];
       const failures = results.filter(
         (result): result is PromiseRejectedResult =>
@@ -808,7 +808,11 @@ test.describe('Context Center - Documents Page', () => {
   }) => {
     const fileName = `card-menu-delete-${uuid()}.txt`;
     const { apiContext } = documentSession;
-    await uploadDocument(apiContext, fileName, Buffer.from('delete from menu'));
+    const doc = await uploadDocument(
+      apiContext,
+      fileName,
+      Buffer.from('delete from menu')
+    );
 
     await navigateToDocuments(page);
 
@@ -828,6 +832,7 @@ test.describe('Context Center - Documents Page', () => {
     await page.getByTestId('confirm-button').click();
     const deleteRes = await deleteResPromise;
     expect(deleteRes.status()).toBe(200);
+    contextFileIdsToCleanup.delete(doc.id);
 
     await expect(getDocumentRowByName(page, fileName)).not.toBeVisible();
   });
@@ -1226,6 +1231,8 @@ test.describe('Context Center - Documents Page', () => {
       doc1.id,
       doc2.id,
     ]);
+    contextFileIdsToCleanup.delete(doc1.id);
+    contextFileIdsToCleanup.delete(doc2.id);
 
     await expect(
       await searchAndGetDocumentRow(page, firstName)
@@ -1295,7 +1302,16 @@ test.describe('Context Center - Documents Page', () => {
     const tree = page.getByRole('treegrid', { name: 'Folders' });
     const folderRow = await revealFolderRow(page, folderName);
 
+    const folderFilesResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        res.url().includes(`folderId=${folder.id}`) &&
+        !res.url().includes('after=') &&
+        res.request().method() === 'GET'
+    );
     await folderRow.getByRole('button', { name: 'Expand' }).click();
+    const folderFilesRes = await folderFilesResPromise;
+    expect(folderFilesRes.status()).toBe(200);
 
     await expect(folderRow).toHaveAttribute('aria-expanded', 'true');
     await expect(tree.getByText(fileName, { exact: true })).toBeVisible();
@@ -1351,15 +1367,24 @@ test.describe('Context Center - Documents Page', () => {
     await expect(documentsViewCount).toBeVisible();
     await expect(folderViewCount).toBeVisible();
 
-    const globalCountText = await documentsViewCount.textContent();
-    const globalCount = parseInt(globalCountText ?? '0', 10);
-    expect(globalCount).toBeGreaterThanOrEqual(2);
+    // Clear the search before comparing the two headers. While a search is
+    // active the DocumentsView count reports the *result* total, not the global
+    // one, so the two headers are measuring different things and comparing them
+    // is meaningless.
+    const browseResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        !res.url().includes('search')
+    );
+    await getDocumentSearchInput(page).clear();
+    await browseResPromise;
+    await waitForAllLoadersToDisappear(page);
 
-    // The folder-view header should show the same global total.
+    // Unsearched and unfiltered, both headers show the same system-wide total.
     // Re-read both counts each attempt rather than comparing one to a value
-    // captured earlier. Both headers show a system-wide total that every other
-    // worker in the run is adding to and deleting from, so two reads taken a
-    // moment apart are not two views of the same number.
+    // captured earlier: every other worker in the run is adding to and deleting
+    // from that corpus, so two reads taken a moment apart are not two views of
+    // the same number.
     await expect
       .poll(async () => {
         const global = parseInt(
@@ -1371,17 +1396,9 @@ test.describe('Context Center - Documents Page', () => {
           10
         );
 
-        return folder >= global;
+        return global >= 2 && folder >= global;
       })
       .toBe(true);
-    const browseResPromise = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/contextCenter/drive/files') &&
-        !res.url().includes('search')
-    );
-    await getDocumentSearchInput(page).clear();
-    await browseResPromise;
-    await waitForAllLoadersToDisappear(page);
 
     // Click the folder — triggers a server-side refetch scoped to that folder.
     await selectFolderInSidebar(page, folderName);
@@ -1391,7 +1408,8 @@ test.describe('Context Center - Documents Page', () => {
     await expect(getDocumentRowByName(page, docOutsideName)).not.toBeVisible();
 
     // DocumentsView header count updates to reflect the folder-scoped total.
-    await expect(documentsViewCount).toContainText('1');
+    // Anchored: toContainText('1') would also accept "21 files" or "100 files".
+    await expect(documentsViewCount).toHaveText(/^1\s+files?$/i);
 
     // DocumentFolderView header is not scoped by the sidebar selection, so it
     // still counts the document outside the folder as well as the one inside
@@ -1491,21 +1509,20 @@ test.describe('Context Center - Documents Page', () => {
     await modal.getByRole('button', { name: /cancel/i }).click();
     await expect(modal).not.toBeVisible();
 
-    let uploadedDocId: string;
-    {
-      const { apiContext: api2 } = documentSession;
-      const uploadedDoc = await uploadDocument(
-        api2,
-        sharedFileName,
-        Buffer.from('same filename in folder B'),
-        folderB.fullyQualifiedName
-      );
-      uploadedDocId = uploadedDoc.id;
-    }
+    const { id: uploadedDocId } = await uploadDocument(
+      apiContext,
+      sharedFileName,
+      Buffer.from('same filename in folder B'),
+      folderB.fullyQualifiedName
+    );
 
     await navigateToDocuments(page);
 
-    const uploadedRow = page.getByTestId(`document-row-${uploadedDocId}`);
+    const uploadedRow = await searchAndGetDocumentRow(
+      page,
+      sharedFileName,
+      uploadedDocId
+    );
     await expect(uploadedRow).toBeVisible();
     await uploadedRow.scrollIntoViewIfNeeded();
 

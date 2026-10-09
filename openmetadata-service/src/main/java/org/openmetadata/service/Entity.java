@@ -79,6 +79,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.seeding.EssentialSeeds;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.ClasspathScanIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -94,7 +95,7 @@ public final class Entity {
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
-  private static final Map<String, EntityRepository<? extends EntityInterface>>
+  private static final Map<String, EntityRepository<? extends EntityInterface<?>>>
       ENTITY_REPOSITORY_MAP = new HashMap<>();
   private static final Map<String, EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>>
       ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
@@ -451,10 +452,11 @@ public final class Entity {
     entityRelationshipRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
     SeedDataGate.getInstance().reset();
+    EssentialSeeds.getInstance().reset();
     EntityIndexCapabilityRegistry.clear();
   }
 
-  public static <T extends EntityInterface> void registerEntity(
+  public static <T extends EntityInterface<?>> void registerEntity(
       Class<T> clazz, String entity, EntityRepository<T> entityRepository) {
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
@@ -506,7 +508,8 @@ public final class Entity {
    * request terminates unexpectedly before repository-level finally blocks run.
    */
   public static void clearRepositoryThreadLocals() {
-    for (EntityRepository<? extends EntityInterface> repository : ENTITY_REPOSITORY_MAP.values()) {
+    for (EntityRepository<? extends EntityInterface<?>> repository :
+        ENTITY_REPOSITORY_MAP.values()) {
       repository.clearParentCache();
     }
   }
@@ -533,7 +536,7 @@ public final class Entity {
     }
 
     // For regular entities, use the standard repository
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? include : Include.ALL;
     return repository.getReference(id, include);
   }
@@ -554,7 +557,7 @@ public final class Entity {
     }
 
     // For regular entities, use the standard repository
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? include : Include.ALL;
     return repository.getReferences(ids, include);
   }
@@ -564,12 +567,12 @@ public final class Entity {
     if (fqn == null) {
       return null;
     }
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository = getEntityRepository(entityType);
     return repository.getReferenceByName(fqn, include);
   }
 
   public static List<EntityReference> getOwners(@NonNull EntityReference reference) {
-    EntityRepository<? extends EntityInterface> repository =
+    EntityRepository<? extends EntityInterface<?>> repository =
         getEntityRepository(reference.getType());
     return repository.getOwners(reference);
   }
@@ -762,9 +765,9 @@ public final class Entity {
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */
-  public static EntityRepository<? extends EntityInterface> getEntityRepository(
+  public static EntityRepository<? extends EntityInterface<?>> getEntityRepository(
       @NonNull String entityType) {
-    EntityRepository<? extends EntityInterface> entityRepository =
+    EntityRepository<? extends EntityInterface<?>> entityRepository =
         ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(
@@ -786,7 +789,7 @@ public final class Entity {
    * never throw on an indexable but repository-less type. Returns {@code false} when the entity or
    * its reference is missing.
    */
-  public static boolean isSearchIndexable(EntityInterface entity) {
+  public static boolean isSearchIndexable(EntityInterface<?> entity) {
     return repositoryPolicyAllows(entity, EntityRepository::isSearchIndexable);
   }
 
@@ -796,18 +799,18 @@ public final class Entity {
    * its chunk documents cannot carry the filters its privacy model requires. Defaults and
    * null-handling match {@link #isSearchIndexable}.
    */
-  public static boolean isVectorEmbeddable(EntityInterface entity) {
+  public static boolean isVectorEmbeddable(EntityInterface<?> entity) {
     return repositoryPolicyAllows(entity, EntityRepository::isVectorEmbeddable);
   }
 
   private static boolean repositoryPolicyAllows(
-      EntityInterface entity,
-      BiPredicate<EntityRepository<? extends EntityInterface>, EntityInterface> policy) {
+      EntityInterface<?> entity,
+      BiPredicate<EntityRepository<? extends EntityInterface<?>>, EntityInterface<?>> policy) {
     boolean allowed = false;
     EntityReference entityReference = entity == null ? null : entity.getEntityReference();
     String entityType = entityReference == null ? null : entityReference.getType();
     if (entityType != null) {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           ENTITY_REPOSITORY_MAP.get(entityType);
       allowed = repository == null || policy.test(repository, entity);
     }
@@ -841,9 +844,9 @@ public final class Entity {
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */
-  public static EntityRepository<? extends EntityInterface> getServiceEntityRepository(
+  public static EntityRepository<? extends EntityInterface<?>> getServiceEntityRepository(
       @NonNull ServiceType serviceType) {
-    EntityRepository<? extends EntityInterface> entityRepository =
+    EntityRepository<? extends EntityInterface<?>> entityRepository =
         ENTITY_REPOSITORY_MAP.get(SERVICE_TYPE_ENTITY_MAP.get(serviceType));
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(
@@ -862,8 +865,9 @@ public final class Entity {
     return List.copyOf(SERVICE_TYPE_ENTITY_MAP.values());
   }
 
-  public static List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
-    EntityRepository<? extends EntityInterface> entityRepository = getEntityRepository(entityType);
+  public static List<TagLabel> getEntityTags(String entityType, EntityInterface<?> entity) {
+    EntityRepository<? extends EntityInterface<?>> entityRepository =
+        getEntityRepository(entityType);
     return listOrEmpty(entityRepository.getAllTags(entity));
   }
 
@@ -893,7 +897,7 @@ public final class Entity {
         object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
   }
 
-  public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
+  public static Class<? extends EntityInterface<?>> getEntityClassFromType(String entityType) {
     return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
   }
 
@@ -1061,7 +1065,7 @@ public final class Entity {
     serviceTypes.remove(ServiceType.METADATA);
 
     for (ServiceType serviceType : serviceTypes) {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getServiceEntityRepository(serviceType);
       ListFilter filter = new ListFilter(Include.ALL);
       List<ServiceEntityInterface> services =

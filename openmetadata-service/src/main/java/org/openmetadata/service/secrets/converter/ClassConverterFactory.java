@@ -60,6 +60,7 @@ import org.openmetadata.schema.services.connections.database.GreenplumConnection
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.InformixConnection;
 import org.openmetadata.schema.services.connections.database.MicrosoftAccessConnection;
+import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MongoDBConnection;
 import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MyDbConnection;
@@ -345,6 +346,8 @@ public final class ClassConverterFactory {
                 Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
                 Map.entry(RangerConnection.class, new RangerConnectionClassConverter()),
                 Map.entry(DatabricksConnection.class, new DatabricksConnectionClassConverter()),
+                Map.entry(
+                    MicrosoftFabricConnection.class, new MicrosoftFabricConnectionClassConverter()),
                 Map.entry(UnityCatalogConnection.class, new UnityCatalogConnectionClassConverter()),
                 Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
                 Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
