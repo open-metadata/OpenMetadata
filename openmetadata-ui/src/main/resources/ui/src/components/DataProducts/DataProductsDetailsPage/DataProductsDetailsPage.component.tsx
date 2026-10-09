@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 import { Avatar, Box, Button, Tabs } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Announcement02 as IconAnnouncementsBlack,
+  RefreshCcw01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toLower, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';

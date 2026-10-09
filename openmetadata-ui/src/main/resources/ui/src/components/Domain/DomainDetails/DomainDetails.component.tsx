@@ -18,6 +18,7 @@ import {
   Tabs,
 } from '@openmetadata/ui-core-components';
 import {
+  Announcement02 as IconAnnouncementsBlack,
   ChevronDown,
   RefreshCcw01,
 } from '@openmetadata/ui-core-components/icons';
@@ -28,7 +29,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as IconAnnouncementsBlack } from '../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';

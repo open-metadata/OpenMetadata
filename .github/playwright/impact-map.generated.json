@@ -7627,14 +7627,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Modals/StyleModal/StyleModal.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DomainUIInteractions.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/TourEndModal/TourEndModal.tsx"
       ],
       "specs": [
@@ -8966,6 +8958,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCardList.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal.tsx"
       ],
       "specs": [
@@ -8973,6 +8973,14 @@
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertyCard/CustomPropertyVersionList.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
       ]
     },
     {
@@ -12463,6 +12471,22 @@
       "specs": [
         "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/KPIPage/AddKPIPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/KPIPage/EditKPIPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts"
       ]
     },
     {
