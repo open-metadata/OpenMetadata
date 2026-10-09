@@ -43,18 +43,21 @@ const EMOJI_PICKER_ABOVE_TOP = '-250px';
  */
 const useEmojiPickerAnchor = (hostRef: RefObject<HTMLElement>) => {
   useEffect(() => {
-    const toolbar = hostRef.current?.querySelector<HTMLElement>('.ql-toolbar');
-    if (!toolbar) {
+    const host = hostRef.current;
+    if (!host) {
       return;
     }
+    // Read afresh each time: the editor loads lazily, and quill rebuilds its
+    // bar when it re-initialises.
     const sync = () => {
-      const button = toolbar.querySelector<HTMLElement>(
+      const toolbar = host.querySelector<HTMLElement>('.ql-toolbar');
+      const button = toolbar?.querySelector<HTMLElement>(
         '.textarea-emoji-control'
       );
-      const picker = toolbar.querySelector<HTMLElement>('#textarea-emoji');
+      const picker = toolbar?.querySelector<HTMLElement>('#textarea-emoji');
       button?.classList.toggle('ql-active', Boolean(picker));
       button?.setAttribute('aria-expanded', String(Boolean(picker)));
-      if (button && picker) {
+      if (toolbar && button && picker) {
         const isAbove = picker.style.top === EMOJI_PICKER_ABOVE_TOP;
         // Kept inside the bar where the button sits near its far edge.
         const left = Math.min(
@@ -70,9 +73,9 @@ const useEmojiPickerAnchor = (hostRef: RefObject<HTMLElement>) => {
         });
       }
     };
-    // The picker is added to, and removed from, the bar itself.
+    // Node changes only: the styles set above never re-trigger it.
     const observer = new MutationObserver(sync);
-    observer.observe(toolbar, { childList: true });
+    observer.observe(host, { childList: true, subtree: true });
 
     return () => observer.disconnect();
   }, [hostRef]);

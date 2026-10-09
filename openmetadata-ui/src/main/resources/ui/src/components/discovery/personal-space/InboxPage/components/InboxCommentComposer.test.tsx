@@ -303,6 +303,30 @@ describe('InboxCommentComposer', () => {
       expect(button).toHaveAttribute('aria-expanded', 'false');
     });
 
+    // The editor loads lazily and quill rebuilds its bar on re-initialising,
+    // so the bar can be a new one by the time the picker opens.
+    it('anchors the picker in a format bar rebuilt after mount', async () => {
+      render(<InboxCommentComposer onSave={jest.fn()} />);
+      const oldBar = screen.getByTestId('format-bar');
+      const newBar = document.createElement('div');
+      newBar.className = 'ql-toolbar';
+      newBar.innerHTML =
+        '<span class="ql-formats"><button class="textarea-emoji-control"></button></span>';
+      oldBar.replaceWith(newBar);
+      const picker = document.createElement('div');
+      picker.id = 'textarea-emoji';
+      picker.style.top = '-250px';
+      newBar.appendChild(picker);
+
+      await waitFor(() =>
+        expect(newBar.querySelector('.textarea-emoji-control')).toHaveClass(
+          'ql-active'
+        )
+      );
+
+      expect(picker.style.bottom).toBe('100%');
+    });
+
     it('opens below the bar when quill-emoji chose below', async () => {
       render(<InboxCommentComposer onSave={jest.fn()} />);
       const picker = openPicker();
