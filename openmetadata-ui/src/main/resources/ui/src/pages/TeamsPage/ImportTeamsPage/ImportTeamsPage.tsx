@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import QueryString from 'qs';
@@ -204,14 +205,14 @@ const ImportTeamsPage = () => {
             ? t('label.user-plural')
             : t('label.team-plural'),
       })}>
-      <Row
-        className="import-teams w-full"
+      <Grid
+        className="layout-row layout-grid import-teams w-full"
         data-testid="import-teams"
-        gutter={[16, 8]}>
-        <Col span={24}>
+        style={{ ...getLayoutGutter(16, 8) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumb} />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Typography
             as="h5"
             data-testid="title"
@@ -224,8 +225,8 @@ const ImportTeamsPage = () => {
                   : t('label.team-plural'),
             })}
           </Typography>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <EntityImport
             entityName={team.name}
             onCancel={handleViewClick}
@@ -234,8 +235,8 @@ const ImportTeamsPage = () => {
             onSuccess={handleViewClick}>
             {importResult}
           </EntityImport>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

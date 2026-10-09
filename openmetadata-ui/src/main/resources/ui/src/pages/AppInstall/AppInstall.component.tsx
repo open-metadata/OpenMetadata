@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Button, Grid, Typography } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Col, Row } from 'antd';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
@@ -372,17 +373,19 @@ const AppInstall = () => {
         // Render plugin's custom app details component
         React.createElement(pluginComponent)
       ) : (
-        <Row gutter={[0, 16]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(0, 16) }}>
+          <Grid.Item className="layout-column" span={24}>
             <IngestionStepper
               activeStep={activeServiceStep}
               steps={stepperList}
             />
-          </Col>
-          <Col className="app-intall-page-tabs" span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column app-intall-page-tabs" span={24}>
             {renderSelectedTab}
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       )}
     </PageLayoutV1>
   );

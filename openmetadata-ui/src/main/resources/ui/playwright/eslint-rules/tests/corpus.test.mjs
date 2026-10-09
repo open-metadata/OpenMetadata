@@ -50,8 +50,9 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // the profile-menu helper no longer hovers the first avatar, the Glossary
     // language switch targets the core language selector by test id, and the
     // core assignee/schema-field selectors in the task and incident specs
-    // remove three more.
-    'om-playwright/no-positional-locator': 595,
+    // remove three more. Scoping the Policies rule description to its rule
+    // card removes one more.
+    'om-playwright/no-positional-locator': 594,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
