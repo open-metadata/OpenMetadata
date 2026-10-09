@@ -10,34 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { DefaultColumnOrder } from '../../../../../../generated/api/configuration/appConfiguration';
 import { getAppConfiguration } from '../../../../../../rest/settingConfigAPI';
 import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 import SettingValue from './SettingValue';
+import { COLUMN_ORDER_OPTIONS } from './TableSchemaSettings.constants';
+import { getEffectiveColumnOrder } from './TableSchemaSettings.utils';
 import { useEditHeaderAction } from './useEditHeaderAction';
 import { useSettingsFetch } from './useSettingsFetch';
-
-// Same wording as the Sort menu on table pages, so users see one vocabulary.
-export const COLUMN_ORDER_OPTIONS = [
-  {
-    value: DefaultColumnOrder.SourceOrder,
-    getLabel: (t: TFunction) => t('label.original-order'),
-    hintKey: 'message.original-order-description',
-  },
-  {
-    value: DefaultColumnOrder.Alphabetical,
-    getLabel: (t: TFunction) => `${t('label.alphabetical')} (A → Z)`,
-    hintKey: 'message.alphabetical-order-description',
-  },
-];
-
-/** With no tenant default stored, table pages order columns alphabetically. */
-export const getEffectiveColumnOrder = (value?: DefaultColumnOrder | null) =>
-  value ?? DefaultColumnOrder.Alphabetical;
 
 const TableSchemaSettings = (props: PlatformSettingsPageProps) => {
   const { t } = useTranslation();

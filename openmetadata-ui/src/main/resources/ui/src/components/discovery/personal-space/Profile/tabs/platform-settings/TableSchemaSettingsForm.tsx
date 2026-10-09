@@ -38,10 +38,8 @@ import SettingsFormLayout, {
   SettingsFormSection,
   SettingsSkeleton,
 } from './SettingsFormLayout';
-import {
-  COLUMN_ORDER_OPTIONS,
-  getEffectiveColumnOrder,
-} from './TableSchemaSettings';
+import { COLUMN_ORDER_OPTIONS } from './TableSchemaSettings.constants';
+import { getEffectiveColumnOrder } from './TableSchemaSettings.utils';
 import { useSettingsFetch } from './useSettingsFetch';
 
 interface TableSchemaFormValues {
