@@ -521,7 +521,7 @@ export const UserTeamSelectableList = ({
       <Popover
         className="tw:bg-raised"
         containerClassName={classNames(
-          'tw:overflow-hidden tw:p-0',
+          'tw:max-h-[inherit] tw:overflow-y-auto tw:p-0',
           overlayClassName
         )}
         isOpen={isOpen}
