@@ -2,7 +2,7 @@
 
 This guide helps developers (and AI agents like Claude Code, Codex, Copilot) write correct, production-quality code in the OpenMetadata codebase. It covers the preferred workflow for each language, architecture patterns you must understand, and how to use the available skills.
 
-For environment setup, build commands, and coding standards, see [CLAUDE.md](CLAUDE.md).
+For environment setup, build commands, and coding standards, see [AGENTS.md](AGENTS.md).
 For connector-specific development, see [skills/README.md](skills/README.md).
 
 ---

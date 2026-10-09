@@ -12,7 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Drawer, Form, Input, Select, Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button, Drawer, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -242,10 +243,15 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
             placeholder={t('label.select-field', { field: t('label.type') })}>
             {RESOURCE_TYPE_VALUES.map((type) => (
               <Select.Option key={type} value={type}>
-                <Space align="center">
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <ResourceTypeIcon aria-hidden resourceType={type} />
                   {t(RESOURCE_TYPE_LABEL_KEYS[type])}
-                </Space>
+                </Box>
               </Select.Option>
             ))}
           </Select>

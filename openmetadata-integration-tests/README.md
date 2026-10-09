@@ -198,9 +198,7 @@ All containers are started **once** per test run and shared across all tests.
 
 ## Running in CI
 
-GitHub workflows run these tests on every PR:
+These tests run in the merge queue (and on pushes to `main`), not on PRs:
 
 - `integration-tests-mysql-elasticsearch.yml` - MySQL + Elasticsearch
 - `integration-tests-postgres-opensearch.yml` - PostgreSQL + OpenSearch
-
-Tests require the "safe to test" label on PRs.

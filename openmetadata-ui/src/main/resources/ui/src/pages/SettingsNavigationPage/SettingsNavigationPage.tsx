@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { HolderOutlined } from '@ant-design/icons';
-import { Toggle } from '@openmetadata/ui-core-components';
-import { Card, Col, Row, Tree, TreeDataNode, TreeProps } from 'antd';
+import { Grid, Toggle } from '@openmetadata/ui-core-components';
+import { Card, Tree, TreeDataNode, TreeProps } from 'antd';
 import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +24,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import {
   getHiddenKeysFromNavigationItems,
   getTreeDataForNavigationItems,
@@ -156,17 +157,19 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
         pageTitle={t('label.customize-entity', {
           entity: t('label.navigation'),
         })}>
-        <Row gutter={[0, 20]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(0, 20) }}>
+          <Grid.Item className="layout-column" span={24}>
             <CustomizablePageHeader
               disableSave={disableSave}
               personaName={getEntityName(persona)}
               onReset={handleReset}
               onSave={handleSave}
             />
-          </Col>
+          </Grid.Item>
 
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <Card
               bordered={false}
               className="custom-navigation-tree-container"
@@ -184,8 +187,8 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
                 onDrop={onDrop}
               />
             </Card>
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       </PageLayoutV1>
     </NavigationBlocker>
   );
