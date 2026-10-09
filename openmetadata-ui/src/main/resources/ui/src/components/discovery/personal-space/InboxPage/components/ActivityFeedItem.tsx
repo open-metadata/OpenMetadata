@@ -33,6 +33,7 @@ import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { uniqBy } from 'lodash';
 import React, {
+  SVGProps,
   useCallback,
   useEffect,
   useMemo,
@@ -231,9 +232,10 @@ const getRepliesToggleLabel = (
 const TOGGLE_ON_CLASS =
   'tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-fg-brand-primary tw:hover:*:data-icon:text-fg-brand-primary';
 
-// A liked card fills its thumb.
-const FilledThumbsUp = ({ className }: { className?: string }) => (
-  <ThumbsUp className={className} fill="currentColor" />
+// A liked card fills its thumb. Every prop passes through: the Button sizes
+// and colors its icon by the `data-icon` it sets.
+const FilledThumbsUp = (props: SVGProps<SVGSVGElement>) => (
+  <ThumbsUp {...props} fill="currentColor" />
 );
 
 const getLikeLabel = (
