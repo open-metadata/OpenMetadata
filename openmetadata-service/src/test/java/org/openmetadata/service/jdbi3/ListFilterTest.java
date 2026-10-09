@@ -1,12 +1,17 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
@@ -229,6 +234,26 @@ class ListFilterTest {
     String accessCondition = filter.getCondition("table_entity");
     assertTrue(accessCondition.contains("er.toEntity = 'table'"));
     assertTrue(accessCondition.contains("er2.toEntity = 'table'"));
+  }
+
+  @Test
+  void getDomainCondition_accessCheckIsOneAntiJoinOnPostgresAndAnOrOnMySql() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainAccessControl", "true");
+    String postgres = filter.getCondition("table_entity");
+    assertTrue(postgres.contains("AND NOT EXISTS (SELECT er2.toId"));
+    assertTrue(postgres.contains("er2.toId = er.toId"));
+    assertFalse(postgres.contains(" OR "));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
+      when(mysqlConfig.isMySQL()).thenReturn(true);
+      String mysql = filter.getCondition("table_entity");
+      assertTrue(mysql.contains(") OR table_entity.id IN (SELECT er2.toId"));
+      assertFalse(mysql.contains("er2.toId = er.toId"));
+    }
   }
 
   @Test

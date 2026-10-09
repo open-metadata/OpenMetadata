@@ -1070,20 +1070,35 @@ public class ListFilter extends Filter<ListFilter> {
     String domainInClause = domainIdList(domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
-      return String.format(
-          "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain'%s AND er.toId = %s) OR "
-              + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain'%s AND er2.fromId IN (%s) AND er2.relation=10))",
-          domainEntityTypeCondition("er"),
-          entityIdColumn,
-          entityIdColumn,
-          domainEntityTypeCondition("er2"),
-          domainInClause);
+      return domainAccessCondition(entityIdColumn, domainInClause);
     }
 
     return String.format(
         "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain'%s AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
         entityIdColumn, domainEntityTypeCondition("entity_relationship"), domainInClause);
+  }
+
+  // Keeps entities with no domain or with a listed one. Postgres hashes every domain link in the
+  // database for the OR form before returning a row, so it gets one anti-join; MySQL checks the
+  // OR per row and is faster with it (e.g. one index lookup less per table that has a domain).
+  private String domainAccessCondition(String entityIdColumn, String domainIds) {
+    String hasDomain =
+        "SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain'"
+            + domainEntityTypeCondition("er")
+            + " AND er.toId = "
+            + entityIdColumn;
+    String listedDomain =
+        "SELECT er2.toId FROM entity_relationship er2 WHERE er2.relation=10 AND er2.fromEntity='domain'"
+            + domainEntityTypeCondition("er2")
+            + " AND er2.fromId IN ("
+            + domainIds
+            + ")";
+    return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+        ? String.format("(NOT EXISTS (%s) OR %s IN (%s))", hasDomain, entityIdColumn, listedDomain)
+        : String.format(
+            "(NOT EXISTS (%s AND NOT EXISTS (%s AND er2.toId = er.toId)))",
+            hasDomain, listedDomain);
   }
 
   // Domain ids are inlined as canonical UUIDs rather than bound, so Postgres plans each statement

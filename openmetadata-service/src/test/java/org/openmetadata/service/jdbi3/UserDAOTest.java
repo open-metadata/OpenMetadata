@@ -162,6 +162,7 @@ class UserDAOTest {
                         true,
                         null,
                         List.of("alice", "bob", "carol")),
+                    arguments(database, FIRST_DOMAIN, true, null, List.of("alice", "bob")),
                     arguments(database, FIRST_DOMAIN, true, TEAM, List.of("bob")),
                     arguments(
                         database, null, false, null, List.of("alice", "bob", "carol", "dave"))));
