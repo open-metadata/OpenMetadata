@@ -43,7 +43,7 @@ class AlertPublisherTest {
   void setUp() {
     alertPublisher = new AlertPublisher(dependencies);
 
-    alertPublisher.eventSubscription = eventSubscription;
+    ConsumerInternals.subscribe(alertPublisher, eventSubscription);
     alertPublisher.openTick(new HashMap<>());
 
     lenient().when(eventSubscription.getName()).thenReturn("test-subscription");

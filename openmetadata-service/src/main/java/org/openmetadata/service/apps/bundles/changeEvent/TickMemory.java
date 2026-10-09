@@ -24,11 +24,11 @@ public final class TickMemory {
   }
 
   /** The memory of the tick running on this thread, for a thread that sends on its behalf. */
-  static TickMemory current() {
+  public static TickMemory current() {
     return OF_THIS_THREAD.get();
   }
 
-  static void adopt(TickMemory ofTheTick) {
+  public static void adopt(TickMemory ofTheTick) {
     OF_THIS_THREAD.set(ofTheTick);
   }
 
@@ -41,7 +41,7 @@ public final class TickMemory {
         : LONGEST_WAIT_WITHOUT_A_BUDGET;
   }
 
-  static void end() {
+  public static void end() {
     OF_THIS_THREAD.remove();
   }
 }

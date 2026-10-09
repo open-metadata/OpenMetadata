@@ -111,8 +111,8 @@ class DispatchIsolationTest {
     }
 
     verify(channel, times(1)).sendMessage(eq(healthy), any());
-    assertEquals(1, consumer.ledger.pending().successEvents());
-    assertEquals(1, consumer.ledger.pending().failedEvents());
+    assertEquals(1, ConsumerInternals.ledgerOf(consumer).pending().successEvents());
+    assertEquals(1, ConsumerInternals.ledgerOf(consumer).pending().failedEvents());
     assertEquals(1, consumer.failures.size());
     assertSame(broken, consumer.failures.getFirst().getChangeEventWithSubscription().getRight());
   }
@@ -141,8 +141,8 @@ class DispatchIsolationTest {
       consumer.handle(List.copyOf(events.keySet()));
     }
 
-    assertEquals(1, consumer.ledger.pending().successEvents());
-    assertEquals(1, consumer.ledger.pending().failedEvents());
+    assertEquals(1, ConsumerInternals.ledgerOf(consumer).pending().successEvents());
+    assertEquals(1, ConsumerInternals.ledgerOf(consumer).pending().failedEvents());
     assertEquals(1, consumer.failures.size());
     assertSame(broken, consumer.failures.getFirst().getChangeEventWithSubscription().getRight());
   }
@@ -164,7 +164,7 @@ class DispatchIsolationTest {
       rows.when(() -> AlertRows.readOrNull(alert.getId())).thenReturn(alert);
       factory.when(() -> AlertFactory.getAlert(any(), argThat(hasId(alert, 0)))).thenReturn(first);
       factory.when(() -> AlertFactory.getAlert(any(), argThat(hasId(alert, 1)))).thenReturn(second);
-      consumer.tick(alert, TestLedgers.fresh(), context);
+      ConsumerInternals.tick(consumer, alert, TestLedgers.fresh(), context);
     }
 
     verify(first, times(1)).close();

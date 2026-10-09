@@ -263,7 +263,7 @@ public abstract class AbstractEventConsumer implements Job {
   }
 
   // What one tick works with, made fresh when it starts. Unit tests open a tick the same way.
-  void openTick() {
+  protected void openTick() {
     this.stopSignal = TickStopSignal.startingNow(AlertingSettings.current());
     this.stoppedEarly = false;
   }

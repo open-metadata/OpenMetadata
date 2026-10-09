@@ -114,7 +114,7 @@ class SelfDrivenDeliveryTest {
         UUID id = idOf(publisher);
         factory.when(() -> AlertFactory.getAlert(any(), argThat(isThe(id)))).thenReturn(publisher);
       }
-      consumer.tick(alert, ledger, contextOfAnUnscheduledJob());
+      ConsumerInternals.tick(consumer, alert, ledger, contextOfAnUnscheduledJob());
     }
   }
 

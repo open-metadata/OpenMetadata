@@ -38,7 +38,7 @@ import org.openmetadata.service.events.subscription.ledger.DestinationOutcome.Ca
  * the weakest: a destination that reached anyone in the tick reads delivered, and one that reached
  * nobody at all reads not attempted, with why.
  */
-final class TickHealth {
+public final class TickHealth {
 
   private static final class Tally {
     private final Set<Object> attempted = new HashSet<>();
@@ -117,12 +117,12 @@ final class TickHealth {
     }
   }
 
-  void reportTo(BiConsumer<UUID, DestinationOutcome> ledger) {
+  public void reportTo(BiConsumer<UUID, DestinationOutcome> ledger) {
     byDestination.forEach((destinationId, tally) -> ledger.accept(destinationId, sum(tally)));
   }
 
   /** Each channel that was not attempted in this tick, with the first reason it gave. */
-  Map<String, String> notAttemptedChannels() {
+  public Map<String, String> notAttemptedChannels() {
     return Map.copyOf(notAttemptedChannels);
   }
 

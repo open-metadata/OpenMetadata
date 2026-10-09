@@ -40,13 +40,13 @@ import org.openmetadata.service.notifications.recipients.RecipientResolver;
  * others, and what an event renders is rendered once for all of them.
  */
 @Slf4j
-final class TickChannels implements ChannelDelivery {
+public final class TickChannels implements ChannelDelivery {
   private final EventSubscription alert;
   private final Map<UUID, Destination<ChangeEvent>> destinations;
   private final TickHealth health;
   private final RecipientResolver recipients;
 
-  TickChannels(
+  public TickChannels(
       EventSubscription alert,
       Map<UUID, Destination<ChangeEvent>> destinations,
       TickHealth health) {
@@ -66,7 +66,7 @@ final class TickChannels implements ChannelDelivery {
    * many of its destinations failed. Nothing went out through a channel that could not try, so it
    * failed too, and so did the unusable destinations of a channel, once, with their reason.
    */
-  Delivery deliver(ChangeEvent event, Set<UUID> destinationIds) {
+  public Delivery deliver(ChangeEvent event, Set<UUID> destinationIds) {
     List<Destination<ChangeEvent>> enabled = enabledAmong(destinationIds);
     EventContent content = new EventContent(event, alert);
     int delivered = 0;
