@@ -97,6 +97,13 @@ repos:
         language: system
         files: ^openmetadata-ui-core-components/src/main/resources/ui/src/.*\.(ts|tsx|json)$
         pass_filenames: false
+      - id: decision-records
+        name: Decision records (docs/decisions/ format, ADR citations)
+        description: Fails if a record under docs/decisions/ breaks the format, or an ADR citation or docs/decisions/ path in any tracked file resolves to no record. See docs/decisions/README.md.
+        entry: python3 scripts/harness/check_decision_records.py
+        language: system
+        pass_filenames: false
+        require_serial: true
       - id: java-impact-map
         name: Java impact map owns the code and ITs this branch adds
         description: Fails the push while the branch leaves Java code or ITs without an area in .github/java-tests/impact-map.json, empties a pattern or breaks a map rule. The message names the glob to add and the likely area.
