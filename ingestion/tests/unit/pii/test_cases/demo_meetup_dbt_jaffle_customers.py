@@ -441,28 +441,9 @@ expected_column_tags = [
             ),
         ),
     ),
-    ColumnTag(
-        column_fqn="Service.database.schema.customers.first_order",
-        tag_label=TagLabel(
-            source=TagSource.Classification,
-            labelType=LabelType.Generated,
-            state=State.Suggested,
-            name="NonSensitive",
-            tagFQN=TagFQN(
-                root="PII.NonSensitive",
-            ),
-        ),
-    ),
-    ColumnTag(
-        column_fqn="Service.database.schema.customers.most_recent_order",
-        tag_label=TagLabel(
-            source=TagSource.Classification,
-            labelType=LabelType.Generated,
-            state=State.Suggested,
-            name="NonSensitive",
-            tagFQN=TagFQN(
-                root="PII.NonSensitive",
-            ),
-        ),
-    ),
+    # first_order and most_recent_order are business-event dates (when did a customer
+    # place their first/last order), not personal-date columns.  Under the allowlist
+    # approach, DATE_TIME hits require a column-name signal of personal meaning
+    # (birth_date, hire_date, registration_date, …).  These columns do not match the
+    # allowlist and are therefore not tagged as PII.
 ]

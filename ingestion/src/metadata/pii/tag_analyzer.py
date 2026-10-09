@@ -14,7 +14,7 @@ from presidio_analyzer.nlp_engine import NlpEngine
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.type import recognizer, tagLabelRecognizerMetadata
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
@@ -22,6 +22,7 @@ from metadata.generated.schema.type.classificationLanguages import (
 from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.pii.algorithms import presidio_constants
+from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns
 from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_patches import (
     PresidioRecognizerResultPatcher,
@@ -36,6 +37,7 @@ from metadata.pii.algorithms.presidio_utils import (
     explain_recognition_results,
     load_nlp_engine,
 )
+from metadata.pii.algorithms.tags import PIITag
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
@@ -49,43 +51,12 @@ TARGET_MAP = {
 _NAMED_ENTITY_TYPES = frozenset({"PERSON", "LOCATION", "NRP"})
 _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES = 2
 
-# Column-name tokens that identify a column as a generic audit / event timestamp.
-# DATE_TIME content hits are suppressed when the column name contains "timestamp",
-# because event_timestamp / created_timestamp score 1.0 via ValidatedDateRecognizer
-# but are not PII.
-_TECHNICAL_TIMESTAMP_COLUMN_TOKENS: frozenset[str] = frozenset({"timestamp"})
-
-
-def _is_technical_timestamp_column(context_tokens: list[str], column: Column) -> bool:
-    """Return True when the column is a database-level or event/audit timestamp.
-
-    Criteria (either is sufficient):
-    - Data type is TIMESTAMP or TIMESTAMPZ (definitionally a database timestamp).
-    - Column name contains "timestamp" as a split token (e.g. event_timestamp,
-      created_timestamp).
-    """
-    technical_datatypes = frozenset({DataType.TIMESTAMP, DataType.TIMESTAMPZ})
-    return (
-        column.dataType in technical_datatypes
-        or bool(_TECHNICAL_TIMESTAMP_COLUMN_TOKENS.intersection(context_tokens))
-    )
-
-
-def _filter_date_time_for_technical_timestamps(
-    results: list[RecognizerResult],
-    context_tokens: list[str],
-    column: Column,
-) -> list[RecognizerResult]:
-    """Drop DATE_TIME recognizer hits for technical event/audit timestamp columns.
-
-    ValidatedDateRecognizer scores any parseable datetime at 1.0, so event_timestamp
-    and created_timestamp would otherwise always receive a PII tag.  We suppress the
-    hit when the column is identified as a database-level or event timestamp rather than
-    a personal-date column (birth_date, dob, hire_date etc.).
-    """
-    if _is_technical_timestamp_column(context_tokens, column):
-        return [r for r in results if r.entity_type != "DATE_TIME"]
-    return results
+# DATE_TIME entity types that require column-name corroboration before a content hit
+# is accepted as PII.  A DateRecognizer scores any parseable date at ≥0.6, so
+# event_timestamp / created_at would otherwise always be tagged PII.NonSensitive.
+# We suppress the hit unless the column name matches a personal-date allowlist
+# (birth_date, dob, hire_date, …) defined in column_patterns.py.
+_CORROBORATION_REQUIRED_ENTITY_TYPES: frozenset[str] = frozenset({"DATE_TIME"})
 
 
 @dataclass(frozen=True)
@@ -326,7 +297,16 @@ class TagAnalyzer:
                     result_patcher=combine_patchers(date_time_patcher, named_entity_patcher),
                 )
                 corroborated = _corroborated_content_results(content_evidence)
-                content_results = _filter_date_time_for_technical_timestamps(corroborated, context, self._column)
+                # Suppress content hits for entity types that require column-name
+                # corroboration (e.g. DATE_TIME) when the column name does not signal
+                # a personal-date meaning.  Keep the hit when the column name allowlist
+                # in column_patterns.py confirms the column is a personal date.
+                date_time_column_patterns = get_pii_column_name_patterns().get(PIITag.DATE_TIME, [])
+                is_personal_date_column = any(p.match(self._column_name) for p in date_time_column_patterns)
+                content_results = [
+                    r for r in corroborated
+                    if r.entity_type not in _CORROBORATION_REQUIRED_ENTITY_TYPES or is_personal_date_column
+                ]
                 # Use the maximum individual recogniser score rather than the average over all
                 # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
                 # number among 50 sampled rows would score 0.85 / 50 = 0.017 — far below any
