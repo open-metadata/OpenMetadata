@@ -16,14 +16,14 @@
 .ant-attribute-modal {
   .ant-modal-body {
     padding: var(--om-space-16) var(--om-space-8);
-    .ant-row {
+    :is(.ant-row, .layout-row) {
       padding: var(--om-space-16);
       cursor: pointer;
     }
-    .ant-row.ant-search-box-row {
+    :is(.ant-row, .layout-row).ant-search-box-row {
       padding-top: 0;
     }
-    .ant-row.selected {
+    :is(.ant-row, .layout-row).selected {
       background-color: @primary-1;
     }
   }

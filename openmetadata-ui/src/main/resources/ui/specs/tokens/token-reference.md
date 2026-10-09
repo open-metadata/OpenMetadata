@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **842**.
+Total project tokens: **838**.
 
 ## Spacing (57)
 
@@ -706,17 +706,16 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
 </details>
 
-## Legacy colors (199)
+## Legacy colors (195)
 
 Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.
 
-<details><summary>Show all 199</summary>
+<details><summary>Show all 195</summary>
 
 | Token | Value |
 | --- | --- |
 | `--om-legacy-color-0-0-0-0` | `rgba(0, 0, 0, 0)` |
 | `--om-legacy-color-0-0-0-0-1` | `rgba(0, 0, 0, 0.1)` |
-| `--om-legacy-color-0-0-0-0-02` | `#00000005` |
 | `--om-legacy-color-0-0-0-0-2` | `rgba(0, 0, 0, 0.2)` |
 | `--om-legacy-color-0-0-0-0-3` | `rgba(0, 0, 0, 0.3)` |
 | `--om-legacy-color-0-0-0-0-04` | `rgba(0, 0, 0, 0.04)` |
@@ -793,7 +792,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-240-175-44-0-051` | `#f0af2c0d` |
 | `--om-legacy-color-245-245-245-0-2` | `rgba(245, 245, 245, 0.2)` |
 | `--om-legacy-color-248-215-218-0-867` | `#f8d7dadd` |
-| `--om-legacy-color-255-76-59-0-2` | `#ff4c3b33` |
 | `--om-legacy-color-255-76-59-0-102` | `#ff4c3b1a` |
 | `--om-legacy-color-255-190-14-0-149` | `#ffbe0e26` |
 | `--om-legacy-color-255-193-67-0-15` | `rgba(255, 193, 67, 0.15)` |
@@ -823,7 +821,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-111827` | `#111827` |
 | `--om-legacy-color-155724` | `#155724` |
 | `--om-legacy-color-344054` | `#344054` |
-| `--om-legacy-color-444444` | `#444` |
 | `--om-legacy-color-515151` | `#515151` |
 | `--om-legacy-color-595959` | `#595959` |
 | `--om-legacy-color-666666` | `#666666` |
@@ -868,7 +865,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-e6fffb` | `#e6fffb` |
 | `--om-legacy-color-e8e8e8` | `#e8e8e8` |
 | `--om-legacy-color-e8e8e9` | `#e8e8e9` |
-| `--om-legacy-color-e8e8ed` | `#e8e8ed` |
 | `--om-legacy-color-e8ecf5` | `#e8ecf5` |
 | `--om-legacy-color-e60000` | `#e60000` |
 | `--om-legacy-color-eaecf0` | `#eaecf0` |

@@ -19,7 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { InlineAlertProps, InlineAlertType } from './InlineAlert.interface';
@@ -42,6 +42,10 @@ function InlineAlert({
   const { t } = useTranslation();
   const { inlineAlertDetails, setInlineAlertDetails } = useApplicationStore();
   const [showMore, setShowMore] = useState(false);
+  const mounted = useRef(false);
+  // Latest alert this form showed; a later failed submit replaces the first one.
+  const ownedAlert = useRef(inlineAlertDetails);
+  ownedAlert.current = inlineAlertDetails ?? ownedAlert.current;
   // The antd Alert this replaces hid itself on close even when the caller kept rendering it.
   const [isClosed, setIsClosed] = useState(false);
 
@@ -57,12 +61,24 @@ function InlineAlert({
   const combinedText = `${description} ${subDescription}`.trim();
 
   useEffect(() => {
+    mounted.current = true;
+
     return () => {
-      if (!isUndefined(inlineAlertDetails)) {
-        setInlineAlertDetails(undefined);
-      }
+      mounted.current = false;
+      // Strict Mode replays effect cleanup before remounting. Defer the clear
+      // so that replay keeps the error visible, and preserve a newer form's alert.
+      queueMicrotask(() => {
+        const alert = ownedAlert.current;
+        if (
+          !mounted.current &&
+          !isUndefined(alert) &&
+          useApplicationStore.getState().inlineAlertDetails === alert
+        ) {
+          setInlineAlertDetails(undefined);
+        }
+      });
     };
-  }, []);
+  }, [setInlineAlertDetails]);
 
   if (isClosed) {
     return null;

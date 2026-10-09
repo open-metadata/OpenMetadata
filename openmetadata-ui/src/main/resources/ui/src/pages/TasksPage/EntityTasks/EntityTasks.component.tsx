@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -101,7 +102,13 @@ const EntityTasks = ({
   }, [data.field]);
 
   return (
-    <Space data-testid="entity-task" size="middle">
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      data-testid="entity-task"
+      gap={4}
+      itemClassName="layout-space-item">
       {/*  Request and Update Tasks */}
       {tagSource !== TagSource.Glossary && taskElement}
 
@@ -114,7 +121,7 @@ const EntityTasks = ({
         entityField,
         entityTaskType
       )}
-    </Space>
+    </Box>
   );
 };
 

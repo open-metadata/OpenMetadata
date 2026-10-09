@@ -15,11 +15,13 @@ import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
+  Button as CoreButton,
   Grid,
+  SlideoutMenu,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Drawer, Input, InputNumber, Select, TreeSelect } from 'antd';
+import { Button, Input, InputNumber, Select, TreeSelect } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
@@ -37,7 +39,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../../../assets/svg/close.svg';
 import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import {
   DEFAULT_INCLUDE_PROFILE,
@@ -79,6 +80,10 @@ import {
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../SchemaEditor/SchemaEditor'))
 );
+
+// Legacy dropdowns must stay inside the modal's focus and accessibility boundary.
+const getPopupContainer = (triggerNode: HTMLElement) =>
+  triggerNode.parentElement ?? document.body;
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
@@ -479,16 +484,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         className="layout-space layout-space-horizontal"
         gap={4}
         itemClassName="layout-space-item">
-        <Button type="link" onClick={handleCancel}>
+        <CoreButton color="secondary" onPress={handleCancel}>
           {t('label.cancel')}
-        </Button>
-        <Button
+        </CoreButton>
+        <CoreButton
           form="profiler-setting-form"
-          htmlType="submit"
-          loading={isLoading}
-          type="primary">
+          isLoading={isLoading}
+          type="submit">
           {t('label.save')}
-        </Button>
+        </CoreButton>
       </Box>
     </div>
   );
@@ -527,6 +531,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 autoFocus
                 className="w-full"
                 data-testid="profile-sample"
+                getPopupContainer={getPopupContainer}
                 options={PROFILE_SAMPLE_OPTIONS}
                 placeholder={t('label.please-select-entity', {
                   entity: t('label.profile-sample-type', {
@@ -614,6 +619,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             className="w-full"
             data-testid="exclude-column-select"
             dropdownStyle={{ maxHeight: 200, overflowY: 'auto' }}
+            getPopupContainer={getPopupContainer}
             mode="multiple"
             options={columnOptions}
             placeholder={t('label.select-column-plural-to-exclude')}
@@ -673,6 +679,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               showSearch
                               className="w-full"
                               data-testid="include-column-select"
+                              getPopupContainer={getPopupContainer}
                               options={columnWithAllOption}
                               placeholder={t(
                                 'label.select-column-plural-to-include'
@@ -689,6 +696,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                             <TreeSelect
                               treeCheckable
                               className="w-full"
+                              getPopupContainer={getPopupContainer}
                               maxTagCount={2}
                               placeholder={t('label.please-select')}
                               showCheckedStrategy="SHOW_PARENT"
@@ -756,6 +764,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     className="w-full"
                     data-testid="interval-type"
                     disabled={!state?.enablePartition}
+                    getPopupContainer={getPopupContainer}
                     options={INTERVAL_TYPE_OPTIONS}
                     placeholder={t('message.select-interval-type')}
                     size="middle"
@@ -790,6 +799,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     className="w-full"
                     data-testid="column-name"
                     disabled={!state?.enablePartition}
+                    getPopupContainer={getPopupContainer}
                     options={partitionColumnOptions}
                     placeholder={t('message.select-column-name')}
                     size="middle"
@@ -847,6 +857,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                         className="w-full"
                         data-testid="select-interval-unit"
                         disabled={!state?.enablePartition}
+                        getPopupContainer={getPopupContainer}
                         options={INTERVAL_UNIT_OPTIONS}
                         placeholder={t('message.select-interval-unit')}
                         size="middle"
@@ -1006,28 +1017,26 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   );
 
   return (
-    <Drawer
-      destroyOnClose
-      className="custom-drawer-style profiler-settings-drawer"
-      closable={false}
+    <SlideoutMenu
+      aria-label={t('label.setting-plural')}
+      // Keep the overlay above positioned chart labels without covering form popovers.
+      className="profiler-settings-drawer tw:min-w-96 tw:z-50"
       data-testid="profiler-settings-modal"
-      extra={
-        <Button
-          className="drawer-close-icon flex-center"
-          icon={<CloseIcon />}
-          type="link"
-          onClick={handleCancel}
-        />
-      }
-      footer={drawerFooter}
-      maskClosable={false}
-      open={visible}
-      placement="right"
-      title={t('label.setting-plural')}
+      dialogClassName="tw:gap-0"
+      isDismissable={false}
+      isOpen={visible}
       width="40%"
-      onClose={handleCancel}>
-      {renderContent}
-    </Drawer>
+      onOpenChange={(isOpen) => !isOpen && handleCancel()}>
+      <SlideoutMenu.Header onClose={handleCancel}>
+        <Typography size="text-md" weight="semibold">
+          {t('label.setting-plural')}
+        </Typography>
+      </SlideoutMenu.Header>
+      <SlideoutMenu.Content className="tw:py-6">
+        {renderContent}
+      </SlideoutMenu.Content>
+      <SlideoutMenu.Footer>{drawerFooter}</SlideoutMenu.Footer>
+    </SlideoutMenu>
   );
 };
 

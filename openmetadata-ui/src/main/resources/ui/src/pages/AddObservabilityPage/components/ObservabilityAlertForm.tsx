@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form } from 'antd';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
@@ -47,21 +48,23 @@ function ObservabilityAlertForm({
   const values = Form.useWatch<ModifiedCreateEventSubscription>([], form);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
-      </Col>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <Typography as="h5" size="text-md" weight="semibold">
           {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
             entity: t('label.alert'),
           })}
         </Typography>
         <Typography>{t('message.alerts-description')}</Typography>
-      </Col>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <Form<ModifiedCreateEventSubscription>
           form={form}
           initialValues={{
@@ -71,7 +74,9 @@ function ObservabilityAlertForm({
           }}
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSave}>
-          <Row gutter={[20, 20]}>
+          <Grid
+            className="layout-row layout-grid"
+            style={{ ...getLayoutGutter(20, 20) }}>
             <AlertSelectionProvider value={selection}>
               <ObservabilityAlertFormFields
                 alert={alert}
@@ -87,12 +92,12 @@ function ObservabilityAlertForm({
             </AlertSelectionProvider>
 
             {!isUndefined(inlineAlertDetails) && (
-              <Col span={24}>
+              <Grid.Item className="layout-column" span={24}>
                 <InlineAlert {...inlineAlertDetails} />
-              </Col>
+              </Grid.Item>
             )}
 
-            <Col span={24}>
+            <Grid.Item className="layout-column" span={24}>
               <div className="flex justify-end gap-2">
                 <Button
                   data-testid="cancel-button"
@@ -121,11 +126,11 @@ function ObservabilityAlertForm({
                   {t('label.save')}
                 </Button>
               </div>
-            </Col>
-          </Row>
+            </Grid.Item>
+          </Grid>
         </Form>
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 }
 

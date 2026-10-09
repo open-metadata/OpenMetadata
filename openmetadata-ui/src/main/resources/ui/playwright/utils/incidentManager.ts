@@ -192,7 +192,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
 
     const assigneeModal = page.getByRole('dialog').last();
     const assigneeSelect = assigneeModal.getByTestId('select-assignee');
-    const assigneeInput = assigneeSelect.locator('input');
+    const assigneeInput = assigneeSelect.getByRole('combobox');
     const assigneeOption = page.getByTestId(user.name).first();
     const normalizedAssigneeOption = page
       .getByTestId(user.name.toLowerCase())

@@ -707,7 +707,6 @@
      the raw-value bucket (migration debt); consolidate into semantic
      tokens over time. Components reference these, not the raw hex. */
   --om-legacy-color-0-0-0-0: rgba(0, 0, 0, 0);
-  --om-legacy-color-0-0-0-0-02: #00000005;
   --om-legacy-color-0-0-0-0-04: rgba(0, 0, 0, 0.04);
   --om-legacy-color-0-0-0-0-05: rgba(0, 0, 0, 0.05);
   --om-legacy-color-0-0-0-0-06: rgba(0, 0, 0, 0.06);
@@ -778,7 +777,6 @@
   --om-legacy-color-255-255-255-0-8: rgba(255, 255, 255, 0.8);
   --om-legacy-color-255-255-255-0-95: rgba(255, 255, 255, 0.95);
   --om-legacy-color-255-76-59-0-102: #ff4c3b1a;
-  --om-legacy-color-255-76-59-0-2: #ff4c3b33;
   --om-legacy-color-2563eb: #2563eb;
   --om-legacy-color-28a745: #28a745;
   --om-legacy-color-2eaadc: #2eaadc;
@@ -795,7 +793,6 @@
   --om-legacy-color-40-167-69-0-059: #28a7450f;
   --om-legacy-color-40-167-69-0-302: #28a7454d;
   --om-legacy-color-41-41-41-0-1: rgba(41, 41, 41, 0.1);
-  --om-legacy-color-444444: #444;
   --om-legacy-color-46-170-220-0-15: rgba(46, 170, 220, 0.15);
   --om-legacy-color-48-98-212-0-15: rgba(48, 98, 212, 0.15);
   --om-legacy-color-4a4a4a: #4a4a4a;
@@ -860,7 +857,6 @@
   --om-legacy-color-e6fffb: #e6fffb;
   --om-legacy-color-e8e8e8: #e8e8e8;
   --om-legacy-color-e8e8e9: #e8e8e9;
-  --om-legacy-color-e8e8ed: #e8e8ed;
   --om-legacy-color-e8ecf5: #e8ecf5;
   --om-legacy-color-eaecf0: #eaecf0;
   --om-legacy-color-ebeef1: #ebeef1;

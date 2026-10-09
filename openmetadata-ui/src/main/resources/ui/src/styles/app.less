@@ -684,12 +684,10 @@ a[href].link-text-grey,
 /* Diff style */
 
 .diff-added {
-  // background: @success-background-color;
   width: fit-content;
-  color: @success-color;
 
   * {
-    color: @success-color;
+    color: var(--tw-color-utility-success-700);
   }
 }
 
@@ -702,7 +700,7 @@ a[href].link-text-grey,
   font-weight: var(--om-font-weight-regular);
   line-height: 20px;
   width: fit-content;
-  color: var(--om-legacy-color-027a48);
+  color: var(--tw-color-utility-success-700);
 }
 
 .diff-removed-new,
@@ -715,9 +713,9 @@ a[href].link-text-grey,
   width: fit-content;
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: var(--om-color-error-400);
+  text-decoration-color: var(--tw-color-utility-error-700);
   text-decoration-skip-ink: auto;
-  color: var(--om-color-error-400);
+  color: var(--tw-color-utility-error-700);
 }
 
 .diff-normal-new {
@@ -731,8 +729,7 @@ a[href].link-text-grey,
 
 .diff-normal-new strong {
   font-weight: var(--om-font-weight-semibold);
-  color: var(--om-color-black);
-  /* Adjust color if needed */
+  color: var(--tw-color-text-primary);
 }
 
 .clamp-text-2 {

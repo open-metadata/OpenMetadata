@@ -10,18 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { StrictMode } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import InlineAlert from './InlineAlert';
-
-const mockSetInlineAlertDetails = jest.fn();
-
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockImplementation(() => ({
-    inlineAlertDetails: undefined,
-    setInlineAlertDetails: mockSetInlineAlertDetails,
-  })),
-}));
 
 const mockProps = {
   type: 'error' as const,
@@ -30,7 +28,47 @@ const mockProps = {
   onClose: jest.fn(),
 };
 
+const StoredAlert = () => {
+  const details = useApplicationStore((state) => state.inlineAlertDetails);
+
+  return details ? <InlineAlert {...details} /> : null;
+};
+
 describe('InlineAlert', () => {
+  beforeEach(() => {
+    useApplicationStore.setState({ inlineAlertDetails: undefined });
+    jest.clearAllMocks();
+  });
+
+  it('keeps a newly displayed error visible during Strict Mode effect replay', async () => {
+    useApplicationStore.setState({ inlineAlertDetails: mockProps });
+    render(
+      <StrictMode>
+        <StoredAlert />
+      </StrictMode>
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Test Description');
+  });
+
+  it('does not clear a newer error when the previous alert unmounts', async () => {
+    useApplicationStore.setState({ inlineAlertDetails: mockProps });
+    const { unmount } = render(<StoredAlert />);
+    unmount();
+    const nextAlert = { ...mockProps, description: 'Next form error' };
+    useApplicationStore.setState({ inlineAlertDetails: nextAlert });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(useApplicationStore.getState().inlineAlertDetails).toEqual(
+      nextAlert
+    );
+  });
+
   it('should render alert with basic props', () => {
     render(<InlineAlert {...mockProps} />);
 
@@ -127,15 +165,28 @@ describe('InlineAlert', () => {
     expect(container.querySelector(`.${customClass}`)).toBeInTheDocument();
   });
 
-  it('should clear inlineAlertDetails on unmount', () => {
-    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
-      inlineAlertDetails: { some: 'data' },
-      setInlineAlertDetails: mockSetInlineAlertDetails,
+  it('clears the latest error on unmount after a second failed submit', async () => {
+    useApplicationStore.setState({ inlineAlertDetails: mockProps });
+    const { unmount } = render(<StoredAlert />);
+    act(() => {
+      useApplicationStore.setState({
+        inlineAlertDetails: { ...mockProps, description: 'Second error' },
+      });
     });
-
-    const { unmount } = render(<InlineAlert {...mockProps} />);
     unmount();
 
-    expect(mockSetInlineAlertDetails).toHaveBeenCalledWith(undefined);
+    await waitFor(() => {
+      expect(useApplicationStore.getState().inlineAlertDetails).toBeUndefined();
+    });
+  });
+
+  it('should clear inlineAlertDetails on unmount', async () => {
+    useApplicationStore.setState({ inlineAlertDetails: mockProps });
+    const { unmount } = render(<StoredAlert />);
+    unmount();
+
+    await waitFor(() => {
+      expect(useApplicationStore.getState().inlineAlertDetails).toBeUndefined();
+    });
   });
 });

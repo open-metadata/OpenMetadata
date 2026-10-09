@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +29,7 @@ import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { SettingType } from '../../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -84,13 +85,19 @@ const UrlConfigurationPage = () => {
       pageTitle={t('label.entity-configuration', {
         entity: t('label.url-uppercase'),
       })}>
-      <Row className="bg-white p-lg border-radius-sm" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid bg-white p-lg border-radius-sm"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Row align="middle" justify="space-between">
-            <Col>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-row"
+            justify="between"
+            wrap="wrap">
+            <Box className="layout-column tw:block">
               <PageHeader
                 data={{
                   header: translateWithNestedKeys(
@@ -103,25 +110,25 @@ const UrlConfigurationPage = () => {
                   ),
                 }}
               />
-            </Col>
-            <Col>
+            </Box>
+            <Box className="layout-column tw:block">
               <Button
                 data-testid="edit-button"
                 icon={<Icon component={IconEdit} size={12} />}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Grid className="layout-row layout-grid tw:items-center">
+            <Grid.Item className="layout-column" span={24}>
               <Typography className="m-0" color="secondary">
                 {t('label.brand-name-url')}
               </Typography>
-            </Col>
-            <Col span={24}>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
               <Typography
                 className="tw:wrap-break-word"
                 data-testid="open-metadata-url">
@@ -129,10 +136,10 @@ const UrlConfigurationPage = () => {
                   ? urlConfig.openMetadataUrl
                   : NO_DATA_PLACEHOLDER}
               </Typography>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+            </Grid.Item>
+          </Grid>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };
