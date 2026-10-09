@@ -1,10 +1,31 @@
 package org.openmetadata.service.search;
 
+import java.util.Set;
+
+/**
+ * A field whose change on an entity is copied onto the search entries of its children. {@code
+ * skippedChildAliases} names the child indexes it must not reach, because their entries take that
+ * field from elsewhere.
+ */
 public record PropagationDescriptor(
     String fieldName,
     PropagationType propagationType,
-    String nestPath // nullable - only NESTED_FIELD
-    ) {
+    String nestPath, // nullable - only NESTED_FIELD
+    Set<String> skippedChildAliases) {
+
+  public PropagationDescriptor(String fieldName, PropagationType propagationType, String nestPath) {
+    this(fieldName, propagationType, nestPath, Set.of());
+  }
+
+  /** The same propagation, kept off the given child indexes. */
+  public PropagationDescriptor skipping(String... childAliases) {
+    return new PropagationDescriptor(fieldName, propagationType, nestPath, Set.of(childAliases));
+  }
+
+  public boolean reaches(String childAlias) {
+    return !skippedChildAliases.contains(childAlias);
+  }
+
   public enum PropagationType {
     ENTITY_REFERENCE_LIST,
     ENTITY_REFERENCE,

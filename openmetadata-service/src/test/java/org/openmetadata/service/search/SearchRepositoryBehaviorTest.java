@@ -23,6 +23,7 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -42,6 +43,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -359,12 +361,14 @@ class SearchRepositoryBehaviorTest {
     if (Entity.TABLE.equals(entityType)) {
       descriptors.add(
           new PropagationDescriptor(
-              "tags", PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+                  "tags", PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null)
+              .skipping(Entity.TABLE_COLUMN));
       descriptors.add(
           new PropagationDescriptor(
-              Entity.FIELD_DATA_PRODUCTS,
-              PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
-              null));
+                  Entity.FIELD_DATA_PRODUCTS,
+                  PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
+                  null)
+              .skipping(Entity.TABLE_COLUMN));
       descriptors.add(
           new PropagationDescriptor(
               "certification", PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
@@ -1086,6 +1090,56 @@ class SearchRepositoryBehaviorTest {
     assertTrue(entityChildScript.contains(Entity.FIELD_OWNERS));
     assertTrue(entityChildScript.contains(Entity.FIELD_DOMAINS));
     assertTrue(entityChildScript.contains(Entity.FIELD_DISPLAY_NAME));
+  }
+
+  @Test
+  void propagateInheritedFieldsToChildrenKeepsTableTagsOffColumnEntries() throws IOException {
+    IndexMapping tableWithTestCases =
+        IndexMapping.builder()
+            .indexName("table_search_index")
+            .alias("table")
+            .childAliases(List.of(Entity.TEST_CASE, Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
+            .build();
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    when(table.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(tag))),
+                new FieldChange().withName(Entity.FIELD_OWNERS)),
+            List.of(),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TABLE, table.getId().toString(), changeDescription, tableWithTestCases, table);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient, times(2))
+        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+    Map<List<String>, Map<String, Object>> paramsByTargets = new HashMap<>();
+    for (int i = 0; i < targetsCaptor.getAllValues().size(); i++) {
+      paramsByTargets.put(
+          targetsCaptor.getAllValues().get(i), updatesCaptor.getAllValues().get(i).getRight());
+    }
+    Map<String, Object> testCaseParams = paramsByTargets.get(List.of("cluster_testCase"));
+    Map<String, Object> columnParams = paramsByTargets.get(List.of("cluster_tableColumn"));
+    assertTrue(testCaseParams.containsKey("tagAdded"));
+    assertTrue(testCaseParams.containsKey("updatedOwners"));
+    assertFalse(columnParams.containsKey("tagAdded"));
+    assertTrue(columnParams.containsKey("updatedOwners"));
   }
 
   @Test
@@ -3914,10 +3968,17 @@ class SearchRepositoryBehaviorTest {
             "getInheritedFieldChanges",
             ChangeDescription.class,
             EntityInterface.class,
-            String.class);
+            String.class,
+            Predicate.class);
     method.setAccessible(true);
+    Predicate<PropagationDescriptor> everyDescriptor = descriptor -> true;
     return (Pair<String, Map<String, Object>>)
-        method.invoke(repository, changeDescription, entity, entity.getEntityReference().getType());
+        method.invoke(
+            repository,
+            changeDescription,
+            entity,
+            entity.getEntityReference().getType(),
+            everyDescriptor);
   }
 
   private boolean invokeRequiresPropagation(

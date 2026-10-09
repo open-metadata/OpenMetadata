@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -49,20 +51,25 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 
 /**
  * An Assets tab edit reaches search the way the same PATCH does: a column's own tags are in its
  * search entry when the call returns, and changes the table hands down to its column entries
- * (domains) arrive with the same background update a PATCH uses.
+ * (domains) arrive with the same background update a PATCH uses. A table's own tags reach its test
+ * cases but never its column entries, which carry only the column's own tags.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -70,10 +77,19 @@ public class AssetsTabSearchEntriesIT {
 
   private static final String COLUMN_INDEX = "column_search_index";
   private static final String TABLE_INDEX = "table_search_index";
+  private static final String TEST_CASE_INDEX = "test_case_search_index";
   private static final List<String> COLUMNS = List.of("c1", "c2", "c3");
   private static final int ROUNDS = 5;
   private static final int DOMAIN_MOVE_ROUNDS = 10;
+  private static final int TABLES_WITH_TEST_CASES = 8;
   private static final Duration PROPAGATION_TIMEOUT = Duration.ofSeconds(30);
+  private static final Duration QUIET_WINDOW = Duration.ofSeconds(5);
+
+  /** How the table is labelled: on the term's Assets tab, or by a PATCH on the table's page. */
+  enum Route {
+    ASSETS_TAB,
+    PATCH
+  }
 
   @Test
   void aColumnLabelledOnTheTab_isInItsSearchEntryWhenTheCallReturns(TestNamespace ns) {
@@ -129,6 +145,36 @@ public class AssetsTabSearchEntriesIT {
     assertEquals(List.of(), stale, "rounds whose asset kept its old domain in search");
   }
 
+  @ParameterizedTest
+  @EnumSource(Route.class)
+  void tableLabels_reachTestCasesNotColumns(Route route, TestNamespace ns) {
+    GlossaryTerm term = createTerm(ns, "tbl" + route.ordinal());
+    DatabaseSchema schema = createSchema(ns);
+    List<Table> tables = new ArrayList<>();
+    List<TestCase> testCases = new ArrayList<>();
+    for (int i = 0; i < TABLES_WITH_TEST_CASES; i++) {
+      Table table = createTable(ns, schema, "t" + i, null);
+      tables.add(table);
+      testCases.add(createTestCase(ns, table, "tc" + i));
+    }
+
+    label(route, term, tables);
+
+    Awaitility.await("test cases carry the table's label")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(PROPAGATION_TIMEOUT)
+        .until(() -> testCases.stream().allMatch(testCase -> testCaseCarries(testCase, term)));
+    Awaitility.await("column entries never carry the table's label")
+        .pollInterval(Duration.ofSeconds(1))
+        .during(QUIET_WINDOW)
+        .atMost(QUIET_WINDOW.plusSeconds(10))
+        .until(
+            () ->
+                tables.stream()
+                    .flatMap(table -> columnEntries(table).stream())
+                    .noneMatch(entry -> carriesTag(entry, term.getFullyQualifiedName())));
+  }
+
   // ---------------------------------------------------------------------------------------------
   // Search checks
   // ---------------------------------------------------------------------------------------------
@@ -164,6 +210,11 @@ public class AssetsTabSearchEntriesIT {
     } catch (ConditionTimeoutException e) {
       return false;
     }
+  }
+
+  private static boolean testCaseCarries(TestCase testCase, GlossaryTerm term) {
+    return hits(TEST_CASE_INDEX, termFilter("id.keyword", testCase.getId().toString())).stream()
+        .anyMatch(entry -> carriesTag(entry, term.getFullyQualifiedName()));
   }
 
   private static List<JsonNode> columnEntries(Table table) {
@@ -231,6 +282,29 @@ public class AssetsTabSearchEntriesIT {
     assertEquals(ApiStatus.SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
   }
 
+  private static void label(Route route, GlossaryTerm term, List<Table> tables) {
+    if (route == Route.ASSETS_TAB) {
+      BulkOperationResult result =
+          SdkClients.user1Client()
+              .getHttpClient()
+              .execute(
+                  HttpMethod.PUT,
+                  "/v1/glossaryTerms/" + term.getId() + "/assets/add",
+                  new AddGlossaryToAssetsRequest()
+                      .withAssets(tables.stream().map(Table::getEntityReference).toList())
+                      .withDryRun(false),
+                  BulkOperationResult.class);
+      assertEquals(ApiStatus.SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
+    } else {
+      OpenMetadataClient user = SdkClients.user1Client();
+      for (Table table : tables) {
+        Table current = user.tables().get(table.getId().toString(), "tags");
+        current.setTags(List.of(glossaryLabel(term)));
+        user.tables().update(table.getId().toString(), current);
+      }
+    }
+  }
+
   private static void putDomainAssets(Domain domain, Table table) {
     BulkOperationResult result =
         putBulkAssets("/v1/domains/" + domain.getFullyQualifiedName(), table);
@@ -255,8 +329,11 @@ public class AssetsTabSearchEntriesIT {
   }
 
   private static DatabaseSchema createSchema(TestNamespace ns) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    // Short names: a test case's suite is named after its table's FQN, which has a length limit.
+    DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName(ns.shortPrefix("svc"), ns);
+    Database database =
+        DatabaseTestFactory.createWithName(service.getFullyQualifiedName(), ns.shortPrefix("db"));
     return SdkClients.adminClient()
         .databaseSchemas()
         .create(
@@ -279,6 +356,23 @@ public class AssetsTabSearchEntriesIT {
                 .withDatabaseSchema(schema.getFullyQualifiedName())
                 .withColumns(columns)
                 .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName())));
+  }
+
+  private static TestCase createTestCase(TestNamespace ns, Table table, String name) {
+    return TestCaseBuilder.create(SdkClients.adminClient())
+        .name(ns.prefix(name))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+  }
+
+  private static TagLabel glossaryLabel(GlossaryTerm term) {
+    return new TagLabel()
+        .withTagFQN(term.getFullyQualifiedName())
+        .withSource(TagLabel.TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
   }
 
   private static GlossaryTerm createTerm(TestNamespace ns, String name) {
