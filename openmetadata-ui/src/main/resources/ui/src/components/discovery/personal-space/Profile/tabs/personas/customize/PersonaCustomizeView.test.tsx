@@ -75,6 +75,7 @@ const MockEditor = ({
     <div data-testid={testId}>
       {document.fullyQualifiedName}
       <button
+        aria-label="save document"
         data-testid={`${testId}-saved`}
         onClick={() => onDocumentSaved({ ...document, id: 'saved-doc-id' })}
       />

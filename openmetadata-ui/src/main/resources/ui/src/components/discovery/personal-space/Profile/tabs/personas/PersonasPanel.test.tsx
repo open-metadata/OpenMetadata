@@ -101,6 +101,7 @@ jest.mock('./customize/PersonaCustomizeView', () => ({
         customize
       </button>
       <button
+        aria-label="make editor dirty"
         data-testid="make-editor-dirty"
         onClick={() =>
           props.onEditorActionsChange?.({
