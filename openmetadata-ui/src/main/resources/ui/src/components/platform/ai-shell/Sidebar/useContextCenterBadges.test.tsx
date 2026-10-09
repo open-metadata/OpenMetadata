@@ -14,7 +14,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { EntityStatus } from '../../../../generated/entity/context/contextMemory';
+import { ContextMemoryStatus } from '../../../../generated/entity/context/contextMemory';
 import { getListContextMemories } from '../../../../rest/contextMemoryAPI';
 import { useContextCenterBadges } from './useContextCenterBadges';
 
@@ -53,7 +53,10 @@ describe('useContextCenterBadges', () => {
 
     expect(getListContextMemories).toHaveBeenCalledWith({
       limit: 0,
-      statuses: EntityStatus.Approved,
+      statuses: [
+        ContextMemoryStatus.Approved,
+        ContextMemoryStatus.Unprocessed,
+      ].join(','),
     });
   });
 });

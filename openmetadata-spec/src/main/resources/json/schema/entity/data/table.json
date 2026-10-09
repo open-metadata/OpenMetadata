@@ -7,7 +7,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Table",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
     "org.openmetadata.schema.ColumnsEntityInterface",
     "org.openmetadata.schema.CreationAudited"
   ],
@@ -33,6 +33,7 @@
         "SecureView",
         "MaterializedView",
         "Iceberg",
+        "DeltaLake",
         "Local",
         "Partitioned",
         "Foreign",
@@ -62,6 +63,9 @@
         },
         {
           "name": "Iceberg"
+        },
+        {
+          "name": "DeltaLake"
         },
         {
           "name": "Local"

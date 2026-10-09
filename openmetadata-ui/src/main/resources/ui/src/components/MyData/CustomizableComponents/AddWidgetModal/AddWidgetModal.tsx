@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Modal, Space } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -88,7 +88,13 @@ function AddWidgetModal({
 
         return {
           label: (
-            <Space data-testid={`${widget.name}-widget-tab-label`}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              data-testid={`${widget.name}-widget-tab-label`}
+              gap={2}
+              itemClassName="layout-space-item">
               <span>{widget.name}</span>
               {addedWidgetsList.some(
                 (w) =>
@@ -101,7 +107,7 @@ function AddWidgetModal({
                   style={{ color: LIGHT_GREEN_COLOR }}
                 />
               )}
-            </Space>
+            </Box>
           ),
           key: widget.fullyQualifiedName,
           children: (

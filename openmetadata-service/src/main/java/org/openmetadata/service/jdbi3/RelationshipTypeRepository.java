@@ -16,7 +16,10 @@ package org.openmetadata.service.jdbi3;
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -71,6 +74,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   public void prepare(final RelationshipType entity, final boolean update) {
     entity.setFullyQualifiedName(entity.getName());
     applyDefaults(entity);
+    hydrateReferences(entity);
     RelationshipTypeValidator.validate(entity);
     validateUniquePredicate(entity);
     graphValidator.validate(entity);
@@ -106,6 +110,55 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     }
   }
 
+  /**
+   * Resolve FQN→id for {@code inverse}, {@code replacedBy}, {@code propertyChain}, and {@code
+   * disjointWith} references. The public REST API ({@link
+   * org.openmetadata.service.resources.ontology.RelationshipTypeMapper}) builds these references
+   * with only {@code type} + {@code fullyQualifiedName} set ({@code id == null}), because a client
+   * supplies FQN strings, not ids. Without this hydration the id-based checks in {@link
+   * RelationshipTypeValidator} and downstream consumers (e.g. the RDF glossary exporter) break for
+   * every client-supplied reference. Self-references (where the reference FQN equals the entity's
+   * own FQN) are hydrated from the entity's own id, which is already set before {@code prepare}
+   * runs.
+   */
+  private void hydrateReferences(final RelationshipType entity) {
+    final String selfFqn = entity.getFullyQualifiedName();
+    final UUID selfId = entity.getId();
+    entity.setInverse(hydrate(entity.getInverse(), selfFqn, selfId));
+    entity.setReplacedBy(hydrate(entity.getReplacedBy(), selfFqn, selfId));
+    final List<EntityReference> propertyChain = entity.getPropertyChain();
+    if (propertyChain != null) {
+      entity.setPropertyChain(
+          propertyChain.stream().map(ref -> hydrate(ref, selfFqn, selfId)).toList());
+    }
+    final Set<EntityReference> disjointWith = entity.getDisjointWith();
+    if (disjointWith != null) {
+      entity.setDisjointWith(
+          disjointWith.stream()
+              .map(ref -> hydrate(ref, selfFqn, selfId))
+              .collect(Collectors.toUnmodifiableSet()));
+    }
+  }
+
+  private EntityReference hydrate(
+      final EntityReference reference, final String selfFqn, final UUID selfId) {
+    if (reference == null || reference.getId() != null) {
+      return reference;
+    }
+    final String fqn = reference.getFullyQualifiedName();
+    if (fqn == null) {
+      return reference;
+    }
+    if (fqn.equals(selfFqn)) {
+      return reference.withId(selfId);
+    }
+    final RelationshipType resolved = findByNameOrNull(fqn, Include.ALL);
+    if (resolved != null) {
+      return reference.withId(resolved.getId());
+    }
+    return reference;
+  }
+
   @Override
   public void storeEntity(final RelationshipType entity, final boolean update) {
     store(entity, update);
@@ -133,7 +186,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
 
   // System-defined relationship types ship with the ontology and are in use from the start.
   @Override
-  protected EntityStatus initialEntityStatus(RelationshipType entity) {
+  protected Enum<?> initialEntityStatus(RelationshipType entity) {
     return Boolean.TRUE.equals(entity.getSystemDefined()) && entity.getEntityStatus() == null
         ? EntityStatus.APPROVED
         : super.initialEntityStatus(entity);

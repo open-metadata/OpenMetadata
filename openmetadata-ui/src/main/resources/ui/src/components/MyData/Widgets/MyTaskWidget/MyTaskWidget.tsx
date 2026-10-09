@@ -26,6 +26,7 @@ import { SIZE } from '../../../../enums/common.enum';
 import { FeedFilter, MyTaskFilter } from '../../../../enums/mydata.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { TaskStatusGroup } from '../../../../rest/tasksAPI';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TaskFeedCardFromTask from '../../../ActivityFeed/TaskFeedCard/TaskFeedCardFromTask.component';
@@ -61,31 +62,23 @@ const MyTaskWidget = ({
     setSelectedFilter(key);
   }, []);
 
+  // The initial load and the post-close refresh must agree on the status bucket.
+  // They were two separate call sites and drifted: the load asked for every
+  // status, so the widget listed closed tasks until you closed one from it.
+  const fetchOpenTasks = useCallback(() => {
+    getTaskData(
+      selectedFilter as unknown as FeedFilter,
+      undefined,
+      undefined,
+      undefined,
+      TaskStatusGroup.Open,
+      PAGE_SIZE_MEDIUM
+    );
+  }, [getTaskData, selectedFilter]);
+
   useEffect(() => {
-    getTaskData(
-      selectedFilter as unknown as FeedFilter,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      PAGE_SIZE_MEDIUM
-    );
-  }, [getTaskData, selectedFilter]);
-
-  const handleFeedFetchFromFeedList = useCallback(() => {
-    getTaskData(
-      selectedFilter as unknown as FeedFilter,
-      undefined,
-      undefined,
-      undefined,
-      'open',
-      PAGE_SIZE_MEDIUM
-    );
-  }, [getTaskData, selectedFilter]);
-
-  const handleAfterTaskClose = () => {
-    handleFeedFetchFromFeedList();
-  };
+    fetchOpenTasks();
+  }, [fetchOpenTasks]);
 
   const showWidgetFooterMoreButton = useMemo(
     () => Boolean(!loading) && tasks?.length > PAGE_SIZE_BASE,
@@ -161,7 +154,7 @@ const MyTaskWidget = ({
                   isOpenInDrawer={myTaskData?.w === 1}
                   key={task.id}
                   task={task}
-                  onAfterClose={handleAfterTaskClose}
+                  onAfterClose={fetchOpenTasks}
                 />
               ))}
             </div>

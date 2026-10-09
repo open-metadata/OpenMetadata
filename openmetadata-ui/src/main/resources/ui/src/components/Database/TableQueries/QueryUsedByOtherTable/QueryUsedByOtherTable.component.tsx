@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Popover, Row, Space } from 'antd';
+import {
+  Box,
+  Button,
+  Popover,
+  PopoverTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -85,9 +91,26 @@ const QueryUsedByOtherTable = ({
             <Typography className="m-r-xss">
               {t('label.and-lowercase')}
             </Typography>
-            <Popover
-              content={
-                <Space direction="vertical">
+            <PopoverTrigger>
+              <Button
+                noTextPadding
+                className="show-more"
+                color="link-color"
+                data-testid="show-more"
+                size="sm">
+                {`${remainingTable.length} ${t('label.more-lowercase')}`}
+              </Button>
+              <Popover
+                arrow
+                containerClassName="tw:px-4 tw:py-3"
+                placement="bottom">
+                <Box
+                  inline
+                  align="stretch"
+                  className="layout-space"
+                  direction="col"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   {remainingTable.map((table) => (
                     <Link
                       key={table.id}
@@ -98,14 +121,9 @@ const QueryUsedByOtherTable = ({
                       {getEntityName(table)}
                     </Link>
                   ))}
-                </Space>
-              }
-              placement="bottom"
-              trigger="click">
-              <Typography className="show-more" data-testid="show-more">
-                {`${remainingTable.length} ${t('label.more-lowercase')}`}
-              </Typography>
-            </Popover>
+                </Box>
+              </Popover>
+            </PopoverTrigger>
           </>
         ) : null}
       </Typography>
@@ -194,12 +212,14 @@ const QueryUsedByOtherTable = ({
   }, [isEditMode]);
 
   return (
-    <Row wrap data-testid="para-container">
-      <Col flex="200px">
+    <Box className="layout-row" data-testid="para-container" wrap="wrap">
+      <Box className="layout-column tw:block" style={{ flex: '0 0 200px' }}>
         <Typography>{`${t('message.query-used-by-other-tables')}:`}</Typography>
-      </Col>
-      <Col>{isEditMode ? selectList : tableNames}</Col>
-    </Row>
+      </Box>
+      <Box className="layout-column tw:block">
+        {isEditMode ? selectList : tableNames}
+      </Box>
+    </Box>
   );
 };
 

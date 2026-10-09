@@ -40,9 +40,9 @@ import {
 } from '../../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
+  DIMENSION_FAILURE_POLICY_PARAM,
   getParamOptionLabelKey,
   getThresholdUnitLabelParts,
-  isThresholdUnitOptionDisabled,
   THRESHOLD_PARAM,
   THRESHOLD_UNIT_PARAM,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
@@ -231,6 +231,13 @@ export interface ParameterFieldsProps {
   // Form Hint popover when any parameter field is focused so the AI modal
   // matches the classic drawer's documentation panel.
   testDefinitionDoc?: string;
+  // `dimensionFailurePolicy` rolls dimension group verdicts up into the test
+  // case status, so it only means something on a dimension-level test.
+  isDimensionalTest?: boolean;
+  // Renders only these parameters. A dynamic assertion learns the bounds, so
+  // the static-bound inputs are hidden while the parameters that still apply
+  // to learned bounds stay editable.
+  onlyParams?: readonly string[];
 }
 
 const ParameterFields: React.FC<ParameterFieldsProps> = ({
@@ -238,6 +245,8 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   definition,
   table,
   testDefinitionDoc,
+  isDimensionalTest = false,
+  onlyParams,
 }) => {
   const { t } = useTranslation();
 
@@ -336,11 +345,6 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
     (data.optionValues ?? []).map((optionValue) => ({
       id: optionValue as string,
       label: getOptionLabel(data, optionValue as string),
-      // A unit this test's validator never reads is shown but not selectable,
-      // rather than offered and then warned about in the preview.
-      isDisabled:
-        data.name === THRESHOLD_UNIT_PARAM &&
-        isThresholdUnitOptionDisabled(definition.name, optionValue as string),
     }));
 
   const getStringFieldProp = (
@@ -380,7 +384,12 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
       type: FieldTypes.TEXT,
       required: data.required,
       rules: buildRules(data, label),
-      helperText: data.description,
+      // The policy's own description cannot carry the Others caveat: it is
+      // seeded data, and existing installs keep the copy they were seeded with.
+      helperText:
+        data.name === DIMENSION_FAILURE_POLICY_PARAM
+          ? t('message.dimension-failure-policy-helper')
+          : data.description,
       helperTextType: HelperTextType.TOOLTIP,
       // Form Hint popover shows the selected test definition's doc (matching
       // the classic drawer's doc panel); the tooltip keeps the per-param text.
@@ -445,7 +454,11 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   // definition declares it further down (tableCustomSQLQuery does). Pulling it
   // up is only safe when the threshold it belongs beside is declared too,
   // otherwise the unit would be skipped and never rendered.
-  const params = definition.parameterDefinition;
+  const params = onlyParams
+    ? definition.parameterDefinition?.filter((param) =>
+        onlyParams.includes(param.name ?? '')
+      )
+    : definition.parameterDefinition;
   const thresholdUnitParam = params?.some(
     (param) => param.name === THRESHOLD_PARAM
   )
@@ -475,6 +488,13 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   return (
     <>
       {params?.map((data) => {
+        if (
+          data.name === DIMENSION_FAILURE_POLICY_PARAM &&
+          !isDimensionalTest
+        ) {
+          return null;
+        }
+
         if (thresholdUnitParam) {
           if (data.name === THRESHOLD_UNIT_PARAM) {
             return null;

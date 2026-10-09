@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { Label, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Dropdown, Row, Select, TableProps, Tooltip } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  Button as CoreButton,
+  Dropdown,
+  Grid,
+  Label,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Select, TableProps, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -63,6 +68,7 @@ import {
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -649,39 +655,8 @@ const SchemaTable = () => {
     [openColumnDetailPanel]
   );
 
-  const sortMenuItems: ItemType[] = useMemo(
-    () => [
-      {
-        key: 'name',
-        label: (
-          <span data-testid="sort-alphabetical">
-            {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
-            {t('label.alphabetical')} (A → Z)
-          </span>
-        ),
-        icon:
-          // eslint-disable-next-line i18next/no-literal-string -- decorative checkmark glyph
-          sortBy === 'name' ? <span className="text-primary">✓</span> : null,
-      },
-      {
-        key: 'ordinalPosition',
-        label: (
-          <span data-testid="sort-original-order">
-            {t('label.original-order')}
-          </span>
-        ),
-        icon:
-          sortBy === 'ordinalPosition' ? (
-            // eslint-disable-next-line i18next/no-literal-string -- decorative checkmark glyph
-            <span className="text-primary">✓</span>
-          ) : null,
-      },
-    ],
-    [sortBy, t]
-  );
-
   const handleSortMenuClick = useCallback(
-    ({ key }: { key: string }) => {
+    (key: Key) => {
       const newSortBy = key as 'name' | 'ordinalPosition';
       if (newSortBy !== sortBy) {
         setSortBy(newSortBy);
@@ -997,8 +972,10 @@ const SchemaTable = () => {
   );
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col id="schemaDetails" span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 16) }}>
+      <Grid.Item className="layout-column" id="schemaDetails" span={24}>
         <Table
           className="align-table-filter-left"
           columns={columns}
@@ -1009,18 +986,37 @@ const SchemaTable = () => {
           expandable={expandableConfig}
           extraTableFilters={
             <div className="d-flex items-center gap-4">
-              <Dropdown
-                menu={{ items: sortMenuItems, onClick: handleSortMenuClick }}
-                trigger={['click']}>
-                <Button
-                  className="flex-center gap-2"
+              <Dropdown.Root>
+                <CoreButton
+                  color="tertiary"
                   data-testid="sort-dropdown"
-                  icon={<IconSort height={14} width={14} />}
-                  size="small"
-                  type="text">
+                  iconLeading={<IconSort height={14} width={14} />}
+                  size="sm">
                   {t('label.sort')}
-                </Button>
-              </Dropdown>
+                </CoreButton>
+                <Dropdown.Popover className="tw:w-auto">
+                  <Dropdown.Menu
+                    aria-label={t('label.sort')}
+                    selectedKeys={[sortBy]}
+                    onAction={handleSortMenuClick}>
+                    <Dropdown.Item
+                      id="name"
+                      textValue={t('label.alphabetical')}>
+                      <span data-testid="sort-alphabetical">
+                        {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
+                        {t('label.alphabetical')} (A → Z)
+                      </span>
+                    </Dropdown.Item>
+                    <Dropdown.Item
+                      id="ordinalPosition"
+                      textValue={t('label.original-order')}>
+                      <span data-testid="sort-original-order">
+                        {t('label.original-order')}
+                      </span>
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
               {getBulkEditButton(canEditAll, handleEditTable)}
             </div>
           }
@@ -1037,7 +1033,7 @@ const SchemaTable = () => {
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
           onChange={handleColumnFilterChange}
         />
-      </Col>
+      </Grid.Item>
       {editColumn && (
         <EntityAttachmentProvider
           entityFqn={editColumn.fullyQualifiedName}
@@ -1066,7 +1062,7 @@ const SchemaTable = () => {
           onSave={handleEditColumnData}
         />
       )}
-    </Row>
+    </Grid>
   );
 };
 

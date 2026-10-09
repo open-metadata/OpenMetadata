@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.Entity;
 
@@ -51,6 +52,8 @@ class McpContextMemoryVisibilityIT extends McpTestBase {
             Map.of(
                 "name",
                 "mcp_vis_note_" + suffix,
+                "entityStatus",
+                ContextMemoryStatus.APPROVED.value(),
                 "description",
                 "MCP visibility IT",
                 "question",
@@ -98,6 +101,8 @@ class McpContextMemoryVisibilityIT extends McpTestBase {
             Map.of(
                 "name",
                 "mcp_vis_pill_" + suffix,
+                "entityStatus",
+                ContextMemoryStatus.APPROVED.value(),
                 "description",
                 "MCP visibility IT pill",
                 "question",
@@ -125,6 +130,8 @@ class McpContextMemoryVisibilityIT extends McpTestBase {
                 "What is the orders total?",
                 "answer",
                 answer,
+                "entityStatus",
+                ContextMemoryStatus.APPROVED.value(),
                 "sourceType",
                 sourceType,
                 "primaryEntity",

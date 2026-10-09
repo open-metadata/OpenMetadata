@@ -43,7 +43,7 @@ public final class TriggerEntityFilter {
   // If the JsonLogic evaluates to TRUE, the entity is excluded from triggering the workflow.
   // Non-match (FALSE) or unparseable filter (RuleEngine returns false on any exception) means the
   // entity is NOT excluded, so the workflow triggers.
-  public static boolean excludes(String filterLogic, EntityInterface entity) {
+  public static boolean excludes(String filterLogic, EntityInterface<?> entity) {
     boolean matches = false;
     if (filterLogic != null && !filterLogic.trim().isEmpty()) {
       matches =

@@ -19,11 +19,14 @@ import {
   Policy as GovernanceTabIcon,
   Settings02,
   ShieldTick,
+  Sliders02,
   User01,
+  Users01,
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
 import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg';
+import type { ProfileNavId } from '../../../../constants/Profile.constants';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
@@ -34,19 +37,14 @@ import ProfileDetailsPanel from './ProfileDetailsPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
+import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
+import PlatformSettingsPanel from './tabs/platform-settings/PlatformSettingsPanel';
 
-export type ProfileNavId =
-  | 'profile'
-  | 'permissions'
-  | 'access-token'
-  | 'my-connections'
-  | 'access-control'
-  | 'bots'
-  | 'custom-properties'
-  | 'notification'
-  | 'governance';
+// Single source of truth lives in Profile.constants (hook-safe layer); re-exported
+// here so existing imports of `ProfileNavId` from this module keep working.
+export type { ProfileNavId };
 
 /** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
 export type ProfileNavGroup =
@@ -196,12 +194,36 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
       <BotsPanel onHeaderChange={onHeaderChange} />
     ),
   },
+  {
+    id: 'platform-settings',
+    group: 'administration',
+    label: 'label.platform-setting-plural',
+    description: 'message.customize-brand-description',
+    icon: Sliders02,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   // The "My Connections" tab is contributed by the Query Runner plugin through
   // the `profile.tabs` extension point (see ProfilePage), so the app-mode
   // profile works standalone in OSS when the plugin is absent.
 ];
 
 export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'members',
+    group: 'workspace',
+    label: 'label.member-plural',
+    description: 'message.team-member-management-description',
+    icon: Users01,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <MembersPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   {
     id: 'custom-properties',
     group: 'workspace',

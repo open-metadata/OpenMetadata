@@ -13,7 +13,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button, Dialog, DialogTrigger, Modal } from 'react-aria-components';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Select } from './select';
 
 describe('Select in a modal', () => {
@@ -56,4 +56,127 @@ describe('Select in a modal', () => {
       await waitFor(() => expect(trigger).toHaveFocus());
     }
   );
+});
+
+describe('Select dismissal', () => {
+  const renderSelect = () =>
+    render(
+      <>
+        <div data-testid="outside">outside</div>
+        <Select
+          aria-label="Entity type"
+          items={[{ id: 'TABLE', label: 'TABLE' }]}>
+          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+        </Select>
+      </>
+    );
+
+  it('closes the listbox when pressing outside', async () => {
+    const user = userEvent.setup();
+    renderSelect();
+
+    await user.click(screen.getByRole('button', { name: /Entity type/ }));
+    expect(await screen.findByRole('listbox')).toBeVisible();
+
+    await user.click(screen.getByTestId('outside'));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    );
+  });
+
+  it('closes when pressing the trigger of an open popup', async () => {
+    const user = userEvent.setup();
+    renderSelect();
+
+    const trigger = screen.getByRole('button', { name: /Entity type/ });
+    await user.click(trigger);
+    expect(await screen.findByRole('listbox')).toBeVisible();
+
+    // `useMenuTrigger` only ever opens on press, so the press must not reopen
+    // what this dismissal closes.
+    await user.click(trigger);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    );
+  });
+
+  it('keeps the list open when pressing inside a ComboBox trigger', async () => {
+    const user = userEvent.setup();
+    render(
+      <Select.ComboBox
+        aria-label="Entity type"
+        items={[{ id: 'TABLE', label: 'TABLE' }]}>
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select.ComboBox>
+    );
+
+    const input = screen.getByRole('combobox', { name: /Entity type/ });
+    await user.click(input);
+    expect(await screen.findByRole('listbox')).toBeVisible();
+
+    // Pressing the input only moves the caret, and `menuTrigger="focus"` would
+    // not reopen an already focused input.
+    await user.click(input);
+
+    expect(screen.getByRole('listbox')).toBeVisible();
+  });
+
+  it('leaves an unrelated element its own press', async () => {
+    const user = userEvent.setup();
+    const pressed = vi.fn();
+    render(
+      <>
+        <button type="button" onClick={pressed}>
+          Elsewhere
+        </button>
+        <Select
+          aria-label="Entity type"
+          items={[{ id: 'TABLE', label: 'TABLE' }]}>
+          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+        </Select>
+      </>
+    );
+
+    await user.click(screen.getByRole('button', { name: /Entity type/ }));
+    expect(await screen.findByRole('listbox')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    );
+    expect(pressed).toHaveBeenCalled();
+  });
+});
+
+describe('Select with no items', () => {
+  it('opens and shows the empty state instead of staying closed', async () => {
+    const user = userEvent.setup();
+    render(
+      <Select aria-label="Teams" items={[]}>
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+    );
+
+    await user.click(screen.getByRole('button', { name: /Teams/ }));
+
+    expect(await screen.findByRole('listbox')).toHaveTextContent(
+      /no-data-found|No data found/
+    );
+  });
+
+  it('renders a custom empty state', async () => {
+    const user = userEvent.setup();
+    render(
+      <Select aria-label="Teams" emptyState="Nothing to map" items={[]}>
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+    );
+
+    await user.click(screen.getByRole('button', { name: /Teams/ }));
+
+    expect(await screen.findByText('Nothing to map')).toBeInTheDocument();
+  });
 });

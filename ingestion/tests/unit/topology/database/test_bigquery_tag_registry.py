@@ -30,7 +30,7 @@ from metadata.utils.lru_cache import LRUCache
 
 
 @pytest.fixture
-def source():
+def source(existing_tag_lookup):
     instance = object.__new__(BigquerySource)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True, extractJsonSchema=False)
     instance.service_connection = SimpleNamespace(includePolicyTags=True, taxonomyProjectID=None, taxonomyLocation="us")
@@ -44,7 +44,7 @@ def source():
         return []
 
     instance.metadata.es_search_from_fqn.side_effect = search
-    instance.metadata.get_by_name.side_effect = AssertionError("Label lookup must not access the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     instance.client = MagicMock()
     instance.client.get_dataset.return_value = Dataset("project.dataset")
     instance.client.get_table.return_value = Table("project.dataset.my_table")

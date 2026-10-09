@@ -200,7 +200,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
   static final String FIELDS =
-      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences,extension";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -2125,7 +2125,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       User user, CreateUser create, UriInfo uriInfo, SecurityContext securityContext) {
     User original = retrieveBotUser(user, uriInfo);
     String botName = create.getBotName();
-    EntityInterface bot = retrieveBot(botName);
+    EntityInterface<?> bot = retrieveBot(botName);
     // check if the bot user exists
     if (original != null
         && (original.getIsBot() == null || Boolean.FALSE.equals(original.getIsBot()))) {
@@ -2168,7 +2168,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return response.toResponse();
   }
 
-  private EntityInterface retrieveBot(String botName) {
+  private EntityInterface<?> retrieveBot(String botName) {
     try {
       return Entity.getEntityRepository(Entity.BOT).getByName(null, botName, Fields.EMPTY_FIELDS);
     } catch (Exception e) {
@@ -2176,7 +2176,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  private boolean userHasRelationshipWithAnyBot(User user, EntityInterface botUser) {
+  private boolean userHasRelationshipWithAnyBot(User user, EntityInterface<?> botUser) {
     List<CollectionDAO.EntityRelationshipRecord> userBotRelationship =
         retrieveBotRelationshipsFor(user);
     return !userBotRelationship.isEmpty()
@@ -2189,7 +2189,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
   }
 
-  private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
+  private boolean botHasRelationshipWithUser(EntityInterface<?> bot, User user) {
     if (bot == null || user == null) {
       return false;
     }
@@ -2200,7 +2200,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(
-      EntityInterface bot) {
+      EntityInterface<?> bot) {
     return repository.findToRecords(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 

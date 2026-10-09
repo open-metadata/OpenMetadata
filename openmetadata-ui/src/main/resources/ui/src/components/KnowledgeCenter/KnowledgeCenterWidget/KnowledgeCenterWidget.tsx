@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
@@ -123,11 +123,13 @@ const KnowledgeCenterWidget = ({
             const quickLink = knowledgePage.page as QuickLink;
 
             return (
-              <Row
-                className="article-entry"
+              <Grid
+                className="layout-row layout-grid article-entry"
                 data-testid="article-entry"
                 key={knowledgePage.id}>
-                <Col className="d-flex items-center gap-2" span={24}>
+                <Grid.Item
+                  className="layout-column d-flex items-center gap-2"
+                  span={24}>
                   <span>
                     <Icon
                       className="knowledge-icon d-flex align-items-center justify-center tw:text-brand-tertiary"
@@ -154,12 +156,15 @@ const KnowledgeCenterWidget = ({
                     }>
                     <Typography
                       className="article-header text-sm font-regular text-left cursor-pointer ellipsis-text"
-                      ellipsis={{ tooltip: true }}>
+                      ellipsis={{
+                        tooltip: true,
+                        excludeTriggerFromTabOrder: true,
+                      }}>
                       {getEntityName(knowledgePage)}
                     </Typography>
                   </Link>
-                </Col>
-              </Row>
+                </Grid.Item>
+              </Grid>
             );
           })}
         </div>

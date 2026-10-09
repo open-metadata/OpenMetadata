@@ -12,8 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Space, Tooltip } from 'antd';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -222,9 +222,14 @@ export const fetchGlossaryList = async (
 
 export const TagListItemRenderer = (props: EntityReference) => {
   return (
-    <Space>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={2}
+      itemClassName="layout-space-item">
       <ClassificationIcon className="d-block'" height={22} width={16} />
       <Typography>{getEntityName(props)}</Typography>
-    </Space>
+    </Box>
   );
 };

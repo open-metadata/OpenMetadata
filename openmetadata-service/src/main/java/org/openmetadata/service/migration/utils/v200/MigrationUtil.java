@@ -62,14 +62,11 @@ import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskComment;
-import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -86,6 +83,9 @@ import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
+import org.openmetadata.service.migration.utils.v200.LegacyThreadTask.Details;
+import org.openmetadata.service.migration.utils.v200.LegacyThreadTask.TaskStatus;
+import org.openmetadata.service.migration.utils.v200.LegacyThreadTask.TaskType;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
@@ -1038,7 +1038,7 @@ public class MigrationUtil {
       EntityRepository<?> repo = Entity.getEntityRepository(entityType);
       Object entity =
           repo.getByName(null, entityFQN, repo.getFields(""), Include.NON_DELETED, true);
-      if (entity instanceof EntityInterface ei && ei.getId() != null) {
+      if (entity instanceof EntityInterface<?> ei && ei.getId() != null) {
         resolvedId = ei.getId().toString();
       }
     } catch (Exception e) {
@@ -1779,7 +1779,7 @@ public class MigrationUtil {
       }
       Object entity =
           repo.get(null, UUID.fromString(entityId), repo.getFields(Entity.FIELD_DOMAINS));
-      if (!(entity instanceof EntityInterface ei)) {
+      if (!(entity instanceof EntityInterface<?> ei)) {
         DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
         return Collections.emptyList();
       }
@@ -2318,10 +2318,10 @@ public class MigrationUtil {
           break;
         }
 
-        List<Thread> parsedThreads = new ArrayList<>(threadBatch.size());
+        List<LegacyThreadTask> parsedThreads = new ArrayList<>(threadBatch.size());
         for (String threadJson : threadBatch) {
           try {
-            parsedThreads.add(JsonUtils.readValue(threadJson, Thread.class));
+            parsedThreads.add(JsonUtils.readValue(threadJson, LegacyThreadTask.class));
           } catch (Exception e) {
             stats.failed++;
             LOG.warn("Failed to parse legacy thread task JSON: {}", e.getMessage());
@@ -2332,11 +2332,11 @@ public class MigrationUtil {
             lookupLegacyUmbrellaWorkflowInstanceIds(
                 handle,
                 parsedThreads.stream()
-                    .filter(t -> t != null && t.getId() != null)
-                    .map(t -> t.getId().toString())
+                    .filter(t -> t != null && t.id() != null)
+                    .map(t -> t.id().toString())
                     .toList());
 
-        for (Thread legacyThread : parsedThreads) {
+        for (LegacyThreadTask legacyThread : parsedThreads) {
           try {
             migrateLegacyThreadTask(legacyThread, stats, umbrellaWorkflowInstanceIds);
           } catch (Exception e) {
@@ -2831,15 +2831,15 @@ public class MigrationUtil {
     }
 
     private void migrateLegacyThreadTask(
-        Thread legacyThread,
+        LegacyThreadTask legacyThread,
         MigrationStats stats,
         Map<String, String> umbrellaWorkflowInstanceIds) {
-      if (legacyThread == null || legacyThread.getId() == null || legacyThread.getTask() == null) {
+      if (legacyThread == null || legacyThread.id() == null || legacyThread.task() == null) {
         stats.skipped++;
         return;
       }
 
-      UUID legacyThreadId = legacyThread.getId();
+      UUID legacyThreadId = legacyThread.id();
 
       if (isAlreadyMigrated(legacyThreadId)) {
         stats.alreadyMigrated++;
@@ -2849,13 +2849,25 @@ public class MigrationUtil {
 
       try {
         Task migratedTask = buildTaskFromLegacyThread(legacyThread, umbrellaWorkflowInstanceIds);
-        Task createdTask = taskRepository.create(null, migratedTask);
-        upsertTaskMigrationMapping(legacyThreadId, createdTask.getId());
+        storeMigratedTask(migratedTask);
+        upsertTaskMigrationMapping(legacyThreadId, migratedTask.getId());
         stats.migrated++;
       } catch (Exception e) {
         stats.failed++;
         LOG.warn("Failed to migrate legacy thread task '{}': {}", legacyThreadId, e.getMessage());
       }
+    }
+
+    private void storeMigratedTask(Task task) {
+      // Creation callbacks restart workflows and overwrite historical status and timestamps.
+      // Prepare as an existing task; only open tasks get workflows in the subsequent backfill.
+      taskRepository.prepareInternal(task, true);
+      taskRepository.executeInTransaction(
+          () -> {
+            taskRepository.storeEntity(task, false);
+            taskRepository.storeRelationshipsInternal(task);
+            return null;
+          });
     }
 
     private boolean isAlreadyMigrated(UUID legacyThreadId) {
@@ -2867,43 +2879,40 @@ public class MigrationUtil {
     }
 
     private Task buildTaskFromLegacyThread(
-        Thread legacyThread, Map<String, String> umbrellaWorkflowInstanceIds) {
-      TaskDetails legacyTaskDetails = legacyThread.getTask();
-      TypeAndCategory typeAndCategory = mapLegacyTaskType(legacyTaskDetails.getType());
+        LegacyThreadTask legacyThread, Map<String, String> umbrellaWorkflowInstanceIds) {
+      Details legacyTaskDetails = legacyThread.task();
 
-      EntityReference createdByRef = resolveUserReference(legacyThread.getCreatedBy());
+      EntityReference createdByRef = resolveUserReference(legacyThread.createdBy());
       EntityReference aboutRef = resolveAboutReference(legacyThread);
+      TypeAndCategory typeAndCategory = mapLegacyTaskType(legacyTaskDetails.type(), aboutRef);
 
       long createdAt =
-          legacyThread.getThreadTs() != null
-              ? legacyThread.getThreadTs()
-              : System.currentTimeMillis();
-      long updatedAt =
-          legacyThread.getUpdatedAt() != null ? legacyThread.getUpdatedAt() : createdAt;
+          legacyThread.threadTs() != null ? legacyThread.threadTs() : System.currentTimeMillis();
+      long updatedAt = legacyThread.updatedAt() != null ? legacyThread.updatedAt() : createdAt;
 
-      TaskEntityStatus status = mapLegacyStatus(legacyTaskDetails.getStatus());
+      TaskEntityStatus status = mapLegacyStatus(legacyTaskDetails);
 
       Task task =
           new Task()
-              .withId(legacyThread.getId())
+              .withId(legacyThread.id())
               .withCategory(typeAndCategory.category)
               .withType(typeAndCategory.type)
               .withStatus(status)
               .withPriority(TaskPriority.Medium)
               .withDescription(resolveDescription(legacyThread, typeAndCategory.type))
               .withAbout(aboutRef)
-              .withAssignees(legacyTaskDetails.getAssignees())
+              .withAssignees(legacyTaskDetails.assignees())
               .withCreatedBy(createdByRef)
               .withCreatedAt(createdAt)
               .withUpdatedAt(updatedAt)
               .withUpdatedBy(resolveUpdatedBy(legacyThread, createdByRef))
-              .withPayload(buildLegacyPayload(legacyTaskDetails));
+              .withPayload(buildLegacyPayload(legacyThread));
 
       List<TaskComment> comments =
-          convertPostsToComments(legacyThread.getPosts(), createdByRef, updatedAt);
+          convertPostsToComments(legacyThread.posts(), createdByRef, updatedAt);
       task.withComments(comments).withCommentCount(comments.size());
 
-      String batchedUmbrellaId = umbrellaWorkflowInstanceIds.get(legacyThread.getId().toString());
+      String batchedUmbrellaId = umbrellaWorkflowInstanceIds.get(legacyThread.id().toString());
       if (batchedUmbrellaId != null) {
         task.setWorkflowInstanceId(UUID.fromString(batchedUmbrellaId));
       }
@@ -2915,46 +2924,33 @@ public class MigrationUtil {
       return task;
     }
 
-    private TypeAndCategory mapLegacyTaskType(TaskType legacyTaskType) {
-      if (legacyTaskType == null) {
-        return new TypeAndCategory(TaskEntityType.CustomTask, TaskCategory.Custom);
-      }
-
-      return switch (legacyTaskType) {
-        case RequestApproval -> new TypeAndCategory(
-            TaskEntityType.GlossaryApproval, TaskCategory.Approval);
-        case RecognizerFeedbackApproval -> new TypeAndCategory(
-            TaskEntityType.RecognizerFeedbackApproval, TaskCategory.Review);
-        case RequestDescription, UpdateDescription -> new TypeAndCategory(
-            TaskEntityType.DescriptionUpdate, TaskCategory.MetadataUpdate);
-        case RequestTag, UpdateTag -> new TypeAndCategory(
-            TaskEntityType.TagUpdate, TaskCategory.MetadataUpdate);
-        case RequestTestCaseFailureResolution -> new TypeAndCategory(
-            TaskEntityType.TestCaseResolution, TaskCategory.Incident);
-        case Generic -> new TypeAndCategory(TaskEntityType.CustomTask, TaskCategory.Custom);
-      };
+    private TypeAndCategory mapLegacyTaskType(TaskType legacyTaskType, EntityReference about) {
+      String oldType = legacyTaskType != null ? legacyTaskType.name() : TaskType.Generic.name();
+      String entityType = about != null ? about.getType() : null;
+      return new TypeAndCategory(
+          TaskEntityType.fromValue(mapThreadTaskType(oldType, entityType)),
+          TaskCategory.fromValue(mapThreadTaskCategory(oldType, entityType)));
     }
 
-    private TaskEntityStatus mapLegacyStatus(TaskStatus legacyStatus) {
-      if (legacyStatus == null || legacyStatus == TaskStatus.Open) {
-        return TaskEntityStatus.Open;
-      }
-      return TaskEntityStatus.Completed;
+    private TaskEntityStatus mapLegacyStatus(Details legacyTask) {
+      return legacyTask.status() == null || legacyTask.status() == TaskStatus.Open
+          ? TaskEntityStatus.Open
+          : TaskEntityStatus.fromValue(mapLegacyResolutionType(legacyTask).value());
     }
 
     private TaskResolution buildLegacyResolution(
-        Thread legacyThread, EntityReference fallbackUserRef) {
-      TaskDetails legacyTask = legacyThread.getTask();
+        LegacyThreadTask legacyThread, EntityReference fallbackUserRef) {
+      Details legacyTask = legacyThread.task();
       TaskResolutionType resolutionType = mapLegacyResolutionType(legacyTask);
 
-      EntityReference resolvedBy = resolveUserReference(legacyTask.getClosedBy());
+      EntityReference resolvedBy = resolveUserReference(legacyTask.closedBy());
       if (resolvedBy == null) {
         resolvedBy = fallbackUserRef;
       }
 
-      Long resolvedAt = legacyTask.getClosedAt();
+      Long resolvedAt = legacyTask.closedAt();
       if (resolvedAt == null) {
-        resolvedAt = legacyThread.getUpdatedAt();
+        resolvedAt = legacyThread.updatedAt();
       }
       if (resolvedAt == null) {
         resolvedAt = System.currentTimeMillis();
@@ -2965,64 +2961,46 @@ public class MigrationUtil {
           .withResolvedBy(resolvedBy)
           .withResolvedAt(resolvedAt)
           .withComment("Migrated from legacy thread task")
-          .withNewValue(legacyTask.getNewValue());
+          .withNewValue(legacyTask.newValue());
     }
 
-    private TaskResolutionType mapLegacyResolutionType(TaskDetails legacyTask) {
+    private TaskResolutionType mapLegacyResolutionType(Details legacyTask) {
       if (legacyTask == null) {
         return TaskResolutionType.Completed;
       }
 
-      TaskType taskType = legacyTask.getType();
+      TaskType taskType = legacyTask.type();
       if (taskType == TaskType.RequestApproval || taskType == TaskType.RecognizerFeedbackApproval) {
-        return nullOrEmpty(legacyTask.getNewValue())
+        return nullOrEmpty(legacyTask.newValue())
             ? TaskResolutionType.Rejected
             : TaskResolutionType.Approved;
       }
       return TaskResolutionType.Completed;
     }
 
-    private String resolveDescription(Thread legacyThread, TaskEntityType taskType) {
-      if (!nullOrEmpty(legacyThread.getMessage())) {
-        return legacyThread.getMessage();
+    private String resolveDescription(LegacyThreadTask legacyThread, TaskEntityType taskType) {
+      if (!nullOrEmpty(legacyThread.message())) {
+        return legacyThread.message();
       }
       return String.format("Migrated legacy task (%s)", taskType.value());
     }
 
-    private String resolveUpdatedBy(Thread legacyThread, EntityReference createdByRef) {
-      if (!nullOrEmpty(legacyThread.getUpdatedBy())) {
-        return legacyThread.getUpdatedBy();
+    private String resolveUpdatedBy(LegacyThreadTask legacyThread, EntityReference createdByRef) {
+      if (!nullOrEmpty(legacyThread.updatedBy())) {
+        return legacyThread.updatedBy();
       }
       return createdByRef != null ? createdByRef.getName() : ADMIN_USER_NAME;
     }
 
-    private Object buildLegacyPayload(TaskDetails legacyTask) {
-      if (legacyTask == null) {
+    private Object buildLegacyPayload(LegacyThreadTask legacyThread) {
+      Details details = legacyThread.task();
+      if (details == null || details.type() == null) {
         return null;
       }
-
-      Map<String, Object> payload = new LinkedHashMap<>();
-
-      if (!nullOrEmpty(legacyTask.getOldValue())) {
-        payload.put("oldValue", legacyTask.getOldValue());
-      }
-      if (!nullOrEmpty(legacyTask.getSuggestion())) {
-        payload.put("suggestion", legacyTask.getSuggestion());
-      }
-      if (!nullOrEmpty(legacyTask.getNewValue())) {
-        payload.put("newValue", legacyTask.getNewValue());
-      }
-      if (legacyTask.getTestCaseResolutionStatusId() != null) {
-        payload.put("testCaseResolutionStatusId", legacyTask.getTestCaseResolutionStatusId());
-      }
-      if (legacyTask.getFeedback() != null) {
-        payload.put("feedback", legacyTask.getFeedback());
-      }
-      if (legacyTask.getRecognizer() != null) {
-        payload.put("recognizer", legacyTask.getRecognizer());
-      }
-
-      return payload.isEmpty() ? null : payload;
+      return buildThreadTaskPayload(
+          details.type().name(),
+          JsonUtils.valueToTree(details),
+          MessageParser.EntityLink.parse(legacyThread.about()));
     }
 
     private List<TaskComment> convertPostsToComments(
@@ -3057,25 +3035,24 @@ public class MigrationUtil {
       return comments;
     }
 
-    private EntityReference resolveAboutReference(Thread legacyThread) {
-      if (legacyThread.getEntityRef() != null && legacyThread.getEntityRef().getId() != null) {
-        return legacyThread.getEntityRef();
+    private EntityReference resolveAboutReference(LegacyThreadTask legacyThread) {
+      if (legacyThread.entityRef() != null && legacyThread.entityRef().getId() != null) {
+        return legacyThread.entityRef();
       }
 
-      if (nullOrEmpty(legacyThread.getAbout())) {
+      if (nullOrEmpty(legacyThread.about())) {
         return null;
       }
 
       try {
-        MessageParser.EntityLink entityLink =
-            MessageParser.EntityLink.parse(legacyThread.getAbout());
+        MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(legacyThread.about());
         return Entity.getEntityReferenceByName(
             entityLink.getEntityType(), entityLink.getEntityFQN(), Include.ALL);
       } catch (Exception e) {
         LOG.debug(
             "Unable to resolve about reference for legacy thread '{}' from '{}': {}",
-            legacyThread.getId(),
-            legacyThread.getAbout(),
+            legacyThread.id(),
+            legacyThread.about(),
             e.getMessage());
         return null;
       }

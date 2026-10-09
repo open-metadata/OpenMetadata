@@ -1199,14 +1199,19 @@ describe('Test GlossaryTermTab component', () => {
       expect(getStatusCheckbox(EntityStatus.Draft)).toBeChecked();
     });
 
-    it('should select every status when "all" is checked', async () => {
+    it('should select every general status when "all" is checked', async () => {
       await openStatusFilter();
+
+      expect(screen.queryByText('Superseded')).not.toBeInTheDocument();
+      expect(screen.queryByText('Invalidated')).not.toBeInTheDocument();
 
       fireEvent.click(getStatusCheckbox('all'));
 
-      Object.values(EntityStatus).forEach((status) => {
-        expect(getStatusCheckbox(status)).toBeChecked();
-      });
+      Object.values(EntityStatus)
+        .filter((status) => !['Superseded', 'Invalidated'].includes(status))
+        .forEach((status) => {
+          expect(getStatusCheckbox(status)).toBeChecked();
+        });
     });
   });
 
