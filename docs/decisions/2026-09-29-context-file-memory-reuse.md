@@ -1,9 +1,11 @@
-# ADR: Reuse context memories during file extraction
+# File extraction reuses an existing memory before it creates a duplicate
 
-- **Status:** Accepted (implementation on this branch)
-- **Date:** 2026-09-29
-- **Branch:** `pmbrull/memphis`
-- **Related:** Context Center file upload and memory extraction
+- **Status:** Accepted
+- **Revisions:** v1 2026-09-29 (initial)
+- **Deciders:** Pere Miquel Brull
+- **Guard:** `FileContextProcessingEngineTest`, `ContextMemoryExtractorTest`,
+  `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`
+- **Related:** Context Center file upload and memory extraction; PR #34154
 
 ## Context
 

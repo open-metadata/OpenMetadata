@@ -1,7 +1,7 @@
 # Plan: permissioned read-only SPARQL execution for the 2.1 graph agent tool
 
 - **Status:** Approved to implement as a scoped first iteration (2026-09-16). Decisions recorded in
-  `docs/adr/2026-09-16-agent-sparql-execution.md` (ADR wins where they differ).
+  `docs/decisions/2026-09-16-agent-sparql-execution.md` (ADR wins where they differ).
 - **Date:** 2026-09-16
 - **Issue:** [OpenMetadata #33384](https://github.com/open-metadata/OpenMetadata/issues/33384)
   (`gh issue view 33384 --json title,body,labels,assignees,milestone,url,state`)
@@ -15,7 +15,7 @@
 - **Reviewed baseline (pinned to ai-platform `0056ceb9`, fetched via `gh api .../contents/...?ref=0056ceb9`):**
   - `docs/plans/1299-openmetadata-server-proposal.md` — the server contract proposal
   - `docs/plans/1299-sparql-graph-tool-implementation-plan.md`
-  - `docs/decisions/2026-09-15-graph-query-authoring-lives-in-the-worker-and-execution-on-the-server.md`
+  - ADR:ai-platform/2026-09-15-graph-query-authoring-lives-in-the-worker-and-execution-on-the-server
     (Accepted: worker authors SELECT, server owns execution; asset-level RBAC parallel, not gating)
 - **Explicitly NOT a blocker / out of scope:** [OpenMetadata #33224](https://github.com/open-metadata/OpenMetadata/issues/33224)
   (asset-level RBAC). This ticket must document the *absence* of asset-level filtering, never
@@ -175,7 +175,7 @@ internals). Shared HTTP statuses must not collapse distinct machine-readable cod
   currently has **no RDF/SPARQL query operation** — so a dedicated operation means adding an
   enum value (a schema change: check policy-migration, `AccessControl` UI, and default-role
   implications) versus explicitly justifying reuse. Record the choice and its rollout.
-- Write `docs/adr/<date>-agent-sparql-execution.md`: endpoint, operation/policy mapping,
+- Write `docs/decisions/<date>-agent-sparql-execution.md`: endpoint, operation/policy mapping,
   fixed dataset/default-graph scope (no `effectiveScope`), inference policy, conservative
   projection readiness, and the **explicit no-asset-level-authz
   limitation**. Reconcile deviations from the pinned proposal with the companion owner
