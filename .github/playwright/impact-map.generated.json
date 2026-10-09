@@ -4311,6 +4311,7 @@
         "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermDetails.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
+        "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/GlossaryFormValidation.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts"
@@ -7560,6 +7561,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/IconColorModal/IconColorModal.tsx"
       ],
       "specs": [
+        "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts"
       ]
     },
