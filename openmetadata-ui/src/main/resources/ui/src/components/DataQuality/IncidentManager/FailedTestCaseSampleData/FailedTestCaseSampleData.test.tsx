@@ -234,7 +234,20 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
     );
   });
 
-  it('should not fetch the failed-rows sample when the test case is not failed', async () => {
+  it('should fetch the failed-rows sample when the test case passed within its threshold', async () => {
+    const withinThresholdTestCase = {
+      ...mockTestCase,
+      testCaseResult: { testCaseStatus: TestCaseStatus.Success, failedRows: 7 },
+    } as TestCase;
+
+    render(<FailedTestCaseSampleData testCaseData={withinThresholdTestCase} />);
+
+    await waitFor(() =>
+      expect(getTestCaseFailedSampleData).toHaveBeenCalledWith(mockTestCase.id)
+    );
+  });
+
+  it('should not fetch the failed-rows sample when the test case passed with no failed rows', async () => {
     const passingTestCase = {
       ...mockTestCase,
       testCaseResult: { testCaseStatus: TestCaseStatus.Success },

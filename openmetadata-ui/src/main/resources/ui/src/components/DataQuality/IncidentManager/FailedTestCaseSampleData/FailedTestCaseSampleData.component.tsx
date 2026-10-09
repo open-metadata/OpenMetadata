@@ -31,6 +31,7 @@ import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TableData,
+  TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
@@ -68,6 +69,17 @@ type SampleDataColumn = {
 type LocalSampleData = {
   columns: SampleDataColumn[];
   rows: Record<string, SampleDataType>[];
+};
+
+const isFailedRowsSampleExpected = (testCaseResult?: TestCaseResult) => {
+  switch (testCaseResult?.testCaseStatus) {
+    case TestCaseStatus.Failed:
+      return true;
+    case TestCaseStatus.Success:
+      return (testCaseResult.failedRows ?? 0) > 0;
+    default:
+      return false;
+  }
 };
 
 const FailedTestCaseSampleData = ({
@@ -213,15 +225,17 @@ const FailedTestCaseSampleData = ({
     }
   };
 
-  // Failed-rows samples are only ever stored for a failing test case, so the
-  // fetch is pointless (and guaranteed to 404) for any other status. Gating
-  // here avoids the request entirely for passing/aborted/queued test cases.
-  const isTestCaseFailed =
-    testCaseData?.testCaseResult?.testCaseStatus === TestCaseStatus.Failed;
+  // Failed-rows samples are only stored for a run that found failed rows: a
+  // failing run, or a passing run that stayed within its failure threshold.
+  // Any other result is guaranteed to 404, so skip the request entirely.
+  // See ADR:2026-10-09-failed-rows-sample-follows-failed-rows-not-status.
+  const hasFailedRows = isFailedRowsSampleExpected(
+    testCaseData?.testCaseResult
+  );
 
   useEffect(() => {
     let cancelled = false;
-    if (hasViewSampleDataPermission && isTestCaseFailed) {
+    if (hasViewSampleDataPermission && hasFailedRows) {
       fetchFailedTestCaseSampleData(() => cancelled);
     } else {
       // Clear any previously loaded sample so it doesn't linger when the test
@@ -235,7 +249,7 @@ const FailedTestCaseSampleData = ({
     return () => {
       cancelled = true;
     };
-  }, [testCaseData?.id, hasViewSampleDataPermission, isTestCaseFailed]);
+  }, [testCaseData?.id, hasViewSampleDataPermission, hasFailedRows]);
 
   if (!hasViewSampleDataPermission) {
     return <></>;
