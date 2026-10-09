@@ -4125,7 +4125,6 @@
     "dq-threshold-preview-sampling-dynamic": "Medido na amostra de tamanho dinâmico com que esta tabela é perfilada.",
     "dq-threshold-preview-statistical": "Falha quando o valor medido fica fora de {{bound}}.",
     "dq-threshold-preview-statistical-deviation": "Falha quando o valor medido fica fora de {{bound}}, permitindo um desvio de {{amount}} (intervalo efetivo {{range}}).",
-    "dq-threshold-preview-unit-not-enforced": "Este teste compara o limite como uma contagem bruta de linhas, pelo que a unidade do limite não é aplicada.",
     "dq-threshold-preview-zero-bound": "Um desvio percentual em torno de um limite de 0 deixa esse limite em 0 — use um desvio absoluto.",
     "dq-unresolved-incidents-count": "<0>{{count}} incidente</0> não resolvido",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} incidentes</0> não resolvidos",
