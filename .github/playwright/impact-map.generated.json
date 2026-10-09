@@ -10965,6 +10965,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossarySettings.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/governance/marketplace/MarketplaceOverviewHeader/MarketplaceOverviewHeader.tsx"
       ],
       "specs": [
