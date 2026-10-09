@@ -16,8 +16,8 @@ import {
   RedoOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -139,7 +139,12 @@ export const CustomizablePageHeader = ({
             />
           </Typography>
         </div>
-        <Space>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           {showWidgetActions && (
             <Button
               data-testid="add-widget-button"
@@ -172,7 +177,7 @@ export const CustomizablePageHeader = ({
             icon={<CloseOutlined />}
             onClick={handleClose}
           />
-        </Space>
+        </Box>
       </div>
 
       <UnsavedChangesModal
