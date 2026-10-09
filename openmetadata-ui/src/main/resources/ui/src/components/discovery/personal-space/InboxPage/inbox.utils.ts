@@ -314,6 +314,11 @@ export enum ActivityGrouping {
 
 // The Type filter's options: the change panel's field labels, plus Other for
 // everything without one (lifecycle events, conversations).
+// An asset's 16px icon beside text: the design system's 1.3 stroke, not the
+// heavier 1.5 the shared entity icons draw with, so it matches the type.
+export const INBOX_ENTITY_ICON_CLASS =
+  'tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4 tw:[&_svg]:[stroke-width:1.3]';
+
 export const ACTIVITY_TYPE_OTHER = 'label.other';
 export const ACTIVITY_TYPE_KEYS = [
   ...new Set(compact(Object.values(CHANGE_LABEL_KEY))),

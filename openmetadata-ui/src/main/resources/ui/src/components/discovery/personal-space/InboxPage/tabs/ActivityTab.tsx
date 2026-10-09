@@ -48,6 +48,7 @@ import {
   getActivityDayLabel,
   getActivityTypeKey,
   InboxDateRange,
+  INBOX_ENTITY_ICON_CLASS,
 } from '../inbox.utils';
 import {
   getInboxItemId,
@@ -73,7 +74,7 @@ const AssetGroupIcon = ({ item }: { item: InboxActivityItem }) => {
   const type = getItemEntity(item)?.type;
 
   return type ? (
-    <span className="tw:flex tw:shrink-0 tw:items-center tw:text-fg-quaternary tw:[&_img]:size-4 tw:[&_svg]:size-4">
+    <span className={INBOX_ENTITY_ICON_CLASS}>
       {searchClassBase.getEntityIcon(type)}
     </span>
   ) : null;

@@ -82,6 +82,7 @@ import {
   getFeedSortTimestamp,
   isSameLocalDay,
   sendReaction,
+  INBOX_ENTITY_ICON_CLASS,
 } from '../inbox.utils';
 import { createThreadReply, useActivityReplies } from '../useActivityReplies';
 import { writeInboxReactions } from '../useInboxActivity';
@@ -570,7 +571,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             {target.leaf && (
               <Box align="center" className="tw:min-w-0 tw:gap-1.5">
                 {entity?.type && (
-                  <span className="tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4">
+                  <span className={INBOX_ENTITY_ICON_CLASS}>
                     {searchClassBase.getEntityIcon(entity.type)}
                   </span>
                 )}
