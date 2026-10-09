@@ -91,7 +91,7 @@ public class DatabaseServiceRepository
             repository.getFields("name,owners,tags,domains,extension"),
             databaseService.getFullyQualifiedName());
 
-    databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    databases.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user, recursive)
         .exportAllCsv(databases, recursive, callback);
   }
@@ -195,7 +195,7 @@ public class DatabaseServiceRepository
     /**
      * Add entity to CSV file with entity type
      */
-    public <E extends EntityInterface> void addEntityToCSV(
+    public <E extends EntityInterface<?>> void addEntityToCSV(
         CsvFile csvFile, E entity, String entityType) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());

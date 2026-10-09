@@ -11,13 +11,28 @@
  *  limitations under the License.
  */
 
-export const PROFILE_NAV_IDS = new Set([
+// Single source of truth for the profile modal's nav ids: the `ProfileNavId`
+// type and the runtime `PROFILE_NAV_IDS` Set are both derived from this tuple so
+// they can never drift (a missing id makes `parseHash` reject that tab, which
+// closes the modal and breaks the panel's hash sync).
+export const PROFILE_NAV_ID_LIST = [
   'profile',
   'permissions',
   'access-token',
   'my-connections',
   'access-control',
+  'bots',
   'custom-properties',
   'notification',
+  'members',
   'governance',
-]);
+  'billing',
+  'platform-settings',
+] as const;
+
+export type ProfileNavId = (typeof PROFILE_NAV_ID_LIST)[number];
+
+// Typed as a string set so `.has(arbitraryString)` (hash parsing) type-checks.
+export const PROFILE_NAV_IDS: ReadonlySet<string> = new Set(
+  PROFILE_NAV_ID_LIST
+);

@@ -13,7 +13,11 @@
 import { Page, Request } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
-import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
+import {
+  COMMON_TIER_TAG,
+  EXTENDED_TEST_TIMEOUT,
+  KEY_PROFILE_METRICS,
+} from '../../constant/common';
 import { DATA_CONSUMER_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -224,7 +228,7 @@ pickEntityMatrix(
       // minutes before retry kicks in. The warmup below eliminates the
       // main hang source (search-index freshness), but keep a tighter
       // ceiling as insurance.
-      test.setTimeout(120_000);
+      test.setTimeout(EXTENDED_TEST_TIMEOUT);
 
       const { afterAction, apiContext } = await getApiContext(page);
       const owner1Data = generateRandomUsername('PW_A_');
@@ -922,7 +926,9 @@ pickEntityMatrix(
             );
 
             // Should have at least one nested column link
-            await expect(nestedColumnLinks.first()).toBeVisible({
+            await expect(
+              nestedColumnLinks.filter({ visible: true })
+            ).not.toHaveCount(0, {
               timeout: 5000,
             });
 
@@ -1218,7 +1224,9 @@ pickEntityMatrix(
             );
 
             if ((await nestedColumnLinks.count()) > 0) {
-              await expect(nestedColumnLinks.first()).toBeVisible();
+              await expect(
+                nestedColumnLinks.filter({ visible: true })
+              ).not.toHaveCount(0);
 
               const linkCount = await nestedColumnLinks.count();
 
@@ -1883,12 +1891,9 @@ pickEntityMatrix(
                 testCaseCardsSection.locator('.test-case-card');
 
               await expect(failedCards).toHaveCount(1);
-
-              const failedCard = failedCards.first();
-
-              await expect(failedCard.locator('.test-case-name')).toContainText(
-                testCase2Name
-              );
+              await expect(
+                failedCards.locator('.test-case-name')
+              ).toContainText(testCase2Name);
             });
 
             await test.step('Filter by success and verify test case card', async () => {

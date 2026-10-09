@@ -22,7 +22,6 @@ import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
-  getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -31,6 +30,7 @@ import {
   searchAndClickOnOption,
   selectNullOption,
 } from '../../utils/explore';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -216,16 +216,20 @@ test('should search for empty or null filters', async ({ page }) => {
 test('should show correct count for tier filter options from aggregation', async ({
   page,
 }) => {
-  const { apiContext } = await getApiContext(page);
-  const res = await apiContext.get(
-    '/api/v1/search/query?q=&index=dataAsset&from=0&size=0&deleted=false'
-  );
-  const data = await res.json();
+  // Read the expected counts from the aggregation the dropdown itself renders:
+  // a separate API call is a second snapshot, and other workers tagging assets
+  // with a tier in between shift the counts.
+  const tierAggregation = waitForAggregation(page, {
+    field: 'tier.tagFQN',
+    value: null,
+  });
+  await page.getByTestId('search-dropdown-Tier').click();
+  const data = await (await tierAggregation).json();
+  await waitForAllLoadersToDisappear(page);
   const buckets: { key: string; doc_count: number }[] =
     data.aggregations['sterms#tier.tagFQN']?.buckets ?? [];
 
-  await page.getByTestId('search-dropdown-Tier').click();
-  await waitForAllLoadersToDisappear(page);
+  expect(buckets.length).toBeGreaterThan(0);
 
   for (const bucket of buckets) {
     await expect(
@@ -333,9 +337,10 @@ test('Filter by column entity type shows only column results', async ({
     .getByTestId('drop-down-menu')
     .getByTestId('tablecolumn');
 
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*tableColumn*'
-  );
+  const dataAssetDropdownRequest = waitForAggregation(page, {
+    field: 'entityType.keyword',
+    value: 'tableColumn',
+  });
 
   await page
     .getByTestId('drop-down-menu')
@@ -369,9 +374,10 @@ test.describe('Tier filter - aggregation-based options', () => {
     });
 
     await test.step('Search for tier with asset — it is visible in dropdown', async () => {
-      const searchRes = page.waitForResponse(
-        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'tier.tagFQN',
+        value: tier.responseData.fullyQualifiedName,
+      });
       await page
         .getByTestId('search-input')
         .fill(tier.responseData.fullyQualifiedName);
@@ -384,9 +390,10 @@ test.describe('Tier filter - aggregation-based options', () => {
 
     await test.step('Search for tier without asset — it is not visible in dropdown', async () => {
       await page.getByTestId('search-input').clear();
-      const searchRes = page.waitForResponse(
-        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'tier.tagFQN',
+        value: tierWithoutAsset.responseData.fullyQualifiedName,
+      });
       await page
         .getByTestId('search-input')
         .fill(tierWithoutAsset.responseData.fullyQualifiedName);
@@ -411,9 +418,10 @@ test.describe('Tier filter - aggregation-based options', () => {
       await page.getByTestId('search-dropdown-Tier').click();
       await waitForAllLoadersToDisappear(page);
 
-      const searchRes = page.waitForResponse(
-        `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*`
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'tier.tagFQN',
+        value: tier.responseData.fullyQualifiedName,
+      });
       await page
         .getByTestId('search-input')
         .fill(tier.responseData.fullyQualifiedName);
@@ -551,18 +559,20 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
     const domainName = domain.responseData.displayName as string;
 
     await test.step('Open Domains filter and wait for aggregate response', async () => {
-      const aggRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*'
-      );
+      const aggRes = waitForAggregation(page, {
+        field: 'domains.displayName.keyword',
+        value: null,
+      });
       await page.click('[data-testid="search-dropdown-Domains"]');
       await aggRes;
       await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Option label matches original casing, not lowercased bucket key', async () => {
-      const searchRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*'
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'domains.displayName.keyword',
+        value: domainName,
+      });
       await page.fill('[data-testid="search-input"]', domainName);
       await searchRes;
 
@@ -582,18 +592,20 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
     const tierFqn = tier.responseData.fullyQualifiedName as string;
 
     await test.step('Open Tier filter and wait for aggregate response', async () => {
-      const aggRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
-      );
+      const aggRes = waitForAggregation(page, {
+        field: 'tier.tagFQN',
+        value: null,
+      });
       await page.click('[data-testid="search-dropdown-Tier"]');
       await aggRes;
       await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Option label matches original FQN casing', async () => {
-      const searchRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'tier.tagFQN',
+        value: tierFqn,
+      });
       await page.fill('[data-testid="search-input"]', tierFqn);
       await searchRes;
 
@@ -614,9 +626,10 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
 
     await test.step('Open Tag filter and search for the tag', async () => {
       await page.click('[data-testid="search-dropdown-Tag"]');
-      const searchRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=tags.tagFQN*'
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'tags.tagFQN',
+        value: tagFqn,
+      });
       await page.fill('[data-testid="search-input"]', tagFqn);
       await searchRes;
     });
@@ -638,18 +651,20 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
       user.responseData.name) as string;
 
     await test.step('Open Owners filter and wait for aggregate response', async () => {
-      const aggRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*'
-      );
+      const aggRes = waitForAggregation(page, {
+        field: 'ownerDisplayName',
+        value: null,
+      });
       await page.click('[data-testid="search-dropdown-Owners"]');
       await aggRes;
       await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Option label matches original casing, not lowercased bucket key', async () => {
-      const searchRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=ownerDisplayName*'
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'ownerDisplayName',
+        value: ownerName,
+      });
       await page.fill('[data-testid="search-input"]', ownerName);
       await searchRes;
 
@@ -669,18 +684,20 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
       table.serviceResponseData.name) as string;
 
     await test.step('Open Service filter and wait for aggregate response', async () => {
-      const aggRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=service.displayName.keyword*'
-      );
+      const aggRes = waitForAggregation(page, {
+        field: 'service.displayName.keyword',
+        value: null,
+      });
       await page.click('[data-testid="search-dropdown-Service"]');
       await aggRes;
       await waitForAllLoadersToDisappear(page);
     });
 
     await test.step('Option label matches original casing', async () => {
-      const searchRes = page.waitForResponse(
-        '/api/v1/search/aggregate?index=dataAsset&field=service.displayName.keyword*'
-      );
+      const searchRes = waitForAggregation(page, {
+        field: 'service.displayName.keyword',
+        value: serviceName,
+      });
       await page.fill('[data-testid="search-input"]', serviceName);
       await searchRes;
 
@@ -787,7 +804,9 @@ test.describe('Metric search result highlight', () => {
       const highlightedSpan = displayNameHeader.locator(
         'span.text-highlighter'
       );
-      await expect(highlightedSpan.first()).toBeVisible();
+      await expect(highlightedSpan.filter({ visible: true })).not.toHaveCount(
+        0
+      );
 
       const fullText = await displayNameHeader.textContent();
       expect(fullText?.trim()).toBe(metric.entity.name);

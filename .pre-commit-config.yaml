@@ -79,11 +79,11 @@ repos:
         files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js)$
         require_serial: true
       - id: tw-deprecation-guard
-        name: Antd + Less deprecation guard (no new debt)
-        description: Fails if a change adds a new .less file or a new `import ... from 'antd'`. Existing usage is fine; use UntitledUI + Tailwind for new work.
+        name: Antd + Less + raw-SVG deprecation guard (no new debt)
+        description: Fails if a change adds a new .less file, a new `import ... from 'antd'`, a new assets/svg .svg file, or a new import from assets/svg. Existing usage is fine; use UntitledUI + Tailwind + @openmetadata/ui-core-components/icons for new work.
         entry: node openmetadata-ui/src/main/resources/ui/scripts/tw-deprecation-guard.js
         language: system
-        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js|less)$
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js|less|svg)$
         pass_filenames: false
         require_serial: true
       - id: core-components-i18n
@@ -93,3 +93,10 @@ repos:
         language: system
         files: ^openmetadata-ui-core-components/src/main/resources/ui/src/.*\.(ts|tsx|json)$
         pass_filenames: false
+      - id: decision-records
+        name: Decision records (docs/decisions/ format, ADR citations)
+        description: Fails if a record under docs/decisions/ breaks the format, or an ADR citation or docs/decisions/ path in any tracked file resolves to no record. See docs/decisions/README.md.
+        entry: python3 scripts/harness/check_decision_records.py
+        language: system
+        pass_filenames: false
+        require_serial: true

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { suppressWelcomeScreen } from './common';
 import { setToken } from './tokenStorage';
 
@@ -154,7 +155,7 @@ export const signInViaApi = async (
   await expect(
     page.getByTestId('left-sidebar').or(page.getByTestId('ask-sidebar')),
     `API sign-in as "${credentials.email}" did not produce a signed-in session — neither the Classic shell (left-sidebar) nor the AI shell (ask-sidebar) rendered. The token was accepted by /api/v1/auth/login but the app did not pick it up from app_state.primary; check utils/tokenStorage.ts against the app's SwTokenStorageUtils.`
-  ).toBeAttached({ timeout: 30_000 });
+  ).toBeAttached({ timeout: ACTION_TIMEOUT });
 
   return accessToken;
 };

@@ -19,7 +19,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_TEST_SUITES;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
@@ -27,7 +26,6 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -63,7 +61,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValidationRule;
@@ -78,7 +75,6 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -169,6 +165,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         UPDATE_FIELDS);
     supportsSearch = true;
     TestCaseBodyTextContributor.INSTANCE.register();
+    onlyReviewersDeleteInReview = true;
+    approvalTaskReviewsEntityStatus = true;
     // Add the canonical name for test case results
     // As test case result` does not have its own repository
     EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(
@@ -835,7 +833,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public EntityInterface getParentEntity(TestCase entity, String fields) {
+  public EntityInterface<?> getParentEntity(TestCase entity, String fields) {
     EntityReference testSuite = entity.getTestSuite();
 
     if (testSuite == null) {
@@ -912,11 +910,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    */
   EntityReference getOrCreateTestSuite(TestCase test) {
     var entityLink = EntityLink.parse(test.getEntityLink());
-    EntityInterface tableEntity = Entity.getEntity(entityLink, "", ALL);
+    EntityInterface<?> tableEntity = Entity.getEntity(entityLink, "", ALL);
     return getOrCreateTestSuite(test, tableEntity);
   }
 
-  private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface tableEntity) {
+  private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface<?> tableEntity) {
     try {
       return getTestSuite(tableEntity.getId(), TEST_SUITE, TABLE, Direction.TO);
     } catch (EntityNotFoundException e) {
@@ -1962,13 +1960,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(null, ENTITY_DELETED);
   }
 
-  @Override
-  protected void preDelete(TestCase entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
-    }
-  }
-
   public class TestUpdater extends EntityUpdater {
     public TestUpdater(TestCase original, TestCase updated, Operation operation) {
       super(original, updated, operation);
@@ -2225,70 +2216,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public void postUpdate(TestCase original, TestCase updated) {
     hydrateTestSuiteFieldsForSearch(updated);
     super.postUpdate(original, updated);
-    if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
-      if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Approved the test case");
-      } else if (EntityStatus.REJECTED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Rejected the test case");
-      }
-    }
-
-    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
-    // will be a Task created.
-    // This if handles this case scenario, by guaranteeing that we close any Approval Task if the
-    // TestCase goes back to DRAFT.
-    if (!EntityStatus.DRAFT.equals(original.getEntityStatus())
-        && EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
-      try {
-        closeApprovalTask(updated, "Closed due to test case going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
-    }
   }
 
   private void hydrateTestSuiteFieldsForSearch(TestCase updated) {
     setFieldsInternal(updated, getFields(TEST_SUITE_FIELD + "," + Entity.FIELD_TEST_SUITES));
-  }
-
-  private void closeApprovalTask(TestCase entity, String comment) {
-    if (entity.getUpdatedBy() == null) {
-      LOG.debug(
-          "Skipping task closure for test case {} - updatedBy is null",
-          entity.getFullyQualifiedName());
-      return;
-    }
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  public static void checkUpdatedByReviewer(TestCase testCase, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = testCase.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
-    }
   }
 
   @Override
@@ -2424,8 +2355,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     private final TestSuite targetBundleSuite;
     private final List<UUID> importedTestCaseIds = new ArrayList<>();
     private final Map<String, UUID> importedTestSuiteIds = new HashMap<>();
-    private final EntityRepository<EntityInterface> versioningRepo =
-        (EntityRepository<EntityInterface>) Entity.getEntityRepository(TEST_SUITE);
+    private final EntityRepository<EntityInterface<?>> versioningRepo =
+        (EntityRepository<EntityInterface<?>>) Entity.getEntityRepository(TEST_SUITE);
     private final SubjectContext subjectContext;
 
     TestCaseCsv(String user, TestSuite targetBundleSuite) {
@@ -2655,7 +2586,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String entityLink = null;
       try {
         String candidate = convertFQNToEntityLink(entityFQN);
-        EntityInterface target =
+        EntityInterface<?> target =
             Entity.getEntity(EntityLink.parse(candidate), FIELD_DOMAINS, Include.NON_DELETED);
         if (subjectContext.hasDomains(target.getDomains())) {
           entityLink = candidate;

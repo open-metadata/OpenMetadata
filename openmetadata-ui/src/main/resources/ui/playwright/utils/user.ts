@@ -12,6 +12,7 @@
  */
 
 import { Browser, expect, Page } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../constant/common';
 import {
   GLOBAL_SETTING_PERMISSIONS,
   SETTING_PAGE_ENTITY_PERMISSION,
@@ -38,6 +39,7 @@ import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
 import { getCellByName } from './scopedLocators';
+import { waitForAggregation } from './searchAggregation';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -103,8 +105,8 @@ export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
     page
       .locator('[data-testid="user-profile"] [data-testid="edit-user-persona"]')
-      .first()
-  ).toBeVisible();
+      .filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await expect(page.locator('[data-testid="edit-teams-button"]')).toBeVisible();
   await expect(page.locator('[data-testid="edit-roles-button"]')).toBeVisible();
@@ -180,11 +182,7 @@ export const softDeleteUserProfilePage = async (
   });
   await page.click('[data-testid="user-profile-manage-btn"]');
 
-  await page.locator('.ant-popover:not(.ant-popover-hidden)').waitFor({
-    state: 'visible',
-  });
-
-  await page.getByText('Delete Profile').click();
+  await page.getByRole('dialog').getByText('Delete Profile').click();
 
   await page.getByTestId('delete-modal').waitFor();
 
@@ -624,9 +622,10 @@ export const checkStewardServicesPermissions = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-  );
+  const dataAssetDropdownRequest = waitForAggregation(page, {
+    field: 'entityType.keyword',
+    value: 'table',
+  });
 
   await page
     .getByTestId('drop-down-menu')
@@ -734,16 +733,15 @@ export const addUser = async (
   const rolesCombobox = page
     .getByTestId('roles-dropdown')
     .getByRole('combobox');
-  await expect(rolesCombobox).toBeVisible({ timeout: 120000 });
+  await expect(rolesCombobox).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await rolesCombobox.click();
   const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
   await rolesCombobox.fill(role);
   await rolesSearchResponse;
   const roleOption = page
     .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) })
-    .first();
-  await expect(roleOption).toBeVisible({ timeout: 120000 });
+    .filter({ hasText: new RegExp(`^${role}$`) });
+  await expect(roleOption).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await roleOption.click();
   await clickOutside(page);
 
@@ -755,14 +753,11 @@ export const addUser = async (
       .getByTestId('personas-dropdown')
       .getByRole('combobox')
       .fill(personas[0]);
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
+    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
     const personaOption = page
       .locator('.ant-select-dropdown:visible')
       .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] })
-      .first();
+      .filter({ hasText: personas[0] });
     await personaOption.waitFor({ state: 'visible' });
     await personaOption.click();
     await clickOutside(page);

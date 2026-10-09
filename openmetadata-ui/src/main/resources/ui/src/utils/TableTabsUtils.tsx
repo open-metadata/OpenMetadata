@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -448,7 +448,12 @@ export const getTableDetailPageBaseTabs = ({
             get(tableDetails, 'dataModel.rawSql', '')
           }
           title={
-            <Space className="p-y-xss" size="small">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal p-y-xss"
+              gap={2}
+              itemClassName="layout-space-item">
               <div>
                 <Typography color="secondary">
                   {`${t('label.dbt-source-project')}: `}
@@ -472,7 +477,7 @@ export const getTableDetailPageBaseTabs = ({
                   {tableDetails?.dataModel?.path}
                 </Typography>
               </div>
-            </Space>
+            </Box>
           }
         />
       ),

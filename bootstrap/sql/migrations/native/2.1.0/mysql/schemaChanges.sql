@@ -462,7 +462,7 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- Announcement type: stored generated column so the list API can filter by type. Rows written
--- before the field existed have no $.type and read back as the Information default.
+-- before the field existed have no $.type and read back as the Notice default.
 SET @announcement_type_column_ddl = (
   SELECT IF(
     EXISTS (
@@ -473,7 +473,7 @@ SET @announcement_type_column_ddl = (
         AND column_name = 'type'
     ),
     'SELECT 1',
-    'ALTER TABLE announcement_entity ADD COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Information'')) STORED'
+    'ALTER TABLE announcement_entity ADD COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Notice'')) STORED'
   )
 );
 PREPARE announcement_type_column_stmt FROM @announcement_type_column_ddl;
@@ -534,6 +534,128 @@ CREATE TABLE IF NOT EXISTS sso_test_login_session (
     INDEX idx_sso_test_login_session_admin (admin_principal, credentials_submitted_at),
     INDEX idx_sso_test_login_session_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
+-- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
+-- version is reprocessed statement-by-statement against SERVER_MIGRATION_SQL_LOGS, and the
+-- ADD COLUMN above is both unchanged (so it never re-runs) and guarded on the column's existence
+-- (so it would be a no-op if it did). Any database that already applied 2.1.0 therefore still
+-- holds the old names, and must be rewritten here.
+UPDATE announcement_entity
+SET json = JSON_SET(json, '$.type', 'Notice')
+WHERE json_unquote(json_extract(json, '$.type')) = 'Information';
+
+UPDATE announcement_entity
+SET json = JSON_SET(json, '$.type', 'Critical')
+WHERE json_unquote(json_extract(json, '$.type')) = 'Issue';
+
+-- Rows predating #33980 carry no $.type at all and read back through the column's COALESCE
+-- default, so the default has to move with the enum or `?type=Notice` never matches them.
+SET @announcement_type_default_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND column_name = 'type'
+        AND generation_expression LIKE '%Information%'
+    ),
+    'ALTER TABLE announcement_entity MODIFY COLUMN type varchar(32) GENERATED ALWAYS AS (COALESCE(json_unquote(json_extract(`json`, ''$.type'')), ''Notice'')) STORED',
+    'SELECT 1'
+  )
+);
+PREPARE announcement_type_default_stmt FROM @announcement_type_default_ddl;
+EXECUTE announcement_type_default_stmt;
+DEALLOCATE PREPARE announcement_type_default_stmt;
+
+-- Direct-child container listings (issue #22530). "Children of <fqn>" was expressed as
+-- `fqnHash LIKE '<parent>.%' AND fqnHash NOT LIKE '<parent>.%.%'`. Neither predicate is an
+-- indexable equality, so with the listing's `ORDER BY name, id LIMIT n` the optimizer prefers
+-- idx_storage_container_entity_deleted_name_id -- which already delivers that order -- and
+-- scans container rows until the page fills. A container near the root of a deep tree has few
+-- direct children, so the scan runs to completion: cost is O(containers in the deployment),
+-- not O(direct children). Measured on a 14-level, 10k-container S3 tree whose root has one
+-- direct child: 10,376 rows scanned / 90ms, rising to 50,376 rows / 169ms once unrelated
+-- containers were added -- while the answer stayed a single row.
+--
+-- parentFqnHash materialises the fqnHash prefix above the last segment, turning the listing
+-- into an index equality. Derived by stripping the final '.'-separated segment rather than a
+-- fixed 33-character suffix, so it holds regardless of hash width. VIRTUAL keeps the ALTER
+-- metadata-only (no table rebuild); the index below materialises the value.
+--
+-- Both statements are guarded so a re-run is a no-op, like the rest of this file. The
+-- prepared-statement names are unique on purpose: the runner records each statement by
+-- (version, hash of its text) and skips text it has already run, so a second block reusing
+-- `PREPARE stmt FROM @ddl; EXECUTE stmt;` would be skipped rather than executed.
+SET @container_parent_fqn_hash_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'storage_container_entity'
+        AND column_name = 'parentFqnHash'
+    ),
+    'SELECT 1',
+    'ALTER TABLE storage_container_entity ADD COLUMN parentFqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin GENERATED ALWAYS AS (CASE WHEN LOCATE(''.'', REVERSE(fqnHash)) = 0 THEN '''' ELSE LEFT(fqnHash, CHAR_LENGTH(fqnHash) - LOCATE(''.'', REVERSE(fqnHash))) END) VIRTUAL'
+  )
+);
+PREPARE container_parent_fqn_hash_column_stmt FROM @container_parent_fqn_hash_column_ddl;
+EXECUTE container_parent_fqn_hash_column_stmt;
+DEALLOCATE PREPARE container_parent_fqn_hash_column_stmt;
+
+-- (parentFqnHash, deleted) answers the filter; (name, id) supplies the listing's sort order,
+-- so the common non-deleted page needs neither a filesort nor a row lookup per candidate.
+-- Column order deviates from the table_entity/stored_procedure_entity precedent in 1.10.0,
+-- which leads with `deleted`: the container listing's `include` is tri-state, and on
+-- include=ALL there is no `deleted` predicate at all, which would strand a deleted-leading
+-- index. Leading with parentFqnHash keeps the equality usable in all three include modes.
+--
+-- No CONCURRENTLY equivalent is needed here (and MySQL has none): InnoDB builds a secondary
+-- index with ALGORITHM=INPLACE and permits concurrent DML, and the VIRTUAL column add above
+-- is metadata-only, so neither statement blocks traffic. The PostgreSQL companion has to
+-- build CONCURRENTLY and still pays an ACCESS EXCLUSIVE table rewrite for its STORED column.
+SET @container_parent_children_index_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'storage_container_entity'
+        AND index_name = 'idx_storage_container_entity_parent_children'
+    ),
+    'SELECT 1',
+    'ALTER TABLE storage_container_entity ADD INDEX idx_storage_container_entity_parent_children (parentFqnHash, deleted, name, id)'
+  )
+);
+PREPARE container_parent_children_index_stmt FROM @container_parent_children_index_ddl;
+EXECUTE container_parent_children_index_stmt;
+DEALLOCATE PREPARE container_parent_children_index_stmt;
+
+-- Announcement status is derived from startTime/endTime on every read and the ?status= filter
+-- compares the window directly. Nothing rewrote the stored value when the window opened or
+-- closed, so it only went stale: drop the column (its index goes with it) and the stored value.
+SET @announcement_status_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND column_name = 'status'
+    ),
+    'ALTER TABLE announcement_entity DROP COLUMN status',
+    'SELECT 1'
+  )
+);
+PREPARE announcement_status_column_stmt FROM @announcement_status_column_ddl;
+EXECUTE announcement_status_column_stmt;
+DEALLOCATE PREPARE announcement_status_column_stmt;
+
+UPDATE announcement_entity
+SET json = JSON_REMOVE(json, '$.status')
+WHERE JSON_EXTRACT(json, '$.status') IS NOT NULL;
 
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.

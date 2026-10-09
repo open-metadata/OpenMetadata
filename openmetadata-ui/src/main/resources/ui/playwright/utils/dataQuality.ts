@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, Response } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage, uuid } from './common';
@@ -420,11 +421,10 @@ export const selectTestCasesByCheckbox = async (
   const rows = page.locator(
     '[data-testid="test-case-table"] tbody tr[data-key]'
   );
-  await expect(rows.first()).toBeVisible();
+  await expect(rows.filter({ visible: true })).not.toHaveCount(0);
 
-  for (let i = 0; i < count; i++) {
-    const checkboxLabel = rows.nth(i).locator('label[slot="selection"]');
-    await checkboxLabel.click();
+  for (const row of (await rows.all()).slice(0, count)) {
+    await row.locator('label[slot="selection"]').click();
   }
 };
 
@@ -638,7 +638,7 @@ export const verifyBundleSuitePageLoaded = async (
     .getByRole('row');
 
   await expect(testCaseRows).toHaveCount(expectedTestCaseCount, {
-    timeout: 30000,
+    timeout: ACTION_TIMEOUT,
   });
 };
 

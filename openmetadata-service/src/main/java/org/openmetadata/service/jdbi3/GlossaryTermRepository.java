@@ -26,9 +26,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
@@ -91,7 +89,6 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetRealization;
@@ -143,7 +140,6 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.GlossaryTermAs
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -198,6 +194,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
     supportsSearch = true;
     renameAllowed = true;
+    approvalTaskReviewsEntityStatus = true;
     fieldFetchers.put("parent", this::fetchAndSetParentOrGlossary);
     fieldFetchers.put("relatedTerms", this::fetchAndSetRelatedTerms);
     fieldFetchers.put("usageCount", this::fetchAndSetUsageCount);
@@ -819,7 +816,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   protected void applyInheritance(
-      GlossaryTerm glossaryTerm, Fields fields, EntityInterface parent) {
+      GlossaryTerm glossaryTerm, Fields fields, EntityInterface<?> parent) {
     inheritOwners(glossaryTerm, fields, parent);
     inheritDomains(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
@@ -831,7 +828,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
    * parent chain. A root term's parent is its glossary, which declares no attributes, so its
    * effective set is exactly what it declares itself.
    */
-  private void inheritAttributes(GlossaryTerm term, Fields fields, EntityInterface parent) {
+  private void inheritAttributes(GlossaryTerm term, Fields fields, EntityInterface<?> parent) {
     if (!fields.contains(FIELD_EFFECTIVE_ATTRIBUTES)) {
       return;
     }
@@ -1072,35 +1069,29 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return null;
   }
 
+  /**
+   * A term whose parent term or glossary has reviewers starts in Draft until they approve it;
+   * without reviewers there is nothing to approve and it starts Approved. Applied to every new term
+   * whatever stage its request asked for, so creating a term cannot skip the review.
+   */
   @Override
-  protected void setDefaultStatus(GlossaryTerm entity, boolean update) {
-    // If the entityStatus is set as Unprocessed then it is the default value from the POJO
-    if (!update
-        || entity.getEntityStatus() == null
-        || entity.getEntityStatus() == EntityStatus.UNPROCESSED) {
-      // Get reviewers from parent term or glossary to determine appropriate default status
-      List<EntityReference> parentReviewers = null;
+  protected EntityStatus initialEntityStatus(GlossaryTerm entity) {
+    return nullOrEmpty(inheritedReviewers(entity)) ? EntityStatus.APPROVED : EntityStatus.DRAFT;
+  }
 
-      // Get parent reviewers if parent term exists
-      if (entity.getParent() != null) {
-        GlossaryTerm parentTerm =
-            Entity.getEntity(
-                entity.getParent().withType(GLOSSARY_TERM), "reviewers", Include.NON_DELETED);
-        parentReviewers = parentTerm.getReviewers();
-      }
-
-      // Get glossary reviewers if no parent reviewers
-      if (parentReviewers == null && entity.getGlossary() != null) {
-        Glossary glossary =
-            Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
-        parentReviewers = glossary.getReviewers();
-      }
-
-      // If parentTerm or glossary has reviewers set, the glossary term can only be created in
-      // `Draft` mode, otherwise use `Approved`
-      entity.setEntityStatus(
-          !nullOrEmpty(parentReviewers) ? EntityStatus.DRAFT : EntityStatus.APPROVED);
+  private List<EntityReference> inheritedReviewers(GlossaryTerm term) {
+    List<EntityReference> reviewers = null;
+    if (term.getParent() != null) {
+      GlossaryTerm parentTerm =
+          Entity.getEntity(
+              term.getParent().withType(GLOSSARY_TERM), "reviewers", Include.NON_DELETED);
+      reviewers = parentTerm.getReviewers();
     }
+    if (reviewers == null && term.getGlossary() != null) {
+      Glossary glossary = Entity.getEntity(term.getGlossary(), "reviewers", Include.NON_DELETED);
+      reviewers = glossary.getReviewers();
+    }
+    return reviewers;
   }
 
   @Override
@@ -1876,7 +1867,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
     EntityRepository<?> glossaryRepository = Entity.getEntityRepository(Entity.GLOSSARY);
-    EntityInterface glossary =
+    EntityInterface<?> glossary =
         glossaryRepository.getByName(
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
@@ -1919,7 +1910,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
 
       try {
@@ -2212,7 +2203,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
       // Skip the destructive tag_usage delete + ES update on dryRun so the preview
@@ -2312,31 +2303,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
-    super.postUpdate(original, updated);
-    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
-      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
-        closeApprovalTask(updated, "Approved the glossary term");
-      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
-        closeApprovalTask(updated, "Rejected the glossary term");
-      }
-    }
-
-    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
-    // will be a Task created.
-    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
-    // Glossary Term goes back to DRAFT.
-    if (original.getEntityStatus() != EntityStatus.DRAFT
-        && updated.getEntityStatus() == EntityStatus.DRAFT) {
-      try {
-        closeApprovalTask(updated, "Closed due to glossary term going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
-    }
-  }
-
-  @Override
   protected void postDelete(GlossaryTerm entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     // Cleanup all the tag labels using this glossary term
@@ -2356,14 +2322,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public EntityInterface getParentEntity(GlossaryTerm entity, String fields) {
+  public EntityInterface<?> getParentEntity(GlossaryTerm entity, String fields) {
     return entity.getParent() != null
         ? Entity.getEntity(entity.getParent(), fields, Include.ALL)
         : Entity.getEntity(entity.getGlossary(), fields, Include.ALL);
   }
 
-  public List<EntityInterface> getParentEntities(List<GlossaryTerm> entities, String fields) {
-    List<EntityInterface> result = new ArrayList<>();
+  public List<EntityInterface<?>> getParentEntities(List<GlossaryTerm> entities, String fields) {
+    List<EntityInterface<?>> result = new ArrayList<>();
     if (CollectionUtils.isEmpty(entities)) {
       return result;
     }
@@ -2465,40 +2431,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         currentParentId = parentRelationships.getFirst().getId();
       }
     }
-  }
-
-  public static void checkUpdatedByReviewer(GlossaryTerm term, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = term.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
-    }
-  }
-
-  private void closeApprovalTask(GlossaryTerm entity, String comment) {
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   private void updateAssetIndexes(String oldFqn, String newFqn) {
@@ -3626,7 +3558,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     List<GlossaryTerm> terms = listAllForCSV(fields, glossaryTerm.getFullyQualifiedName());
 
-    terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    terms.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }
 

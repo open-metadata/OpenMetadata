@@ -139,6 +139,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final String FORCED_REAUTHENTICATION_MAX_AGE = "0";
 
   private static final String MCP_CALLBACK_PATH = "/mcp/callback";
+  private static final String AUTH_CALLBACK_PATH = "/auth/callback";
+  private static final String CALLBACK_SERVLET_PATH = "/callback";
+  private static final String SIGNIN_PATH = "/signin";
+  private static final String LOGOUT_PATH = "/logout";
 
   static final String SESSION_REVOKED_DURING_REFRESH = "Session revoked during refresh";
 
@@ -556,7 +560,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         // consumed). A 500 here strands the browser in a login loop; getPendingSession has
         // already cleared the stale cookie, so route the user to interactive signin instead.
         LOG.warn("No pending session found for callback, redirecting to signin");
-        resp.sendRedirect(serverUrl + "/signin");
+        resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
         return;
       }
       UserSession pendingSession = maybePendingSession.get();
@@ -576,7 +580,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         String errorCode = authenticationErrorResponse.getErrorObject().getCode();
         if (SILENT_AUTH_ERRORS.contains(errorCode)) {
           LOG.warn("Silent auth not possible (error={}), redirecting to signin", errorCode);
-          resp.sendRedirect(serverUrl + "/signin");
+          resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
           return;
         }
         LOG.error(
@@ -699,7 +703,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         }
       }
       sessionService.revokeSession(httpServletRequest, httpServletResponse);
-      httpServletResponse.sendRedirect(serverUrl + "/logout");
+      httpServletResponse.sendRedirect(deploymentUrl(LOGOUT_PATH));
     } catch (Exception ex) {
       LOG.error("[Auth Logout] Error while performing logout", ex);
     }
@@ -1366,20 +1370,71 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return (OIDCTokenResponse) response;
   }
 
-  private String requireRedirectUri(String redirectUri) {
+  /**
+   * Redirect targets a login round-trip may land on.
+   *
+   * <p>The browser asks to land on {@code <its own origin>/auth/callback}. Besides the {@code
+   * serverUrl} entries, that landing page is trusted on the host of the configured OIDC callback
+   * URL: it has to be right for login to work at all, since the identity provider rejects any other
+   * {@code redirect_uri}, while {@code serverUrl} is routinely left at its localhost default (issue
+   * #26311). Nothing is read from the request, so no header can add a trusted target.
+   */
+  private Set<String> trustedRedirectUris() {
     Set<String> trusted =
         trustedRedirects(
             authenticationConfiguration.getCallbackUrl(),
-            serverUrl + "/auth/callback",
-            serverUrl + "/mcp/callback");
+            serverUrl + AUTH_CALLBACK_PATH,
+            serverUrl + MCP_CALLBACK_PATH,
+            landingPageOnCallbackHost());
     trusted.addAll(listOrEmpty(authenticationConfiguration.getAdditionalTrustedRedirectUris()));
-    return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    return trusted;
+  }
+
+  private String landingPageOnCallbackHost() {
+    String callbackOrigin = SecurityUtil.originOf(client.getCallbackUrl());
+    return callbackOrigin == null ? null : callbackOrigin + AUTH_CALLBACK_PATH;
+  }
+
+  private String requireRedirectUri(String redirectUri) {
+    Set<String> trusted = trustedRedirectUris();
+    try {
+      return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    } catch (IllegalArgumentException e) {
+      // Without the candidate set on the wire-facing 400 this is undiagnosable from the outside.
+      LOG.warn(
+          "Rejected login redirect URI [{}] - trusted targets are {}: {}",
+          redirectUri,
+          trusted,
+          e.getMessage());
+      throw e;
+    }
   }
 
   private String requireRedirectUriOrDefault(String redirectUri) {
     String targetRedirectUri =
-        nullOrEmpty(redirectUri) ? serverUrl + "/auth/callback" : redirectUri;
+        nullOrEmpty(redirectUri) ? serverUrl + AUTH_CALLBACK_PATH : redirectUri;
     return requireRedirectUri(targetRedirectUri);
+  }
+
+  /**
+   * {@code path} under the deployment's base URL, taken from the configured OIDC callback URL minus
+   * its trailing {@code /callback} for the same reason the landing page is trusted on its host: it
+   * has to be right for login to work, while {@code serverUrl} may be stale (#26311). A base path
+   * survives, as it would in {@code serverUrl}; a callback URL that is not the callback servlet's
+   * keeps {@code serverUrl}.
+   */
+  private String deploymentUrl(String path) {
+    String callbackBaseUrl = baseUrlOf(client.getCallbackUrl());
+    return (callbackBaseUrl == null ? serverUrl : callbackBaseUrl) + path;
+  }
+
+  private static String baseUrlOf(String callbackUrl) {
+    String origin = SecurityUtil.originOf(callbackUrl);
+    String path = origin == null ? null : URI.create(callbackUrl.trim()).getPath();
+    boolean isCallbackServletUrl = path != null && path.endsWith(CALLBACK_SERVLET_PATH);
+    return isCallbackServletUrl
+        ? origin + path.substring(0, path.length() - CALLBACK_SERVLET_PATH.length())
+        : null;
   }
 
   private User getSessionUser(UserSession session) {

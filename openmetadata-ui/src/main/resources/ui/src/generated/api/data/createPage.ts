@@ -27,7 +27,7 @@ export interface CreatePage {
      */
     domains?: string[];
     /**
-     * Status of this Knowledge Page (Draft, In Review, Approved, Rejected).
+     * Lifecycle stage of this Knowledge Page. When omitted, the page starts in Draft.
      */
     entityStatus?: EntityStatus;
     /**
@@ -65,10 +65,12 @@ export interface CreatePage {
 }
 
 /**
- * Status of this Knowledge Page (Draft, In Review, Approved, Rejected).
+ * Lifecycle stage of this Knowledge Page. When omitted, the page starts in Draft.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",

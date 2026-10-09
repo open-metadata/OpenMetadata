@@ -15,9 +15,11 @@ import test, {
   expect,
   Locator,
   Page,
+  Response,
 } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { LONG_DESCRIPTION_END_TEXT } from '../constant/domain';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
@@ -61,6 +63,7 @@ import {
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
+import { waitForSearchIndexed } from './polling';
 import { sidebarClick } from './sidebar';
 import { waitForResponseWithStatus } from './waitHelpers';
 
@@ -68,8 +71,7 @@ const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
   // This ensures search debounce completed and results are stable
   try {
-    await page.getByTestId('loader').first().waitFor({
-      state: 'attached',
+    await expect(page.getByTestId('loader')).not.toHaveCount(0, {
       timeout: 999,
     });
     await waitForAllLoadersToDisappear(page);
@@ -2014,7 +2016,7 @@ export const verifyPortCounts = async (
         };
       },
       {
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       }
     )
     .toEqual({
@@ -2145,7 +2147,9 @@ export const renameDomain = async (page: Page, newName: string) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('rename-button-title').click();
 
-  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(
+    page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+  ).toBeVisible();
 
   await page.locator('#name').clear();
   await page.locator('#name').fill(newName);
@@ -2169,6 +2173,21 @@ export const renameDomain = async (page: Page, newName: string) => {
   await domainRes;
 };
 
+const SEARCH_QUERY_PATH = '/api/v1/search/query';
+
+/** `q` with ES escaping stripped, so it compares against the term the test typed. */
+const unescaped = (value: string | null): string =>
+  (value ?? '').replaceAll('\\', '');
+
+/** Query params of a `/search/query` response, or undefined if it is a different call. */
+const searchQueryParams = (response: Response): URLSearchParams | undefined => {
+  const url = new URL(response.url());
+
+  return url.pathname.endsWith(SEARCH_QUERY_PATH)
+    ? url.searchParams
+    : undefined;
+};
+
 /**
  * Selects a domain from the navbar dropdown.
  * Clicks the domain dropdown, searches for the domain, and selects it.
@@ -2184,17 +2203,68 @@ export const selectDomainFromNavbar = async (
   await domainDropdown.click();
   await domainSearch.waitFor({ state: 'visible' });
 
+  // Match the complete term so only the last keystroke's response resolves.
+  const domainSearchResponse = page.waitForResponse(
+    (response) => {
+      const params = searchQueryParams(response);
+
+      return (
+        params?.get('index')?.includes('domain') === true &&
+        unescaped(params.get('q')).includes(searchTerm)
+      );
+    },
+    { timeout: ACTION_TIMEOUT }
+  );
+
   await domainSearch.click();
   await page.keyboard.press('Control+a');
   await domainSearch.pressSequentially(searchTerm);
+  await domainSearchResponse;
 
-  await page.getByTestId(`tree-node-${domain.fullyQualifiedName}`).click();
+  const domainNode = page.getByTestId(`tree-node-${domain.fullyQualifiedName}`);
+  await domainNode.waitFor({ state: 'visible' });
+  await domainNode.click();
+
+  // The label confirms the domain filter applied.
+  await expect(domainDropdown).toContainText(searchTerm);
   await waitForAllLoadersToDisappear(page);
 };
 
-/**
- * Searches for an entity in the explore page and verifies it is visible.
- */
+/** Runs one Explore search and returns the FQNs it matched. */
+const runExploreSearch = async (page: Page, searchTerm: string) => {
+  const searchBox = page.getByTestId('searchBox');
+  const searchResponse = page.waitForResponse(
+    (response) => {
+      const params = searchQueryParams(response);
+
+      if (!params || response.status() !== 200) {
+        return false;
+      }
+
+      // `track_total_hits` is on the Explore results request only, not the navbar suggestions query.
+      return (
+        unescaped(params.get('q')).includes(searchTerm) &&
+        params.get('track_total_hits') === 'true'
+      );
+    },
+    { timeout: ACTION_TIMEOUT }
+  );
+
+  await searchBox.fill(searchTerm);
+  await searchBox.press('Enter');
+  const response = await searchResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  const body = await response.json();
+
+  return (
+    (body?.hits?.hits ?? []) as { _source?: { fullyQualifiedName?: string } }[]
+  )
+    .map((hit) => hit._source?.fullyQualifiedName)
+    .filter((fqn): fqn is string => Boolean(fqn));
+};
+
+/** Searches Explore and expects the entity's card. */
 export const searchAndExpectEntityVisible = async (
   page: Page,
   entity: {
@@ -2214,23 +2284,12 @@ export const searchAndExpectEntityVisible = async (
   const fqn = entity.entityResponseData.fullyQualifiedName;
   const card = page.locator(`[data-testid="table-data-card_${fqn}"]`);
 
-  await expect
-    .poll(
-      async () => {
-        await page.getByTestId('searchBox').fill(name);
-        await page.getByTestId('searchBox').press('Enter');
-        await waitForAllLoadersToDisappear(page);
+  await runExploreSearch(page, name);
 
-        return await card.isVisible().catch(() => false);
-      },
-      { timeout: timeout ?? 30_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toBe(true);
+  await expect(card).toBeVisible({ timeout: timeout ?? 15_000 });
 };
 
-/**
- * Searches for an entity in the explore page and verifies it is NOT visible.
- */
+/** Searches Explore and expects no card, after waiting for the entity to be indexed. */
 export const searchAndExpectEntityNotVisible = async (
   page: Page,
   entity: {
@@ -2241,6 +2300,18 @@ export const searchAndExpectEntityNotVisible = async (
     };
   }
 ) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      entity.entityResponseData.fullyQualifiedName,
+      'all'
+    );
+  } finally {
+    await afterAction();
+  }
+
   const name = get(
     entity,
     'entityResponseData.displayName',
@@ -2249,32 +2320,34 @@ export const searchAndExpectEntityNotVisible = async (
   const fqn = entity.entityResponseData.fullyQualifiedName;
   const card = page.locator(`[data-testid="table-data-card_${fqn}"]`);
 
-  await expect
-    .poll(
-      async () => {
-        await page.getByTestId('searchBox').fill(name);
-        await page.getByTestId('searchBox').press('Enter');
-        await waitForAllLoadersToDisappear(page);
+  const hitFqns = await runExploreSearch(page, name);
 
-        return await card.isVisible().catch(() => false);
-      },
-      { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toBe(false);
+  // Check the response too, not just the rendered list.
+  expect(hitFqns).not.toContain(fqn);
+  await expect(card).toHaveCount(0);
 };
 
-/**
- * Assigns a domain to an entity via API patch.
- */
+/** `query_filter` matching a single domain by exact FQN. */
+export const domainQueryFilter = (domainFqn: string) =>
+  JSON.stringify({
+    query: {
+      bool: {
+        must: [{ term: { 'domains.fullyQualifiedName': domainFqn } }],
+      },
+    },
+  });
+
+/** Assigns a domain and waits until the search document carries it. */
 export const assignDomainToEntity = async (
   apiContext: APIRequestContext,
   entity: {
+    entityResponseData?: { fullyQualifiedName?: string };
     patch: (options: {
       apiContext: APIRequestContext;
       patchData: Operation[];
-    }) => Promise<void>;
+    }) => Promise<unknown>;
   },
-  domain: { responseData: { id?: string } }
+  domain: { responseData: { id?: string; fullyQualifiedName?: string } }
 ) => {
   await entity.patch({
     apiContext,
@@ -2291,6 +2364,19 @@ export const assignDomainToEntity = async (
       },
     ],
   });
+
+  const domainFqn = domain.responseData.fullyQualifiedName;
+
+  if (!domainFqn) {
+    throw new Error('assignDomainToEntity: domain has no fullyQualifiedName');
+  }
+
+  await waitForSearchIndexed(
+    apiContext,
+    entity.entityResponseData?.fullyQualifiedName,
+    'all',
+    { queryFilter: domainQueryFilter(domainFqn) }
+  );
 };
 
 export const verifyDescriptionRequiresScroll = async (

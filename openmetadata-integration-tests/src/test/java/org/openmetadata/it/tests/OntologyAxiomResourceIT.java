@@ -58,6 +58,19 @@ public class OntologyAxiomResourceIT {
   }
 
   @Test
+  void axiomCreatedWithoutAStageStartsInDraft(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    CreateOntologyAxiom request =
+        restrictionRequest(glossary, ns.prefix("draftByDefault")).withEntityStatus(null);
+
+    OntologyAxiom created = client.ontologyAxioms().create(request);
+    ns.trackRoot(ONTOLOGY_AXIOM, created);
+
+    assertEquals(EntityStatus.DRAFT, created.getEntityStatus());
+  }
+
+  @Test
   void validatesAndPersistsAQualifiedCardinalityRestriction(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Glossary glossary = GlossaryTestFactory.createSimple(ns);

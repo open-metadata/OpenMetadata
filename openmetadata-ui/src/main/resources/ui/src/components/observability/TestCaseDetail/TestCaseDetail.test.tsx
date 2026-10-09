@@ -597,9 +597,10 @@ describe('TestCaseDetail', () => {
     it('should render the last run banner above the results tab body', () => {
       render(<TestCaseDetail />);
 
-      expect(
-        screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)
-      ).toBeInTheDocument();
+      // 22px down to the results, as in the mock.
+      expect(screen.getByTestId(LAST_RUN_BANNER_CONTAINER_TEST_ID)).toHaveClass(
+        'tw:pb-5.5'
+      );
       expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toBeInTheDocument();
       expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
     });
@@ -666,7 +667,9 @@ describe('TestCaseDetail', () => {
           incidentTask: incidentHeaderWithTask.incidentTask,
           taskLinkInfo: incidentHeaderWithTask.taskLinkInfo,
           testCaseStatusData: incidentHeaderWithTask.testCaseStatusData,
-          parameterValues: [{ name: 'columnCount', value: '10' }],
+          testCase: expect.objectContaining({
+            parameterValues: [{ name: 'columnCount', value: '10' }],
+          }),
           testCaseResult: expect.objectContaining({
             testCaseStatus: 'Success',
           }),

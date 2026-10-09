@@ -15,6 +15,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { CreatedTask, getTaskCard } from '../../../utils/taskWorkflow';
 
 /**
  * Task Creation Tests
@@ -83,7 +84,7 @@ test.describe('Task Creation - Request Description', () => {
     await expect(page.getByTestId('form-container')).toBeVisible();
 
     // Verify title contains description request info
-    const titleField = page.locator('#title');
+    const titleField = page.getByTestId('title').locator('input');
     await expect(titleField).toBeVisible();
     const titleValue = await titleField.inputValue();
     expect(titleValue.toLowerCase()).toContain('description');
@@ -102,11 +103,15 @@ test.describe('Task Creation - Request Description', () => {
         response.request().method() === 'POST'
     );
     await submitBtn.click();
-    await taskResponse;
 
-    // Verify task appears in activity feed
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    await expect(taskCard).toBeVisible({ timeout: 10000 });
+    // The create response carries the task's own id, and the card announces it
+    // via aria-label -- so the card this test just produced can be named
+    // rather than taken as whichever one happens to sit on top of the feed.
+    const createdTask = (await (await taskResponse).json()) as CreatedTask;
+
+    await expect(getTaskCard(page, createdTask)).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('should create request description task for column', async ({
@@ -139,7 +144,7 @@ test.describe('Task Creation - Request Description', () => {
       await expect(page.getByTestId('form-container')).toBeVisible();
 
       // Verify this is a column-level task by checking the about field references a column
-      const titleField = page.locator('#title');
+      const titleField = page.getByTestId('title').locator('input');
       const titleValue = await titleField.inputValue();
       expect(titleValue.toLowerCase()).toContain('description');
 
@@ -150,8 +155,8 @@ test.describe('Task Creation - Request Description', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }
@@ -170,9 +175,7 @@ test.describe('Task Creation - Request Description', () => {
     await expect(page.getByTestId('form-container')).toBeVisible();
 
     // Assignee field - search and select user
-    const assigneeInput = page.locator(
-      '[data-testid="select-assignee"] .ant-select-selector input'
-    );
+    const assigneeInput = page.locator('[data-testid="select-assignee"] input');
     await assigneeInput.click();
 
     // Search for user
@@ -192,8 +195,8 @@ test.describe('Task Creation - Request Description', () => {
     await taskResponse;
 
     await expect(
-      page.locator('[data-testid="task-feed-card"]').first()
-    ).toBeVisible({
+      page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+    ).not.toHaveCount(0, {
       timeout: 10000,
     });
   });
@@ -212,7 +215,7 @@ test.describe('Task Creation - Request Description', () => {
     await submitBtn.click();
 
     // Should show validation error for assignee field
-    const assigneeError = page.locator('.ant-form-item-explain-error');
+    const assigneeError = page.getByTestId('assignees').getByText(/required/i);
     await expect(assigneeError).toBeVisible();
   });
 });
@@ -269,7 +272,7 @@ test.describe('Task Creation - Request Tags', () => {
       await expect(page.getByTestId('form-container')).toBeVisible();
 
       // Verify title contains tag info
-      const titleField = page.locator('#title');
+      const titleField = page.getByTestId('title').locator('input');
       const titleValue = await titleField.inputValue();
       expect(titleValue.toLowerCase()).toContain('tag');
 
@@ -280,8 +283,8 @@ test.describe('Task Creation - Request Tags', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }
@@ -442,8 +445,8 @@ test.describe('Task Creation - Suggest Tags', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]').filter({ visible: true })
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }

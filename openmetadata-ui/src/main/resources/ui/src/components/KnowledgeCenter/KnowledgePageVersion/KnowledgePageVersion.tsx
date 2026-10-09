@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space } from 'antd';
+import { Box, Grid, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useMemo, type FC } from 'react';
@@ -25,6 +25,7 @@ import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interf
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import type { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import {
@@ -114,20 +115,49 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
   }
 
   return (
-    <Row className="knowledge-version-page-container" gutter={[0, 32]}>
-      <Col span={24}>
-        <Row gutter={[16, 16]} justify="space-between" wrap={false}>
-          <Col className="m-r-md knowledge-version-title-col" flex="auto">
-            <Space className="w-full" direction="vertical" size={32}>
+    <Grid
+      className="layout-row layout-grid knowledge-version-page-container"
+      style={{ ...getLayoutGutter(0, 32) }}>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          className="layout-row"
+          justify="between"
+          style={{ ...getLayoutGutter(16, 16) }}
+          wrap="nowrap">
+          <Box
+            className="layout-column tw:block m-r-md knowledge-version-title-col"
+            style={{ flex: 'auto' }}>
+            <Box
+              inline
+              align="stretch"
+              className="layout-space w-full"
+              direction="col"
+              gap={8}
+              itemClassName="layout-space-item">
               <Typography
                 className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
                 data-testid="entity-header-display-name">
                 {renderHighlightedText(displayName || knowledgePage.name)}
               </Typography>
-              <Row align="middle" gutter={[16, 16]}>
-                <Col>
-                  <Space size={4}>
-                    <Space direction="vertical" size={0}>
+              <Box
+                align="center"
+                className="layout-row"
+                style={{ ...getLayoutGutter(16, 16) }}
+                wrap="wrap">
+                <Box className="layout-column tw:block">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={1}
+                    itemClassName="layout-space-item">
+                    <Box
+                      inline
+                      align="stretch"
+                      className="layout-space"
+                      direction="col"
+                      gap={0}
+                      itemClassName="layout-space-item">
                       <Owner
                         isCompactView={false}
                         ownerDisplayName={ownerDisplayName}
@@ -141,13 +171,13 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                         data-testid="updated-at">
                         {formatDate(knowledgePage.updatedAt)}
                       </span>
-                    </Space>
-                  </Space>
-                </Col>
-              </Row>
-            </Space>
-          </Col>
-          <Col flex="none">
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+          <Box className="layout-column tw:block" style={{ flex: 'none' }}>
             <Button
               className={classNames('', {
                 'text-primary border-primary': version,
@@ -162,13 +192,20 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                 {toString(version)}
               </Typography>
             </Button>
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>
-        <Row gutter={[0, 16]}>
-          <Col span={24}>
-            <Space align="center" className="w-full knowledge-page-tags">
+          </Box>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(0, 16) }}>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal w-full knowledge-page-tags"
+              gap={2}
+              itemClassName="layout-space-item">
               <Typography color="secondary">
                 {`${t('label.tag-plural')}:`}
               </Typography>
@@ -179,10 +216,15 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                 showTaskHandler={false}
                 tagType={TagSource.Classification}
               />
-            </Space>
-          </Col>
-          <Col span={24}>
-            <Space align="center" className="w-full knowledge-page-tags">
+            </Box>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal w-full knowledge-page-tags"
+              gap={2}
+              itemClassName="layout-space-item">
               <Typography color="secondary">
                 {`${t('label.glossary-term-plural')}:`}
               </Typography>
@@ -193,14 +235,14 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                 showTaskHandler={false}
                 tagType={TagSource.Glossary}
               />
-            </Space>
-          </Col>
-        </Row>
-      </Col>
-      <Col className="m-b-md" span={24}>
+            </Box>
+          </Grid.Item>
+        </Grid>
+      </Grid.Item>
+      <Grid.Item className="layout-column m-b-md" span={24}>
         <BlockEditor content={descriptionDiff} editable={false} />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

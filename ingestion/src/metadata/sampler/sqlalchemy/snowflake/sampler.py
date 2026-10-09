@@ -13,12 +13,17 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from sqlalchemy import Table, func, text
+import json
+from typing import Any
+
+from sqlalchemy import Column, Table, func, text
 from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 
 class SnowflakeSampler(SQASampler):
@@ -28,7 +33,11 @@ class SnowflakeSampler(SQASampler):
     """
 
     def __init__(self, *args, **kwargs):
+        # Imported here because other samplers import this module without the Snowflake extra installed.
+        from snowflake.sqlalchemy import VARIANT
+
         super().__init__(*args, **kwargs)
+        self._json_text_types = (VARIANT, CustomArray)
         self.sampling_method_type = func.bernoulli
         static = self._resolve_sample_config
         if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
@@ -47,6 +56,23 @@ class SnowflakeSampler(SQASampler):
             return selectable.tablesample(self.sampling_method_type(static.profileSample or 100))
 
         return selectable.tablesample(func.ROW(text(f"{static.profileSample or 100 if static else 100} ROWS")))
+
+    def _process_sample_value(self, column: Column, value: Any) -> Any:
+        """The driver returns VARIANT, OBJECT (both profiled as VARIANT) and ARRAY values as JSON text.
+
+        A value longer than the sample cell limit stays text, so truncation still bounds it, and so does a value
+        nested deeper than the decoder allows. Decimal numbers decode as floats, as sample data stores NUMBER values.
+        """
+        if (
+            isinstance(value, str)
+            and len(value) <= SAMPLE_DATA_MAX_CELL_LENGTH
+            and isinstance(column.type, self._json_text_types)
+        ):
+            try:
+                return json.loads(value)
+            except (ValueError, RecursionError):
+                return value
+        return value
 
     def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""

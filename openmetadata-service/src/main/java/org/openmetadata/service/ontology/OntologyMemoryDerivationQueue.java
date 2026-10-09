@@ -74,7 +74,7 @@ public final class OntologyMemoryDerivationQueue {
 
   public static boolean isPublished(ContextMemory memory) {
     if (memory == null
-        || memory.getStatus() != ContextMemoryStatus.ACTIVE
+        || memory.getEntityStatus() != ContextMemoryStatus.APPROVED
         || memory.getShareConfig() == null
         || memory.getQuestion() == null
         || memory.getQuestion().isBlank()

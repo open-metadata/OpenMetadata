@@ -215,6 +215,16 @@ class AlertUtilTest {
   }
 
   @Test
+  void shouldTriggerAlert_conversationOnTable_tableAsSecondResource_returnsTrue() {
+    ChangeEvent event =
+        conversationChangeEvent(
+            conversation(new EntityReference().withId(UUID.randomUUID()).withType("table")),
+            EventType.THREAD_CREATED);
+    FilteringRules config = filteringRules("topic").withResources(List.of("topic", "table"));
+    assertTrue(AlertUtil.shouldTriggerAlert(event, config));
+  }
+
+  @Test
   void shouldTriggerAlert_conversationWithNullEntityRef_entityTypeResource_returnsFalse() {
     ChangeEvent event = conversationChangeEvent(conversation(null), EventType.THREAD_CREATED);
     FilteringRules config = filteringRules("glossaryTerm");

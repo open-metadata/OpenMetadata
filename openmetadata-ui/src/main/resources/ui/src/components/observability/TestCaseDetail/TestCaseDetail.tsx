@@ -156,23 +156,24 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         {key === TestCasePageTabs.TEST_CASE_RESULTS &&
           !isVersionPage &&
           !dimensionKey && (
-            <div
-              className="tw:pt-4 tw:pb-2.5"
-              data-testid="test-case-last-run-banner-tab-container">
+            <Box
+              className="tw:pt-4 tw:pb-5.5"
+              data-testid="test-case-last-run-banner-tab-container"
+              direction="col">
               <TestCaseLastRunBanner
                 hasEditStatusPermission={
                   incidentHeaderData.hasEditStatusPermission
                 }
                 incidentTask={incidentHeaderData.incidentTask}
                 nextRunTimestamp={nextRunTimestamp}
-                parameterValues={testCase?.parameterValues}
                 taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                testCase={testCase}
                 testCaseResult={testCase?.testCaseResult}
                 testCaseStatus={testCase?.testCaseStatus}
                 testCaseStatusData={incidentHeaderData.testCaseStatusData}
                 onAcknowledge={incidentHeaderData.handleAcknowledgeIncident}
               />
-            </div>
+            </Box>
           )}
         <Tab editVariant="modal" showSidePanel={isTabExpanded} />
       </>
@@ -189,9 +190,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     incidentHeaderData.testCaseStatusData,
     incidentHeaderData.hasEditStatusPermission,
     incidentHeaderData.handleAcknowledgeIncident,
-    testCase?.parameterValues,
-    testCase?.testCaseResult,
-    testCase?.testCaseStatus,
+    testCase,
   ]);
 
   const breadcrumbItems = useMemo(() => {

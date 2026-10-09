@@ -43,7 +43,7 @@ public final class TestSuiteBodyTextContributor implements VectorBodyTextContrib
     return TestSuiteBodyTextContributor::extractBodyText;
   }
 
-  static String extractBodyText(EntityInterface entity) {
+  static String extractBodyText(EntityInterface<?> entity) {
     if (!(entity instanceof TestSuite testSuite)) {
       return null;
     }

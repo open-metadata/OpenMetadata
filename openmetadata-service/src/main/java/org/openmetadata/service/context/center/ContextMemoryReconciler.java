@@ -25,10 +25,10 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
  * fact keeps its pill identity (and the usageCount/lastUsedAt retrieval telemetry that rides it)
  * even when the model rephrases the question between runs. An automated pill that is no longer
  * derived from its last source is hard-deleted; a shared pill is detached from only the changed
- * source. A pill a human has
- * edited (sourceType flipped to Manual) is left untouched. Equivalent file-derived facts may be
- * linked to more than one source; retiring one source preserves the memory while another still
- * references it.
+ * source. A pill a human has edited (sourceType flipped to Manual) is left untouched, and so is one
+ * moved out of Approved: re-extraction never rewrites it or approves it again. Equivalent
+ * file-derived facts may be linked to more than one source; retiring one source preserves the
+ * memory while another still references it.
  */
 @Slf4j
 public class ContextMemoryReconciler {
@@ -69,7 +69,7 @@ public class ContextMemoryReconciler {
 
   private boolean isReusableFileMemory(ContextMemory pill) {
     return pill.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
-        && pill.getStatus() == ContextMemoryStatus.ACTIVE
+        && pill.getEntityStatus() == ContextMemoryStatus.APPROVED
         && pill.getMemoryScope() == ContextMemoryScope.ENTITY_SCOPED
         && pill.getShareConfig() != null
         && pill.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
@@ -84,13 +84,14 @@ public class ContextMemoryReconciler {
 
     // Pass 1: exact normalized-question match. Always claim the matching question, even for a
     // human-owned (Manual) pill: it stops a re-derived duplicate from being created alongside it.
-    // Only automated pills are then updated; a pill a human edited is left exactly as-is.
+    // Only engine-managed pills are then updated; one a human edited or moved out of Approved is
+    // left as-is.
     List<ContextMemory> unmatched = new ArrayList<>();
     for (ContextMemory pill : existing) {
       ContextMemory match = derivedByQuestion.remove(questionKey(pill));
       if (match == null) {
         unmatched.add(pill);
-      } else if (isAutomated(pill)) {
+      } else if (isEngineManaged(pill)) {
         if (releaseSharedIfChanged(sourceRef, pill, match, derivedByQuestion)) {
           counts.deleted++;
         } else if (applyDerived(pill, match)) {
@@ -111,7 +112,7 @@ public class ContextMemoryReconciler {
           memoryRepository.releaseExtractedMemory(pill.getId(), sourceRef);
           counts.deleted++;
         }
-      } else if (isAutomated(pill)) {
+      } else if (isEngineManaged(pill)) {
         if (releaseSharedIfChanged(sourceRef, pill, match, derivedByQuestion)) {
           counts.deleted++;
         } else if (applyDerived(pill, match)) {
@@ -197,10 +198,7 @@ public class ContextMemoryReconciler {
    * instead of being needlessly re-indexed.
    */
   private boolean applyDerived(ContextMemory existing, ContextMemory derived) {
-    boolean changed =
-        !sameContent(existing, derived)
-            || existing.getStatus() != ContextMemoryStatus.ACTIVE
-            || needsMetadataRepair(existing);
+    boolean changed = !sameContent(existing, derived) || needsMetadataRepair(existing);
     if (changed) {
       ContextMemory updated = JsonUtils.deepCopy(existing, ContextMemory.class);
       updated.setTitle(derived.getTitle());
@@ -208,7 +206,6 @@ public class ContextMemoryReconciler {
       updated.setAnswer(derived.getAnswer());
       updated.setSummary(derived.getSummary());
       updated.setMemoryType(derived.getMemoryType());
-      updated.setStatus(ContextMemoryStatus.ACTIVE);
       if (updated.getMemoryScope() == null) {
         updated.setMemoryScope(derived.getMemoryScope());
       }
@@ -250,6 +247,14 @@ public class ContextMemoryReconciler {
   private boolean isAutomated(ContextMemory pill) {
     return pill.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
         || pill.getSourceType() == ContextMemorySourceType.PAGE_EXTRACTION;
+  }
+
+  /**
+   * The engine only maintains Approved pills. Extraction creates every pill Approved, so any other
+   * stage was a reviewer's decision that re-extracting the same fact must not undo.
+   */
+  private boolean isEngineManaged(ContextMemory pill) {
+    return isAutomated(pill) && pill.getEntityStatus() == ContextMemoryStatus.APPROVED;
   }
 
   private String questionKey(ContextMemory pill) {

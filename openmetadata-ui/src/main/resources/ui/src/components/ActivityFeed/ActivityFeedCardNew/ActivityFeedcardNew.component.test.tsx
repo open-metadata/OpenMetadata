@@ -138,7 +138,9 @@ jest.mock('../../../utils/SearchClassBase', () => ({
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   __esModule: true,
-  default: { getEntityLink: () => '/table/service.table' },
+  default: {
+    getEntityLink: jest.fn((type: string, fqn: string) => `/${type}/${fqn}`),
+  },
 }));
 
 const conversation: Conversation = {
@@ -241,6 +243,23 @@ describe('ActivityFeedCardNew', () => {
 
     expect(body).toHaveClass('ant-card-body');
     expect(body?.parentElement).toHaveClass('activity-feed-card-new');
+  });
+
+  it('falls back to the activity entity when the event carries no about link', () => {
+    // `about` is optional on an activity event, and the EntityLink accessors
+    // answer '' for a missing link rather than undefined. Reading them with
+    // `??` would keep that '' and never reach `activity.entity`, leaving the
+    // header pointing at `//` with no entity name.
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isOpenInDrawer activity={activity} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
   });
 
   it('renders activity replies in the open side panel', () => {

@@ -6,7 +6,7 @@
   "description": "AI Governance Policy entity representing organizational policies and rules for AI/LLM usage, compliance, and risk management. Enforces standards for model approval, data access, bias thresholds, and regulatory compliance.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.ai.AIGovernancePolicy",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "policyType": {
       "type": "string",

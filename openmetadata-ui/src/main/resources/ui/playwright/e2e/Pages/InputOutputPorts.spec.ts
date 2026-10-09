@@ -201,8 +201,12 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify lineage section shows zero counts', async () => {
-        await expect(page.locator('text=0 input').first()).toBeVisible();
-        await expect(page.locator('text=0 output').first()).toBeVisible();
+        await expect(
+          page.locator('text=0 input').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=0 output').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -255,11 +259,19 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port counts', async () => {
-        await expect(page.locator('text=(2)').first()).toBeVisible();
-        await expect(page.locator('text=(3)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(2)').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=(3)').filter({ visible: true })
+        ).not.toHaveCount(0);
 
-        await expect(page.locator('text=2 input').first()).toBeVisible();
-        await expect(page.locator('text=3 output').first()).toBeVisible();
+        await expect(
+          page.locator('text=2 input').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=3 output').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -308,7 +320,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was added', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -419,7 +433,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify both ports were added', async () => {
-        await expect(page.locator('text=(2)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(2)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -568,7 +584,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was added', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -909,7 +927,9 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-        await expect(page.getByRole('dialog')).toBeVisible();
+        await expect(
+          page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+        ).toBeVisible();
         await expect(
           page.getByText('Are you sure you want to remove')
         ).toBeVisible();
@@ -922,7 +942,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was removed', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -1012,7 +1034,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port still exists', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -1054,7 +1078,9 @@ test.describe('Input Output Ports', () => {
         await expect(
           page.getByTestId('no-input-ports-placeholder')
         ).toBeVisible();
-        await expect(page.locator('text=(0)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(0)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
   });

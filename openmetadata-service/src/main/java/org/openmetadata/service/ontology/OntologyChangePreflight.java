@@ -13,14 +13,20 @@
 
 package org.openmetadata.service.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
@@ -29,6 +35,7 @@ import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 public final class OntologyChangePreflight {
   private final EntityLoader entityLoader;
@@ -42,10 +49,42 @@ public final class OntologyChangePreflight {
     final Set<UUID> scope = glossaryScope(changeSet);
     final List<GlossaryTerm> plannedTerms = plannedTerms(operations);
     final List<VersionGuard> versionGuards = new ArrayList<>();
+    final Map<UUID, Boolean> activeSourceMemories = new HashMap<>();
     for (final OntologyChangeOperation operation : operations) {
+      validateSourceMemories(operation, activeSourceMemories);
       validateScope(operation, scope, plannedTerms);
       validateTargetVersion(operation, plannedTerms, versionGuards);
     }
+  }
+
+  /**
+   * An operation stays applicable while one of its source memories still grounds it. A batch draft
+   * puts every memory on its CREATE_GLOSSARY operation and merges co-sources onto shared terms, so
+   * requiring all of them would let one retired memory block the whole draft.
+   */
+  private void validateSourceMemories(
+      final OntologyChangeOperation operation, final Map<UUID, Boolean> activeSourceMemories) {
+    final Set<UUID> sources = operation.getSourceMemoryIds();
+    if (!nullOrEmpty(sources)
+        && sources.stream()
+            .noneMatch(id -> activeSourceMemories.computeIfAbsent(id, this::isActiveSource))) {
+      throw new BadRequestException(
+          "Ontology operation '" + operation.getId() + "' has no active source memory left");
+    }
+  }
+
+  private boolean isActiveSource(final UUID memoryId) {
+    boolean active;
+    try {
+      final ContextMemory memory =
+          (ContextMemory) entityLoader.load(Entity.CONTEXT_MEMORY, memoryId);
+      active =
+          !Boolean.TRUE.equals(memory.getDeleted())
+              && memory.getEntityStatus() == ContextMemoryStatus.APPROVED;
+    } catch (EntityNotFoundException e) {
+      active = false;
+    }
+    return active;
   }
 
   private static Set<UUID> glossaryScope(final OntologyChangeSet changeSet) {
@@ -164,7 +203,7 @@ public final class OntologyChangePreflight {
 
   private VersionGuard loadVersionGuard(
       final OntologyChangeOperation operation, final OperationTarget target) {
-    final EntityInterface entity = entityLoader.load(target.entityType(), target.id());
+    final EntityInterface<?> entity = entityLoader.load(target.entityType(), target.id());
     requireVersion(operation, operation.getBaseVersion(), entity.getVersion());
     return new VersionGuard(target, operation.getBaseVersion());
   }
@@ -216,6 +255,6 @@ public final class OntologyChangePreflight {
 
   @FunctionalInterface
   public interface EntityLoader {
-    EntityInterface load(String entityType, UUID id);
+    EntityInterface<?> load(String entityType, UUID id);
   }
 }

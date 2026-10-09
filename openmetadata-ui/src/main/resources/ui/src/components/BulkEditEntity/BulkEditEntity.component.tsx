@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BadgeWithIcon, Button, Input } from '@openmetadata/ui-core-components';
+import {
+  BadgeWithIcon,
+  Button,
+  Card,
+  Input,
+} from '@openmetadata/ui-core-components';
 import {
   Edit03,
   Lock01,
@@ -483,6 +488,7 @@ const BulkEditEntity = ({
               : operationClass;
           }}
           rowHeight={52}
+          rowTestId={(row) => (row.id ? `rdg-row-${row.id}` : undefined)}
           rows={dataSourceWithOperations}
           onCellClick={(args: CellClickArgs<Record<string, string>>) => {
             const colType = (args.column.key.split('.').pop() ?? '').replace(
@@ -588,7 +594,7 @@ const BulkEditEntity = ({
     }
 
     return (
-      <div className="csv-import-card bulk-edit-card">
+      <Card className="csv-import-card bulk-edit-card">
         <Banner
           className="border-radius"
           isLoading={false}
@@ -600,7 +606,7 @@ const BulkEditEntity = ({
             {t('label.try-again')}
           </Button>
         </div>
-      </div>
+      </Card>
     );
   };
 
@@ -706,13 +712,13 @@ const BulkEditEntity = ({
   );
 
   const renderStepOneCard = () => (
-    <div className="csv-import-card bulk-edit-card">
+    <Card className="csv-import-card bulk-edit-card">
       <div className="csv-import-stack bulk-edit-stack">
         {renderToolbar()}
         <div className="bulk-edit-grid-shell">{editDataGrid}</div>
         {newRowConfig && renderAddRowBar()}
       </div>
-    </div>
+    </Card>
   );
 
   const renderStepTwoCard = () => {
@@ -721,7 +727,7 @@ const BulkEditEntity = ({
     }
 
     return (
-      <div className="csv-import-card">
+      <Card className="csv-import-card tw:p-6">
         <div className="csv-import-stack">
           <div>
             <ImportStatus csvImportResult={validationData} />
@@ -741,7 +747,7 @@ const BulkEditEntity = ({
             )}
           </div>
         </div>
-      </div>
+      </Card>
     );
   };
 
