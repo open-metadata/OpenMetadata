@@ -63,11 +63,11 @@ def _tag_catalog(metadata, request, case, service_type):
                 _safe_delete(metadata, entity_type, entity.id, recursive=True, hard_delete=True)
 
 
-def _assert_workflow(metadata, config, asset_type, expected_assets, expected_failures):
+def _assert_workflow(metadata, config, asset_type, expected_assets, expected_failures, *, expected_source_failures=0):
     workflow = MetadataWorkflow.create(config)
     try:
         workflow.execute()
-        assert workflow.source.get_status().failures == []
+        assert len(workflow.source.get_status().failures) == expected_source_failures
         assert len(workflow.steps[0].get_status().failures) == expected_failures
         for asset_fqn, tags in expected_assets.items():
             asset = metadata.get_by_name(entity=asset_type, fqn=asset_fqn, fields=["tags"])

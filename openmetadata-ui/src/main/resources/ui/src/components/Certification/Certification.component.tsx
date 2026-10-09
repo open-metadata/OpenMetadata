@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Card, Typography } from '@openmetadata/ui-core-components';
-import { Button, Empty, Radio, Space, Spin } from 'antd';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Button, Empty, Radio, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { lazy, ReactNode, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -283,7 +283,12 @@ const Certification = ({
           data-testid="certification-cards">
           <div className="tw:-mb-px tw:flex tw:min-h-12 tw:w-full tw:items-center tw:text-base tw:leading-[1.5715] tw:font-medium tw:text-black/85 tw:dark:text-primary">
             <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap">
-              <Space className="w-full justify-between">
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal w-full justify-between"
+                gap={2}
+                itemClassName="layout-space-item">
                 <div className="flex gap-2 items-center w-full">
                   <CertificationIcon height={18} width={18} />
                   <Typography className="m-b-0 font-semibold text-sm tw:text-primary">
@@ -300,7 +305,7 @@ const Certification = ({
                   onKeyDown={handleKeyboardActivation(updateCertificationData)}>
                   {t('label.clear')}
                 </Typography>
-              </Space>
+              </Box>
             </div>
           </div>
           <Spin
