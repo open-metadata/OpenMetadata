@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import type { FormProps } from '@rjsf/core';
+import defaultValidator from '@rjsf/validator-ajv8';
 import {
   act,
   fireEvent,
@@ -211,6 +213,25 @@ describe('FormBuilderV1', () => {
     expect(screen.getByTestId('submit-btn')).toHaveTextContent(
       'label.submitting'
     );
+  });
+
+  it('uses the default validator unless one is passed', () => {
+    const customValidator = {} as FormProps['validator'];
+    const { rerender } = render(
+      <FormBuilderV1 formData={{}} schema={schema} />
+    );
+
+    expect(mockForm.mock.calls.at(-1)?.[0].validator).toBe(defaultValidator);
+
+    rerender(
+      <FormBuilderV1
+        formData={{}}
+        schema={schema}
+        validator={customValidator}
+      />
+    );
+
+    expect(mockForm.mock.calls.at(-1)?.[0].validator).toBe(customValidator);
   });
 
   it('disables submit when requested', () => {

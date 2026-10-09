@@ -14,9 +14,10 @@ import {
   Box,
   Divider,
   EmptyPlaceholder,
+  Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Checkbox, Col, List, Row, Space } from 'antd';
+import { Button, Checkbox, List } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -51,6 +52,7 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import {
   COLUMN_AGGREGATE_FIELD,
   getColumnNameFromColumnFilterKey,
@@ -699,7 +701,7 @@ export const AddTestCaseList = ({
     const source = listSource;
     if (!isLoading && isEmpty(source)) {
       return (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Box className="tw:relative tw:min-h-80 tw:w-full">
             <EmptyPlaceholder
               description={t('message.try-adjusting-filter')}
@@ -708,11 +710,11 @@ export const AddTestCaseList = ({
               variant="blank"
             />
           </Box>
-        </Col>
+        </Grid.Item>
       );
     } else {
       return (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <List
             loading={{
               spinning: isLoading,
@@ -729,11 +731,20 @@ export const AddTestCaseList = ({
                 const isColumn = test.entityLink.includes('::columns::');
 
                 return (
-                  <Space
-                    className="m-b-md border rounded-4 p-sm cursor-pointer tw:bg-primary"
-                    direction="vertical"
+                  <Box
+                    inline
+                    align="stretch"
+                    className="layout-space m-b-md border rounded-4 p-sm cursor-pointer tw:bg-primary"
+                    direction="col"
+                    gap={2}
+                    itemClassName="layout-space-item"
                     onClick={() => handleCardClick(test)}>
-                    <Space className="justify-between w-full">
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal justify-between w-full"
+                      gap={2}
+                      itemClassName="layout-space-item">
                       <Typography
                         as="p"
                         className="m-0 font-medium text-base w-max-500 tw:text-primary"
@@ -750,7 +761,7 @@ export const AddTestCaseList = ({
                         }
                         data-testid={`checkbox-${test.name}`}
                       />
-                    </Space>
+                    </Box>
                     <Typography
                       as="p"
                       className="m-0 w-max-500 tw:text-primary"
@@ -770,7 +781,12 @@ export const AddTestCaseList = ({
                       </Link>
                     </Typography>
                     {isColumn && (
-                      <Space>
+                      <Box
+                        inline
+                        align="center"
+                        className="layout-space layout-space-horizontal"
+                        gap={2}
+                        itemClassName="layout-space-item">
                         <Typography className="font-medium text-xs tw:text-primary">{`${t(
                           'label.column'
                         )}:`}</Typography>
@@ -779,14 +795,14 @@ export const AddTestCaseList = ({
                             getColumnNameFromEntityLink(test.entityLink)
                           ) ?? '--'}
                         </Typography>
-                      </Space>
+                      </Box>
                     )}
-                  </Space>
+                  </Box>
                 );
               }}
             </VirtualList>
           </List>
-        </Col>
+        </Grid.Item>
       );
     }
   }, [
@@ -866,8 +882,10 @@ export const AddTestCaseList = ({
   );
 
   return (
-    <Row gutter={[0, 8]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 8) }}>
+      <Grid.Item className="layout-column" span={24}>
         <Searchbar
           removeMargin
           showClearSearch
@@ -878,8 +896,8 @@ export const AddTestCaseList = ({
           searchValue={searchTerm}
           onSearch={handleSearch}
         />
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <AddTestCaseListFilters
           filterLoading={filterLoading}
           filterOptions={filterOptions}
@@ -889,11 +907,17 @@ export const AddTestCaseList = ({
           onChange={handleFilterChange}
           onSearch={handleFilterSearch}
         />
-      </Col>
+      </Grid.Item>
       {items.length > 0 && (
-        <Col className="m-b-xs" span={24}>
+        <Grid.Item className="layout-column m-b-xs" span={24}>
           <Divider className="m-b-sm m-t-0" />
-          <Space wrap align="center" className="w-full">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full"
+            gap={2}
+            itemClassName="layout-space-item"
+            wrap="wrap">
             <Checkbox
               checked={allLoadedSelected}
               data-testid="select-all-test-cases"
@@ -922,12 +946,14 @@ export const AddTestCaseList = ({
                 </Button>
               </>
             )}
-          </Space>
-        </Col>
+          </Box>
+        </Grid.Item>
       )}
       {renderList}
       {showButton && (
-        <Col className="d-flex justify-end items-center p-y-sm gap-4" span={24}>
+        <Grid.Item
+          className="layout-column d-flex justify-end items-center p-y-sm gap-4"
+          span={24}>
           <Button data-testid="cancel" type="link" onClick={onCancel}>
             {cancelText ?? t('label.cancel')}
           </Button>
@@ -938,8 +964,8 @@ export const AddTestCaseList = ({
             onClick={handleSubmit}>
             {submitText ?? t('label.create')}
           </Button>
-        </Col>
+        </Grid.Item>
       )}
-    </Row>
+    </Grid>
   );
 };

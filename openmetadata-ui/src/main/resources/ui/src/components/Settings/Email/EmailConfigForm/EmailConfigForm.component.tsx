@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Toggle } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Input, Row, Select } from 'antd';
+import { Box, Grid, Toggle } from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Select } from 'antd';
 import { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
@@ -114,9 +114,11 @@ function EmailConfigForm({
         />
       </Item>
       <Item name="enableSmtpServer">
-        <Row>
-          <Col span={8}>{t('label.enable-smtp-server')}</Col>
-          <Col span={16}>
+        <Grid className="layout-row layout-grid">
+          <Grid.Item className="layout-column" span={8}>
+            {t('label.enable-smtp-server')}
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={16}>
             <Toggle
               data-testid="smtp-server-input"
               defaultSelected={emailConfigValues?.enableSmtpServer}
@@ -127,8 +129,8 @@ function EmailConfigForm({
                 form.setFieldsValue({ enableSmtpServer: value })
               }
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       </Item>
       <Item label={t('label.support-url')} name="supportUrl">
         <Input
@@ -147,20 +149,20 @@ function EmailConfigForm({
           options={TRANSPORTATION_STRATEGY_OPTIONS}
         />
       </Item>
-      <Row justify="end">
-        <Col>
+      <Box className="layout-row" justify="end" wrap="wrap">
+        <Box className="layout-column tw:block">
           <Button type="link" onClick={onCancel}>
             {t('label.cancel')}
           </Button>
-        </Col>
+        </Box>
         {!isEveryFieldManaged && (
-          <Col>
+          <Box className="layout-column tw:block">
             <Button htmlType="submit" loading={isLoading} type="primary">
               {t('label.save')}
             </Button>
-          </Col>
+          </Box>
         )}
-      </Row>
+      </Box>
     </Form>
   );
 }

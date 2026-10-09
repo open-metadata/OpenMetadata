@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Input, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button, Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -180,17 +181,17 @@ const EditUrlConfigurationPage = () => {
             id="root/openMetadataUrl-input"
           />
         </Item>
-        <Row justify="end">
-          <Col>
+        <Box className="layout-row" justify="end" wrap="wrap">
+          <Box className="layout-column tw:block">
             <Button
               data-testid="cancel-button"
               type="link"
               onClick={handleGoBack}>
               {t('label.cancel')}
             </Button>
-          </Col>
+          </Box>
           {!isManagedByDeployment && (
-            <Col>
+            <Box className="layout-column tw:block">
               <Button
                 data-testid="save-button"
                 htmlType="submit"
@@ -198,9 +199,9 @@ const EditUrlConfigurationPage = () => {
                 type="primary">
                 {t('label.save')}
               </Button>
-            </Col>
+            </Box>
           )}
-        </Row>
+        </Box>
       </Form>
     </>
   );

@@ -95,14 +95,12 @@ import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.config.source.LocalSettingsRefresher;
 import org.openmetadata.service.config.source.SettingsSecrets;
 import org.openmetadata.service.config.source.SettingsSourceService;
@@ -124,7 +122,6 @@ import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.ActiveProviderValidator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -170,8 +167,6 @@ public class SystemResource {
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
-  private PipelineServiceClientInterface pipelineServiceClient;
-  private volatile JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
 
@@ -182,18 +177,6 @@ public class SystemResource {
 
   public void initialize(OpenMetadataApplicationConfig config) {
     this.applicationConfig = config;
-    this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            config.getPipelineServiceClientConfiguration());
-
-    this.jwtFilter =
-        new JwtFilter(
-            SecurityConfigurationManager.getCurrentAuthConfig(),
-            SecurityConfigurationManager.getCurrentAuthzConfig());
-    SecurityConfigurationManager.getInstance()
-        .addConfigurationChangeListener(
-            (authConfig, authzConfig, mcpConfig) ->
-                this.jwtFilter = new JwtFilter(authConfig, authzConfig));
   }
 
   public static class SettingsList extends ResultList<Settings> {
@@ -1075,7 +1058,7 @@ public class SystemResource {
                     schema = @Schema(implementation = ServicesCount.class)))
       })
   public ValidationResponse validate() {
-    return systemRepository.validateSystem(applicationConfig, pipelineServiceClient, jwtFilter);
+    return systemRepository.validateSystem(applicationConfig);
   }
 
   @GET

@@ -85,6 +85,7 @@ from metadata.utils.path_pattern import (
     infer_structure_format,
     pattern_to_regex,
 )
+from metadata.utils.schema_inference import NO_LIMITS, InferenceLimits, InferenceReport
 from metadata.utils.storage_metadata_config import (
     StorageMetadataConfigException,
     get_manifest,
@@ -203,6 +204,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: StorageServiceMetadataPipeline = self.config.sourceConfig.config
+        self.inference_limits = InferenceLimits.from_source_config(self.source_config)
         self._connection = create_connection(self.service_connection)
         self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
 
@@ -502,6 +504,9 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         client: Any,
         metadata_entry: MetadataEntry,
         session: Any = None,
+        *,
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
     ) -> list[Column]:
         """Extract Column related metadata from s3"""
         data_structure_details, raw_data = fetch_dataframe_first_chunk(
@@ -522,6 +527,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 data_structure_details,
                 SupportedTypes(metadata_entry.structureFormat),
                 raw_data=raw_data,
+                limits=limits,
+                report=report,
             )
             return column_parser.get_columns()
         return []
@@ -554,6 +561,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         session: Any = None,
     ) -> list[Column] | None:
         """Get the columns from the file and partition information"""
+        inference_report = InferenceReport()
         extracted_cols = self.extract_column_definitions(
             container_name,
             sample_key,
@@ -561,7 +569,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             client,
             metadata_entry,
             session,
+            limits=self.inference_limits,
+            report=inference_report,
         )
+        inference_report.emit(self.status, f"{container_name}/{sample_key}", self.inference_limits)
         partition_cols = self._partition_columns_to_table_columns(metadata_entry.partitionColumns)
         return partition_cols + (extracted_cols or [])
 

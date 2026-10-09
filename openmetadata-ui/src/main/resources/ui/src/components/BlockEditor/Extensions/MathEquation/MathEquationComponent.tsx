@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Box } from '@openmetadata/ui-core-components';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button, Input, Space, Tooltip } from 'antd';
+import { Button, Input, Tooltip } from 'antd';
 import { TextAreaRef } from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import 'katex/dist/katex.min.css';
@@ -62,7 +63,12 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
               ref={inputRef}
               rows={2}
             />
-            <Space direction="horizontal" size={8}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <Button
                 icon={<CloseOutlined />}
                 size="small"
@@ -75,7 +81,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
                 type="primary"
                 onClick={handleSaveEquation}
               />
-            </Space>
+            </Box>
           </div>
         ) : (
           <Latex>{equation}</Latex>

@@ -13,10 +13,12 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
+  Box,
+  Grid,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -43,6 +45,7 @@ import { SettingType } from '../../generated/settings/settings';
 import { useAuth } from '../../hooks/authHooks';
 import { useSettingsSource } from '../../hooks/platform/useSettingsSource';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEmailConfigFieldLabels } from '../../utils/EmailConfigUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import {
@@ -132,20 +135,20 @@ function EmailConfigSettingsPage() {
             : emailConfigValue;
 
         return (
-          <Col key={title} span={12}>
-            <Row align="middle">
-              <Col span={24}>
+          <Grid.Item className="layout-column" key={title} span={12}>
+            <Grid className="layout-row layout-grid tw:items-center">
+              <Grid.Item className="layout-column" span={24}>
                 <Typography className="m-0" color="secondary">
                   {`${title}:`}
                 </Typography>
-              </Col>
-              <Col span={24}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
                 <Typography className="">
                   {isEmpty(displayValue) ? '--' : displayValue}
                 </Typography>
-              </Col>
-            </Row>
-          </Col>
+              </Grid.Item>
+            </Grid>
+          </Grid.Item>
         );
       });
   }, [emailConfigValues]);
@@ -169,9 +172,11 @@ function EmailConfigSettingsPage() {
         {loading ? (
           <SkeletonParagraph animation={false} rows={8} />
         ) : (
-          <Row align="middle" gutter={[16, 16]}>
+          <Grid
+            className="layout-row layout-grid tw:items-center"
+            style={getLayoutGutter(16, 16)}>
             {configValues}
-          </Row>
+          </Grid>
         )}
       </>
     );
@@ -183,24 +188,27 @@ function EmailConfigSettingsPage() {
 
   return (
     <PageLayoutV1 pageTitle={t('label.email-configuration')}>
-      <Row
-        align="middle"
-        className="p-lg bg-white border-radius-sm"
-        gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid tw:items-center p-lg bg-white border-radius-sm"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Row align="top" justify="space-between">
-            <Col>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="start"
+            className="layout-row"
+            justify="between"
+            wrap="wrap">
+            <Box className="layout-column tw:block">
               <PageHeader
                 data={{
                   header: t('label.email'),
                   subHeader: t('message.email-configuration-message'),
                 }}
               />
-            </Col>
-            <Col className="d-flex">
+            </Box>
+            <Box className="layout-column d-flex">
               {isAdminUser && emailConfigValues?.senderMail && (
                 <Button type="primary" onClick={handleTestEmailModal}>
                   {t('label.test-email')}
@@ -226,10 +234,10 @@ function EmailConfigSettingsPage() {
                   </Button>
                 )
               )}
-            </Col>
-          </Row>
-        </Col>
-        <Col span={24}>
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <SettingsSourceBanner
             className="tw:mb-4"
             sources={sources}
@@ -237,8 +245,8 @@ function EmailConfigSettingsPage() {
             onRefetch={refetchSources}
           />
           {configValuesContainer}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
       {isTeamEmailOpen && <TestEmail onCancel={handleTestEmailModal} />}
     </PageLayoutV1>
