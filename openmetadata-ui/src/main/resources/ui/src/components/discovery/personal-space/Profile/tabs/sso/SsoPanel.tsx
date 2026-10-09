@@ -22,7 +22,7 @@ import {
 import {
   ArrowUpRight,
   Hint,
-  Lock01,
+  SingleSignOn,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import type { Key } from 'react';
@@ -67,7 +67,7 @@ const ProviderLogo = ({ provider }: { provider: string }) => {
       {icon ? (
         <img alt="" height={24} src={icon} width={24} />
       ) : (
-        <Lock01 className="tw:size-6 tw:text-fg-quaternary" />
+        <SingleSignOn className="tw:size-6 tw:text-fg-quaternary" />
       )}
     </span>
   );
@@ -166,7 +166,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       return;
     }
 
-    const ssoLabel = t('label.sso');
+    const ssoLabel = t('label.single-sign-on');
     const breadcrumbs: BreadcrumbItemType[] = [
       { id: 'settings', label: t('label.setting-plural') },
       { id: SSO_HASH_TAB, label: ssoLabel },
@@ -226,7 +226,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       breadcrumbs,
       title: headerProvider ? getProviderDisplayName(headerProvider) : ssoLabel,
       description: t('message.sso-configuration-directly-from-the-ui'),
-      icon: Lock01,
+      icon: SingleSignOn,
       iconNode: headerProvider ? (
         <ProviderLogo provider={headerProvider} />
       ) : undefined,

@@ -15,11 +15,11 @@ import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Bell01,
   Key01,
-  Lock01,
   PermissionDebugger as AccessControlIcon,
   Policy as GovernanceTabIcon,
   Settings02,
   ShieldTick,
+  SingleSignOn,
   Sliders02,
   User01,
   Users01,
@@ -211,9 +211,9 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
   {
     id: 'sso',
     group: 'administration',
-    label: 'label.sso',
+    label: 'label.single-sign-on',
     description: 'message.sso-configuration-directly-from-the-ui',
-    icon: Lock01,
+    icon: SingleSignOn,
     isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (

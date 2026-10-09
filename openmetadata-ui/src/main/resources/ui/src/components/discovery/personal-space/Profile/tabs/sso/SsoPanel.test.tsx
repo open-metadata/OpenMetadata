@@ -109,10 +109,10 @@ describe('SsoPanel', () => {
 
     expect(await screen.findByTestId('sso-provider-grid')).toBeInTheDocument();
     expect(lastHeader()).toMatchObject({
-      title: 'label.sso',
+      title: 'label.single-sign-on',
       breadcrumbs: [
         { id: 'settings', label: 'label.setting-plural' },
-        { id: 'sso', label: 'label.sso' },
+        { id: 'sso', label: 'label.single-sign-on' },
       ],
     });
 
