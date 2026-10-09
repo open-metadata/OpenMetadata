@@ -13,10 +13,10 @@
 
 package org.openmetadata.service.migration.utils.v210;
 
-import java.sql.ResultSet;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationTableUtil;
 
 /** Migration utility for 2.1.0 archival of legacy thread storage after task cutover. */
 @Slf4j
@@ -50,19 +50,6 @@ public class MigrationUtil {
   }
 
   private boolean tableExists(String tableName) {
-    try (ResultSet tables =
-        handle
-            .getConnection()
-            .getMetaData()
-            .getTables(null, null, tableName, new String[] {"TABLE"})) {
-      while (tables.next()) {
-        if (tableName.equalsIgnoreCase(tables.getString("TABLE_NAME"))) {
-          return true;
-        }
-      }
-      return false;
-    } catch (Exception e) {
-      return false;
-    }
+    return MigrationTableUtil.tableExists(handle, tableName);
   }
 }
