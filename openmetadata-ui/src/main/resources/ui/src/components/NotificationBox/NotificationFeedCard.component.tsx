@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { List, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { List } from 'antd';
 import { startCase } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -116,10 +116,14 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
         avatar={<ProfilePicture name={createdBy} width="32" />}
         className="m-0"
         description={
-          <Space
+          <Box
+            inline
+            align="stretch"
+            className="layout-space"
             data-testid={`notification-item-${entityName}`}
-            direction="vertical"
-            size={0}>
+            direction="col"
+            gap={0}
+            itemClassName="layout-space-item">
             <Typography
               as="p"
               className="m-0"
@@ -132,7 +136,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
               title={formatDateTime(timestamp)}>
               {getRelativeTime(timestamp)}
             </Typography>
-          </Space>
+          </Box>
         }
         style={{ marginBottom: 0 }}
       />

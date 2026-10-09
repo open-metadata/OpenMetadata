@@ -1926,7 +1926,7 @@ public class UserRepository extends EntityRepository<User> {
       Stream.concat(added.stream(), deleted.stream())
           .forEach(
               teamRef -> {
-                EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
+                EntityInterface<?> team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
                 searchRepository.updateEntityIndex(team);
               });
     }

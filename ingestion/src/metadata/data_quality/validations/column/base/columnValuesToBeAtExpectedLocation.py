@@ -420,38 +420,38 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
         Returns:
             List[DimensionResult]: Dimension-specific test results
         """
+        dimension_columns = self.test_case.dimensionColumns or []
+        if not dimension_columns:
+            return []
+
+        top_n = self._get_top_dimensions()
+
+        # One pass over the data counts every dimension column, so a failure here leaves none of
+        # them evaluated.
         try:
-            dimension_columns = self.test_case.dimensionColumns or []
-            if not dimension_columns:
-                return []
-
-            top_n = self._get_top_dimensions()
-
-            # Use unified counting logic
             dimension_counts = self._calculate_counts(dimension_columns=dimension_columns)
+        except Exception as exc:
+            logger.warning(f"Error executing dimensional validation: {exc}")
+            logger.debug(traceback.format_exc())
+            self._rollback_session()
+            return [self._aborted_dimension_result(dimension_column, exc) for dimension_column in dimension_columns]
 
-            # Create results for each dimension
-            all_dimension_results = []
-            for dimension_col_name in dimension_columns:
-                try:
-                    dimension_results = self._create_dimension_results_from_location_counts(
+        all_dimension_results = []
+        for dimension_col_name in dimension_columns:
+            try:
+                all_dimension_results.extend(
+                    self._create_dimension_results_from_location_counts(
                         dimension_counts[dimension_col_name],
                         dimension_col_name,
                         top_n=top_n,
                     )
-                    all_dimension_results.extend(dimension_results)
+                )
+            except Exception as exc:
+                logger.warning(f"Error creating dimension results for column {dimension_col_name}: {exc}")
+                logger.debug(traceback.format_exc())
+                all_dimension_results.append(self._aborted_dimension_result(dimension_col_name, exc))
 
-                except Exception as exc:
-                    logger.warning(f"Error creating dimension results for column {dimension_col_name}: {exc}")
-                    logger.debug(traceback.format_exc())
-                    continue
-
-            return all_dimension_results  # noqa: TRY300
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional validation: {exc}")
-            logger.debug(traceback.format_exc())
-            return []
+        return all_dimension_results
 
     def _create_dimension_results_from_location_counts(
         self,

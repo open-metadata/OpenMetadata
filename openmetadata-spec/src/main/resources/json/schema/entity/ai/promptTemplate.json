@@ -6,7 +6,7 @@
   "description": "Prompt Template entity representing a reusable prompt template for AI agents. Templates can include variables, system prompts, and examples for consistent AI behavior.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.ai.PromptTemplate",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "templateVariable": {
       "type": "object",

@@ -20,6 +20,7 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -56,6 +57,8 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.DimensionValue;
+import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseErrorDetails;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -2837,6 +2840,70 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
           () -> searchTestCaseResults("/search/latest", reservedQuery),
           "testCaseResults/search/latest must not fail for the query " + reservedQuery);
     }
+  }
+
+  /**
+   * A dimension result reports the bounds it was evaluated against, which differ from the
+   * configured ones once a failure threshold widens them. They have to survive the write and the
+   * read, or the dimension charts fall back to the configured range.
+   */
+  @Test
+  void test_dimensionResultKeepsTheBoundsItWasEvaluatedAgainst(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("dimension_bounds"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "90")
+            .parameter("maxValue", "120")
+            .create();
+    long timestamp = System.currentTimeMillis();
+
+    TestCaseDimensionResult dimensionResult =
+        new TestCaseDimensionResult()
+            .withId(UUID.randomUUID())
+            .withTestCaseResultId(UUID.randomUUID())
+            .withTimestamp(timestamp)
+            .withDimensionKey("channel=phone")
+            .withDimensionValues(
+                List.of(new DimensionValue().withName("channel").withValue("phone")))
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withMinBound(63.0)
+            .withMaxBound(156.0);
+    CreateTestCaseResult result = new CreateTestCaseResult();
+    result.setTimestamp(timestamp);
+    result.setTestCaseStatus(TestCaseStatus.Success);
+    result.setResult("passed");
+    result.setMinBound(63.0);
+    result.setMaxBound(156.0);
+    result.setDimensionResults(List.of(dimensionResult));
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/dimensionResults/"
+                    + URLEncoder.encode(testCase.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                        .replace("+", "%20"),
+                null,
+                RequestOptions.builder()
+                    .queryParam("startTs", String.valueOf(timestamp - 1))
+                    .queryParam("endTs", String.valueOf(timestamp + 1))
+                    .build());
+    TestCaseDimensionResult stored =
+        JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseDimensionResult>>() {})
+            .getData()
+            .stream()
+            .filter(dim -> "channel=phone".equals(dim.getDimensionKey()))
+            .findFirst()
+            .orElseThrow();
+
+    assertEquals(63.0, stored.getMinBound());
+    assertEquals(156.0, stored.getMaxBound());
   }
 
   private String searchTestCaseResults(String path, String query) {

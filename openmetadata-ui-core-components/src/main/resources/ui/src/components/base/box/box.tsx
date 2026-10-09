@@ -16,7 +16,7 @@ import {
   rowGapClassMapping,
 } from '@/constants/tailwindClasses.constants';
 import { cx } from '@/utils/cx';
-import { forwardRef } from 'react';
+import { Children, Fragment, forwardRef, isValidElement } from 'react';
 import type { HTMLAttributes, ReactNode } from 'react';
 
 export type Direction = 'row' | 'col' | 'row-reverse' | 'col-reverse';
@@ -95,8 +95,33 @@ export interface BoxProps extends HTMLAttributes<HTMLDivElement> {
   rowGap?: GapValues;
   colGap?: GapValues;
   inline?: boolean;
+  /** Group children so flex sizing applies to each item rather than its control. */
+  itemClassName?: string;
   children?: ReactNode;
 }
+
+const getBoxItems = (
+  children: ReactNode,
+  itemClassName: string,
+  keyPrefix = ''
+): ReactNode[] =>
+  Children.toArray(children).flatMap((child, index) => {
+    const key = `${keyPrefix}/${isValidElement(child) ? child.key : index}`;
+
+    // Fragments group JSX, not layout items; keep their children independently spaced.
+    if (
+      isValidElement<{ children?: ReactNode }>(child) &&
+      child.type === Fragment
+    ) {
+      return getBoxItems(child.props.children, itemClassName, key);
+    }
+
+    return [
+      <div className={itemClassName} key={key}>
+        {child}
+      </div>,
+    ];
+  });
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
   {
@@ -108,6 +133,7 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     rowGap,
     colGap,
     inline,
+    itemClassName,
     className,
     children,
     ...props
@@ -119,6 +145,13 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     rowGap === undefined ? undefined : rowGapClassMapping[rowGap];
   const colGapClassName =
     colGap === undefined ? undefined : colGapClassMapping[colGap];
+  const items = itemClassName
+    ? getBoxItems(children, itemClassName)
+    : undefined;
+
+  if (items?.length === 0) {
+    return null;
+  }
 
   return (
     <div
@@ -135,7 +168,7 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
         colGapClassName,
         className
       )}>
-      {children}
+      {items ?? children}
     </div>
   );
 });

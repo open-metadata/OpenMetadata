@@ -33,7 +33,7 @@ public final class McpResponseUtils {
 
   private McpResponseUtils() {}
 
-  public static Map<String, Object> compact(EntityInterface entity, EventType changeType) {
+  public static Map<String, Object> compact(EntityInterface<?> entity, EventType changeType) {
     Map<String, Object> doc = JsonUtils.getMap(entity);
     NOISE_FIELDS.forEach(doc::remove);
     if (Boolean.FALSE.equals(doc.get(DELETED_KEY))) {
@@ -52,7 +52,7 @@ public final class McpResponseUtils {
    * field names are kept: the full object carries old and new values for every field, far more than
    * "did my change land" needs.
    */
-  public static Map<String, Object> compactPatch(EntityInterface entity, EventType changeType) {
+  public static Map<String, Object> compactPatch(EntityInterface<?> entity, EventType changeType) {
     Map<String, Object> doc = compact(entity, changeType);
     doc.put(VERSION_KEY, entity.getVersion());
     List<String> changed = changedFields(entity.getChangeDescription());

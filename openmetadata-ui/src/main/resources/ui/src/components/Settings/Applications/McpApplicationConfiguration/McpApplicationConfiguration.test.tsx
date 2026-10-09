@@ -147,6 +147,7 @@ describe('McpApplicationConfiguration', () => {
     jest.clearAllMocks();
     mockGetMcpConfig.mockResolvedValue({
       allowedOrigins: ['http://localhost:8585'],
+      maxResponseChars: 50000,
       connectTimeout: 30000,
       path: '/api/v1/mcp',
       enabled: true,
@@ -169,7 +170,7 @@ describe('McpApplicationConfiguration', () => {
     // connectTimeout/path/enabled/mcpServerName are stored but not editable, and the schema sets
     // additionalProperties:false, so passing them to the form would fail validation.
     expect(screen.getByTestId('form-data')).toHaveTextContent(
-      '{"allowedOrigins":["http://localhost:8585"]}'
+      '{"allowedOrigins":["http://localhost:8585"],"maxResponseChars":50000}'
     );
   });
 
@@ -202,6 +203,7 @@ describe('McpApplicationConfiguration', () => {
     // sent back untouched alongside the edited allowedOrigins.
     expect(mockUpdateMcpConfig).toHaveBeenCalledWith({
       allowedOrigins: ['https://app.example.com'],
+      maxResponseChars: 50000,
       connectTimeout: 30000,
       path: '/api/v1/mcp',
       enabled: true,
@@ -259,7 +261,10 @@ describe('McpApplicationConfiguration', () => {
   });
 
   it.each([
-    ['every field the form shows', ['/baseUrl', '/allowedOrigins']],
+    [
+      'every field the form shows',
+      ['/baseUrl', '/allowedOrigins', '/maxResponseChars'],
+    ],
     ['the whole setting', ['/']],
   ])(
     'should offer no save when the deployment owns %s',
@@ -318,7 +323,7 @@ describe('McpApplicationConfiguration', () => {
 
 describe('McpApplication form schema', () => {
   const formSchema = mcpSchema as RJSFSchema;
-  const editableFields = ['baseUrl', 'allowedOrigins'];
+  const editableFields = ['baseUrl', 'allowedOrigins', 'maxResponseChars'];
   // Shape of a real stored mcpConfiguration row, including the fields no code reads.
   const storedConfig = {
     path: '/api/v1/mcp',
@@ -327,6 +332,7 @@ describe('McpApplication form schema', () => {
     readTimeout: 30000,
     mcpServerName: 'openmetadata-mcp-server',
     allowedOrigins: ['http://localhost:3000', 'https://app.example.com'],
+    maxResponseChars: 100000,
     connectTimeout: 30000,
     originHeaderUri: 'http://localhost',
     mcpServerVersion: '1.0.0',
@@ -350,6 +356,15 @@ describe('McpApplication form schema', () => {
     expect(
       validator.validateFormData(
         { ...editableSubset, allowedOrigins: [] },
+        formSchema
+      ).errors.length
+    ).toBeGreaterThan(0);
+  });
+
+  it('should reject a response cap under the 25,000 character minimum', () => {
+    expect(
+      validator.validateFormData(
+        { ...editableSubset, maxResponseChars: 20000 },
         formSchema
       ).errors.length
     ).toBeGreaterThan(0);

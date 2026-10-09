@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -96,7 +97,7 @@ class CreateEntityToolTest {
 
   @Test
   void repositorySuppliesTheEntityClassAndWritePath() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Glossary.class);
     Glossary saved = new Glossary().withId(UUID.randomUUID()).withName("Finance");
     saved.setFullyQualifiedName("Finance");
     stubWrite(repository, saved);
@@ -119,7 +120,7 @@ class CreateEntityToolTest {
 
   @Test
   void aTypeOutsideTheFormerEightIsResolvedFromEntity() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Team.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Team.class);
 
     Map<String, Object> described =
         withRepository(
@@ -192,8 +193,8 @@ class CreateEntityToolTest {
 
   @Test
   void tagClassificationIsResolvedBeforeAuthorization() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Tag.class);
-    EntityRepository<EntityInterface> classificationRepository =
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Tag.class);
+    EntityRepository<EntityInterface<?>> classificationRepository =
         repositoryFor(Classification.class);
     EntityReference parent = new EntityReference().withType(Entity.TAG).withId(UUID.randomUUID());
     EntityReference resolvedParent =
@@ -240,13 +241,13 @@ class CreateEntityToolTest {
       new CreateEntityTool().execute(authorizer, mock(Limits.class), securityContext(), input);
     }
 
-    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
+    ArgumentCaptor<EntityInterface<?>> captor = ArgumentCaptor.forClass(EntityInterface.class);
     verify(repository).create(isNull(), captor.capture(), anyString(), any());
     Tag created = (Tag) captor.getValue();
     assertEquals("PII", created.getClassification().getFullyQualifiedName());
     assertEquals(resolvedClassification.getId(), created.getClassification().getId());
 
-    ArgumentCaptor<CreateResourceContext<EntityInterface>> contextCaptor =
+    ArgumentCaptor<CreateResourceContext<EntityInterface<?>>> contextCaptor =
         ArgumentCaptor.forClass(CreateResourceContext.class);
     verify(authorizer).authorize(any(), any(), contextCaptor.capture());
     Tag authorized = (Tag) contextCaptor.getValue().getEntity();
@@ -268,7 +269,7 @@ class CreateEntityToolTest {
 
   @Test
   void requiredFieldsComeFromTheRegisteredEntityClass() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Glossary.class);
 
     IllegalArgumentException failure =
         assertThrows(
@@ -284,7 +285,7 @@ class CreateEntityToolTest {
 
   @Test
   void unknownAttributeIsRejectedBeforeTheRepositoryIsCalled() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Glossary.class);
     Map<String, Object> params = glossary();
     params.put("attributes", Map.of("classification", "PII"));
 
@@ -303,7 +304,7 @@ class CreateEntityToolTest {
 
   @Test
   void referenceAttributesUseTheEntitySchema() {
-    EntityRepository<EntityInterface> repository = repositoryFor(GlossaryTerm.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(GlossaryTerm.class);
     Map<String, Object> described =
         withRepository(
             Entity.GLOSSARY_TERM,
@@ -318,7 +319,7 @@ class CreateEntityToolTest {
 
   @Test
   void anEmptyRequiredObjectIsRejectedBeforePersistence() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Metric.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Metric.class);
     Map<String, Object> params = params();
     params.put("entityType", Entity.METRIC);
     params.put("attributes", Map.of("metricExpression", Map.of()));
@@ -338,7 +339,7 @@ class CreateEntityToolTest {
 
   @Test
   void domainDefaultIsPreservedAfterRepositoryDrivenBinding() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Domain.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Domain.class);
     Domain saved = new Domain().withId(UUID.randomUUID()).withName("Marketing");
     saved.setFullyQualifiedName("Marketing");
     stubWrite(repository, saved);
@@ -353,14 +354,14 @@ class CreateEntityToolTest {
             new CreateEntityTool()
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
 
-    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
+    ArgumentCaptor<EntityInterface<?>> captor = ArgumentCaptor.forClass(EntityInterface.class);
     verify(repository).create(isNull(), captor.capture(), anyString(), any());
     assertEquals(CreateDomain.DomainType.AGGREGATE, ((Domain) captor.getValue()).getDomainType());
   }
 
   @Test
   void contextMemoryKeepsMcpProvenance() {
-    EntityRepository<EntityInterface> repository = repositoryFor(ContextMemory.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(ContextMemory.class);
     ContextMemory saved = new ContextMemory().withId(UUID.randomUUID()).withName("memory");
     saved.setFullyQualifiedName("memory");
     stubWrite(repository, saved);
@@ -375,7 +376,7 @@ class CreateEntityToolTest {
             new CreateEntityTool()
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
 
-    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
+    ArgumentCaptor<EntityInterface<?>> captor = ArgumentCaptor.forClass(EntityInterface.class);
     verify(repository).create(isNull(), captor.capture(), anyString(), any());
     assertEquals(
         ContextMemorySourceType.REMEMBER_REQUEST,
@@ -393,7 +394,7 @@ class CreateEntityToolTest {
 
   @Test
   void deniedCallerDoesNotReachPersistence() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Glossary.class);
     Authorizer authorizer = mock(Authorizer.class);
     RuleEngine ruleEngine = mock(RuleEngine.class);
     doThrow(new AuthorizationException("denied")).when(authorizer).authorize(any(), any(), any());
@@ -417,7 +418,7 @@ class CreateEntityToolTest {
 
   @Test
   void aDuplicateCreateFailureIsPropagatedWithoutUpdating() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Glossary.class);
     IllegalArgumentException duplicate = new IllegalArgumentException("already exists");
     doThrow(duplicate).when(repository).create(isNull(), any(), anyString(), any());
 
@@ -443,7 +444,7 @@ class CreateEntityToolTest {
 
   @Test
   void aDatabaseDuplicateReturnsCreateConflictGuidanceWithoutLeakingDatabaseDetails() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Glossary.class);
     SQLException databaseFailure =
         new SQLException(
             "duplicate key value violates unique constraint glossary_name_unique", "23505");
@@ -475,7 +476,7 @@ class CreateEntityToolTest {
 
   @Test
   void aMySqlDuplicateIsRecognizedByItsVendorCode() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Glossary.class);
     SQLException databaseFailure = new SQLException("Duplicate entry", "23000", 1062);
     doThrow(new RuntimeException(databaseFailure))
         .when(repository)
@@ -502,7 +503,7 @@ class CreateEntityToolTest {
 
   @Test
   void anArticleUsesTheCreatePageContract() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Page.class);
     Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
     saved.setFullyQualifiedName("runbook");
     stubWrite(repository, saved);
@@ -516,7 +517,7 @@ class CreateEntityToolTest {
             new CreateEntityTool()
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
 
-    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
+    ArgumentCaptor<EntityInterface<?>> captor = ArgumentCaptor.forClass(EntityInterface.class);
     verify(repository).create(isNull(), captor.capture(), anyString(), any());
     Page created = (Page) captor.getValue();
     assertEquals(PageType.ARTICLE, created.getPageType());
@@ -538,7 +539,7 @@ class CreateEntityToolTest {
 
   @Test
   void anEmptyQuickLinkIsRejectedBeforePersistence() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Page.class);
     Map<String, Object> params = params(Entity.PAGE);
     params.put("attributes", Map.of("pageType", PageType.QUICK_LINK.value(), "page", Map.of()));
 
@@ -560,7 +561,7 @@ class CreateEntityToolTest {
     // The eight tools this one replaced took references as plain FQN strings. The generic path
     // still resolves a name-only reference, but callers were told to send ids and given the
     // EntityReference schema blurb, so they spent a lookup they did not need.
-    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Page.class);
 
     Map<String, Object> described =
         withRepository(
@@ -580,7 +581,7 @@ class CreateEntityToolTest {
 
   @Test
   void anArticleBodySuppliedByTheCallerIsKept() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Page.class);
     Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
     saved.setFullyQualifiedName("runbook");
     stubWrite(repository, saved);
@@ -602,7 +603,7 @@ class CreateEntityToolTest {
             new CreateEntityTool()
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
 
-    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
+    ArgumentCaptor<EntityInterface<?>> captor = ArgumentCaptor.forClass(EntityInterface.class);
     verify(repository).create(isNull(), captor.capture(), anyString(), any());
     Page created = (Page) captor.getValue();
     assertNotNull(
@@ -617,7 +618,7 @@ class CreateEntityToolTest {
     // written from relationships, votes and the extraction fields by background work. Offering
     // 'children' was the harmful one: storeRelationships reads child.getId() and a caller has no id
     // to give, so an accepted value would have written a relationship row with a null id.
-    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(Page.class);
 
     Map<String, Object> described =
         withRepository(
@@ -649,18 +650,19 @@ class CreateEntityToolTest {
   }
 
   @SuppressWarnings("unchecked")
-  private static EntityRepository<EntityInterface> repositoryFor(
-      Class<? extends EntityInterface> entityClass) {
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
-    when(repository.getEntityClass()).thenReturn((Class<EntityInterface>) entityClass);
+  private static EntityRepository<EntityInterface<?>> repositoryFor(
+      Class<? extends EntityInterface<?>> entityClass) {
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
+    when(repository.getEntityClass()).thenReturn((Class<EntityInterface<?>>) entityClass);
     when(repository.getParentEntity(any(), anyString()))
         .thenThrow(new EntityNotFoundException("no parent"));
     return repository;
   }
 
   private static void stubWrite(
-      EntityRepository<EntityInterface> repository, EntityInterface saved) {
-    when(repository.create(isNull(), any(), anyString(), any())).thenReturn(saved);
+      EntityRepository<EntityInterface<?>> repository, EntityInterface<?> saved) {
+    Mockito.<EntityInterface<?>>when(repository.create(isNull(), any(), anyString(), any()))
+        .thenReturn(saved);
   }
 
   private static <T> T withRepository(
@@ -712,8 +714,8 @@ class CreateEntityToolTest {
   }
 
   private static void assertDedicatedApiRequired(
-      String entityType, Class<? extends EntityInterface> entityClass) {
-    EntityRepository<EntityInterface> repository = repositoryFor(entityClass);
+      String entityType, Class<? extends EntityInterface<?>> entityClass) {
+    EntityRepository<EntityInterface<?>> repository = repositoryFor(entityClass);
     IllegalArgumentException createFailure =
         assertThrows(
             IllegalArgumentException.class,
