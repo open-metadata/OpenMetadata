@@ -165,6 +165,7 @@ const EntityTypePicker = ({
 
   return (
     <TreeSelect
+      bordered
       cascadeSelection
       multiple
       searchable
@@ -218,6 +219,7 @@ const RelationshipTypePicker = ({
 
   return (
     <TreeSelect
+      bordered
       cascadeSelection
       multiple
       searchable
@@ -250,8 +252,6 @@ const KnowledgeGraphToolbar = ({
   viewport,
   onPresentationChange,
   onToggleBands,
-  onClearFilters,
-  hasFilters = false,
   onFindNode,
   onLevelChange,
   onLayoutChange,
@@ -521,11 +521,6 @@ const KnowledgeGraphToolbar = ({
             </Popover>
           </PopoverTrigger>
 
-          {hasFilters && (
-            <Button color="link-gray" size="sm" onPress={onClearFilters}>
-              {t('label.clear-filter-plural')}
-            </Button>
-          )}
           <Button
             aria-label={t(
               viewport.isFullscreen
