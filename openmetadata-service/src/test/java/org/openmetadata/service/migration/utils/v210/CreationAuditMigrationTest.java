@@ -20,7 +20,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
-import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.BATCH_SIZE;
+import static org.openmetadata.service.migration.utils.IdBatches.BATCH_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,8 +28,8 @@ import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.Test;
 
 /**
- * The backfill walks each audited table in keyset-paged batches so no single statement grows with
- * the table. Real SQL behavior in both dialects is covered by {@code CreationAuditMigrationIT}.
+ * Per-batch behavior of the backfill; the keyset walk itself is {@code IdBatchesTest}'s. Real SQL
+ * behavior in both dialects is covered by {@code CreationAuditMigrationIT}.
  */
 class CreationAuditMigrationTest {
 
@@ -41,19 +41,6 @@ class CreationAuditMigrationTest {
   // Only table_entity is stubbed; the other audited tables get deep-stub lists that are not
   // empty, so assertions about writes are scoped to table_entity's statements.
   private static final String TABLE_UPDATE = "UPDATE table_entity ";
-
-  @Test
-  void readsEveryBatchOfIdsThroughTheKeysetCursor() {
-    final Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
-    final List<String> firstBatch = ids(0, BATCH_SIZE);
-    final List<String> secondBatch = ids(BATCH_SIZE, 1);
-    stubIdBatch(handle, "", firstBatch);
-    stubIdBatch(handle, firstBatch.getLast(), secondBatch);
-
-    CreationAuditMigration.backfillCreationAudit(handle, MYSQL);
-
-    verify(handle.createQuery(TABLE_IDS_MISSING_AUDIT)).bindList("ids", secondBatch);
-  }
 
   @Test
   void aBatchWithNothingMissingNeverReadsVersionHistory() {

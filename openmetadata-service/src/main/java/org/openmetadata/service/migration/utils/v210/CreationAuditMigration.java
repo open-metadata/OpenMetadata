@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.IdBatches;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -29,7 +30,7 @@ import org.openmetadata.service.util.EntityUtil;
  * it was first created, so that row is the accurate source. Entities whose version history has been
  * pruned — or that were never updated — fall back to their own current values.
  *
- * <p>Each table is walked in batches of {@link #BATCH_SIZE} ids, read with a keyset cursor on the
+ * <p>Each table is walked in batches of {@link IdBatches#BATCH_SIZE} ids, read with a keyset cursor on the
  * primary key, and each pass touches only a batch's rows where {@code createdAt} is still absent.
  * Every statement is therefore bounded by the batch, not the table, and commits on its own, so a run
  * cut short keeps what it filled and a re-run skips it.
@@ -61,13 +62,8 @@ public final class CreationAuditMigration {
   /** Run once per version through {@code DataMigrationStep}; repeating it finds nothing to fill. */
   public static final String STEP_NAME = "creation-audit-backfill";
 
-  /** Entities per statement. */
-  static final int BATCH_SIZE = 500;
-
   private static final String VERSION_PREFIX_BIND = "versionPrefix";
   private static final String IDS_BIND = "ids";
-  private static final String AFTER_ID_BIND = "afterId";
-  private static final String LIMIT_BIND = "limit";
 
   /** Rows one batch, or one table, filled, split by where the values came from. */
   record Backfilled(int fromHistory, int fromCurrent) {
@@ -104,34 +100,18 @@ public final class CreationAuditMigration {
 
   private static int backfillEntity(
       final Handle handle, final ConnectionType connectionType, final AuditedEntity entity) {
-    Backfilled backfilled = Backfilled.NONE;
-    String afterId = "";
-    boolean hasMore = true;
-    while (hasMore) {
-      final List<String> batch = listIdBatch(handle, entity.tableName(), afterId);
-      backfilled = backfilled.plus(backfillBatch(handle, connectionType, entity, batch));
-      hasMore = batch.size() == BATCH_SIZE;
-      if (hasMore) {
-        afterId = batch.getLast();
-      }
-    }
+    final Backfilled backfilled =
+        IdBatches.fold(
+            handle,
+            entity.tableName(),
+            Backfilled.NONE,
+            (sum, batch) -> sum.plus(backfillBatch(handle, connectionType, entity, batch)));
     LOG.info(
         "{}: creation audit backfilled from version history for {} rows, from current state for {} rows",
         entity.tableName(),
         backfilled.fromHistory(),
         backfilled.fromCurrent());
     return backfilled.total();
-  }
-
-  /** Keyset pagination on the primary key: an index seek per batch, never OFFSET's row skipping. */
-  private static List<String> listIdBatch(
-      final Handle handle, final String table, final String afterId) {
-    return handle
-        .createQuery("SELECT id FROM " + table + " WHERE id > :afterId ORDER BY id LIMIT :limit")
-        .bind(AFTER_ID_BIND, afterId)
-        .bind(LIMIT_BIND, BATCH_SIZE)
-        .mapTo(String.class)
-        .list();
   }
 
   /** A batch an earlier, interrupted run already filled costs one read and no history read. */
@@ -141,9 +121,7 @@ public final class CreationAuditMigration {
       final AuditedEntity entity,
       final List<String> batch) {
     final List<String> missing =
-        nullOrEmpty(batch)
-            ? List.of()
-            : idsMissingCreationAudit(handle, connectionType, entity.tableName(), batch);
+        idsMissingCreationAudit(handle, connectionType, entity.tableName(), batch);
     return nullOrEmpty(missing)
         ? Backfilled.NONE
         : new Backfilled(
