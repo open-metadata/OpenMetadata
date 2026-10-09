@@ -148,6 +148,30 @@ class TestFailedSampleValidatorMixin:
 
         assert response.failedRowsSample is None
 
+    def test_sampling_error_preserves_success_with_failed_rows(self):
+        validator = ConcreteValidator(raise_on_fetch=True)
+        response = _make_response(status=TestCaseStatus.Success, failed_rows=7)
+
+        validator.result_with_failed_samples(response)
+
+        assert response.testCaseResult.testCaseStatus == TestCaseStatus.Success
+        assert response.failedRowsSample is None
+
+    def test_inspection_query_error_preserves_sample_and_success(self):
+        class QueryErrorValidator(ConcreteValidator):
+            def get_inspection_query(self):
+                raise RuntimeError("inspection query error")
+
+        sample = TableData(columns=["a"], rows=[["1"]])
+        validator = QueryErrorValidator(sample_data=sample)
+        response = _make_response(status=TestCaseStatus.Success, failed_rows=7)
+
+        validator.result_with_failed_samples(response)
+
+        assert response.testCaseResult.testCaseStatus == TestCaseStatus.Success
+        assert response.failedRowsSample == sample
+        assert response.inspectionQuery is None
+
     def test_inspection_query_none_by_default(self):
         sample = TableData(columns=["a"], rows=[["1"]])
         validator = ConcreteValidator(sample_data=sample, inspection_query=None)

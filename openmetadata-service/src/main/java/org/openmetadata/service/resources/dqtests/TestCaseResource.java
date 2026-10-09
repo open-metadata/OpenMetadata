@@ -1572,7 +1572,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return joinedStatuses;
   }
 
-  /** Matching is case insensitive, the status is normalized to its canonical enum value. */
   /**
    * A test case that passed within its failure threshold still has failed rows the user needs to
    * inspect, so a Success result with failed rows can hold a sample too. See ADR:2026-10-09-failed-rows-sample-follows-failed-rows-not-status.
@@ -1587,6 +1586,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         || (status == TestCaseStatus.Success && failedRows != null && failedRows > 0);
   }
 
+  /** Matching is case insensitive, the status is normalized to its canonical enum value. */
   private static TestCaseStatus toTestCaseStatus(String status) {
     return Arrays.stream(TestCaseStatus.values())
         .filter(candidate -> candidate.value().equalsIgnoreCase(status))

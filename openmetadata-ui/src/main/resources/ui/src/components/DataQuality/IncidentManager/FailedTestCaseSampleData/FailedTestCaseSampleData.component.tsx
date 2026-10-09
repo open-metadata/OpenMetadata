@@ -176,10 +176,11 @@ const FailedTestCaseSampleData = ({
   };
 
   // `isStale` guards against a late response overwriting state after the test
-  // case has changed (e.g. status moved away from Failed) while the request was
+  // case or result has changed while the request was
   // in flight — otherwise the resolved response would restore stale rows.
   const fetchFailedTestCaseSampleData = async (isStale?: () => boolean) => {
     if (testCaseData?.id) {
+      setSampleData(undefined);
       setIsLoading(true);
       try {
         const response = await getTestCaseFailedSampleData(testCaseData.id);
@@ -190,8 +191,8 @@ const FailedTestCaseSampleData = ({
         if (!isStale?.()) {
           setSampleData(undefined);
           // A 404 is the backend's expected "no failed-rows sample stored"
-          // response (samples exist only for failing test cases with row-count
-          // computation enabled) — treat it as an empty state, not an error.
+          // response (sampling may be disabled or may have failed) — treat it
+          // as an empty state, not an error.
           // Any other status (e.g. 403/500) is a real failure worth surfacing.
           if (
             (error as AxiosError)?.response?.status !== ClientErrors.NOT_FOUND
@@ -200,7 +201,9 @@ const FailedTestCaseSampleData = ({
           }
         }
       } finally {
-        setIsLoading(false);
+        if (!isStale?.()) {
+          setIsLoading(false);
+        }
       }
     }
   };
@@ -239,8 +242,7 @@ const FailedTestCaseSampleData = ({
       fetchFailedTestCaseSampleData(() => cancelled);
     } else {
       // Clear any previously loaded sample so it doesn't linger when the test
-      // case is no longer failing (e.g. a status change on the mounted page),
-      // and reset loading so a non-failed test case shows its empty state
+      // case no longer has failed rows, and reset loading so it shows its empty state
       // immediately instead of waiting on any in-flight request.
       setSampleData(undefined);
       setIsLoading(false);
@@ -249,7 +251,14 @@ const FailedTestCaseSampleData = ({
     return () => {
       cancelled = true;
     };
-  }, [testCaseData?.id, hasViewSampleDataPermission, hasFailedRows]);
+  }, [
+    testCaseData?.id,
+    testCaseData?.testCaseResult?.timestamp,
+    testCaseData?.testCaseResult?.testCaseStatus,
+    testCaseData?.testCaseResult?.failedRows,
+    hasViewSampleDataPermission,
+    hasFailedRows,
+  ]);
 
   if (!hasViewSampleDataPermission) {
     return <></>;
