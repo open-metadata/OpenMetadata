@@ -22,9 +22,8 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.events.subscription.channels.DestinationConfig;
-import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 
 /**
  * Alerts the previous release could not send. It built every destination of an alert before each
@@ -53,7 +52,7 @@ public final class AlertBacklogMigration {
               : whyThePreviousReleaseCouldNotSend(alert);
       stopped.ifPresent(
           reason -> {
-            AlertRecord.skipBacklog(alert.getId());
+            EventSubscriptionRepository.skipBacklog(alert.getId());
             LOG.info(
                 "Alert {} starts from the upgrade: the previous release could not send it: {}",
                 alert.getName(),
@@ -75,11 +74,11 @@ public final class AlertBacklogMigration {
     Optional<String> reason = Optional.empty();
     try {
       switch (destination.getType()) {
-        case EMAIL -> DestinationConfig.submitted(destination, EmailAlertConfig.class, "email");
-        case SLACK, MS_TEAMS, G_CHAT -> DestinationConfig.submitted(
+        case EMAIL -> PreviousReleaseConfigRead.read(destination, EmailAlertConfig.class, "email");
+        case SLACK, MS_TEAMS, G_CHAT -> PreviousReleaseConfigRead.read(
             destination, Webhook.class, "webhook");
         case WEBHOOK -> PreviousReleaseEndpointRule.require(
-            DestinationConfig.submitted(destination, Webhook.class, "webhook"));
+            PreviousReleaseConfigRead.read(destination, Webhook.class, "webhook"));
         default -> LOG.debug("Destination {} needs no configuration", destination.getId());
       }
     } catch (RuntimeException e) {

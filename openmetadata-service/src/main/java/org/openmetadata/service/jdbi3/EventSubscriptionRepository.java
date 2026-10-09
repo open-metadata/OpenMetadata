@@ -101,7 +101,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     super.postUpdate(original, updated);
     // Before the job is back, so its first tick already starts from now.
     if (switchedOn(updated)) {
-      AlertRecord.skipBacklog(updated.getId());
+      skipBacklog(updated.getId());
     }
     AlertJobs.convergeAfterCommit(updated.getId());
   }
@@ -229,7 +229,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
    */
   public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
     EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("*"));
-    return AlertRecord.skipBacklog(eventSubscription.getId());
+    return skipBacklog(eventSubscription.getId());
+  }
+
+  /** The same skip for an alert known by its id; data migrations call it too. */
+  public static EventSubscriptionOffset skipBacklog(UUID alertId) {
+    return AlertRecord.skipBacklog(alertId);
   }
 
   @Override

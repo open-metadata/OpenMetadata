@@ -26,7 +26,8 @@ import org.junit.jupiter.api.Test;
 /**
  * A destination's configuration is read into its channel's type in one place, so a configuration
  * being saved is judged one way and a stored one is read one way, whichever part of a channel
- * reads it.
+ * reads it. A released data migration is the exception: it keeps a frozen copy of the read its
+ * release made, so that a change here never changes it.
  */
 class ConfigReadersTest {
   private static final Path MAIN_SOURCES = Path.of("src/main/java/org/openmetadata/service");
@@ -34,6 +35,7 @@ class ConfigReadersTest {
       Pattern.compile(
           "JsonUtils\\.(convertValue|convertValueLenient|readValue)\\([^;]*getConfig\\(\\)");
   private static final String THE_READER = "events/subscription/channels/DestinationConfig.java";
+  private static final String RELEASED_MIGRATIONS = "migration/utils/v";
 
   @Test
   void noConfigurationIsParsedOutsideItsChannel() throws IOException {
@@ -44,6 +46,7 @@ class ConfigReadersTest {
               .filter(ConfigReadersTest::parsesADestinationConfiguration)
               .map(path -> MAIN_SOURCES.relativize(path).toString().replace('\\', '/'))
               .filter(path -> !THE_READER.equals(path))
+              .filter(path -> !path.startsWith(RELEASED_MIGRATIONS))
               .sorted()
               .toList();
 
