@@ -1082,6 +1082,7 @@ const AssetsTabs = forwardRef(
           <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
               className="tw:px-2"
+              data-testid="select-all-assets"
               label={t('label.select-field', {
                 field: t('label.all'),
               })}

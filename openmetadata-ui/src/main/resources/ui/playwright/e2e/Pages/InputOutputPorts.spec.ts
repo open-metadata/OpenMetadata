@@ -1753,7 +1753,8 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Select all assets and click bulk delete', async () => {
-        await page.getByRole('checkbox', { name: 'Select All' }).click();
+        // The core checkbox's <input> is visually hidden; the label takes the click.
+        await page.getByTestId('select-all-assets').click();
 
         await page.getByTestId('delete-all-button').click();
 
