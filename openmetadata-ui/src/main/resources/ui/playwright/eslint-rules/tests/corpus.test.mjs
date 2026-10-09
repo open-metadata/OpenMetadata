@@ -48,8 +48,8 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // Removing the S3 sample-data storage tests and scoping
     // ChangeSummaryBadge's button lookup remove three more positional locators;
     // the core assignee/schema-field selectors in the task and incident specs
-    // remove three more.
-    'om-playwright/no-positional-locator': 598,
+    // remove three more. Scoping the Policies rule description to its rule card removes one more.
+    'om-playwright/no-positional-locator': 597,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 2,
     'playwright/no-wait-for-selector': 14,
