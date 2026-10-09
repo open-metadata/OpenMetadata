@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { Badge, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Col, Row, Select } from 'antd';
+import { Select } from 'antd';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -232,8 +237,11 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   );
 
   return (
-    <Row className={classNames('field-error', { 'has-error': hasError })}>
-      <Col span={24}>
+    <Grid
+      className={`layout-row layout-grid ${classNames('field-error', {
+        'has-error': hasError,
+      })}`}>
+      <Grid.Item className="layout-column" span={24}>
         <Typography
           as="article"
           className={classNames('array-field-label', {
@@ -247,8 +255,8 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
             </Badge>
           )}
         </Typography>
-      </Col>
-      <Col className="sso-select-container" span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column sso-select-container" span={24}>
         <Select
           className={classNames('m-t-xss w-full', {
             'ant-select-status-error': hasError,
@@ -286,8 +294,8 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
             {t('message.valid-urls-required')}
           </div>
         )}
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

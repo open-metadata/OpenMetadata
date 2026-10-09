@@ -16,11 +16,12 @@ import {
   Box,
   ButtonUtility,
   Dropdown,
+  Grid,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { DotsVertical } from '@openmetadata/ui-core-components/icons';
-import { Button, Card, Col, Modal, Row, Space } from 'antd';
+import { Button, Card, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -335,92 +336,116 @@ const PoliciesDetailPage = () => {
               </Button>
             </div>
 
-            <Space className="w-full" direction="vertical" size={20}>
+            <Box
+              inline
+              align="stretch"
+              className="layout-space w-full"
+              direction="col"
+              gap={5}
+              itemClassName="layout-space-item">
               {policy.rules.map((rule) => (
                 <Card data-testid="rule-card" key={rule.name || 'rule'}>
-                  <Space
+                  <Box
+                    inline
                     align="baseline"
-                    className="w-full justify-between p-b-lg"
-                    direction="horizontal">
+                    className="layout-space layout-space-horizontal w-full justify-between p-b-lg"
+                    gap={2}
+                    itemClassName="layout-space-item">
                     <Typography
                       className="font-medium text-base text-grey-body"
                       data-testid="rule-name">
                       {rule.name}
                     </Typography>
                     {getRuleActionElement(rule)}
-                  </Space>
+                  </Box>
 
-                  <Space className="w-full" direction="vertical" size={12}>
+                  <Box
+                    inline
+                    align="stretch"
+                    className="layout-space w-full"
+                    direction="col"
+                    gap={3}
+                    itemClassName="layout-space-item">
                     {rule.description && (
-                      <Row data-testid="description">
-                        <Col span={2}>
+                      <Grid
+                        className="layout-row layout-grid"
+                        data-testid="description">
+                        <Grid.Item className="layout-column" span={2}>
                           <Typography color="secondary">
                             {`${t('label.description')}:`}
                           </Typography>
-                        </Col>
-                        <Col span={22}>
+                        </Grid.Item>
+                        <Grid.Item className="layout-column" span={22}>
                           <RichTextEditorPreviewerV1
                             markdown={rule.description || ''}
                           />
-                        </Col>
-                      </Row>
+                        </Grid.Item>
+                      </Grid>
                     )}
 
-                    <Row data-testid="resources">
-                      <Col span={2}>
+                    <Grid
+                      className="layout-row layout-grid"
+                      data-testid="resources">
+                      <Grid.Item className="layout-column" span={2}>
                         <Typography className="m-b-0" color="secondary">
                           {`${t('label.resource-plural')}:`}
                         </Typography>
-                      </Col>
-                      <Col span={22}>
+                      </Grid.Item>
+                      <Grid.Item className="layout-column" span={22}>
                         <Typography className="text-grey-body">
                           {rule.resources
                             ?.map((resource) => startCase(resource))
                             ?.join(', ')}
                         </Typography>
-                      </Col>
-                    </Row>
+                      </Grid.Item>
+                    </Grid>
 
-                    <Row data-testid="operations">
-                      <Col span={2}>
+                    <Grid
+                      className="layout-row layout-grid"
+                      data-testid="operations">
+                      <Grid.Item className="layout-column" span={2}>
                         <Typography color="secondary">
                           {`${t('label.operation-plural')}:`}
                         </Typography>
-                      </Col>
-                      <Col span={22}>
+                      </Grid.Item>
+                      <Grid.Item className="layout-column" span={22}>
                         <Typography className="text-grey-body">
                           {rule.operations?.join(', ')}
                         </Typography>
-                      </Col>
-                    </Row>
-                    <Row data-testid="effect">
-                      <Col span={2}>
+                      </Grid.Item>
+                    </Grid>
+                    <Grid
+                      className="layout-row layout-grid"
+                      data-testid="effect">
+                      <Grid.Item className="layout-column" span={2}>
                         <Typography color="secondary">
                           {`${t('label.effect')}:`}
                         </Typography>
-                      </Col>
-                      <Col span={22}>
+                      </Grid.Item>
+                      <Grid.Item className="layout-column" span={22}>
                         <Typography className="text-grey-body">
                           {startCase(rule.effect)}
                         </Typography>
-                      </Col>
-                    </Row>
+                      </Grid.Item>
+                    </Grid>
                     {rule.condition && (
-                      <Row data-testid="condition">
-                        <Col span={2}>
+                      <Grid
+                        className="layout-row layout-grid"
+                        data-testid="condition">
+                        <Grid.Item className="layout-column" span={2}>
                           <Typography color="secondary">
                             {`${t('label.condition')}:`}
                           </Typography>
-                        </Col>
-                        <Col span={22}>
+                        </Grid.Item>
+                        <Grid.Item className="layout-column" span={22}>
                           <code>{rule.condition}</code>
-                        </Col>
-                      </Row>
+                        </Grid.Item>
+                      </Grid>
                     )}
-                  </Space>
+                  </Box>
                 </Card>
               ))}
-            </Space>
+            </Box>
           </>
         )}
       </Card>

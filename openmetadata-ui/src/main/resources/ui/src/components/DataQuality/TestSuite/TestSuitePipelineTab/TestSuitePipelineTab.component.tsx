@@ -14,6 +14,7 @@
 import {
   Box,
   EmptyPlaceholder,
+  Grid,
   Skeleton,
   Table,
   TableCard,
@@ -25,7 +26,7 @@ import {
   HelpCircle,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Row } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import QueryString from 'qs';
@@ -57,6 +58,7 @@ import {
   getIngestionPipelines,
   triggerIngestionPipelineById,
 } from '../../../../rest/ingestionPipelineAPI';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import {
@@ -419,20 +421,20 @@ const TestSuitePipelineTab = ({
   }
 
   return (
-    <Row
-      className="test-suite-pipeline-tab m-l-0 m-r-0 m-t-md m-b-md"
-      gutter={[16, 16]}>
+    <Grid
+      className="layout-row layout-grid test-suite-pipeline-tab m-l-0 m-r-0 m-t-md m-b-md"
+      style={{ ...getLayoutGutter(16, 16) }}>
       {dataSource.length > 0 && (
-        <Col className="d-flex justify-end" span={24}>
+        <Grid.Item className="layout-column d-flex justify-end" span={24}>
           <Button
             data-testid="add-pipeline-button"
             type="primary"
             onClick={handleAddPipelineRedirection}>
             {t('label.add-entity', { entity: t('label.pipeline') })}
           </Button>
-        </Col>
+        </Grid.Item>
       )}
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <TableCard.Root>
           <Table
             aria-label={t('label.pipeline')}
@@ -586,7 +588,7 @@ const TestSuitePipelineTab = ({
             />
           )}
         </TableCard.Root>
-      </Col>
+      </Grid.Item>
 
       <DeleteModal
         entityTitle={getEntityName(deleteSelection)}
@@ -596,7 +598,7 @@ const TestSuitePipelineTab = ({
         onCancel={handleCancelConfirmationModal}
         onDelete={handleDeleteConfirm}
       />
-    </Row>
+    </Grid>
   );
 };
 

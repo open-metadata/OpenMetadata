@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
-import { Col, Form, Row } from 'antd';
+import { Button, Grid } from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useMemo, useState } from 'react';
@@ -26,6 +26,7 @@ import {
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getDefaultScheduleValue } from '../../../../utils/CronExpressionUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
@@ -208,14 +209,18 @@ const AddTestSuitePipeline = ({
       name="schedular-form"
       onFinish={onFinish}
       onValuesChange={handleValuesChange}>
-      <Row gutter={[16, 16]}>
-        <Col span={24}>{generateFormFields(formFields)}</Col>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
+          {generateFormFields(formFields)}
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           {t('label.schedule-for-entity', {
             entity: t('label.test-case-plural'),
           })}
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Form.Item name="cron">
             <ScheduleInterval
               defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
@@ -224,14 +229,22 @@ const AddTestSuitePipeline = ({
               onValidityChange={setIsSchedulerValid}
             />
           </Form.Item>
-        </Col>
-        <Col span={24}>{generateFormFields([debugLogFormField])}</Col>
-        <Col span={24}>{generateFormFields([raiseOnErrorFormField])}</Col>
-        <Col span={24}>
-          <Row className="add-test-case-container" gutter={[0, 16]}>
-            <Col span={24}>{generateFormFields(testCaseFormFields)}</Col>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          {generateFormFields([debugLogFormField])}
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          {generateFormFields([raiseOnErrorFormField])}
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Grid
+            className="layout-row layout-grid add-test-case-container"
+            style={{ ...getLayoutGutter(0, 16) }}>
+            <Grid.Item className="layout-column" span={24}>
+              {generateFormFields(testCaseFormFields)}
+            </Grid.Item>
             {!selectAllTestCases && (
-              <Col span={24}>
+              <Grid.Item className="layout-column" span={24}>
                 <Form.Item
                   label={t('label.test-case')}
                   name="testCases"
@@ -257,11 +270,11 @@ const AddTestSuitePipeline = ({
                     testCaseParams={testCasePickerScope}
                   />
                 </Form.Item>
-              </Col>
+              </Grid.Item>
             )}
-          </Row>
-        </Col>
-        <Col className="d-flex justify-end gap-2" span={24}>
+          </Grid>
+        </Grid.Item>
+        <Grid.Item className="layout-column d-flex justify-end gap-2" span={24}>
           <Button
             color="secondary"
             data-testid="back-button"
@@ -279,8 +292,8 @@ const AddTestSuitePipeline = ({
             type="submit">
             {isEditMode ? t('label.save') : t('label.create')}
           </Button>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </Form>
   );
 };

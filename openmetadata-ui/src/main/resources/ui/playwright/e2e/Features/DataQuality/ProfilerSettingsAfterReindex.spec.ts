@@ -48,6 +48,23 @@ test('Profiler settings survive a table reindex', async ({ browser }) => {
     await page.getByTestId('profiler-setting-btn').click();
     await page.getByTestId('profiler-settings-modal').waitFor();
 
+    // Body-portaled options are hidden by the modal's accessibility boundary.
+    // Check accessible options and keyboard selection inside the drawer.
+    const settings = page.getByRole('dialog', { name: 'Settings' });
+    const sampleType = settings.getByRole('combobox', {
+      name: 'Profile Sample type',
+    });
+    await settings.getByTestId('profile-sample').click();
+    await expect(
+      settings.getByRole('option', { name: 'Row Count', exact: true })
+    ).toBeAttached();
+    await sampleType.press('ArrowDown');
+    await sampleType.press('Enter');
+    await expect(settings.getByTestId('metric-number-input')).toBeVisible();
+    await settings.getByTestId('profile-sample').click();
+    await sampleType.press('ArrowUp');
+    await sampleType.press('Enter');
+
     await page.getByTestId('slider-input').clear();
     await page.getByTestId('slider-input').fill(PROFILE_SAMPLE);
     await page.getByTestId('sample-data-count-input').clear();

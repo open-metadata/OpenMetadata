@@ -166,7 +166,11 @@ test.describe('Service Listing', () => {
       databaseService2.entity.name
     );
 
-    await page.getByTestId('searchbar').fill(databaseService2.entity.name);
+    await page
+      .getByTestId('services-container')
+      .filter({ visible: true })
+      .getByTestId('searchbar')
+      .fill(databaseService2.entity.name);
     await searchService2Response;
 
     const searchService2Response2 = waitForFilteredServices(
@@ -192,7 +196,11 @@ test.describe('Service Listing', () => {
         request.url().includes('/api/v1/search/query') &&
         request.url().includes('query_filter')
     );
-    await page.getByTestId('searchbar').fill(searchTerm);
+    await page
+      .getByTestId('services-container')
+      .filter({ visible: true })
+      .getByTestId('searchbar')
+      .fill(searchTerm);
     const searchRequest = await capturedRequest;
 
     const url = new URL(searchRequest.url());
@@ -231,7 +239,11 @@ test.describe('Service Listing', () => {
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('databaseService')
     );
-    await page.getByTestId('searchbar').fill(serviceDisplayName);
+    await page
+      .getByTestId('services-container')
+      .filter({ visible: true })
+      .getByTestId('searchbar')
+      .fill(serviceDisplayName);
     const searchRequest = await searchResponse;
     expect(searchRequest.status()).toBe(200);
     await expect(
@@ -266,7 +278,11 @@ test.describe('Service Listing', () => {
         const searchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=${expectedIndex}*`
         );
-        await page.getByTestId('searchbar').fill(entityName);
+        await page
+          .getByTestId('services-container')
+          .filter({ visible: true })
+          .getByTestId('searchbar')
+          .fill(entityName);
         await searchResponse;
 
         await expect(serviceCell(page, entityName)).toBeVisible();
