@@ -865,7 +865,20 @@ public final class SearchUtils {
       int requestedFqnCount,
       long updatedDocuments,
       long versionConflicts,
-      List<String> failureReasons) {}
+      List<String> failureReasons)
+      implements UpdateByQueryReconciler.Outcome<ColumnLineageFlushOutcome> {
+
+    @Override
+    public ColumnLineageFlushOutcome withUpdatedDocuments(long updatedDocuments) {
+      return new ColumnLineageFlushOutcome(
+          operation,
+          indexName,
+          requestedFqnCount,
+          updatedDocuments,
+          versionConflicts,
+          failureReasons);
+    }
+  }
 
   /**
    * Report a column-lineage reconciliation, distinguishing "nothing to do" from "we cannot tell".

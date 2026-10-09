@@ -80,6 +80,8 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchPropagationLimits;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.UpdateByQueryOutcome;
+import org.openmetadata.service.search.UpdateByQueryReconciler;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -565,17 +567,20 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     Map<String, JsonData> params =
         convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
 
-    client.updateByQuery(
-        u ->
-            u.index(indexNames)
-                .query(anyOfFieldQuery(field, values))
-                .conflicts(Conflicts.Proceed)
-                .script(
-                    s ->
-                        s.source(ss -> ss.scriptString(updates.getKey()))
-                            .lang(ScriptLanguage.Painless)
-                            .params(params))
-                .refresh(true));
+    UpdateByQueryRequest request =
+        UpdateByQueryRequest.of(
+            u ->
+                u.index(indexNames)
+                    .query(anyOfFieldQuery(field, values))
+                    .conflicts(Conflicts.Proceed)
+                    .script(
+                        s ->
+                            s.source(ss -> ss.scriptString(updates.getKey()))
+                                .lang(ScriptLanguage.Painless)
+                                .params(params))
+                    .refresh(true));
+
+    runReconciled("updateChildren", request, true);
 
     LOG.info("Successfully updated children in ElasticSearch for indices: {}", indexNames);
   }
@@ -649,8 +654,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                   "entityRelationshipData", JsonData.of(entityRelationshipData))
               : Map.of();
 
-      UpdateByQueryResponse response =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               u ->
                   u.index(indexName)
                       .query(exactFieldQuery(fieldAndValue))
@@ -662,16 +667,10 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                   .params(params))
                       .refresh(true));
 
+      runReconciled("updateEntityRelationship", request, true);
+
       LOG.info(
           "Successfully updated entity relationship in ElasticSearch for index: {}", indexName);
-
-      if (!response.failures().isEmpty()) {
-        String failureDetails =
-            response.failures().stream()
-                .map(BulkIndexByScrollFailure::toString)
-                .collect(Collectors.joining("; "));
-        LOG.error("updated entity relationship encountered failures: {}", failureDetails);
-      }
 
     } catch (IOException | ElasticsearchException e) {
       LOG.error(
@@ -718,8 +717,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               "oldParentFQN", JsonData.of(oldParentFQN),
               "newParentFQN", JsonData.of(newParentFQN));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
@@ -731,16 +730,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                   .params(params))
                       .refresh(true));
 
-      LOG.info("Successfully propagated FQN updates for parent FQN: {}", oldParentFQN);
+      runReconciled("updateByFqnPrefix", request, !newParentFQN.contains(oldParentFQN));
 
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkIndexByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update FQN prefix: {}", errorMessage);
-      }
+      LOG.info("Successfully propagated FQN updates for parent FQN: {}", oldParentFQN);
 
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
@@ -784,8 +776,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
         Collections.singletonMap("lineageData", JsonData.of(JsonUtils.getMap(lineageData)));
     Query lineageQuery = buildLineageUpdateQuery(fieldAndValue);
 
-    UpdateByQueryResponse response =
-        client.updateByQuery(
+    UpdateByQueryRequest request =
+        UpdateByQueryRequest.of(
             u ->
                 u.index(indexName)
                     .query(lineageQuery)
@@ -797,15 +789,9 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                 .params(params))
                     .refresh(true));
 
-    LOG.info("Successfully updated lineage in ElasticSearch for index: {}", indexName);
+    runReconciled("updateLineage", request, true);
 
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkIndexByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("Update lineage encountered failures: {}", failureDetails);
-    }
+    LOG.info("Successfully updated lineage in ElasticSearch for index: {}", indexName);
   }
 
   @Override
@@ -987,6 +973,36 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
         failures);
   }
 
+  private UpdateByQueryOutcome runReconciled(
+      String operation, UpdateByQueryRequest request, boolean replaySafe) throws IOException {
+    UpdateByQueryOutcome outcome =
+        UpdateByQueryReconciler.reconcile(
+            () -> updateByQueryOutcome(operation, request.index(), client.updateByQuery(request)),
+            () -> client.indices().refresh(r -> r.index(request.index())),
+            replaySafe);
+    outcome.report();
+    return outcome;
+  }
+
+  private static UpdateByQueryOutcome updateByQueryOutcome(
+      String operation, List<String> indices, UpdateByQueryResponse response) {
+    List<String> failures =
+        new ArrayList<>(
+            response.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .toList());
+    if (Boolean.TRUE.equals(response.timedOut())) {
+      failures.add(operation + " timed out");
+    }
+    return new UpdateByQueryOutcome(
+        operation,
+        indices,
+        zeroIfNull(response.updated()),
+        zeroIfNull(response.versionConflicts()),
+        failures);
+  }
+
   @Override
   public void updateGlossaryTermByFqnPrefix(
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition) {
@@ -1005,11 +1021,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               "oldParentFQN", JsonData.of(oldFqnPrefix),
               "newParentFQN", JsonData.of(newFqnPrefix));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(
@@ -1020,19 +1037,16 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                   .params(params))
                       .refresh(true));
 
+      UpdateByQueryOutcome outcome =
+          runReconciled(
+              "updateGlossaryTermByFqnPrefix",
+              request,
+              UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldFqnPrefix, newFqnPrefix));
+
       LOG.info(
           "Successfully updated glossary term FQN for index: {}, updated: {}",
           indexName,
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkIndexByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update glossary term FQN: {}", errorMessage);
-      }
+          outcome.updatedDocuments());
 
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
@@ -1061,11 +1075,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               "oldParentFQN", JsonData.of(oldFqnPrefix),
               "newParentFQN", JsonData.of(newFqnPrefix));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(
@@ -1076,19 +1091,16 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                   .params(params))
                       .refresh(true));
 
+      UpdateByQueryOutcome outcome =
+          runReconciled(
+              "updateClassificationTagByFqnPrefix",
+              request,
+              UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldFqnPrefix, newFqnPrefix));
+
       LOG.info(
           "Successfully updated classification tag FQN for index: {}, updated: {}",
           indexName,
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkIndexByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update classification tag FQN: {}", errorMessage);
-      }
+          outcome.updatedDocuments());
 
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
@@ -1117,11 +1129,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               "oldFqn", JsonData.of(oldFqn),
               "newFqn", JsonData.of(newFqn));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(termQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(ss -> ss.scriptString(UPDATE_DATA_PRODUCT_FQN_SCRIPT))
@@ -1129,20 +1142,13 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                   .params(params))
                       .refresh(true));
 
+      UpdateByQueryOutcome outcome = runReconciled("updateDataProductReferences", request, true);
+
       LOG.info(
           "Successfully updated data product references from {} to {}, updated: {}",
           oldFqn,
           newFqn,
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkIndexByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update data product references: {}", errorMessage);
-      }
+          outcome.updatedDocuments());
 
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
@@ -1184,8 +1190,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               "oldDomainFqns", JsonData.of(oldDomainFqns),
               "newDomains", JsonData.of(newDomainsData));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(
                           Entity.getSearchRepository()
@@ -1203,21 +1209,15 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                   .params(params))
                       .refresh(true));
 
+      UpdateByQueryOutcome outcome =
+          runReconciled("updateAssetDomainsForDataProduct", request, true);
+
       LOG.info(
           "Successfully updated asset domains for data product {}: removed {}, added {}, updated {} documents",
           dataProductFqn,
           oldDomainFqns,
           newDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkIndexByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update asset domains: {}", errorMessage);
-      }
+          outcome.updatedDocuments());
 
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
@@ -1269,8 +1269,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               "oldDomainFqns", JsonData.of(oldDomainFqns),
               "newDomains", JsonData.of(newDomainsData));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getWriteFanoutTargets(indexName))
                       .query(idsQuery)
@@ -1284,23 +1284,16 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                   .params(params))
                       .refresh(true));
 
+      UpdateByQueryOutcome outcome = runReconciled("updateAssetDomainsByIds", request, true);
+
+      outcome.requeueIfConflicted(idValues);
+
       LOG.info(
-          "Updated asset domains by IDs: requested={}, total={}, updated={}, noops={}, oldFqns={}, newFqns={}",
+          "Updated asset domains by IDs: requested={}, updated={}, oldFqns={}, newFqns={}",
           assetIds.size(),
-          updateResponse.total(),
-          updateResponse.updated(),
-          updateResponse.noops(),
+          outcome.updatedDocuments(),
           oldDomainFqns,
           newDomains.stream().map(EntityReference::getFullyQualifiedName).toList());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkIndexByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update asset domains: {}", errorMessage);
-      }
 
     } catch (Exception e) {
       for (UUID assetId : assetIds) {
@@ -1338,8 +1331,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               "oldFqn", JsonData.of(oldFqn),
               "newFqn", JsonData.of(newFqn));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getWriteFanoutTargets(domainIndexName))
                       .query(combinedQuery)
@@ -1354,20 +1347,14 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                   .params(params))
                       .refresh(true));
 
-      LOG.info(
-          "Updated domain FQNs: total={}, updated={}, noops={}",
-          updateResponse.total(),
-          updateResponse.updated(),
-          updateResponse.noops());
+      UpdateByQueryOutcome outcome =
+          runReconciled(
+              "updateDomainFqnByPrefix",
+              request,
+              UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldFqn, newFqn));
 
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkIndexByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update domain FQNs: {}", errorMessage);
-      }
+      LOG.info("Updated domain FQNs: updated={}", outcome.updatedDocuments());
+
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
           null, newFqn, SearchIndexRetryQueue.failureReason("updateDomainFqnByPrefix", e));
@@ -1397,8 +1384,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               "oldFqn", JsonData.of(oldFqn),
               "newFqn", JsonData.of(newFqn));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getWriteFanoutTargets(indexName))
                       .query(matchingDomainQuery)
@@ -1414,20 +1401,14 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                   .params(params))
                       .refresh(true));
 
-      LOG.info(
-          "Updated asset domain FQNs in search: total={}, updated={}, noops={}",
-          updateResponse.total(),
-          updateResponse.updated(),
-          updateResponse.noops());
+      UpdateByQueryOutcome outcome =
+          runReconciled(
+              "updateAssetDomainFqnByPrefix",
+              request,
+              UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldFqn, newFqn));
 
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkIndexByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update asset domain FQNs: {}", errorMessage);
-      }
+      LOG.info("Updated asset domain FQNs in search: updated={}", outcome.updatedDocuments());
+
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
           null, newFqn, SearchIndexRetryQueue.failureReason("updateAssetDomainFqnByPrefix", e));

@@ -141,6 +141,10 @@ public interface EntityManagementClient {
    * multiple indices, in a single update-by-query. Lets a caller fan a change out to the children of
    * many parents at once instead of issuing one update-by-query per parent.
    *
+   * <p>The script must give the same result when it runs twice on a document: documents a
+   * concurrent write held are retried by running the query again ({@link
+   * UpdateByQueryReconciler}).
+   *
    * @param indexNames list of index names
    * @param field field to match documents on
    * @param values parent values to match (any-of / terms)
