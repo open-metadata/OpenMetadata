@@ -17,8 +17,8 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import {
-  useSettingsHash,
-  useSettingsHashSync,
+    useSettingsHash,
+    useSettingsHashSync
 } from '../../../../hooks/useSettingsHash';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import PersonalSpaceGate from '../PersonalSpaceGate/PersonalSpaceGate';

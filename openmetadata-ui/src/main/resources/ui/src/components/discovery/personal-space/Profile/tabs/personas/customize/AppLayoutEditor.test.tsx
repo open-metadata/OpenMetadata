@@ -17,17 +17,17 @@ import { cloneDeep } from 'lodash';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
 import {
-  AppMode,
-  PageViewMode,
-  PersonaPreferences,
+    AppMode,
+    PageViewMode,
+    PersonaPreferences
 } from '../../../../../../../generated/type/personaPreferences';
 import {
-  createDocument,
-  updateDocument,
+    createDocument,
+    updateDocument
 } from '../../../../../../../rest/DocStoreAPI';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../../utils/ToastUtils';
 import AppLayoutEditor from './AppLayoutEditor';
 import { CustomizeEditorActions } from './customizeEditor.types';

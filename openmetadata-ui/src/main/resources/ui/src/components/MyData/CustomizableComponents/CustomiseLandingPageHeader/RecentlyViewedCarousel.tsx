@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  ButtonUtility,
-  Typography,
+    Box,
+    ButtonUtility,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  ChevronLeft,
-  ChevronRight,
+    ChevronLeft,
+    ChevronRight
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useEffect, useMemo, useState } from 'react';

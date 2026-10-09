@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  Button,
-  Dialog,
-  Divider,
-  Modal,
-  ModalOverlay,
-  Typography,
+    Box,
+    Button,
+    Dialog,
+    Divider,
+    Modal,
+    ModalOverlay,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -29,8 +29,8 @@ import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import {
-  CustomiseHomeModalSelectedKey,
-  LandingPageWidgetKeys,
+    CustomiseHomeModalSelectedKey,
+    LandingPageWidgetKeys
 } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';

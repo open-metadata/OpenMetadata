@@ -18,12 +18,12 @@ import { Page, PageType } from '../../../../../../../generated/system/ui/page';
 import { PersonaPreferences } from '../../../../../../../generated/type/personaPreferences';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import {
-  normalizePersonaDocument,
-  updatePersonaDocumentPage,
+    normalizePersonaDocument,
+    updatePersonaDocumentPage
 } from '../../../../../../../utils/CustomizePage/PersonaPage.utils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../../utils/ToastUtils';
 import '../../../../../../MyData/CustomizableComponents/CustomizeMyData/customize-my-data.less';
 import CustomizeMyData from '../../../../../../MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';

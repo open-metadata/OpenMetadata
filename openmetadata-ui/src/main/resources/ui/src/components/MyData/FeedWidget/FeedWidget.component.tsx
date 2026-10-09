@@ -17,9 +17,9 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-conversations.svg';
 import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/widget/activity-feed.svg';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  ROUTES,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_MEDIUM,
+    ROUTES
 } from '../../../constants/constants';
 import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';

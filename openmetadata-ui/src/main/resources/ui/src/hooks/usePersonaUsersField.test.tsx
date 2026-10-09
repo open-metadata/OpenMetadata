@@ -16,10 +16,10 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { SearchIndex } from '../enums/search.enum';
 import { searchQuery } from '../rest/searchAPI';
 import {
-  getPersonaUserRefs,
-  PersonaUserOption,
-  PERSONA_USERS_FIELD,
-  usePersonaUsersField,
+    getPersonaUserRefs,
+    PersonaUserOption,
+    PERSONA_USERS_FIELD,
+    usePersonaUsersField
 } from './usePersonaUsersField';
 
 jest.mock('react-i18next', () => {

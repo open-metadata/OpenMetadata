@@ -19,19 +19,19 @@ import { EntityType } from '../../../../../../../enums/entity.enum';
 import { Document } from '../../../../../../../generated/entity/docStore/document';
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
 import {
-  EntityType as PageEntityType,
-  Page,
-  PageType,
+    EntityType as PageEntityType,
+    Page,
+    PageType
 } from '../../../../../../../generated/system/ui/page';
 import { WidgetConfig } from '../../../../../../../interface/customization.interface';
 import { useCustomizeStore } from '../../../../../../../pages/CustomizablePage/CustomizeStore';
 import {
-  createDocument,
-  updateDocument,
+    createDocument,
+    updateDocument
 } from '../../../../../../../rest/DocStoreAPI';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../../utils/ToastUtils';
 import { CustomizeEditorActions } from './customizeEditor.types';
 import MarketplaceEditor from './MarketplaceEditor';

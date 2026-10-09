@@ -16,19 +16,19 @@ import { Button } from '@openmetadata/ui-core-components';
 import { Persona as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, {
-  FC,
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+    FC,
+    lazy,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
-  getCustomizePageCategories,
-  getCustomizePageOptions,
+    getCustomizePageCategories,
+    getCustomizePageOptions
 } from '../../../../../../utils/Persona/PersonaUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import { UnsavedChangesModal } from '../../../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
@@ -39,10 +39,10 @@ import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
 import PersonaDetail from './PersonaDetail';
 import type { PersonaDetailTab, PersonaView } from './Personas.types';
 import {
-  hashSubPathToView,
-  isFullscreenPersonaCategory,
-  SUB_GRID_CATEGORIES,
-  viewToSubPath,
+    hashSubPathToView,
+    isFullscreenPersonaCategory,
+    SUB_GRID_CATEGORIES,
+    viewToSubPath
 } from './Personas.utils';
 import PersonasLanding from './PersonasLanding';
 

@@ -17,17 +17,17 @@ import { Persona } from '../../../../../../../generated/entity/teams/persona';
 import { NavigationItem } from '../../../../../../../generated/system/ui/uiCustomization';
 import { AppModule } from '../../../../../../../interface/app-module.interface';
 import {
-  createDocument,
-  updateDocument,
+    createDocument,
+    updateDocument
 } from '../../../../../../../rest/DocStoreAPI';
 import leftSidebarClassBase from '../../../../../../../utils/LeftSidebarClassBase';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../../utils/ToastUtils';
 import {
-  APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT,
-  APP_MODE_SIDEBAR_CUSTOMIZATION_KEY,
+    APP_MODE_SIDEBAR_CUSTOMIZATION_CHANGED_EVENT,
+    APP_MODE_SIDEBAR_CUSTOMIZATION_KEY
 } from '../../../../../../platform/ai-shell/Sidebar/appModeSidebar.constants';
 import AiSidebarEditor from './AiSidebarEditor';
 import { CustomizeEditorActions } from './customizeEditor.types';

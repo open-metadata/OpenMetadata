@@ -12,18 +12,18 @@
  */
 
 import {
-  Box,
-  Button,
-  Card,
-  Dropdown,
-  Grid,
-  Input,
-  SimpleModal,
+    Box,
+    Button,
+    Card,
+    Dropdown,
+    Grid,
+    Input,
+    SimpleModal
 } from '@openmetadata/ui-core-components';
 import {
-  DotsVertical,
-  EyeFilled,
-  Plus,
+    DotsVertical,
+    EyeFilled,
+    Plus
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
@@ -31,8 +31,8 @@ import { lazy, useCallback, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import {
-  CommonWidgetType,
-  TAB_GRID_MAX_COLUMNS,
+    CommonWidgetType,
+    TAB_GRID_MAX_COLUMNS
 } from '../../../constants/CustomizeWidgets.constants';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
@@ -42,29 +42,29 @@ import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { useLeftPanelCrossDrop } from '../../../hooks/platform/useLeftPanelCrossDrop';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import {
-  WidgetCommonProps,
-  WidgetConfig,
+    WidgetCommonProps,
+    WidgetConfig
 } from '../../../interface/customization.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import { getEntityTypeFromPageType } from '../../../pages/CustomizeDetailsPage/CustomizeDetailPage.interface';
 import {
-  getLayoutWithEmptyWidgetPlaceholder,
-  getUniqueFilteredLayout,
+    getLayoutWithEmptyWidgetPlaceholder,
+    getUniqueFilteredLayout
 } from '../../../utils/CustomizableLandingPagePureUtils';
 import {
-  getCustomizableWidgetByPage,
-  getDefaultTabs,
-  getDefaultWidgetForTab,
+    getCustomizableWidgetByPage,
+    getDefaultTabs,
+    getDefaultWidgetForTab
 } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
-  getAddWidgetHandler,
-  mergeGridLayout,
+    getAddWidgetHandler,
+    mergeGridLayout
 } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import {
-  getLeftPanelHeight,
-  placeWidgetBesideLeftPanel,
-  placeWidgetInLeftPanel,
+    getLeftPanelHeight,
+    placeWidgetBesideLeftPanel,
+    placeWidgetInLeftPanel
 } from '../../../utils/CustomizePage/GridLayoutDragUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showInfoToast } from '../../../utils/ToastUtils';

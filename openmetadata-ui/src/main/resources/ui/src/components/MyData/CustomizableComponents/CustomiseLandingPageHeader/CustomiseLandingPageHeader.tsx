@@ -14,12 +14,12 @@ import { Button, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+    lazy,
+    Suspense,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg';
@@ -27,8 +27,8 @@ import LandingPageBg from '../../../../assets/svg/landing-page-header-bg.svg';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
-  AnnouncementEntity,
-  getActiveAnnouncements,
+    AnnouncementEntity,
+    getActiveAnnouncements
 } from '../../../../rest/announcementsAPI';
 import { isLinearGradient } from '../../../../utils/ColorUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';

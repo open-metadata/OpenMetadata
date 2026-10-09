@@ -16,14 +16,14 @@ import { Document } from '../../../../../../../generated/entity/docStore/documen
 import { Persona } from '../../../../../../../generated/entity/teams/persona';
 import { NavigationItem } from '../../../../../../../generated/system/ui/uiCustomization';
 import {
-  createDocument,
-  updateDocument,
+    createDocument,
+    updateDocument
 } from '../../../../../../../rest/DocStoreAPI';
 import { getTreeDataForNavigationItems } from '../../../../../../../utils/CustomizaNavigation/CustomizeNavigation';
 import { getNavigationItems } from '../../../../../../../utils/SettingsNavigationPageUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../../utils/ToastUtils';
 import { CustomizeEditorActions } from './customizeEditor.types';
 import NavigationEditor from './NavigationEditor';

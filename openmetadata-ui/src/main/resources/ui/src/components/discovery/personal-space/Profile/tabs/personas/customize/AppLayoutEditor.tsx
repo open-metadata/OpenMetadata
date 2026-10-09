@@ -12,17 +12,17 @@
  */
 
 import {
-  Box,
-  Button,
-  ButtonUtility,
-  Divider,
-  Dropdown,
-  Grid,
-  RadioButton,
-  RadioGroup,
-  Select,
-  Tabs,
-  Typography,
+    Box,
+    Button,
+    ButtonUtility,
+    Divider,
+    Dropdown,
+    Grid,
+    RadioButton,
+    RadioGroup,
+    Select,
+    Tabs,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -32,27 +32,27 @@ import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { Header, ListBoxSection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import {
-  DEFAULT_LANDING_PAGE,
-  DEFAULT_PAGE_VIEW_MODE,
-  LANDING_PAGE_SECTIONS,
-  PAGE_VIEW_MODE_LABEL_KEYS,
-  ViewModePage,
-  VIEW_MODE_PAGES,
+    DEFAULT_LANDING_PAGE,
+    DEFAULT_PAGE_VIEW_MODE,
+    LANDING_PAGE_SECTIONS,
+    PAGE_VIEW_MODE_LABEL_KEYS,
+    ViewModePage,
+    VIEW_MODE_PAGES
 } from '../../../../../../../constants/platform/personaAppLayout.constants';
 import {
-  AppMode,
-  DefaultViewModes,
-  PageViewMode,
-  PersonaPreferences,
+    AppMode,
+    DefaultViewModes,
+    PageViewMode,
+    PersonaPreferences
 } from '../../../../../../../generated/type/personaPreferences';
 import {
-  getPersonaPreferences,
-  resolvePersonaLandingPage,
-  updatePersonaAppLayout,
+    getPersonaPreferences,
+    resolvePersonaLandingPage,
+    updatePersonaAppLayout
 } from '../../../../../../../utils/CustomizePage/PersonaPage.utils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../../utils/ToastUtils';
 import { CustomizeEditorProps } from './customizeEditor.types';
 import { savePersonaDocument } from './customizeEditor.utils';

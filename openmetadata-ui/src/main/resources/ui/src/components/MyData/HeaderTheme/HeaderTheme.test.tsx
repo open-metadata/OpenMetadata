@@ -12,8 +12,8 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import {
-  DEFAULT_HEADER_BG_COLOR,
-  headerBackgroundColors,
+    DEFAULT_HEADER_BG_COLOR,
+    headerBackgroundColors
 } from '../../../constants/Mydata.constants';
 import HeaderTheme from './HeaderTheme';
 

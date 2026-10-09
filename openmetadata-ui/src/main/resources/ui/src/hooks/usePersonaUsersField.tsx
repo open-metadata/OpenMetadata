@@ -12,10 +12,10 @@
  */
 
 import {
-  Avatar,
-  FieldProp,
-  FieldTypes,
-  FormSelectItem,
+    Avatar,
+    FieldProp,
+    FieldTypes,
+    FormSelectItem
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';

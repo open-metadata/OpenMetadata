@@ -13,16 +13,16 @@
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
-  Bell01,
-  Key01,
-  PermissionDebugger as AccessControlIcon,
-  Persona as PersonaIcon,
-  Policy as GovernanceTabIcon,
-  Settings02,
-  ShieldTick,
-  Sliders02,
-  User01,
-  Users01,
+    Bell01,
+    Key01,
+    PermissionDebugger as AccessControlIcon,
+    Persona as PersonaIcon,
+    Policy as GovernanceTabIcon,
+    Settings02,
+    ShieldTick,
+    Sliders02,
+    User01,
+    Users01
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';

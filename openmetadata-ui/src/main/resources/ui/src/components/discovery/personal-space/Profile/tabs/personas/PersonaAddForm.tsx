@@ -12,32 +12,32 @@
  */
 
 import {
-  Box,
-  Button,
-  FieldProp,
-  FieldTypes,
-  FormFields,
-  HookForm,
-  Typography,
+    Box,
+    Button,
+    FieldProp,
+    FieldTypes,
+    FormFields,
+    HookForm,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
+import {
+    getPersonaUserRefs,
+    PersonaUserOption,
+    usePersonaUsersField
+} from '../../../../../../hooks/usePersonaUsersField';
 import { createPersona } from '../../../../../../rest/PersonaAPI';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import {
-  getPersonaUserRefs,
-  PersonaUserOption,
-  usePersonaUsersField,
-} from '../../../../../../hooks/usePersonaUsersField';
 
 interface FormValues {
   name: string;

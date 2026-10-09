@@ -12,16 +12,16 @@
  */
 
 import {
-  Box,
-  Button,
-  ButtonUtility,
-  EmptyPlaceholder,
-  FormFields,
-  HookForm,
-  Skeleton,
-  Table,
-  TableCard,
-  Typography,
+    Box,
+    Button,
+    ButtonUtility,
+    EmptyPlaceholder,
+    FormFields,
+    HookForm,
+    Skeleton,
+    Table,
+    TableCard,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -33,15 +33,15 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperText
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import {
+    getPersonaUserRefs,
+    PersonaUserOption,
+    usePersonaUsersField
+} from '../../../../../../hooks/usePersonaUsersField';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import {
-  getPersonaUserRefs,
-  PersonaUserOption,
-  usePersonaUsersField,
-} from '../../../../../../hooks/usePersonaUsersField';
 
 type UserColumnId = 'name' | 'teams' | 'roles' | 'actions';
 type UserColumn = { id: UserColumnId; label: string; className?: string };

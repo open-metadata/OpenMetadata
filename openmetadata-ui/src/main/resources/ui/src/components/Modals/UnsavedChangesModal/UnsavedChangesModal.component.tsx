@@ -12,13 +12,13 @@
  */
 
 import {
-  Box,
-  Button,
-  Dialog,
-  FeaturedIcon,
-  Modal,
-  ModalOverlay,
-  Typography,
+    Box,
+    Button,
+    Dialog,
+    FeaturedIcon,
+    Modal,
+    ModalOverlay,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { SaveOutlined } from '@openmetadata/ui-core-components/icons';
 import React from 'react';

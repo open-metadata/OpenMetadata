@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  ButtonUtility,
-  Typography,
+    Box,
+    ButtonUtility,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
@@ -23,9 +23,9 @@ import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
 import {
-  getEntityFQN,
-  getEntityType,
-  prepareFeedLink,
+    getEntityFQN,
+    getEntityType,
+    prepareFeedLink
 } from '../../../../utils/FeedUtilsPure';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import AnnouncementCardV1 from './AnnouncementCardV1/AnnouncementCardV1.component';
