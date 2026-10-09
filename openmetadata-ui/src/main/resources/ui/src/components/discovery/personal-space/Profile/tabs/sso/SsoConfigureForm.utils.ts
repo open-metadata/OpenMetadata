@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { RJSFSchema, UiSchema } from '@rjsf/utils';
+import { orderProperties, RJSFSchema, UiSchema } from '@rjsf/utils';
 import { omit } from 'lodash';
+import { ADVANCED_PROPERTIES } from '../../../../../../constants/Services.constant';
 import { FIELD_MAPPINGS } from '../../../../../SettingsSso/SSODocPanel/SSODocPanel.constants';
 
 /**
@@ -101,12 +102,17 @@ const toCardLayout = (
   sectionUiSchema: UiSchema,
   groups: string[][]
 ): UiSchema => {
-  const names = Object.keys(sectionSchema.properties ?? {});
+  // The order RJSF itself would render the section in (schema order, then
+  // any `ui:order`); each card keeps it, as the classic page does.
+  const names = orderProperties(
+    Object.keys(sectionSchema.properties ?? {}),
+    sectionUiSchema['ui:order']
+  );
   const isHidden = (name: string) =>
     (sectionUiSchema[name] as UiSchema | undefined)?.['ui:widget'] === 'hidden';
   const visibleGroups = groups
     .map((group) =>
-      group.filter((name) => names.includes(name) && !isHidden(name))
+      names.filter((name) => group.includes(name) && !isHidden(name))
     )
     .filter((group) => group.length > 0);
   const grouped = new Set(groups.flat());
@@ -118,6 +124,8 @@ const toCardLayout = (
 
   return {
     'ui:field': 'LayoutGridField',
+    // LayoutGridField reads `rows` as row definitions; RJSF's own typing
+    // reserves the name for a textarea's row count, hence the cast.
     'ui:options': {
       className: 'tw:flex tw:flex-col tw:gap-5',
       rows: [
@@ -125,7 +133,7 @@ const toCardLayout = (
         ...(rest.length ? [toRow(rest)] : []),
         toRow(names.filter(isHidden), 'tw:hidden'),
       ],
-    },
+    } as unknown as UiSchema['ui:options'],
   };
 };
 
@@ -150,7 +158,12 @@ export const toCoreUiSchema = (
       const nextUiSchema: UiSchema = {
         ...(isObject ? toCoreUiSchema(property, fieldUiSchema) : fieldUiSchema),
         ...(isObject && { 'ui:description': '' }),
-        'ui:options': { ...fieldUiSchema['ui:options'], fullWidth: true },
+        'ui:options': {
+          ...fieldUiSchema['ui:options'],
+          fullWidth: true,
+          // Same fields the classic page collapses under "Advanced Config".
+          ...(isObject && { advancedProperties: ADVANCED_PROPERTIES }),
+        },
       };
       const cards = SECTION_CARDS[name];
 

@@ -105,6 +105,34 @@ describe('toCoreUiSchema', () => {
     expect(rows[rows.length - 1].className).toBe('tw:hidden');
   });
 
+  it('keeps the schema order inside a card, not the order the group lists', () => {
+    const authorizerSchema: RJSFSchema = {
+      type: 'object',
+      properties: {
+        authorizerConfiguration: {
+          type: 'object',
+          properties: {
+            adminPrincipals: { type: 'array' },
+            principalDomain: { type: 'string' },
+            allowedDomains: { type: 'array' },
+            enforcePrincipalDomain: { type: 'boolean' },
+          },
+        },
+      },
+    };
+
+    const rows = toCoreUiSchema(authorizerSchema).authorizerConfiguration[
+      'ui:options'
+    ].rows as { columns: { name: string }[] }[];
+
+    expect(rows[0].columns.map((c) => c.name)).toEqual([
+      'adminPrincipals',
+      'principalDomain',
+      'allowedDomains',
+      'enforcePrincipalDomain',
+    ]);
+  });
+
   it('swaps the classic-only renderers for FormBuilderV1 ones', () => {
     const ldapSchema: RJSFSchema = {
       type: 'object',
@@ -137,6 +165,30 @@ describe('toCoreUiSchema', () => {
     );
     expect(uiSchema.ldapConfiguration.authReassignRoles['ui:placeholder']).toBe(
       'Select roles'
+    );
+  });
+
+  it('collapses the provider fields the classic page treats as advanced', () => {
+    const oidcSchema: RJSFSchema = {
+      type: 'object',
+      properties: {
+        authenticationConfiguration: {
+          type: 'object',
+          properties: {
+            oidcConfiguration: {
+              type: 'object',
+              properties: { useNonce: { type: 'string' } },
+            },
+          },
+        },
+      },
+    };
+
+    const oidc =
+      toCoreUiSchema(oidcSchema).authenticationConfiguration.oidcConfiguration;
+
+    expect(oidc['ui:options'].advancedProperties).toEqual(
+      expect.arrayContaining(['useNonce', 'maxClockSkew', 'maxAge'])
     );
   });
 
