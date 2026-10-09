@@ -69,6 +69,7 @@ const Certification = ({
   onClose,
   isDisabled,
   'data-testid': testId,
+  className,
 }: CertificationProps) => {
   const { t } = useTranslation();
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -139,6 +140,7 @@ const Certification = ({
       hideCounts
       searchable
       showRadio
+      className={className}
       data-testid={testId}
       emptyState={t('label.no-entity-available', {
         entity: t('label.certification-plural-lowercase'),

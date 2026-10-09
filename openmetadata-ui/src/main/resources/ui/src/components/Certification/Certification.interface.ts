@@ -25,4 +25,6 @@ export interface CertificationProps {
   isDisabled?: boolean;
   /** Test id of the form-field trigger. */
   'data-testid'?: string;
+  /** Classes for the trigger, e.g. to fill a grid cell. */
+  className?: string;
 }

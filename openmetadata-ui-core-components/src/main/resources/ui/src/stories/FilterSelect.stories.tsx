@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import type { Meta, StoryObj } from '@storybook/react';
-import { ButtonUtility } from '../components/base/buttons/button-utility';
-import { Database01, Edit05, ShieldTick, User01 } from '../icons';
+import { Database01, User01 } from '../icons';
 import { useState } from 'react';
 import { FilterSelect } from '../components/application/filter-select/filter-select';
 import type { FilterSelectProps } from '../components/application/filter-select/filter-select.types';
@@ -249,36 +248,6 @@ export const SingleSelect: Story = {
       ]}
       selectionMode="single"
       triggerVariant="input"
-    />
-  ),
-};
-
-// The certification picker: radio rows, a Clear footer, and a caller-owned
-// edit button as the trigger.
-export const RadioPicker: Story = {
-  args: { ...baseArgs, label: 'Certification' },
-  render: () => (
-    <ControlledFilter
-      clearable
-      hideCounts
-      searchable
-      showRadio
-      initialSelected={['gold']}
-      label="Certification"
-      options={[
-        { value: 'gold', label: 'Gold', icon: ShieldTick },
-        { value: 'silver', label: 'Silver', icon: ShieldTick },
-        { value: 'bronze', label: 'Bronze', icon: ShieldTick },
-      ]}
-      selectionMode="single"
-      trigger={
-        <ButtonUtility
-          color="secondary"
-          icon={Edit05}
-          size="xs"
-          tooltip="Edit certification"
-        />
-      }
     />
   ),
 };

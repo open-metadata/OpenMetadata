@@ -62,6 +62,7 @@ export interface FilterSelectProps {
    * or `md`, as tall as a Select, Input or Button of that size.
    */
   size?: 'sm' | 'md';
+  /** Classes for the trigger — the built-in one, or the wrapper of a custom one. */
   className?: string;
   /**
    * Single select: a footer with the selection count and a Clear action, as

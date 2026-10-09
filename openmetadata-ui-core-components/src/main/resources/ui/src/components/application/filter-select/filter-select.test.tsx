@@ -911,4 +911,16 @@ describe('FilterSelect', () => {
 
     expect(screen.getByRole('button')).toBeDisabled();
   });
+
+  it('applies className to the wrapper of a custom trigger', () => {
+    renderFilter({
+      className: 'tw:flex tw:w-full',
+      isOpen: undefined,
+      trigger: <button type="button">Edit</button>,
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Edit' }).parentElement
+    ).toHaveClass('tw:flex', 'tw:w-full');
+  });
 });
