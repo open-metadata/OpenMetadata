@@ -3,6 +3,7 @@ from __future__ import annotations
 import fnmatch
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -440,11 +441,11 @@ def test_steps_a_ci_run_covers_are_not_run_locally(
     )
     ran: list[list[str]] = []
 
-    def run(argv, **_):
+    def run(argv, _repo_root):
         ran.append(argv)
-        return subprocess.CompletedProcess(argv, 0)
+        return 0, None
 
-    monkeypatch.setattr(PLANNER.subprocess, "run", run)
+    monkeypatch.setattr(PLANNER, "run_step", run)
     ci = {
         "mysql-elasticsearch": {
             "url": "https://ci/6",
@@ -737,6 +738,113 @@ def test_a_step_whose_tests_all_skipped_is_not_a_pass(tmp_path: Path) -> None:
 
     assert result.all_skipped_classes == ["PatchTableEmbeddingIT"]
     assert not result.passed
+
+
+def test_step_totals_add_up_the_summary_each_execution_prints(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    per_class = (
+        "[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 66.4 s "
+        "-- in org.openmetadata.it.tests.TableResourceIT"
+    )
+    lane = "[WARNING] Tests run: 1898, Failures: 0, Errors: 0, Skipped: 159"
+    flaky = "[ERROR] Tests run: 9, Failures: 1, Errors: 1, Skipped: 0, Flakes: 2"
+    script = (
+        f"print({per_class!r}); print({lane!r}); print({flaky!r}); raise SystemExit(3)"
+    )
+
+    exit_code, totals = PLANNER.run_step([sys.executable, "-c", script], tmp_path)
+
+    assert (exit_code, totals) == (3, [1907, 1, 1, 159])
+    assert "-- in org.openmetadata.it.tests.TableResourceIT" in capsys.readouterr().out
+    assert PLANNER.run_step(
+        [sys.executable, "-c", "print('BUILD FAILURE')"], tmp_path
+    ) == (0, None)
+
+
+def test_a_nested_class_several_its_inherit_does_not_shrink_the_step_totals(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    command = PLANNER.Command(
+        "integration",
+        "mysql-elasticsearch · parallel",
+        ["mvn", "verify"],
+        ["failsafe-reports"],
+        ["TableResourceIT", "UserResourceIT"],
+    )
+
+    def run(_argv, repo_root):
+        # Both ITs inherit BaseEntityIT's nested class; its report keeps the second run only.
+        reports = repo_root / "failsafe-reports"
+        reports.mkdir()
+        for name, tests in (
+            ("TableResourceIT", 10),
+            ("UserResourceIT", 5),
+            ("BaseEntityIT$HistoryTest", 4),
+        ):
+            (reports / f"TEST-org.openmetadata.it.tests.{name}.xml").write_text(
+                f'<testsuite name="org.openmetadata.it.tests.{name}" tests="{tests}" '
+                'failures="0" errors="0" skipped="0"/>'
+            )
+        return 0, [23, 0, 0, 0]
+
+    monkeypatch.setattr(PLANNER, "run_step", run)
+
+    [result] = PLANNER.run_commands(
+        tmp_path, PLANNER.Plan([], commands=[command]), False
+    )
+
+    assert (result.tests, result.class_total) == (23, 2)
+    assert result.passed
+    assert (
+        PLANNER.count_classes(result, sorted(result.class_counts))
+        == "2 classes, 23 tests executed"
+    )
+    note = "\n".join(PLANNER.render_tests_run([result]))
+    assert "keep only the last run of a nested class" in note
+    assert "The step totals above are Maven's own counts._" in note
+
+
+def test_generated_code_older_than_a_change_to_its_inputs_is_stale(
+    tmp_path: Path,
+) -> None:
+    schema = tmp_path / "spec/schema/table.json"
+    output = tmp_path / "spec/target/generated"
+    schema.parent.mkdir(parents=True)
+    output.mkdir(parents=True)
+    schema.write_text("{}")
+    for name, generated_at in (("TableType.java", 100), ("Table.java", 300)):
+        (output / name).write_text("")
+        os.utime(output / name, (generated_at, generated_at))
+    sources = [
+        {
+            "module": "spec",
+            "inputs": ["spec/schema", "spec/pom.xml"],
+            "output": "spec/target/generated",
+        }
+    ]
+
+    # TableType.java is as old as the last clean generation; the schema changed after it.
+    os.utime(schema, (200, 200))
+    assert PLANNER.stale_generated_modules(tmp_path, sources) == {
+        "spec": "spec/schema/table.json"
+    }
+
+    os.utime(schema, (50, 50))
+    assert PLANNER.stale_generated_modules(tmp_path, sources) == {}
+
+    for generated in output.iterdir():
+        generated.unlink()
+    os.utime(schema, (200, 200))
+    assert PLANNER.stale_generated_modules(tmp_path, sources) == {}
+    assert PLANNER.clean_command(["spec"]) == [
+        "mvn",
+        "-B",
+        "-q",
+        "clean",
+        "-pl",
+        "spec",
+    ]
 
 
 def test_results_block_is_replaced_in_place_or_inserted_under_the_heading() -> None:

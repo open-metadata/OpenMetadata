@@ -51,7 +51,7 @@ interface OntologyLibraryProps {
 const EMPTY_INSTALLATIONS: OntologyPackInstallation[] = [];
 const LIBRARY_ICON_CLASS =
   'tw:grid tw:size-8 tw:shrink-0 tw:place-items-center tw:rounded-[9px] ' +
-  'tw:bg-[linear-gradient(160deg,var(--color-utility-blue-light-500),var(--color-bg-brand-solid))] tw:text-white';
+  'tw:bg-[linear-gradient(160deg,var(--tw-color-utility-blue-light-500),var(--tw-color-bg-brand-solid))] tw:text-white';
 const INSTALLED_COUNT_CLASS =
   'tw:inline-flex tw:shrink-0 tw:items-center tw:rounded-full tw:border ' +
   'tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-[11px] tw:py-1 ' +

@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Space, Tooltip } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -345,10 +345,13 @@ export const tableConstraintRendererBasedOnType = (
       className="d-flex constraint-columns tw:bg-(--om-legacy-color-f8f8f8) tw:dark:bg-transparent"
       data-testid={`${constraintType}-container`}
       key={constraintType}>
-      <Space
-        className="constraint-icon-container"
-        direction="vertical"
-        size={0}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space constraint-icon-container"
+        direction="col"
+        gap={0}
+        itemClassName="layout-space-item">
         {columns?.map((column, index) => (
           <Fragment key={column}>
             {(columns?.length ?? 0) - 1 !== index || isSingleColumn ? (
@@ -359,15 +362,21 @@ export const tableConstraintRendererBasedOnType = (
             ) : null}
           </Fragment>
         ))}
-      </Space>
+      </Box>
 
-      <Space direction="vertical" size={16}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space"
+        direction="col"
+        gap={4}
+        itemClassName="layout-space-item">
         {columns?.map((column) => (
           <Typography ellipsis={{ tooltip: true }} key={column}>
             {column}
           </Typography>
         ))}
-      </Space>
+      </Box>
     </div>
   );
 };
