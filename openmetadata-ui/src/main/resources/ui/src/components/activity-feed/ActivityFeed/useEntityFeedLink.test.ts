@@ -24,40 +24,97 @@ jest.mock('../../../utils/useRequiredParams', () => ({
 const linkFor = (entityType: EntityType, fallbackFqn?: string) =>
   renderHook(() => useEntityFeedLink(entityType, fallbackFqn)).result.current;
 
+// [type, route FQN, the FQN the link names]: one case per way a page's route
+// can name its entity. A column, field or feature deep link appends the child
+// to the entity's FQN; the link must name the entity, as its page does.
+const ROUTE_CASES: [EntityType, string, string][] = [
+  [EntityType.TABLE, 'svc.db.schema.orders', 'svc.db.schema.orders'],
+  [
+    EntityType.TABLE,
+    'svc.db.schema.orders.customer_id',
+    'svc.db.schema.orders',
+  ],
+  [
+    EntityType.TABLE,
+    'svc.db.schema.orders.address.city',
+    'svc.db.schema.orders',
+  ],
+  [EntityType.STORED_PROCEDURE, 'svc.db.schema.load', 'svc.db.schema.load'],
+  [EntityType.DATABASE, 'svc.db', 'svc.db'],
+  [EntityType.DATABASE_SCHEMA, 'svc.db.schema', 'svc.db.schema'],
+  [EntityType.TOPIC, 'kafka.orders.order_id', 'kafka.orders'],
+  [EntityType.SEARCH_INDEX, 'es.orders_index.status', 'es.orders_index'],
+  [EntityType.MLMODEL, 'ml.churn.tenure', 'ml.churn'],
+  [EntityType.API_ENDPOINT, 'api.store.getOrder.id', 'api.store.getOrder'],
+  [
+    EntityType.DASHBOARD_DATA_MODEL,
+    'bi.model.revenue.amount',
+    'bi.model.revenue',
+  ],
+  [EntityType.DASHBOARD, 'bi.sales', 'bi.sales'],
+  [EntityType.CHART, 'bi.sales_by_region', 'bi.sales_by_region'],
+  [EntityType.PIPELINE, 'airflow.etl', 'airflow.etl'],
+  [EntityType.METRIC, 'revenue', 'revenue'],
+  [EntityType.API_COLLECTION, 'api.store', 'api.store'],
+  // Variable depth: nested under a parent of the same kind, read whole.
+  [EntityType.CONTAINER, 's3.raw.2026.october', 's3.raw.2026.october'],
+  [EntityType.DIRECTORY, 'drive.finance.reports', 'drive.finance.reports'],
+  [EntityType.FILE, 'drive.finance.q3.pdf', 'drive.finance.q3.pdf'],
+  [EntityType.SPREADSHEET, 'drive.finance.budget', 'drive.finance.budget'],
+  [
+    EntityType.WORKSHEET,
+    'drive.finance.budget.summary',
+    'drive.finance.budget.summary',
+  ],
+  [EntityType.GLOSSARY, 'Business', 'Business'],
+  [EntityType.GLOSSARY_TERM, 'Business.Revenue.Net', 'Business.Revenue.Net'],
+  [EntityType.TAG, 'PII.Sensitive', 'PII.Sensitive'],
+  [EntityType.DOMAIN, 'Finance.Payments', 'Finance.Payments'],
+  [EntityType.DATA_PRODUCT, 'Finance.Ledger', 'Finance.Ledger'],
+  [EntityType.KNOWLEDGE_PAGE, 'Onboarding', 'Onboarding'],
+  // Quoted parts keep their dots: one part, not a column.
+  [EntityType.TABLE, 'svc.db.schema."orders.v2"', 'svc.db.schema."orders.v2"'],
+  [
+    EntityType.TABLE,
+    'svc.db.schema."orders.v2".id',
+    'svc.db.schema."orders.v2"',
+  ],
+  [EntityType.GLOSSARY_TERM, '"PW%g.1"."PW.term%2"', '"PW%g.1"."PW.term%2"'],
+];
+
 describe('useEntityFeedLink', () => {
-  beforeEach(() => {
-    mockRouteFqn = 'drive.sales.q3.summary';
-  });
+  it.each(ROUTE_CASES)(
+    'links a %s by its own FQN for route "%s"',
+    (entityType, routeFqn, entityFqn) => {
+      mockRouteFqn = routeFqn;
 
-  // A worksheet's FQN nests under its spreadsheet's: kept whole.
-  it('links the entity the route names', () => {
-    expect(linkFor(EntityType.WORKSHEET)).toBe(
-      '<#E::worksheet::drive.sales.q3.summary>'
-    );
-  });
-
-  // A column deep link names the table, then the column.
-  it('links the table, not the column, on a column link', () => {
-    mockRouteFqn = 'svc.db.schema.orders.customer_id';
-
-    expect(linkFor(EntityType.TABLE)).toBe('<#E::table::svc.db.schema.orders>');
-  });
+      expect(linkFor(entityType)).toBe(`<#E::${entityType}::${entityFqn}>`);
+    }
+  );
 
   it('prefers the route over the fallback', () => {
-    expect(linkFor(EntityType.DOMAIN, 'Other')).toBe(
-      '<#E::domain::drive.sales.q3.summary>'
-    );
+    mockRouteFqn = 'Finance';
+
+    expect(linkFor(EntityType.DOMAIN, 'Other')).toBe('<#E::domain::Finance>');
   });
 
-  it('falls back where the route names no entity', () => {
-    mockRouteFqn = '';
+  // A page whose route carries no FQN passes its entity's.
+  it.each([EntityType.DOMAIN, EntityType.DATA_PRODUCT, EntityType.TABLE])(
+    'falls back to the given FQN for a %s',
+    (entityType) => {
+      mockRouteFqn = '';
 
-    expect(linkFor(EntityType.DOMAIN, 'Finance')).toBe('<#E::domain::Finance>');
-    expect(linkFor(EntityType.DOMAIN)).toBe('');
-  });
+      expect(linkFor(entityType, 'Finance.Ledger')).toBe(
+        `<#E::${entityType}::Finance.Ledger>`
+      );
+      expect(linkFor(entityType)).toBe('');
+    }
+  );
 
   // A profile's tab is the user's own feed, not one about them.
   it('has no link for a user', () => {
+    mockRouteFqn = 'harsh.vador';
+
     expect(linkFor(EntityType.USER)).toBe('');
   });
 });

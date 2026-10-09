@@ -12,11 +12,35 @@
  */
 import { APIRequestContext, Locator, Page, Response } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { DataProduct } from '../../../support/domain/DataProduct';
+import { Domain } from '../../../support/domain/Domain';
+import { ApiCollectionClass } from '../../../support/entity/ApiCollectionClass';
+import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
+import { ChartClass } from '../../../support/entity/ChartClass';
+import { ContainerClass } from '../../../support/entity/ContainerClass';
+import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../../support/entity/DatabaseSchemaClass';
+import { DirectoryClass } from '../../../support/entity/DirectoryClass';
+import { FileClass } from '../../../support/entity/FileClass';
+import { MetricClass } from '../../../support/entity/MetricClass';
+import { MlModelClass } from '../../../support/entity/MlModelClass';
+import { PipelineClass } from '../../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../../support/entity/SpreadsheetClass';
+import { StoredProcedureClass } from '../../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { TopicClass } from '../../../support/entity/TopicClass';
+import { WorksheetClass } from '../../../support/entity/WorksheetClass';
 import {
   expect,
   test as isolatedTest,
 } from '../../../support/fixtures/isolatedUser';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../../support/tag/ClassificationClass';
+import { TagClass } from '../../../support/tag/TagClass';
 import { insertActivityEventForTest } from '../../../utils/activityAPI';
 import { okJson, settleAll } from '../../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
@@ -24,6 +48,7 @@ import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
+import { pickEntityMatrix } from '../../../utils/entityMatrix';
 import {
   AI_SHELL_TIMEOUT,
   createInboxTask,
@@ -468,6 +493,207 @@ test.describe(
         timeout: AI_SHELL_TIMEOUT,
       });
       await expect(feedRoot(page)).toHaveCount(0);
+    });
+  }
+);
+
+/** An entity the spec creates for one page, and how to remove it again. */
+type SeededEntity = { fqn: string; cleanup: () => Promise<unknown> };
+
+type EntityPageCase = {
+  // The entity type its feed link names, and its page's path unless `path`.
+  type: string;
+  path?: string;
+  create: (apiContext: APIRequestContext) => Promise<SeededEntity>;
+};
+
+type DataAssetClass = new () => {
+  create: (apiContext: APIRequestContext) => Promise<unknown>;
+  delete: (apiContext: APIRequestContext) => Promise<unknown>;
+  entityResponseData: { fullyQualifiedName?: string };
+};
+
+const dataAsset = (
+  type: string,
+  AssetClass: DataAssetClass
+): EntityPageCase => ({
+  type,
+  create: async (apiContext) => {
+    const asset = new AssetClass();
+    await asset.create(apiContext);
+
+    return {
+      fqn: asset.entityResponseData.fullyQualifiedName ?? '',
+      cleanup: () => asset.delete(apiContext),
+    };
+  },
+});
+
+// Every page that renders the Activity Feeds & Tasks tab. Pull requests run
+// the table alone (see pickEntityMatrix); nightly and local runs run them all.
+const ENTITY_PAGES: Record<string, EntityPageCase> = {
+  Table: dataAsset('table', TableClass),
+  'Stored Procedure': dataAsset('storedProcedure', StoredProcedureClass),
+  Database: dataAsset('database', DatabaseClass),
+  'Database Schema': dataAsset('databaseSchema', DatabaseSchemaClass),
+  Topic: dataAsset('topic', TopicClass),
+  Dashboard: dataAsset('dashboard', DashboardClass),
+  Chart: dataAsset('chart', ChartClass),
+  'Dashboard Data Model': dataAsset(
+    'dashboardDataModel',
+    DashboardDataModelClass
+  ),
+  Pipeline: dataAsset('pipeline', PipelineClass),
+  'Ml Model': dataAsset('mlmodel', MlModelClass),
+  Container: dataAsset('container', ContainerClass),
+  'Search Index': dataAsset('searchIndex', SearchIndexClass),
+  'Api Collection': dataAsset('apiCollection', ApiCollectionClass),
+  'Api Endpoint': dataAsset('apiEndpoint', ApiEndpointClass),
+  Metric: dataAsset('metric', MetricClass),
+  Directory: dataAsset('directory', DirectoryClass),
+  File: dataAsset('file', FileClass),
+  Spreadsheet: dataAsset('spreadsheet', SpreadsheetClass),
+  Worksheet: dataAsset('worksheet', WorksheetClass),
+  Glossary: {
+    type: 'glossary',
+    create: async (apiContext) => {
+      const glossary = new Glossary();
+      await glossary.create(apiContext);
+
+      return {
+        fqn: glossary.responseData.fullyQualifiedName,
+        cleanup: () => glossary.delete(apiContext),
+      };
+    },
+  },
+  'Glossary Term': {
+    type: 'glossaryTerm',
+    path: 'glossary',
+    create: async (apiContext) => {
+      const glossary = new Glossary();
+      await glossary.create(apiContext);
+      const term = new GlossaryTerm(glossary);
+      await term.create(apiContext);
+
+      return {
+        fqn: term.responseData.fullyQualifiedName,
+        cleanup: () => glossary.delete(apiContext),
+      };
+    },
+  },
+  Domain: {
+    type: 'domain',
+    create: async (apiContext) => {
+      const domain = new Domain();
+      await domain.create(apiContext);
+
+      return {
+        fqn: domain.responseData.fullyQualifiedName ?? '',
+        cleanup: () => domain.delete(apiContext),
+      };
+    },
+  },
+  'Data Product': {
+    type: 'dataProduct',
+    create: async (apiContext) => {
+      const domain = new Domain();
+      await domain.create(apiContext);
+      const dataProduct = new DataProduct([domain]);
+      await dataProduct.create(apiContext);
+
+      return {
+        fqn: dataProduct.responseData.fullyQualifiedName ?? '',
+        cleanup: async () => {
+          try {
+            await dataProduct.delete(apiContext);
+          } finally {
+            await domain.delete(apiContext);
+          }
+        },
+      };
+    },
+  },
+  Tag: {
+    type: 'tag',
+    create: async (apiContext) => {
+      const classification = new ClassificationClass();
+      await classification.create(apiContext);
+      const tag = new TagClass({ classification: classification.data.name });
+      await tag.create(apiContext);
+
+      return {
+        fqn: tag.responseData.fullyQualifiedName,
+        cleanup: () => classification.delete(apiContext),
+      };
+    },
+  },
+};
+
+test.describe(
+  'Entity pages — Activity Feeds & Tasks in AI mode, by entity type',
+  { tag: ['@Features', DOMAIN_TAGS.DISCOVERY] },
+  () => {
+    // Each test files a task; one at a time keeps the workflow engine's load low.
+    test.describe.configure({ mode: 'default' });
+
+    Object.entries(
+      pickEntityMatrix(__filename, ENTITY_PAGES, {
+        Table: ENTITY_PAGES.Table,
+      })
+    ).forEach(([name, entityPage]) => {
+      test(`${name}: shows the entity's activity and tasks, and counts them`, async ({
+        isolatedUserPage: page,
+        isolatedUser,
+      }) => {
+        const apiContext = await getWorkerAdminAPIContext();
+        const entity = await entityPage.create(apiContext);
+        const link = `<#E::${entityPage.type}::${entity.fqn}>`;
+        const message = `Entity tab ${name} ${uuid()}`;
+        let task: InboxTask | undefined;
+
+        try {
+          await startConversation(apiContext, link, message);
+          task = await createInboxTask(apiContext, {
+            name: `pw-entity-tab-${uuid()}`,
+            category: 'MetadataUpdate',
+            type: 'DescriptionUpdate',
+            about: link,
+            assignee: isolatedUser.responseData.name,
+            payload: {
+              fieldPath: 'description',
+              newDescription: `Described ${message}`,
+            },
+          });
+
+          await visitEntityFeed(
+            page,
+            `/${entityPage.path ?? entityPage.type}/${getEncodedFqn(
+              entity.fqn
+            )}`
+          );
+
+          await test.step('Activity lists its conversation', async () => {
+            await expect(feedItem(page, message)).toBeVisible();
+          });
+
+          await test.step('Tasks lists its task', async () => {
+            await viewTab(page, 'Tasks').click();
+            await expect(
+              page.getByTestId(`inbox-task-${task?.id}`)
+            ).toBeVisible();
+          });
+
+          await test.step("The page's count is the feed's", async () => {
+            await expectPageCountToMatchFeed(page);
+          });
+        } finally {
+          try {
+            await deleteInboxTasks(apiContext, task ? [task] : []);
+          } finally {
+            await entity.cleanup();
+          }
+        }
+      });
     });
   }
 );
