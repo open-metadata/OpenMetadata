@@ -19,7 +19,15 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Input, InputNumber, Select, Space, TreeSelect } from 'antd';
+import {
+  Button,
+  ConfigProvider,
+  Input,
+  InputNumber,
+  Select,
+  Space,
+  TreeSelect,
+} from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
@@ -990,7 +998,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         </Typography>
       </SlideoutMenu.Header>
       <SlideoutMenu.Content className="tw:py-6">
-        {renderContent}
+        {/* Legacy dropdowns must stay inside the modal's focus and accessibility boundary. */}
+        <ConfigProvider
+          getPopupContainer={(triggerNode) =>
+            triggerNode?.parentElement ?? document.body
+          }>
+          {renderContent}
+        </ConfigProvider>
       </SlideoutMenu.Content>
       <SlideoutMenu.Footer>{drawerFooter}</SlideoutMenu.Footer>
     </SlideoutMenu>
