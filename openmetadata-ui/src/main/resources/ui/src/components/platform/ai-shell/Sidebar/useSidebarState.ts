@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const SIDEBAR_COLLAPSED_STORAGE_KEY = 'aiShell.sidebar.mainCollapsed';
+const SIDEBAR_COLLAPSED_EVENT = 'aiShell.sidebar.mainCollapsedChange';
 
 const readPersisted = (key: string): boolean | null => {
   try {
@@ -36,6 +37,20 @@ const persist = (key: string, value: boolean): void => {
 // Top-level main-nav collapse preference, defaulting to expanded.
 const readTopLevelDefault = (): boolean =>
   readPersisted(SIDEBAR_COLLAPSED_STORAGE_KEY) ?? false;
+
+/** The "compact sidebar" preference: the top-level main nav starts as the icon rail. */
+export const readCompactSidebarPreference = readTopLevelDefault;
+
+/**
+ * Sets the compact sidebar preference from outside the sidebar (e.g. the
+ * Preferences page); a mounted sidebar applies it straight away.
+ */
+export const setCompactSidebarPreference = (compact: boolean): void => {
+  persist(SIDEBAR_COLLAPSED_STORAGE_KEY, compact);
+  globalThis.dispatchEvent(
+    new CustomEvent<boolean>(SIDEBAR_COLLAPSED_EVENT, { detail: compact })
+  );
+};
 
 /**
  * Main-nav collapse state, with context-dependent precedence:
@@ -61,6 +76,18 @@ export const useMainCollapse = (
   // Persisted preference, meaningful only at the top level.
   const [topLevelCollapsed, setTopLevelCollapsed] =
     useState<boolean>(readTopLevelDefault);
+
+  useEffect(() => {
+    const onPreferenceChange = (event: Event) =>
+      setTopLevelCollapsed(Boolean((event as CustomEvent<boolean>).detail));
+    globalThis.addEventListener(SIDEBAR_COLLAPSED_EVENT, onPreferenceChange);
+
+    return () =>
+      globalThis.removeEventListener(
+        SIDEBAR_COLLAPSED_EVENT,
+        onPreferenceChange
+      );
+  }, []);
 
   // Transient main-nav expand *inside* a sub-context — never persisted.
   const [subExpanded, setSubExpanded] = useState(false);

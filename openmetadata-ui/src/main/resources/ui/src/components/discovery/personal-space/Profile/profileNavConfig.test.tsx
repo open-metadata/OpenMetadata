@@ -33,6 +33,10 @@ jest.mock('./tabs/bots/BotsPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('./tabs/preferences/PreferencesPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 jest.mock('./tabs/platform-settings/PlatformSettingsPanel', () => ({
   __esModule: true,
   default: () => null,
@@ -58,6 +62,7 @@ describe('profileNavConfig', () => {
     expect(PROFILE_NAV_ITEMS.map((i) => i.id)).toEqual([
       'profile',
       'permissions',
+      'preferences',
       'access-token',
       'access-control',
       'bots',
@@ -90,6 +95,7 @@ describe('profileNavConfig', () => {
     expect(groupById).toEqual({
       profile: 'account',
       permissions: 'account',
+      preferences: 'account',
       'access-token': 'credentials',
       'access-control': 'administration',
       bots: 'administration',

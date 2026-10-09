@@ -23,20 +23,40 @@ import {
   BrandColors,
   Theme,
   ThemeContextType,
+  ThemePreference,
 } from './theme-provider.interface';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const DEFAULT_THEME: Theme = 'light';
+const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
 
-const getStoredTheme = (storageKey: string): Theme | null => {
+const prefersDarkScheme = () =>
+  typeof globalThis.matchMedia === 'function' &&
+  globalThis.matchMedia(DARK_SCHEME_QUERY).matches;
+
+const resolveTheme = (preference: ThemePreference): Theme => {
+  if (preference === 'system') {
+    return prefersDarkScheme() ? 'dark' : 'light';
+  }
+
+  return preference;
+};
+
+const getStoredTheme = (storageKey: string): ThemePreference | null => {
   try {
     if (typeof globalThis.localStorage === 'undefined') {
       return null;
     }
 
-    const savedTheme = localStorage.getItem(storageKey) as Theme | null;
+    const savedTheme = localStorage.getItem(
+      storageKey
+    ) as ThemePreference | null;
 
-    if (savedTheme === 'light' || savedTheme === 'dark') {
+    if (
+      savedTheme === 'light' ||
+      savedTheme === 'dark' ||
+      savedTheme === 'system'
+    ) {
       return savedTheme;
     }
 
@@ -283,8 +303,11 @@ export const ThemeProvider = ({
     warningColor,
     infoColor,
   } = brandColors ?? {};
+  const [themePreference, setThemePreference] = useState<ThemePreference>(
+    () => getStoredTheme(storageKey) ?? DEFAULT_THEME
+  );
   const [theme, setThemeState] = useState<Theme>(() => {
-    const initialTheme = getStoredTheme(storageKey) ?? DEFAULT_THEME;
+    const initialTheme = resolveTheme(themePreference);
 
     // This render-phase write is deliberate: canvas consumers resolve CSS tokens
     // before effects run, and applyThemeToRoot skips DOM writes when already synced.
@@ -294,21 +317,42 @@ export const ThemeProvider = ({
   });
 
   const setTheme = useCallback(
-    (nextTheme: Theme) => {
+    (nextPreference: ThemePreference) => {
       try {
         if (typeof globalThis.localStorage !== 'undefined') {
-          localStorage.setItem(storageKey, nextTheme);
+          localStorage.setItem(storageKey, nextPreference);
         }
       } catch {
         // Persistence failure must not block theme changes for the current session.
       }
+      const nextTheme = resolveTheme(nextPreference);
       // Canvas consumers resolve CSS tokens during the context update, so the
       // cascade must already represent the next theme when they render.
       applyThemeToRoot(nextTheme, darkModeClass);
+      setThemePreference(nextPreference);
       setThemeState(nextTheme);
     },
     [darkModeClass, storageKey]
   );
+
+  // Following the system: re-theme live when the OS colour scheme changes.
+  useEffect(() => {
+    if (
+      themePreference !== 'system' ||
+      typeof globalThis.matchMedia !== 'function'
+    ) {
+      return undefined;
+    }
+    const query = globalThis.matchMedia(DARK_SCHEME_QUERY);
+    const onChange = () => {
+      const nextTheme = resolveTheme('system');
+      applyThemeToRoot(nextTheme, darkModeClass);
+      setThemeState(nextTheme);
+    };
+    query.addEventListener?.('change', onChange);
+
+    return () => query.removeEventListener?.('change', onChange);
+  }, [darkModeClass, themePreference]);
 
   useEffect(() => {
     applyThemeToRoot(theme, darkModeClass);
@@ -347,8 +391,8 @@ export const ThemeProvider = ({
   ]);
 
   const values = useMemo(
-    () => ({ theme, brandColors, setTheme }),
-    [theme, brandColors, setTheme]
+    () => ({ theme, themePreference, brandColors, setTheme }),
+    [theme, themePreference, brandColors, setTheme]
   );
 
   return (
