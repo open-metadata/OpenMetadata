@@ -197,7 +197,6 @@ export default defineConfig(async ({ mode }) => {
     server: {
       port: 3000,
       open: true,
-      
       proxy: {
         '/api/': {
           target: devServerTarget,
@@ -210,7 +209,9 @@ export default defineConfig(async ({ mode }) => {
           bypass: (req) => (isTestLoginCallback(req.url) ? undefined : req.url),
         },
       },
-      allowedHosts: ['online-div-linda-hockey.trycloudflare.com'],
+      // Opt-in via env for personal Cloudflare tunnels, ngrok, etc.
+      // Example: `VITE_ALLOWED_HOSTS=my-tunnel.trycloudflare.com yarn start`.
+      allowedHosts: env.VITE_ALLOWED_HOSTS?.split(',').filter(Boolean),
       watch: {
         ignored: [
           '**/node_modules/**',

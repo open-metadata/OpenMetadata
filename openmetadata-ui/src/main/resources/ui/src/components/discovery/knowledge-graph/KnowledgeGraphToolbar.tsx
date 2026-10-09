@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import type {
+  TreeSelectDataResponse,
+  TreeSelectNode,
+} from '@openmetadata/ui-core-components';
 import {
   Box,
   Button,
@@ -20,6 +24,7 @@ import {
   Popover,
   PopoverTrigger,
   Select,
+  TreeSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -29,10 +34,9 @@ import {
   Minimize01,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Heading } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import type { SearchDropdownOption } from '../../../interface/quickFilter.interface';
 import { GraphFilterOption } from '../../../types/knowledgeGraph.types';
 import { normalizeGraphLevel } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import {
@@ -44,12 +48,21 @@ import {
   KnowledgeGraphRelationshipGroupSection,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphRelationshipGroups';
 import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
-import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import ExportGraphPanel from '../../OntologyExplorer/ExportGraphPanel';
 import { ExportFormat } from '../../OntologyExplorer/ExportGraphPanel.interface';
 import { KnowledgeGraphToolbarProps } from './KnowledgeGraph.interface';
 
 type GraphControl = 'level' | 'find' | 'view';
+
+/**
+ * Sentinel prefix for parent (group) TreeSelect node ids. Cascade selection
+ * will add the parent's own value when a group is picked; filtering it out by
+ * prefix prevents it from leaking into `filters.{entityTypes|relationshipTypes}`.
+ * Kept colon-free so the id is a well-formed `data-testid` suffix.
+ */
+const GROUP_ID_PREFIX = '__group__';
+
+const isGroupId = (value: string) => value.startsWith(GROUP_ID_PREFIX);
 
 interface GroupedSection<T extends string> {
   key: T;
@@ -57,23 +70,43 @@ interface GroupedSection<T extends string> {
   choices: GraphFilterOption[];
 }
 
-/**
- * Flatten sectioned choices into the flat `SearchDropdownOption[]` shape
- * FilterSelectDropdown consumes, prefixing each row's label with its group
- * so the tree-like structure (Databases → Table, Lineage → upstream, …) is
- * still readable in a single-column dropdown.
- */
-const flattenSections = <T extends string>(
+/** Build a TreeSelect root list from grouped sections — each group becomes a
+ *  parent node (sentinel id, aggregated count), each choice becomes a leaf. */
+const sectionsToTreeNodes = <T extends string>(
   sections: GroupedSection<T>[],
   t: (key: string) => string
-): SearchDropdownOption[] =>
-  sections.flatMap((section) =>
-    section.choices.map((choice) => ({
-      key: choice.id,
-      label: t(section.labelKey) + ' · ' + choice.label,
+): TreeSelectNode[] =>
+  sections.map((section) => ({
+    id: GROUP_ID_PREFIX + section.key,
+    value: GROUP_ID_PREFIX + section.key,
+    label: t(section.labelKey),
+    isLeaf: false,
+    count: section.choices.reduce((sum, item) => sum + item.count, 0),
+    children: section.choices.map((choice) => ({
+      id: choice.id,
+      value: choice.id,
+      label: choice.label,
+      isLeaf: true,
       count: choice.count,
-    }))
-  );
+    })),
+  }));
+
+/** Index every leaf node in a tree by its id for value-array round-tripping. */
+const indexLeaves = (roots: TreeSelectNode[]): Map<string, TreeSelectNode> => {
+  const index = new Map<string, TreeSelectNode>();
+  const visit = (nodes: TreeSelectNode[]) =>
+    nodes.forEach((node) => {
+      if (node.isLeaf) {
+        index.set(node.id, node);
+      }
+      if (node.children?.length) {
+        visit(node.children);
+      }
+    });
+  visit(roots);
+
+  return index;
+};
 
 interface PickerProps {
   filters: KnowledgeGraphToolbarProps['filters'];
@@ -81,21 +114,22 @@ interface PickerProps {
   onFiltersChange: KnowledgeGraphToolbarProps['onFiltersChange'];
 }
 
-const toSelectedOptions = (
-  values: string[],
-  options: SearchDropdownOption[]
-): SearchDropdownOption[] => {
-  const byKey = new Map(options.map((option) => [option.key, option]));
+const toLeafIds = (
+  selected: TreeSelectNode | TreeSelectNode[] | null
+): string[] => {
+  if (!selected) {
+    return [];
+  }
+  const list = Array.isArray(selected) ? selected : [selected];
 
-  return values.map(
-    (value) => byKey.get(value) ?? { key: value, label: value }
-  );
+  return list.map((node) => node.value).filter((id) => !isGroupId(id));
 };
 
 /**
- * Entity Type dropdown — rendered through the shared FilterSelectDropdown
- * shell, with each option labelled `<Group> · <Type>` so the Explore mental
- * model (Databases, Dashboards, …, Owners) reads inline in a flat list.
+ * Entity Type picker — tree view (expandable groups, cascade selection) using
+ * the shared core TreeSelect, so it reads like the glossary-term filter
+ * (Databases → Table / Schema / Column, …). Selection writes only leaf ids
+ * into `filters.entityTypes`; the parent sentinel is filtered out.
  */
 const EntityTypePicker = ({
   filters,
@@ -103,45 +137,48 @@ const EntityTypePicker = ({
   onFiltersChange,
 }: PickerProps) => {
   const { t } = useTranslation();
-  const [search, setSearch] = useState('');
-  const options = useMemo<SearchDropdownOption[]>(() => {
-    const filtered = (filterOptions?.entityTypes ?? []).filter((item) =>
-      item.label.toLowerCase().includes(search.toLowerCase())
+  const roots = useMemo<TreeSelectNode[]>(() => {
+    const sections: KnowledgeGraphEntityGroupSection[] = groupEntityTypeChoices(
+      filterOptions?.entityTypes ?? []
     );
-    const sections: KnowledgeGraphEntityGroupSection[] =
-      groupEntityTypeChoices(filtered);
 
-    return flattenSections(sections, t);
-  }, [filterOptions?.entityTypes, search, t]);
-  const selectedKeys = useMemo(
-    () => toSelectedOptions(filters.entityTypes, options),
-    [filters.entityTypes, options]
+    return sectionsToTreeNodes(sections, t);
+  }, [filterOptions?.entityTypes, t]);
+  const leafById = useMemo(() => indexLeaves(roots), [roots]);
+  const value = useMemo<TreeSelectNode[]>(
+    () =>
+      filters.entityTypes
+        .map((id) => leafById.get(id))
+        .filter((node): node is TreeSelectNode => node !== undefined),
+    [filters.entityTypes, leafById]
+  );
+  const fetchData = useCallback(
+    async (): Promise<TreeSelectDataResponse> => ({ nodes: roots }),
+    [roots]
   );
 
   return (
-    <FilterSelectDropdown
-      immediateApply
+    <TreeSelect
+      cascadeSelection
+      multiple
+      searchable
       showSelectAll
+      data-testid="graph-entity-type-filter"
+      fetchData={fetchData}
       label={t('label.entity-type')}
-      options={options}
-      searchKey="entity-type"
-      selectedKeys={selectedKeys}
+      triggerVariant="button"
+      value={value}
       onChange={(selected) =>
-        onFiltersChange({
-          ...filters,
-          entityTypes: selected.map((option) => option.key),
-        })
+        onFiltersChange({ ...filters, entityTypes: toLeafIds(selected) })
       }
-      onGetInitialOptions={() => setSearch('')}
-      onSearch={(value) => setSearch(value)}
     />
   );
 };
 
 /**
- * Relationship Type dropdown — same FilterSelectDropdown shell, each row
- * labelled `<Family> · <Predicate>` where the family comes from
- * {@link classifyRelation} (Lineage, Structure, Ontology, …).
+ * Relationship Type picker — same TreeSelect shell, parents are
+ * RelationCategory families (Lineage, Structure, Ontology, …) and leaves are
+ * the individual predicates that classify under each.
  */
 const RelationshipTypePicker = ({
   filters,
@@ -149,37 +186,39 @@ const RelationshipTypePicker = ({
   onFiltersChange,
 }: PickerProps) => {
   const { t } = useTranslation();
-  const [search, setSearch] = useState('');
-  const options = useMemo<SearchDropdownOption[]>(() => {
-    const filtered = (filterOptions?.relationshipTypes ?? []).filter((item) =>
-      item.label.toLowerCase().includes(search.toLowerCase())
-    );
+  const roots = useMemo<TreeSelectNode[]>(() => {
     const sections: KnowledgeGraphRelationshipGroupSection[] =
-      groupRelationshipTypeChoices(filtered);
+      groupRelationshipTypeChoices(filterOptions?.relationshipTypes ?? []);
 
-    return flattenSections(sections, t);
-  }, [filterOptions?.relationshipTypes, search, t]);
-  const selectedKeys = useMemo(
-    () => toSelectedOptions(filters.relationshipTypes, options),
-    [filters.relationshipTypes, options]
+    return sectionsToTreeNodes(sections, t);
+  }, [filterOptions?.relationshipTypes, t]);
+  const leafById = useMemo(() => indexLeaves(roots), [roots]);
+  const value = useMemo<TreeSelectNode[]>(
+    () =>
+      filters.relationshipTypes
+        .map((id) => leafById.get(id))
+        .filter((node): node is TreeSelectNode => node !== undefined),
+    [filters.relationshipTypes, leafById]
+  );
+  const fetchData = useCallback(
+    async (): Promise<TreeSelectDataResponse> => ({ nodes: roots }),
+    [roots]
   );
 
   return (
-    <FilterSelectDropdown
-      immediateApply
+    <TreeSelect
+      cascadeSelection
+      multiple
+      searchable
       showSelectAll
+      data-testid="graph-relationship-type-filter"
+      fetchData={fetchData}
       label={t('label.relationship-type')}
-      options={options}
-      searchKey="relationship-type"
-      selectedKeys={selectedKeys}
+      triggerVariant="button"
+      value={value}
       onChange={(selected) =>
-        onFiltersChange({
-          ...filters,
-          relationshipTypes: selected.map((option) => option.key),
-        })
+        onFiltersChange({ ...filters, relationshipTypes: toLeafIds(selected) })
       }
-      onGetInitialOptions={() => setSearch('')}
-      onSearch={(value) => setSearch(value)}
     />
   );
 };
