@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-10-09 (initial)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `DataConsumerPolicyGrantSqlMigrationTest` (the upgrade statement),
-  `ContextMemoryCreateGrantIT` (the grant, ownership and the opt-out)
+  `ContextMemoryCreateGrantIT` (the grant and the opt-out), `ContextMemoryWriteAccessTest` and
+  `ContextMemoryWriteAccessIT` (what a non-admin may write)
 - **Related:** ai-platform#1580; OpenMetadata#34253, which made `ExecuteSparqlQuery` a Data
   Consumer default the same way (ADR:2026-09-16-agent-sparql-execution, §2a);
   open-metadata/openmetadata-collate#6965 (`MemoryCaptureGate`)
@@ -19,6 +20,10 @@ non-admin. The agent's `upsertMemory` failed for them, and Collate's `MemoryCapt
 evaluates the same rule before a turn, skipped capture. On a default install only admins wrote
 memories.
 
+Who writes a memory matters beyond the operation, because its owners and references decide what it
+does. Collate injects the private user-global memories a user owns into that user's agent prompt as
+their preferences, and a stored memory echoes the name of every entity it points at.
+
 ## Decision
 
 - The seeded `DataConsumerPolicy` carries its own allow rule,
@@ -26,14 +31,21 @@ memories.
   is separate from `DataConsumerPolicy-EditRule` so an admin can delete just this rule to make memory
   creation admin-only again. A role with a deny rule for `Create` on `contextMemory` withdraws it
   from chosen users.
-- Nothing else about memories changes. A memory created without owners is owned by its creator, so
-  editing and deleting it come from `OrganizationPolicy-Owner-Rule`; editing another user's memory
-  still needs `EditAll`. Who reads a memory is still decided by its `shareConfig`
-  (`ContextMemoryVisibility`).
 - Existing installs get the rule from a native statement in the 2.1.0 `schemaChanges.sql`, for
   MySQL and PostgreSQL. Like the SPARQL grant it is recorded once in `SERVER_MIGRATION_SQL_LOGS`, so
   an admin who deletes the rule does not get it back on a later upgrade. The statement adds the
   rule only while an allow rule of `DataConsumerPolicy` still lists `EditDescription`.
+- A writer who is neither an admin nor a bot (`ContextMemoryWriteAccess`; a bot acting for a user
+  writes as that user):
+  - owns every memory they create: naming anyone else as an owner is refused (403), and the owners
+    of an existing memory cannot be changed (403), even by its owner;
+  - may point a memory only at entities they can view, by the same rule that decides who reads an
+    anchored memory, and only at memories they can read. A missing entity is refused with the same
+    error as an unviewable one (400), so the answer does not reveal whether an id exists.
+- A memory's owner edits and deletes it through `OrganizationPolicy-Owner-Rule`. Data Consumers can
+  also edit the description and tags of any memory they can read, as they can of any entity;
+  editing its content needs `EditAll`. A `PATCH` first enforces the memory's visibility, because it
+  answers with the whole memory.
 
 ## Consequences
 
@@ -43,9 +55,11 @@ memories.
   and Data Consumers already edit the description of every asset. A non-admin can now create an
   `Approved` memory with `Entity` visibility, which every reader of its asset sees, and every user
   sees when it has no asset; `upsertMemory` writes exactly that. Capture writes `Unprocessed`
-  memories, which search does not admit until they are approved. Create does not check that the
-  creator can view the asset a memory is anchored to. An install that wants memories reviewed before
-  other users see them removes the rule; this record adds no review step.
+  memories, which search does not admit until they are approved. An install that wants memories
+  reviewed before other users see them removes the rule; this record adds no review step.
+- Only admins hand a memory to someone else or add a co-owner. A writer who loses access to an
+  entity their memory points at cannot save that memory until access is restored or the reference
+  removed.
 - Upgrade guard: an install that removed `EditDescription` from Data Consumer made it read-only
   and does not receive the grant; an admin who wants it adds the rule by hand. The check is as
   simple as the SPARQL one: it ignores a rule's condition and resources, does not count the `All`

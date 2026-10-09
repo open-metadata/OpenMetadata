@@ -207,7 +207,7 @@ public class ContextMemoryAnchorIT {
                     .withPrimaryEntity(ref(Entity.TABLE, anchor.getId())));
     User reader = createUser(ns, null, null);
     User blocked = createUser(ns, denyTableView(ns), null);
-    String pinned = pinnedTo(anchor);
+    String pinned = pinnedTo(anchor.getId());
     ListParams byAnchor =
         new ListParams().setLimit(100).addFilter("primaryEntityId", anchor.getId().toString());
 
@@ -229,6 +229,32 @@ public class ContextMemoryAnchorIT {
     assertTrue(
         searchHits(clientOf(reader), query, null).isEmpty(),
         "free text that pins no anchor keeps anchored memories owner-only");
+  }
+
+  /** A file anchor is read by the file's own sharing too, in a pinned search as in REST. */
+  @Test
+  void aSearchPinnedToAPrivateFile_showsItsMemoriesToTheFileOwnerOnly(TestNamespace ns) {
+    User fileOwner = createUser(ns, null, null);
+    ContextFile file = privateFileOwnedBy(ns, fileOwner);
+    String query = "privatefile" + UUID.randomUUID().toString().substring(0, 8);
+    ContextMemory memory =
+        adminMemories()
+            .create(
+                entityMemory(ns, "private-file-pinned")
+                    .withQuestion(query)
+                    .withPrimaryEntity(file.getEntityReference()));
+    String pinned = pinnedTo(file.getId());
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    Set.of(memory.getId()), searchHits(SdkClients.adminClient(), query, pinned)));
+
+    assertEquals(Set.of(memory.getId()), searchHits(clientOf(fileOwner), query, pinned));
+    assertTrue(searchHits(clientOf(createUser(ns, null, null)), query, pinned).isEmpty());
   }
 
   @Test
@@ -286,21 +312,7 @@ public class ContextMemoryAnchorIT {
   @Test
   void aPrivateFileHidesItsAnchoredMemoryFromOtherReaders(TestNamespace ns) {
     User fileOwner = createUser(ns, null, null);
-    ContextFile file =
-        ns.trackRoot(
-            Entity.CONTEXT_FILE,
-            SdkClients.adminClient()
-                .contextFiles()
-                .create(
-                    new CreateContextFile()
-                        .withName(ns.prefix("private-source"))
-                        .withOwners(List.of(ref(Entity.USER, fileOwner.getId())))));
-    SdkClients.adminClient()
-        .contextFiles()
-        .patch(
-            file.getId(),
-            JsonUtils.readTree(
-                "[{\"op\":\"add\",\"path\":\"/shareConfig\",\"value\":{\"visibility\":\"Private\"}}]"));
+    ContextFile file = privateFileOwnedBy(ns, fileOwner);
     ContextMemory memory =
         adminMemories()
             .create(
@@ -405,6 +417,25 @@ public class ContextMemoryAnchorIT {
     assertEquals(List.of(visible.getId()), idsAcrossPages(reader, anchor));
   }
 
+  private static ContextFile privateFileOwnedBy(TestNamespace ns, User owner) {
+    ContextFile file =
+        ns.trackRoot(
+            Entity.CONTEXT_FILE,
+            SdkClients.adminClient()
+                .contextFiles()
+                .create(
+                    new CreateContextFile()
+                        .withName(ns.prefix("private-source"))
+                        .withOwners(List.of(ref(Entity.USER, owner.getId())))));
+    SdkClients.adminClient()
+        .contextFiles()
+        .patch(
+            file.getId(),
+            JsonUtils.readTree(
+                "[{\"op\":\"add\",\"path\":\"/shareConfig\",\"value\":{\"visibility\":\"Private\"}}]"));
+    return file;
+  }
+
   private static CreateContextMemory privateMemory(TestNamespace ns, String name) {
     return entityMemory(ns, name)
         .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
@@ -457,9 +488,9 @@ public class ContextMemoryAnchorIT {
     return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
   }
 
-  private static String pinnedTo(Table anchor) {
+  private static String pinnedTo(UUID anchorId) {
     return "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"primaryEntity.id\":\""
-        + anchor.getId()
+        + anchorId
         + "\"}}]}}}";
   }
 

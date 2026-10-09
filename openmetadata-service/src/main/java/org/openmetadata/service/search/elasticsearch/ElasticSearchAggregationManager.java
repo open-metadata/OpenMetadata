@@ -42,6 +42,7 @@ import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggrega
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -84,7 +85,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         MEMORY_VISIBILITY.buildVisibilityFilter(
             subjectContext,
             ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
-            ContextMemorySearchVisibility.pinnedAnchorIds(queryFilter));
+            ContextMemoryAnchorPins.ofQueryFilters(queryFilter));
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }

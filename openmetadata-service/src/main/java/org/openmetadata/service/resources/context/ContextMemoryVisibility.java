@@ -152,15 +152,24 @@ public final class ContextMemoryVisibility {
   }
 
   static List<UUID> pinnedAnchors(Collection<String> pinnedAnchorIds) {
-    return pinnedAnchorIds == null
-        ? List.of()
-        : pinnedAnchorIds.stream()
-            .filter(Objects::nonNull)
-            .map(ContextMemoryVisibility::parseAnchorId)
-            .flatMap(Optional::stream)
-            .distinct()
-            .limit(MAX_PINNED_ANCHORS)
-            .toList();
+    List<UUID> pinned =
+        pinnedAnchorIds == null
+            ? List.of()
+            : pinnedAnchorIds.stream()
+                .filter(Objects::nonNull)
+                .map(ContextMemoryVisibility::parseAnchorId)
+                .flatMap(Optional::stream)
+                .distinct()
+                .toList();
+    if (pinned.size() > MAX_PINNED_ANCHORS) {
+      LOG.debug(
+          "A query pins {} memory anchors; only the first {} are evaluated",
+          pinned.size(),
+          MAX_PINNED_ANCHORS);
+    }
+    return pinned.size() > MAX_PINNED_ANCHORS
+        ? List.copyOf(pinned.subList(0, MAX_PINNED_ANCHORS))
+        : pinned;
   }
 
   private static Optional<UUID> parseAnchorId(String anchorId) {

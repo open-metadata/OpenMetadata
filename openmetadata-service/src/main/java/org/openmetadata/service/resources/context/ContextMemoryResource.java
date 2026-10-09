@@ -632,6 +632,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                       examples =
                           @ExampleObject("[{op:replace, path:/displayName, value: 'New name'}]")))
           JsonPatch patch) {
+    // A PATCH answers with the whole memory, and Data Consumers may edit any entity's description
+    // and tags, so without this anyone holding a memory's id could read it by patching it.
+    enforceCurrentVisibility(securityContext, id);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 

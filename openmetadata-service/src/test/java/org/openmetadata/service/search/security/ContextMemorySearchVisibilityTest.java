@@ -456,6 +456,10 @@ class ContextMemorySearchVisibilityTest {
         json,
         anchored + "[0].bool.should[?(@.term['visibility'].value=='Private')]",
         "a Private memory is never admitted through its anchor");
+    assertFieldDoesNotExist(
+        json,
+        anchored + "[0].bool.should[?(@.term['visibility'].value=='Shared')]",
+        "a Shared memory reaches its principals only, never every reader of its anchor");
   }
 
   @Test
@@ -517,32 +521,6 @@ class ContextMemorySearchVisibilityTest {
     assertNull(
         visibility.buildVisibilityFilter(
             null, ContextMemorySearchVisibility.SEARCHABLE_STATUSES, pinned));
-  }
-
-  @Test
-  void pinnedAnchorIdsReadTermAndTermsClausesOnThePrimaryEntityId() {
-    String filter =
-        """
-        {"query":{"bool":{
-          "must":[{"term":{"primaryEntity.id":"a"}},{"term":{"primaryEntity.id":{"value":"b"}}}],
-          "should":[{"terms":{"primaryEntity.id.keyword":["c","d"]}},
-                    {"term":{"owners.id":"not-an-anchor"}}]}}}
-        """;
-
-    assertEquals(
-        List.of("a", "b", "c", "d"), ContextMemorySearchVisibility.pinnedAnchorIds(filter));
-    assertEquals(
-        List.of("a", "b", "c", "d", "e"),
-        ContextMemorySearchVisibility.pinnedAnchorIds(
-            filter, "{\"term\":{\"primaryEntity.id\":\"e\"}}"));
-  }
-
-  @Test
-  void aFilterThatIsAbsentOrNotJsonPinsNothing() {
-    assertTrue(ContextMemorySearchVisibility.pinnedAnchorIds((String) null).isEmpty());
-    assertTrue(ContextMemorySearchVisibility.pinnedAnchorIds("").isEmpty());
-    assertTrue(ContextMemorySearchVisibility.pinnedAnchorIds("{not json").isEmpty());
-    assertTrue(ContextMemorySearchVisibility.pinnedAnchorIds().isEmpty());
   }
 
   private String pinnedJson(

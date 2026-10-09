@@ -92,6 +92,7 @@ import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -438,10 +439,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
 
     applyRbacCondition(
-        subjectContext,
-        requestBuilder,
-        statuses,
-        ContextMemorySearchVisibility.pinnedAnchorIds(filter));
+        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -625,8 +623,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     requestBuilder.size(request.getSize());
 
     // applyRbacCondition already applies the ContextMemory visibility filter.
-    applyRbacCondition(
-        subjectContext, requestBuilder, ContextMemorySearchVisibility.pinnedAnchorIds(request));
+    applyRbacCondition(subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
     applyQueryFilter(requestBuilder, request);
     // Strip any clusterAlias prefix first, the same way doSearch does — the deleted filter compares
     // this against the dataAsset/all aliases.
@@ -967,7 +964,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           subjectContext,
           requestBuilder,
           ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
-          ContextMemorySearchVisibility.pinnedAnchorIds(request));
+          ContextMemoryAnchorPins.of(request));
 
       // Add aggregations if needed
       ElasticSearchSourceBuilderFactory factory = getSearchBuilderFactory();
@@ -1590,8 +1587,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         requestBuilder.query());
 
     // Apply RBAC query
-    applyRbacCondition(
-        subjectContext, requestBuilder, ContextMemorySearchVisibility.pinnedAnchorIds(request));
+    applyRbacCondition(subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
 
     applyQueryFilter(requestBuilder, request);
 

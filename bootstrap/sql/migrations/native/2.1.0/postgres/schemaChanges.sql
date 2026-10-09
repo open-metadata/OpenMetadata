@@ -528,3 +528,11 @@ ALTER TABLE announcement_entity DROP COLUMN IF EXISTS status;
 UPDATE announcement_entity
 SET json = json - 'status'
 WHERE json ->> 'status' IS NOT NULL;
+
+-- A search that pins a memory anchor looks up the edges from the pinned ids into context memories
+-- (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). The only PostgreSQL index that leads
+-- with fromId and relation is partial to CONTAINS and PARENT_OF, so without this one the lookup
+-- scans every edge of a pinned domain or team. MySQL serves it from idx_entity_rel_cascade.
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_memory_anchor
+    ON entity_relationship (fromId, relation)
+    WHERE toEntity = 'contextMemory';

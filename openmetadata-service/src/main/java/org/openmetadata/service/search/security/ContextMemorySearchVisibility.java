@@ -16,20 +16,15 @@ package org.openmetadata.service.search.security;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.exception.JsonParsingException;
-import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
@@ -68,12 +63,11 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  *
  * <p>Search cannot evaluate an anchor's policy per document. An anchored {@code Entity} memory is
  * therefore searchable only by its owners and admins, unless the query pins its anchor: a caller
- * that names the anchors it asks about has each of them evaluated once by the REST rule, and the
- * {@code Entity} memories of the readable ones are admitted too
+ * that names the anchors it asks about ({@link ContextMemoryAnchorPins}) has each of them evaluated
+ * once by the REST rule, and the {@code Entity} memories of the readable ones are admitted too
  * (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). An explicit unanchored marker is
  * required: old documents without the marker stay hidden from non-owners until reindexed.
  */
-@Slf4j
 public class ContextMemorySearchVisibility {
 
   public static final String FIELD_ENTITY_TYPE = "entityType";
@@ -81,20 +75,10 @@ public class ContextMemorySearchVisibility {
   public static final String FIELD_OWNERS = "owners";
   public static final String FIELD_OWNERS_ID = "owners.id";
   public static final String FIELD_SHARED_WITH_IDS = "sharedWithIds";
-  public static final String FIELD_PRIMARY_ENTITY_ID = "primaryEntity.id";
-
-  /** The filter key vector and hybrid search callers pin a memory anchor with. */
-  public static final String PINNED_ANCHOR_FILTER = "primaryEntityId";
 
   /** Memory stages ordinary search admits; the Context Center listing may ask for others. */
   public static final List<ContextMemoryStatus> SEARCHABLE_STATUSES =
       List.of(ContextMemoryStatus.APPROVED);
-
-  private static final Set<String> PINNING_FIELDS =
-      Set.of(FIELD_PRIMARY_ENTITY_ID, FIELD_PRIMARY_ENTITY_ID + ".keyword");
-  private static final String TERM = "term";
-  private static final String TERMS = "terms";
-  private static final String VALUE = "value";
 
   /** Which of the anchors a query pins a user may read the memories of. */
   @FunctionalInterface
@@ -163,63 +147,6 @@ public class ContextMemorySearchVisibility {
     return isVisibilityEnforced(subjectContext) && !nullOrEmpty(pinnedAnchorIds)
         ? anchorReadability.readableAnchorIds(subjectContext.user().getName(), pinnedAnchorIds)
         : Set.of();
-  }
-
-  /** The anchors a search request pins through its query filter or its post filter. */
-  public static List<String> pinnedAnchorIds(SearchRequest request) {
-    return pinnedAnchorIds(request.getQueryFilter(), request.getPostFilter());
-  }
-
-  /**
-   * The anchors query DSL filters pin: the values of their {@code term} and {@code terms} clauses on
-   * {@code primaryEntity.id}, wherever they sit. A filter that does not parse pins nothing.
-   */
-  public static List<String> pinnedAnchorIds(String... queryFilters) {
-    List<String> anchorIds = new ArrayList<>();
-    for (String queryFilter : queryFilters) {
-      collectPinnedAnchorIds(queryFilter, anchorIds);
-    }
-    return anchorIds;
-  }
-
-  private static void collectPinnedAnchorIds(String queryFilter, List<String> anchorIds) {
-    if (!nullOrEmpty(queryFilter)) {
-      try {
-        collectPinnedAnchorIds(JsonUtils.readTree(queryFilter), anchorIds);
-      } catch (JsonParsingException e) {
-        LOG.debug("Query filter pins no memory anchor: it is not JSON", e);
-      }
-    }
-  }
-
-  private static void collectPinnedAnchorIds(JsonNode node, List<String> anchorIds) {
-    if (node != null && node.isObject()) {
-      collectPinnedValues(node.get(TERM), anchorIds);
-      collectPinnedValues(node.get(TERMS), anchorIds);
-    }
-    if (node != null && node.isContainerNode()) {
-      node.forEach(child -> collectPinnedAnchorIds(child, anchorIds));
-    }
-  }
-
-  private static void collectPinnedValues(JsonNode clause, List<String> anchorIds) {
-    if (clause != null && clause.isObject()) {
-      for (String field : PINNING_FIELDS) {
-        JsonNode value = clause.get(field);
-        JsonNode pinned = value != null && value.isObject() ? value.get(VALUE) : value;
-        if (pinned != null && pinned.isArray()) {
-          pinned.forEach(element -> addTextual(element, anchorIds));
-        } else {
-          addTextual(pinned, anchorIds);
-        }
-      }
-    }
-  }
-
-  private static void addTextual(JsonNode value, List<String> anchorIds) {
-    if (value != null && value.isTextual()) {
-      anchorIds.add(value.asText());
-    }
   }
 
   /**

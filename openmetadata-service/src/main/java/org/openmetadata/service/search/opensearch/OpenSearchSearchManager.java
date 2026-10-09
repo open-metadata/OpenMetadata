@@ -79,6 +79,7 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
@@ -570,10 +571,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     }
 
     applyContextMemoryVisibility(
-        subjectContext,
-        requestBuilder,
-        statuses,
-        ContextMemorySearchVisibility.pinnedAnchorIds(filter));
+        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -796,7 +794,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       // Apply RBAC constraints with caching
       applyRbacQueryWithCaching(subjectContext, requestBuilder);
       applyContextMemoryVisibility(
-          subjectContext, requestBuilder, ContextMemorySearchVisibility.pinnedAnchorIds(request));
+          subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
 
       // Add aggregations if needed
       OpenSearchSourceBuilderFactory factory = getSearchBuilderFactory();
@@ -1146,7 +1144,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     applyRbacQueryWithCaching(subjectContext, requestBuilder);
     applyContextMemoryVisibility(
-        subjectContext, requestBuilder, ContextMemorySearchVisibility.pinnedAnchorIds(request));
+        subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
     applyQueryFilter(requestBuilder, request);
     // Strip any clusterAlias prefix first, the same way doSearch does — the deleted filter compares
     // this against the dataAsset/all aliases.
@@ -1670,7 +1668,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     // Apply RBAC query with caching
     applyRbacQueryWithCaching(subjectContext, requestBuilder);
     applyContextMemoryVisibility(
-        subjectContext, requestBuilder, ContextMemorySearchVisibility.pinnedAnchorIds(request));
+        subjectContext, requestBuilder, ContextMemoryAnchorPins.of(request));
 
     applyQueryFilter(requestBuilder, request);
 

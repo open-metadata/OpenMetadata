@@ -471,6 +471,9 @@ public interface CoreRelationshipDAOs {
     private String jsonSchema;
   }
 
+  /** An edge into a context memory from an entity that may anchor it. */
+  record MemoryAnchorEdge(UUID fromId, String fromEntity, int relation) {}
+
   record OntologyRelationshipRow(
       UUID fromId,
       UUID toId,
@@ -976,23 +979,22 @@ public interface CoreRelationshipDAOs {
     }
 
     /**
-     * The distinct (from entity, relation) pairs among {@code fromIds} with a live edge of one of
-     * {@code relations} to an entity of {@code toEntityType}. Only {@code fromId}, {@code
-     * fromEntity} and {@code relation} are set. One row per pair however many edges it stands for,
-     * so it stays cheap for an entity with thousands of them.
+     * The distinct (entity, relation) pairs among {@code fromIds} with a live edge of one of {@code
+     * relations} into a context memory, one row per pair however many memories it points at. The
+     * target type is a literal so that PostgreSQL can use idx_entity_relationship_memory_anchor;
+     * MySQL serves the query from idx_entity_rel_cascade. Without either, a pinned domain or team
+     * would scan one edge per asset or user it holds.
      */
     @SqlQuery(
         "SELECT DISTINCT fromId, fromEntity, relation "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
-            + "AND toEntity = :toEntityType "
             + "AND relation IN (<relations>) "
+            + "AND toEntity = 'contextMemory' "
             + "AND deleted = FALSE")
-    @UseRowMapper(FromEdgeMapper.class)
-    List<EntityRelationshipObject> findDistinctFromEdges(
-        @BindList("fromIds") List<String> fromIds,
-        @Bind("toEntityType") String toEntityType,
-        @BindList("relations") List<Integer> relations);
+    @UseRowMapper(MemoryAnchorEdgeMapper.class)
+    List<MemoryAnchorEdge> findMemoryAnchorEdges(
+        @BindList("fromIds") List<String> fromIds, @BindList("relations") List<Integer> relations);
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -1889,14 +1891,13 @@ public interface CoreRelationshipDAOs {
       }
     }
 
-    class FromEdgeMapper implements RowMapper<EntityRelationshipObject> {
+    class MemoryAnchorEdgeMapper implements RowMapper<MemoryAnchorEdge> {
       @Override
-      public EntityRelationshipObject map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return EntityRelationshipObject.builder()
-            .fromId(rs.getString("fromId"))
-            .fromEntity(rs.getString("fromEntity"))
-            .relation(rs.getInt("relation"))
-            .build();
+      public MemoryAnchorEdge map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new MemoryAnchorEdge(
+            UUID.fromString(rs.getString("fromId")),
+            rs.getString("fromEntity"),
+            rs.getInt("relation"));
       }
     }
 

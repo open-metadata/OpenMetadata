@@ -33,6 +33,7 @@ import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsB
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -81,7 +82,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         MEMORY_VISIBILITY.buildVisibilityFilter(
             subjectContext,
             ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
-            ContextMemorySearchVisibility.pinnedAnchorIds(queryFilter));
+            ContextMemoryAnchorPins.ofQueryFilters(queryFilter));
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }

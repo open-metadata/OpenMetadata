@@ -15,6 +15,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
@@ -221,15 +222,14 @@ public class VectorSearchQueryBuilder {
   }
 
   /**
-   * The anchors a request pins through its {@code primaryEntityId} filter whose {@code Entity}
-   * memories its subject may read, evaluated once here by the REST rule. The agent's entity memory
-   * fetch and capture's duplicate probe pin exactly one.
+   * The anchors a request pins, through its {@code primaryEntityId} filter or its query filter,
+   * whose {@code Entity} memories its subject may read, evaluated here by the REST rule. The agent's
+   * entity memory fetch and capture's duplicate probe pin exactly one.
    */
   private static Set<String> readableAnchorIds(VectorSearchParameters parameters) {
-    Map<String, List<String>> filters = parameters.filters();
     return MEMORY_VISIBILITY.readableAnchorIds(
         parameters.subjectContext(),
-        filters == null ? null : filters.get(ContextMemorySearchVisibility.PINNED_ANCHOR_FILTER));
+        ContextMemoryAnchorPins.of(parameters.filters(), parameters.queryFilter()));
   }
 
   /**
@@ -299,15 +299,9 @@ public class VectorSearchQueryBuilder {
     // above separately admits unstamped files because those predate document sharing.
     sb.append("{\"bool\":{\"should\":[");
     if (allowPublic) {
-      sb.append("{\"bool\":{\"must\":[{\"bool\":{\"should\":[")
-          .append(
-              termClause(
-                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()))
-          .append(',')
-          .append(
-              termClause(
-                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()))
-          .append("]}},")
+      sb.append("{\"bool\":{\"must\":[");
+      appendEntityOrPublic(sb);
+      sb.append(',')
           .append(termClause(ContextMemoryIndex.FIELD_ANCHOR_ID, ContextMemoryIndex.UNANCHORED))
           .append("]}}");
     } else {
@@ -347,7 +341,20 @@ public class VectorSearchQueryBuilder {
 
   /** Mirrors {@code ContextMemorySearchVisibility#anchoredToClause}. */
   private static void appendAnchoredToClause(StringBuilder sb, Set<String> readableAnchorIds) {
-    sb.append("{\"bool\":{\"must\":[{\"bool\":{\"should\":[")
+    sb.append("{\"bool\":{\"must\":[");
+    appendEntityOrPublic(sb);
+    sb.append(",{\"terms\":{\"").append(ContextMemoryIndex.FIELD_ANCHOR_ID).append("\":[");
+    String separator = "";
+    for (String anchorId : readableAnchorIds.stream().sorted().toList()) {
+      sb.append(separator).append('"').append(escape(anchorId)).append('"');
+      separator = ",";
+    }
+    sb.append("]}}]}}");
+  }
+
+  /** Mirrors {@code ContextMemorySearchVisibility#entityOrPublicClause}. */
+  private static void appendEntityOrPublic(StringBuilder sb) {
+    sb.append("{\"bool\":{\"should\":[")
         .append(
             termClause(
                 ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()))
@@ -355,15 +362,7 @@ public class VectorSearchQueryBuilder {
         .append(
             termClause(
                 ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()))
-        .append("]}},{\"terms\":{\"")
-        .append(ContextMemoryIndex.FIELD_ANCHOR_ID)
-        .append("\":[");
-    String separator = "";
-    for (String anchorId : readableAnchorIds.stream().sorted().toList()) {
-      sb.append(separator).append('"').append(escape(anchorId)).append('"');
-      separator = ",";
-    }
-    sb.append("]}}]}}");
+        .append("]}}");
   }
 
   private static String termClause(String field, String value) {
@@ -431,9 +430,9 @@ public class VectorSearchQueryBuilder {
             sb.append(',');
             appendFlat(sb, "databaseSchema.name", values);
           }
-          case "primaryEntityId" -> {
+          case ContextMemoryAnchorPins.PINNED_ANCHOR_FILTER -> {
             sb.append(',');
-            appendFlat(sb, "primaryEntity.id", values);
+            appendFlat(sb, ContextMemoryAnchorPins.FIELD_PRIMARY_ENTITY_ID, values);
           }
           case "parentId" -> {
             sb.append(',');
