@@ -116,7 +116,7 @@ abstract hooks the subclass fills. **The backbone of the backend.**
 - *Use it when* adding a request filter or a migration phase: insert into the existing ordered chain.
 - *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/security/DelegatingContainerRequestFilter.java`
   (JAX-RS filter chain), `openmetadata-service/src/main/java/org/openmetadata/service/migration/api/MigrationWorkflow.java`
-  (Flyway → native → extension).
+  (one version-sorted pass across Flyway, native and extension, native before extension on ties).
 
 **Command** — encapsulate an action as an object that can be scheduled/queued/run later.
 - *Use it when* adding a background job or a migration step: implement the job/step interface.
