@@ -19,10 +19,12 @@ import {
   within,
 } from '@testing-library/react';
 import { FC } from 'react';
+import { RenderEditCellProps } from 'react-data-grid';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { getCSVStringFromColumnsAndDataSource } from './CSVPureUtils';
 import csvUtilsClassBase, { CSVUtilsClassBase } from './CSVUtilsClassBase';
 
 const mockSelectedReferenceOption: DataAssetOption = {
@@ -299,6 +301,154 @@ describe('CSV utils ClassBase', () => {
   });
 
   describe('getEditor', () => {
+    it.each([
+      EntityType.DATABASE_SERVICE,
+      EntityType.DATABASE,
+      EntityType.DATABASE_SCHEMA,
+      EntityType.TABLE,
+    ])('should commit bulk tags atomically for %s', async (entityType) => {
+      mockGetTags.mockResolvedValue({
+        data: [
+          { name: 'Sensitive', fullyQualifiedName: 'PII.Sensitive' },
+          { name: 'Critical', fullyQualifiedName: 'Business.Critical' },
+        ],
+        paging: { total: 2 },
+      });
+      const editor = csvUtils.getEditor('tags', entityType, multipleOwner, {
+        usePlainTextEditor: true,
+      });
+      const TagEditor = editor as FC<
+        RenderEditCellProps<Record<string, unknown>, unknown>
+      >;
+      const row = { name: 'asset', tags: 'Business.Critical' };
+      let committedRow = row;
+      const onRowChange = jest.fn((nextRow: typeof row, commit?: boolean) => {
+        if (commit) {
+          committedRow = nextRow;
+        }
+      });
+      const onClose = jest.fn();
+
+      render(
+        <TagEditor
+          {...({
+            row,
+            rowIdx: 0,
+            column: { key: 'tags' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof TagEditor>[0])}
+        />
+      );
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Sensitive' }));
+
+      expect(onRowChange).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { ...row, tags: 'Business.Critical;PII.Sensitive' },
+        true
+      );
+      expect(onClose).toHaveBeenCalledWith(true);
+      expect(
+        getCSVStringFromColumnsAndDataSource(
+          [{ key: 'name' }, { key: 'tags' }],
+          [committedRow]
+        )
+      ).toBe('name,tags\nasset,Business.Critical;PII.Sensitive');
+    });
+
+    it('should find bulk tags outside the initial page and discard cancelled changes', async () => {
+      mockSearchQuery.mockResolvedValue({
+        hits: {
+          hits: [
+            {
+              _source: {
+                name: 'Sensitive',
+                fullyQualifiedName: 'PII.Sensitive',
+              },
+            },
+          ],
+          total: { value: 1 },
+        },
+      });
+      const editor = csvUtils.getEditor(
+        'tags',
+        EntityType.DATABASE,
+        multipleOwner,
+        {
+          usePlainTextEditor: true,
+        }
+      );
+      const TagEditor = editor as FC<
+        RenderEditCellProps<Record<string, unknown>, unknown>
+      >;
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      render(
+        <TagEditor
+          {...({
+            row: { tags: '' },
+            rowIdx: 0,
+            column: { key: 'tags' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof TagEditor>[0])}
+        />
+      );
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'PII.Sensitive' },
+      });
+      fireEvent.click(await screen.findByRole('button', { name: 'Sensitive' }));
+      fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+      expect(onRowChange).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalledWith(false);
+    });
+
+    it('should commit clearing bulk tags without dropping other row fields', async () => {
+      mockGetTags.mockResolvedValue({
+        data: [{ name: 'Sensitive', fullyQualifiedName: 'PII.Sensitive' }],
+        paging: { total: 1 },
+      });
+      const editor = csvUtils.getEditor(
+        'tags',
+        EntityType.DATABASE,
+        multipleOwner,
+        {
+          usePlainTextEditor: true,
+        }
+      );
+      const TagEditor = editor as FC<
+        RenderEditCellProps<Record<string, unknown>, unknown>
+      >;
+      const onRowChange = jest.fn();
+      const row = { name: 'asset', tags: 'PII.Sensitive', tiers: 'Tier.Tier1' };
+
+      render(
+        <TagEditor
+          {...({
+            row,
+            rowIdx: 0,
+            column: { key: 'tags' },
+            onRowChange,
+            onClose: jest.fn(),
+          } as unknown as Parameters<typeof TagEditor>[0])}
+        />
+      );
+      await screen.findByRole('button', { name: 'Sensitive' });
+      fireEvent.click(screen.getByRole('button', { name: 'label.clear-all' }));
+
+      expect(onRowChange).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+
+      expect(onRowChange).toHaveBeenCalledWith({ ...row, tags: '' }, true);
+    });
+
     it('should return the editor component for the specified column', () => {
       const column = 'owner';
       const editor = csvUtilsClassBase.getEditor(

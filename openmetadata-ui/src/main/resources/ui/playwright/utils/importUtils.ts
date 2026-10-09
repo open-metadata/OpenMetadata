@@ -584,10 +584,20 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
-  await tagSelectorInput.waitFor({ state: 'visible' });
+  const bulkPicker = page.getByTestId('bulk-edit-tags-picker-editor');
+  const tagSelectorInput = page.getByTestId('tag-selector').locator('input');
+  await expect(bulkPicker.or(tagSelectorInput)).toBeVisible();
+
+  if (await bulkPicker.isVisible()) {
+    await bulkPicker.getByRole('textbox').fill(tag);
+    await bulkPicker.getByTestId(`bulk-edit-picker-option-${tag}`).click();
+    await bulkPicker
+      .getByRole('button', { name: 'Update', exact: true })
+      .click();
+    await expect(bulkPicker).toHaveCount(0);
+
+    return;
+  }
 
   const waitForQueryResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(
