@@ -4121,7 +4121,6 @@
     "dq-threshold-preview-sampling-dynamic": "以用於剖析此表格的動態決定大小樣本進行量測。",
     "dq-threshold-preview-statistical": "當量測值超出 {{bound}} 時判定失敗。",
     "dq-threshold-preview-statistical-deviation": "當量測值超出 {{bound}} 時判定失敗，允許 {{amount}} 的偏差（實際範圍 {{range}}）。",
-    "dq-threshold-preview-unit-not-enforced": "此測試將閾值視為原始列數比較，因此不會套用閾值單位。",
     "dq-threshold-preview-zero-bound": "在邊界值為 0 時使用百分比偏差，邊界仍為 0 — 請改用絕對偏差。",
     "dq-unresolved-incidents-count": "<0>{{count}} 個未解決</0>事件",
     "dq-unresolved-incidents-count-plural": "<0>{{count}} 個未解決</0>事件",

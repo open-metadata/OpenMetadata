@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Space } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -116,8 +117,10 @@ const ContractQualityCard: React.FC<{
   }
 
   return (
-    <Row className="data-quality-card-container" gutter={[20, 0]}>
-      <Col span={12}>
+    <Grid
+      className="layout-row layout-grid data-quality-card-container"
+      style={{ ...getLayoutGutter(20) }}>
+      <Grid.Item className="layout-column" span={12}>
         {showTestCaseSummaryChart && (
           <>
             <Typography className="data-quality-total-test">
@@ -182,10 +185,13 @@ const ContractQualityCard: React.FC<{
           </>
         )}
 
-        <Space
-          className="data-quality-test-item-container"
-          direction="vertical"
-          size={14}>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space data-quality-test-item-container"
+          direction="col"
+          itemClassName="layout-space-item"
+          style={{ gap: 'var(--om-space-14)' }}>
           {testCaseResult.map((item) => {
             return (
               <div
@@ -204,9 +210,9 @@ const ContractQualityCard: React.FC<{
               </div>
             );
           })}
-        </Space>
-      </Col>
-      <Col className="d-flex justify-end" span={12}>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column d-flex justify-end" span={12}>
         {contractStatus && (
           <div className="contract-status-container">
             <Typography className="contract-status-label">{`${t(
@@ -222,8 +228,8 @@ const ContractQualityCard: React.FC<{
             />
           </div>
         )}
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 
