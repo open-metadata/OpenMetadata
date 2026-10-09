@@ -26,14 +26,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
-import { resolveCssColor } from '../../utils/common/cssColor.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import OntologyControlButtons from './OntologyControlButtons';
-import {
-  DATA_MODE_MAX_RENDER_COUNT,
-  EDGE_STROKE_COLOR_FALLBACK,
-} from './OntologyExplorer.constants';
+import { DATA_MODE_MAX_RENDER_COUNT } from './OntologyExplorer.constants';
 import {
   OntologyEdge,
   OntologyGraphData,
@@ -58,7 +54,6 @@ import {
   formatRelationLabel,
   getEffectiveRelationColor,
 } from './utils/graphStyles';
-import { getRelationshipHexColor } from './utils/relationshipTypeUtils';
 
 interface OntologyDataGraphProps {
   data: OntologyGraphData;
@@ -401,15 +396,13 @@ const OntologyDataGraph = ({
         const relationshipType = relationshipTypeByName.get(
           layout.edge.relationType
         );
-        const effectiveColor =
+        // DOM/SVG resolves theme variables after a theme switch; a stored palette
+        // hex would discard the built-in relation's active foreground.
+        const color =
           getEffectiveRelationColor(
             layout.edge.relationType,
             relationshipType
-          ) ?? 'var(--color-border-brand)';
-        const color =
-          effectiveColor.startsWith('var(') && relationshipType
-            ? getRelationshipHexColor(relationshipType)
-            : resolveCssColor(effectiveColor, EDGE_STROKE_COLOR_FALLBACK);
+          ) ?? 'var(--tw-color-border-brand)';
 
         return {
           ...layout,

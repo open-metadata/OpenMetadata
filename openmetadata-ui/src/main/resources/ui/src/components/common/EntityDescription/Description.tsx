@@ -43,6 +43,11 @@ import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/Sug
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
+import {
+  WidgetCommentButton,
+  WidgetEditButton,
+  WidgetRequestButton,
+} from '../WidgetActionButton/WidgetActionButton';
 import { DescriptionProps } from './Description.interface';
 import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
 
@@ -75,7 +80,9 @@ const Description = ({
   isDescriptionExpanded,
   entityFullyQualifiedName,
   changeSummaryEntry,
+  headerVariant = 'default',
 }: DescriptionProps) => {
+  const isWidgetHeader = headerVariant === 'widget';
   const navigate = useNavigate();
   const {
     isVersionView,
@@ -142,23 +149,27 @@ const Description = ({
     let button: ReactNode = null;
 
     if (TASK_ENTITIES.includes(entityType)) {
-      button = (
-        <Tooltip
-          title={
-            hasDescription
-              ? t('message.request-update-description')
-              : t('message.request-description')
-          }>
+      const requestLabel = hasDescription
+        ? t('message.request-update-description')
+        : t('message.request-description');
+      const handleRequest = hasDescription
+        ? handleUpdateDescription
+        : handleRequestDescription;
+
+      button = isWidgetHeader ? (
+        <WidgetRequestButton
+          data-testid="request-description"
+          title={requestLabel}
+          onClick={handleRequest}
+        />
+      ) : (
+        <Tooltip title={requestLabel}>
           <Button
             color="secondary"
             data-testid="request-description"
             iconLeading={MessagePlusSquare}
             size="xxs"
-            onPress={
-              hasDescription
-                ? handleUpdateDescription
-                : handleRequestDescription
-            }
+            onPress={handleRequest}
           />
         </Tooltip>
       );
@@ -170,59 +181,77 @@ const Description = ({
     entityType,
     handleUpdateDescription,
     handleRequestDescription,
+    isWidgetHeader,
   ]);
 
   const editDescriptionLabel = t('label.edit-entity', {
     entity: t('label.description'),
   });
 
-  const actionButtons = useMemo(
-    () => (
+  const actionButtons = useMemo(() => {
+    const canEdit = !isVersionView && !isReadOnly && hasEditAccess;
+    const threadLabel = t('label.list-entity', {
+      entity: t('label.conversation'),
+    });
+    const openThread = () => onThreadLinkSelect?.(entityLink);
+    const editButton = isWidgetHeader ? (
+      <WidgetEditButton
+        data-testid="edit-description"
+        title={editDescriptionLabel}
+        onClick={handleEditDescription}
+      />
+    ) : (
+      <Tooltip title={editDescriptionLabel}>
+        <Button
+          aria-label={editDescriptionLabel}
+          color="secondary"
+          data-testid="edit-description"
+          // edit-new.svg, not untitled's Edit02: every other edit affordance on an entity
+          // page (glossary terms, tags, the header's domain/owner/tier) uses this asset, and
+          // Edit02 is a visibly different pencil — no underline, stroked instead of filled.
+          iconLeading={EditIcon}
+          size="xxs"
+          onPress={handleEditDescription}
+        />
+      </Tooltip>
+    );
+    const commentButton = isWidgetHeader ? (
+      <WidgetCommentButton
+        data-testid="description-thread"
+        title={threadLabel}
+        onClick={openThread}
+      />
+    ) : (
+      <Tooltip title={threadLabel}>
+        <Button
+          color="secondary"
+          data-testid="description-thread"
+          iconLeading={MessageChatSquare}
+          size="xxs"
+          onPress={openThread}
+        />
+      </Tooltip>
+    );
+
+    return (
       <div className="tw:flex tw:items-center tw:gap-2">
-        {!isVersionView && !isReadOnly && hasEditAccess && (
-          <Tooltip title={editDescriptionLabel}>
-            <Button
-              aria-label={editDescriptionLabel}
-              color="secondary"
-              data-testid="edit-description"
-              // edit-new.svg, not untitled's Edit02: every other edit affordance on an entity
-              // page (glossary terms, tags, the header's domain/owner/tier) uses this asset, and
-              // Edit02 is a visibly different pencil — no underline, stroked instead of filled.
-              iconLeading={EditIcon}
-              size="xxs"
-              onPress={handleEditDescription}
-            />
-          </Tooltip>
-        )}
+        {canEdit && editButton}
         {taskActionButton}
-        {showCommentsIcon && (
-          <Tooltip
-            title={t('label.list-entity', {
-              entity: t('label.conversation'),
-            })}>
-            <Button
-              color="secondary"
-              data-testid="description-thread"
-              iconLeading={MessageChatSquare}
-              size="xxs"
-              onPress={() => onThreadLinkSelect?.(entityLink)}
-            />
-          </Tooltip>
-        )}
+        {showCommentsIcon && commentButton}
       </div>
-    ),
-    [
-      editDescriptionLabel,
-      isReadOnly,
-      isVersionView,
-      hasEditAccess,
-      handleEditDescription,
-      taskActionButton,
-      showCommentsIcon,
-      onThreadLinkSelect,
-      entityLink,
-    ]
-  );
+    );
+  }, [
+    editDescriptionLabel,
+    isWidgetHeader,
+    isReadOnly,
+    isVersionView,
+    hasEditAccess,
+    handleEditDescription,
+    taskActionButton,
+    showCommentsIcon,
+    onThreadLinkSelect,
+    entityLink,
+  ]);
 
   const suggestionData = useMemo(() => {
     const activeSuggestion = selectedUserSuggestions?.description.find(
@@ -271,7 +300,11 @@ const Description = ({
       <Box align="center" className="tw:min-w-0" gap={2} wrap="wrap">
         <Typography
           as="span"
-          className="tw:text-text-secondary"
+          className={
+            isWidgetHeader
+              ? 'tw:whitespace-nowrap tw:text-quaternary'
+              : 'tw:text-text-secondary'
+          }
           size="text-sm"
           weight="semibold">
           {t('label.description')}
