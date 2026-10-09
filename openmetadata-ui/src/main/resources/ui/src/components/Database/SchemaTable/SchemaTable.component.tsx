@@ -14,10 +14,11 @@
 import {
   Button as CoreButton,
   Dropdown,
+  Grid,
   Label,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Select, Tooltip } from 'antd';
+import { Button, Select, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -67,6 +68,7 @@ import {
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -971,8 +973,10 @@ const SchemaTable = () => {
   );
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col id="schemaDetails" span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 16) }}>
+      <Grid.Item className="layout-column" id="schemaDetails" span={24}>
         <Table
           className="align-table-filter-left"
           columns={columns}
@@ -1030,7 +1034,7 @@ const SchemaTable = () => {
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
           onChange={handleColumnFilterChange}
         />
-      </Col>
+      </Grid.Item>
       {editColumn && (
         <EntityAttachmentProvider
           entityFqn={editColumn.fullyQualifiedName}
@@ -1059,7 +1063,7 @@ const SchemaTable = () => {
           onSave={handleEditColumnData}
         />
       )}
-    </Row>
+    </Grid>
   );
 };
 
