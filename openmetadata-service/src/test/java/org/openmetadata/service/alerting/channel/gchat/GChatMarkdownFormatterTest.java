@@ -24,7 +24,7 @@ import org.commonmark.node.StrongEmphasis;
 import org.commonmark.node.Text;
 import org.commonmark.node.ThematicBreak;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.service.notifications.channels.MarkdownParser;
+import org.openmetadata.service.alerting.content.render.MarkdownParser;
 
 class GChatMarkdownFormatterTest {
 

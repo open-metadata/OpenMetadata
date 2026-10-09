@@ -24,7 +24,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
+import org.openmetadata.service.alerting.audience.WebhookRecipient;
 
 /**
  * For a test that sends to webhooks without a network: each recipient's request is the builder the

@@ -14,16 +14,16 @@
 package org.openmetadata.service.alerting.channel.builtin;
 
 import java.util.List;
+import org.openmetadata.service.alerting.channel.Channel;
+import org.openmetadata.service.alerting.channel.ChannelProvider;
+import org.openmetadata.service.alerting.channel.Channels;
 import org.openmetadata.service.alerting.channel.email.EmailChannel;
 import org.openmetadata.service.alerting.channel.feed.FeedChannel;
 import org.openmetadata.service.alerting.channel.gchat.GChatChannel;
 import org.openmetadata.service.alerting.channel.slack.SlackChannel;
 import org.openmetadata.service.alerting.channel.teams.TeamsChannel;
 import org.openmetadata.service.alerting.channel.webhook.WebhookChannel;
-import org.openmetadata.service.events.subscription.channels.Channel;
-import org.openmetadata.service.events.subscription.channels.ChannelProvider;
-import org.openmetadata.service.events.subscription.channels.Channels;
-import org.openmetadata.service.notifications.channels.ChannelRenderer;
+import org.openmetadata.service.alerting.content.render.ChannelRenderer;
 
 /**
  * The channels OpenMetadata ships, each registered under the value of its destination type and

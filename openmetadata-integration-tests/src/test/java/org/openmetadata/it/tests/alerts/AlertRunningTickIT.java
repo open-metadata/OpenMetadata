@@ -19,7 +19,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
+import org.openmetadata.service.events.consumer.ServerStopping;
 import org.quartz.Trigger;
 
 /**

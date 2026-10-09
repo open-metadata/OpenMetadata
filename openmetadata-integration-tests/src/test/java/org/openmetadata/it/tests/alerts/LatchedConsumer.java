@@ -8,7 +8,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.alerting.AlertPublisher;
 import org.openmetadata.service.util.DIContainer;
 
 /**

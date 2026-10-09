@@ -45,7 +45,6 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;

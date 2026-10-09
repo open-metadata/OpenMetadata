@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 
 class EmailOutcomeTest {
   private static final Duration A_MOMENT = Duration.ofMillis(50);

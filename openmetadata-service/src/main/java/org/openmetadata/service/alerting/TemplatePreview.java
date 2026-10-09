@@ -26,19 +26,19 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.alerting.channel.Channel;
+import org.openmetadata.service.alerting.channel.Channels;
 import org.openmetadata.service.alerting.channel.builtin.BuiltInChannels;
 import org.openmetadata.service.alerting.channel.email.EmailMessage;
+import org.openmetadata.service.alerting.content.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.alerting.content.TemplateLookup;
-import org.openmetadata.service.events.subscription.channels.Channel;
-import org.openmetadata.service.events.subscription.channels.Channels;
-import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
-import org.openmetadata.service.notifications.channels.ChannelRenderer;
-import org.openmetadata.service.notifications.channels.NotificationMessage;
-import org.openmetadata.service.notifications.template.NotificationTemplateProcessor;
-import org.openmetadata.service.notifications.template.handlebars.HandlebarsNotificationTemplateProcessor;
-import org.openmetadata.service.notifications.template.testing.EntityFixtureLoader;
-import org.openmetadata.service.notifications.template.testing.MockChangeEventFactory;
-import org.openmetadata.service.notifications.template.testing.MockChangeEventRegistry;
+import org.openmetadata.service.alerting.content.preview.EntityFixtureLoader;
+import org.openmetadata.service.alerting.content.preview.MockChangeEventFactory;
+import org.openmetadata.service.alerting.content.preview.MockChangeEventRegistry;
+import org.openmetadata.service.alerting.content.render.ChannelRenderer;
+import org.openmetadata.service.alerting.content.render.NotificationMessage;
+import org.openmetadata.service.alerting.content.template.HandlebarsNotificationTemplateProcessor;
+import org.openmetadata.service.alerting.content.template.NotificationTemplateProcessor;
 
 /**
  * A template tried before it is saved: rendered on a sample event, as the email channel renders

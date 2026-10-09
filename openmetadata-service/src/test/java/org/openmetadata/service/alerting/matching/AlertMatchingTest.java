@@ -26,7 +26,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 
 class AlertMatchingTest {

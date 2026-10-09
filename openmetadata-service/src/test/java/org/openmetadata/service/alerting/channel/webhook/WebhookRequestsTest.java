@@ -32,7 +32,7 @@ import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.alerting.channel.Destination;
-import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.security.SecurityUtil;
 

@@ -30,10 +30,10 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.matching.AlertMatching;
-import org.openmetadata.service.events.scheduled.AlertProgress;
-import org.openmetadata.service.events.subscription.AlertRows;
-import org.openmetadata.service.events.subscription.ledger.AlertLedger;
-import org.openmetadata.service.events.subscription.ledger.AlertRecord;
+import org.openmetadata.service.events.consumer.AlertRows;
+import org.openmetadata.service.events.consumer.ledger.AlertLedger;
+import org.openmetadata.service.events.consumer.ledger.AlertProgress;
+import org.openmetadata.service.events.consumer.ledger.AlertRecord;
 
 /**
  * What an alert has done and has still to do, as its page and its diagnostics show it: the events

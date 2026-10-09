@@ -13,8 +13,8 @@
 
 package org.openmetadata.it.tests.alerts;
 
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.ConsumerKind;
+import org.openmetadata.service.events.consumer.AbstractEventConsumer;
+import org.openmetadata.service.events.consumer.ConsumerKind;
 import org.openmetadata.service.events.consumer.ConsumerProvider;
 import org.openmetadata.service.util.DIContainer;
 

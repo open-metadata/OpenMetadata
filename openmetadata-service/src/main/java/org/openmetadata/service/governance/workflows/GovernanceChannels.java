@@ -17,10 +17,10 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 
 import java.util.List;
 import org.openmetadata.service.alerting.audience.AddressDirectory;
+import org.openmetadata.service.alerting.channel.Channel;
+import org.openmetadata.service.alerting.channel.ChannelProvider;
 import org.openmetadata.service.alerting.channel.ComposedChannel;
-import org.openmetadata.service.events.subscription.channels.Channel;
-import org.openmetadata.service.events.subscription.channels.ChannelProvider;
-import org.openmetadata.service.events.subscription.channels.ConfigRules;
+import org.openmetadata.service.alerting.channel.ConfigRules;
 
 /** The channel governance workflows read change events through; it delivers inside the server. */
 public final class GovernanceChannels implements ChannelProvider {

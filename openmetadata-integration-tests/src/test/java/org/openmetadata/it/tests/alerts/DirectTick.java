@@ -3,7 +3,7 @@ package org.openmetadata.it.tests.alerts;
 import java.util.Date;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.service.events.consumer.ConsumerJob;
-import org.openmetadata.service.events.scheduled.AlertJobs;
+import org.openmetadata.service.events.consumer.schedule.AlertJobs;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionException;

@@ -16,9 +16,9 @@ package org.openmetadata.service.alerting.channel.feed;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.ACTIVITY_FEED;
 
 import org.openmetadata.service.alerting.audience.AddressDirectory;
+import org.openmetadata.service.alerting.channel.Channel;
 import org.openmetadata.service.alerting.channel.ComposedChannel;
-import org.openmetadata.service.events.subscription.channels.Channel;
-import org.openmetadata.service.events.subscription.channels.ConfigRules;
+import org.openmetadata.service.alerting.channel.ConfigRules;
 
 /** The activity feed inside the server: the destination is its own target and needs no setup. */
 public final class FeedChannel {

@@ -26,11 +26,11 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.channel.Destination;
-import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.ActivityStreamRepository;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.socket.WebSocketManager;
 
 /**

@@ -33,13 +33,13 @@ import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.alerting.audience.Recipient;
+import org.openmetadata.service.alerting.audience.WebhookRecipient;
 import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.alerting.channel.IsolatedSends;
-import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.subscription.AlertingSettings;
+import org.openmetadata.service.events.consumer.AlertingSettings;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
-import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 import org.openmetadata.service.util.OAuth2TokenManager;
 import org.openmetadata.service.util.branding.MessageBrandingResolver;
 

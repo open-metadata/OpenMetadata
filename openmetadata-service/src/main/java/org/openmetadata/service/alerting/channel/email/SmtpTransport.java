@@ -15,8 +15,8 @@ package org.openmetadata.service.alerting.channel.email;
 
 import java.util.Optional;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.service.events.subscription.channels.Transport;
-import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.alerting.channel.Transport;
+import org.openmetadata.service.alerting.content.render.NotificationMessage;
 import org.openmetadata.service.util.email.EmailUtil;
 
 final class SmtpTransport implements Transport {

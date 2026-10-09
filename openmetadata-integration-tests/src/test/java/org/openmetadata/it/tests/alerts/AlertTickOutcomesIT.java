@@ -27,8 +27,8 @@ import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.events.consumer.ConsumerJob;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 
 /** What one tick records, for the cases today's code could not reach. */
 @Isolated

@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 
 /** Waits for the mail server's verdict on one email, for no longer than the caller can afford. */
 public final class EmailOutcome {

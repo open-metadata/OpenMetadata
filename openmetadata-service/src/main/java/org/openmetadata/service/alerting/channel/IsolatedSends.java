@@ -5,9 +5,9 @@ import java.util.Collection;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.subscription.AlertTelemetry;
-import org.openmetadata.service.events.subscription.AlertingSettings;
+import org.openmetadata.service.events.consumer.AlertTelemetry;
+import org.openmetadata.service.events.consumer.AlertingSettings;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 
 /** Attempts every target of one channel, so one failing endpoint cannot silence the rest. */
 @Slf4j

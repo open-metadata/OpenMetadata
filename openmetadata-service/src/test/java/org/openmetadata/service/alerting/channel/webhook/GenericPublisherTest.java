@@ -37,10 +37,10 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.subscription.AlertingSettings;
-import org.openmetadata.service.events.subscription.AlertingSettings.Sending;
-import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
+import org.openmetadata.service.alerting.audience.WebhookRecipient;
+import org.openmetadata.service.events.consumer.AlertingSettings;
+import org.openmetadata.service.events.consumer.AlertingSettings.Sending;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 
 class GenericPublisherTest {
 

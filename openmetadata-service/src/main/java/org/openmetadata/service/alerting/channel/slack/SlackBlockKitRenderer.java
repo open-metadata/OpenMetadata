@@ -4,10 +4,10 @@ import com.slack.api.model.block.LayoutBlock;
 import java.util.ArrayList;
 import java.util.List;
 import org.commonmark.node.Node;
-import org.openmetadata.service.notifications.channels.BaseMarkdownChannelRenderer;
-import org.openmetadata.service.notifications.channels.HtmlToMarkdownAdapter;
-import org.openmetadata.service.notifications.channels.NotificationMessage;
-import org.openmetadata.service.notifications.channels.TemplateFormatAdapter;
+import org.openmetadata.service.alerting.content.render.BaseMarkdownChannelRenderer;
+import org.openmetadata.service.alerting.content.render.HtmlToMarkdownAdapter;
+import org.openmetadata.service.alerting.content.render.NotificationMessage;
+import org.openmetadata.service.alerting.content.render.TemplateFormatAdapter;
 
 public class SlackBlockKitRenderer extends BaseMarkdownChannelRenderer<SlackMessage> {
   private static final int SLACK_MAX_BLOCKS = 50;

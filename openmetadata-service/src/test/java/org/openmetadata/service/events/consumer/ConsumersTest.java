@@ -25,9 +25,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.alerting.AlertConsumers;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.ConsumerKind;
+import org.openmetadata.service.alerting.AlertPublisher;
 import org.openmetadata.service.util.DIContainer;
 
 /** An alert names its consumer by a registered id, or by a class name it was once stored under. */

@@ -24,9 +24,9 @@ import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
-import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.notifications.EventContent;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.alerting.audience.Recipient;
+import org.openmetadata.service.alerting.content.EventContent;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 
 public interface Destination<T> {
   void sendMessage(T event, Set<Recipient> recipients) throws EventPublisherException;

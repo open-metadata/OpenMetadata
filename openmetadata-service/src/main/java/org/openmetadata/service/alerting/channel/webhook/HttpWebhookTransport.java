@@ -24,8 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.events.subscription.channels.Transport;
-import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.alerting.channel.Transport;
+import org.openmetadata.service.alerting.content.render.NotificationMessage;
 import org.openmetadata.service.util.http.OutboundHttpClients;
 
 /**

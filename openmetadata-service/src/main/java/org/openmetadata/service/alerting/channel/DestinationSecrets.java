@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 
 /** What a destination's configuration holds that must not be stored in the clear. */
 public final class DestinationSecrets {

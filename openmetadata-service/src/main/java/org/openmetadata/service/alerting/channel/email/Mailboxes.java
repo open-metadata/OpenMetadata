@@ -22,8 +22,8 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.alerting.audience.AddressDirectory;
-import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.alerting.audience.EmailRecipient;
+import org.openmetadata.service.alerting.audience.Recipient;
 
 final class Mailboxes implements AddressDirectory {
   @Override

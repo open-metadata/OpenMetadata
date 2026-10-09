@@ -14,8 +14,8 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.service.events.consumer.AlertingSettings;
 import org.openmetadata.service.events.consumer.Consumers;
-import org.openmetadata.service.events.subscription.AlertingSettings;
 
 /**
  * Ten alerts on slow endpoints hold every thread of the alert scheduler, and each of them asks to

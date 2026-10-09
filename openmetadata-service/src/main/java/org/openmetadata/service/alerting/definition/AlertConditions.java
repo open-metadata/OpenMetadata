@@ -31,8 +31,6 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
-import org.openmetadata.service.events.subscription.SeveralSources;
 
 /**
  * The rules an alert stores, built from the filters and triggers a user chose for each of its

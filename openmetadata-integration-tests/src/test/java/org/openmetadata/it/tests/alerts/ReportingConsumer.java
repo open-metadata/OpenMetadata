@@ -3,8 +3,8 @@ package org.openmetadata.it.tests.alerts;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.SelfDrivenConsumer;
+import org.openmetadata.service.alerting.AlertPublisher;
+import org.openmetadata.service.events.consumer.SelfDrivenConsumer;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobExecutionContext;
 

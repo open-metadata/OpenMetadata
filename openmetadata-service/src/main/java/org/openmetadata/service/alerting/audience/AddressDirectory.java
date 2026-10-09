@@ -18,7 +18,6 @@ import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 
 /** Where a channel reaches a user or a team. Null means it has no address for them. */
 public interface AddressDirectory {

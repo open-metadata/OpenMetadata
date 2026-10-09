@@ -39,8 +39,8 @@ import org.mockito.MockedStatic;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.service.alerting.audience.WebhookRecipient;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.OutboundUrlBlockedException;
 

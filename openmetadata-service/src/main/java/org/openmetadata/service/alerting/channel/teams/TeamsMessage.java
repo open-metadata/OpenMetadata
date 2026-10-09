@@ -7,7 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.alerting.content.render.NotificationMessage;
 
 @Getter
 @Setter

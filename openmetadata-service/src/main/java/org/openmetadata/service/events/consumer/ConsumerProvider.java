@@ -14,8 +14,6 @@
 package org.openmetadata.service.events.consumer;
 
 import java.util.Set;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.ConsumerKind;
 import org.openmetadata.service.util.DIContainer;
 
 /**

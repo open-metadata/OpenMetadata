@@ -15,8 +15,8 @@ package org.openmetadata.service.alerting.channel.email;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
 
+import org.openmetadata.service.alerting.channel.Channel;
 import org.openmetadata.service.alerting.channel.ComposedChannel;
-import org.openmetadata.service.events.subscription.channels.Channel;
 
 /** Mail to people and teams, rendered as HTML and sent through the configured mail server. */
 public final class EmailChannel {

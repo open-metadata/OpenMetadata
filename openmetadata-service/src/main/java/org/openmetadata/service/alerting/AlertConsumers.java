@@ -14,9 +14,8 @@
 package org.openmetadata.service.alerting;
 
 import java.util.Set;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.ConsumerKind;
+import org.openmetadata.service.events.consumer.AbstractEventConsumer;
+import org.openmetadata.service.events.consumer.ConsumerKind;
 import org.openmetadata.service.events.consumer.ConsumerProvider;
 import org.openmetadata.service.events.consumer.Consumers;
 import org.openmetadata.service.util.DIContainer;

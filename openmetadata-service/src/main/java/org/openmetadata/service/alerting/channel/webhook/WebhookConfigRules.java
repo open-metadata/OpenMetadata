@@ -22,8 +22,8 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.events.subscription.channels.ConfigRules;
-import org.openmetadata.service.events.subscription.channels.DestinationConfig;
+import org.openmetadata.service.alerting.channel.ConfigRules;
+import org.openmetadata.service.alerting.channel.DestinationConfig;
 import org.openmetadata.service.util.URLValidator;
 
 /** The rules of every channel that posts to an HTTP endpoint. */

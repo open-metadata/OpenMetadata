@@ -15,9 +15,9 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.events.consumer.AlertingSettings;
 import org.openmetadata.service.events.consumer.Consumers;
-import org.openmetadata.service.events.subscription.AlertingSettings;
-import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
 
 /**
  * A tick that has used its time budget ends after the event in progress and runs again at once.

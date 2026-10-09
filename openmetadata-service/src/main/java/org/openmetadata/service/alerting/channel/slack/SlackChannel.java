@@ -16,11 +16,11 @@ package org.openmetadata.service.alerting.channel.slack;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
 
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.service.alerting.channel.Channel;
 import org.openmetadata.service.alerting.channel.ComposedChannel;
 import org.openmetadata.service.alerting.channel.webhook.HttpWebhookTransport;
 import org.openmetadata.service.alerting.channel.webhook.WebhookAddresses;
 import org.openmetadata.service.alerting.channel.webhook.WebhookConfigRules;
-import org.openmetadata.service.events.subscription.channels.Channel;
 
 /** Slack messages, posted through an incoming webhook as Block Kit. */
 public final class SlackChannel {

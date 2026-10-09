@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.events.consumer;
 
-import org.openmetadata.service.apps.bundles.changeEvent.AlertTick;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;

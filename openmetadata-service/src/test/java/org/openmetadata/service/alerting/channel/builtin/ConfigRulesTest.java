@@ -29,7 +29,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
-import org.openmetadata.service.events.subscription.channels.Channels;
+import org.openmetadata.service.alerting.channel.Channels;
 
 /** Each channel judges the configuration of a destination, knowing who configured it. */
 class ConfigRulesTest {

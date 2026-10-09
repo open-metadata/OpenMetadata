@@ -16,8 +16,8 @@ package org.openmetadata.service.alerting.channel.webhook;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
+import org.openmetadata.service.alerting.channel.Channel;
 import org.openmetadata.service.alerting.channel.ComposedChannel;
-import org.openmetadata.service.events.subscription.channels.Channel;
 
 /** The raw change event, posted as JSON to an endpoint, with the authentication it names. */
 public final class WebhookChannel {

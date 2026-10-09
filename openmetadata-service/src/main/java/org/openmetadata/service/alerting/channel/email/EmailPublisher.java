@@ -26,18 +26,18 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.EmailRecipient;
+import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.alerting.channel.IsolatedSends;
-import org.openmetadata.service.apps.bundles.changeEvent.TickMemory;
-import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.subscription.AlertingSettings;
+import org.openmetadata.service.alerting.content.EventContent;
+import org.openmetadata.service.alerting.content.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.alerting.content.render.ChannelRenderer;
+import org.openmetadata.service.events.consumer.AlertingSettings;
+import org.openmetadata.service.events.consumer.EventPublisherException;
+import org.openmetadata.service.events.consumer.TickMemory;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
-import org.openmetadata.service.notifications.EventContent;
-import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
-import org.openmetadata.service.notifications.channels.ChannelRenderer;
-import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j

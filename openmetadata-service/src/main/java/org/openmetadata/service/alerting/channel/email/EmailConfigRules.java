@@ -19,8 +19,8 @@ import jakarta.ws.rs.BadRequestException;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.service.events.subscription.channels.ConfigRules;
-import org.openmetadata.service.events.subscription.channels.DestinationConfig;
+import org.openmetadata.service.alerting.channel.ConfigRules;
+import org.openmetadata.service.alerting.channel.DestinationConfig;
 
 final class EmailConfigRules implements ConfigRules {
   @Override

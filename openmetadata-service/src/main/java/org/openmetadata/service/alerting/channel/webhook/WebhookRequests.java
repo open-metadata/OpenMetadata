@@ -34,7 +34,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.channel.Destination;
-import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.OAuth2TokenManager;

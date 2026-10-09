@@ -20,10 +20,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.alerting.audience.AddressDirectory;
-import org.openmetadata.service.events.subscription.channels.Channel;
-import org.openmetadata.service.events.subscription.channels.ConfigRules;
-import org.openmetadata.service.events.subscription.channels.Transport;
-import org.openmetadata.service.notifications.channels.ChannelRenderer;
+import org.openmetadata.service.alerting.content.render.ChannelRenderer;
 
 /**
  * A channel put together from its parts: how content becomes its message, where it reaches people,

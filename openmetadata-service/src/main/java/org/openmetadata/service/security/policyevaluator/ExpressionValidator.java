@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.Function;
-import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
+import org.openmetadata.service.alerting.matching.AlertsRuleEvaluator;
 import org.springframework.expression.ParseException;
 import org.springframework.expression.spel.SpelNode;
 import org.springframework.expression.spel.ast.BooleanLiteral;

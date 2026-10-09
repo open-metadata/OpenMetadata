@@ -30,19 +30,19 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.Recipient;
+import org.openmetadata.service.alerting.audience.WebhookRecipient;
 import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.alerting.channel.IsolatedSends;
 import org.openmetadata.service.alerting.channel.webhook.HttpWebhookTransport;
 import org.openmetadata.service.alerting.channel.webhook.WebhookRequests;
-import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.alerting.content.EventContent;
+import org.openmetadata.service.alerting.content.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.alerting.content.render.ChannelRenderer;
+import org.openmetadata.service.alerting.content.render.NotificationMessage;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
-import org.openmetadata.service.notifications.EventContent;
-import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
-import org.openmetadata.service.notifications.channels.ChannelRenderer;
-import org.openmetadata.service.notifications.channels.NotificationMessage;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
-import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
 @Slf4j
 public class GChatPublisher implements Destination<ChangeEvent> {
