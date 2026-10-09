@@ -13,10 +13,12 @@
 
 import {
   Badge,
+  Box,
+  Grid,
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,6 +51,7 @@ import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getPolicies } from '../../../rest/rolesAPIV1';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
@@ -145,7 +148,14 @@ const PoliciesListPage = () => {
           const hasMore = listLength > LIST_CAP;
 
           return record.roles?.length ? (
-            <Space wrap data-testid="role-link" size={4}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              data-testid="role-link"
+              gap={1}
+              itemClassName="layout-space-item"
+              wrap="wrap">
               {record.roles.slice(0, LIST_CAP).map((role) =>
                 viewRolePermission ? (
                   <Link
@@ -174,7 +184,13 @@ const PoliciesListPage = () => {
                     arrow
                     containerClassName="tw:w-40 tw:px-4 tw:py-3 tw:text-center"
                     placement="bottom">
-                    <Space wrap size={4}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={1}
+                      itemClassName="layout-space-item"
+                      wrap="wrap">
                       {record.roles.slice(LIST_CAP).map((role) =>
                         viewRolePermission ? (
                           <Link
@@ -192,11 +208,11 @@ const PoliciesListPage = () => {
                           </Tooltip>
                         )
                       )}
-                    </Space>
+                    </Box>
                   </Popover>
                 </PopoverTrigger>
               )}
-            </Space>
+            </Box>
           ) : (
             '-- '
           );
@@ -300,15 +316,20 @@ const PoliciesListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>
-      <Row
-        className="policies-list-container"
+      <Grid
+        className="layout-row layout-grid policies-list-container"
         data-testid="policies-list-container"
-        gutter={[0, 16]}>
-        <Col span={24}>
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Space className="w-full justify-between">
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-between"
+            gap={2}
+            itemClassName="layout-space-item">
             <PageHeader
               data={{
                 header: t(PAGE_HEADERS.POLICIES.header),
@@ -326,9 +347,9 @@ const PoliciesListPage = () => {
                 {t('label.add-entity', { entity: t('label.policy') })}
               </Button>
             )}
-          </Space>
-        </Col>
-        <Col span={24}>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             columns={columns}
             containerClassName="policies-list-table"
@@ -374,8 +395,8 @@ const PoliciesListPage = () => {
               onDelete={handlePolicyDelete}
             />
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormProps, Input, Modal } from 'antd';
+import {
+  Button,
+  Dialog,
+  Input,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import { Form, FormProps } from 'antd';
 import { isUndefined, omit } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,64 +41,77 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
   };
 
   return (
-    <Modal
-      cancelText={t('label.cancel')}
-      okButtonProps={{
-        form: 'style-modal',
-        htmlType: 'submit',
-        loading: saving,
-      }}
-      okText={t('label.save')}
-      open={open}
-      title={t('label.edit-entity', { entity: t('label.style') })}
-      onCancel={onCancel}>
-      <Form<StyleWithInput>
-        form={form}
-        id="style-modal"
-        initialValues={{
-          ...style,
-          colorInput: style?.color,
-        }}
-        layout="vertical"
-        onFinish={handleSubmit}
-        onValuesChange={(value) => {
-          if (!isUndefined(value.color)) {
-            form.setFieldValue('colorInput', value.color);
-          }
-          if (!isUndefined(value.colorInput)) {
-            form.setFieldValue('color', value.colorInput);
-          }
-        }}>
-        <Form.Item
-          label={
-            <FormItemLabel
-              align={{ targetOffset: [18, 0] }}
-              helperText={t('message.govern-url-size-message')}
-              label={t('label.icon-url')}
-              placement="topLeft"
-            />
-          }
-          name="iconURL">
-          <Input
-            data-testid="icon-url"
-            placeholder={t('label.enter-entity', {
-              entity: t('label.icon-url'),
-            })}
-          />
-        </Form.Item>
-        <Form.Item
-          label={t('label.color')}
-          name="color"
-          rules={[
-            {
-              pattern: HEX_COLOR_CODE_REGEX,
-              message: t('message.hex-color-validation'),
-            },
-          ]}>
-          <ColorPicker />
-        </Form.Item>
-      </Form>
-    </Modal>
+    <ModalOverlay
+      isDismissable={!saving}
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && !saving && onCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          dividers="scroll"
+          title={t('label.edit-entity', { entity: t('label.style') })}
+          width={520}
+          onClose={() => !saving && onCancel()}>
+          <Dialog.Content>
+            <Form<StyleWithInput>
+              form={form}
+              id="style-modal"
+              initialValues={{
+                ...style,
+                colorInput: style?.color,
+              }}
+              layout="vertical"
+              onFinish={handleSubmit}
+              onValuesChange={(value) => {
+                if (!isUndefined(value.color)) {
+                  form.setFieldValue('colorInput', value.color);
+                }
+                if (!isUndefined(value.colorInput)) {
+                  form.setFieldValue('color', value.colorInput);
+                }
+              }}>
+              <Form.Item
+                label={
+                  <FormItemLabel
+                    align={{ targetOffset: [18, 0] }}
+                    helperText={t('message.govern-url-size-message')}
+                    label={t('label.icon-url')}
+                    placement="topLeft"
+                  />
+                }
+                name="iconURL">
+                <Input
+                  aria-label={t('label.icon-url')}
+                  inputDataTestId="icon-url"
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.icon-url'),
+                  })}
+                />
+              </Form.Item>
+              <Form.Item
+                label={t('label.color')}
+                name="color"
+                rules={[
+                  {
+                    pattern: HEX_COLOR_CODE_REGEX,
+                    message: t('message.hex-color-validation'),
+                  },
+                ]}>
+                <ColorPicker />
+              </Form.Item>
+            </Form>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" isDisabled={saving} onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button form="style-modal" isLoading={saving} type="submit">
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

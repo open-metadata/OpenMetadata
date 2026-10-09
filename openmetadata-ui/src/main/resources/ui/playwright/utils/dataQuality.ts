@@ -46,15 +46,14 @@ export const selectTestType = async (page: Page, label: string) => {
 };
 
 /**
- * Dismiss an open tag/glossary suggestion dropdown by moving focus to the form
- * heading. This is a deterministic outside-click that closes the react-aria
- * combobox popover without the ambiguity of a page-level Escape — which, when
- * the menu happens to already be closed, would bubble up and dismiss the whole
- * drawer.
+ * Escape must target an open picker: otherwise it bubbles to the parent drawer.
  */
 export const dismissTagSuggestions = async (page: Page) => {
-  await page.getByTestId('form-heading').click();
-  await expect(page.locator('[role="listbox"]')).toBeHidden();
+  const pickerSearch = page.getByTestId('search-input');
+  if (await pickerSearch.isVisible()) {
+    await pickerSearch.press('Escape');
+  }
+  await expect(pickerSearch).toBeHidden();
 };
 
 /**
