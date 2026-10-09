@@ -80,7 +80,7 @@ export interface ContextMemory {
      * time Memory Reconciliation revalidates it. An Approved memory with no value predates the
      * field.
      */
-    lastReviewedAt?:        number;
+    lastReviewedAt?: number;
     /**
      * Last time the memory was used by AI-assisted retrieval.
      */
