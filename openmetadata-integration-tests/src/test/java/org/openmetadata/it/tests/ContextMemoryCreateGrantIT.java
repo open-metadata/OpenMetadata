@@ -1,7 +1,9 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
@@ -39,6 +41,10 @@ import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 /**
  * Data Consumer's default grant to create context memories, over real HTTP and the seeded policies
@@ -66,6 +72,7 @@ public class ContextMemoryCreateGrantIT {
     ContextMemory edited =
         memories.patch(posted.getId(), replace("/answer", "orders.amount_eur, in euros."));
 
+    assertTrue(mayCaptureMemories(author));
     assertEquals(Permission.Access.ALLOW, createAccess(author));
     assertEquals(List.of(author.getId()), ownerIds(posted));
     assertEquals(List.of(author.getId()), ownerIds(put));
@@ -93,6 +100,7 @@ public class ContextMemoryCreateGrantIT {
     assertThrows(
         ForbiddenException.class,
         () -> memoriesAs(denied).create(anchoredMemory(ns, "denied", anchor)));
+    assertFalse(mayCaptureMemories(denied));
     assertEquals(Permission.Access.DENY, createAccess(denied));
   }
 
@@ -105,13 +113,13 @@ public class ContextMemoryCreateGrantIT {
       assertThrows(
           ForbiddenException.class,
           () -> memoriesAs(author).create(anchoredMemory(ns, "withdrawn", anchor)));
-      assertEquals(Permission.Access.NOT_ALLOW, createAccess(author));
+      assertFalse(mayCaptureMemories(author));
       adminMemories().create(anchoredMemory(ns, "admin-still", anchor));
     } finally {
       restoreGrant(grant);
     }
 
-    assertEquals(Permission.Access.ALLOW, createAccess(author));
+    assertTrue(mayCaptureMemories(author));
     memoriesAs(author).create(anchoredMemory(ns, "restored", anchor));
   }
 
@@ -127,7 +135,28 @@ public class ContextMemoryCreateGrantIT {
         .withPrimaryEntity(new EntityReference().withId(anchor.getId()).withType(Entity.TABLE));
   }
 
-  /** The decision Collate's MemoryCaptureGate takes before a turn: Create on the bare resource. */
+  /**
+   * The check Collate's MemoryCaptureGate makes before a turn: Create on the bare resource. A rule
+   * that needs a condition, such as the Organization owner rule, cannot hold here, because a memory
+   * that does not exist yet has no owner.
+   */
+  private static boolean mayCaptureMemories(User user) {
+    boolean allowed = true;
+    try {
+      DefaultAuthorizer.authorizeUser(
+          user.getName(),
+          new OperationContext(Entity.CONTEXT_MEMORY, MetadataOperation.CREATE),
+          new ResourceContext<>(Entity.CONTEXT_MEMORY));
+    } catch (AuthorizationException e) {
+      allowed = false;
+    }
+    return allowed;
+  }
+
+  /**
+   * What the permissions API, and so the Context Center's create action, reports for Create. It
+   * shows the owner rule as conditional, so only the unconditional answers are asserted on it.
+   */
   private static Permission.Access createAccess(User user) {
     String response =
         SdkClients.adminClient()
