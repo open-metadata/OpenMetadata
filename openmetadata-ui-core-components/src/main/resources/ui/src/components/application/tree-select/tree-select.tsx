@@ -829,12 +829,23 @@ export const TreeSelect = <T = unknown,>({
     () => collectSelectableNodes(treeData),
     [treeData]
   );
+  // "All" is measured on leaves only: parent/group nodes derive their checked
+  // state from children under cascadeSelection, and callers may strip group
+  // ids from the value they echo back — counting parents would then falsely
+  // leave the master stuck on indeterminate when every row is checked.
+  const selectableLeaves = useMemo(
+    () =>
+      selectableNodes.filter(
+        (n) => n.isLeaf === true || !n.children || n.children.length === 0
+      ),
+    [selectableNodes]
+  );
   const allSelectedCount = useMemo(
-    () => selectableNodes.filter((n) => isNodeSelected(n.id)).length,
-    [selectableNodes, isNodeSelected]
+    () => selectableLeaves.filter((n) => isNodeSelected(n.id)).length,
+    [selectableLeaves, isNodeSelected]
   );
   const allSelected =
-    selectableNodes.length > 0 && allSelectedCount === selectableNodes.length;
+    selectableLeaves.length > 0 && allSelectedCount === selectableLeaves.length;
 
   // Write local state: an uncontrolled or staged parent never echoes `value`.
   const replaceSelection = useCallback(

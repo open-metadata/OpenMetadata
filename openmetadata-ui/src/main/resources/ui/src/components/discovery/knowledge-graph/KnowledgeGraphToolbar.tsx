@@ -340,12 +340,6 @@ const KnowledgeGraphToolbar = ({
           </ButtonGroup>
         </Box>
         <Box align="center" className="tw:min-w-0 tw:max-w-full" gap={2}>
-          <Typography
-            className="tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {t('label.kg-levels')}
-          </Typography>
           <Select
             aria-label={t('label.kg-levels')}
             className="tw:w-36 tw:min-w-0 tw:max-w-full tw:flex-1"
@@ -426,12 +420,13 @@ const KnowledgeGraphToolbar = ({
             isOpen={openControl === 'view'}
             onOpenChange={(open) => changeOpenControl('view', open)}>
             <Button
+              aria-label={t('label.view')}
               color="secondary"
               data-testid="graph-view-menu"
               iconLeading={Settings01}
-              size="sm">
-              {t('label.view')}
-            </Button>
+              size="sm"
+            />
+
             <Popover
               aria-label={t('label.view')}
               className="tw:w-64 tw:max-w-full tw:motion-reduce:animate-none"

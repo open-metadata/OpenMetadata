@@ -296,10 +296,9 @@ const KnowledgeGraphDetails = ({
   }, []);
   useEffect(() => {
     setSearch('');
-    // Gaps surfaces actionable rows only, so it always opens on Unmapped —
-    // the user still toggles the Not explored chip to see the deeper set.
-    // Columns and Relationships keep the "All" default.
-    setFilter(drawer === 'coverage' ? 'unmapped' : 'all');
+    // Every drawer opens on "All" — Gaps now surfaces one combined table
+    // (unmapped + not-explored) with the status visible in the Missing column.
+    setFilter('all');
     setLimit(PAGE_SIZE);
   }, [drawer, mode, relationshipScope]);
   const titles = {
@@ -581,23 +580,20 @@ const KnowledgeGraphDetails = ({
         <Tabs.Panel
           className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0"
           id={drawer}>
-          {view.showFilters && (
+          {view.showFilters && drawer !== 'coverage' && (
             <Box
               align="center"
               className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-3.5 tw:py-1.5"
               gap={2}
               wrap="wrap">
-              {(drawer === 'coverage'
-                ? chips
-                : [
-                    {
-                      id: 'all',
-                      label: t('label.all'),
-                      count: searched.length,
-                    },
-                    ...chips,
-                  ]
-              ).map((chip) => (
+              {[
+                {
+                  id: 'all',
+                  label: t('label.all'),
+                  count: searched.length,
+                },
+                ...chips,
+              ].map((chip) => (
                 <Button
                   aria-pressed={filter === chip.id}
                   className="tw:rounded-full"

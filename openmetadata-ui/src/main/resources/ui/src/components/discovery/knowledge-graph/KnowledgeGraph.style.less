@@ -158,9 +158,18 @@
     gap: var(--om-space-2);
   }
 
-  .kg-details-table th span {
-    text-transform: uppercase;
-    letter-spacing: var(--om-letter-spacing-wide);
+  .kg-details-table {
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--tw-background-color-surface);
+    }
+
+    th span {
+      text-transform: uppercase;
+      letter-spacing: var(--om-letter-spacing-wide);
+    }
   }
 
   &.kg-details-open .knowledge-graph-body {
@@ -309,10 +318,12 @@
     right: var(--om-space-16);
     z-index: var(--om-z-1001);
     display: inline-flex;
+    align-items: center;
+    gap: var(--om-space-4);
+    padding: 0 var(--om-space-4);
     background: var(--tw-background-color-surface);
     border-radius: var(--om-radius-sm);
     border: var(--om-space-1) solid var(--tw-border-color-primary);
-    overflow: hidden;
 
     .kg-control-btn {
       width: var(--om-space-32);
@@ -322,15 +333,11 @@
       justify-content: center;
       background: transparent;
       border: none;
-      border-right: var(--om-space-1) solid var(--tw-border-color-primary);
       cursor: pointer;
       padding: 0;
       color: var(--tw-text-color-tertiary);
       transition: background-color var(--om-duration-150) ease;
-
-      &:last-child {
-        border-right: none;
-      }
+      border-radius: var(--om-radius-sm);
 
       &:hover {
         background-color: var(--tw-background-color-secondary);
