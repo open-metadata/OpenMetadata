@@ -32,6 +32,8 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher.UpdateBatch;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
@@ -45,7 +47,7 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
  * Applies an edit to many entities of one type, each as its own PATCH: authorized for that entity
  * with the operations its patch implies, saved by {@code EntityRepository.patch(original, patch,
  * actor)} in its own transaction, and recorded with the change event that PATCH records. Only the
- * loads and the event inserts are grouped.
+ * loads, the search writes and the event inserts are grouped.
  *
  * <p>An entity that fails (authorization, rule, validation or save) is reported with its message and
  * keeps no change; the others go on. A dry run authorizes and prepares each patch and saves nothing.
@@ -90,11 +92,15 @@ final class EntityPatchBatch<T extends EntityInterface<?>> {
     // The originals carry every patch field, tags included, so policies read them as loaded.
     BulkFieldHydrator loaded = new BulkFieldHydrator(Map.of());
     List<String> events = new ArrayList<>();
-    for (EntityEdit<T> edit : group) {
-      Optional.ofNullable(originals.get(edit.id()))
-          .ifPresentOrElse(
-              original -> applyOne(original, edit, loaded).ifPresent(events::add),
-              () -> failures.put(edit.id(), notFound(edit.id())));
+    // The group's search writes are held and leave together, refreshed once, when this closes.
+    try (UpdateBatch searchWrites =
+        EntityLifecycleEventDispatcher.getInstance().openUpdateBatch()) {
+      for (EntityEdit<T> edit : group) {
+        Optional.ofNullable(originals.get(edit.id()))
+            .ifPresentOrElse(
+                original -> applyOne(original, edit, loaded).ifPresent(events::add),
+                () -> failures.put(edit.id(), notFound(edit.id())));
+      }
     }
     repository.insertChangeEventsBatch(events);
   }

@@ -159,6 +159,11 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
     return false;
   }
 
+  @Override
+  public boolean batchesUpdates() {
+    return true;
+  }
+
   public void onEntitiesCreated(List<EntityInterface<?>> entities, SubjectContext subjectContext) {
     if (entities == null || entities.isEmpty()) {
       LOG.warn("Received null entities in onEntitiesCreated");

@@ -1,7 +1,7 @@
 # A bulk edit is the single-entity write of each entity it touches, and only side effects are grouped
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-09 (initial)
+- **Revisions:** v1 2026-10-09 (initial) · v2 2026-10-09 (a group's search writes leave together)
 - **Deciders:** Adrià Manero
 - **Guard:** `EntityPatchBatchTest`; `AssetsTabVersioningIT` (the cases comparing an Assets tab
   edit with the same PATCH, and the large selection)
@@ -56,3 +56,11 @@ record the event.
   transaction (an outbox). Today a PATCH's event is written by the response filter after the
   response and a bulk feature's by the feature, which is why both must use the same builder.
   Moving to an outbox changes every write endpoint and the alerting pipeline.
+
+## Amendment
+
+v2: a group's search writes leave together too. `EntityPatchBatch` opens an update batch
+(`EntityLifecycleEventDispatcher.openUpdateBatch`) around each group, so the search handler gets
+the group's updates as one bulk live write, refreshed once
+(ADR:2026-10-09-live-search-writes-are-refreshed-and-reindex-safe). Each entity's save, rules and
+change event are unchanged: still its own PATCH.

@@ -152,6 +152,15 @@ public interface EntityLifecycleEventHandler {
   }
 
   /**
+   * Whether this synchronous handler takes the updates made inside an update batch together, as one
+   * {@code onEntitiesUpdated} when the batch closes, instead of one by one. See {@link
+   * EntityLifecycleEventDispatcher#openUpdateBatch}.
+   */
+  default boolean batchesUpdates() {
+    return false;
+  }
+
+  /**
    * Returns the entity types this handler is interested in.
    * If empty, handler will be called for all entity types.
    *

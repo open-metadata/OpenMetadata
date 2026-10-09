@@ -67,9 +67,9 @@ import org.openmetadata.service.Entity;
 
 /**
  * An Assets tab edit reaches search the way the same PATCH does: a column's own tags are in its
- * search entry when the call returns, and changes the table hands down to its column entries
- * (domains) arrive with the same background update a PATCH uses. A table's own tags reach its test
- * cases but never its column entries, which carry only the column's own tags.
+ * search entry when the call returns, and so do the changes the table hands down to its column
+ * entries (domains), since the tab's search writes are refreshed before it returns. A table's own
+ * tags reach its test cases but never its column entries, which carry only the column's own tags.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -110,15 +110,17 @@ public class AssetsTabSearchEntriesIT {
   }
 
   @Test
-  void aTableMovedToAnotherDomainOnTheTab_reachesItsColumnEntries(TestNamespace ns) {
+  void aTableMovedToAnotherDomainOnTheTab_reachesItsColumnEntriesOnReturn(TestNamespace ns) {
+    // The tab's search writes leave as one bulk write, the table's column entries rebuilt with it,
+    // and are refreshed before the call returns.
     Domain from = createDomain(ns, "from");
     Domain to = createDomain(ns, "to");
     Table table = createTable(ns, createSchema(ns), "tbl", null);
 
     putDomainAssets(from, table);
-    awaitColumnEntriesIn(table, from);
+    assertColumnEntriesIn(table, from);
     putDomainAssets(to, table);
-    awaitColumnEntriesIn(table, to);
+    assertColumnEntriesIn(table, to);
   }
 
   @Test
@@ -185,16 +187,12 @@ public class AssetsTabSearchEntriesIT {
         .anyMatch(entry -> carriesTag(entry, tagFqn));
   }
 
-  private static void awaitColumnEntriesIn(Table table, Domain domain) {
-    Awaitility.await("column entries of " + table.getName() + " in " + domain.getName())
-        .pollInterval(Duration.ofMillis(500))
-        .atMost(PROPAGATION_TIMEOUT)
-        .until(
-            () -> {
-              List<JsonNode> entries = columnEntries(table);
-              return entries.size() == COLUMNS.size()
-                  && entries.stream().allMatch(entry -> inDomain(entry, domain.getId()));
-            });
+  private static void assertColumnEntriesIn(Table table, Domain domain) {
+    List<JsonNode> entries = columnEntries(table);
+    assertEquals(COLUMNS.size(), entries.size(), "one entry per column");
+    assertTrue(
+        entries.stream().allMatch(entry -> inDomain(entry, domain.getId())),
+        "every column entry is in " + domain.getName());
   }
 
   private static boolean tableEntryReaches(Table table, Domain domain) {

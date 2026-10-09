@@ -14,8 +14,10 @@
 package org.openmetadata.service.events.lifecycle;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,6 +56,9 @@ public class EntityLifecycleEventDispatcher {
   private volatile List<EntityLifecycleEventHandler> handlers = List.of();
 
   private final OrderedLaneExecutor orderedLaneExecutor;
+
+  /** The update batch open on this thread, or {@code null}. See {@link #openUpdateBatch}. */
+  private static final ThreadLocal<UpdateBatch> OPEN_UPDATE_BATCH = new ThreadLocal<>();
 
   private EntityLifecycleEventDispatcher() {
     this.orderedLaneExecutor = new OrderedLaneExecutor(this::enqueueLaneFailureRetry);
@@ -249,14 +254,91 @@ public class EntityLifecycleEventDispatcher {
 
     Supplier<EntityInterface<?>> snapshot =
         new LazyEntitySnapshot(entity, EventType.ENTITY_UPDATED);
+    UpdateBatch batch = OPEN_UPDATE_BATCH.get();
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      executeHandler(
-          entity,
-          snapshot,
-          EventType.ENTITY_UPDATED,
-          changeDescription,
-          e -> handler.onEntityUpdated(e, changeDescription, subjectContext),
-          handler);
+      if (batch != null && !handler.isAsync() && handler.batchesUpdates()) {
+        batch.hold(handler, entity, changeDescription, subjectContext);
+      } else {
+        executeHandler(
+            entity,
+            snapshot,
+            EventType.ENTITY_UPDATED,
+            changeDescription,
+            e -> handler.onEntityUpdated(e, changeDescription, subjectContext),
+            handler);
+      }
+    }
+  }
+
+  /**
+   * Opens a scope that holds the entity-updated events of the synchronous handlers that batch updates
+   * (search) on this thread, and delivers them when it closes: one {@code onEntitiesUpdated} per
+   * handler and entity type, so the handler's writes for many entities leave together. Only an
+   * entity's latest event is delivered. Other handlers get their events as they happen. A scope
+   * opened inside another joins it, and the outer one delivers.
+   */
+  public UpdateBatch openUpdateBatch() {
+    boolean outermost = OPEN_UPDATE_BATCH.get() == null;
+    UpdateBatch batch = new UpdateBatch(outermost);
+    if (outermost) {
+      OPEN_UPDATE_BATCH.set(batch);
+    }
+    return batch;
+  }
+
+  /** The scope {@link #openUpdateBatch} opens; closing it delivers what it holds. */
+  public final class UpdateBatch implements AutoCloseable {
+    private final boolean outermost;
+    private final Map<EntityLifecycleEventHandler, Map<String, Map<UUID, HeldUpdate>>> held =
+        new LinkedHashMap<>();
+
+    private UpdateBatch(boolean outermost) {
+      this.outermost = outermost;
+    }
+
+    private void hold(
+        EntityLifecycleEventHandler handler,
+        EntityInterface<?> entity,
+        ChangeDescription changeDescription,
+        SubjectContext subjectContext) {
+      held.computeIfAbsent(handler, h -> new LinkedHashMap<>())
+          .computeIfAbsent(entity.getEntityReference().getType(), type -> new LinkedHashMap<>())
+          .put(entity.getId(), new HeldUpdate(entity, changeDescription, subjectContext));
+    }
+
+    @Override
+    public void close() {
+      if (outermost) {
+        OPEN_UPDATE_BATCH.remove();
+        held.forEach(
+            (handler, byType) ->
+                byType.values().forEach(updates -> deliverHeld(handler, updates.values())));
+      }
+    }
+  }
+
+  private record HeldUpdate(
+      EntityInterface<?> entity,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {}
+
+  private void deliverHeld(EntityLifecycleEventHandler handler, Collection<HeldUpdate> updates) {
+    List<EntityInterface<?>> entities =
+        updates.stream()
+            .filter(
+                update ->
+                    shouldProcess(handler, EventType.ENTITY_UPDATED, update.changeDescription()))
+            .<EntityInterface<?>>map(HeldUpdate::entity)
+            .toList();
+    if (!entities.isEmpty()) {
+      SubjectContext subjectContext = updates.iterator().next().subjectContext();
+      PostCommitActionQueue.runOrDefer(
+          () ->
+              runInline(
+                  () ->
+                      handler.onEntitiesUpdated(
+                          entities, null, subjectContext, EntityUpdateContext.empty()),
+                  handler));
     }
   }
 
