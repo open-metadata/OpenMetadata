@@ -39,6 +39,16 @@ import { getFieldDocsByName, toCoreUiSchema } from './SsoConfigureForm.utils';
 
 const FORM_BODY_TEST_ID = 'sso-configure-form-body';
 
+// Each configuration section (authentication, authorizer, provider details)
+// renders as a bordered card; FormBuilderV1's flat layout draws no panel.
+const FORM_CLASS_NAME = [
+  'tw:w-full tw:max-w-[50%]',
+  'tw:[&_.core-object-field-template-non-root]:rounded-[10px]',
+  'tw:[&_.core-object-field-template-non-root]:border',
+  'tw:[&_.core-object-field-template-non-root]:border-secondary',
+  'tw:[&_.core-object-field-template-non-root]:p-5',
+].join(' ');
+
 // Actions live in the sticky footer; RJSF's own submit button is never shown.
 const SUBMIT_BUTTON_OPTIONS = { norender: true, submitText: '' };
 
@@ -308,7 +318,7 @@ const SsoConfigureForm = ({
       <div
         className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-6"
         data-testid={FORM_BODY_TEST_ID}>
-        <Box className="tw:w-full tw:max-w-[60%]" direction="col" gap={5}>
+        <Box className={FORM_CLASS_NAME} direction="col" gap={5}>
           {currentProvider === AuthProvider.Saml && renderSamlUpload()}
 
           <FieldDocProvider enabled={showHint}>
