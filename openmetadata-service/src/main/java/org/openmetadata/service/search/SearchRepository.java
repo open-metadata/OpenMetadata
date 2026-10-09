@@ -4334,8 +4334,9 @@ public class SearchRepository {
         searchAfter);
   }
 
-  public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    return searchClient.searchBySourceUrl(sourceUrl);
+  public Response searchBySourceUrl(String sourceUrl, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchBySourceUrl(sourceUrl, subjectContext);
   }
 
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
@@ -4369,6 +4370,10 @@ public class SearchRepository {
       SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
     SearchLineageResult result = searchClient.searchLineageWithDirection(lineageRequest);
     return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
+  }
+
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return searchClient.getLineageRoot(fqn);
   }
 
   public LineagePaginationInfo getLineagePaginationInfo(
@@ -4479,9 +4484,16 @@ public class SearchRepository {
   }
 
   public Response searchByField(
-      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      SubjectContext subjectContext)
       throws IOException {
-    return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchClient.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
 
   public Response searchByFieldWithOptions(
@@ -4532,11 +4544,12 @@ public class SearchRepository {
     return mapped;
   }
 
-  public Response aggregate(AggregationRequest request) throws IOException {
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
     if (targetsDisabledColumnIndex(request.getIndex())) {
       return emptySearchResponse();
     }
-    return searchClient.aggregate(request);
+    return searchClient.aggregate(request, subjectContext);
   }
 
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {

@@ -986,9 +986,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @PUT
@@ -1042,6 +1040,17 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid ValidateGlossaryTagsRequest request) {
+    // Validation lists the term's tagged assets, so it is for callers who may change its tags.
+    ResourceContext<GlossaryTerm> termContext = getResourceContextById(id);
+    authorizer.authorizeRequests(
+        securityContext,
+        List.of(
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.EDIT_TAGS), termContext),
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS),
+                termContext)),
+        AuthorizationLogic.ANY);
     return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
   }
 
@@ -1133,7 +1142,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getGlossaryTermAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getGlossaryTermAssets(
+                id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1175,7 +1191,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getGlossaryTermAssetsByName(fqn, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn));
+    return Response.ok(
+            repository.getGlossaryTermAssetsByName(
+                fqn, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @PUT

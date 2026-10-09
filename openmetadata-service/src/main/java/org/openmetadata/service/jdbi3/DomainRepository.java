@@ -65,6 +65,8 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.QueryFilterBuilder;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -297,6 +299,12 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {
+    return getDomainAssets(domainId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getDomainAssets(
+      UUID domainId, int limit, int offset, SubjectContext caller) {
     Domain domain = get(null, domainId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -306,7 +314,8 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     // Use the forDomain helper method with pagination
     InheritedFieldQuery query =
-        InheritedFieldQuery.forDomain(domain.getFullyQualifiedName(), offset, limit);
+        InheritedFieldQuery.forDomain(domain.getFullyQualifiedName(), offset, limit)
+            .forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -323,19 +332,27 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public ResultList<EntityReference> getDomainAssetsByName(
       String domainName, int limit, int offset) {
-    Domain domain = getByName(null, domainName, getFields("id,fullyQualifiedName"));
-    return getDomainAssets(domain.getId(), limit, offset);
+    return getDomainAssetsByName(domainName, limit, offset, null);
   }
 
-  public Map<String, Integer> getAllDomainsWithAssetsCount() {
+  public ResultList<EntityReference> getDomainAssetsByName(
+      String domainName, int limit, int offset, SubjectContext caller) {
+    Domain domain = getByName(null, domainName, getFields("id,fullyQualifiedName"));
+    return getDomainAssets(domain.getId(), limit, offset, caller);
+  }
+
+  /**
+   * Asset counts for the domains the caller may list - their own for a domain-only user - counting
+   * only assets the caller's search access policies allow.
+   */
+  public Map<String, Integer> getAllDomainsWithAssetsCount(SecurityContext securityContext) {
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search unavailable for domain asset counts");
       return new HashMap<>();
     }
 
-    List<String> allFqns = daoCollection.domainDAO().listAllFqns();
     Map<String, Integer> domainAssetCounts = new LinkedHashMap<>();
-    for (String fullyQualifiedName : allFqns) {
+    for (String fullyQualifiedName : listableDomainFqns(securityContext)) {
       domainAssetCounts.put(fullyQualifiedName, 0);
     }
 
@@ -343,7 +360,10 @@ public class DomainRepository extends EntityRepository<Domain> {
         QueryFilterBuilder.buildDomainAssetsCountFilter("domains.fullyQualifiedName");
     Map<String, Integer> exactCounts =
         inheritedFieldEntitySearch.getAggregatedCountsByField(
-            "domains.fullyQualifiedName", queryFilter, EntityBuilderConstant.MAX_AGGREGATE_SIZE);
+            "domains.fullyQualifiedName",
+            queryFilter,
+            EntityBuilderConstant.MAX_AGGREGATE_SIZE,
+            DefaultAuthorizer.getSubjectContext(securityContext));
 
     for (Map.Entry<String, Integer> entry : exactCounts.entrySet()) {
       String currentDomainFqn = entry.getKey();
@@ -360,6 +380,12 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     return domainAssetCounts;
+  }
+
+  private List<String> listableDomainFqns(SecurityContext securityContext) {
+    ListFilter filter = new ListFilter(null);
+    EntityUtil.applyDomainSelfRestriction(securityContext, filter);
+    return listAll(getFields("id"), filter).stream().map(Domain::getFullyQualifiedName).toList();
   }
 
   @Transaction

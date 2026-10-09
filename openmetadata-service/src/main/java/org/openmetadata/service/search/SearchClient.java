@@ -4,6 +4,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,6 +18,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public interface SearchClient
     extends IndexManagementClient,
@@ -794,6 +796,12 @@ public interface SearchClient
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
 
+  /**
+   * The entity search lineage roots a graph on for {@code fqn}: the indexed document with that FQN,
+   * found the way {@link #searchLineage} finds it. Empty when nothing is indexed under the FQN.
+   */
+  Optional<EntityReference> getLineageRoot(String fqn) throws IOException;
+
   default LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
       int upstreamDepth,
@@ -841,6 +849,31 @@ public interface SearchClient
       String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /** As {@link #listPageHierarchy}, leaving out pages {@code caller}'s access policies deny. */
+  default ResultList listPageHierarchy(
+      String parent,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    return listPageHierarchy(parent, pageType, sortFilter, offset, limit);
+  }
+
+  /**
+   * As {@link #listPageHierarchyForActivePage}, leaving out pages {@code caller}'s access policies
+   * deny.
+   */
+  default ResultList listPageHierarchyForActivePage(
+      String activeFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    return listPageHierarchyForActivePage(activeFqn, pageType, sortFilter, offset, limit);
   }
 
   @SuppressWarnings("unused")

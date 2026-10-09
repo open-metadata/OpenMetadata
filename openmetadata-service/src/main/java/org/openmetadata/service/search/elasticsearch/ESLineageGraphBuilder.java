@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -537,6 +539,26 @@ public class ESLineageGraphBuilder
         target.getNodes().putIfAbsent(entry.getKey(), entry.getValue());
       }
     }
+  }
+
+  /**
+   * The entity the search lineage endpoints root a graph on for {@code fqn}: the single hit of the
+   * FQN-hash lookup {@link #addRootEntityWithPagingCounts} runs, whatever entity type the caller
+   * named. Empty when nothing is indexed under the FQN.
+   */
+  public Optional<EntityReference> getLineageRoot(String fqn) throws IOException {
+    return LineageUtil.lineageRoot(
+        EsUtils.searchEntitiesByKey(
+            esClient,
+            null,
+            GLOBAL_SEARCH_ALIAS,
+            FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+            Set.of(FullyQualifiedName.buildHash(fqn)),
+            0,
+            1,
+            LineageUtil.ROOT_SOURCE_FIELDS,
+            null,
+            null));
   }
 
   private void addRootEntityWithPagingCounts(

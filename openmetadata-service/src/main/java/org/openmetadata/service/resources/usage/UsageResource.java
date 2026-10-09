@@ -105,7 +105,7 @@ public class UsageResource {
           @QueryParam("date")
           String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
-    ResourceContext<?> resourceContext = new ResourceContext(entity);
+    ResourceContext<?> resourceContext = new ResourceContext<>(entity, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(LocalDate.now()) : date;
@@ -194,7 +194,7 @@ public class UsageResource {
           UUID id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext<?> resourceContext = new ResourceContext(entity);
+    ResourceContext<?> resourceContext = new ResourceContext<>(entity, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return executeWithDeadlockRetry(() -> dao.create(entity, id, usage).toResponse());
   }

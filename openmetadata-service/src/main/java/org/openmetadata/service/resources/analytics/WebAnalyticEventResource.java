@@ -58,6 +58,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 
@@ -532,8 +533,20 @@ public class WebAnalyticEventResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid WebAnalyticEventData webAnalyticEventData) {
+    WebAnalyticEventData sanitized = sanitizeWebAnalyticEventData(webAnalyticEventData);
+    attributeToCaller(sanitized, securityContext);
+    return repository.addWebAnalyticEventData(sanitized);
+  }
 
-    return repository.addWebAnalyticEventData(sanitizeWebAnalyticEventData(webAnalyticEventData));
+  /**
+   * Every user records their own page views here, and Data Insights reports activity per user, so
+   * a page view always belongs to the caller whatever user id the payload names.
+   */
+  private static void attributeToCaller(
+      WebAnalyticEventData eventData, SecurityContext securityContext) {
+    if (eventData.getEventData() instanceof PageViewData pageView) {
+      pageView.setUserId(DefaultAuthorizer.getSubjectContext(securityContext).user().getId());
+    }
   }
 
   @DELETE
@@ -601,6 +614,8 @@ public class WebAnalyticEventResource
           @NonNull
           @QueryParam("endTs")
           Long endTs) {
+    // Raw events are every user's browsing history: user ids, full URLs and session ids.
+    authorizer.authorizeAdminOrBot(securityContext);
     return repository.getWebAnalyticEventData(eventType, startTs, endTs);
   }
 

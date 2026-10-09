@@ -53,6 +53,7 @@ import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -447,19 +448,30 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   public ResultList<PageHierarchy> getHierarchyWithSearch(
-      String parent, PageType pageType, SearchSortFilter sortFilter, int offset, int limit) {
+      String parent,
+      PageType pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
     String pageTypeValue = pageType != null ? pageType.value() : null;
     return searchRepository
         .getSearchClient()
-        .listPageHierarchy(parent, pageTypeValue, sortFilter, offset, limit);
+        .listPageHierarchy(parent, pageTypeValue, sortFilter, offset, limit, caller);
   }
 
   public ResultList<PageHierarchy> getHierarchyWithSearchForActivePage(
-      String activeFqn, PageType pageType, SearchSortFilter sortFilter, int offset, int limit) {
+      String activeFqn,
+      PageType pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
     String pageTypeValue = pageType != null ? pageType.value() : null;
     return searchRepository
         .getSearchClient()
-        .listPageHierarchyForActivePage(activeFqn, pageTypeValue, sortFilter, offset, limit);
+        .listPageHierarchyForActivePage(
+            activeFqn, pageTypeValue, sortFilter, offset, limit, caller);
   }
 
   public List<PageHierarchy> listHierarchy(ListFilter filter, int limit) {

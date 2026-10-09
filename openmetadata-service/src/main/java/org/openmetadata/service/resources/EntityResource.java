@@ -58,6 +58,7 @@ import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
@@ -179,6 +180,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   protected Response addFollowerInternal(
       SecurityContext securityContext, UUID entityId, UUID userId) {
     authorizeFollowerMutation(securityContext, userId);
+    authorizeView(securityContext, entityId);
     return repository
         .addFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
         .toResponse();
@@ -187,9 +189,27 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   protected Response deleteFollowerInternal(
       SecurityContext securityContext, UUID entityId, UUID userId) {
     authorizeFollowerMutation(securityContext, userId);
+    // The response carries the entity, so a follower who has since lost access must not read it.
+    authorizeView(securityContext, entityId);
     return repository
         .deleteFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
         .toResponse();
+  }
+
+  /** The vote response carries the whole entity, so voting takes the same view as reading it. */
+  protected Response updateVoteInternal(
+      SecurityContext securityContext, UUID entityId, VoteRequest request) {
+    authorizeView(securityContext, entityId);
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), entityId, request)
+        .toResponse();
+  }
+
+  private void authorizeView(SecurityContext securityContext, UUID entityId) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, VIEW_BASIC),
+        getResourceContextById(entityId));
   }
 
   private void authorizeFollowerMutation(SecurityContext securityContext, UUID userId) {

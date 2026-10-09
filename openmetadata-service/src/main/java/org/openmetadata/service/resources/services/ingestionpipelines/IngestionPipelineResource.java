@@ -110,6 +110,7 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -140,6 +141,8 @@ public class IngestionPipelineResource
   private static final String NO_LOG_BACKEND =
       "No log backend is configured on this deployment, so ingestion logs cannot be streamed.";
   private static final String LOG_STREAM_FIELDS = "pipelineStatuses,ingestionRunner";
+  static final String UNAVAILABLE_STATUS_REASON =
+      "The pipeline service is not available. Ask an administrator to check its status.";
 
   @Inject private StreamableLogsMetrics streamableLogsMetrics;
   @Inject private IngestionProgressTracker progressTracker;
@@ -996,7 +999,19 @@ public class IngestionPipelineResource
           .withPlatform(PipelineServiceClientPlatform.DISABLED.value())
           .withReason("Pipeline Client Disabled");
     }
-    return pipelineServiceClient.getServiceStatus();
+    PipelineServiceClientResponse status = pipelineServiceClient.getServiceStatus();
+    if (status.getCode() == null
+        || status.getCode() == 200
+        || DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+      return status;
+    }
+    // Every user's UI polls this endpoint, but failure reasons name the orchestrator's URL, its
+    // service account or the raw error body. Only an admin can act on those details.
+    return new PipelineServiceClientResponse()
+        .withCode(status.getCode())
+        .withPlatform(status.getPlatform())
+        .withVersion(status.getVersion())
+        .withReason(UNAVAILABLE_STATUS_REASON);
   }
 
   @DELETE
@@ -1449,6 +1464,9 @@ public class IngestionPipelineResource
           @Min(1)
           @QueryParam("limit")
           Integer limit) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.listPipelineStatus(fqn, startTs, endTs, limit);
   }
 

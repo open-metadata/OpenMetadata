@@ -329,7 +329,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           for (int from = 0; from < maxResults; from += pageSize) {
             var response =
                 searchClient.searchByField(
-                    "service.name.keyword", serviceName, INGESTION_PIPELINE, false, from, pageSize);
+                    "service.name.keyword",
+                    serviceName,
+                    INGESTION_PIPELINE,
+                    false,
+                    from,
+                    pageSize,
+                    null);
 
             if (response == null || response.getStatus() != 200) {
               break;
