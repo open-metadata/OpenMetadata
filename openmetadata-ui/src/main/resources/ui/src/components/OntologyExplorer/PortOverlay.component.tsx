@@ -153,7 +153,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
           style={{ overflow: 'visible' }}>
           <line
             data-testid="ontology-connection-line"
-            stroke="var(--color-bg-brand-solid)"
+            stroke="var(--tw-color-bg-brand-solid)"
             strokeDasharray="6 5"
             strokeWidth={2.4}
             x1={lineStart.x}

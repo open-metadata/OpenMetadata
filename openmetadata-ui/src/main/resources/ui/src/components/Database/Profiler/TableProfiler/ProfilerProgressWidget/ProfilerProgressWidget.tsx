@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { Col, Progress, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Progress } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 import { calculatePercentage } from '../../../../../utils/NumberUtils';
 import { ProfilerProgressWidgetProps } from '../TableProfiler.interface';
 
@@ -25,18 +27,23 @@ const ProfilerProgressWidget: React.FC<ProfilerProgressWidgetProps> = ({
   const modifiedValue = Math.round(value * 100);
 
   return (
-    <Row
-      className={classNames('flex-row', {
+    <Box
+      className={`layout-row ${classNames('flex-row', {
         'flex-row-reverse': direction === 'right',
-      })}
+      })}`}
       data-testid="profiler-progress-bar-container"
-      gutter={16}>
-      <Col span={6}>
+      style={{ ...getLayoutGutter(16) }}
+      wrap="wrap">
+      <Box
+        className="layout-column tw:block"
+        style={{ maxWidth: '25%', flex: '0 0 25%' }}>
         <p className="percent-info" data-testid="percent-info">
           {calculatePercentage(value, 1, 2, true)}
         </p>
-      </Col>
-      <Col span={18}>
+      </Box>
+      <Box
+        className="layout-column tw:block"
+        style={{ maxWidth: '75%', flex: '0 0 75%' }}>
         <Progress
           data-testid="progress-bar"
           percent={modifiedValue}
@@ -44,8 +51,8 @@ const ProfilerProgressWidget: React.FC<ProfilerProgressWidgetProps> = ({
           size="small"
           strokeColor={strokeColor}
         />
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
+import { Grid } from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   chartColor,
   ChartSeries,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Col, Row } from 'antd';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -273,8 +275,10 @@ const KPIWidget = ({
 
   const kpiChartData = useMemo(() => {
     return (
-      <Row className="p-t-sm p-x-md" gutter={[16, 16]}>
-        <Col span={isFullSizeWidget ? 16 : 24}>
+      <Grid
+        className="layout-row layout-grid p-t-sm p-x-md"
+        style={getLayoutGutter(16, 16)}>
+        <Grid.Item className="layout-column" span={isFullSizeWidget ? 16 : 24}>
           <AreaChart<KpiChartRow>
             ariaLabel={t('label.kpi-title')}
             data={rows}
@@ -287,16 +291,16 @@ const KPIWidget = ({
             xKey="day"
             yAxis={yAxis}
           />
-        </Col>
+        </Grid.Item>
 
         {!isUndefined(kpiLatestResults) &&
           !isEmpty(kpiLatestResults) &&
           isFullSizeWidget && (
-            <Col className="h-full" span={8}>
+            <Grid.Item className="layout-column h-full" span={8}>
               <KPILegend isFullSize kpiLatestResultsRecord={kpiLatestResults} />
-            </Col>
+            </Grid.Item>
           )}
-      </Row>
+      </Grid>
     );
   }, [
     isFullSizeWidget,

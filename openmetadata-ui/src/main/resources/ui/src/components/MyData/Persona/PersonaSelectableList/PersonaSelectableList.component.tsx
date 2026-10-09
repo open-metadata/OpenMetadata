@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import {
+  Box,
   ButtonUtility,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, RefSelectProps, Select, Space } from 'antd';
+import { Button, RefSelectProps, Select } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -40,7 +41,12 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
   const { t } = useTranslation();
 
   return (
-    <Space>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={2}
+      itemClassName="layout-space-item">
       {props ? (
         <Typography>{getEntityName(props)}</Typography>
       ) : (
@@ -48,7 +54,7 @@ export const PersonaListItemRenderer = (props: EntityReference) => {
           {t('message.no-data-available')}
         </Typography>
       )}
-    </Space>
+    </Box>
   );
 };
 
