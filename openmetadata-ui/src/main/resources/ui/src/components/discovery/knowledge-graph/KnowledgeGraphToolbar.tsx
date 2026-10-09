@@ -34,7 +34,7 @@ import {
   Minimize01,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Heading } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { GraphFilterOption } from '../../../types/knowledgeGraph.types';
@@ -152,9 +152,15 @@ const EntityTypePicker = ({
         .filter((node): node is TreeSelectNode => node !== undefined),
     [filters.entityTypes, leafById]
   );
+  // TreeSelect fetches once on mount and does not re-call fetchData when its
+  // identity changes (eslint-disabled dep on `useTreeSelectData`). The scene
+  // aggregation that populates filterOptions is async, so on first paint
+  // roots is empty — remount the picker once real data arrives.
+  const rootsRef = useRef(roots);
+  rootsRef.current = roots;
   const fetchData = useCallback(
-    async (): Promise<TreeSelectDataResponse> => ({ nodes: roots }),
-    [roots]
+    async (): Promise<TreeSelectDataResponse> => ({ nodes: rootsRef.current }),
+    []
   );
 
   return (
@@ -164,7 +170,9 @@ const EntityTypePicker = ({
       searchable
       showSelectAll
       data-testid="graph-entity-type-filter"
+      disabled={roots.length === 0}
       fetchData={fetchData}
+      key={roots.length === 0 ? 'empty' : 'ready'}
       label={t('label.entity-type')}
       triggerVariant="button"
       value={value}
@@ -200,9 +208,12 @@ const RelationshipTypePicker = ({
         .filter((node): node is TreeSelectNode => node !== undefined),
     [filters.relationshipTypes, leafById]
   );
+  // Same mount-once caveat as the Entity Type picker; see the comment there.
+  const rootsRef = useRef(roots);
+  rootsRef.current = roots;
   const fetchData = useCallback(
-    async (): Promise<TreeSelectDataResponse> => ({ nodes: roots }),
-    [roots]
+    async (): Promise<TreeSelectDataResponse> => ({ nodes: rootsRef.current }),
+    []
   );
 
   return (
@@ -212,7 +223,9 @@ const RelationshipTypePicker = ({
       searchable
       showSelectAll
       data-testid="graph-relationship-type-filter"
+      disabled={roots.length === 0}
       fetchData={fetchData}
+      key={roots.length === 0 ? 'empty' : 'ready'}
       label={t('label.relationship-type')}
       triggerVariant="button"
       value={value}
