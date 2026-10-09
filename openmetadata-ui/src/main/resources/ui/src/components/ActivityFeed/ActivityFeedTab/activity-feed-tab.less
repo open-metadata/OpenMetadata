@@ -226,10 +226,10 @@
 
     &,
     & a {
-      color: @primary-heading-color;
+      color: var(--tw-color-text-link);
 
       &:hover {
-        color: @primary-heading-color;
+        color: var(--tw-color-text-link);
       }
     }
   }
@@ -244,33 +244,36 @@
 }
 
 .activity-feed-editor-container-new {
-  background-color: @grey-9;
-  border: 0.5px solid @grey-15;
+  background-color: var(--tw-color-bg-surface);
+  border: 1px solid var(--tw-color-border-subtle);
   border-radius: var(--om-radius-10);
   width: 100%;
 
   .ql-container {
-    background-color: @grey-9;
-    border: 1px solid @grey-15;
+    background-color: var(--tw-color-bg-surface);
+    border: none;
     width: 100%;
 
     &:focus-within {
-      border: 0.5px solid @grey-15;
+      outline: 1px solid var(--tw-color-border-brand);
+      outline-offset: -1px;
     }
   }
 
   .ql-toolbar {
-    background-color: @grey-9;
-    border: 1px solid @grey-15;
+    background-color: var(--tw-color-bg-surface);
+    border: none;
+    border-bottom: 1px solid var(--tw-color-border-subtle);
     flex-wrap: wrap;
 
     &:focus-within {
-      border: 0.5px solid @grey-15;
+      outline: 1px solid var(--tw-color-border-brand);
+      outline-offset: -1px;
     }
   }
 
   .ql-toolbar button {
-    color: var(--om-color-gray-true-800);
+    color: var(--tw-color-text-secondary);
   }
 }
 

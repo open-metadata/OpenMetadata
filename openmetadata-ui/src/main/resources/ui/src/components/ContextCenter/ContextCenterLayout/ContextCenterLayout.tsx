@@ -109,7 +109,7 @@ const ContextCenterLayout: React.FC<PropsWithChildren> = ({ children }) => {
   );
 
   return (
-    <div className="tw:flex tw:flex-col tw:h-full tw:overflow-auto">
+    <div className="tw:flex tw:flex-col tw:h-full tw:overflow-auto tw:bg-canvas">
       {/* Reloads the embedded page on a contextMemory/page change for the active CC route
           (registry → markRouteDirty); the layout, its modals and intents stay mounted. */}
       <LiveRefreshBoundary>{children}</LiveRefreshBoundary>
