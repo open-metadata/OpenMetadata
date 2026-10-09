@@ -374,3 +374,90 @@ describe('TopicCard error and refetch states', () => {
     ).toHaveAttribute('aria-busy', 'true');
   });
 });
+
+describe('TopicCard empty state', () => {
+  const onCreate = jest.fn();
+  const EMPTY_STATE = {
+    action: { label: 'Add Service', onPress: onCreate },
+    description: 'Connect your first service.',
+    icon: Users01,
+    needsSetup: true,
+    summary: 'What the card is for',
+    title: 'No services connected yet',
+  };
+  const POPULATED = {
+    action: { label: 'Open Ingestion', onPress: jest.fn() },
+    meta: 'Updated 2 min ago',
+    status: { color: 'error' as const, label: 'Needs attention' },
+    summary: '3 of 10 failing',
+  };
+
+  it('swaps the counts for what the card is for, and offers the next step', async () => {
+    const { user } = renderCard({ ...POPULATED, emptyState: EMPTY_STATE });
+
+    expect(
+      screen.getByTestId(`topic-empty-${TopicKey.TEAM_ACTIVITY}`)
+    ).toHaveTextContent('No services connected yet');
+    expect(screen.getByText('What the card is for')).toBeInTheDocument();
+    expect(screen.queryByText('3 of 10 failing')).toBeNull();
+    expect(screen.queryByText('Updated 2 min ago')).toBeNull();
+    // The footer link would lead into a list with nothing in it.
+    expect(
+      screen.queryByTestId(`topic-action-${TopicKey.TEAM_ACTIVITY}`)
+    ).toBeNull();
+
+    await user.click(
+      screen.getByTestId(`topic-empty-action-${TopicKey.TEAM_ACTIVITY}`)
+    );
+
+    expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('flags a card waiting on setup, and only that one', () => {
+    const { unmount } = renderCard({ ...POPULATED, emptyState: EMPTY_STATE });
+
+    expect(
+      screen.getByTestId(`topic-status-${TopicKey.TEAM_ACTIVITY}`)
+    ).toHaveTextContent('label.not-set-up');
+
+    unmount();
+    renderCard({
+      ...POPULATED,
+      emptyState: { ...EMPTY_STATE, needsSetup: false },
+    });
+
+    expect(
+      screen.queryByTestId(`topic-status-${TopicKey.TEAM_ACTIVITY}`)
+    ).toBeNull();
+  });
+
+  it('renders no call to action when the viewer may not take it', () => {
+    renderCard({ emptyState: { ...EMPTY_STATE, action: undefined } });
+
+    expect(
+      screen.queryByTestId(`topic-empty-action-${TopicKey.TEAM_ACTIVITY}`)
+    ).toBeNull();
+  });
+
+  // Loading and error both have no answer yet, so neither may claim empty.
+  it('yields to the skeleton and to the error', () => {
+    const { unmount } = renderCard({
+      emptyState: EMPTY_STATE,
+      isLoading: true,
+    });
+
+    expect(
+      screen.queryByTestId(`topic-empty-${TopicKey.TEAM_ACTIVITY}`)
+    ).toBeNull();
+
+    unmount();
+    renderCard({ emptyState: EMPTY_STATE, isError: true });
+
+    expect(
+      screen.queryByTestId(`topic-empty-${TopicKey.TEAM_ACTIVITY}`)
+    ).toBeNull();
+    expect(
+      screen.getByTestId(`topic-error-${TopicKey.TEAM_ACTIVITY}`)
+    ).toBeInTheDocument();
+  });
+});

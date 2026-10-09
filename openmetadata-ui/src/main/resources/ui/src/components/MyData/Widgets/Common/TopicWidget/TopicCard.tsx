@@ -18,14 +18,17 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AlertCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import type { TFunction } from 'i18next';
 import React, { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import TopicCardControls from './TopicCardControls';
 import TopicCardFooter from './TopicCardFooter';
 import TopicCardHeader from './TopicCardHeader';
 import { useTopicCollapse } from './TopicCollapseContext';
+import TopicEmptyState from './TopicEmptyState';
 import {
   TopicAction,
+  TopicEmptyStateConfig,
   TopicIconTone,
   TopicKey,
   TopicStatus,
@@ -71,6 +74,11 @@ export interface TopicCardProps {
   isError?: boolean;
   /** Offered as a retry action on the error body when given. */
   onRetry?: () => void;
+  /**
+   * Set when the widget has nothing to show yet. Loading and error both win
+   * over it: neither has an answer, so neither may claim the card is empty.
+   */
+  emptyState?: TopicEmptyStateConfig;
 }
 
 /** Body placeholder: a few rows at the widths a populated card tends to use. */
@@ -136,17 +144,43 @@ const TopicError = ({
   );
 };
 
+type TopicBodyProps = Pick<
+  TopicCardProps,
+  'children' | 'emptyState' | 'onRetry' | 'title' | 'topicKey'
+> & { isLoading: boolean; isError: boolean };
+
+/**
+ * Whatever the widget renders, then the empty state below it — a card whose
+ * empty body still carries context (a curated card's rule) keeps it on top.
+ */
+const TopicContent = ({
+  children,
+  emptyState,
+  topicKey,
+}: Pick<TopicBodyProps, 'children' | 'emptyState' | 'topicKey'>) => (
+  <>
+    {children}
+    {emptyState && (
+      <TopicEmptyState
+        action={emptyState.action}
+        description={emptyState.description}
+        icon={emptyState.icon}
+        title={emptyState.title}
+        topicKey={topicKey}
+      />
+    )}
+  </>
+);
+
 const TopicBody = ({
   children,
+  emptyState,
   isLoading,
   isError,
   onRetry,
   title,
   topicKey,
-}: Pick<TopicCardProps, 'children' | 'onRetry' | 'title' | 'topicKey'> & {
-  isLoading: boolean;
-  isError: boolean;
-}) => {
+}: TopicBodyProps) => {
   if (isLoading) {
     return (
       <div
@@ -162,14 +196,13 @@ const TopicBody = ({
   return isError ? (
     <TopicError title={title} topicKey={topicKey} onRetry={onRetry} />
   ) : (
-    <>{children}</>
+    <TopicContent emptyState={emptyState} topicKey={topicKey}>
+      {children}
+    </TopicContent>
   );
 };
 
-type TopicBodyRegionProps = Pick<
-  TopicCardProps,
-  'children' | 'onRetry' | 'title' | 'topicKey'
-> & { isLoading: boolean; isFetching: boolean; isError: boolean };
+type TopicBodyRegionProps = TopicBodyProps & { isFetching: boolean };
 
 /**
  * The scrolling body, or nothing for a card with nothing to show.
@@ -186,7 +219,13 @@ const TopicBodyRegion = ({
 }: TopicBodyRegionProps) => {
   const isRefetching = isFetching && !bodyProps.isLoading;
 
-  if (!children && !bodyProps.isLoading && !bodyProps.isError) {
+  const hasBody =
+    Boolean(children) ||
+    Boolean(bodyProps.emptyState) ||
+    bodyProps.isLoading ||
+    bodyProps.isError;
+
+  if (!hasBody) {
     return null;
   }
 
@@ -201,6 +240,38 @@ const TopicBodyRegion = ({
       <TopicBody {...bodyProps}>{children}</TopicBody>
     </div>
   );
+};
+
+type TopicHeadline = Pick<TopicCardProps, 'meta' | 'status' | 'summary'>;
+
+/**
+ * What the header and footer say. A failed fetch and an empty card both leave
+ * every count at zero, so neither repeats them: the error says something went
+ * wrong, and the empty card says what it is for — flagging, where it applies,
+ * that it is waiting on setup rather than on activity.
+ */
+const getHeadline = (
+  headline: TopicHeadline,
+  hasError: boolean,
+  emptyState: TopicEmptyStateConfig | undefined,
+  t: TFunction
+): TopicHeadline => {
+  if (hasError) {
+    // Typed as a string so `t` resolves to one, not to its wider result type.
+    const errorSummary: string = t('message.something-went-wrong');
+
+    return { meta: undefined, status: undefined, summary: errorSummary };
+  }
+
+  return emptyState
+    ? {
+        meta: undefined,
+        status: emptyState.needsSetup
+          ? { color: 'gray', label: t('label.not-set-up') }
+          : undefined,
+        summary: emptyState.summary,
+      }
+    : headline;
 };
 
 /**
@@ -227,20 +298,20 @@ const TopicCard: React.FC<TopicCardProps> = ({
   isFetching = false,
   isError = false,
   onRetry,
+  emptyState,
 }) => {
   const { t } = useTranslation();
   const collapse = useTopicCollapse();
   const isCollapsed = collapse.isCollapsed(widgetKey);
-  // A failed fetch leaves every count at zero: the summary says so instead,
-  // and the status and meta — which would only restate the zeros — are dropped.
   const hasError = isError && !isLoading;
-  const shown = hasError
-    ? {
-        meta: undefined,
-        status: undefined,
-        summary: t('message.something-went-wrong'),
-      }
-    : { meta, status, summary };
+  // Only an answer can be empty: while loading or failed there is none yet.
+  const shownEmptyState = isLoading || hasError ? undefined : emptyState;
+  const shown = getHeadline(
+    { meta, status, summary },
+    hasError,
+    shownEmptyState,
+    t
+  );
 
   return (
     <section
@@ -283,6 +354,7 @@ const TopicCard: React.FC<TopicCardProps> = ({
 
       {!isCollapsed && (
         <TopicBodyRegion
+          emptyState={shownEmptyState}
           isError={hasError}
           isFetching={isFetching}
           isLoading={isLoading}
@@ -294,8 +366,10 @@ const TopicCard: React.FC<TopicCardProps> = ({
       )}
 
       {!isCollapsed && (
+        // The empty state carries its own call to action; a footer link into
+        // a list with nothing in it would be a second, emptier one.
         <TopicCardFooter
-          action={action}
+          action={shownEmptyState ? undefined : action}
           isLoading={isLoading}
           meta={shown.meta}
           topicKey={topicKey}

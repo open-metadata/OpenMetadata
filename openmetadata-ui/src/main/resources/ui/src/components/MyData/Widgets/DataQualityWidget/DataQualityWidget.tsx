@@ -12,7 +12,11 @@
  */
 
 import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
-import { Calendar, DataQuality } from '@openmetadata/ui-core-components/icons';
+import {
+  Calendar,
+  DataQuality,
+  ShieldTick,
+} from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -34,7 +38,10 @@ import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterC
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import TestStatusBar from '../Common/TopicWidget/TestStatusBar';
 import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import {
+  TopicEmptyStateConfig,
+  TopicKey,
+} from '../Common/TopicWidget/topics.types';
 
 const TONE = {
   icon: DataQuality,
@@ -150,6 +157,7 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
     aborted,
     total,
     failedTests,
+    hasNoTests,
     isError,
     isFetching,
     isLoading,
@@ -187,6 +195,23 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
   // the failing tests, and "N more" is the rest of the bucket.
   const hiddenFailures = Math.max(0, failed - visibleTests.length);
 
+  // Offered whatever the viewer's role, as on the Data Quality page it opens:
+  // whether a test may be added depends on the table picked there.
+  const emptyState: TopicEmptyStateConfig | undefined = hasNoTests
+    ? {
+        action: {
+          label: t('label.create-entity', { entity: t('label.test') }),
+          onPress: () =>
+            navigate(observabilityRouterClassBase.getDataQualityPagePath()),
+        },
+        description: t('message.data-quality-empty-description'),
+        icon: ShieldTick,
+        needsSetup: true,
+        summary: t('message.data-quality-widget-description'),
+        title: t('message.no-test-cases-yet'),
+      }
+    : undefined;
+
   return (
     <TopicCard
       action={{
@@ -194,6 +219,7 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
         onPress: () =>
           navigate(observabilityRouterClassBase.getDataQualityPagePath()),
       }}
+      emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
@@ -221,54 +247,58 @@ const DataQualityWidget: React.FC<DataQualityWidgetProps> = ({
       topicKey={TopicKey.DATA_QUALITY}
       widgetKey={widgetKey}
       onRetry={refetch}>
-      <div className="tw:mb-4 tw:flex tw:flex-wrap tw:items-center tw:gap-2">
-        <FilterButton
-          label={t('label.scope')}
-          options={scopeOptions}
-          testId="dq-scope-filter"
-          value={filters.scope}
-          onChange={(scope) =>
-            setFilters((prev) => ({
-              ...prev,
-              scope: scope as DataQualityScope,
-            }))
-          }
-        />
-        <FilterButton
-          iconLeading={Calendar}
-          label={t('label.range')}
-          options={rangeOptions}
-          testId="dq-range-filter"
-          value={filters.range}
-          onChange={(range) =>
-            setFilters((prev) => ({
-              ...prev,
-              range: range as DataQualityRange,
-            }))
-          }
-        />
-        <FilterButton
-          label={t('label.test')}
-          options={typeOptions}
-          testId="dq-type-filter"
-          value={filters.testCaseType}
-          onChange={(testCaseType) =>
-            setFilters((prev) => ({
-              ...prev,
-              testCaseType: testCaseType as TestCaseType,
-            }))
-          }
-        />
-      </div>
+      {!emptyState && (
+        <>
+          <div className="tw:mb-4 tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+            <FilterButton
+              label={t('label.scope')}
+              options={scopeOptions}
+              testId="dq-scope-filter"
+              value={filters.scope}
+              onChange={(scope) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  scope: scope as DataQualityScope,
+                }))
+              }
+            />
+            <FilterButton
+              iconLeading={Calendar}
+              label={t('label.range')}
+              options={rangeOptions}
+              testId="dq-range-filter"
+              value={filters.range}
+              onChange={(range) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  range: range as DataQualityRange,
+                }))
+              }
+            />
+            <FilterButton
+              label={t('label.test')}
+              options={typeOptions}
+              testId="dq-type-filter"
+              value={filters.testCaseType}
+              onChange={(testCaseType) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  testCaseType: testCaseType as TestCaseType,
+                }))
+              }
+            />
+          </div>
 
-      <TestStatusBar
-        aborted={aborted}
-        failed={failed}
-        passed={passed}
-        total={total}
-      />
+          <TestStatusBar
+            aborted={aborted}
+            failed={failed}
+            passed={passed}
+            total={total}
+          />
 
-      <FailedTestRows tests={visibleTests} total={total} />
+          <FailedTestRows tests={visibleTests} total={total} />
+        </>
+      )}
     </TopicCard>
   );
 };

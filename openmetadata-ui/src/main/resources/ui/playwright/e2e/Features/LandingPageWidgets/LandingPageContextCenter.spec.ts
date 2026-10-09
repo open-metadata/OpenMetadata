@@ -182,7 +182,7 @@ test.describe(
 
     // No server state can guarantee an empty Context Center while other specs
     // write to it, so the empty answer is served to this page alone.
-    test('says when nothing has been published, and that it is caught up', async ({
+    test('says when nothing has been published, and offers the first article', async ({
       page,
     }) => {
       await page.route(`**${PAGES_PATH}?*`, async (route) => {
@@ -201,11 +201,22 @@ test.describe(
       const { widget } = await openContextCenter(page);
       const card = widget.getByTestId(`topic-card-${TOPIC_KEY}`);
 
-      await expect(card.getByTestId('context-center-empty')).toBeVisible();
-      await expect(card.getByTestId('context-center-rows')).toHaveCount(0);
-      await expect(card.getByTestId(`topic-status-${TOPIC_KEY}`)).toHaveText(
-        'Caught Up'
+      await expect(card.getByTestId(`topic-empty-${TOPIC_KEY}`)).toContainText(
+        'No articles yet'
       );
+      await expect(card.getByTestId('context-center-rows')).toHaveCount(0);
+      // Waiting on the first article is not a setup gap, so no header chip —
+      // and the footer link into an empty list gives way to the empty state's
+      // own call to action.
+      await expect(card.getByTestId(`topic-status-${TOPIC_KEY}`)).toHaveCount(
+        0
+      );
+      await expect(card.getByTestId(`topic-action-${TOPIC_KEY}`)).toHaveCount(
+        0
+      );
+      await expect(
+        card.getByTestId(`topic-empty-action-${TOPIC_KEY}`)
+      ).toBeVisible();
     });
   }
 );

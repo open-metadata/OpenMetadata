@@ -17,15 +17,22 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   OverviewFilter,
   useDomainOverview,
 } from '../../../../hooks/useDomainOverview';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getDomainPath } from '../../../../utils/RouterUtils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import {
+  TopicEmptyStateConfig,
+  TopicKey,
+} from '../Common/TopicWidget/topics.types';
 
 const DOMAINS_LABEL_KEY = 'label.domain-plural';
 
@@ -57,6 +64,10 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
     isLoading,
     refetch,
   } = useDomainOverview(filter);
+  const { permissions } = usePermissionProvider();
+  const { canCreate } = getDerivedPermissionFlags(
+    permissions?.[ResourceEntity.DOMAIN] ?? DEFAULT_ENTITY_PERMISSION
+  );
 
   const bucketSize: Record<OverviewFilter, number> = {
     [OverviewFilter.ALL]: totalCount,
@@ -65,12 +76,29 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
   };
   const remaining = Math.max(0, bucketSize[filter] - domains.length);
 
+  const emptyState: TopicEmptyStateConfig | undefined =
+    totalCount === 0
+      ? {
+          action: canCreate
+            ? {
+                label: t('label.new-entity', { entity: t('label.domain') }),
+                onPress: () => navigate(ROUTES.DOMAIN),
+              }
+            : undefined,
+          description: t('message.domains-empty-description'),
+          icon: Domain,
+          summary: t('message.domains-widget-description'),
+          title: t('message.no-domains-yet'),
+        }
+      : undefined;
+
   return (
     <TopicCard
       action={{
         label: t('label.view-all-entity', { entity: t(DOMAINS_LABEL_KEY) }),
         onPress: () => navigate(ROUTES.DOMAIN),
       }}
+      emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
@@ -98,13 +126,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
       topicKey={TopicKey.DOMAINS}
       widgetKey={widgetKey}
       onRetry={refetch}>
-      {totalCount === 0 ? (
-        // `!` on the colours throughout: Typography renders `.prose`, whose
-        // unlayered `color` rule is emitted after the Tailwind utilities.
-        <Typography className="tw:text-text-secondary!" size="text-sm">
-          {t('message.no-domains-yet')}
-        </Typography>
-      ) : (
+      {!emptyState && (
         <>
           <TopicFilterChips
             chips={[

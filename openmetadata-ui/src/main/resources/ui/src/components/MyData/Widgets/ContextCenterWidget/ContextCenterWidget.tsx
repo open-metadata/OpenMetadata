@@ -12,13 +12,20 @@
  */
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
-import { File06 as Articles } from '@openmetadata/ui-core-components/icons';
+import {
+  File06 as Articles,
+  MessageTextSquare01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
 import {
   KnowledgePage,
@@ -27,11 +34,17 @@ import {
 } from '../../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../../utils/ContextCenterClassBase';
+import { createArticleKnowledgePage } from '../../../../utils/ContextCenterPureUtils';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getEncodedFqn, getSafeHttpUrl } from '../../../../utils/StringUtils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import {
+  TopicEmptyStateConfig,
+  TopicKey,
+} from '../Common/TopicWidget/topics.types';
 
 export const CONTEXT_CENTER_QUERY_KEY = [
   'landingPage',
@@ -114,6 +127,12 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const currentUser = useApplicationStore((state) => state.currentUser);
+  const { permissions } = usePermissionProvider();
+  const { getResourceLimit } = useLimitStore();
+  const { canCreate } = getDerivedPermissionFlags(
+    permissions?.[ResourceEntity.KNOWLEDGE_PAGE] ?? DEFAULT_ENTITY_PERMISSION
+  );
 
   const { data, isError, isPending, refetch } = useQuery<RecentPages>({
     queryFn: fetchRecentPages,
@@ -127,12 +146,35 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
     t
   );
 
+  // The same draft-then-edit flow as the Articles page's own "New Article".
+  const emptyState: TopicEmptyStateConfig | undefined =
+    pages.length === 0
+      ? {
+          action: canCreate
+            ? {
+                label: t('label.new-article'),
+                onPress: () =>
+                  void createArticleKnowledgePage(
+                    currentUser?.id ?? '',
+                    navigate,
+                    () => getResourceLimit('knowledgeCenter', true, true)
+                  ),
+              }
+            : undefined,
+          description: t('message.context-center-empty-description'),
+          icon: MessageTextSquare01,
+          summary: t('message.context-center-widget-description'),
+          title: t('message.no-articles-yet'),
+        }
+      : undefined;
+
   return (
     <TopicCard
       action={{
         label: t('label.open-entity', { entity: t('label.context-center') }),
         onPress: () => navigate(ROUTES.CONTEXT_CENTER_ARTICLES),
       }}
+      emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
@@ -149,16 +191,6 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
       topicKey={TopicKey.CONTEXT_CENTER}
       widgetKey={widgetKey}
       onRetry={() => void refetch()}>
-      {!isError && pages.length === 0 && (
-        // `!` on the colour: Typography renders `.prose`, whose unlayered
-        // `color` rule is emitted after the Tailwind utilities.
-        <Typography
-          className="tw:text-text-secondary!"
-          data-testid="context-center-empty"
-          size="text-sm">
-          {t('message.no-articles-published-recently')}
-        </Typography>
-      )}
       {!isError && pages.length > 0 && (
         <ul
           className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"

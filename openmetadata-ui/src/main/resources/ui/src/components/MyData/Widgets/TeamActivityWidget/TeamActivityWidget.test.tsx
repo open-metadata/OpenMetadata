@@ -38,12 +38,14 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
   __esModule: true,
   default: ({
     children,
+    emptyState,
     isError,
     meta,
     status,
     summary,
   }: {
     children?: React.ReactNode;
+    emptyState?: { title: string; action?: { label: string } };
     isError?: boolean;
     meta?: React.ReactNode;
     status?: { label: string };
@@ -54,6 +56,7 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
       {status && <span data-testid="status">{status.label}</span>}
       {meta && <span data-testid="meta">{meta}</span>}
       {isError && <span data-testid="card-error" />}
+      {emptyState && <div data-testid="empty-state">{emptyState.title}</div>}
       {children}
     </section>
   ),
@@ -171,10 +174,11 @@ describe('TeamActivityWidget', () => {
     mockFeed.mockResolvedValue({ data: [] } as never);
     renderWidget();
 
-    expect(await screen.findByTestId('team-activity-empty')).toHaveTextContent(
-      'message.no-recent-activity-on-owned-assets'
+    expect(await screen.findByTestId('empty-state')).toHaveTextContent(
+      'message.all-quiet-in-your-domains'
     );
     expect(screen.queryByTestId('status')).toBeNull();
+    expect(screen.queryByTestId('team-activity-rows')).toBeNull();
   });
 
   it('hands the card its error rather than an empty state', async () => {
@@ -182,6 +186,6 @@ describe('TeamActivityWidget', () => {
     renderWidget();
 
     expect(await screen.findByTestId('card-error')).toBeInTheDocument();
-    expect(screen.queryByTestId('team-activity-empty')).toBeNull();
+    expect(screen.queryByTestId('team-activity-rows')).toBeNull();
   });
 });

@@ -88,6 +88,7 @@ const SUMMARY = {
   aborted: 1,
   failed: 25,
   failedTests: [0, 1, 2, 3].map(failingTest),
+  hasNoTests: false,
   isError: false,
   isFetching: false,
   isLoading: false,
@@ -197,5 +198,31 @@ describe('DataQualityWidget', () => {
 
     expect(screen.getByTestId('topic-error-dataQuality')).toBeInTheDocument();
     expect(screen.queryByTestId('data-quality-empty')).toBeNull();
+  });
+
+  // No test anywhere is a setup gap: the filters have nothing to narrow, so
+  // the card offers the first test instead.
+  it('offers to create the first test when none exist at all', () => {
+    renderWidget({
+      aborted: 0,
+      failed: 0,
+      failedTests: [],
+      hasNoTests: true,
+      passed: 0,
+      total: 0,
+    });
+
+    expect(screen.getByTestId('topic-empty-dataQuality')).toHaveTextContent(
+      'message.no-test-cases-yet'
+    );
+    expect(screen.getByTestId('topic-status-dataQuality')).toHaveTextContent(
+      'label.not-set-up'
+    );
+    expect(screen.queryByTestId('dq-range-filter')).toBeNull();
+    expect(screen.queryByTestId('data-quality-empty')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('topic-empty-action-dataQuality'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/data-quality');
   });
 });

@@ -12,12 +12,17 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { Assets, Calendar } from '@openmetadata/ui-core-components/icons';
+import {
+  Assets,
+  Calendar,
+  Database01,
+} from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
+import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAddServiceAction';
 import {
   DATA_ESTATE_WINDOW_DAYS,
   DATA_ESTATE_WINDOW_OPTIONS,
@@ -28,7 +33,10 @@ import ConnectorBreakdown from '../Common/TopicWidget/ConnectorBreakdown';
 import CoverageStat from '../Common/TopicWidget/CoverageStat';
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import {
+  TopicEmptyStateConfig,
+  TopicKey,
+} from '../Common/TopicWidget/topics.types';
 
 const TONE = {
   icon: Assets,
@@ -64,6 +72,7 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
     refetch,
     windowDays: measuredWindowDays,
   } = useDataEstate({ windowDays });
+  const { addService, canAddService } = useAddServiceAction('all');
 
   // Intl rather than a hardcoded format so grouping separators follow the
   // user's locale, not en-US.
@@ -120,12 +129,32 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
     };
   }, [totalDelta, measuredWindowDays, signedFormat, t]);
 
+  // Assets arrive only through a connector's ingestion, so an empty estate
+  // points at adding one.
+  const emptyState: TopicEmptyStateConfig | undefined =
+    totalAssets === 0
+      ? {
+          action: canAddService
+            ? {
+                label: t('label.add-entity', { entity: t('label.connector') }),
+                onPress: addService,
+              }
+            : undefined,
+          description: t('message.data-estate-empty-description'),
+          icon: Database01,
+          needsSetup: true,
+          summary: t('message.data-estate-widget-description'),
+          title: t('message.no-assets-yet'),
+        }
+      : undefined;
+
   return (
     <TopicCard
       action={{
         label: t('label.open-entity', { entity: t('label.explore') }),
         onPress: () => navigate(ROUTES.EXPLORE),
       }}
+      emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
@@ -138,48 +167,52 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
       topicKey={TopicKey.DATA_ESTATE}
       widgetKey={widgetKey}
       onRetry={refetch}>
-      <div className="tw:flex tw:items-start tw:justify-between tw:gap-3">
-        <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1">
-          {/* `!` on the colours: Typography renders `.prose`, whose unlayered
+      {!emptyState && (
+        <>
+          <div className="tw:flex tw:items-start tw:justify-between tw:gap-3">
+            <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1">
+              {/* `!` on the colours: Typography renders `.prose`, whose unlayered
             `color` rule is emitted after the Tailwind utilities and would
             otherwise silently win. */}
-          <Typography className="tw:text-text-tertiary!" size="text-sm">
-            {t('label.total-assets')}
-          </Typography>
-          <Typography
-            className="tw:text-text-primary!"
-            data-testid="data-estate-total"
-            size="text-xl"
-            weight="semibold">
-            {numberFormat.format(totalAssets)}
-          </Typography>
-        </div>
+              <Typography className="tw:text-text-tertiary!" size="text-sm">
+                {t('label.total-assets')}
+              </Typography>
+              <Typography
+                className="tw:text-text-primary!"
+                data-testid="data-estate-total"
+                size="text-xl"
+                weight="semibold">
+                {numberFormat.format(totalAssets)}
+              </Typography>
+            </div>
 
-        <FilterButton
-          iconLeading={Calendar}
-          label={t('label.range')}
-          options={windowOptions}
-          testId="data-estate-window-filter"
-          value={String(windowDays)}
-          onChange={(next) => setWindowDays(Number(next))}
-        />
-      </div>
+            <FilterButton
+              iconLeading={Calendar}
+              label={t('label.range')}
+              options={windowOptions}
+              testId="data-estate-window-filter"
+              value={String(windowDays)}
+              onChange={(next) => setWindowDays(Number(next))}
+            />
+          </div>
 
-      <ConnectorBreakdown
-        className="tw:mt-4"
-        connectors={connectors}
-        format={(value) => numberFormat.format(value)}
-      />
+          <ConnectorBreakdown
+            className="tw:mt-4"
+            connectors={connectors}
+            format={(value) => numberFormat.format(value)}
+          />
 
-      {isAiMode && descriptionCoverage !== null && (
-        <CoverageStat
-          className="tw:mt-5"
-          dataTestId="description-coverage"
-          delta={descriptionCoverageDelta}
-          label={t('label.description-coverage')}
-          series={descriptionCoverageSeries}
-          value={descriptionCoverage}
-        />
+          {isAiMode && descriptionCoverage !== null && (
+            <CoverageStat
+              className="tw:mt-5"
+              dataTestId="description-coverage"
+              delta={descriptionCoverageDelta}
+              label={t('label.description-coverage')}
+              series={descriptionCoverageSeries}
+              value={descriptionCoverage}
+            />
+          )}
+        </>
       )}
     </TopicCard>
   );

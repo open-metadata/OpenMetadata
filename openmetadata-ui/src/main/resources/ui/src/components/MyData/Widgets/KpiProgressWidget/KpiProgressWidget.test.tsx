@@ -29,8 +29,14 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }));
 
+const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
-  useNavigate: () => jest.fn(),
+  useNavigate: () => mockNavigate,
+}));
+
+let mockPermissions: Record<string, Record<string, boolean>> = {};
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: mockPermissions }),
 }));
 
 jest.mock('../../../../hooks/useKpiProgress', () => ({
@@ -135,5 +141,22 @@ describe('KpiProgressWidget range filter', () => {
     renderWidget([]);
 
     expect(screen.queryByTestId('kpi-window-filter')).toBeNull();
+  });
+
+  it('flags an estate with no KPIs as not set up and offers to create one', () => {
+    mockPermissions = { kpi: { Create: true } };
+    renderWidget([]);
+
+    expect(screen.getByTestId('topic-empty-kpis')).toHaveTextContent(
+      'message.no-kpis-yet'
+    );
+    expect(screen.getByTestId('topic-status-kpis')).toHaveTextContent(
+      'label.not-set-up'
+    );
+    expect(screen.queryByTestId('kpi-window-filter')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('topic-empty-action-kpis'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/data-insights/kpi/add-kpi');
   });
 });

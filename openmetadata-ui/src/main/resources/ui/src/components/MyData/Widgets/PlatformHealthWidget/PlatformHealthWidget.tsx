@@ -12,12 +12,16 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
-import { DataHealthScore } from '@openmetadata/ui-core-components/icons';
+import {
+  Activity,
+  DataHealthScore,
+} from '@openmetadata/ui-core-components/icons';
 import type { TFunction } from 'i18next';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { HEALTH_PARAM } from '../../../../components/integration/ConnectionsPage/ConnectionsPage.constants';
+import { useAddServiceAction } from '../../../../components/integration/ConnectionsPage/useAddServiceAction';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityTabs } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -29,7 +33,10 @@ import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivatio
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import FailingServiceRow from '../Common/TopicWidget/FailingServiceRow';
 import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import {
+  TopicEmptyStateConfig,
+  TopicKey,
+} from '../Common/TopicWidget/topics.types';
 import TopicStatChips, {
   TopicStat,
 } from '../Common/TopicWidget/TopicStatChips';
@@ -125,6 +132,29 @@ const getFreshness = (
     ? t('message.updated-relative', { time: getRelativeTime(dataUpdatedAt) })
     : undefined;
 
+/**
+ * No service, no pipeline to judge — so no buckets and no AI read either, only
+ * the way to connect one, offered to whoever may.
+ */
+const getEmptyState = (
+  connectedServices: number,
+  addService: (() => void) | undefined,
+  t: TFunction
+): TopicEmptyStateConfig | undefined =>
+  connectedServices === 0
+    ? {
+        action: addService && {
+          label: t('label.add-entity', { entity: t('label.service') }),
+          onPress: addService,
+        },
+        description: t('message.platform-health-empty-description'),
+        icon: Activity,
+        needsSetup: true,
+        summary: t('message.platform-health-widget-description'),
+        title: t('message.no-services-connected-yet'),
+      }
+    : undefined;
+
 interface FailingServicesListProps {
   failingCount: number;
   failingServices: FailingService[];
@@ -203,6 +233,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
     isError,
     refetch,
   } = useIngestionPipelineStats();
+  const { addService, canAddService } = useAddServiceAction('all');
 
   // The rows are only the worst few; the count is the server's tally.
   const failingCount = failedServices + warningServices;
@@ -266,6 +297,11 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
     { connectedServices, failingCount, isError, isHealthy },
     t
   );
+  const emptyState = getEmptyState(
+    connectedServices,
+    canAddService ? addService : undefined,
+    t
+  );
 
   return (
     <TopicCard
@@ -274,6 +310,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
         onPress: () =>
           navigate(connectionsRouterClassBase.getSettingsServicesPath()),
       }}
+      emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
@@ -290,7 +327,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
       topicKey={TopicKey.PLATFORM_HEALTH}
       widgetKey={widgetKey}
       onRetry={refetch}>
-      {!isError && (
+      {!isError && !emptyState && (
         <>
           <TopicStatChips stats={stats} />
           <FailingServicesList
@@ -302,7 +339,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
         </>
       )}
 
-      {PlatformHealthInsight && (
+      {PlatformHealthInsight && !emptyState && (
         <PlatformHealthInsight
           connectedServices={connectedServices}
           failedServices={failedServices}

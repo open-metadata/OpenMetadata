@@ -179,4 +179,34 @@ describe('useDataQualitySummary', () => {
     expect(result.current.isLoading).toBe(false);
     expect(result.current.total).toBe(10);
   });
+
+  // A zero total only says nothing ran in this window; the unfiltered count
+  // is what tells an estate with no tests at all from a quiet week.
+  it('tells "no tests at all" apart from "nothing ran in this window"', async () => {
+    respondByStatus({ undefined: 4 });
+
+    const { result } = renderHook(
+      () => useDataQualitySummary(DEFAULT_DATA_QUALITY_FILTERS),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.total).toBe(0);
+    expect(result.current.hasNoTests).toBe(false);
+
+    queryClient.clear();
+    respondByStatus({});
+    const { result: empty } = renderHook(
+      () => useDataQualitySummary(DEFAULT_DATA_QUALITY_FILTERS),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(empty.current.isLoading).toBe(false));
+
+    expect(empty.current.hasNoTests).toBe(true);
+    expect(mockSearch).toHaveBeenCalledWith(
+      expect.not.objectContaining({ startTimestamp: expect.anything() })
+    );
+  });
 });

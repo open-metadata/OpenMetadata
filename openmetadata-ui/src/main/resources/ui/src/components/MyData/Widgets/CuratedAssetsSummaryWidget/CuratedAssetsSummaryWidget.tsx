@@ -12,8 +12,9 @@
  */
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
-import { Sort } from '@openmetadata/ui-core-components/icons';
+import { FilterLines, Sort } from '@openmetadata/ui-core-components/icons';
 import { Config } from '@react-awesome-query-builder/ui';
+import type { TFunction } from 'i18next';
 import React, { lazy, useCallback, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
@@ -41,7 +42,10 @@ import {
   useAdvanceSearch,
 } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import {
+  TopicEmptyStateConfig,
+  TopicKey,
+} from '../Common/TopicWidget/topics.types';
 import CuratedAssetRows from './CuratedAssetRows';
 import CuratedRuleSummary from './CuratedRuleSummary';
 
@@ -84,6 +88,39 @@ const getCuratedExploreURL = (
     isPersistFilters: false,
   });
 };
+
+interface CuratedEmptyInput {
+  totalCount: number;
+  /** In edit view with no rule saved, where the editor's own prompt shows. */
+  isUnconfigured?: boolean;
+  hasRuleClauses: boolean;
+  ruleSummary: string;
+}
+
+/**
+ * Nothing matches yet, which is a matter of tagging rather than of setup — the
+ * rule stays on show above it, so the reader sees what is being waited on. A
+ * saved filter has no phrase to stand in for the count it would have repeated,
+ * so its header is left with the title alone. The persona editor's prompt to
+ * define a rule wins over all of this.
+ */
+const getEmptyState = (
+  {
+    totalCount,
+    isUnconfigured,
+    hasRuleClauses,
+    ruleSummary,
+  }: CuratedEmptyInput,
+  t: TFunction
+): TopicEmptyStateConfig | undefined =>
+  totalCount === 0 && !isUnconfigured
+    ? {
+        description: t('message.curated-assets-empty-description'),
+        icon: FilterLines,
+        summary: hasRuleClauses ? ruleSummary : undefined,
+        title: t('message.no-assets-match-rule-yet'),
+      }
+    : undefined;
 
 /** The assets matching a saved rule, e.g. certified Tier-1 tables. */
 const CuratedAssetsSummaryWidgetContent: React.FC<
@@ -183,6 +220,16 @@ const CuratedAssetsSummaryWidgetContent: React.FC<
         }
       : { status: undefined, summary: matchCount };
 
+  const emptyState = getEmptyState(
+    {
+      hasRuleClauses: ruleClauses.length > 0,
+      isUnconfigured,
+      ruleSummary: headline.summary,
+      totalCount,
+    },
+    t
+  );
+
   return (
     <>
       <TopicCard
@@ -192,6 +239,7 @@ const CuratedAssetsSummaryWidgetContent: React.FC<
           }),
           onPress: () => navigate(exploreURL),
         }}
+        emptyState={emptyState}
         handleRemoveWidget={handleRemoveWidget}
         isEditView={isEditView}
         isError={isError}

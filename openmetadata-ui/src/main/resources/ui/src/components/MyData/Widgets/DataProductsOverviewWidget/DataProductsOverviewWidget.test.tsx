@@ -26,9 +26,15 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
-  useNavigate: () => jest.fn(),
+  useNavigate: () => mockNavigate,
   Link: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+}));
+
+let mockPermissions: Record<string, Record<string, boolean>> = {};
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: mockPermissions }),
 }));
 
 jest.mock('../../../../hooks/useDataProducts', () => ({
@@ -261,5 +267,32 @@ describe('DataProductsOverviewWidget buckets', () => {
 
     expect(screen.getByTestId('topic-error-dataProducts')).toBeInTheDocument();
     expect(screen.queryByText('message.no-data-products-yet')).toBeNull();
+  });
+
+  it('sends whoever may create one to the data products page', () => {
+    mockPermissions = { dataProduct: { Create: true } };
+    renderWidget({
+      domainCount: 0,
+      emptyCount: 0,
+      products: [],
+      totalCount: 0,
+      unownedCount: 0,
+    });
+
+    expect(screen.getByTestId('topic-empty-dataProducts')).toHaveTextContent(
+      'message.no-data-products-yet'
+    );
+
+    fireEvent.click(screen.getByTestId('topic-empty-action-dataProducts'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/dataProduct');
+  });
+
+  it('shows the empty state without a call to action to a viewer', () => {
+    mockPermissions = {};
+    renderWidget({ products: [], totalCount: 0 });
+
+    expect(screen.getByTestId('topic-empty-dataProducts')).toBeInTheDocument();
+    expect(screen.queryByTestId('topic-empty-action-dataProducts')).toBeNull();
   });
 });

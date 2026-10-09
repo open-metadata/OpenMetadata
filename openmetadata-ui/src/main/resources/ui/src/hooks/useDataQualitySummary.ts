@@ -38,6 +38,12 @@ export interface DataQualitySummary {
   total: number;
   /** The failing tests themselves, for the card's rows. */
   failedTests: TestCase[];
+  /**
+   * No test case exists at all, whatever the filters. A zero `total` only says
+   * nothing *ran* in the selected scope and window; this is what tells "not
+   * set up" apart from "quiet this week".
+   */
+  hasNoTests: boolean;
   /** First load only — a filter change keeps the previous counts on screen. */
   isLoading: boolean;
   isFetching: boolean;
@@ -68,12 +74,24 @@ const fetchByStatus = async (
   };
 };
 
+/** Whether any test case exists — counted, never listed. */
+const fetchAnyTestCount = async (): Promise<number> => {
+  const response = await getListTestCaseBySearch({
+    includeAllTests: true,
+    limit: COUNT_ONLY_PAGE_SIZE,
+    q: '*',
+  });
+
+  return response.paging?.total ?? 0;
+};
+
 /**
  * Test-result counts by status, plus the failing tests to list.
  *
- * Three parallel searches rather than one page counted client-side: `paging.total`
+ * One search per status rather than one page counted client-side: `paging.total`
  * is the whole bucket, so the numbers stay true even though only the failing
- * page is materialised.
+ * page is materialised. A fourth, unfiltered count tells an estate with no
+ * tests from a quiet window.
  */
 export const useDataQualitySummary = (
   filters: DataQualityFilters,
@@ -110,7 +128,15 @@ export const useDataQualitySummary = (
   const abortedQuery = useQuery(
     queryFor(TestCaseStatus.Aborted, COUNT_ONLY_PAGE_SIZE)
   );
-  const queries = [failedQuery, passedQuery, abortedQuery];
+  // Unfiltered, so it is one key for every filter: fetched alongside the
+  // counts on first load — not after them, which would chain a second round
+  // trip — and served from cache on every filter change after that.
+  const anyTestQuery = useQuery({
+    queryFn: fetchAnyTestCount,
+    queryKey: [...DATA_QUALITY_QUERY_KEY, 'anyTest'],
+    staleTime: TTL_MS,
+  });
+  const queries = [failedQuery, passedQuery, abortedQuery, anyTestQuery];
 
   const failed = failedQuery.data?.total ?? 0;
   const passed = passedQuery.data?.total ?? 0;
@@ -120,6 +146,7 @@ export const useDataQualitySummary = (
     aborted,
     failed,
     failedTests: failedQuery.data?.tests ?? [],
+    hasNoTests: anyTestQuery.data === 0,
     isError: queries.some((query) => query.isError),
     isFetching: queries.some((query) => query.isFetching),
     isLoading: queries.some((query) => query.isPending),

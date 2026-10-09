@@ -12,7 +12,7 @@
  */
 
 import { Avatar, Typography } from '@openmetadata/ui-core-components';
-import { Teams } from '@openmetadata/ui-core-components/icons';
+import { Teams, Users01 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import React, { useMemo } from 'react';
@@ -29,7 +29,10 @@ import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { ActivitySentence } from '../Common/TopicWidget/activityVerb';
 import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import {
+  TopicEmptyStateConfig,
+  TopicKey,
+} from '../Common/TopicWidget/topics.types';
 
 export const TEAM_ACTIVITY_QUERY_KEY = [
   'landingPage',
@@ -93,20 +96,26 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
 
   // The newest event doubles as the card's summary, so a collapsed card still
   // says what actually happened rather than only how much did. No link here:
-  // the summary sits inside the header's collapse toggle.
-  let summary: React.ReactNode = t(
-    'message.no-recent-activity-on-owned-assets'
-  );
-  if (isError) {
-    summary = t('message.something-went-wrong');
-  } else if (latest) {
-    summary = (
-      <>
-        <ActivitySentence event={latest} />
-        {` · ${getRelativeTime(latest.timestamp)}`}
-      </>
-    );
-  }
+  // the summary sits inside the header's collapse toggle. With no event there
+  // is nothing to summarise; the empty state supplies the header line instead.
+  const summary = latest ? (
+    <>
+      <ActivitySentence event={latest} />
+      {` · ${getRelativeTime(latest.timestamp)}`}
+    </>
+  ) : undefined;
+
+  // Quiet is not a setup problem — activity arrives on its own — so there is
+  // nothing to configure and no call to action.
+  const emptyState: TopicEmptyStateConfig | undefined =
+    count === 0
+      ? {
+          description: t('message.team-activity-empty-description'),
+          icon: Users01,
+          summary: t('message.team-activity-widget-description'),
+          title: t('message.all-quiet-in-your-domains'),
+        }
+      : undefined;
 
   return (
     <TopicCard
@@ -117,6 +126,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
             getUserPath(currentUser?.name ?? '', EntityTabs.ACTIVITY_FEED)
           ),
       }}
+      emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
@@ -139,14 +149,6 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
       topicKey={TopicKey.TEAM_ACTIVITY}
       widgetKey={widgetKey}
       onRetry={() => void refetch()}>
-      {!isError && count === 0 && (
-        <Typography
-          className="tw:text-text-secondary!"
-          data-testid="team-activity-empty"
-          size="text-sm">
-          {t('message.no-recent-activity-on-owned-assets')}
-        </Typography>
-      )}
       {!isError && count > 0 && (
         <ul
           className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"

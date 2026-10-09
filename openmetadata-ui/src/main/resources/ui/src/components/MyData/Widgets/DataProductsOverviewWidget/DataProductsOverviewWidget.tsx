@@ -15,22 +15,30 @@ import { Badge, Typography } from '@openmetadata/ui-core-components';
 import {
   Cube01 as DataProduct,
   Globe01 as Domain,
+  Package,
 } from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   DataProductSummary,
   useDataProducts,
 } from '../../../../hooks/useDataProducts';
 import { OverviewFilter } from '../../../../hooks/useDomainOverview';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getDataProductDetailsPath } from '../../../../utils/RouterUtils';
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import {
+  TopicEmptyStateConfig,
+  TopicKey,
+} from '../Common/TopicWidget/topics.types';
 
 /**
  * Sorts over the page already fetched — no extra request. The bucket chips are
@@ -95,6 +103,10 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
     isLoading,
     refetch,
   } = useDataProducts(filter);
+  const { permissions } = usePermissionProvider();
+  const { canCreate } = getDerivedPermissionFlags(
+    permissions?.[ResourceEntity.DATA_PRODUCT] ?? DEFAULT_ENTITY_PERMISSION
+  );
 
   const sortOptions = useMemo(
     () => [
@@ -126,12 +138,31 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
   };
   const remaining = Math.max(0, bucketSize[filter] - products.length);
 
+  const emptyState: TopicEmptyStateConfig | undefined =
+    totalCount === 0
+      ? {
+          action: canCreate
+            ? {
+                label: t('label.new-entity', {
+                  entity: t('label.data-product'),
+                }),
+                onPress: () => navigate(ROUTES.DATA_PRODUCT),
+              }
+            : undefined,
+          description: t('message.data-products-empty-description'),
+          icon: Package,
+          summary: t('message.data-products-widget-description'),
+          title: t('message.no-data-products-yet'),
+        }
+      : undefined;
+
   return (
     <TopicCard
       action={{
         label: t('label.view-all-entity', { entity: t(PRODUCTS_LABEL_KEY) }),
         onPress: () => navigate(ROUTES.DATA_PRODUCT),
       }}
+      emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
@@ -159,13 +190,7 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
       topicKey={TopicKey.DATA_PRODUCTS}
       widgetKey={widgetKey}
       onRetry={refetch}>
-      {totalCount === 0 ? (
-        // `!` on the colours throughout: Typography renders `.prose`, whose
-        // unlayered `color` rule is emitted after the Tailwind utilities.
-        <Typography className="tw:text-text-secondary!" size="text-sm">
-          {t('message.no-data-products-yet')}
-        </Typography>
-      ) : (
+      {!emptyState && (
         <>
           <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-2">
             <TopicFilterChips

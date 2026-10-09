@@ -27,14 +27,20 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
-  useNavigate: () => jest.fn(),
+  useNavigate: () => mockNavigate,
   Link: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
 }));
 
 jest.mock('../../../../hooks/useDomainOverview', () => ({
   OverviewFilter: { ALL: 'all', EMPTY: 'empty', NO_OWNER: 'noOwner' },
   useDomainOverview: jest.fn(),
+}));
+
+let mockPermissions: Record<string, Record<string, boolean>> = {};
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: mockPermissions }),
 }));
 
 jest.mock('../../../../utils/RouterUtils', () => ({
@@ -161,5 +167,39 @@ describe('DomainsOverviewWidget', () => {
     fireEvent.click(screen.getByText('label.retry'));
 
     expect(refetch).toHaveBeenCalled();
+  });
+
+  it('offers the first domain to whoever may create one', () => {
+    mockPermissions = { domain: { Create: true } };
+    renderWidget({
+      domains: [],
+      emptyCount: 0,
+      totalCount: 0,
+      unownedCount: 0,
+    });
+
+    expect(screen.getByTestId('topic-empty-domains')).toHaveTextContent(
+      'message.no-domains-yet'
+    );
+    // Domains fill through use, not setup, so the header raises no flag.
+    expect(screen.queryByTestId('topic-status-domains')).toBeNull();
+    expect(screen.queryByTestId('domains-filter-all')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('topic-empty-action-domains'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/domain');
+  });
+
+  it('shows the empty state without a call to action to a viewer', () => {
+    mockPermissions = {};
+    renderWidget({
+      domains: [],
+      emptyCount: 0,
+      totalCount: 0,
+      unownedCount: 0,
+    });
+
+    expect(screen.getByTestId('topic-empty-domains')).toBeInTheDocument();
+    expect(screen.queryByTestId('topic-empty-action-domains')).toBeNull();
   });
 });

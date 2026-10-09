@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
 import {
   Calendar,
   RankingDetails,
+  Target04,
 } from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   KpiWindow,
   KPI_ALL_TIME,
@@ -28,10 +30,15 @@ import {
   useKpiProgress,
 } from '../../../../hooks/useKpiProgress';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import KpiProgressRow from '../Common/TopicWidget/KpiProgressRow';
 import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import {
+  TopicEmptyStateConfig,
+  TopicKey,
+} from '../Common/TopicWidget/topics.types';
 
 const TONE = {
   icon: RankingDetails,
@@ -51,6 +58,10 @@ const KpiProgressWidget: React.FC<KpiProgressWidgetProps> = ({
   const [range, setRange] = useState<KpiWindow>(KPI_WINDOW_DAYS);
   const { kpis, atRiskCount, isError, isFetching, isLoading, refetch } =
     useKpiProgress(range);
+  const { permissions } = usePermissionProvider();
+  const { canCreate } = getDerivedPermissionFlags(
+    permissions?.[ResourceEntity.KPI] ?? DEFAULT_ENTITY_PERMISSION
+  );
 
   const windowOptions = useMemo(
     () =>
@@ -66,6 +77,27 @@ const KpiProgressWidget: React.FC<KpiProgressWidgetProps> = ({
 
   const summary = t('message.count-kpis-tracked', { count: kpis.length });
 
+  // The KPI list ignores the range — only each KPI's series follows it — so an
+  // empty list means none are defined, not none in this window.
+  const emptyState: TopicEmptyStateConfig | undefined =
+    kpis.length === 0
+      ? {
+          action: canCreate
+            ? {
+                label: t('label.create-entity', {
+                  entity: t('label.kpi-uppercase'),
+                }),
+                onPress: () => navigate(ROUTES.ADD_KPI),
+              }
+            : undefined,
+          description: t('message.kpi-empty-description'),
+          icon: Target04,
+          needsSetup: true,
+          summary: t('message.kpi-widget-description'),
+          title: t('message.no-kpis-yet'),
+        }
+      : undefined;
+
   return (
     <TopicCard
       action={{
@@ -74,6 +106,7 @@ const KpiProgressWidget: React.FC<KpiProgressWidgetProps> = ({
         }),
         onPress: () => navigate(ROUTES.KPI_LIST),
       }}
+      emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
@@ -93,13 +126,7 @@ const KpiProgressWidget: React.FC<KpiProgressWidgetProps> = ({
       topicKey={TopicKey.KPIS}
       widgetKey={widgetKey}
       onRetry={refetch}>
-      {kpis.length === 0 ? (
-        // `!` on the colour: Typography renders `.prose`, whose unlayered
-        // `color` rule is emitted after the Tailwind utilities.
-        <Typography className="tw:text-text-secondary!" size="text-sm">
-          {t('message.no-kpis-yet')}
-        </Typography>
-      ) : (
+      {!emptyState && (
         <>
           <div className="tw:mb-3 tw:flex tw:justify-end">
             <FilterButton

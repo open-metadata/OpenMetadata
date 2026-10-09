@@ -183,6 +183,13 @@ describe('CuratedAssetsSummaryWidget', () => {
 
   // "View all matches" used to open Explore with no filter at all.
   it('opens Explore on the chip rule it counts', () => {
+    mockUseCuratedAssets.mockReturnValue({
+      assets: [],
+      isError: false,
+      isLoading: false,
+      refetch: jest.fn(),
+      totalCount: 3,
+    });
     renderWidget(layoutWith(undefined));
 
     fireEvent.click(screen.getByTestId('topic-action-curatedAssets'));
@@ -195,6 +202,13 @@ describe('CuratedAssetsSummaryWidget', () => {
   });
 
   it('opens Explore on a saved filter through the advanced-search tree', () => {
+    mockUseCuratedAssets.mockReturnValue({
+      assets: [],
+      isError: false,
+      isLoading: false,
+      refetch: jest.fn(),
+      totalCount: 3,
+    });
     renderWidget(
       layoutWith({ queryFilter: SAVED_FILTER, resources: ['table'] })
     );
@@ -223,5 +237,19 @@ describe('CuratedAssetsSummaryWidget', () => {
 
     expect(screen.getByTestId('topic-error-curatedAssets')).toBeInTheDocument();
     expect(screen.queryByTestId('topic-status-curatedAssets')).toBeNull();
+  });
+
+  // Nothing matching is a tagging gap, not a setup step: the rule stays on
+  // show, the empty state explains the wait, and there is no Explore link into
+  // an empty result.
+  it('keeps the rule on show above the empty state when nothing matches', () => {
+    renderWidget(layoutWith(undefined));
+
+    expect(screen.getByTestId('topic-empty-curatedAssets')).toHaveTextContent(
+      'message.no-assets-match-rule-yet'
+    );
+    expect(screen.getByText('label.rule')).toBeInTheDocument();
+    expect(screen.queryByTestId('topic-action-curatedAssets')).toBeNull();
+    expect(screen.queryByTestId('topic-empty-action-curatedAssets')).toBeNull();
   });
 });

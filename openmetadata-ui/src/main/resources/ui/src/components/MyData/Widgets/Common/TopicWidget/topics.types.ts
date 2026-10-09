@@ -44,6 +44,26 @@ export interface TopicAction {
   onPress: () => void;
 }
 
+/**
+ * What a card says when there is nothing in it yet — no services, no tests, no
+ * domains. It replaces the card's summary, status and footer, all of which
+ * would otherwise restate a row of zeros.
+ */
+export interface TopicEmptyStateConfig {
+  icon: FC<IconProps>;
+  title: string;
+  description: string;
+  /** Header line while empty: what the card is for, there being nothing to summarise. */
+  summary?: string;
+  /**
+   * The card stays empty until someone configures something — a connector, a
+   * test, a KPI — rather than until activity happens, and says so in the header.
+   */
+  needsSetup?: boolean;
+  /** Absent when the viewer may not create what the card is waiting for. */
+  action?: TopicAction;
+}
+
 export interface TopicIconTone {
   icon: FC<IconProps>;
   /** Tinted tile behind the icon — surface plus its matching foreground. */

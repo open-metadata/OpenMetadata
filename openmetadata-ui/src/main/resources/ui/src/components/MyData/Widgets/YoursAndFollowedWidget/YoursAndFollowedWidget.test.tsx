@@ -36,6 +36,7 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
   default: ({
     action,
     children,
+    emptyState,
     isError,
     meta,
     status,
@@ -43,6 +44,7 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
   }: {
     action?: { label: string; onPress: () => void };
     children?: React.ReactNode;
+    emptyState?: { title: string; action?: { label: string } };
     isError?: boolean;
     meta?: React.ReactNode;
     status?: { label: string };
@@ -58,6 +60,7 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
         </button>
       )}
       {isError && <span data-testid="card-error" />}
+      {emptyState && <div data-testid="empty-state">{emptyState.title}</div>}
       {children}
     </section>
   ),
@@ -154,8 +157,11 @@ describe('YoursAndFollowedWidget', () => {
       ownedTotal: 0,
     });
 
-    expect(screen.getByTestId('yours-and-followed-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-state')).toHaveTextContent(
+      'message.nothing-owned-or-followed-yet'
+    );
     expect(screen.queryByTestId('status')).toBeNull();
+    expect(screen.queryByTestId('owned-assets')).toBeNull();
   });
 
   it('hands the card its error and withholds the counts', () => {

@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Star01 as Follow } from '@openmetadata/ui-core-components/icons';
+import {
+  HeartRounded,
+  Star01 as Follow,
+} from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +24,10 @@ import { WidgetCommonProps } from '../../../../interface/customization.interface
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { UserPageTabs } from '../../../Settings/Users/Users.interface';
 import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TopicKey } from '../Common/TopicWidget/topics.types';
+import {
+  TopicEmptyStateConfig,
+  TopicKey,
+} from '../Common/TopicWidget/topics.types';
 import TrackedAssetList from '../Common/TopicWidget/TrackedAssetList';
 
 const TONE = {
@@ -52,10 +57,21 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
     refetch,
   } = useOwnedAndFollowed(currentUser?.id);
 
-  const isEmpty = owned.length === 0 && followed.length === 0;
   const summary = isError
     ? t('message.something-went-wrong')
     : t('message.count-followed-assets-changed', { count: changedCount });
+
+  // Following is the reader's own move, made from any asset page — there is
+  // no single place to send them, so no call to action.
+  const emptyState: TopicEmptyStateConfig | undefined =
+    owned.length === 0 && followed.length === 0
+      ? {
+          description: t('message.yours-and-followed-empty-description'),
+          icon: HeartRounded,
+          summary: t('message.yours-and-followed-widget-description'),
+          title: t('message.nothing-owned-or-followed-yet'),
+        }
+      : undefined;
 
   return (
     <TopicCard
@@ -70,6 +86,7 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
             getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING)
           ),
       }}
+      emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
@@ -96,17 +113,7 @@ const YoursAndFollowedWidget: React.FC<YoursAndFollowedWidgetProps> = ({
       topicKey={TopicKey.YOURS_AND_FOLLOWED}
       widgetKey={widgetKey}
       onRetry={refetch}>
-      {!isError && isEmpty && (
-        // `!` on the colour: Typography renders `.prose`, whose unlayered
-        // `color` rule is emitted after the Tailwind utilities.
-        <Typography
-          className="tw:text-text-secondary!"
-          data-testid="yours-and-followed-empty"
-          size="text-sm">
-          {t('message.no-data-available')}
-        </Typography>
-      )}
-      {!isError && !isEmpty && (
+      {!isError && !emptyState && (
         <div className="tw:@container">
           <div className="tw:grid tw:grid-cols-1 tw:gap-5 tw:@md:grid-cols-2">
             <TrackedAssetList

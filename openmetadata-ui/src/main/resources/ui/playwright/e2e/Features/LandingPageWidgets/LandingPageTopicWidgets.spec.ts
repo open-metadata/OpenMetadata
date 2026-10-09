@@ -60,24 +60,24 @@ test.describe(
       const toggle = card.getByTestId(
         `toggle-widget-${TEAM_ACTIVITY.layoutKey}`
       );
-      const footerAction = card.getByTestId(
-        `topic-action-${TEAM_ACTIVITY.topicKey}`
-      );
+      // The body, not the footer link: an empty card drops its footer for the
+      // empty state, and this worker's user may well have no activity yet.
+      const body = card.getByTestId(`topic-body-${TEAM_ACTIVITY.topicKey}`);
 
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      await expect(footerAction).toBeVisible();
+      await expect(body).toBeVisible();
 
       await toggle.click();
 
       await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-      await expect(footerAction).toBeHidden();
+      await expect(body).toBeHidden();
       // The header survives so the collapsed card is still identifiable.
       await expect(toggle).toBeVisible();
 
       await toggle.click();
 
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      await expect(footerAction).toBeVisible();
+      await expect(body).toBeVisible();
     });
 
     test('Collapse all closes every card and flips to Expand all', async ({
