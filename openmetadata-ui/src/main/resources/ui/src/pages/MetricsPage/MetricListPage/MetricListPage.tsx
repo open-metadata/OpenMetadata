@@ -1041,7 +1041,10 @@ const MetricListPage = () => {
     const isUnfiltered = !searchText && !statusFilter;
 
     return (
-      <Box className="tw:flex-1 tw:min-h-0 tw:p-4" justify="center">
+      // Anchors the absolute EmptyPlaceholder; TableV2's empty row is only 160px.
+      <Box
+        className="tw:relative tw:flex-1 tw:min-h-110 tw:p-4"
+        justify="center">
         <EmptyPlaceholder
           actions={
             isUnfiltered && permission.Create
