@@ -214,9 +214,7 @@ export const openTaskForm = async (page: Page, route: string) => {
 };
 
 export const selectAssignee = async (page: Page, assigneeName: string) => {
-  const assigneeInput = page.locator(
-    '[data-testid="select-assignee"] .ant-select-selection-search input'
-  );
+  const assigneeInput = page.locator('[data-testid="select-assignee"] input');
   const assigneeOption = page.getByTestId(assigneeName);
   const assigneeSearchResponse = page
     .waitForResponse(

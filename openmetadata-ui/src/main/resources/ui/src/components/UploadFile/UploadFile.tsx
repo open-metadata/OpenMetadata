@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { UploadCloud01 } from '@openmetadata/ui-core-components/icons';
-import { Space, UploadProps } from 'antd';
+import { UploadProps } from 'antd';
 import type { RcFile } from 'antd/lib/upload';
 import Dragger from 'antd/lib/upload/Dragger';
 import { AxiosError } from 'axios';
@@ -100,11 +100,16 @@ const UploadFile: FC<UploadFileProps> = ({
           </Typography>
         </div>
       ) : (
-        <Space
+        <Box
+          inline
           align="center"
-          className="w-full justify-center"
-          direction="vertical"
-          size={42}>
+          className="layout-space w-full justify-center"
+          direction="col"
+          itemClassName="layout-space-item"
+          style={{
+            columnGap: 'var(--om-space-42)',
+            rowGap: 'var(--om-space-42)',
+          }}>
           <ImportIcon height={86} width={86} />
           <Typography className="file-dragger-text">
             <Transi18next
@@ -115,7 +120,7 @@ const UploadFile: FC<UploadFileProps> = ({
               }}
             />
           </Typography>
-        </Space>
+        </Box>
       )}
     </Dragger>
   );

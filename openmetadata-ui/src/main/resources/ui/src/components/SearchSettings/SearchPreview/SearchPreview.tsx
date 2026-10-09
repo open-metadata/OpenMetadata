@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Input, Row } from 'antd';
+import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -207,13 +207,15 @@ const SearchPreview = ({
 
   return (
     <div className="search-preview">
-      <Row className="d-flex justify-between items-center m-b-sm search-preview-header">
-        <Col>
+      <Box
+        className="layout-row d-flex justify-between items-center m-b-sm search-preview-header"
+        wrap="wrap">
+        <Box className="layout-column tw:block">
           <Typography className="header-title" data-testid="search-preview">
             {t('label.preview')}
           </Typography>
-        </Col>
-        <Col className="search-preview-actions">
+        </Box>
+        <Box className="layout-column tw:block search-preview-actions">
           <span className="ranking-details-control">
             <Typography>{t('label.ranking-detail-plural')}</Typography>
             <Toggle
@@ -237,8 +239,8 @@ const SearchPreview = ({
             onClick={handleSaveChanges}>
             {t('label.save')}
           </Button>
-        </Col>
-      </Row>
+        </Box>
+      </Box>
 
       <Input
         allowClear
