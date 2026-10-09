@@ -8,6 +8,7 @@ from typing import (
 )
 
 if TYPE_CHECKING:
+    from presidio_analyzer import RecognizerResult
     from presidio_analyzer.nlp_engine import NlpEngine
 
 from metadata.generated.schema.entity.classification.tag import Tag
@@ -88,6 +89,17 @@ class TagScorer:
 
         return results
 
+    @staticmethod
+    def _recognizer_name(result: "RecognizerResult") -> str:
+        recognition_metadata = cast(dict[str, str], result.recognition_metadata)  # noqa: TC006
+        return recognition_metadata.get(
+            presidio_constants.RECOGNIZER_METADATA_NAME,
+            recognition_metadata.get(
+                presidio_constants.RECOGNIZER_METADATA_IDENTIFIER,
+                presidio_constants.DEFAULT_RECOGNIZER_IDENTIFIER,
+            ),
+        )
+
     def _build_recognizer_metadata(
         self,
         analysis: TagAnalysis,
@@ -98,18 +110,13 @@ class TagScorer:
         # Use the result with the highest score — that is the result responsible for
         # analysis.score (which is the max), not necessarily the first in the list.
         best_result = max(analysis.recognizer_results, key=lambda r: r.score)
-        recognition_metadata = cast(dict[str, str], best_result.recognition_metadata)  # noqa: TC006
+        recognizer_name = self._recognizer_name(best_result)
 
-        recognizer_name = recognition_metadata.get(
-            presidio_constants.RECOGNIZER_METADATA_NAME,
-            recognition_metadata.get(
-                presidio_constants.RECOGNIZER_METADATA_IDENTIFIER,
-                presidio_constants.DEFAULT_RECOGNIZER_IDENTIFIER,
-            ),
-        )
-
+        # Only report the patterns of the recognizer the metadata is attributed to.
         patterns_matched: set[tuple[str, str, float]] = set()
         for result in analysis.recognizer_results:
+            if self._recognizer_name(result) != recognizer_name:
+                continue
             if result.analysis_explanation and result.analysis_explanation.pattern:
                 patterns_matched.add(
                     (

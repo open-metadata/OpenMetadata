@@ -16,7 +16,7 @@ from unittest.mock import Mock
 
 import pytest
 from dirty_equals import HasAttributes, IsFloat, IsInstance, IsNumeric
-from presidio_analyzer import RecognizerResult
+from presidio_analyzer import AnalysisExplanation, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngine
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
@@ -625,12 +625,17 @@ class TestTagAnalyzer:
 class TestBuildRecognizerMetadata:
     """Tests for TagScorer._build_recognizer_metadata recognizer attribution logic."""
 
-    def _make_result(self, name: str, score: float) -> RecognizerResult:
+    def _make_result(self, name: str, score: float, pattern: str | None = None) -> RecognizerResult:
         return RecognizerResult(
             entity_type="TEST",
             start=0,
             end=1,
             score=score,
+            analysis_explanation=AnalysisExplanation(
+                recognizer=name, original_score=score, pattern_name=pattern, pattern=pattern
+            )
+            if pattern
+            else None,
             recognition_metadata={
                 presidio_constants.RECOGNIZER_METADATA_NAME: name,
                 presidio_constants.RECOGNIZER_METADATA_IDENTIFIER: name,
@@ -712,6 +717,25 @@ class TestBuildRecognizerMetadata:
         assert meta is not None
         assert meta.recognizerName == "PhoneRecognizer"
         assert meta.score == 1.0
+
+    def test_patterns_only_from_attributed_recognizer(self):
+        """Patterns in the metadata must come from the recognizer the label is
+        attributed to, not from every recognizer that produced a result."""
+        tag = self._pattern_tag(["SpacyRecognizer", "PhoneRecognizer"])
+        analysis = TagAnalysis(
+            tag=tag,
+            score=1.0,
+            explanation=None,
+            recognizer_results=[
+                self._make_result("SpacyRecognizer", 0.85, pattern="spacy-pattern"),
+                self._make_result("PhoneRecognizer", 1.0, pattern="phone-pattern"),
+            ],
+            target=None,
+        )
+        meta = self._scorer()._build_recognizer_metadata(analysis)
+        assert meta is not None
+        assert meta.recognizerName == "PhoneRecognizer"
+        assert [p.regex for p in meta.patterns] == ["phone-pattern"]
 
     def test_score_tie_resolves_to_a_configured_recognizer(self):
         """When two results tie, any one of the tied recognizers is acceptable;
