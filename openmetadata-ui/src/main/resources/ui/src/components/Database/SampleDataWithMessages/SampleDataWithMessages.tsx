@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { isUndefined } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -88,13 +89,15 @@ const SampleDataWithMessages: FC<{
   }
 
   return (
-    <Row className="p-md" gutter={[16, 16]}>
+    <Grid
+      className="layout-row layout-grid p-md"
+      style={{ ...getLayoutGutter(16, 16) }}>
       {data.messages?.map((message) => (
-        <Col key={message} span={24}>
+        <Grid.Item className="layout-column" key={message} span={24}>
           <MessageCard message={message} />
-        </Col>
+        </Grid.Item>
       ))}
-    </Row>
+    </Grid>
   );
 };
 

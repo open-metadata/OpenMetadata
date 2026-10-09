@@ -19,6 +19,7 @@ import {
   Policy as GovernanceTabIcon,
   Settings02,
   ShieldTick,
+  Sliders02,
   User01,
   Users01,
 } from '@openmetadata/ui-core-components/icons';
@@ -39,6 +40,7 @@ import GovernancePanel from './tabs/governance/GovernancePanel';
 import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
+import PlatformSettingsPanel from './tabs/platform-settings/PlatformSettingsPanel';
 
 // Single source of truth lives in Profile.constants (hook-safe layer); re-exported
 // here so existing imports of `ProfileNavId` from this module keep working.
@@ -190,6 +192,18 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <BotsPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
+  {
+    id: 'platform-settings',
+    group: 'administration',
+    label: 'label.platform-setting-plural',
+    description: 'message.customize-brand-description',
+    icon: Sliders02,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
     ),
   },
   // The "My Connections" tab is contributed by the Query Runner plugin through

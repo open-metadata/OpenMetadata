@@ -534,7 +534,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private SchemaValidationResult validateFieldsAgainstEntity(
       DataContract dataContract, EntityReference entityRef) {
     ChildFieldResolver.ChildContainerSpec spec = ChildFieldResolver.specFor(entityRef.getType());
-    EntityInterface parent =
+    EntityInterface<?> parent =
         Entity.getEntity(
             entityRef.getType(), entityRef.getId(), spec.requiredFields(), Include.NON_DELETED);
     List<FieldInterface> children = ChildFieldResolver.childrenOf(parent, entityRef.getType());
@@ -1024,7 +1024,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    * @param user The user creating the contract
    */
   public DataContract materializeInheritedContract(
-      EntityInterface entity, String dataProductContractName, String user) {
+      EntityInterface<?> entity, String dataProductContractName, String user) {
     // Name format: "<Data Product Contract> - <entity name>"
     String contractName = dataProductContractName + " - " + entity.getName();
     String contractFqn = entity.getFullyQualifiedName() + ".contract";
@@ -1050,7 +1050,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    * @return the stored result, or empty when no contract applies to the entity
    */
   public Optional<RestUtil.PutResponse<DataContractResult>> validateEntityContract(
-      EntityInterface entity, String user) {
+      EntityInterface<?> entity, String user) {
     return Optional.ofNullable(getEffectiveDataContract(entity))
         .map(
             effective ->
@@ -1059,7 +1059,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   private DataContract contractForResults(
-      EntityInterface entity, DataContract effective, String user) {
+      EntityInterface<?> entity, DataContract effective, String user) {
     DataContract direct = getEntityDataContractSafely(entity);
     DataContract contract = direct != null ? direct : effective;
     if (direct == null && Boolean.TRUE.equals(effective.getInherited())) {
@@ -1228,7 +1228,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     try {
       // Get the entity that the contract applies to
-      EntityInterface entity =
+      EntityInterface<?> entity =
           Entity.getEntity(
               dataContract.getEntity().getType(),
               dataContract.getEntity().getId(),
@@ -1616,7 +1616,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         DataContract.class);
   }
 
-  public DataContract getEntityDataContractSafely(EntityInterface entity) {
+  public DataContract getEntityDataContractSafely(EntityInterface<?> entity) {
     try {
       return loadEntityDataContract(entity.getEntityReference());
     } catch (Exception e) {
@@ -1625,7 +1625,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  public DataContract getEffectiveDataContract(EntityInterface entity) {
+  public DataContract getEffectiveDataContract(EntityInterface<?> entity) {
     DataContract entityContract = getEntityDataContractSafely(entity);
 
     List<EntityReference> dataProducts = entity.getDataProducts();
@@ -1668,7 +1668,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   private DataContract inheritFromDataProductContract(
-      EntityInterface entity, DataContract dataProductContract) {
+      EntityInterface<?> entity, DataContract dataProductContract) {
     DataContract inherited = JsonUtils.deepCopy(dataProductContract, DataContract.class);
 
     // Update the entity reference to point to the actual entity, not the data product

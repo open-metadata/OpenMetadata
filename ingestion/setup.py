@@ -130,7 +130,15 @@ COMMONS = {
     },
     "kafka": {
         VERSIONS["avro"],
-        "confluent_kafka>=2.1.1,<=2.6.1",
+        # CVE-2026-15911 (improper TLS certificate validation in the HashiCorp Vault KMS
+        # integration) is fixed in 2.15.0. The <=2.6.1 ceiling this replaces dated from
+        # Jan 2025 and pinned the client nine minor versions behind.
+        # The [schemaregistry] extra is required, not cosmetic: from 2.9 the schema registry
+        # client's dependencies (certifi, httpx, attrs, cachetools, authlib) moved behind it,
+        # and a bare install raises ModuleNotFoundError on `confluent_kafka.schema_registry`
+        # -- which messaging/common_broker_source.py, messaging/kafka/connection.py and
+        # sampler/messaging/kafka/sampler.py all import at module level.
+        "confluent_kafka[schemaregistry]>=2.15.0,<3",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -358,6 +366,10 @@ plugins: dict[str, set[str]] = {
         # (data amplification): thrift <0.24.0 is vulnerable. impyla hard-pinned thrift==0.16.0
         # from 0.18.0 through 0.23.0 and only relaxed it to >=0.23.0 in 0.24.0, so the driver
         # has to move for this floor to be satisfiable.
+        # CVE-2026-66858 + CVE-2026-85494 need >=0.25.0 and are NOT fixed here: the latest
+        # databricks-sql-connector (4.6.0) requires thrift<0.25.0, and the "all" extra installs
+        # both, so raising this floor makes "all" unresolvable. Revisit when Databricks relaxes
+        # its ceiling.
         "thrift>=0.24.0,<1",
         # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
         "pure-sasl",
@@ -372,7 +384,8 @@ plugins: dict[str, set[str]] = {
     "impala": {
         "presto-types-parser>=0.0.2",
         # See the hive extra: impyla <0.24.0 hard-pins thrift==0.16.0, which is what holds
-        # thrift below the fixed 0.24.0.
+        # thrift below the fixed 0.24.0, and why CVE-2026-66858 / CVE-2026-85494 cannot be
+        # cleared here either.
         "impyla[kerberos]~=0.24.0",
         "thrift>=0.24.0,<1",
         "pure-sasl",

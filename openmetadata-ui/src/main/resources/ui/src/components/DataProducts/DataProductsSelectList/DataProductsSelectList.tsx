@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Select, Space, Tooltip } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Select, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import React, {
@@ -134,14 +134,20 @@ const DataProductsSelectList = ({
       return {
         label: item.label,
         displayName: (
-          <Space className="w-full" direction="vertical" size={0}>
+          <Box
+            inline
+            align="stretch"
+            className="layout-space w-full"
+            direction="col"
+            gap={0}
+            itemClassName="layout-space-item">
             <Typography ellipsis as="p" className="m-0 p-0" color="secondary">
               {item.value.domains
                 ?.map((domain) => getEntityName(domain))
                 .join(', ')}
             </Typography>
             <Typography ellipsis>{getEntityName(item.value)}</Typography>
-          </Space>
+          </Box>
         ),
         value: item.value.fullyQualifiedName,
       };
@@ -185,10 +191,13 @@ const DataProductsSelectList = ({
     <>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
-      <Space
-        className="p-sm p-b-xss p-l-xs custom-dropdown-render"
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal p-sm p-b-xss p-l-xs custom-dropdown-render"
         data-testid="data-product-dropdown-actions"
-        size={8}>
+        gap={2}
+        itemClassName="layout-space-item">
         <Button
           className="update-btn"
           data-testid="saveAssociatedTag"
@@ -203,7 +212,7 @@ const DataProductsSelectList = ({
           onClick={onCancel}>
           {t('label.cancel')}
         </Button>
-      </Space>
+      </Box>
     </>
   );
 

@@ -26,7 +26,7 @@ public final class ChartShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new Chart()
         .withId(ctx.id())
         .withName("chart")

@@ -510,7 +510,12 @@ function getStudioNodeKindStyle(
   }
 
   return {
-    stroke: ontNode?.type === 'glossaryTermIsolated' ? '#FEDF89' : '#E9EAEB',
+    stroke: getCanvasColor(
+      ontNode?.type === 'glossaryTermIsolated'
+        ? 'var(--tw-color-utility-warning-200)'
+        : 'var(--tw-color-border-secondary)',
+      '#E9EAEB'
+    ),
   };
 }
 

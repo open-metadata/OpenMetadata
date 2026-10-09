@@ -41,6 +41,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.ColumnCoverage;
@@ -335,7 +336,7 @@ class DataInsightsEntityEnricherProcessorTest {
    * so each step's contract is exercised without pulling in their real implementations, and
    * stubs {@link Entity#getEntityTypeFromObject(Object)} for the per-step team/tier log lines.
    */
-  private Map<String, Object> enrichEntity(EntityInterface entity, String entityType) {
+  private Map<String, Object> enrichEntity(EntityInterface<?> entity, String entityType) {
     try (MockedStatic<SearchIndexUtils> searchIndexUtilsMock =
             Mockito.mockStatic(SearchIndexUtils.class);
         MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
@@ -351,7 +352,7 @@ class DataInsightsEntityEnricherProcessorTest {
           .when(() -> SearchIndexUtils.hasColumns(any()))
           .thenAnswer(
               invocation -> {
-                EntityInterface e = invocation.getArgument(0);
+                EntityInterface<?> e = invocation.getArgument(0);
                 return List.of(e.getClass().getInterfaces()).contains(ColumnsEntityInterface.class);
               });
 
@@ -401,7 +402,7 @@ class DataInsightsEntityEnricherProcessorTest {
     return column;
   }
 
-  static class MockColumnsEntity implements EntityInterface, ColumnsEntityInterface {
+  static class MockColumnsEntity implements EntityInterface<EntityStatus>, ColumnsEntityInterface {
     private final UUID id = UUID.randomUUID();
     private final String fqn = "test.table." + id;
     private final List<Column> columns;
@@ -506,12 +507,12 @@ class DataInsightsEntityEnricherProcessorTest {
     public void setHref(URI href) {}
 
     @Override
-    public <T extends EntityInterface> T withHref(URI href) {
+    public <T extends EntityInterface<?>> T withHref(URI href) {
       return (T) this;
     }
   }
 
-  static class MockEntity implements EntityInterface {
+  static class MockEntity implements EntityInterface<EntityStatus> {
     private final UUID id = UUID.randomUUID();
     private final String fqn = "test.entity." + id;
     private final String description;
@@ -609,7 +610,7 @@ class DataInsightsEntityEnricherProcessorTest {
     public void setHref(URI href) {}
 
     @Override
-    public <T extends EntityInterface> T withHref(URI href) {
+    public <T extends EntityInterface<?>> T withHref(URI href) {
       return (T) this;
     }
   }

@@ -667,9 +667,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     Map<UUID, EntityWithType> entitiesById = new HashMap<>();
     for (Map.Entry<String, List<EntityReference>> entry : refsByType.entrySet()) {
       String entityType = entry.getKey();
-      List<EntityInterface> entitiesOfType =
+      List<EntityInterface<?>> entitiesOfType =
           Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
-      for (EntityInterface entity : entitiesOfType) {
+      for (EntityInterface<?> entity : entitiesOfType) {
         entitiesById.put(entity.getId(), new EntityWithType(entity, entityType));
       }
     }
@@ -762,14 +762,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     // Fetch all asset entities grouped by type so add-validation can still run during dryRun
-    Map<UUID, EntityInterface> assetEntitiesMap = new HashMap<>();
+    Map<UUID, EntityInterface<?>> assetEntitiesMap = new HashMap<>();
     if (isAdd && !assets.isEmpty()) {
       for (Map.Entry<String, List<EntityReference>> entry : assetsByType.entrySet()) {
-        List<EntityInterface> entitiesOfType =
+        List<EntityInterface<?>> entitiesOfType =
             Entity.getEntities(entry.getValue(), "domains,dataProducts", ALL);
         // Key by each entity's own id; getEntities may reorder or drop rows relative to the
         // request list, so request-index zipping would validate the wrong asset.
-        for (EntityInterface entity : entitiesOfType) {
+        for (EntityInterface<?> entity : entitiesOfType) {
           assetEntitiesMap.put(entity.getId(), entity);
         }
       }
@@ -780,7 +780,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
       try {
         if (isAdd) {
-          EntityInterface assetEntity = assetEntitiesMap.get(ref.getId());
+          EntityInterface<?> assetEntity = assetEntitiesMap.get(ref.getId());
           if (assetEntity == null) {
             throw new IllegalStateException("Asset entity not found for ID: " + ref.getId());
           }
@@ -838,7 +838,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Create a Change Event on successful operations (skip when dryRun makes no changes)
     if (!dryRun && !success.isEmpty()) {
-      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
       List<EntityReference> successfulAssets = new ArrayList<>();
       for (BulkResponse response : success) {
         successfulAssets.add((EntityReference) response.getRequest());
@@ -865,7 +865,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
    * @throws RuleValidationException if validation fails
    */
   private void validateAssetDataProductAssignment(
-      EntityInterface assetEntity, EntityReference dataProductRef) {
+      EntityInterface<?> assetEntity, EntityReference dataProductRef) {
     try {
 
       List<EntityReference> currentDataProducts = listOrEmpty(assetEntity.getDataProducts());

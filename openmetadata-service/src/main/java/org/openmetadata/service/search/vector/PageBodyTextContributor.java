@@ -46,7 +46,7 @@ public final class PageBodyTextContributor implements VectorBodyTextContributor 
     return PageBodyTextContributor::extractBodyText;
   }
 
-  static String extractBodyText(EntityInterface entity) {
+  static String extractBodyText(EntityInterface<?> entity) {
     if (!(entity instanceof Page page)) {
       return null;
     }

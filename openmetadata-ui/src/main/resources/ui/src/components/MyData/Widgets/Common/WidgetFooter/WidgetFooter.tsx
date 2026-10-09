@@ -12,8 +12,8 @@
  */
 
 import { ArrowRightOutlined } from '@ant-design/icons';
-import { Divider } from '@openmetadata/ui-core-components';
-import { Button, Row } from 'antd';
+import { Box, Divider } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import './widget-footer.less';
 
@@ -40,7 +40,7 @@ const WidgetFooter = ({
   return (
     <div className={`widget-footer ${className}`} data-testid="widget-footer">
       {showMoreButton && (onMoreClick || moreButtonLink) && (
-        <Row className="widget-footer">
+        <Box className="layout-row widget-footer" wrap="wrap">
           <Divider className="mb-0 mt-0" />
           <Button
             className="text-primary hover:underline w-full footer-view-more-button"
@@ -49,7 +49,7 @@ const WidgetFooter = ({
             {moreButtonText || t('label.view-more')}
             <ArrowRightOutlined data-testid="arrow-right-icon" />
           </Button>
-        </Row>
+        </Box>
       )}
     </div>
   );

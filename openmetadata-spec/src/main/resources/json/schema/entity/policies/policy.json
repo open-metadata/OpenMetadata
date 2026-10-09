@@ -5,7 +5,7 @@
   "description": "A `Policy` defines control that needs to be applied across different Data Entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.policies.Policy",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "rules": {
       "description": "A set of rules associated with the Policy.",
