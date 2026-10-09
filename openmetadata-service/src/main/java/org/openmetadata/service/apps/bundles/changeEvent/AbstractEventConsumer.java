@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.consumer.ConsumerJob;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
@@ -34,7 +35,6 @@ import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.util.DIContainer;
-import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
@@ -228,19 +228,18 @@ public abstract class AbstractEventConsumer implements Job {
 
   record CursorPlan(long offset, long pendingGapSince, int recordCount, boolean skippedGap) {}
 
+  /**
+   * A job stored under a consumer's class before alerts were scheduled with {@link ConsumerJob}
+   * still runs, as that job.
+   *
+   * @deprecated the alert scheduler stores {@link ConsumerJob}. A consumer stays a {@link Job} only
+   *     until 2.3, so that a job a previous release stored under a consumer's class, which still
+   *     loads, never names a class that is not a job: one such row stops the whole scheduler.
+   */
+  @Deprecated(since = "2.2", forRemoval = true)
   @Override
   public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
-    // Quartz worker threads are long lived, shared with every other scheduled job, and never pass
-    // through the JAX-RS response filter. Per-request ThreadLocal caches left behind here would be
-    // served to whatever runs next on this thread — indefinitely stale. Destinations on this thread
-    // read entities (governance workflows resolve inherited reviewers here), so bracket the whole
-    // tick: start clean, and leave clean however this exits.
-    PerRequestContextCleaner.clear();
-    try {
-      AlertTick.run(this, jobExecutionContext);
-    } finally {
-      PerRequestContextCleaner.clear();
-    }
+    new ConsumerJob(dependencies).execute(jobExecutionContext);
   }
 
   /** One tick of this consumer for an alert whose row was just read and whose ledger is open. */

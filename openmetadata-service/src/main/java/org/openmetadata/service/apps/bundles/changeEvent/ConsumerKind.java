@@ -38,10 +38,11 @@ public enum ConsumerKind {
   }
 
   /**
-   * The kind of the consumer an alert names, read from its class without building it. A class that
-   * cannot be loaded counts as an event consumer, the kind every alert had before there were kinds.
+   * The kind of the consumer an alert names, as its provider declares it, without building it. A
+   * name nothing answers to counts as an event consumer, the kind every alert had before there
+   * were kinds.
    */
   public static ConsumerKind of(EventSubscription alert) {
-    return ConsumerLoader.classOf(alert).map(ConsumerKind::of).orElse(EVENT);
+    return ConsumerLoader.kindOf(alert).orElse(EVENT);
   }
 }

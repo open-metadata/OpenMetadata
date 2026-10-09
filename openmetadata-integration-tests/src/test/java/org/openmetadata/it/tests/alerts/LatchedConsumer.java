@@ -16,6 +16,7 @@ import org.openmetadata.service.util.DIContainer;
  * It behaves exactly like the default consumer until a test arms a gate for one alert.
  */
 public class LatchedConsumer extends AlertPublisher {
+  static final String ID = "test.latched";
 
   static final class Gate {
     private final CountDownLatch reached = new CountDownLatch(1);

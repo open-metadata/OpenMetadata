@@ -315,6 +315,12 @@
                 <include>org/openmetadata/it/search/**</include>
                 <include>org/openmetadata/playwright/**</include>
                 <include>org/openmetadata/it/tests/BaseEntityIT*</include>
+                <!-- The consumers the services file registers, so a server loading the harness
+                     can build every consumer it lists. -->
+                <include>org/openmetadata/it/tests/alerts/TestConsumers*</include>
+                <include>org/openmetadata/it/tests/alerts/LatchedConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/ReportingConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/FailingCommitConsumer*</include>
                 <include>private_key.der</include>
                 <include>public_key.der</include>
                 <include>openmetadata-secure-test.yaml</include>

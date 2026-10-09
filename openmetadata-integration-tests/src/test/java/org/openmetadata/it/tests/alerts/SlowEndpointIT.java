@@ -14,7 +14,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.events.consumer.Consumers;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 
 /**
@@ -93,6 +93,6 @@ class SlowEndpointIT {
 
   private static EventSubscription alert(
       TestNamespace ns, String name, List<SubscriptionDestination> destinations) {
-    return AlertFixtures.tableAlert(ns, name, AlertPublisher.class.getName(), destinations);
+    return AlertFixtures.tableAlert(ns, name, Consumers.DEFAULT, destinations);
   }
 }

@@ -17,12 +17,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.service.events.consumer.ConsumerProvider;
+import org.openmetadata.service.events.consumer.Consumers;
 import org.openmetadata.service.util.DIContainer;
 
-/** An alert's consumer kind is declared by its class, so it is known without building one. */
+/**
+ * An alert's consumer kind is declared by its class, and its provider declares it too, so it is
+ * known without building one.
+ */
 class ConsumerKindTest {
 
   @Test
@@ -47,13 +58,20 @@ class ConsumerKindTest {
   /** Reading the kind builds nothing: this consumer's constructor would fail. */
   @Test
   void anAlertsKindIsReadWithoutBuildingItsConsumer() {
-    assertEquals(
-        ConsumerKind.SELF_DRIVEN,
-        ConsumerKind.of(new EventSubscription().withClassName(SelfDriven.class.getName())));
+    ConsumerProvider neverBuilt = mock(ConsumerProvider.class);
+    when(neverBuilt.type()).thenReturn(ConsumerKind.SELF_DRIVEN);
+    when(neverBuilt.create(any())).thenThrow(new IllegalStateException("never built"));
+    try (MockedStatic<Consumers> consumers = mockStatic(Consumers.class)) {
+      consumers.when(() -> Consumers.find("test.selfDriven")).thenReturn(Optional.of(neverBuilt));
+
+      assertEquals(
+          ConsumerKind.SELF_DRIVEN,
+          ConsumerKind.of(new EventSubscription().withClassName("test.selfDriven")));
+    }
   }
 
   @Test
-  void anAlertWithoutAConsumerOrWithOneThatDoesNotLoadIsAnEventAlert() {
+  void anAlertWithoutAConsumerOrNamingOneNothingAnswersToIsAnEventAlert() {
     assertEquals(ConsumerKind.EVENT, ConsumerKind.of(new EventSubscription()));
     assertEquals(
         ConsumerKind.EVENT,

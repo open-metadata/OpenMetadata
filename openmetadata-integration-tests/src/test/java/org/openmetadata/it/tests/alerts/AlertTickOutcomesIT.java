@@ -26,6 +26,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.events.consumer.ConsumerJob;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 
@@ -107,7 +108,7 @@ class AlertTickOutcomesIT {
   void aTickWhoseCommitFailsIsNotInterrupted(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "commit_fails", FailingCommitConsumer.class.getName(), receiver);
+          webhookAlert(ns, "commit_fails", FailingCommitConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
 
@@ -123,7 +124,7 @@ class AlertTickOutcomesIT {
   void failedCommitsNeverSetAnEventAside(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "commit_recovers", FailingCommitConsumer.class.getName(), receiver);
+          webhookAlert(ns, "commit_recovers", FailingCommitConsumer.ID, receiver);
       QuietAlert.settle(alert);
       noteInterruptedTicks(alert, 5);
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
@@ -138,8 +139,7 @@ class AlertTickOutcomesIT {
   @Test
   void interruptedTicksCommitAfterEveryEvent(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription alert =
-          webhookAlert(ns, "commit_each", LatchedConsumer.class.getName(), receiver);
+      EventSubscription alert = webhookAlert(ns, "commit_each", LatchedConsumer.ID, receiver);
       QuietAlert.settle(alert);
       long openedAt = positionOf(alert);
       noteInterruptedTicks(alert, 3);
@@ -179,7 +179,7 @@ class AlertTickOutcomesIT {
 
       JsonNode answer = JsonUtils.readTree(body);
       assertEquals("NORMAL", answer.get("triggerState").asText());
-      assertTrue(answer.get("jobClass").asText().endsWith("AlertPublisher"));
+      assertEquals(ConsumerJob.class.getName(), answer.get("jobClass").asText());
       assertTrue(answer.get("lag").asLong() >= 3);
     }
   }
@@ -189,8 +189,7 @@ class AlertTickOutcomesIT {
   @Test
   void selfDrivenAlertReportsWhatItDeliveredAndNoBacklog(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription alert =
-          webhookAlert(ns, "self_driven", ReportingConsumer.class.getName(), receiver);
+      EventSubscription alert = webhookAlert(ns, "self_driven", ReportingConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents());
       ReportingConsumer.reportOnNextTick(alert.getId(), 2, 1);
@@ -216,7 +215,7 @@ class AlertTickOutcomesIT {
   void schedulingOfASelfDrivenAlertShowsNoLag(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "self_driven_scheduling", ReportingConsumer.class.getName(), receiver);
+          webhookAlert(ns, "self_driven_scheduling", ReportingConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents());
 

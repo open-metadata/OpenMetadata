@@ -2,47 +2,32 @@ package org.openmetadata.service.apps.bundles.changeEvent;
 
 import java.util.Optional;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.service.events.consumer.ConsumerProvider;
+import org.openmetadata.service.events.consumer.Consumers;
 import org.openmetadata.service.util.DIContainer;
 
-/** Finds the consumer an alert's className names, whatever job class Quartz happened to load. */
+/** The consumer an alert names, found by its id or alias among the registered ones. */
 final class ConsumerLoader {
 
   private ConsumerLoader() {}
 
-  static AbstractEventConsumer named(EventSubscription alert, AbstractEventConsumer loaded) {
-    String wanted = nameOf(alert);
-    return wanted.equals(loaded.getClass().getCanonicalName())
-        ? loaded
-        : instantiate(wanted, loaded.dependencies);
+  /**
+   * A consumer for the alert's tick. One naming a consumer nothing answers to fails the tick and
+   * keeps its position: it is never run by another consumer instead.
+   */
+  static AbstractEventConsumer forAlert(EventSubscription alert, DIContainer dependencies) {
+    String named = nameOf(alert);
+    return Consumers.find(named)
+        .orElseThrow(() -> new IllegalStateException("No consumer is registered as " + named))
+        .create(dependencies);
   }
 
-  /** The consumer class an alert names, loaded but not initialised, or empty when it cannot be. */
-  static Optional<Class<? extends AbstractEventConsumer>> classOf(EventSubscription alert) {
-    Optional<Class<? extends AbstractEventConsumer>> consumer = Optional.empty();
-    try {
-      consumer =
-          Optional.of(
-              Class.forName(nameOf(alert), false, ConsumerLoader.class.getClassLoader())
-                  .asSubclass(AbstractEventConsumer.class));
-    } catch (ClassNotFoundException | ClassCastException | LinkageError e) {
-      // An alert naming a class this server does not have keeps the kind it always had.
-    }
-    return consumer;
+  /** The kind of consumer an alert names, or empty when nothing answers to its name. */
+  static Optional<ConsumerKind> kindOf(EventSubscription alert) {
+    return Consumers.find(nameOf(alert)).map(ConsumerProvider::type);
   }
 
   private static String nameOf(EventSubscription alert) {
-    return Optional.ofNullable(alert.getClassName())
-        .orElse(AlertPublisher.class.getCanonicalName());
-  }
-
-  private static AbstractEventConsumer instantiate(String className, DIContainer dependencies) {
-    try {
-      return Class.forName(className)
-          .asSubclass(AbstractEventConsumer.class)
-          .getDeclaredConstructor(DIContainer.class)
-          .newInstance(dependencies);
-    } catch (ReflectiveOperationException e) {
-      throw new IllegalStateException("Cannot run the consumer " + className, e);
-    }
+    return Optional.ofNullable(alert.getClassName()).orElse(Consumers.DEFAULT);
   }
 }

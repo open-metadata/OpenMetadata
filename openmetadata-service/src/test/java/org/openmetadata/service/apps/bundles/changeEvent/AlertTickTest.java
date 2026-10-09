@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.service.events.consumer.ConsumerJob;
 import org.openmetadata.service.events.scheduled.AlertJobs;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.quartz.JobBuilder;
@@ -54,7 +55,7 @@ class AlertTickTest {
   private static JobExecutionContext tick(JobKey key, Scheduler scheduler) {
     JobExecutionContext tick = mock(JobExecutionContext.class);
     when(tick.getJobDetail())
-        .thenReturn(JobBuilder.newJob(AlertPublisher.class).withIdentity(key).build());
+        .thenReturn(JobBuilder.newJob(ConsumerJob.class).withIdentity(key).build());
     when(tick.getScheduler()).thenReturn(scheduler);
     return tick;
   }

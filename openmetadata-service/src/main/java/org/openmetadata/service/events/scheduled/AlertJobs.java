@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.events.consumer.ConsumerJob;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.util.PostCommitActionQueue;
@@ -41,8 +41,8 @@ import org.quartz.TriggerKey;
 /**
  * The one writer of alert jobs. Whatever changed, an alert's job is brought in step with its
  * stored row: scheduled when the row is enabled, removed when it is disabled or gone. Every job is
- * stored with {@link AlertPublisher}, a class every server can load, and carries no data; the tick
- * runs the consumer the row names.
+ * stored with {@link ConsumerJob}, the runtime's own job, and carries no data; the tick runs the
+ * consumer the row names.
  *
  * <p>The decision is taken from the stored row, never from a copy a caller holds: two saves can
  * commit in one order and reach here in the other, and a disable arriving last would otherwise
@@ -294,7 +294,7 @@ public final class AlertJobs {
   }
 
   private static JobDetail job(UUID alertId) {
-    return JobBuilder.newJob(AlertPublisher.class).withIdentity(jobKey(alertId)).build();
+    return JobBuilder.newJob(ConsumerJob.class).withIdentity(jobKey(alertId)).build();
   }
 
   static Trigger trigger(EventSubscription stored) {

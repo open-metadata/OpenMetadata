@@ -29,7 +29,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.events.consumer.ConsumerJob;
 import org.openmetadata.service.util.PostCommitActionQueue;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
@@ -138,9 +138,7 @@ class AlertJobsTest {
   private Scheduler storing(JobKey stored) throws SchedulerException {
     Scheduler scheduler = mock(Scheduler.class);
     JobDetail job =
-        stored == null
-            ? null
-            : JobBuilder.newJob(AlertPublisher.class).withIdentity(stored).build();
+        stored == null ? null : JobBuilder.newJob(ConsumerJob.class).withIdentity(stored).build();
     when(scheduler.getJobDetail(AlertJobs.jobKey(alertId))).thenReturn(job);
     return scheduler;
   }
@@ -148,7 +146,7 @@ class AlertJobsTest {
   private static JobExecutionContext tick(JobKey key, Scheduler scheduler) {
     JobExecutionContext tick = mock(JobExecutionContext.class);
     when(tick.getJobDetail())
-        .thenReturn(JobBuilder.newJob(AlertPublisher.class).withIdentity(key).build());
+        .thenReturn(JobBuilder.newJob(ConsumerJob.class).withIdentity(key).build());
     when(tick.getScheduler()).thenReturn(scheduler);
     return tick;
   }

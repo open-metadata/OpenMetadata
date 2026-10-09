@@ -12,8 +12,7 @@ import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.events.consumer.Consumers;
 import org.openmetadata.service.mapper.EntityMapper;
 
 public class EventSubscriptionMapper
@@ -37,31 +36,16 @@ public class EventSubscriptionMapper
         .withPollInterval(create.getPollInterval())
         .withInput(create.getInput())
         .withNotificationTemplate(create.getNotificationTemplate())
-        .withClassName(
-            validateConsumerClass(
-                Optional.ofNullable(create.getClassName())
-                    .orElse(AlertPublisher.class.getCanonicalName())))
+        .withClassName(consumerId(create.getClassName()))
         .withConfig(create.getConfig());
   }
 
-  private String validateConsumerClass(String className) {
-    // Validate that the class belongs to our application package
-    if (!className.startsWith("org.openmetadata.") && !className.contains("io.collate.")) {
-      throw new BadRequestException(
-          "Only classes from org.openmetadata or io.collate packages are allowed: " + className);
-    }
-
-    try {
-      // Check if the class exists and is a subclass of AbstractEventConsumer
-      Class<?> clazz = Class.forName(className);
-      if (!AbstractEventConsumer.class.isAssignableFrom(clazz)) {
-        throw new BadRequestException(
-            "Class must be a subclass of AbstractEventConsumer: " + className);
-      }
-      return className;
-    } catch (ClassNotFoundException e) {
-      throw new BadRequestException("Consumer class not found: " + className);
-    }
+  // An alert stores its consumer's id. A class name a consumer was once stored under is still
+  // accepted, and stored as that consumer's id.
+  private static String consumerId(String requested) {
+    String named = Optional.ofNullable(requested).orElse(Consumers.DEFAULT);
+    return Consumers.idOf(named)
+        .orElseThrow(() -> new BadRequestException("No consumer is registered as " + named));
   }
 
   private List<SubscriptionDestination> getSubscriptions(

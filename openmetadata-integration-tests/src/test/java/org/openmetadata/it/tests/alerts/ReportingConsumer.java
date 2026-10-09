@@ -13,6 +13,7 @@ import org.quartz.JobExecutionContext;
  * className. A test says what its next tick reports; every other tick reports nothing.
  */
 public class ReportingConsumer extends AlertPublisher implements SelfDrivenConsumer {
+  static final String ID = "test.reporting";
 
   private record Report(int delivered, int failed) {}
 

@@ -15,7 +15,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.events.consumer.Consumers;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 
@@ -97,7 +97,7 @@ class AlertTimeBudgetIT {
         AlertFixtures.tableAlert(
             ns,
             name,
-            AlertPublisher.class.getName(),
+            Consumers.DEFAULT,
             List.of(AlertFixtures.external(WEBHOOK, receiver.url("/webhook"))));
     QuietAlert.settle(alert);
     AlertingSettings.use(ALWAYS_PASSED);

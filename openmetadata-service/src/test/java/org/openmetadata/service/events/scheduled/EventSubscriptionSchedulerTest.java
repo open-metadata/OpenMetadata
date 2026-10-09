@@ -29,8 +29,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.entity.events.EventSubscription;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.audit.AuditLogConsumer;
+import org.openmetadata.service.events.consumer.ConsumerJob;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
@@ -336,7 +336,7 @@ class EventSubscriptionSchedulerTest {
   }
 
   private static JobDetail alertJob(EventSubscription subscription) {
-    return JobBuilder.newJob(AlertPublisher.class)
+    return JobBuilder.newJob(ConsumerJob.class)
         .withIdentity(AlertJobs.jobKey(subscription.getId()))
         .build();
   }

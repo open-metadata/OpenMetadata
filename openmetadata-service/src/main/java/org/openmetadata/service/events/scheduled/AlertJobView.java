@@ -17,7 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.events.consumer.ConsumerJob;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.JobPersistenceException;
@@ -64,7 +64,7 @@ public final class AlertJobView {
   }
 
   public boolean hasCurrentJobClass(UUID alertId) throws SchedulerException {
-    return job(alertId).map(job -> AlertPublisher.class.equals(job.getJobClass())).orElse(false);
+    return job(alertId).map(job -> ConsumerJob.class.equals(job.getJobClass())).orElse(false);
   }
 
   public Optional<Trigger> trigger(UUID alertId) throws SchedulerException {

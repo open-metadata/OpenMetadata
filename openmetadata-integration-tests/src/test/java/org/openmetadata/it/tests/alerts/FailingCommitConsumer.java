@@ -12,6 +12,7 @@ import org.quartz.JobExecutionContext;
  * className. It behaves exactly like the default consumer otherwise.
  */
 public class FailingCommitConsumer extends AlertPublisher {
+  static final String ID = "test.failingCommit";
 
   private static final Set<UUID> FAILING = ConcurrentHashMap.newKeySet();
 

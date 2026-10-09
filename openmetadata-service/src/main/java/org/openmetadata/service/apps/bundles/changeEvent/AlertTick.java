@@ -9,6 +9,7 @@ import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
+import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.JobKey;
@@ -23,16 +24,16 @@ import org.quartz.SchedulerException;
  * <p>A job that names no alert is refused: its trigger stops, and the job itself is left alone.
  */
 @Slf4j
-final class AlertTick {
+public final class AlertTick {
 
   private AlertTick() {}
 
-  static void run(AbstractEventConsumer loadedByQuartz, JobExecutionContext context)
+  public static void run(DIContainer dependencies, JobExecutionContext context)
       throws JobExecutionException {
     UUID alertId = alertOf(context).orElseThrow(() -> refusal(context.getJobDetail().getKey()));
     EventSubscription alert = AlertRows.readOrNull(alertId);
     if (alert != null && !Boolean.FALSE.equals(alert.getEnabled())) {
-      runEnabled(loadedByQuartz, alert, context);
+      runEnabled(dependencies, alert, context);
     } else {
       AlertJobs.converge(alertId);
     }
@@ -57,10 +58,10 @@ final class AlertTick {
   }
 
   private static void runEnabled(
-      AbstractEventConsumer loadedByQuartz, EventSubscription alert, JobExecutionContext context) {
+      DIContainer dependencies, EventSubscription alert, JobExecutionContext context) {
     Optional<AlertLedger> ledger = AlertRecord.open(alert);
     if (ledger.isPresent()) {
-      runMeasured(ConsumerLoader.named(alert, loadedByQuartz), alert, ledger.get(), context);
+      runMeasured(ConsumerLoader.forAlert(alert, dependencies), alert, ledger.get(), context);
     }
   }
 
