@@ -145,6 +145,7 @@ type MetricColumnId =
 
 type MetricViewMode = 'card' | 'table';
 
+// ADR:2026-10-09-metric-list-column-prefs-live-in-user-preferences
 const METRIC_TABLE_PREFERENCE_KEY = 'metricList';
 const METRIC_STATIC_COLUMNS = ['name'];
 const METRIC_VIEW_STORAGE_KEY = 'metricsList.viewMode.v1';
