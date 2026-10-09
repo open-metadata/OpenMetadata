@@ -657,13 +657,13 @@ UPDATE announcement_entity
 SET json = JSON_REMOVE(json, '$.status')
 WHERE JSON_EXTRACT(json, '$.status') IS NOT NULL;
 
--- Flowable schema upgrades run after this migration and inherit the database default. Existing
--- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
-ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
 -- Alert jobs are stored with the runtime's own job class, whatever consumer the alert names, so a
 -- stored job never names a consumer class. A job a previous release stored under a consumer's
 -- class is moved to it here; the alert reconciler would otherwise do it, one round at a time.
 UPDATE QRTZ_JOB_DETAILS
 SET JOB_CLASS_NAME = 'org.openmetadata.service.events.consumer.ConsumerJob'
 WHERE SCHED_NAME = 'OMEventSubScheduler' AND JOB_GROUP = 'OMAlertJobGroup';
+
+-- Flowable schema upgrades run after this migration and inherit the database default. Existing
+-- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
