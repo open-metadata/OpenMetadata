@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
+import { Page, Response } from '@playwright/test';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   assertAppMode,
@@ -23,6 +23,19 @@ import { expect, test } from './fixtures';
 const APP_MODE_SESSION_KEY = 'omAppMode';
 const APP_MODE_HINT_STORAGE_KEY = 'omAppModeHint';
 const APP_MODE_HINT_TTL_MS = 60_000;
+
+// The AI sidebar renders two AppModeSwitcher instances (compact rail + expanded
+// card); only one is visible for a given sidebar state. `:visible` narrows to
+// it without a positional locator.
+const VISIBLE_SWITCHER_TRIGGER =
+  '[data-testid="app-mode-switcher-trigger"]:visible';
+const VISIBLE_SWITCHER_CARD = '[data-testid="app-mode-switcher-card"]:visible';
+
+const isRememberPreferencePut = (response: Response) =>
+  response.url().includes('/api/v1/users/') &&
+  response.url().endsWith('/preferences/appMode') &&
+  response.request().method() === 'PUT' &&
+  response.status() === 200;
 
 type AppModeStorage = {
   session: { personaAppMode: string | null; mode: string } | null;
@@ -137,7 +150,7 @@ test.describe('AppMode — resolver behaviour', { tag: ['@Platform'] }, () => {
     }
   });
 
-  test('AI mode does NOT survive "all tabs closed" without a stored preference', async ({
+  test('AI mode does NOT survive "all tabs closed" without the remember checkbox', async ({
     page,
   }) => {
     await disableAiAppMode(page);
@@ -156,6 +169,51 @@ test.describe('AppMode — resolver behaviour', { tag: ['@Platform'] }, () => {
 
       await expect(page.getByTestId('left-sidebar')).toBeVisible();
       await assertAppMode(page, 'default');
+    });
+  });
+
+  test('AI mode survives "all tabs closed" when the remember checkbox is checked', async ({
+    page,
+  }) => {
+    await disableAiAppMode(page);
+    await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+    await waitForAllLoadersToDisappear(page);
+    await switchToAiModeViaProfileToggle(page);
+    await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+
+    const rememberToggle = page
+      .locator(VISIBLE_SWITCHER_CARD)
+      .getByTestId('app-mode-remember-toggle');
+
+    await test.step('Open the AI-sidebar app-mode switcher popover', async () => {
+      await page.locator(VISIBLE_SWITCHER_TRIGGER).click();
+      await expect(page.locator(VISIBLE_SWITCHER_CARD)).toBeVisible();
+    });
+
+    await test.step('Tick "remember" — writes appMode to per-user prefs', async () => {
+      // The checkbox click fires a 300ms-debounced
+      // `PUT /users/{id}/preferences/appMode` (server-persisted preference).
+      // Wait for it to land before simulating "all tabs closed" — otherwise the
+      // debounce can lose the race and the reload has nothing to resolve to.
+      const putResponse = page.waitForResponse(isRememberPreferencePut);
+      await rememberToggle.click();
+      await putResponse;
+      await expect(rememberToggle.locator('[role="checkbox"]')).toHaveAttribute(
+        'aria-checked',
+        'true'
+      );
+    });
+
+    await test.step('Simulate closing every tab (session + hint gone)', async () => {
+      await simulateAllTabsClosed(page);
+    });
+
+    await test.step('Reload — user pref boots into AI', async () => {
+      await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+      await assertAppMode(page, 'ai');
     });
   });
 

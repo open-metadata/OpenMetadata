@@ -12,7 +12,29 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import React from 'react';
 import UserProfileCard from './UserProfileCard';
+
+let mockSwitcherCardRef: React.RefObject<HTMLElement> | undefined;
+
+jest.mock('../../../AppModeSwitcher/AppModeSwitcher', () => ({
+  __esModule: true,
+  default: ({
+    compact,
+    cardRef,
+  }: {
+    compact?: boolean;
+    cardRef?: React.RefObject<HTMLElement>;
+  }) => {
+    mockSwitcherCardRef = cardRef;
+
+    return (
+      <button data-testid="app-mode-switcher" type="button">
+        {compact ? 'compact' : 'full'}
+      </button>
+    );
+  },
+}));
 
 jest.mock('../../../discovery/personal-space/AIUserMenu/AIUserMenu', () => ({
   __esModule: true,
@@ -36,21 +58,41 @@ jest.mock(
 );
 
 describe('UserProfileCard', () => {
-  it('shows the full user menu beside the inbox when expanded', () => {
-    render(<UserProfileCard />);
-
-    const [userMenu, inbox] = screen.getAllByRole('button');
-
-    expect(userMenu).toHaveTextContent('expanded');
-    expect(inbox).toHaveAttribute('data-testid', 'ai-inbox-icon-btn');
+  beforeEach(() => {
+    mockSwitcherCardRef = undefined;
   });
 
-  it('stacks the inbox above the avatar-only user menu in the rail', () => {
+  it('shows the full user menu beside the inbox, with the mode switcher in its own card below', () => {
+    render(<UserProfileCard />);
+
+    const profileCard = screen.getByTestId('ask-user-card');
+    const switcherCard = screen.getByTestId('ask-app-mode-card');
+
+    expect(profileCard).toHaveTextContent('expanded');
+    expect(profileCard).toContainElement(
+      screen.getByTestId('ai-inbox-icon-btn')
+    );
+    expect(profileCard).not.toContainElement(
+      screen.getByTestId('app-mode-switcher')
+    );
+    expect(switcherCard).toHaveTextContent('full');
+  });
+
+  it('hands the switcher its own card, so clicks inside it do not close the switcher popover', () => {
+    render(<UserProfileCard />);
+
+    expect(mockSwitcherCardRef?.current).toBe(
+      screen.getByTestId('ask-app-mode-card')
+    );
+  });
+
+  it('stacks the inbox, avatar-only user menu and compact switcher in the rail', () => {
     render(<UserProfileCard compact />);
 
-    const [inbox, userMenu] = screen.getAllByRole('button');
+    const [inbox, userMenu, switcher] = screen.getAllByRole('button');
 
     expect(inbox).toHaveAttribute('data-testid', 'ai-inbox-icon-btn');
     expect(userMenu).toHaveTextContent('collapsed');
+    expect(switcher).toHaveTextContent('compact');
   });
 });

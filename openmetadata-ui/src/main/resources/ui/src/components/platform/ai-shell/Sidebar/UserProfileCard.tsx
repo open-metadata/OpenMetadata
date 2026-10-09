@@ -12,46 +12,55 @@
  */
 
 import { Box, Card, Divider } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
-import React from 'react';
+import React, { useRef } from 'react';
+import AppModeSwitcher from '../../../AppModeSwitcher/AppModeSwitcher';
 import AIUserMenu from '../../../discovery/personal-space/AIUserMenu/AIUserMenu';
 import InboxIconButton from '../../../discovery/personal-space/InboxIconButton/InboxIconButton';
 
 export interface UserProfileCardProps {
-  /** `true` in the collapsed rail: inbox stacked over the avatar. */
+  /** `true` in the collapsed rail: inbox, avatar and the compact mode switcher stacked. */
   compact?: boolean;
 }
 
 /**
- * User chrome for the AI sidebar footer — the AI user menu (avatar, name,
- * domain scope, profile dropdown) and the inbox launcher. The card border
- * highlights while the profile menu it opens is showing.
+ * User chrome for the AI sidebar footer — the profile card (AI user menu with
+ * avatar, name, domain scope and profile dropdown, plus the inbox launcher)
+ * and, in its own card below, the Classic/AI `AppModeSwitcher`. The switcher
+ * gets its card as `cardRef`, so its popover treats clicks inside that card as
+ * "inside" and does not self-close.
  */
 const UserProfileCard: React.FC<UserProfileCardProps> = ({
   compact = false,
-}) => (
-  <Card
-    className={classNames(
-      'tw:bg-primary tw:shadow-xs',
-      compact
-        ? 'tw:mx-auto tw:w-14 tw:p-1.5'
-        : 'tw:w-full tw:py-2.5 tw:pr-2.5 tw:pl-3 tw:has-[[aria-expanded=true]]:border-brand-subtle tw:has-[[aria-expanded=true]]:bg-brand-primary'
-    )}
-    data-testid="ask-user-card">
-    <Box
-      align="center"
-      direction={compact ? 'col' : 'row'}
-      gap={compact ? 1 : 2}>
-      {compact ? (
-        <>
-          <Box align="center" className="tw:size-11" justify="center">
-            <InboxIconButton />
+}) => {
+  const switcherCardRef = useRef<HTMLDivElement>(null);
+
+  if (compact) {
+    // The compact switcher is wider than the rail card, so it sits below it.
+    return (
+      <>
+        <Card
+          className="tw:mx-auto tw:w-14 tw:bg-primary tw:p-1.5 tw:shadow-xs"
+          data-testid="ask-user-card">
+          <Box align="center" direction="col" gap={1}>
+            <Box align="center" className="tw:size-11" justify="center">
+              <InboxIconButton />
+            </Box>
+            <Divider className="tw:w-7" />
+            <AIUserMenu collapsed />
           </Box>
-          <Divider className="tw:w-7" />
-          <AIUserMenu collapsed />
-        </>
-      ) : (
-        <>
+        </Card>
+        <AppModeSwitcher compact />
+      </>
+    );
+  }
+
+  // Own wrapper so the two cards sit 6px apart instead of the footer's 12px gap.
+  return (
+    <Box className="tw:w-full tw:gap-1.5" direction="col">
+      <Card
+        className="tw:w-full tw:bg-primary tw:py-2.5 tw:pr-2.5 tw:pl-3 tw:shadow-xs"
+        data-testid="ask-user-card">
+        <Box align="center" gap={2}>
           <AIUserMenu />
           <Box
             align="center"
@@ -59,10 +68,16 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
             justify="center">
             <InboxIconButton />
           </Box>
-        </>
-      )}
+        </Box>
+      </Card>
+      <Card
+        className="tw:w-full tw:bg-primary tw:px-3 tw:py-2 tw:shadow-xs"
+        data-testid="ask-app-mode-card"
+        ref={switcherCardRef}>
+        <AppModeSwitcher cardRef={switcherCardRef} />
+      </Card>
     </Box>
-  </Card>
-);
+  );
+};
 
 export default UserProfileCard;
