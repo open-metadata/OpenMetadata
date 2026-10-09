@@ -107,7 +107,7 @@ public class LineageHydrator {
     Map<String, List<Object>> entitiesByType = new LinkedHashMap<>(idsByType.size());
     int returnedCount = 0;
     for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
-      List<? extends EntityInterface> hydrated =
+      List<? extends EntityInterface<?>> hydrated =
           hydrateAndAuthorize(
               uriInfo,
               securityContext,
@@ -199,13 +199,13 @@ public class LineageHydrator {
       Set<EntityKey> authorized,
       Map.Entry<String, List<UUID>> entry) {
     try {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getEntityRepository(entry.getKey());
       Fields fields = repository.getOnlySupportedFields(AUTHORIZATION_FIELDS);
-      List<? extends EntityInterface> entities =
+      List<? extends EntityInterface<?>> entities =
           hydrateAndAuthorize(
               null, securityContext, entry.getKey(), entry.getValue(), fields, include, repository);
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         authorized.add(new EntityKey(entry.getKey(), entity.getId()));
       }
     } catch (EntityNotFoundException exception) {
@@ -213,7 +213,7 @@ public class LineageHydrator {
     }
   }
 
-  private <T extends EntityInterface> List<T> hydrateAndAuthorize(
+  private <T extends EntityInterface<?>> List<T> hydrateAndAuthorize(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String entityType,

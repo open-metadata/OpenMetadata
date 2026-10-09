@@ -488,7 +488,10 @@ test.describe('Search Settings', () => {
         page.getByTestId('highlight-field-switch').getByRole('switch')
       ).not.toBeChecked();
 
-      const searchInput = page.getByTestId('searchbar');
+      // The shell also renders a searchbar; preview queries belong to this page.
+      const searchInput = page
+        .getByTestId('page-layout-v1')
+        .getByTestId('searchbar');
       const searchPreviewResponse = page.waitForResponse(
         (response) =>
           response.url().endsWith('/api/v1/search/preview') &&
@@ -719,7 +722,10 @@ test.describe('Search Settings', () => {
         );
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByTestId('searchbar').fill('test');
+        await page
+          .getByTestId('page-layout-v1')
+          .getByTestId('searchbar')
+          .fill('test');
 
         const freshCard = page.getByTestId(
           'table-data-card_pw_race_service.fresh_result'
@@ -862,7 +868,9 @@ test.describe('Search Settings', () => {
         );
         await columnCard.click();
 
-        const searchInput = page.getByTestId('searchbar');
+        const searchInput = page
+          .getByTestId('page-layout-v1')
+          .getByTestId('searchbar');
         const previewResponse = page.waitForResponse(
           (response) =>
             response.url().endsWith('/api/v1/search/preview') &&

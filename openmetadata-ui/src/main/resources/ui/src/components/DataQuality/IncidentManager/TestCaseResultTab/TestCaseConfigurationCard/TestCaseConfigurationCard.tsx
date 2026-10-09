@@ -14,7 +14,7 @@ import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../../../assets/svg/ic-suggestions.svg';
-import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
+import { WidgetEditButton } from '../../../../common/WidgetActionButton/WidgetActionButton';
 import {
   ConfigurationParameterRow,
   TestCaseConfigurationCardProps,
@@ -26,8 +26,9 @@ import {
   toSqlLines,
 } from './TestCaseConfigurationCard.utils';
 
+// No ligatures: Geist Mono draws `>=` as `≥`, so the query would read as something it is not.
 const SQL_BLOCK_CLASS_NAME =
-  'tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5 tw:focus-visible:outline-focus-ring';
+  'tw:max-h-80 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:py-2.5 tw:focus-visible:outline-focus-ring tw:[font-variant-ligatures:none]';
 
 /**
  * The prototype's read-only, line-numbered SQL block. Deliberately not
@@ -91,9 +92,12 @@ function ConfigurationSql({ value }: Readonly<{ value: string }>) {
  */
 function ConfigurationValue({ value }: Readonly<{ value: ReactNode }>) {
   return (
-    <span className="tw:min-w-0 tw:break-words tw:text-right tw:font-mono tw:text-xs tw:font-semibold tw:text-primary">
+    <Typography
+      className="tw:max-w-[65%] tw:shrink-0 tw:break-words tw:text-right tw:font-mono tw:text-primary"
+      size="text-xs"
+      weight="semibold">
       {value}
-    </span>
+    </Typography>
   );
 }
 
@@ -110,13 +114,14 @@ function ParameterRows({
           className={`tw:px-3 tw:py-2.5 ${
             index < rows.length - 1 ? 'tw:border-b tw:border-secondary' : ''
           }`}
-          data-testid={`configuration-parameter-${row.label}`}
+          data-testid={`configuration-parameter-${row.name ?? row.label}`}
           gap={2}
           justify="between"
-          key={row.label}>
+          key={row.name ?? row.label}>
+          {/* The label gives way, so a narrow rail wraps it, not the value. */}
           <Typography
             as="span"
-            className="tw:shrink-0 tw:text-xs tw:text-tertiary">
+            className="tw:min-w-0 tw:text-xs tw:text-tertiary">
             {row.label}
           </Typography>
           <ConfigurationValue value={row.value} />
@@ -173,7 +178,14 @@ const TestCaseConfigurationCard = ({
   const { t } = useTranslation();
 
   const category = getCategoryTranslation(testCaseData?.entityLink);
-  const categoryLine = t(category.key, category.options);
+  const dimension =
+    testCaseData?.dataQualityDimension?.displayName ??
+    testCaseData?.dataQualityDimension?.name;
+  // The dimension describes the test, so it sits with the test's category, not
+  // in a row: every shape would then have a row, and the empty state none.
+  const categoryLine = [t(category.key, category.options), dimension]
+    .filter(Boolean)
+    .join(' · ');
   const definitionName = getDefinitionDisplayName(testDefinition);
 
   const {
@@ -194,20 +206,24 @@ const TestCaseConfigurationCard = ({
     <div
       className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-xs"
       data-testid="test-case-configuration-card">
+      {/* The edit sits beside the title, not at the right as in the mock: the
+          rail's other cards place their actions there. */}
       <Box
         align="center"
         className="tw:border-b tw:border-secondary tw:px-4 tw:py-3"
-        justify="between">
+        gap={2}>
+        {/* The rail's widget cards' title style, so the rail reads as one. */}
         <Typography
           as="span"
-          className="tw:text-sm tw:font-bold tw:text-primary">
+          className="tw:whitespace-nowrap tw:text-quaternary"
+          data-testid="configuration-title"
+          size="text-sm"
+          weight="semibold">
           {t('label.configuration')}
         </Typography>
         {showEditButton && (
-          <EditIconButton
-            newLook
+          <WidgetEditButton
             data-testid="edit-parameter-icon"
-            size="small"
             title={t('label.edit-entity', { entity: t('label.parameter') })}
             onClick={onEditParameter}
           />
@@ -237,8 +253,9 @@ const TestCaseConfigurationCard = ({
         </div>
 
         <div className="tw:flex tw:flex-col tw:gap-2.5">
-          {hasParameterRows && <ParameterRows rows={parameterRows} />}
+          {/* The callout says how the test is checked; the rows below it are settings. */}
           {isDynamicAssertion && <DynamicAssertionCallout />}
+          {hasParameterRows && <ParameterRows rows={parameterRows} />}
           {hasVersionDiff && (
             <div data-testid="configuration-version-diff">
               {versionParameterDiff}

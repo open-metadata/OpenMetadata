@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { getDescriptionBox, waitForAntdModalToSettle } from './common';
+import { getDescriptionBox } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import { TaskDetails } from './task';
@@ -41,12 +41,11 @@ export const checkDescriptionInEditModal = async (
 
   expect(taskContent).toContain(`Request to update description for`);
 
-  await page.getByRole('button', { name: 'down' }).click();
-  await page.locator('.ant-dropdown').waitFor({
-    state: 'visible',
-  });
+  await page.locator('[data-testid$="-task-action-trigger"]').click();
+  const taskActionMenu = page.locator('.task-action-dropdown');
+  await taskActionMenu.waitFor({ state: 'visible' });
 
-  await page.getByRole('menuitem', { name: 'edit' }).click();
+  await taskActionMenu.getByRole('menuitem', { name: 'edit' }).click();
 
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
@@ -80,8 +79,12 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
 
   await page.locator('[data-testid="delete-message"]').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
-  await waitForAntdModalToSettle(page);
+  // Same here: the delete confirm is ConfirmationModal, now a core Dialog.
+  // `waitForAntdModalToSettle` counted animating `.ant-modal` elements, so it
+  // is a no-op against a core Dialog — wait for the button this flow clicks
+  // instead, which also covers the 300ms zoom-in.
+  await expect(page.getByTestId('confirmation-modal')).toBeVisible();
+  await expect(page.getByTestId('save-button')).toBeEnabled();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/conversations/*/replies/*'

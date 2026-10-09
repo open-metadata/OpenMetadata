@@ -10,16 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { Kpi } from '../../../src/generated/dataInsight/kpi/kpi';
 import { KPI_DATA } from '../../constant/dataInsight';
-import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
+import { expect, test } from '../../support/fixtures/isolatedUser';
 import { okJson } from '../../utils/apiResponse';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
-import { sidebarClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // use the admin user to login
@@ -47,7 +46,8 @@ const navigateToDataInsightPage = async (page: Page) => {
   const descriptionChartPromise = page.waitForResponse(
     '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
   );
-  await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+  // The legacy insights page is retained but is no longer linked from the new sidebar.
+  await page.goto('/data-insights');
   await descriptionChartPromise;
 };
 
@@ -175,7 +175,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
         200
       );
 
-      await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+      await navigateToDataInsightPage(page);
 
       const chartResponse = await chartResponsePromise;
       const responseData = await chartResponse.json();
@@ -206,7 +206,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     const descriptionChartResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await navigateToDataInsightPage(page);
     await descriptionChartResponse;
 
     await page.getByTestId('explore-asset-with-no-owner').click();
@@ -250,7 +250,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
         getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
       }/latestKpiResult`
     );
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await navigateToDataInsightPage(page);
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
     await page.getByTestId('date-picker-menu').click();
@@ -283,7 +283,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
         getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
       }/latestKpiResult`
     );
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await navigateToDataInsightPage(page);
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
 
@@ -311,7 +311,11 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     }
   });
 
-  test('Verify KPI widget in Landing page', async ({ page }) => {
+  test('Verify KPI widget in Landing page', async ({ freshUserPage }) => {
+    const { page } = freshUserPage;
+    // A fresh account avoids the shared admin's saved AI-home preference.
+    await expect(page.getByTestId('left-sidebar')).toBeVisible();
+
     const percentageOfDataAssetWithDescriptionResponse = page.waitForResponse(
       '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
@@ -320,7 +324,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
         getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
       }/latestKpiResult`
     );
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await navigateToDataInsightPage(page);
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
 
@@ -346,7 +350,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
         getCreatedKpi(kpiData[1].displayName).fullyQualifiedName
       }/latestKpiResult`
     );
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await navigateToDataInsightPage(page);
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
 

@@ -1,8 +1,12 @@
+import subprocess
+import sys
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import Column, Integer
+import pytest
+from snowflake.sqlalchemy import VARIANT
+from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.selectable import CTE  # noqa: TC002
 
@@ -20,9 +24,11 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
 from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.ingestion.source.sqa_types import SQASGeography
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.sampler.models import (
     ProfileSampleConfig,
     SampleConfig,
@@ -30,6 +36,7 @@ from metadata.sampler.models import (
 from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.sampler.sqlalchemy.snowflake.sampler import SnowflakeSampler
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 
 class Base(DeclarativeBase):
@@ -199,3 +206,62 @@ class SampleTest(TestCase):
             '\nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+
+
+# The Snowflake driver returns VARIANT, OBJECT and ARRAY values as pretty-printed JSON text.
+@pytest.mark.parametrize(
+    ("column_type", "fetched", "sampled"),
+    [
+        (VARIANT, '{\n  "count": 2,\n  "kind": "fixture"\n}', {"count": 2, "kind": "fixture"}),
+        (VARIANT, '"plain text"', "plain text"),
+        (VARIANT, "42", 42),
+        (VARIANT, "not json", "not json"),
+        (CustomArray(String), '[\n  "a",\n  "b"\n]', ["a", "b"]),
+        (VARIANT, None, None),
+        (VARIANT, "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1), "[" * (SAMPLE_DATA_MAX_CELL_LENGTH + 1)),
+        (VARIANT, '{"amount": 12345678901234567890.12}', {"amount": 1.2345678901234567e19}),
+        (String, '{"kind": "fixture"}', '{"kind": "fixture"}'),
+        (
+            SQASGeography,
+            '{\n  "coordinates": [1, 2],\n  "type": "Point"\n}',
+            '{\n  "coordinates": [1, 2],\n  "type": "Point"\n}',
+        ),
+    ],
+)
+@patch.object(SQASampler, "build_table_orm", return_value=User)
+def test_semi_structured_samples_are_json(_build_table_orm, column_type, fetched, sampled):
+    sampler = SnowflakeSampler(
+        service_connection_config=SnowflakeConnection(username="myuser", account="myaccount", warehouse="mywarehouse"),
+        ometa_client=None,
+        entity=Table(id=uuid4(), name="user", columns=[EntityColumn(name=ColumnName("id"), dataType=DataType.INT)]),
+    )
+    assert sampler._process_sample_value(Column("value", column_type), fetched) == sampled
+
+
+@patch.object(SQASampler, "build_table_orm", return_value=User)
+def test_text_nested_deeper_than_the_decoder_allows_stays_text(_build_table_orm):
+    """The nesting depth that exhausts the decoder depends on the Python version, so the failure is injected."""
+    sampler = SnowflakeSampler(
+        service_connection_config=SnowflakeConnection(username="myuser", account="myaccount", warehouse="mywarehouse"),
+        ometa_client=None,
+        entity=Table(id=uuid4(), name="user", columns=[EntityColumn(name=ColumnName("id"), dataType=DataType.INT)]),
+    )
+    nested = "[" * 3 + "]" * 3
+    with patch("json.loads", side_effect=RecursionError("maximum recursion depth exceeded while decoding")):
+        assert sampler._process_sample_value(Column("value", VARIANT), nested) == nested
+
+
+def test_sampler_modules_import_without_the_snowflake_extra():
+    """The Postgres and Timescale samplers import this module, and their installs need not carry Snowflake."""
+    script = (
+        "import sys\n"
+        "class BlockSnowflake:\n"
+        "    def find_spec(self, name, path=None, target=None):\n"
+        "        if name == 'snowflake' or name.startswith('snowflake.'):\n"
+        "            raise ModuleNotFoundError(name)\n"
+        "sys.meta_path.insert(0, BlockSnowflake())\n"
+        "import metadata.sampler.sqlalchemy.snowflake.sampler\n"
+        "import metadata.sampler.sqlalchemy.postgres.sampler\n"
+    )
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=300, check=False)
+    assert result.returncode == 0, result.stderr

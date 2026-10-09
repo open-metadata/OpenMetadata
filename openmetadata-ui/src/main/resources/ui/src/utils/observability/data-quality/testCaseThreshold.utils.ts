@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { omit } from 'lodash';
 import {
   ProfileSampleType,
   SampleConfigType,
@@ -23,7 +24,8 @@ export const THRESHOLD_PARAM = 'threshold';
 export const THRESHOLD_UNIT_PARAM = 'thresholdUnit';
 const OPERATOR_PARAM = 'operator';
 const STRATEGY_PARAM = 'strategy';
-const DIMENSION_FAILURE_POLICY_PARAM = 'dimensionFailurePolicy';
+
+export const DIMENSION_FAILURE_POLICY_PARAM = 'dimensionFailurePolicy';
 const MATCH_ENUM_PARAM = 'matchEnum';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
@@ -195,6 +197,20 @@ const DIMENSION_FAILURE_POLICY_LABEL_KEYS: Record<string, string> = {
   ANY_DIMENSION: 'label.dimension-failure-policy-any-dimension',
 };
 
+/**
+ * Drops `dimensionFailurePolicy` from the submitted params of a test case that
+ * has no dimension columns: it only rolls dimension groups up, and the form
+ * hides it there, so a value left over from an earlier selection must not be
+ * saved where nobody can see or change it.
+ */
+export const omitDimensionFailurePolicy = <T extends object>(
+  params: T | undefined,
+  isDimensionalTest: boolean
+): T | undefined =>
+  isDimensionalTest || !params
+    ? params
+    : (omit(params, DIMENSION_FAILURE_POLICY_PARAM) as T);
+
 export const getThresholdTestSemantic = (
   definitionName: string | undefined
 ): ThresholdTestSemantic => {
@@ -288,20 +304,6 @@ export const getParamOptionLabelKey = (
 
   return undefined;
 };
-
-/**
- * Whether a `thresholdUnit` option may be picked for this test.
- * `tableCustomSQLQuery` compares its threshold as a raw count
- * (`evaluate_threshold(threshold, operator, len_rows)`) and never reads the
- * unit, so PERCENTAGE is offered disabled rather than dropped: a test case
- * already saved with it would otherwise lose its selected option.
- */
-export const isThresholdUnitOptionDisabled = (
-  definitionName: string | undefined,
-  optionValue: string
-): boolean =>
-  definitionName === TABLE_CUSTOM_SQL_QUERY &&
-  optionValue === ThresholdUnit.Percentage;
 
 export const hasThresholdUnitParam = (
   definition: TestDefinition | undefined
@@ -463,12 +465,6 @@ export interface ThresholdPreviewData {
    * once that flag is on, so the preview says so instead of promising one.
    */
   needsMatchEnum: boolean;
-  /**
-   * The test reads `threshold` but ignores `thresholdUnit` — true for
-   * `tableCustomSQLQuery` with a PERCENTAGE unit, which `evaluate_threshold`
-   * still compares as a raw count.
-   */
-  isUnitIgnored: boolean;
 }
 
 /**
@@ -620,7 +616,6 @@ export const getThresholdPreviewData = (
     // The match-enum case has its own, more specific warning.
     isThresholdIgnored:
       semantic === ThresholdTestSemantic.NotEnforced && !needsMatchEnum,
-    isUnitIgnored: semantic === ThresholdTestSemantic.CustomSql && isPercentage,
   };
 
   if (semantic === ThresholdTestSemantic.Statistical) {

@@ -10,17 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import {
+  Box,
+  Button as CoreButton,
+  Dropdown,
   EmptyPlaceholder,
+  Grid,
   Skeleton,
   SkeletonParagraph,
 } from '@openmetadata/ui-core-components';
 import {
   File06 as Articles,
   Lock01 as Lock,
+  Plus,
 } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Dropdown, MenuProps, Row, Space } from 'antd';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -98,34 +103,52 @@ interface KnowledgePageListComponentProps {
 
 /** The listing's loading placeholder — four skeleton knowledge cards. */
 const KnowledgePageListSkeleton = () => (
-  <Row data-testid="knowledge-page-skeleton" gutter={[0, 56]}>
+  <Grid
+    className="layout-row layout-grid"
+    data-testid="knowledge-page-skeleton"
+    style={{ ...getLayoutGutter(0, 56) }}>
     {Array.from({ length: 4 }).map(() => (
-      <Col className="knowledge-card-col" key={uniqueId()} span={24}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <Space>
+      <Grid.Item
+        className="layout-column knowledge-card-col"
+        key={uniqueId()}
+        span={24}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(16, 16) }}>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <div className="tw:flex tw:items-center tw:gap-4">
                 <Skeleton animation={false} variant="circular" width={40} />
                 <Skeleton animation={false} height={16} width={100} />
               </div>
               <Skeleton animation={false} height={16} width={150} />
-            </Space>
-          </Col>
-          <Col span={24}>
+            </Box>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <SkeletonParagraph className="m-b-sm" rows={1} title={false} />
             <SkeletonParagraph rows={2} title={false} />
-          </Col>
-          <Col span={24}>
-            <Space>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <Skeleton height={16} width={100} />
               <Skeleton height={16} width={100} />
               <Skeleton height={16} width={100} />
-            </Space>
-          </Col>
-        </Row>
-      </Col>
+            </Box>
+          </Grid.Item>
+        </Grid>
+      </Grid.Item>
     ))}
-  </Row>
+  </Grid>
 );
 
 const KnowledgePageAccessDenied = () => {
@@ -167,10 +190,16 @@ const KnowledgePageNoSearchResults = () => {
   );
 };
 
+interface KnowledgePageAddItem {
+  key: string;
+  label: string;
+  onClick: () => void;
+}
+
 interface KnowledgePageEmptyStateProps {
   addQuickLinkModalElement: ReactNode;
   hideAddButton: boolean;
-  items: MenuProps['items'];
+  items: KnowledgePageAddItem[];
   /** Derived Create flag rather than the raw OperationPermission object. */
   canCreate: boolean;
   theme: { primaryColor: string };
@@ -206,18 +235,32 @@ const KnowledgePageEmptyState = ({
         footer={
           <>
             {canCreate && !hideAddButton && (
-              <LimitWrapper resource="knowledgeCenter">
-                <Dropdown menu={{ items }} trigger={['click']}>
-                  <Button
-                    ghost
-                    className="p-x-lg"
+              <Dropdown.Root>
+                <LimitWrapper resource="knowledgeCenter">
+                  <CoreButton
+                    className="tw:text-brand-secondary tw:after:outline-brand"
+                    color="secondary"
                     data-testid="add-knowledge-page-btn"
-                    type="primary">
-                    <PlusOutlined />
+                    iconLeading={<Plus size={14} />}
+                    size="sm">
                     {t('label.add')}
-                  </Button>
-                </Dropdown>
-              </LimitWrapper>
+                  </CoreButton>
+                </LimitWrapper>
+                <Dropdown.Popover className="tw:w-auto">
+                  <Dropdown.Menu
+                    aria-label={t('label.add')}
+                    selectionMode="none">
+                    {items.map((item) => (
+                      <Dropdown.Item
+                        id={item.key}
+                        key={item.key}
+                        onAction={item.onClick}>
+                        {item.label}
+                      </Dropdown.Item>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
             )}
             {addQuickLinkModalElement}
           </>
@@ -613,7 +656,7 @@ const KnowledgePageListComponent = forwardRef<
       hasViewPermission,
     ]);
 
-    const items: MenuProps['items'] = [
+    const items: KnowledgePageAddItem[] = [
       {
         label: t('label.article'),
         key: PageType.ARTICLE,
@@ -716,10 +759,13 @@ const KnowledgePageListComponent = forwardRef<
 
     return (
       <>
-        <Row data-testid="knowledge-page-listing" gutter={[0, 16]}>
+        <Grid
+          className="layout-row layout-grid"
+          data-testid="knowledge-page-listing"
+          style={{ ...getLayoutGutter(0, 16) }}>
           {map(knowledgePages, (knowledgePage) => (
-            <Col
-              className="knowledge-card-col"
+            <Grid.Item
+              className="layout-column knowledge-card-col"
               key={knowledgePage.id}
               span={24}>
               <KnowledgeCard
@@ -730,9 +776,9 @@ const KnowledgePageListComponent = forwardRef<
                 onUnFollow={unFollowKnowledgePageHandler}
                 onUpdateVote={updateVoteHandler}
               />
-            </Col>
+            </Grid.Item>
           ))}
-        </Row>
+        </Grid>
         {isLoadingMore ? <Loader className="tw:shrink-0" /> : null}
         <div
           className="w-full"

@@ -85,7 +85,7 @@ public interface ColumnIndex extends SearchIndex {
     return columnName;
   }
 
-  default String getColumnDescriptionStatus(EntityInterface entity) {
+  default String getColumnDescriptionStatus(EntityInterface<?> entity) {
     String status = "COMPLETE";
     List<Class<?>> interfaces = Arrays.asList(entity.getClass().getInterfaces());
     if (interfaces.contains(ColumnsEntityInterface.class)

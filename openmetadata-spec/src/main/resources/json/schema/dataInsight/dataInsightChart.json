@@ -5,7 +5,7 @@
   "description": "DataInsightChart represents the definition of a chart with its parameters",
   "type": "object",
   "javaType": "org.openmetadata.schema.dataInsight.DataInsightChart",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "chartParameterValues": {
       "type": "object",

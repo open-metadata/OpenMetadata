@@ -15,6 +15,7 @@ import {
   PipelineState,
   PipelineStatus,
 } from '../../src/generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
@@ -188,23 +189,33 @@ export const addAssigneeFromPopoverWidget = async (data: {
 
     const assigneeModal = page.locator('.ant-modal-content').last();
     const assigneeSelect = assigneeModal.getByTestId('select-assignee');
-    const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
-    const assigneeInput = assigneeSelect.locator('input').last();
+    const assigneeInput = assigneeSelect.locator('input');
     const assigneeOption = page.getByTestId(user.name).first();
     const normalizedAssigneeOption = page
       .getByTestId(user.name.toLowerCase())
       .first();
 
     await expect(assigneeModal).toBeVisible();
-    await expect(assigneeSelector).toBeVisible();
 
-    await assigneeSelector.click();
+    // Single-select core Autocomplete hides its input while an item is selected.
+    const selectedAssignee = assigneeSelect.getByTestId(
+      'autocomplete-selected-item'
+    );
+    if (await selectedAssignee.isVisible()) {
+      await selectedAssignee.getByRole('button').click();
+    }
+
+    await expect(assigneeInput).toBeVisible();
+
+    await assigneeInput.click();
     await assigneeInput.fill(user.displayName);
 
     if (await assigneeOption.isVisible().catch(() => false)) {
       await assigneeOption.click();
     } else {
-      await expect(normalizedAssigneeOption).toBeVisible({ timeout: 30_000 });
+      await expect(normalizedAssigneeOption).toBeVisible({
+        timeout: ACTION_TIMEOUT,
+      });
       await normalizedAssigneeOption.click();
     }
 
@@ -228,7 +239,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
         ? incidentAssignee
         : page.getByTestId('assignee').first()
     ).toContainText(user.displayName, {
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
 
     return;
@@ -273,7 +284,7 @@ export const addAssigneeFromPopoverWidget = async (data: {
     (await taskHeaderAssignee.isVisible().catch(() => false))
       ? taskHeaderAssignee
       : incidentAssignee
-  ).toContainText(user.displayName, { timeout: 30_000 });
+  ).toContainText(user.displayName, { timeout: ACTION_TIMEOUT });
 };
 
 export const assignIncident = async (data: {

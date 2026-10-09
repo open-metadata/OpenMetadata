@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.feed;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.ACTIVITY_FEED;
-
 import java.util.List;
 import java.util.Set;
 import lombok.Getter;
@@ -69,14 +67,9 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
 
   public ActivityStreamPublisher(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
-    if (subscriptionDestination.getType() == ACTIVITY_FEED) {
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDestination;
-      this.activityStreamRepository = new ActivityStreamRepository();
-    } else {
-      throw new IllegalArgumentException(
-          "ActivityStreamPublisher invoked with illegal subscription type.");
-    }
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
+    this.activityStreamRepository = new ActivityStreamRepository();
   }
 
   @Override
@@ -104,7 +97,7 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
       }
 
       // Get the entity to extract domains
-      EntityInterface entity = getEntityFromChangeEvent(changeEvent);
+      EntityInterface<?> entity = getEntityFromChangeEvent(changeEvent);
       if (entity == null) {
         LOG.debug(
             "Could not get entity for change event: {} {}",
@@ -131,23 +124,24 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
     } catch (Exception ex) {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(
-              ACTIVITY_FEED, changeEvent, ex.getMessage());
+              subscriptionDestination.getType(), changeEvent, ex.getMessage());
       LOG.error(message, ex);
       throw new EventPublisherException(
-          CatalogExceptionMessage.eventPublisherFailedToPublish(ACTIVITY_FEED, ex.getMessage()),
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), ex.getMessage()),
           Pair.of(subscriptionDestination.getId(), changeEvent));
     }
   }
 
-  private EntityInterface getEntityFromChangeEvent(ChangeEvent changeEvent) {
+  private EntityInterface<?> getEntityFromChangeEvent(ChangeEvent changeEvent) {
     try {
       Object entityObj = changeEvent.getEntity();
-      if (entityObj instanceof EntityInterface entityInterface) {
+      if (entityObj instanceof EntityInterface<?> entityInterface) {
         return entityInterface;
       }
 
       if (entityObj != null) {
-        Class<? extends EntityInterface> entityClass =
+        Class<? extends EntityInterface<?>> entityClass =
             Entity.getEntityClassFromType(changeEvent.getEntityType());
         if (entityClass != null) {
           return entityObj instanceof String entityJson

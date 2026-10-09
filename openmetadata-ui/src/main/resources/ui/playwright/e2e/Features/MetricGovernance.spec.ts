@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -60,7 +61,7 @@ const expectMetricStatus = async (
 
         return metric.entityStatus;
       },
-      { intervals: [1_000, 2_000, 5_000], timeout: 120_000 }
+      { intervals: [1_000, 2_000, 5_000], timeout: LONG_ACTION_TIMEOUT }
     )
     .toBe(status);
 

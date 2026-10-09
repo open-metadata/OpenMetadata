@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from '@openmetadata/ui-core-components';
+import { Grid, Skeleton } from '@openmetadata/ui-core-components';
 import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
-import { Col, Form, Input, Row } from 'antd';
+import { Form, Input } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { useFqn } from '../../../../../hooks/useFqn';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 import {
   getExpandedResourceList,
   getExploreURLForAdvancedFilter,
@@ -177,8 +178,13 @@ export const AdvancedAssetsFilterField = ({
       <Form.Item hidden name="queryFilter">
         <Input />
       </Form.Item>
-      <Row className="advanced-filter-form-field" gutter={[8, 8]}>
-        <Col data-testid="advanced-filter-container" span={24}>
+      <Grid
+        className="layout-row layout-grid advanced-filter-form-field"
+        style={getLayoutGutter(8, 8)}>
+        <Grid.Item
+          className="layout-column"
+          data-testid="advanced-filter-container"
+          span={24}>
           <div className="ant-form-item-label advanced-filter-label">
             {/* eslint-disable-next-line jsx-a11y/label-has-for -- query-builder caption, not a form control */}
             <label>{t('label.advance-filter')}</label>
@@ -194,24 +200,24 @@ export const AdvancedAssetsFilterField = ({
             tree={treeJson}
             onChange={handleChange}
           />
-        </Col>
+        </Grid.Item>
 
         {isCountLoading && (
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <Skeleton height={32} />
-          </Col>
+          </Grid.Item>
         )}
 
         {showFilteredResourceCount && (
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <AlertMessage
               assetCount={selectedAssetsInfo?.filteredResourceCount}
               href={queryURL}
               target="_blank"
             />
-          </Col>
+          </Grid.Item>
         )}
-      </Row>
+      </Grid>
     </>
   );
 };

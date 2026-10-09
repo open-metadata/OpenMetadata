@@ -156,9 +156,10 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         {key === TestCasePageTabs.TEST_CASE_RESULTS &&
           !isVersionPage &&
           !dimensionKey && (
-            <div
-              className="tw:pt-4 tw:pb-2.5"
-              data-testid="test-case-last-run-banner-tab-container">
+            <Box
+              className="tw:pt-4 tw:pb-5.5"
+              data-testid="test-case-last-run-banner-tab-container"
+              direction="col">
               <TestCaseLastRunBanner
                 hasEditStatusPermission={
                   incidentHeaderData.hasEditStatusPermission
@@ -172,7 +173,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 testCaseStatusData={incidentHeaderData.testCaseStatusData}
                 onAcknowledge={incidentHeaderData.handleAcknowledgeIncident}
               />
-            </div>
+            </Box>
           )}
         <Tab editVariant="modal" showSidePanel={isTabExpanded} />
       </>

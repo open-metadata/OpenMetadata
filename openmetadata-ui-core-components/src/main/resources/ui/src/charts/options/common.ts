@@ -133,6 +133,12 @@ export const tooltipConfig = (
   ...(props.formatter ? { formatter: props.formatter } : {}),
 });
 
+// Left out rather than `undefined`: ECharts reads an `undefined` label colour as
+// the axis line's, so a chart that themes its axis line would recolour its
+// labels with it.
+const tickLabelColor = (theme: ChartTheme) =>
+  theme.axisTick ? { color: theme.axisTick } : {};
+
 const axisRest = <A>({
   label: _label,
   formatter: _formatter,
@@ -161,7 +167,7 @@ export const categoryAxis = (
     nameGap: 32,
     nameTextStyle: { color: theme.xAxisTitle, fontSize: 12, fontWeight: 600 },
     axisLabel: {
-      color: theme.axisTick,
+      ...tickLabelColor(theme),
       hideOverlap: true,
       ...(props.formatter ? { formatter: props.formatter } : {}),
     },
@@ -191,7 +197,7 @@ export const valueAxis = (
     nameRotate: vertical ? (position === 'left' ? 90 : -90) : 0,
     nameTextStyle: { color: theme.axisTitle, fontSize: 12, fontWeight: 500 },
     axisLabel: {
-      color: theme.axisTick,
+      ...tickLabelColor(theme),
       ...(formatter ? { formatter } : {}),
     },
     // A right-hand axis would draw a second, misaligned set of grid lines.
@@ -318,12 +324,13 @@ export const referenceLinesToMarkLine = (
     label: {
       show: Boolean(line.label),
       formatter: line.label,
-      position: 'insideEndTop',
+      position:
+        line.labelPosition === 'start' ? 'insideStartTop' : 'insideEndTop',
       color: theme.axisText,
     },
     lineStyle: {
       color: line.status ? theme.palette.status[line.status] : theme.axisText,
-      type: 'dashed',
+      type: line.lineType ?? 'dashed',
       width: 1,
     },
   })),

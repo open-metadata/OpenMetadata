@@ -15,6 +15,7 @@ package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
+import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
 import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
@@ -33,6 +34,7 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
@@ -91,5 +93,12 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LifeCycleCreatedSentinelMigration.STEP_NAME,
         () -> removeCreatedSentinel(handle, MYSQL));
+    // Alerts the previous release stopped sending, because it could not build one of their
+    // destinations, send again from this release; they start from the upgrade, not their backlog.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        AlertBacklogMigration.STEP_NAME,
+        () -> skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO));
   }
 }

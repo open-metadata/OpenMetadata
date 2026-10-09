@@ -85,6 +85,13 @@ Diagnosed and fixed, so the tag came off. If any of these flakes again the fix
 was wrong — re-quarantine it with the new evidence rather than restoring the old
 entry.
 
+Kafka AutoPilot was released on 2026-10-09 after the CI broker configuration
+fix was reported complete by @ShaileshParmar11. [#34951](https://github.com/open-metadata/OpenMetadata/pull/34951)
+had quarantined the Kafka serial group because the broker advertised
+`localhost:9092`, which Airflow could not reach. Both the service creation /
+AutoPilot status test and its dependent agent-deletion test now use the normal
+`@ingestion` tag.
+
 | Spec | Test | Root cause |
 |---|---|---|
 | `e2e/Pages/DataContracts.spec.ts` | Create Data Contract and validate for Table | Re-investigated with the BE team (2026-09-23). Not a "hangs on `Running`" bug — there is an abort mechanism: a failed trigger moves the contract to `Aborted` (terminal), and `abortRunningValidation` clears a stale validation when a new one starts. Test cases *are* attached and the DAG picks them up, so it is not an attachment issue. The real cause is a cold/first-run race: on the first Run-Now of a new contract the DQ pipeline is deployed and triggered almost immediately, and if Airflow hasn't parsed the new DAG yet the trigger doesn't land — it errors with `Failed to trigger IngestionPipeline` or the run comes back empty. On a fresh stack the first validation fails every time; the retry, once the DAG is parsed, runs cleanly to `Success`. Tag removed so the test runs in the AUT/ingestion lane, where the BE can pull logs and confirm the fix for the cold-start race. |

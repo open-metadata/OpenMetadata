@@ -6,7 +6,7 @@
   "description": "An asynchronously-generated evidence pack scoped to a framework, domain, or single AI asset. Bundles compliance records, control coverage, workflow history, remediation snapshot, and per-asset documents into machine-readable JSON (and optionally PDF) for auditors and regulators.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.ai.AuditReport",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "reportScope": {
       "type": "string",
