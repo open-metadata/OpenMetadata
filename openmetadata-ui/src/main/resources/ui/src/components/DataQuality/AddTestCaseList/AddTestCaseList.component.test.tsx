@@ -256,9 +256,25 @@ const renderWithRouter = (props: AddTestCaseModalProps) => {
 };
 
 describe('AddTestCaseList', () => {
+  const originalVirtOn = process.env.VIRT_ON;
+
   beforeEach(() => {
+    // React Aria disables windowing in tests unless explicitly enabled.
+    process.env.VIRT_ON = 'true';
     jest.useRealTimers();
     jest.clearAllMocks();
+    jest
+      .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+      .mockReturnValue(500);
+    jest
+      .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockReturnValue(600);
+    jest
+      .spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+      .mockReturnValue(128);
+    jest
+      .spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+      .mockReturnValue(600);
     mockGetListTestCaseBySearch.mockResolvedValue({
       data: [],
       paging: {
@@ -269,6 +285,115 @@ describe('AddTestCaseList', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    jest.restoreAllMocks();
+    if (originalVirtOn === undefined) {
+      delete process.env.VIRT_ON;
+    } else {
+      process.env.VIRT_ON = originalVirtOn;
+    }
+  });
+
+  it('windows large lists and preserves selection when a row leaves the viewport', async () => {
+    const cases = Array.from({ length: 200 }, (_, index) => ({
+      ...mockTestCases[0],
+      id: `large-${index}`,
+      name: `large_case_${index}`,
+      displayName: `Large case ${index}`,
+    }));
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: cases,
+      paging: { total: cases.length },
+    });
+    const onChange = jest.fn();
+    await act(async () => renderWithRouter({ ...mockProps, onChange }));
+
+    expect(screen.getAllByTestId(/^checkbox-large_case_/).length).toBeLessThan(
+      20
+    );
+
+    fireEvent.click(screen.getByTestId('checkbox-large_case_1'));
+
+    expect(getCheckboxInput('checkbox-large_case_1')).toBeChecked();
+
+    const list = screen.getByTestId('add-test-case-list-scroll');
+    const viewport = list;
+    fireEvent.scroll(viewport, { target: { scrollTop: 12800 } });
+
+    expect(await screen.findByTestId('large_case_100')).toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('large_case_1')).not.toBeInTheDocument()
+    );
+
+    expect(screen.getAllByTestId(/^checkbox-large_case_/).length).toBeLessThan(
+      20
+    );
+
+    fireEvent.scroll(viewport, { target: { scrollTop: 0 } });
+    await waitFor(() =>
+      expect(getCheckboxInput('checkbox-large_case_1')).toBeChecked()
+    );
+    fireEvent.click(screen.getByTestId('submit'));
+    await waitFor(() =>
+      expect(mockProps.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ selectAll: false, includeIds: ['large-1'] })
+      )
+    );
+  });
+
+  it('keeps the rendered window bounded as more pages are loaded', async () => {
+    const cases = Array.from({ length: 200 }, (_, index) => ({
+      ...mockTestCases[0],
+      id: `paged-${index}`,
+      name: `paged_case_${index}`,
+    }));
+    let loadedCount = 25;
+    mockGetListTestCaseBySearch.mockImplementation(
+      async ({ offset = 0 } = {}) => {
+        loadedCount = offset + 25;
+
+        return {
+          data: cases.slice(offset, loadedCount),
+          paging: { total: 200 },
+        };
+      }
+    );
+    await act(async () => renderWithRouter(mockProps));
+    const viewport = screen.getByTestId('add-test-case-list-scroll');
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 500 },
+      scrollHeight: { configurable: true, get: () => loadedCount * 128 },
+    });
+
+    for (let offset = 25; offset < cases.length; offset += 25) {
+      await act(async () => {
+        fireEvent.scroll(viewport, {
+          target: { scrollTop: offset * 128 - 500 },
+        });
+        fireEvent.scroll(viewport, {
+          target: { scrollTop: offset * 128 - 500 },
+        });
+      });
+      await waitFor(() =>
+        expect(mockGetListTestCaseBySearch).toHaveBeenLastCalledWith(
+          expect.objectContaining({ offset, limit: 25 })
+        )
+      );
+
+      expect(
+        screen.getAllByTestId(/^checkbox-paged_case_/).length
+      ).toBeLessThan(20);
+      expect(mockGetListTestCaseBySearch).toHaveBeenCalledTimes(
+        offset / 25 + 1
+      );
+    }
+
+    fireEvent.scroll(viewport, {
+      target: { scrollTop: cases.length * 128 - 500 },
+    });
+
+    expect(await screen.findByTestId('paged_case_199')).toBeInTheDocument();
+    expect(screen.queryByTestId('paged_case_0')).not.toBeInTheDocument();
   });
 
   it('renders the component with initial state', async () => {
@@ -1104,7 +1229,7 @@ describe('AddTestCaseList', () => {
       Object.defineProperties(scrollContainer, {
         scrollHeight: { configurable: true, value: 1000 },
         clientHeight: { configurable: true, value: 500 },
-        scrollTop: { configurable: true, value: 500 },
+        scrollTop: { configurable: true, writable: true, value: 500 },
       });
 
       await act(async () => {

@@ -16,7 +16,11 @@ import {
   Checkbox,
   Divider,
   EmptyPlaceholder,
+  GridList,
+  GridListItem,
+  ListLayout,
   Typography,
+  Virtualizer,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -691,7 +695,14 @@ export const AddTestCaseList = ({
     [debounceFetchTableData, debounceFetchColumnData, fetchColumnOptions]
   );
 
-  const listSource = items;
+  const listSource = useMemo(
+    () =>
+      items.map((test) => ({
+        id: test.id ?? test.fullyQualifiedName ?? test.name,
+        test,
+      })),
+    [items]
+  );
 
   const renderList = useMemo(() => {
     const source = listSource;
@@ -717,83 +728,98 @@ export const AddTestCaseList = ({
               <Loader />
             </Box>
           )}
-          {/* ponytail: plain scroll container, no virtualization — the DOM grows
-              with every loaded page; virtualize if very large suites get slow. */}
-          <Box
-            className="tw:h-125 tw:overflow-y-auto"
-            data-testid="add-test-case-list-scroll"
-            direction="col"
-            onScroll={onScroll}>
-            {listSource.map((test) => {
-              const tableFqn = getEntityFQN(test.entityLink);
-              const tableName = getNameFromFQN(tableFqn);
-              const isColumn = test.entityLink.includes('::columns::');
+          <Virtualizer
+            layout={ListLayout}
+            layoutOptions={{ estimatedRowHeight: 128 }}>
+            <GridList
+              aria-label={t('label.test-case-plural')}
+              className="tw:h-125 tw:overflow-y-auto"
+              data-testid="add-test-case-list-scroll"
+              dependencies={[
+                selectedItems,
+                selectAll,
+                excludedIds,
+                handleCardClick,
+                t,
+              ]}
+              items={listSource}
+              onScroll={onScroll}>
+              {({ id, test }) => {
+                const tableFqn = getEntityFQN(test.entityLink);
+                const tableName = getNameFromFQN(tableFqn);
+                const isColumn = test.entityLink.includes('::columns::');
 
-              return (
-                <Box
-                  className="m-b-md border rounded-4 p-sm cursor-pointer tw:bg-primary"
-                  direction="col"
-                  gap={2}
-                  key={test.id}
-                  onClick={() => handleCardClick(test)}>
-                  <Box
-                    align="center"
-                    className="w-full"
-                    gap={2}
-                    justify="between">
-                    <Typography
-                      as="p"
-                      className="m-0 font-medium text-base w-max-500 tw:text-primary"
-                      data-testid={test.name}
-                      ellipsis={{ tooltip: true }}>
-                      {getEntityName(test)}
-                    </Typography>
+                return (
+                  <GridListItem
+                    className="tw:pb-4"
+                    id={id}
+                    textValue={getEntityName(test)}>
+                    <Box
+                      className="border rounded-4 p-sm cursor-pointer tw:bg-primary"
+                      direction="col"
+                      gap={2}
+                      key={test.id}
+                      onClick={() => handleCardClick(test)}>
+                      <Box
+                        align="center"
+                        className="w-full"
+                        gap={2}
+                        justify="between">
+                        <Typography
+                          as="p"
+                          className="m-0 font-medium text-base w-max-500 tw:text-primary"
+                          data-testid={test.name}
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(test)}
+                        </Typography>
 
-                    <Checkbox
-                      aria-label={getEntityName(test)}
-                      data-testid={`checkbox-${test.name}`}
-                      isSelected={
-                        selectAll
-                          ? !excludedIds.has(test.id ?? '')
-                          : selectedItems?.has(test.id ?? '')
-                      }
-                      onChange={() => handleCardClick(test)}
-                    />
-                  </Box>
-                  <Typography
-                    as="p"
-                    className="m-0 w-max-500 tw:text-primary"
-                    ellipsis={{ tooltip: true }}>
-                    {getEntityName(test.testDefinition)}
-                  </Typography>
-                  <Typography as="p" className="m-0 tw:text-primary">
-                    <Link
-                      data-testid="table-link"
-                      to={getEntityDetailsPath(
-                        EntityType.TABLE,
-                        tableFqn,
-                        EntityTabs.PROFILER
-                      )}
-                      onClick={(e) => e.stopPropagation()}>
-                      {tableName}
-                    </Link>
-                  </Typography>
-                  {isColumn && (
-                    <Box align="center" gap={2}>
-                      <Typography className="font-medium text-xs tw:text-primary">{`${t(
-                        'label.column'
-                      )}:`}</Typography>
-                      <Typography className="text-xs" color="secondary">
-                        {replacePlus(
-                          getColumnNameFromEntityLink(test.entityLink)
-                        ) ?? '--'}
+                        <Checkbox
+                          aria-label={getEntityName(test)}
+                          data-testid={`checkbox-${test.name}`}
+                          isSelected={
+                            selectAll
+                              ? !excludedIds.has(test.id ?? '')
+                              : selectedItems?.has(test.id ?? '')
+                          }
+                          onChange={() => handleCardClick(test)}
+                        />
+                      </Box>
+                      <Typography
+                        as="p"
+                        className="m-0 w-max-500 tw:text-primary"
+                        ellipsis={{ tooltip: true }}>
+                        {getEntityName(test.testDefinition)}
                       </Typography>
+                      <Typography as="p" className="m-0 tw:text-primary">
+                        <Link
+                          data-testid="table-link"
+                          to={getEntityDetailsPath(
+                            EntityType.TABLE,
+                            tableFqn,
+                            EntityTabs.PROFILER
+                          )}
+                          onClick={(e) => e.stopPropagation()}>
+                          {tableName}
+                        </Link>
+                      </Typography>
+                      {isColumn && (
+                        <Box align="center" gap={2}>
+                          <Typography className="font-medium text-xs tw:text-primary">{`${t(
+                            'label.column'
+                          )}:`}</Typography>
+                          <Typography className="text-xs" color="secondary">
+                            {replacePlus(
+                              getColumnNameFromEntityLink(test.entityLink)
+                            ) ?? '--'}
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
-                  )}
-                </Box>
-              );
-            })}
-          </Box>
+                  </GridListItem>
+                );
+              }}
+            </GridList>
+          </Virtualizer>
         </Box>
       );
     }

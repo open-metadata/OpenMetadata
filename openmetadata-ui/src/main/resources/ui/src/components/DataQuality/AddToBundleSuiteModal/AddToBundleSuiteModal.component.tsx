@@ -110,22 +110,19 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
 
   const handleInputChange = (value: string) => {
     setInputValue(value);
-    if (!value) {
-      setSelectedSuiteId(undefined);
-    }
-    // The combobox also reports the picked option's label as input; only
-    // typed text is a search.
-    if (!options.some((option) => option.label === value)) {
-      debouncedSearch(value);
-    }
+    setSelectedSuiteId(undefined);
+    debouncedSearch(value);
   };
 
   const handleSelectionChange = (key: Key | null) => {
     const suiteId = key === null ? undefined : String(key);
     setSelectedSuiteId(suiteId);
-    setInputValue(
-      options.find((option) => option.value === suiteId)?.label ?? ''
-    );
+    if (suiteId) {
+      debouncedSearch.cancel();
+      setInputValue(
+        options.find((option) => option.value === suiteId)?.label ?? ''
+      );
+    }
   };
 
   const handleOk = async () => {
