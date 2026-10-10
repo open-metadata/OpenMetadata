@@ -303,7 +303,7 @@ const Description = ({
           className={
             isWidgetHeader
               ? 'tw:whitespace-nowrap tw:text-quaternary'
-              : 'tw:text-text-secondary'
+              : 'tw:text-secondary'
           }
           size="text-sm"
           weight="semibold">
@@ -325,7 +325,7 @@ const Description = ({
       <Box
         className={classNames(
           wrapInCard
-            ? 'tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-[18px] tw:shadow-xs'
+            ? 'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:p-[18px] tw:shadow-card'
             : undefined,
           className
         )}

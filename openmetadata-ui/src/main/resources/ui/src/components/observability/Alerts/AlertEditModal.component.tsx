@@ -26,7 +26,7 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { useObservabilityAlertForm } from '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm';
+import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import AlertAiForm from './AlertAiForm.component';
 import {
@@ -99,7 +99,6 @@ function AlertEditModal({
     alert,
     extraFormButtons,
     filterResources,
-    form,
     handleSave,
     inlineAlertDetails,
     isLoading,
@@ -110,11 +109,14 @@ function AlertEditModal({
     shouldShowFiltersSection,
     templateResourcePermission,
     templates,
-  } = useObservabilityAlertForm({
+  } = useAlertFormData({
     afterSaveAction: onSaved,
     alertType,
     fqn,
     onCancel: onClose,
+    // `input` is left out, as before: this modal does not yet ask the server to warn about
+    // sources the chosen filters and triggers never match.
+    sources: formData.resources,
   });
 
   useEffect(() => {
@@ -128,24 +130,6 @@ function AlertEditModal({
       setFormData(getEmptyInitialValues(alertType));
     }
   }, [alertType, isEditMode, isOpen]);
-
-  // Keep the minimal Ant form mirror in sync for OSS widgets/buttons that still
-  // read via Form.useWatch. Syncing the full controlled payload reintroduced
-  // ModalOverlay scroll jumps, so only mirror the watched fields.
-  useEffect(() => {
-    form.setFieldsValue({
-      customNotificationTemplateData: formData.customNotificationTemplateData,
-      destinations: formData.destinations,
-      notificationTemplate: formData.notificationTemplate,
-      resources: formData.resources,
-    });
-  }, [
-    form,
-    formData.customNotificationTemplateData,
-    formData.destinations,
-    formData.notificationTemplate,
-    formData.resources,
-  ]);
 
   const title = isEditMode
     ? t('label.edit-entity', { entity: t('label.alert') })
@@ -163,7 +147,6 @@ function AlertEditModal({
     ([name, ButtonComponent]) => (
       <ButtonComponent
         alertDetails={alert}
-        formRef={form}
         key={name}
         loading={saving}
         templateResourcePermission={templateResourcePermission}

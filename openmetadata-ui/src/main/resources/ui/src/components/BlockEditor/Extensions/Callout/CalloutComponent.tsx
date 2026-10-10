@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
+  Button,
   ButtonUtility,
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button } from 'antd';
 import { startCase } from 'lodash';
 import { FC, useState } from 'react';
 import { CALLOUT_CONTENT } from '../../../../constants/BlockEditor.constants';
@@ -31,13 +31,13 @@ const PopoverContent = ({
       {Object.entries(CALLOUT_CONTENT).map(([key, CalloutIcon]) => {
         return (
           <Button
+            color="tertiary"
             data-testid={`callout-${key}`}
-            icon={
+            iconLeading={
               <CalloutIcon style={{ verticalAlign: 'middle' }} width={20} />
             }
             key={key}
-            type="text"
-            onClick={() => onSelect(key)}>
+            onPress={() => onSelect(key)}>
             {startCase(key)}
           </Button>
         );

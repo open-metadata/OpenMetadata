@@ -79,6 +79,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.seeding.EssentialSeeds;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.ClasspathScanIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -451,6 +452,7 @@ public final class Entity {
     entityRelationshipRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
     SeedDataGate.getInstance().reset();
+    EssentialSeeds.getInstance().reset();
     EntityIndexCapabilityRegistry.clear();
   }
 

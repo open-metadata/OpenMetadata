@@ -176,6 +176,10 @@ CREATE TABLE IF NOT EXISTS rdf_inference_rule (
 CREATE INDEX IF NOT EXISTS rdf_inference_rule_dirty_index
   ON rdf_inference_rule (dirty, deleted);
 
+-- A materialization run clears a rule's dirty flag only if dirtyVersion still holds the value the
+-- run read, so rule edits and graph writes that land during the run stay pending.
+ALTER TABLE rdf_inference_rule ADD COLUMN IF NOT EXISTS dirtyVersion BIGINT NOT NULL DEFAULT 0;
+
 ALTER TABLE entity_relationship
   ADD COLUMN IF NOT EXISTS relationshipId VARCHAR(36),
   ADD COLUMN IF NOT EXISTS relationshipTypeId VARCHAR(36);

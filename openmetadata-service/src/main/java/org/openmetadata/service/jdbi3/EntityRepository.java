@@ -883,6 +883,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     store(entity, update, expectedVersion);
   }
 
+  /** Repositories with consolidated versions may also guard the last modification timestamp. */
+  protected void storeEntityWithVersion(
+      T entity, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    storeEntityWithVersion(entity, update, expectedVersion);
+  }
+
   protected void storeEntities(List<T> entities) {
     // Default: store entities directly. Override if fields need nullification before storage.
     storeMany(entities);
@@ -11199,7 +11205,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     private void storeNewVersionWithOptimisticLocking() {
       // Pass the original version to enable optimistic locking
       // This ensures no other process has modified the entity between read and write
-      EntityRepository.this.storeEntityWithVersion(updated, true, original.getVersion());
+      EntityRepository.this.storeEntityWithVersion(
+          updated, true, original.getVersion(), original.getUpdatedAt());
       entityStored = true;
     }
 

@@ -27,6 +27,7 @@ export type PlatformSettingsPageId =
   | 'data-asset-rules'
   | 'learning-resources'
   | 'search'
+  | 'table-schema'
   | 'app-mode';
 
 export type PlatformSettingsView =

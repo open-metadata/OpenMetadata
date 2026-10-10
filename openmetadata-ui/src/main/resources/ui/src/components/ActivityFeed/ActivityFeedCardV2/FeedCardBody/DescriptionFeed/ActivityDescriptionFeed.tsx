@@ -12,8 +12,6 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
-import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
-
 import { useMemo } from 'react';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
 import { ReactComponent as UpdatedIcon } from '../../../../../assets/svg/updated-icon.svg';
@@ -46,17 +44,14 @@ function ActivityDescriptionFeed({
   }, [isAdded]);
 
   return (
-    <Box
-      className="layout-row"
-      style={{ ...getLayoutGutter(12, 12) }}
-      wrap="nowrap">
-      <Box className="layout-column tw:block h-4">{operationIcon}</Box>
-      <Box className="layout-column tw:block">
+    <Box gap={3}>
+      <div className="h-4">{operationIcon}</div>
+      <div>
         <RichTextEditorPreviewNew
           className="text-wrap"
           markdown={getFrontEndFormat(description)}
         />
-      </Box>
+      </div>
     </Box>
   );
 }

@@ -258,6 +258,10 @@
       "description": "Why the memory reached its current status, e.g. the reconciliation verdict or the missing anchor. Cleared by a status change that brings no reason of its own.",
       "type": "string"
     },
+    "lastReviewedAt": {
+      "description": "When this memory was last confirmed to hold: set whenever it becomes Approved, and each time Memory Reconciliation revalidates it. An Approved memory with no value predates the field.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
     "supersededBy": {
       "description": "The memory that replaced this one. Set if and only if entityStatus is Superseded or the legacy Deprecated stage.",
       "$ref": "../../type/entityReference.json"

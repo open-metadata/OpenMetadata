@@ -24,6 +24,7 @@ import {
   RunProfiler,
   Search,
   SwitchHorizontal01,
+  Table,
 } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
@@ -125,6 +126,14 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     icon: SwitchHorizontal01,
     titleKey: 'label.default-app-mode',
     descriptionKey: 'message.default-app-mode-description',
+    hasEditView: true,
+    hasFieldHints: false,
+  },
+  {
+    id: 'table-schema',
+    icon: Table,
+    titleKey: 'label.table-and-schema',
+    descriptionKey: 'message.table-and-schema-settings-description',
     hasEditView: true,
     hasFieldHints: false,
   },

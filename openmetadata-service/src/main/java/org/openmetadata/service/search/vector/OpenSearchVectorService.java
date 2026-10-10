@@ -961,8 +961,10 @@ public class OpenSearchVectorService implements VectorIndexService {
    * by the context memory clause in {@link VectorSearchQueryBuilder}, where absence means exclusion
    * rather than indifference. Memory chunks written before they were stamped therefore stay out of
    * every KNN result, for admins too, until a Search Reindex restamps them — deliberately, since an
-   * unstamped document may be a Private, retired or anchored memory. Weigh that before making any
-   * future field a filter depends on.
+   * unstamped document may be a Private, retired or anchored memory. {@code memoryScope},
+   * {@code memoryType} and {@code pinned} (v8) restrict only a query that asks for them, so before
+   * the backfill such a query loses those memories' vector hits and never gains a wrong one. Weigh
+   * that before making any future field a filter depends on.
    */
   private String buildChunkMappingUpgradeBody() {
     ObjectNode properties = buildChunkProperties();
@@ -1010,7 +1012,9 @@ public class OpenSearchVectorService implements VectorIndexService {
             "visibility",
             "sharedWithIds",
             ContextMemoryIndex.FIELD_ANCHOR_ID,
-            ContextMemoryIndex.FIELD_STATUS)) {
+            ContextMemoryIndex.FIELD_STATUS,
+            ContextMemoryIndex.FIELD_MEMORY_SCOPE,
+            ContextMemoryIndex.FIELD_MEMORY_TYPE)) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
     // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
@@ -1029,6 +1033,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       properties.set(text, MAPPER.createObjectNode().put("type", "text"));
     }
     properties.set("deleted", MAPPER.createObjectNode().put("type", "boolean"));
+    properties.set(
+        ContextMemoryIndex.FIELD_PINNED, MAPPER.createObjectNode().put("type", "boolean"));
     properties.set("tags", objectKeyword("tagFQN"));
     properties.set("domains", objectKeyword("name"));
     properties.set("tier", objectKeyword("tagFQN"));
@@ -1225,7 +1231,29 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   /** Header of an entity's chunk set, read from chunk 0. */
   record ChunkHeader(
-      String fingerprint, int chunkCount, int docVersion, String status, String anchorId) {}
+      String fingerprint,
+      int chunkCount,
+      int docVersion,
+      String status,
+      String anchorId,
+      MemoryKind memoryKind) {}
+
+  /** The memory kind a chunk was stamped with; filters read it, the fingerprint does not see it. */
+  record MemoryKind(String scope, String type, boolean pinned) {
+    static MemoryKind of(ContextMemory memory) {
+      return new MemoryKind(
+          ContextMemoryIndex.memoryScopeValue(memory),
+          ContextMemoryIndex.memoryTypeValue(memory),
+          Boolean.TRUE.equals(memory.getPinned()));
+    }
+
+    static MemoryKind read(JsonNode source) {
+      return new MemoryKind(
+          source.path(ContextMemoryIndex.FIELD_MEMORY_SCOPE).asText(null),
+          source.path(ContextMemoryIndex.FIELD_MEMORY_TYPE).asText(null),
+          source.path(ContextMemoryIndex.FIELD_PINNED).asBoolean(false));
+    }
+  }
 
   /** How an entity's stored chunks must be brought up to date. */
   enum ChunkRefresh {
@@ -1246,12 +1274,13 @@ public class OpenSearchVectorService implements VectorIndexService {
     return refresh;
   }
 
-  // Status and anchor gate memory visibility but are not embedded text, so the fingerprint
-  // cannot see them change.
+  // Status and anchor gate memory visibility, and the kind narrows a filtered recall; none of them
+  // is embedded text, so the fingerprint cannot see them change.
   private static boolean memoryFilterChanged(EntityInterface<?> entity, ChunkHeader header) {
     return entity instanceof ContextMemory memory
         && (!Objects.equals(ContextMemoryIndex.statusValue(memory), header.status())
-            || !ContextMemoryIndex.anchorId(memory).equals(header.anchorId()));
+            || !ContextMemoryIndex.anchorId(memory).equals(header.anchorId())
+            || !MemoryKind.of(memory).equals(header.memoryKind()));
   }
 
   /**
@@ -1294,9 +1323,13 @@ public class OpenSearchVectorService implements VectorIndexService {
                       + "/_doc/"
                       + parentId
                       + "_0?_source_includes=fingerprint,chunkCount,docVersion,"
-                      + ContextMemoryIndex.FIELD_STATUS
-                      + ","
-                      + ContextMemoryIndex.FIELD_ANCHOR_ID)
+                      + String.join(
+                          ",",
+                          ContextMemoryIndex.FIELD_STATUS,
+                          ContextMemoryIndex.FIELD_ANCHOR_ID,
+                          ContextMemoryIndex.FIELD_MEMORY_SCOPE,
+                          ContextMemoryIndex.FIELD_MEMORY_TYPE,
+                          ContextMemoryIndex.FIELD_PINNED))
               .method("GET")
               .build();
       try (var response = genericClient.execute(request)) {
@@ -1322,7 +1355,8 @@ public class OpenSearchVectorService implements VectorIndexService {
                     source.path("chunkCount").asInt(0),
                     source.path("docVersion").asInt(0),
                     source.path(ContextMemoryIndex.FIELD_STATUS).asText(null),
-                    source.path(ContextMemoryIndex.FIELD_ANCHOR_ID).asText(null));
+                    source.path(ContextMemoryIndex.FIELD_ANCHOR_ID).asText(null),
+                    MemoryKind.read(source));
           }
         }
       }
