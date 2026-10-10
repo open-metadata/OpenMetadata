@@ -1,5 +1,6 @@
 import datetime
 import inspect
+import json
 from collections.abc import Generator
 from unittest.mock import MagicMock, Mock, patch
 
@@ -485,6 +486,30 @@ class TestRun:
             validator._run()
 
         assert diff_tables.call_count == diffs_run
+
+    def test_it_reports_the_columns_that_differ_most(self, diff_tables: Mock) -> None:
+        validator = build_run_validator()
+        table_diff = build_table_diff((row for row in THREE_DIFFERING_KEYS), table1_rows=4, table2_rows=4)
+        table_diff.stats["diff_counts"] = {"name": 1, "city": 7, "zip": 3, "phone": 2}
+        diff_tables.return_value = table_diff
+
+        with patch.object(validator, "_compute_row_count", return_value=4):
+            result = validator._run()
+
+        assert result.result.endswith("Columns differing most: city (7), zip (3), phone (2).")
+        [counts] = [value.value for value in result.testResultValue if value.name == "columnDiffCounts"]
+        assert list(json.loads(counts).items()) == [("city", 7), ("zip", 3), ("phone", 2), ("name", 1)]
+
+    def test_without_column_counts_the_result_is_unchanged(self, diff_tables: Mock) -> None:
+        """data-diff only counts per column when it compares rows itself."""
+        validator = build_run_validator()
+        diff_tables.return_value = build_table_diff((row for row in THREE_DIFFERING_KEYS), table1_rows=4, table2_rows=4)
+
+        with patch.object(validator, "_compute_row_count", return_value=4):
+            result = validator._run()
+
+        assert result.result == "Found 3 different rows which is more than the threshold of 0"
+        assert "columnDiffCounts" not in [value.name for value in result.testResultValue]
 
     def test_a_repeated_key_is_still_blamed_on_its_table(self, diff_tables: Mock) -> None:
         """data-diff finds the duplicate while counting and names the table: no rows are kept to look at."""
