@@ -27,10 +27,14 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -150,9 +154,51 @@ class ContextMemoryWriteAccessTest {
   }
 
   @Test
-  void serverCodeAndTheAdminAccountWriteForOthers() {
-    assertTrue(ContextMemoryWriteAccess.isPrivilegedWriter(null));
+  void serverCodeMustNameTheAdminAccountToWriteForOthers() {
+    assertFalse(ContextMemoryWriteAccess.isPrivilegedWriter(null));
     assertTrue(ContextMemoryWriteAccess.isPrivilegedWriter(Entity.ADMIN_USER_NAME));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "\t"})
+  void aMissingWriterIsRefused(String writer) {
+    AuthorizationException refused =
+        assertThrows(
+            AuthorizationException.class, () -> ContextMemoryWriteAccess.requireWriter(writer));
+    assertEquals(ContextMemoryWriteAccess.MISSING_WRITER, refused.getMessage());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemorySourceType.class,
+      names = {"FILE_EXTRACTION", "PAGE_EXTRACTION"})
+  void extractionProvenanceMayBePreservedButNeverEstablished(ContextMemorySourceType sourceType) {
+    assertDoesNotThrow(
+        () -> ContextMemoryWriteAccess.requireSourceTypeAllowed(sourceType, sourceType));
+    assertThrows(
+        AuthorizationException.class,
+        () -> ContextMemoryWriteAccess.requireSourceTypeAllowed(null, sourceType));
+    AuthorizationException refused =
+        assertThrows(
+            AuthorizationException.class,
+            () ->
+                ContextMemoryWriteAccess.requireSourceTypeAllowed(
+                    ContextMemorySourceType.MANUAL, sourceType));
+    assertEquals(ContextMemoryWriteAccess.EXTRACTION_SOURCE, refused.getMessage());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemorySourceType.class,
+      mode = EnumSource.Mode.EXCLUDE,
+      names = {"FILE_EXTRACTION", "PAGE_EXTRACTION"})
+  void userAuthoredSourcesRemainWritable(ContextMemorySourceType sourceType) {
+    assertDoesNotThrow(() -> ContextMemoryWriteAccess.requireSourceTypeAllowed(null, sourceType));
+    assertDoesNotThrow(
+        () ->
+            ContextMemoryWriteAccess.requireSourceTypeAllowed(
+                ContextMemorySourceType.FILE_EXTRACTION, sourceType));
   }
 
   @Test

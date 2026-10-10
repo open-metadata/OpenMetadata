@@ -51,6 +51,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.security.AuthorizationException;
 
 /**
  * ContextMemory is indexed whatever its {@code shareConfig.visibility}; privacy is enforced at
@@ -80,6 +81,16 @@ class ContextMemoryRepositoryTest {
   @AfterEach
   void tearDown() {
     Entity.cleanup();
+  }
+
+  @Test
+  void serverWritesWithoutAPrincipalAreRefused() {
+    assertThrows(
+        AuthorizationException.class,
+        () -> repository.prepare(new ContextMemory().withName("unstamped"), false));
+    assertThrows(
+        AuthorizationException.class,
+        () -> repository.prepare(new ContextMemory().withName("unstamped"), true));
   }
 
   /** The anchor edge getPrimaryEntity reads: APPLIED_TO from anything, the older HAS but from a domain. */

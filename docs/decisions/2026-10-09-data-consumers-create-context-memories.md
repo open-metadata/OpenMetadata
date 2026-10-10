@@ -1,7 +1,7 @@
 # Data Consumers create context memories by default
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-09 (initial)
+- **Revisions:** v1 2026-10-09 (initial); v2 2026-10-10 (extraction provenance and write-response visibility)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `DataConsumerPolicyGrantSqlMigrationTest` (the upgrade statement),
   `ContextMemoryCreateGrantIT` (the grant and the opt-out), `ContextMemoryWriteAccessTest` and
@@ -41,11 +41,18 @@ their preferences, and a stored memory echoes the name of every entity it points
     of an existing memory cannot be changed (403), even by its owner;
   - may point a memory only at entities they can view, by the same rule that decides who reads an
     anchored memory, and only at memories they can read. A missing entity is refused with the same
-    error as an unviewable one (400), so the answer does not reveal whether an id exists.
+    error as an unviewable one (400), so the answer does not reveal whether an id exists;
+  - may not create a `FileExtraction` or `PageExtraction` memory, or change an existing memory's
+    source into either value (403). These values establish extraction-engine provenance for
+    company context and file-memory reuse. An unchanged extraction source is allowed, so readers
+    can still tag or describe extracted pills. Content PATCHes keep the existing flip to `Manual`.
+- Server writers must name their principal explicitly; a missing writer is refused. Extraction
+  names the admin account, while a bot impersonating a user retains that user's restrictions.
 - A memory's owner edits and deletes it through `OrganizationPolicy-Owner-Rule`. Data Consumers can
   also edit the description and tags of any memory they can read, as they can of any entity;
-  editing its content needs `EditAll`. A `PATCH` first enforces the memory's visibility, because it
-  answers with the whole memory.
+  editing its content needs `EditAll`. `PATCH`, PUT on an existing memory, and pin/unpin first
+  enforce the memory's visibility, because they answer with the whole memory. An `EditAll` grant
+  does not bypass that visibility.
 
 ## Consequences
 
@@ -67,3 +74,11 @@ their preferences, and a stored memory echoes the name of every entity it points
 - Revisit if memories by non-admins must be reviewed before they are shown, which needs a
   create-time status rule rather than a permission, or if Data Consumer stops being a contributor
   role.
+
+## Amendment — 2026-10-10: extraction provenance and write responses
+
+Opening creation to Data Consumers also opened the previously admin-only extraction source values.
+Company Context and file-memory reuse trust those values as engine provenance, so ordinary writers
+may preserve them on an existing memory but cannot establish them. Server writes without a principal
+now fail closed. PUT updates and pin/unpin enforce the same visibility as PATCH, since each returns
+the complete memory. The accepted reach of user-authored Approved memories remains unchanged.

@@ -76,7 +76,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       FIELD_PRIMARY_ENTITY
           + ","
           + FIELD_RELATED_ENTITIES
-          + ",rootMemory,parentMemory,"
+          + ","
+          + FIELD_ROOT_MEMORY
+          + ","
+          + FIELD_PARENT_MEMORY
+          + ","
           + FIELD_SOURCE_FILE
           + ","
           + FIELD_SOURCE_ENTITY;
@@ -84,7 +88,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       FIELD_PRIMARY_ENTITY
           + ","
           + FIELD_RELATED_ENTITIES
-          + ",rootMemory,parentMemory,"
+          + ","
+          + FIELD_ROOT_MEMORY
+          + ","
+          + FIELD_PARENT_MEMORY
+          + ","
           + FIELD_SOURCE_FILE
           + ","
           + FIELD_SOURCE_ENTITY;
@@ -542,9 +550,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
    */
   private static void requireWritableByWriter(ContextMemory memory, boolean update) {
     String writer = memory.getUpdatedBy();
+    ContextMemoryWriteAccess.requireWriter(writer);
     if (!ContextMemoryWriteAccess.isPrivilegedWriter(writer)) {
       ContextMemoryWriteAccess.requireViewableReferences(memory, writer);
       if (!update) {
+        ContextMemoryWriteAccess.requireSourceTypeAllowed(null, memory.getSourceType());
         ContextMemoryWriteAccess.requireOwnedByWriter(
             memory.getOwners(),
             Entity.getEntityReferenceByName(Entity.USER, writer, Include.NON_DELETED));
@@ -763,6 +773,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       requireOwnersChangedByPrivilegedWriter();
+      requireSourceTypeChangedByPrivilegedWriter();
       flipToManualOnUserEdit();
       recordChange("title", original.getTitle(), updated.getTitle());
       recordChange("summary", original.getSummary(), updated.getSummary());
@@ -841,7 +852,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     private void flipToManualOnUserEdit() {
       if (operation == Operation.PATCH
           && updated.getSourceType() == original.getSourceType()
-          && isAutomatedSource(original.getSourceType())
+          && ContextMemoryWriteAccess.isAutomatedSource(original.getSourceType())
           && extractionManagedFieldChanged()) {
         updated.setSourceType(ContextMemorySourceType.MANUAL);
       }
@@ -852,9 +863,20 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
      * admins and bots reassign a memory: ownership decides whose agent the memory speaks to.
      */
     private void requireOwnersChangedByPrivilegedWriter() {
-      if (!Boolean.TRUE.equals(updatingUser.getIsAdmin()) && !updatedByBot()) {
+      if (!isPrivilegedUpdatingUser()) {
         ContextMemoryWriteAccess.requireOwnersUnchanged(original.getOwners(), updated.getOwners());
       }
+    }
+
+    private void requireSourceTypeChangedByPrivilegedWriter() {
+      if (!isPrivilegedUpdatingUser()) {
+        ContextMemoryWriteAccess.requireSourceTypeAllowed(
+            original.getSourceType(), updated.getSourceType());
+      }
+    }
+
+    private boolean isPrivilegedUpdatingUser() {
+      return Boolean.TRUE.equals(updatingUser.getIsAdmin()) || updatedByBot();
     }
 
     /** True when a PATCH edited a field the extraction reconciler would otherwise overwrite. */
@@ -913,11 +935,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.CONTEXT_MEMORY,
           original.getId());
     }
-  }
-
-  private static boolean isAutomatedSource(ContextMemorySourceType type) {
-    return type == ContextMemorySourceType.FILE_EXTRACTION
-        || type == ContextMemorySourceType.PAGE_EXTRACTION;
   }
 
   private static boolean extractionManagedFieldChanged(

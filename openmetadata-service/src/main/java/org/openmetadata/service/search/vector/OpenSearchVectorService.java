@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -52,10 +53,19 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   private final OpenSearchClient client;
   @Getter private final EmbeddingClient embeddingClient;
+  private final Function<VectorSearchParameters, Set<String>> readableAnchors;
 
   public OpenSearchVectorService(OpenSearchClient client, EmbeddingClient embeddingClient) {
+    this(client, embeddingClient, VectorSearchMemoryAccess::readableAnchorIds);
+  }
+
+  OpenSearchVectorService(
+      OpenSearchClient client,
+      EmbeddingClient embeddingClient,
+      Function<VectorSearchParameters, Set<String>> readableAnchors) {
     this.client = client;
     this.embeddingClient = embeddingClient;
+    this.readableAnchors = readableAnchors;
   }
 
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
@@ -1542,10 +1552,13 @@ public class OpenSearchVectorService implements VectorIndexService {
       }
 
       String aliasName = getIndexAlias();
+      Set<String> readableAnchorIds = readableAnchors.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
-                queryVector, parameters.withPagination(overFetchSize, rawOffset));
+                queryVector,
+                parameters.withPagination(overFetchSize, rawOffset),
+                readableAnchorIds);
         String endpoint =
             SearchUtils.appendPreferenceParam(
                 "/" + aliasName + "/_search", parameters.preference());

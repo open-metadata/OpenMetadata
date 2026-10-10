@@ -549,7 +549,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     return getVersionInternal(securityContext, id, version);
   }
 
-  /** Current visibility governs every historical version. */
+  /** Current visibility governs every response containing a stored memory. */
   private void enforceCurrentVisibility(SecurityContext securityContext, UUID id) {
     ContextMemory current =
         repository.get(
@@ -604,6 +604,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Valid CreateContextMemory create) {
     ContextMemory memory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    ContextMemory existing = repository.findByNameOrNull(memory.getName(), Include.ALL);
+    if (existing != null) {
+      enforceCurrentVisibility(securityContext, existing.getId());
+    }
     return createOrUpdate(uriInfo, securityContext, memory);
   }
 
@@ -691,6 +695,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    enforceCurrentVisibility(securityContext, id);
 
     ContextMemory original =
         repository.get(uriInfo, id, getFields(PIN_UPDATE_FIELDS), Include.NON_DELETED, false);

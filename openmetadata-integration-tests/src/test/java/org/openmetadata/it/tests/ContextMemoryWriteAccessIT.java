@@ -4,12 +4,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -20,6 +23,7 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -34,6 +38,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.service.Entity;
 
@@ -64,6 +69,141 @@ public class ContextMemoryWriteAccessIT {
         adminMemories().create(preference(ns, "for-owner").withOwners(List.of(userRef(owner))));
 
     assertEquals(List.of(owner.getId()), ownerIds(memory));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemorySourceType.class,
+      names = {"FILE_EXTRACTION", "PAGE_EXTRACTION"})
+  void aUserCannotCreateExtractionProvenance(ContextMemorySourceType sourceType, TestNamespace ns) {
+    ContextMemoryService author = memoriesAs(createUser(ns, null));
+    CreateContextMemory request =
+        entityMemory(ns, "forged-source-" + sourceType.name()).withSourceType(sourceType);
+
+    assertThrows(ForbiddenException.class, () -> author.create(request));
+    assertThrows(ForbiddenException.class, () -> author.put(request));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemorySourceType.class,
+      names = {"FILE_EXTRACTION", "PAGE_EXTRACTION"})
+  void anOwnerCannotTurnTheirMemoryIntoAnExtractedPill(
+      ContextMemorySourceType sourceType, TestNamespace ns) {
+    ContextMemoryService author = memoriesAs(createUser(ns, null));
+    CreateContextMemory request =
+        entityMemory(ns, "manual-source-" + sourceType.name())
+            .withSourceType(ContextMemorySourceType.MANUAL);
+    ContextMemory memory = author.create(request);
+
+    assertThrows(ForbiddenException.class, () -> author.put(request.withSourceType(sourceType)));
+    assertEquals(
+        ContextMemorySourceType.MANUAL, author.get(memory.getId().toString()).getSourceType());
+    assertThrows(
+        ForbiddenException.class, () -> author.patch(memory.getId(), sourceTypePatch(sourceType)));
+    assertEquals(
+        ContextMemorySourceType.MANUAL, author.get(memory.getId().toString()).getSourceType());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemorySourceType.class,
+      names = {"FILE_EXTRACTION", "PAGE_EXTRACTION"})
+  void anAdminMayCreateAndChangeExtractionProvenance(
+      ContextMemorySourceType sourceType, TestNamespace ns) {
+    CreateContextMemory request =
+        entityMemory(ns, "admin-extracted-" + sourceType.name()).withSourceType(sourceType);
+    ContextMemory memory = adminMemories().create(request);
+    assertEquals(sourceType, memory.getSourceType());
+    assertEquals(sourceType, adminMemories().put(request).getSourceType());
+
+    ContextMemory manual =
+        adminMemories()
+            .create(
+                entityMemory(ns, "admin-manual-" + sourceType.name())
+                    .withSourceType(ContextMemorySourceType.MANUAL));
+    assertEquals(
+        sourceType,
+        adminMemories().patch(manual.getId(), sourceTypePatch(sourceType)).getSourceType());
+  }
+
+  @Test
+  void aReaderMayEditExtractedMemoriesWithoutClaimingNewProvenance(TestNamespace ns) {
+    User owner = createUser(ns, null);
+    CreateContextMemory request =
+        entityMemory(ns, "extracted-and-describable")
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withOwners(List.of(userRef(owner)));
+    ContextMemory memory = adminMemories().create(request);
+
+    assertEquals(
+        ContextMemorySourceType.FILE_EXTRACTION, memoriesAs(owner).put(request).getSourceType());
+    ContextMemory described =
+        memoriesAs(createUser(ns, null))
+            .patch(
+                memory.getId(),
+                JsonUtils.readTree(
+                    "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Totals per order\"}]"));
+    assertEquals("Totals per order", described.getDescription());
+    assertEquals(ContextMemorySourceType.FILE_EXTRACTION, described.getSourceType());
+  }
+
+  @Test
+  void editAllCannotRevealAnotherUsersPrivateMemoryThroughPutOrPin(TestNamespace ns) {
+    CreateContextMemory request = preference(ns, "private-for-edits");
+    ContextMemory hidden = memoriesAs(createUser(ns, null)).create(request);
+    User editor = createUser(ns, allowMemoryEdits(ns));
+    ContextMemoryService edits = memoriesAs(editor);
+
+    assertThrows(ForbiddenException.class, () -> edits.put(request));
+    assertThrows(ForbiddenException.class, () -> setPinnedAs(editor, hidden.getId(), true));
+    assertThrows(ForbiddenException.class, () -> setPinnedAs(editor, hidden.getId(), false));
+    ContextMemory unchanged = adminMemories().get(hidden.getId().toString());
+    assertEquals(hidden.getVersion(), unchanged.getVersion());
+    assertEquals(hidden.getPinned(), unchanged.getPinned());
+
+    CreateContextMemory visibleRequest = entityMemory(ns, "visible-for-edits");
+    ContextMemory visible = edits.put(visibleRequest);
+    assertEquals(visible.getId(), edits.put(visibleRequest).getId());
+    assertEquals(true, setPinnedAs(editor, visible.getId(), true).getPinned());
+    assertEquals(false, setPinnedAs(editor, visible.getId(), false).getPinned());
+  }
+
+  private static ContextMemory setPinnedAs(User user, UUID id, boolean pinned) {
+    OpenMetadataClient client =
+        SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+    return client
+        .getHttpClient()
+        .execute(
+            pinned ? HttpMethod.PUT : HttpMethod.DELETE,
+            "/v1/contextCenter/memories/" + id + "/pin",
+            null,
+            ContextMemory.class);
+  }
+
+  private static JsonNode sourceTypePatch(ContextMemorySourceType sourceType) {
+    return JsonUtils.readTree(
+        "[{\"op\":\"replace\",\"path\":\"/sourceType\",\"value\":\"" + sourceType.value() + "\"}]");
+  }
+
+  private static Role allowMemoryEdits(TestNamespace ns) {
+    Rule allow =
+        new Rule()
+            .withName("AllowMemoryEdits")
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withResources(List.of("all"));
+    Policy policy =
+        SdkClients.adminClient()
+            .policies()
+            .create(
+                new CreatePolicy().withName(ns.prefix("memory-editor")).withRules(List.of(allow)));
+    return SdkClients.adminClient()
+        .roles()
+        .create(
+            new CreateRole()
+                .withName(ns.prefix("memory-editor"))
+                .withPolicies(List.of(policy.getFullyQualifiedName())));
   }
 
   @Test

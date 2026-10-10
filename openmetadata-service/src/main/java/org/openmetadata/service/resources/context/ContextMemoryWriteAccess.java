@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.context;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
@@ -21,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -51,6 +53,9 @@ public final class ContextMemoryWriteAccess {
   static final String OWNED_BY_SOMEONE_ELSE =
       "Only an admin can create a context memory owned by someone else";
   static final String OWNERS_CHANGED = "Only an admin can change who owns a context memory";
+  static final String MISSING_WRITER = "A context memory requires an authenticated writer";
+  static final String EXTRACTION_SOURCE =
+      "Only an admin or bot can claim file or page extraction provenance";
 
   /** Whether a writer may read the entity a memory field points at. */
   @FunctionalInterface
@@ -60,14 +65,30 @@ public final class ContextMemoryWriteAccess {
 
   private ContextMemoryWriteAccess() {}
 
-  /**
-   * Whether {@code writer} may write memories for others. A memory with no writer was built by
-   * server code, since every request stamps its principal before the memory is prepared.
-   */
+  /** Whether an explicitly named writer may write memories for others or claim extraction provenance. */
   public static boolean isPrivilegedWriter(String writer) {
-    return writer == null
-        || Entity.ADMIN_USER_NAME.equalsIgnoreCase(writer)
-        || isAdminOrBot(writer);
+    return writer != null
+        && (Entity.ADMIN_USER_NAME.equalsIgnoreCase(writer) || isAdminOrBot(writer));
+  }
+
+  public static void requireWriter(String writer) {
+    if (nullOrEmpty(writer) || writer.isBlank()) {
+      throw new AuthorizationException(MISSING_WRITER);
+    }
+  }
+
+  /** An ordinary writer may preserve extraction provenance, but cannot establish it. */
+  public static void requireSourceTypeAllowed(
+      ContextMemorySourceType original, ContextMemorySourceType updated) {
+    if (original != updated && isAutomatedSource(updated)) {
+      throw new AuthorizationException(EXTRACTION_SOURCE);
+    }
+  }
+
+  /** Sources whose pills the file/page extraction engine regenerates and reuses. */
+  public static boolean isAutomatedSource(ContextMemorySourceType type) {
+    return type == ContextMemorySourceType.FILE_EXTRACTION
+        || type == ContextMemorySourceType.PAGE_EXTRACTION;
   }
 
   private static boolean isAdminOrBot(String writer) {

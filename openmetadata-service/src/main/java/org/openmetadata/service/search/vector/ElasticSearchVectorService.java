@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -39,12 +41,26 @@ public class ElasticSearchVectorService implements VectorIndexService {
   private final Rest5Client restClient;
   @Getter private final EmbeddingClient embeddingClient;
   private final int knnNumCandidatesMultiplier;
+  private final Function<VectorSearchParameters, Set<String>> readableAnchors;
 
   public ElasticSearchVectorService(
       ElasticsearchClient client, EmbeddingClient embeddingClient, int knnNumCandidatesMultiplier) {
+    this(
+        client,
+        embeddingClient,
+        knnNumCandidatesMultiplier,
+        VectorSearchMemoryAccess::readableAnchorIds);
+  }
+
+  ElasticSearchVectorService(
+      ElasticsearchClient client,
+      EmbeddingClient embeddingClient,
+      int knnNumCandidatesMultiplier,
+      Function<VectorSearchParameters, Set<String>> readableAnchors) {
     this.client = client;
     this.restClient = extractRestClient(client);
     this.embeddingClient = embeddingClient;
+    this.readableAnchors = readableAnchors;
     this.knnNumCandidatesMultiplier =
         knnNumCandidatesMultiplier > 0
             ? knnNumCandidatesMultiplier
@@ -143,12 +159,14 @@ public class ElasticSearchVectorService implements VectorIndexService {
       overFetchSize = Math.min(overFetchSize, k);
 
       String indexName = getIndexAlias();
+      Set<String> readableAnchorIds = readableAnchors.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.buildNativeESQuery(
                 queryVector,
                 parameters.withPagination(overFetchSize, rawOffset),
-                knnNumCandidatesMultiplier);
+                knnNumCandidatesMultiplier,
+                readableAnchorIds);
         String endpoint =
             SearchUtils.appendPreferenceParam(
                 "/" + indexName + "/_search", parameters.preference());

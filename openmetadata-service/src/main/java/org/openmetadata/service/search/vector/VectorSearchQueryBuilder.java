@@ -29,8 +29,8 @@ public class VectorSearchQueryBuilder {
   public static final int DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER = 2;
 
   /**
-   * Consulted only for its engine-independent predicates ({@code isSubjectResolvable}), the
-   * pinned-anchor decision and field constants, so this builder decides who is restricted from the
+   * Consulted only for its engine-independent predicates ({@code isSubjectResolvable}) and field
+   * constants, so this builder decides who is restricted from the
    * same rule the search managers use. The factory is irrelevant here — this class renders raw
    * JSON, never OMQueryBuilder clauses.
    */
@@ -67,9 +67,9 @@ public class VectorSearchQueryBuilder {
             null, filters, size, from, k, threshold, null, subjectContext, null));
   }
 
-  /** Build an OpenSearch request that also applies a compiled query filter. */
+  /** Build an OpenSearch request without admitting anchors whose access has not been evaluated. */
   public static String build(float[] vector, VectorSearchParameters parameters) {
-    return build(vector, parameters, readableAnchorIds(parameters));
+    return build(vector, parameters, Set.of());
   }
 
   /** As above, with the anchors the request pins already evaluated for its subject. */
@@ -108,11 +108,11 @@ public class VectorSearchQueryBuilder {
       SubjectContext subjectContext) {
     VectorSearchParameters parameters =
         new VectorSearchParameters(null, filters, 0, 0, k, threshold, null, subjectContext, null);
-    return buildQuery(vector, parameters, readableAnchorIds(parameters));
+    return buildQuery(vector, parameters, Set.of());
   }
 
   /** As above, with the anchors the request pins already evaluated for its subject. */
-  static String buildQuery(
+  public static String buildQuery(
       float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
     StringBuilder sb = new StringBuilder(512);
     appendKnnQuery(sb, vector, parameters, readableAnchorIds);
@@ -179,11 +179,10 @@ public class VectorSearchQueryBuilder {
     return buildNativeESQuery(vector, parameters, numCandidatesMultiplier);
   }
 
-  /** Build an Elasticsearch request that also applies a compiled query filter. */
+  /** Build an Elasticsearch request without admitting anchors whose access has not been evaluated. */
   public static String buildNativeESQuery(
       float[] vector, VectorSearchParameters parameters, int numCandidatesMultiplier) {
-    return buildNativeESQuery(
-        vector, parameters, numCandidatesMultiplier, readableAnchorIds(parameters));
+    return buildNativeESQuery(vector, parameters, numCandidatesMultiplier, Set.of());
   }
 
   /** As above, with the anchors the request pins already evaluated for its subject. */
@@ -219,17 +218,6 @@ public class VectorSearchQueryBuilder {
     sb.append("}}");
     sb.append("}}");
     return sb.toString();
-  }
-
-  /**
-   * The anchors a request pins, through its {@code primaryEntityId} filter or its query filter,
-   * whose {@code Entity} memories its subject may read, evaluated here by the REST rule. The agent's
-   * entity memory fetch and capture's duplicate probe pin exactly one.
-   */
-  private static Set<String> readableAnchorIds(VectorSearchParameters parameters) {
-    return MEMORY_VISIBILITY.readableAnchorIds(
-        parameters.subjectContext(),
-        ContextMemoryAnchorPins.of(parameters.filters(), parameters.queryFilter()));
   }
 
   /**
