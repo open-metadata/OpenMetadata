@@ -230,7 +230,7 @@ jest.mock(
 );
 
 jest.mock('../../../../../utils/TestCaseUtils', () => ({
-  ExtraTestCaseDropdownOptions: jest.fn().mockReturnValue([]),
+  getTestCaseManageMenuItems: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../../../common/EntityPageInfos/ManageButton/ManageButton', () =>
@@ -351,7 +351,9 @@ describe('QualityTab', () => {
 
     const filterControls = screen.getByTestId('quality-tab-filter-controls');
     const filterSpace = filterControls.querySelector('.layout-space');
-    const filterItems = filterControls.querySelectorAll('.ant-form-item');
+    const filterItems = filterControls.querySelectorAll(
+      '[data-testid=classic-quality-filter]'
+    );
 
     expect(filterControls).toHaveClass('tw:ml-auto', 'tw:shrink-0');
     expect(filterSpace).toBeInTheDocument();
@@ -359,7 +361,7 @@ describe('QualityTab', () => {
     expect(filterItems).toHaveLength(2);
 
     filterItems.forEach((item) => {
-      expect(item).toHaveClass('tw:m-0', 'tw:w-44');
+      expect(item).toHaveClass('tw:w-44');
     });
   });
 
@@ -587,8 +589,8 @@ describe('QualityTab', () => {
     expect(await screen.findByText('ManageButton')).toBeInTheDocument();
   });
 
-  it('should call ExtraTestCaseDropdownOptions with correct parameters when table has fullyQualifiedName', async () => {
-    const { ExtraTestCaseDropdownOptions } = jest.requireMock(
+  it('should call getTestCaseManageMenuItems with correct parameters when table has fullyQualifiedName', async () => {
+    const { getTestCaseManageMenuItems } = jest.requireMock(
       '../../../../../utils/TestCaseUtils'
     );
 
@@ -605,14 +607,14 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    expect(ExtraTestCaseDropdownOptions).toHaveBeenCalled();
+    expect(getTestCaseManageMenuItems).toHaveBeenCalled();
   });
 
-  it('should not call ExtraTestCaseDropdownOptions when table has no fullyQualifiedName', async () => {
-    const { ExtraTestCaseDropdownOptions } = jest.requireMock(
+  it('should not call getTestCaseManageMenuItems when table has no fullyQualifiedName', async () => {
+    const { getTestCaseManageMenuItems } = jest.requireMock(
       '../../../../../utils/TestCaseUtils'
     );
-    ExtraTestCaseDropdownOptions.mockClear();
+    getTestCaseManageMenuItems.mockClear();
 
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
@@ -626,7 +628,7 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    expect(ExtraTestCaseDropdownOptions).not.toHaveBeenCalled();
+    expect(getTestCaseManageMenuItems).not.toHaveBeenCalled();
   });
 
   it('should call checkPermission for ViewAll and EditAll operations', async () => {

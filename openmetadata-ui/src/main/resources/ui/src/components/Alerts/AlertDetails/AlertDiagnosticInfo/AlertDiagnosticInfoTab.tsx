@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
 import {
   Card,
   Grid,
   SkeletonParagraph,
   Tooltip,
+  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
 import { EventSubscriptionDiagnosticInfo } from '../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDiagnosticInfo } from '../../../../rest/observabilityAPI';
@@ -84,16 +83,10 @@ function AlertDiagnosticInfoTab() {
                       <Typography className="m-0" color="secondary">
                         {`${item.key}:`}
                       </Typography>
-                      <Tooltip
-                        arrow
-                        excludeTriggerFromTabOrder
-                        placement="bottom"
-                        title={item.description}
-                        triggerClassName="tw:inline-flex">
-                        <InfoCircleOutlined
-                          className="info-icon"
-                          style={{ color: GRAYED_OUT_COLOR }}
-                        />
+                      <Tooltip arrow placement="bottom" title={item.description}>
+                        <TooltipTrigger aria-label={item.description}>
+                          <InfoCircle className="tw:size-4 tw:text-fg-quaternary" />
+                        </TooltipTrigger>
                       </Tooltip>
                     </Typography>
                   </Grid.Item>

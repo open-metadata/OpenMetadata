@@ -13,7 +13,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Button, Dialog, DialogTrigger, Modal } from 'react-aria-components';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Select } from './select';
 
 describe('Select in a modal', () => {
@@ -178,5 +178,59 @@ describe('Select with no items', () => {
     await user.click(screen.getByRole('button', { name: /Teams/ }));
 
     expect(await screen.findByText('Nothing to map')).toBeInTheDocument();
+  });
+});
+
+describe('Select with a large collection', () => {
+  beforeEach(() => {
+    vi.stubEnv('VIRT_ON', 'true');
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get: () => 40,
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
+      configurable: true,
+      get: () => 320,
+    });
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get: () => 256,
+    });
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get: () => 320,
+    });
+  });
+  afterEach(() => {
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight');
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollWidth');
+    Reflect.deleteProperty(HTMLElement.prototype, 'clientHeight');
+    Reflect.deleteProperty(HTMLElement.prototype, 'clientWidth');
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+  it('windows the options and selects the last item with the keyboard', async () => {
+    const user = userEvent.setup();
+    const onSelectionChange = vi.fn();
+    const items = Array.from({ length: 250 }, (_, index) => ({
+      id: `column-${index}`,
+      label: `Column ${index}`,
+    }));
+    render(
+      <Select
+        aria-label="Columns"
+        items={items}
+        onSelectionChange={onSelectionChange}>
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+    );
+    await user.click(screen.getByRole('button', { name: /Columns/ }));
+    await screen.findByRole('listbox');
+    expect(screen.getAllByRole('option').length).toBeLessThan(items.length);
+    await user.keyboard('{End}{Enter}');
+    await waitFor(() =>
+      expect(onSelectionChange).toHaveBeenCalledWith('column-249')
+    );
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 });

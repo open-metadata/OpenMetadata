@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Card, Grid } from '@openmetadata/ui-core-components';
-
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import IncidentManager from '../../components/IncidentManager/IncidentManager.component';

@@ -18,29 +18,21 @@ import {
   Grid,
 } from '@openmetadata/ui-core-components';
 import { ChevronRight, Plus } from '@openmetadata/ui-core-components/icons';
-import { Form, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
-import {
-  TEST_CASE_FILTERS,
-  TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_FILTER_OPTIONS,
-  TEST_CASE_TYPE_OPTION,
-} from '../../../constants/profiler.constant';
+import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import { getPopupContainer } from '../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
-import { TestCaseSearchParams } from '../DataQuality.interface';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
+import { ClassicTestCaseFilter } from './ClassicTestCaseFilter';
 import TestCaseListTableHeader from './TestCaseListTableHeader.component';
 import { getTestCaseListDisplayState } from './TestCases.utils';
 import { useTestCaseListPage } from './useTestCaseListPage';
@@ -48,7 +40,6 @@ import { useTestCaseListPage } from './useTestCaseListPage';
 export const TestCases = () => {
   const { t } = useTranslation();
   const { createActions } = useDataQualityProvider();
-  const [form] = Form.useForm();
   const {
     testCasePermission,
     testSuitePermission,
@@ -59,19 +50,8 @@ export const TestCases = () => {
     hasActiveFilters,
     handleMenuClick,
     handleSearchParam,
-    handleFilterChange,
     filterMenu,
-    isOptionsLoading,
-    tableOptions,
-    tagOptions,
-    tierOptions,
-    serviceOptions,
-    dataProductOptions,
-    dimensionOptions,
-    debounceFetchTableData,
-    debounceFetchTagOptions,
-    debounceFetchServiceOptions,
-    debounceFetchDataProductOptions,
+    filters,
     testCase,
     entityPermissions,
     isLoading,
@@ -84,7 +64,7 @@ export const TestCases = () => {
     showDeleted,
     handleShowDeletedChange,
     handleAfterDeleteAction,
-  } = useTestCaseListPage({ form });
+  } = useTestCaseListPage();
 
   // testCasePermission is a resource-level permission (usePermissionProvider().permissions.
   // testCase, threaded through useTestCaseListPage). Itself OperationPermission-shaped, so it
@@ -123,166 +103,54 @@ export const TestCases = () => {
       showDeleted,
     });
 
-  const renderPrimaryFilters = () => (
-    <>
-      {selectedFilter.includes(TEST_CASE_FILTERS.table) && (
-        <Form.Item
-          className="m-0 w-80"
-          label={t('label.table')}
-          name="tableFqn">
-          <Select
-            allowClear
-            showSearch
-            data-testid="table-select-filter"
-            getPopupContainer={getPopupContainer}
-            loading={isOptionsLoading}
-            options={tableOptions}
-            placeholder={t('label.table')}
-            onSearch={debounceFetchTableData}
-          />
-        </Form.Item>
-      )}
-      {selectedFilter.includes(TEST_CASE_FILTERS.platform) && (
-        <Form.Item
-          className="m-0 w-min-20"
-          label={t('label.platform')}
-          name="testPlatforms">
-          <Select
-            allowClear
-            data-testid="platform-select-filter"
-            getPopupContainer={getPopupContainer}
-            mode="multiple"
-            options={TEST_CASE_PLATFORM_OPTION}
-            placeholder={t('label.platform')}
-          />
-        </Form.Item>
-      )}
-      {selectedFilter.includes(TEST_CASE_FILTERS.type) && (
-        <Form.Item
-          className="m-0 w-40"
-          label={t('label.type')}
-          name="testCaseType">
-          <Select
-            allowClear
-            data-testid="test-case-type-select-filter"
-            getPopupContainer={getPopupContainer}
-            options={TEST_CASE_TYPE_OPTION}
-            placeholder={t('label.type')}
-          />
-        </Form.Item>
-      )}
-      {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
-        <Form.Item
-          className="m-0 w-64"
-          label={t('label.status')}
-          name="testCaseStatus">
-          <Select
-            allowClear
-            data-testid="status-select-filter"
-            getPopupContainer={getPopupContainer}
-            mode="multiple"
-            options={TEST_CASE_STATUS_FILTER_OPTIONS}
-            placeholder={t('label.status')}
-          />
-        </Form.Item>
-      )}
-      {selectedFilter.includes(TEST_CASE_FILTERS.lastRun) && (
-        <Form.Item
-          className="m-0"
-          label={t('label.last-run')}
-          name="lastRunRange"
-          trigger="handleDateRangeChange"
-          valuePropName="defaultDateRange">
-          <DatePickerMenu showSelectedCustomRange size="small" />
-        </Form.Item>
-      )}
-    </>
-  );
-
-  const renderSecondaryFilters = () => (
-    <>
-      {selectedFilter.includes(TEST_CASE_FILTERS.tags) && (
-        <Form.Item
-          className="m-0 w-80"
-          label={t('label.tag-plural')}
-          name="tags">
-          <Select
-            allowClear
-            showSearch
-            data-testid="tags-select-filter"
-            getPopupContainer={getPopupContainer}
-            loading={isOptionsLoading}
-            mode="multiple"
-            options={tagOptions}
-            placeholder={t('label.tag-plural')}
-            onSearch={debounceFetchTagOptions}
-          />
-        </Form.Item>
-      )}
-      {selectedFilter.includes(TEST_CASE_FILTERS.tier) && (
-        <Form.Item className="m-0 w-40" label={t('label.tier')} name="tier">
-          <Select
-            allowClear
-            showSearch
-            data-testid="tier-select-filter"
-            getPopupContainer={getPopupContainer}
-            options={tierOptions}
-            placeholder={t('label.tier')}
-          />
-        </Form.Item>
-      )}
-      {selectedFilter.includes(TEST_CASE_FILTERS.service) && (
-        <Form.Item
-          className="m-0 w-80"
-          label={t('label.service')}
-          name="serviceName">
-          <Select
-            allowClear
-            showSearch
-            data-testid="service-select-filter"
-            getPopupContainer={getPopupContainer}
-            loading={isOptionsLoading}
-            options={serviceOptions}
-            placeholder={t('label.service')}
-            onSearch={debounceFetchServiceOptions}
-          />
-        </Form.Item>
-      )}
-      {selectedFilter.includes(TEST_CASE_FILTERS.dimension) && (
-        <Form.Item
-          className="m-0 w-80"
-          label={t('label.dimension')}
-          name="dataQualityDimension">
-          <Select
-            allowClear
-            showSearch
-            data-testid="dimension-select-filter"
-            getPopupContainer={getPopupContainer}
-            loading={isOptionsLoading}
-            options={dimensionOptions}
-            placeholder={t('label.dimension')}
-          />
-        </Form.Item>
-      )}
-      {selectedFilter.includes(TEST_CASE_FILTERS.dataProduct) && (
-        <Form.Item
-          className="m-0 w-80"
-          label={t('label.data-product-plural')}
-          name="dataProductFqn">
-          <Select
-            allowClear
-            showSearch
-            data-testid="data-product-select-filter"
-            getPopupContainer={getPopupContainer}
-            loading={isOptionsLoading}
-            options={dataProductOptions}
-            placeholder={t('label.data-product-plural')}
-            onSearch={debounceFetchDataProductOptions}
-          />
-        </Form.Item>
-      )}
-    </>
-  );
+  const filterLayout = [
+    {
+      key: TEST_CASE_FILTERS.table,
+      width: 'tw:w-80',
+      testId: 'table-select-filter',
+    },
+    {
+      key: TEST_CASE_FILTERS.platform,
+      width: 'tw:min-w-20',
+      testId: 'platform-select-filter',
+    },
+    {
+      key: TEST_CASE_FILTERS.type,
+      width: 'tw:w-40',
+      testId: 'test-case-type-select-filter',
+    },
+    {
+      key: TEST_CASE_FILTERS.status,
+      width: 'tw:w-64',
+      testId: 'status-select-filter',
+    },
+    { key: TEST_CASE_FILTERS.lastRun, testId: 'last-run-filter' },
+    {
+      key: TEST_CASE_FILTERS.tags,
+      width: 'tw:w-80',
+      testId: 'tags-select-filter',
+    },
+    {
+      key: TEST_CASE_FILTERS.tier,
+      width: 'tw:w-40',
+      testId: 'tier-select-filter',
+    },
+    {
+      key: TEST_CASE_FILTERS.service,
+      width: 'tw:w-80',
+      testId: 'service-select-filter',
+    },
+    {
+      key: TEST_CASE_FILTERS.dimension,
+      width: 'tw:w-80',
+      testId: 'dimension-select-filter',
+    },
+    {
+      key: TEST_CASE_FILTERS.dataProduct,
+      width: 'tw:w-80',
+      testId: 'data-product-select-filter',
+    },
+  ];
 
   if (!testCaseFlags.hasViewAccess) {
     return (
@@ -302,53 +170,54 @@ export const TestCases = () => {
       data-testid="test-case-container"
       style={{ ...getLayoutGutter(16, 16) }}>
       <Grid.Item className="layout-column" span={24}>
-        <Form<TestCaseSearchParams>
-          className="new-form-style"
-          form={form}
-          layout="horizontal"
-          onValuesChange={handleFilterChange}>
-          <Box
-            inline
-            align="center"
-            className="layout-space layout-space-horizontal w-full"
-            gap={4}
-            itemClassName="layout-space-item"
-            wrap="wrap">
-            <Form.Item noStyle name="selectedFilters">
-              <Dropdown.Root>
-                <Button
-                  className="tw:text-brand-secondary tw:after:outline-brand"
-                  color="secondary"
-                  data-testid="advanced-filter"
-                  iconTrailing={<ChevronRight size={14} />}
-                  size="sm">
-                  {t('label.advanced')}
-                </Button>
-                <Dropdown.Popover
-                  className="tw:w-auto"
-                  placement="bottom start">
-                  <Dropdown.Menu
-                    aria-label={t('label.advanced')}
-                    selectedKeys={selectedFilter}
-                    selectionMode="multiple"
-                    onAction={(key) => handleMenuClick({ key: String(key) })}>
-                    {filterMenu.map((item) => (
-                      <Dropdown.Item
-                        shouldCloseOnSelect
-                        data-testid={`advanced-filter-option-${item.key}`}
-                        id={item.key}
-                        key={item.key}
-                        label={item.label}
-                      />
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            </Form.Item>
-            {renderPrimaryFilters()}
-            {renderSecondaryFilters()}
-          </Box>
-        </Form>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full"
+          gap={4}
+          itemClassName="layout-space-item"
+          wrap="wrap">
+          <Dropdown.Root>
+            <Button
+              className="tw:text-brand-secondary tw:after:outline-brand"
+              color="secondary"
+              data-testid="advanced-filter"
+              iconTrailing={<ChevronRight size={14} />}
+              size="sm">
+              {t('label.advanced')}
+            </Button>
+            <Dropdown.Popover className="tw:w-auto" placement="bottom start">
+              <Dropdown.Menu
+                aria-label={t('label.advanced')}
+                selectedKeys={selectedFilter}
+                selectionMode="multiple"
+                onAction={(key) => handleMenuClick({ key: String(key) })}>
+                {filterMenu.map((item) => (
+                  <Dropdown.Item
+                    shouldCloseOnSelect
+                    data-testid={`advanced-filter-option-${item.key}`}
+                    id={item.key}
+                    key={item.key}
+                    label={item.label}
+                  />
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+
+          {filterLayout.map(({ key, width, testId }) => {
+            const filter = filters.find((item) => item.key === key);
+
+            return filter ? (
+              <ClassicTestCaseFilter
+                className={width}
+                filter={filter}
+                key={key}
+                testId={testId}
+              />
+            ) : null;
+          })}
+        </Box>
       </Grid.Item>
       <Grid.Item className="layout-column" span={24}>
         <PieChartSummaryPanel

@@ -10,26 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Grid } from '@openmetadata/ui-core-components';
-import { Form } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  FieldProp,
+  FieldTypes,
+  FormField,
+  FormItemLabel,
+  FormItemLayout,
+  getField,
+  Grid,
+  HintText,
+  HookForm,
+  Input,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
-import {
-  FieldProp,
-  FieldTypes,
-  FormItemLayout,
-} from '../../../../interface/FormUtils.interface';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getDefaultScheduleValue } from '../../../../utils/CronExpressionUtils';
-import { generateFormFields } from '../../../../utils/formUtils';
-import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
 import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval.types';
@@ -39,7 +46,6 @@ import {
   AddTestSuitePipelineProps,
   TestSuiteIngestionDataType,
 } from '../AddDataQualityTest.interface';
-import './add-test-suite-pipeline.style.less';
 
 const AddTestSuitePipeline = ({
   initialData,
@@ -91,13 +97,7 @@ const AddTestSuitePipeline = ({
     [testSuiteId, tableFqnForFilters]
   );
 
-  const [selectAllTestCases, setSelectAllTestCases] = useState(
-    initialData?.selectAllTestCases
-  );
   const [isSchedulerValid, setIsSchedulerValid] = useState(true);
-  const [form] = Form.useForm<
-    WorkflowExtraConfig & TestSuiteIngestionDataType
-  >();
   const isEditMode = !isEmpty(ingestionFQN);
   const initialCron = isEditMode
     ? initialData?.cron
@@ -107,22 +107,13 @@ const AddTestSuitePipeline = ({
         includePeriodOptions,
         allowNoSchedule: true,
       });
-
-  const formFields: FieldProp[] = [
-    {
-      name: 'name',
-      label: t('label.name'),
-      type: FieldTypes.TEXT,
-      required: false,
-      placeholder: t('label.enter-entity', {
-        entity: t('label.name'),
-      }),
-      props: {
-        'data-testid': 'pipeline-name',
-      },
-      id: 'root/name',
-    },
-  ];
+  const form = useForm<WorkflowExtraConfig & TestSuiteIngestionDataType>({
+    defaultValues: { ...initialData, cron: initialCron },
+  });
+  const selectAllTestCases = useWatch({
+    control: form.control,
+    name: 'selectAllTestCases',
+  });
 
   const testCaseFormFields: FieldProp[] = [
     {
@@ -134,6 +125,11 @@ const AddTestSuitePipeline = ({
       required: false,
       props: {
         'data-testid': 'select-all-test-cases',
+        onChange: (value) => {
+          if (value === 'true') {
+            form.setValue('testCases', undefined);
+          }
+        },
       },
       id: 'root/selectAllTestCases',
       formItemLayout: FormItemLayout.HORIZONTAL,
@@ -185,35 +181,39 @@ const AddTestSuitePipeline = ({
     });
   };
 
-  const handleValuesChange = (
-    changedValues: Partial<WorkflowExtraConfig & TestSuiteIngestionDataType>
-  ) => {
-    if (!Object.hasOwn(changedValues, 'selectAllTestCases')) {
-      return;
-    }
-
-    const value = Boolean(changedValues.selectAllTestCases);
-    setSelectAllTestCases(value);
-    if (value) {
-      form.setFieldsValue({ testCases: undefined });
-    }
+  const raiseOnErrorFormField: FieldProp = {
+    name: 'raiseOnError',
+    label: t('label.raise-on-error'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    id: 'root/raiseOnError',
   };
 
-  const raiseOnErrorFormField = useMemo(() => getRaiseOnErrorFormField(), []);
-
   return (
-    <Form
+    <HookForm
       form={form}
-      initialValues={{ ...initialData, cron: initialCron }}
-      layout="vertical"
-      name="schedular-form"
-      onFinish={onFinish}
-      onValuesChange={handleValuesChange}>
+      id="schedular-form"
+      validationBehavior="aria"
+      onSubmit={form.handleSubmit(onFinish)}>
       <Grid
         className="layout-row layout-grid"
         style={{ ...getLayoutGutter(16, 16) }}>
         <Grid.Item className="layout-column" span={24}>
-          {generateFormFields(formFields)}
+          <FormField control={form.control} name="name">
+            {({ field }) => (
+              <Input
+                {...field}
+                id="root/name"
+                inputDataTestId="pipeline-name"
+                label={t('label.name')}
+                placeholder={t('label.enter-entity', {
+                  entity: t('label.name'),
+                })}
+                value={field.value ?? ''}
+              />
+            )}
+          </FormField>
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>
           {t('label.schedule-for-entity', {
@@ -221,58 +221,81 @@ const AddTestSuitePipeline = ({
           })}
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>
-          <Form.Item name="cron">
-            <ScheduleInterval
-              defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
-              entity={t('label.test-case-plural')}
-              includePeriodOptions={includePeriodOptions}
-              onValidityChange={setIsSchedulerValid}
-            />
-          </Form.Item>
-        </Grid.Item>
-        <Grid.Item className="layout-column" span={24}>
-          {generateFormFields([debugLogFormField])}
-        </Grid.Item>
-        <Grid.Item className="layout-column" span={24}>
-          {generateFormFields([raiseOnErrorFormField])}
-        </Grid.Item>
-        <Grid.Item className="layout-column" span={24}>
-          <Grid
-            className="layout-row layout-grid add-test-case-container"
-            style={{ ...getLayoutGutter(0, 16) }}>
-            <Grid.Item className="layout-column" span={24}>
-              {generateFormFields(testCaseFormFields)}
-            </Grid.Item>
-            {!selectAllTestCases && (
-              <Grid.Item className="layout-column" span={24}>
-                <Form.Item
-                  label={t('label.test-case')}
-                  name="testCases"
-                  rules={[
-                    {
-                      required: true,
-                      message: t('label.field-required', {
-                        field: t('label.test-case'),
-                      }),
-                    },
-                  ]}
-                  valuePropName="selectedTest">
-                  <AddTestCaseList
-                    columnFilters={
-                      tableFqnForFilters
-                        ? `fullyQualifiedName:"${escapeESReservedCharacters(
-                            tableFqnForFilters
-                          )}"`
-                        : undefined
-                    }
-                    hideTableFilter={Boolean(tableFqnForFilters)}
-                    showButton={false}
-                    testCaseParams={testCasePickerScope}
-                  />
-                </Form.Item>
-              </Grid.Item>
+          <FormField control={form.control} name="cron">
+            {({ field }) => (
+              <ScheduleInterval
+                defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
+                entity={t('label.test-case-plural')}
+                includePeriodOptions={includePeriodOptions}
+                value={field.value}
+                onChange={field.onChange}
+                onValidityChange={setIsSchedulerValid}
+              />
             )}
-          </Grid>
+          </FormField>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          {getField(debugLogFormField)}
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          {getField(raiseOnErrorFormField)}
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Card className="tw:bg-(--om-grey-1)">
+            <Card.Content className="tw:p-4">
+              <Grid
+                className="layout-row layout-grid"
+                style={{ ...getLayoutGutter(0, 16) }}>
+                <Grid.Item className="layout-column" span={24}>
+                  {testCaseFormFields.map((field) => (
+                    <Fragment key={field.name}>{getField(field)}</Fragment>
+                  ))}
+                </Grid.Item>
+                {!selectAllTestCases && (
+                  <Grid.Item className="layout-column" span={24}>
+                    <FormField
+                      control={form.control}
+                      name="testCases"
+                      rules={{
+                        validate: (value) =>
+                          normalizeSelectedTestProp(value).length > 0 ||
+                          t('label.field-required', {
+                            field: t('label.test-case'),
+                          }),
+                      }}>
+                      {({ field, fieldState }) => (
+                        <Box direction="col" gap={2}>
+                          <FormItemLabel
+                            required
+                            label={t('label.test-case')}
+                          />
+                          <AddTestCaseList
+                            columnFilters={
+                              tableFqnForFilters
+                                ? `fullyQualifiedName:"${escapeESReservedCharacters(
+                                    tableFqnForFilters
+                                  )}"`
+                                : undefined
+                            }
+                            hideTableFilter={Boolean(tableFqnForFilters)}
+                            selectedTest={field.value}
+                            showButton={false}
+                            testCaseParams={testCasePickerScope}
+                            onChange={field.onChange}
+                          />
+                          {fieldState.error && (
+                            <HintText isInvalid>
+                              {fieldState.error.message}
+                            </HintText>
+                          )}
+                        </Box>
+                      )}
+                    </FormField>
+                  </Grid.Item>
+                )}
+              </Grid>
+            </Card.Content>
+          </Card>
         </Grid.Item>
         <Grid.Item className="layout-column d-flex justify-end gap-2" span={24}>
           <Button
@@ -294,7 +317,7 @@ const AddTestSuitePipeline = ({
           </Button>
         </Grid.Item>
       </Grid>
-    </Form>
+    </HookForm>
   );
 };
 

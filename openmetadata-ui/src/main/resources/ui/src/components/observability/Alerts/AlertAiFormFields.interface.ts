@@ -27,6 +27,7 @@ import {
   ModifiedEventSubscription,
   ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 
 export type AlertAiFormMode = 'add' | 'edit' | 'view';
 
@@ -131,6 +132,8 @@ export interface RuleSectionProps {
 }
 
 export interface RuleArgumentFieldProps {
+  testId?: string;
+  sourceSearch?: AlertSourceSearch;
   argument: string;
   containerEntities?: string[];
   supportedEventTypes?: EventType[];

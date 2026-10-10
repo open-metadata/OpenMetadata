@@ -18,9 +18,15 @@ import {
   deleteCustomMetric,
 } from '../../utils/customMetric';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+test.beforeEach(async ({ page }) => {
+  await stubUserPreferencesAppMode(page, 'classic');
+  await disableAiAppMode(page);
+});
 
 test('Table custom metric', async ({ page }) => {
   const table = new TableClass();

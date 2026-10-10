@@ -11,18 +11,27 @@
  *  limitations under the License.
  */
 
-import { Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
+import { FormProvider } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from '../../../components/Alerts/DestinationFormItem/DestinationFormItem.constants';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { AlertAiFormValidationErrors } from '../../../components/observability/Alerts/AlertAiFormFields.interface';
+import { validateAlertAiForm } from '../../../components/observability/Alerts/AlertAiFormFieldsValidationUtils';
 import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
+import { getClassicAlertInitialValues } from './ObservabilityAlertForm.utils';
 import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
 
 function ObservabilityAlertForm({
@@ -45,7 +54,36 @@ function ObservabilityAlertForm({
   templates,
 }: Readonly<ObservabilityAlertFormProps>) {
   const { t } = useTranslation();
-  const values = Form.useWatch<ModifiedCreateEventSubscription>([], form);
+  const values = form.watch();
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const validationErrors = useMemo<AlertAiFormValidationErrors>(
+    () => (hasSubmitted ? validateAlertAiForm(values, t) : {}),
+    [hasSubmitted, values, t]
+  );
+  const { reset } = form;
+  useEffect(() => {
+    if (alert) {
+      reset(getClassicAlertInitialValues(alert));
+    }
+  }, [alert, reset]);
+  const submit = async (data: ModifiedCreateEventSubscription) => {
+    const errors = validateAlertAiForm(data, t);
+    setHasSubmitted(true);
+    if (errors.destinations) {
+      form.setError(DESTINATIONS_MIN_COUNT_ERROR_PATH, {
+        message: errors.destinations,
+        type: 'manual',
+      });
+    }
+    if (Object.keys(errors).length === 0) {
+      await handleSave(data);
+    }
+  };
+  const onValuesChange = (changes: Partial<ModifiedCreateEventSubscription>) =>
+    form.reset(
+      { ...form.getValues(), ...changes },
+      { keepErrors: true, keepDirty: true, keepTouched: true }
+    );
 
   return (
     <Grid
@@ -65,70 +103,70 @@ function ObservabilityAlertForm({
       </Grid.Item>
 
       <Grid.Item className="layout-column" span={24}>
-        <Form<ModifiedCreateEventSubscription>
-          form={form}
-          initialValues={{
-            ...alert,
-            displayName: getEntityName(alert),
-            resources: alert?.filteringRules?.resources,
-          }}
-          validateMessages={VALIDATION_MESSAGES}
-          onFinish={handleSave}>
-          <Grid
-            className="layout-row layout-grid"
-            style={{ ...getLayoutGutter(20, 20) }}>
-            <AlertSelectionProvider value={selection}>
-              <ObservabilityAlertFormFields
-                alert={alert}
-                extraFormWidgets={extraFormWidgets}
-                filterResources={filterResources}
-                form={form}
-                isLoading={isLoading}
-                shouldShowActionsSection={shouldShowActionsSection}
-                shouldShowFiltersSection={shouldShowFiltersSection}
-                templateResourcePermission={templateResourcePermission}
-                templates={templates}
-              />
-            </AlertSelectionProvider>
+        <FormProvider {...form}>
+          <HookForm
+            form={form}
+            validationBehavior="aria"
+            onSubmit={form.handleSubmit(submit, () => setHasSubmitted(true))}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(20, 20) }}>
+              <AlertSelectionProvider value={selection}>
+                <ObservabilityAlertFormFields
+                  alert={alert}
+                  extraFormWidgets={extraFormWidgets}
+                  filterResources={filterResources}
+                  form={form}
+                  isLoading={isLoading}
+                  shouldShowActionsSection={shouldShowActionsSection}
+                  shouldShowFiltersSection={shouldShowFiltersSection}
+                  templateResourcePermission={templateResourcePermission}
+                  templates={templates}
+                  validationErrors={validationErrors}
+                />
+              </AlertSelectionProvider>
 
-            {!isUndefined(inlineAlertDetails) && (
+              {!isUndefined(inlineAlertDetails) && (
+                <Grid.Item className="layout-column" span={24}>
+                  <InlineAlert {...inlineAlertDetails} />
+                </Grid.Item>
+              )}
+
               <Grid.Item className="layout-column" span={24}>
-                <InlineAlert {...inlineAlertDetails} />
+                <Box gap={2} justify="end">
+                  <Button
+                    color="tertiary"
+                    data-testid="cancel-button"
+                    size="sm"
+                    onPress={handleCancel}>
+                    {t('label.cancel')}
+                  </Button>
+
+                  {Object.entries(extraFormButtons).map(
+                    ([name, ButtonComponent]) => (
+                      <ButtonComponent
+                        alertDetails={alert}
+                        key={name}
+                        templateResourcePermission={templateResourcePermission}
+                        templates={templates}
+                        values={values}
+                        onValuesChange={onValuesChange}
+                      />
+                    )
+                  )}
+                  <Button
+                    color="primary"
+                    data-testid="save-button"
+                    isLoading={saving}
+                    size="sm"
+                    type="submit">
+                    {t('label.save')}
+                  </Button>
+                </Box>
               </Grid.Item>
-            )}
-
-            <Grid.Item className="layout-column" span={24}>
-              <div className="flex justify-end gap-2">
-                <Button
-                  data-testid="cancel-button"
-                  type="text"
-                  onClick={handleCancel}>
-                  {t('label.cancel')}
-                </Button>
-
-                {Object.entries(extraFormButtons).map(
-                  ([name, ButtonComponent]) => (
-                    <ButtonComponent
-                      alertDetails={alert}
-                      formRef={form}
-                      key={name}
-                      templateResourcePermission={templateResourcePermission}
-                      templates={templates}
-                      values={values}
-                    />
-                  )
-                )}
-                <Button
-                  data-testid="save-button"
-                  htmlType="submit"
-                  loading={saving}
-                  type="primary">
-                  {t('label.save')}
-                </Button>
-              </div>
-            </Grid.Item>
-          </Grid>
-        </Form>
+            </Grid>
+          </HookForm>
+        </FormProvider>
       </Grid.Item>
     </Grid>
   );

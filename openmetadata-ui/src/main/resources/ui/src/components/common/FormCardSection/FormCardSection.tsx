@@ -12,7 +12,6 @@
  */
 
 import { Card, Grid, Typography } from '@openmetadata/ui-core-components';
-
 import classNames from 'classnames';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { FormCardSectionProps } from './FormCardSection.interface';
@@ -25,9 +24,7 @@ function FormCardSection({
   className = '',
 }: Readonly<FormCardSectionProps>) {
   return (
-    <Card
-      className={classNames('form-card-section-container', className)}
-      data-testid={`${heading}-container`}>
+    <Card className={className} data-testid={`${heading}-container`}>
       <Card.Content>
         <Grid className="layout-row layout-grid" style={getLayoutGutter(8, 8)}>
           <Grid.Item className="layout-column" span={24}>

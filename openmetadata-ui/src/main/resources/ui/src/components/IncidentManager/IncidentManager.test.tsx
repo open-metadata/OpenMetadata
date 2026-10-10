@@ -21,8 +21,8 @@ import {
   renderWithQueryClient as render,
   runQueryNotificationsSynchronously,
 } from '../../test/unit/test-utils';
+import { getPastDaysRange } from '../../utils/date-time/calendarDate.utils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
-import { getPastDaysRange } from '../observability/DataQuality/Dashboard/calendarDate.utils';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {
