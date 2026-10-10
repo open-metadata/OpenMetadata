@@ -3688,6 +3688,7 @@
     "allow-impersonation-help": "Allows this bot to act on behalf of users via the X-Impersonate-User header. Policies control who can be impersonated; by default, admin users and other bots are excluded. This can only be enabled when the bot is created.",
     "allow-user-to-login-via-sso": "允许用户通过 SSO 登录",
     "already-a-user": "已经是用户了吗？",
+    "already-assigned-to-task": "{{name}} 已被分配到此任务。",
     "and-followed-owned-by-name": "并关注由{{userName}}拥有的团队",
     "announcement-action-description": "设置横幅, 预先通知您的团队即将进行的维护、更新和删除",
     "announcement-created-successfully": "公告创建成功！",

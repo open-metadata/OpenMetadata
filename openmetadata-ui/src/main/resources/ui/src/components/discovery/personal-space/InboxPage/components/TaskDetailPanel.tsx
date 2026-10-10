@@ -69,6 +69,7 @@ import {
 import {
   applyActionLabels,
   buildResolveBody,
+  getReassignBlocker,
   getTaskResolveActions,
   TaskResolveAction,
 } from '../taskResolve.utils';
@@ -589,14 +590,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           displayName,
         })
       );
-      // A workflow user-task needs an assignee; reject an empty selection with
-      // feedback instead of firing a no-op reassign.
-      if (assignees.length === 0) {
-        showErrorToast(
-          t('message.field-text-is-required', {
-            fieldText: t('label.assignee-plural'),
-          })
-        );
+      // A reassign that would leave the task unassigned, or assigned to the
+      // same people, says why instead of reaching the workflow.
+      const blocker = getReassignBlocker(task?.assignees ?? [], assignees, t);
+      if (blocker) {
+        showErrorToast(blocker);
 
         return;
       }
@@ -605,7 +603,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         isAssigneeChange: true,
       });
     },
-    [runTransition, t]
+    [runTransition, t, task?.assignees]
   );
 
   const handleAddComment = useCallback(

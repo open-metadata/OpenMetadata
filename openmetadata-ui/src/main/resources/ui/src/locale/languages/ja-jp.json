@@ -3688,6 +3688,7 @@
     "allow-impersonation-help": "Allows this bot to act on behalf of users via the X-Impersonate-User header. Policies control who can be impersonated; by default, admin users and other bots are excluded. This can only be enabled when the bot is created.",
     "allow-user-to-login-via-sso": "ユーザーがSSO経由でログインできるようにします",
     "already-a-user": "すでにユーザーですか？",
+    "already-assigned-to-task": "{{name}} はすでにこのタスクに割り当てられています。",
     "and-followed-owned-by-name": "フォロー中のチームは {{userName}} が所有しています",
     "announcement-action-description": "メンテナンス、更新、削除の予定をチームに通知するバナーを設定します。",
     "announcement-created-successfully": "お知らせが正常に作成されました！",

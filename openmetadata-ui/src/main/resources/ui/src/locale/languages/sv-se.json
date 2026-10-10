@@ -3688,6 +3688,7 @@
     "allow-impersonation-help": "Allows this bot to act on behalf of users via the X-Impersonate-User header. Policies control who can be impersonated; by default, admin users and other bots are excluded. This can only be enabled when the bot is created.",
     "allow-user-to-login-via-sso": "Tillåt användare att logga in via SSO",
     "already-a-user": "Redan användare?",
+    "already-assigned-to-task": "{{name}} är redan tilldelad den här uppgiften.",
     "and-followed-owned-by-name": "och teamet du följer ägs av {{userName}}",
     "announcement-action-description": "Skapa banners för att informera ditt team om kommande underhåll, uppdateringar och borttagningar.",
     "announcement-created-successfully": "Meddelandet skapades!",

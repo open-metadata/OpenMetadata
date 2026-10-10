@@ -3688,6 +3688,7 @@
     "allow-impersonation-help": "Allows this bot to act on behalf of users via the X-Impersonate-User header. Policies control who can be impersonated; by default, admin users and other bots are excluded. This can only be enabled when the bot is created.",
     "allow-user-to-login-via-sso": "Permitir que o usuário faça login via SSO",
     "already-a-user": "Já é um usuário?",
+    "already-assigned-to-task": "{{name}} já está atribuído a esta tarefa.",
     "and-followed-owned-by-name": "e a equipe que você está seguindo é de propriedade de {{userName}}",
     "announcement-action-description": "Configure banners para informar sua equipe sobre manutenções, atualizações e exclusões futuras.",
     "announcement-created-successfully": "Anúncio criado com sucesso!",

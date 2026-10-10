@@ -3688,6 +3688,7 @@
     "allow-impersonation-help": "Allows this bot to act on behalf of users via the X-Impersonate-User header. Policies control who can be impersonated; by default, admin users and other bots are excluded. This can only be enabled when the bot is created.",
     "allow-user-to-login-via-sso": "Kullanıcının SSO ile giriş yapmasına izin ver",
     "already-a-user": "Zaten bir kullanıcı mısınız?",
+    "already-assigned-to-task": "{{name}} bu göreve zaten atanmış.",
     "and-followed-owned-by-name": "ve takip ettiğiniz takım {{userName}} adlı kullanıcıya ait",
     "announcement-action-description": "Ekibinizi yaklaşan bakım, güncelleme ve silme işlemleri hakkında bilgilendirmek için başlıklar ayarlayın.",
     "announcement-created-successfully": "Duyuru başarıyla oluşturuldu!",
