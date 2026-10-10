@@ -5457,6 +5457,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
@@ -5469,6 +5470,9 @@
         "playwright/e2e/Features/ImpactAnalysis.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
+        "playwright/e2e/Features/TierDropdown.spec.ts",
+        "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
@@ -6253,15 +6257,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/DataProducts/DataProductsSelectList/DataProductsSelectList.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataProducts/InputOutputPortsTab/InputOutputPortsTab.component.tsx"
       ],
       "specs": [
@@ -6846,6 +6841,14 @@
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
     {
@@ -8930,7 +8933,8 @@
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
+        "playwright/e2e/Pages/Tags.spec.ts",
+        "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
     {
@@ -9912,14 +9916,6 @@
       ],
       "specs": [
         "playwright/e2e/Flow/ServiceForm.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/TierCard/TierCard.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/TierWidget.spec.ts"
       ]
     },
     {
