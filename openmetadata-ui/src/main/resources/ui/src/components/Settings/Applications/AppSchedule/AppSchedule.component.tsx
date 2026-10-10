@@ -102,7 +102,7 @@ const AppScheduleActions = ({
   const { t } = useTranslation();
 
   return (
-    <>
+    <Box align="center" direction="row" gap={2}>
       {showDeploy && (
         <Button
           color="secondary"
@@ -132,7 +132,7 @@ const AppScheduleActions = ({
           {t('label.run-now')}
         </Button>
       )}
-    </>
+    </Box>
   );
 };
 
@@ -321,23 +321,16 @@ const AppSchedule = ({
           <Box
             className="layout-column d-flex items-center justify-end"
             style={{ flex: '0 0 200px' }}>
-            <Box
-              inline
-              align="center"
-              className="layout-space layout-space-horizontal"
-              gap={2}
-              itemClassName="layout-space-item">
-              <AppScheduleActions
-                isDeployLoading={isDeployLoading}
-                isRunLoading={isRunLoading}
-                showDeploy={canDeploy && appData.appType === AppType.External}
-                showEdit={canEdit && !appData.system}
-                showRunNow={canTrigger && showRunNowButton}
-                onDeploy={onDeployTrigger}
-                onEdit={onDialogOpen}
-                onRunNow={onAppTrigger}
-              />
-            </Box>
+            <AppScheduleActions
+              isDeployLoading={isDeployLoading}
+              isRunLoading={isRunLoading}
+              showDeploy={canDeploy && appData.appType === AppType.External}
+              showEdit={canEdit && !appData.system}
+              showRunNow={canTrigger && showRunNowButton}
+              onDeploy={onDeployTrigger}
+              onEdit={onDialogOpen}
+              onRunNow={onAppTrigger}
+            />
           </Box>
         )}
 
