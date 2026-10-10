@@ -1754,6 +1754,43 @@ public class SystemRepository {
     }
   }
 
+  /**
+   * Validates an update to the stored security configuration, failing it only for the errors it
+   * introduces. A configuration seeded from openmetadata.yaml before field validation existed can
+   * fail checks on fields an update leaves alone, and those must not block the update — turning on
+   * self-signup, for example.
+   */
+  public SecurityValidationResponse validateSecurityConfigurationChange(
+      SecurityConfiguration storedConfig,
+      SecurityConfiguration updatedConfig,
+      OpenMetadataApplicationConfig applicationConfig,
+      String currentUsername) {
+    SecurityValidationResponse response =
+        validateSecurityConfiguration(updatedConfig, applicationConfig, currentUsername);
+    if (response.getStatus() == SecurityValidationResponse.Status.FAILED) {
+      List<FieldError> storedErrors =
+          listOrEmpty(
+              validateSecurityConfiguration(storedConfig, applicationConfig, currentUsername)
+                  .getErrors());
+      response = withoutStoredErrors(response.getErrors(), storedErrors);
+    }
+    return response;
+  }
+
+  private static SecurityValidationResponse withoutStoredErrors(
+      List<FieldError> errors, List<FieldError> storedErrors) {
+    List<FieldError> introducedErrors =
+        errors.stream().filter(error -> !storedErrors.contains(error)).toList();
+    SecurityValidationResponse response =
+        new SecurityValidationResponse().withStatus(SecurityValidationResponse.Status.SUCCESS);
+    if (introducedErrors.isEmpty()) {
+      LOG.warn("Saving security configuration despite errors it already had: {}", errors);
+    } else {
+      response.withStatus(SecurityValidationResponse.Status.FAILED).withErrors(introducedErrors);
+    }
+    return response;
+  }
+
   private FieldError validateAuthenticationConfigurationBaseFields(
       AuthenticationConfiguration authConfig) {
     try {
@@ -1762,7 +1799,9 @@ public class SystemRepository {
             FieldPaths.AUTH_PROVIDER, "Provider is required");
       }
 
-      if (nullOrEmpty(authConfig.getProviderName())) {
+      // openmetadata.yaml defines providerName for custom OIDC only and leaves it empty otherwise.
+      if (authConfig.getProvider() == AuthProvider.CUSTOM_OIDC
+          && nullOrEmpty(authConfig.getProviderName())) {
         return ValidationErrorBuilder.createFieldError(
             "authenticationConfiguration.providerName", "Provider name is required");
       }
@@ -1933,9 +1972,10 @@ public class SystemRepository {
         return providerValidation;
       }
 
-      // Use existing validation method to test actual connectivity only for confidential clients
-      // or when oidcConfiguration is present (some custom OIDC setups)
-      if ("confidential".equals(clientType) || authConfig.getOidcConfiguration() != null) {
+      // Only a confidential client runs the code flow on the server. A public client signs in from
+      // the browser and never builds an OIDC client from its oidcConfiguration, which is often the
+      // yaml's placeholder with no client id or secret.
+      if ("confidential".equals(clientType)) {
         try {
           AuthenticationCodeFlowHandler.validateConfig(authConfig, authzConfig);
         } catch (Exception e) {
@@ -1945,8 +1985,7 @@ public class SystemRepository {
               "OIDC flow validation failed: " + e.getMessage());
         }
       } else {
-        LOG.debug(
-            "Skipping AuthenticationCodeFlowHandler validation for public client without oidcConfiguration");
+        LOG.debug("Skipping AuthenticationCodeFlowHandler validation for public client");
       }
 
       return null; // No errors - validation passed
