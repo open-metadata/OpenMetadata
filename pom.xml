@@ -901,17 +901,17 @@
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcpkix-jdk18on</artifactId>
-        <version>1.85</version>
+        <version>1.86</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcprov-jdk18on</artifactId>
-        <version>1.85</version>
+        <version>1.86</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcutil-jdk18on</artifactId>
-        <version>1.85</version>
+        <version>1.86</version>
       </dependency>
       <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively).
            3.1.7 clears CVE-2026-89425 and CVE-2026-91777.
