@@ -602,8 +602,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 @reflection.cache
 def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
     # Equivalent to SHOW DATABASES
-    if kw.get("database") and kw.get("is_old_version") is not True:
-        connection.execute(text(f"USE CATALOG '{kw.get('database')}'"))
+    database = kw.get("database")
+    if database and kw.get("is_old_version") is not True:
+        connection.execute(text(f"USE CATALOG {_quote_identifier(database)}"))
     return [row[0] for row in connection.execute(text("SHOW SCHEMAS"))]
 
 
@@ -642,11 +643,12 @@ def get_view_names(  # pylint: disable=unused-argument
     only_temp: bool = False,  # pyright: ignore[reportUnusedParameter]
     **kw: Any,
 ) -> list[str]:
-    if kw.get("db_name"):
-        connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
+    db_name = kw.get("db_name")
+    if db_name:
+        connection.execute(text(f"USE CATALOG {_quote_identifier(db_name)}"))
     query = "SHOW VIEWS"
     if schema:
-        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+        query += " IN " + _quote_identifier(schema)
     view_in_schema = connection.execute(text(query))
     views = []
     for row in view_in_schema:
@@ -779,11 +781,12 @@ def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: d
 
 @reflection.cache
 def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
-    if kw.get("db_name"):
-        connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
+    db_name = kw.get("db_name")
+    if db_name:
+        connection.execute(text(f"USE CATALOG {_quote_identifier(db_name)}"))
     query = "SHOW TABLES"
     if schema:
-        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+        query += " IN " + _quote_identifier(schema)
     tables_in_schema = connection.execute(text(query))
     tables = []
     for row in tables_in_schema:
