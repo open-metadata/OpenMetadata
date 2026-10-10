@@ -12,6 +12,7 @@
  */
 
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { Status } from '../../../../../../generated/events/api/typedEvent';
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
 import NotificationRecentEvents from './NotificationRecentEvents';
 
@@ -181,5 +182,57 @@ describe('NotificationRecentEvents', () => {
       data: [],
       paging: { total: 0 },
     });
+  });
+
+  it('renders an unreadable (empty-data) row through the real getChangeEventDataFromTypedEvent without crashing', async () => {
+    // Swap the module mock for the real pure function so this test exercises
+    // the actual fix end-to-end through the component's render-phase .map.
+    const realAlertsUtilPure = jest.requireActual(
+      '../../../../../../utils/Alerts/AlertsUtilPure'
+    );
+    const alertsUtilPureMock = jest.requireMock(
+      '../../../../../../utils/Alerts/AlertsUtilPure'
+    );
+    alertsUtilPureMock.getChangeEventDataFromTypedEvent.mockImplementation(
+      realAlertsUtilPure.getChangeEventDataFromTypedEvent
+    );
+
+    const { getAlertEventsFromId } = jest.requireMock(
+      '../../../../../../rest/alertsAPI'
+    );
+    getAlertEventsFromId.mockResolvedValue({
+      data: [
+        {
+          status: Status.Failed,
+          data: [],
+          timestamp: 1700000000001,
+        },
+      ],
+      paging: { total: 1 },
+    });
+
+    await act(async () => {
+      render(<NotificationRecentEvents alertDetails={mockAlert} />);
+    });
+
+    // The unreadable row degrades gracefully into a header carrying the
+    // fallback id `unreadable-<timestamp>`.
+    expect(
+      await screen.findByTestId('event-collapse-unreadable-1700000000001')
+    ).toBeInTheDocument();
+
+    // No global 500 fallback is rendered.
+    expect(screen.queryByText('500')).not.toBeInTheDocument();
+
+    // Restore the default mock implementation for subsequent tests.
+    alertsUtilPureMock.getChangeEventDataFromTypedEvent.mockReturnValue({
+      changeEventData: {
+        id: 'event-1',
+        timestamp: 1234567890,
+        entityType: 'table',
+      },
+      changeEventDataToDisplay: {},
+    });
+    getAlertEventsFromId.mockResolvedValue({ data: [], paging: { total: 0 } });
   });
 });

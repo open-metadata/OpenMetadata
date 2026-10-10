@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { Status } from '../../../../generated/events/api/typedEvent';
 import {
   mockAlertDetails,
   MOCK_TYPED_EVENT_LIST_RESPONSE,
@@ -109,5 +110,37 @@ describe('AlertRecentEventsTab', () => {
     expect(await screen.findByTestId('applied-filter-text')).toHaveTextContent(
       ': label.successful'
     );
+  });
+
+  it('renders an unreadable (empty-data) row without crashing the page', async () => {
+    (getAlertEventsFromId as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [
+          {
+            status: Status.Failed,
+            data: [],
+            timestamp: 1700000000001,
+          },
+          ...MOCK_TYPED_EVENT_LIST_RESPONSE.data,
+        ],
+        paging: { offset: 0 },
+      })
+    );
+
+    await act(async () => {
+      render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
+    });
+
+    // The unreadable row degrades gracefully into a header keyed by the
+    // fallback id `unreadable-<timestamp>`.
+    expect(
+      await screen.findByTestId('event-collapse-unreadable-1700000000001')
+    ).toBeInTheDocument();
+
+    // The readable rows still render their headers too.
+    expect(screen.getByTestId('recent-events-list')).toBeInTheDocument();
+
+    // No global 500 fallback is rendered.
+    expect(screen.queryByText('500')).not.toBeInTheDocument();
   });
 });

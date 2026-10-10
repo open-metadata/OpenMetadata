@@ -316,21 +316,41 @@ export const getChangeEventDataFromTypedEvent = (
   changeEventData: ChangeEvent;
   changeEventDataToDisplay: AlertEventDetailsToDisplay;
 } => {
-  let changeEventData = typedEvent.data[0];
+  const outer = typedEvent.data[0];
+
+  if (!outer) {
+    const fallbackId = `unreadable-${typedEvent.timestamp}`;
+
+    return {
+      changeEventData: {
+        id: fallbackId,
+        timestamp: typedEvent.timestamp,
+      },
+      changeEventDataToDisplay: {
+        eventType: undefined,
+        entityId: undefined,
+        userName: undefined,
+        previousVersion: undefined,
+        currentVersion: undefined,
+        reason: undefined,
+        source: undefined,
+        failingSubscriptionId: undefined,
+      },
+    };
+  }
+
+  let changeEventData: ChangeEvent = outer;
 
   // If the event is failed, the changeEventData object is nested inside the changeEventData object.
-  if (
-    typedEvent.status === Status.Failed &&
-    !isUndefined(changeEventData.changeEvent)
-  ) {
-    changeEventData = changeEventData.changeEvent;
+  if (typedEvent.status === Status.Failed && !isUndefined(outer.changeEvent)) {
+    changeEventData = outer.changeEvent;
   }
 
   const { eventType, entityId, userName, previousVersion, currentVersion } =
     changeEventData;
 
   // Extracting the reason, source, and failingSubscriptionId from the failed changeEventData object.
-  const { reason, source, failingSubscriptionId } = typedEvent.data[0];
+  const { reason, source, failingSubscriptionId } = outer;
 
   return {
     changeEventData,
