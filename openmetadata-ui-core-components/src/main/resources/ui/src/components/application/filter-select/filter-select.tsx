@@ -436,6 +436,7 @@ const FilterSelect = ({
   emptyState,
   helperText,
   hideCounts,
+  isClearable = true,
   isDisabled,
   isLoading,
   isOpen: controlledIsOpen,
@@ -844,7 +845,8 @@ const FilterSelect = ({
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it gets a quiet footer instead:
   // what is selected, and a way to drop it all without closing the menu.
-  const showStatusFooter = (isMulti || isRadio) && !isStaged;
+  // A value that can't be cleared has nothing for the footer to offer.
+  const showStatusFooter = (isMulti || isRadio) && !isStaged && isClearable;
   const showSelectAllRow =
     isMulti && Boolean(showSelectAll) && displayedOptions.length > 0;
   // The null row is a synthetic filter, not a search result: an unmatched
