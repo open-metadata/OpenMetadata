@@ -925,8 +925,10 @@ class DbtSource(DbtServiceSource):
                             f"with id {table_entity.id}"
                         )
 
+                        upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
+                            upstream_table_ids={node.fqn: node.table_id for node in upstream_nodes if node.table_id},
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
                                 resourceType=resource_type,
@@ -935,7 +937,7 @@ class DbtSource(DbtServiceSource):
                                 rawSql=SqlQuery(dbt_raw_query) if dbt_raw_query else None,
                                 sql=SqlQuery(dbt_compiled_query) if dbt_compiled_query else None,
                                 columns=self.parse_data_model_columns(manifest_node, catalog_node),
-                                upstream=self.parse_upstream_nodes(manifest_entities, manifest_node),
+                                upstream=[node.fqn for node in upstream_nodes],
                                 owners=self.get_dbt_owner(
                                     manifest_node=manifest_node,
                                     catalog_node=catalog_node,
@@ -1040,8 +1042,9 @@ class DbtSource(DbtServiceSource):
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        if parent_fqn and self._get_table_entity(table_fqn=parent_fqn):
-                            upstream_nodes.append(build_upstream_node(parent_node, parent_fqn))
+                        table_entity = self._get_table_entity(table_fqn=parent_fqn) if parent_fqn else None
+                        if parent_fqn and table_entity:
+                            upstream_nodes.append(build_upstream_node(parent_node, parent_fqn, table_entity.id.root))
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")
@@ -1195,14 +1198,18 @@ class DbtSource(DbtServiceSource):
         to_entity: Table = data_model_link.table_entity
         logger.debug(f"Processing DBT lineage for: {to_entity.fullyQualifiedName.root}")
 
-        for upstream_node in data_model_link.datamodel.upstream:
+        resolved = data_model_link.upstream_table_ids
+        for upstream_node in data_model_link.datamodel.upstream or []:
             try:
-                from_entity: Optional[Table] = self._get_table_entity(table_fqn=upstream_node)  # noqa: UP045
-                if from_entity and to_entity:
+                from_id = resolved.get(upstream_node)
+                if from_id is None:
+                    from_entity = self._get_table_entity(table_fqn=upstream_node)
+                    from_id = from_entity.id.root if from_entity else None
+                if from_id and to_entity:
                     lineage_request = AddLineageRequest(
                         edge=EntitiesEdge(
                             fromEntity=EntityReference(
-                                id=Uuid(from_entity.id.root),
+                                id=Uuid(from_id),
                                 type="table",
                             ),
                             toEntity=EntityReference(
