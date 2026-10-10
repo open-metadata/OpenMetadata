@@ -8,11 +8,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import re
 from unittest.mock import Mock, patch
 
 import pytest
 from presidio_analyzer import EntityRecognizer, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpArtifacts
+from presidio_analyzer.predefined_recognizers import CreditCardRecognizer, IpRecognizer, PhoneRecognizer, UrlRecognizer
 
 from metadata.pii.algorithms.presidio_utils import (
     MIN_SCORE_FOR_ENHANCEMENT,
@@ -22,10 +24,431 @@ from metadata.pii.algorithms.presidio_utils import (
     decorate_recognizer,
     enhance_using_context,
     load_nlp_engine,
+    recognizer_factories,
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIITag
 from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
+
+
+def _registered_recognizer(recognizer_class: type[EntityRecognizer]) -> EntityRecognizer:
+    return recognizer_factories.get(recognizer_class, recognizer_class)()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Card 4111111111111111 issued", "4111111111111111"),
+        ("(4111-1111-1111-1111)", "4111-1111-1111-1111"),
+        ("'4111 1111 1111 1111'", "4111 1111 1111 1111"),
+        ("Card 4111111111111111 2025", "4111111111111111"),
+        ("4111111111111111 2025", "4111111111111111"),
+        ("4111111111111111" + " " * 2028 + "2025", "4111111111111111"),
+        ("4322 7148 2639 4388 390", "4322 7148 2639 4388 390"),
+        ("4111 1111 1111 1111 2025", "4111 1111 1111 1111"),
+        ("3782 822463 10005", "3782 822463 10005"),
+        ("6221 2600 0000 0000 001", "6221 2600 0000 0000 001"),
+        ("4222222222222", "4222222222222"),
+        ("4000000000000000006", "4000000000000000006"),
+        ("4991123456788", "4991123456788"),
+        ("4930123456786", "4930123456786"),
+        ("4989123456782", "4989123456782"),
+        ("é 4111111111111111 and 5555555555554444", "4111111111111111"),
+    ],
+)
+def test_card_results_use_original_candidate_spans(text, expected):
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    results = recognizer.analyze(text, ["CREDIT_CARD"])
+
+    assert any(text[result.start : result.end] == expected for result in results)
+    assert all(result.score == 1.0 for result in results)
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(result.analysis_explanation.pattern_name == "Credit Card Number" for result in results)
+
+
+@pytest.mark.parametrize("card", ["4939323083746", "4924867307503760", "4930582239178"])
+def test_valid_card_is_not_vetoed_by_phone_overlap(card):
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    results = recognizer.analyze(f"Reference {card} recorded", ["CREDIT_CARD"])
+    assert [(result.start, result.end, result.score) for result in results] == [(10, 10 + len(card), 1.0)]
+
+
+def test_competing_phone_and_card_evidence_remain_independent():
+    value = "4991123456788"
+    card = _registered_recognizer(CreditCardRecognizer)
+    phone = PhoneRecognizer()
+    assert [(result.start, result.end, result.score) for result in card.analyze(value, ["CREDIT_CARD"])] == [
+        (0, len(value), 1.0)
+    ]
+    assert any(result.start == 0 and result.end == len(value) for result in phone.analyze(value, ["PHONE_NUMBER"]))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "4111 1111 1111 1111 123",
+        "4322 7148 2639 4388 391",
+    ],
+)
+def test_card_does_not_recover_prefix_from_plausible_complete_candidate(text):
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    assert recognizer.analyze(text, ["CREDIT_CARD"]) == []
+
+
+@pytest.mark.parametrize("length", [2049, 4999, 5000])
+def test_compact_card_followed_by_distant_year_within_preprocessing_limit(length):
+    card = "4111111111111111"
+    text = card + " " * (length - len(card) - len("2025")) + "2025"
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    results = recognizer.analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end, text[result.start : result.end]) for result in results] == [(0, 16, card)]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "4111111111111112",
+        "4111-1111-1111-1112",
+        "x4111111111111111",
+        "41111111111111111",
+        "4111--1111--1111--1111",
+        "1234 4111111111111111",
+        "4111111111111111.25",
+        "0.4111111111111111",
+        "4111111111111111e2",
+        "4111111111111111_suffix",
+        "+49 1512 3456787",
+        "Call me on +49 1512 3456787 tomorrow",
+        "+ 49 1512 3456787",
+        "+ 4111111111111111",
+        ("+" + " " * 20 + "4111111111111111"),
+        "Scores 41 12 34 56 78 90 12 38 final",
+        "Batch 5 312 34567 8901233 done",
+        "4111-1111 1111-1111",
+        "4111 1111 1111 1111 123 45",
+    ],
+)
+def test_card_rejects_invalid_enclosing_candidate(text):
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    assert recognizer.analyze(text, ["CREDIT_CARD"]) == []
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text", "expected", "score"),
+    [
+        (UrlRecognizer, "URL", "Visit https://example.com/a.b?x=1&y=2.", "https://example.com/a.b?x=1&y=2", 0.6),
+        (UrlRecognizer, "URL", "https://example.com/a?value=wow!", "https://example.com/a?value=wow!", 0.6),
+        (UrlRecognizer, "URL", "https://example.com/v1;", "https://example.com/v1;", 0.6),
+        (UrlRecognizer, "URL", "https://example.com#section!", "https://example.com#section!", 0.6),
+        (UrlRecognizer, "URL", "https://example.company/path", "https://example.company/path", 0.6),
+        (UrlRecognizer, "URL", "https://example.community/path", "https://example.community/path", 0.6),
+        (UrlRecognizer, "URL", "https://example.international/path", "https://example.international/path", 0.6),
+        (UrlRecognizer, "URL", "https://example.com:8443/path", "https://example.com:8443/path", 0.6),
+        (UrlRecognizer, "URL", "Visit https://example.org!", "https://example.org", 0.6),
+        (UrlRecognizer, "URL", "https://example.org/a://b", "https://example.org/a://b", 0.6),
+        (UrlRecognizer, "URL", "HTTPS://example.com/path", "HTTPS://example.com/path", 0.6),
+        (UrlRecognizer, "URL", "('http://example.org/a(b)c')", "http://example.org/a(b)c", 0.6),
+        (UrlRecognizer, "URL", "<https://example.com/path.>", "https://example.com/path.", 0.6),
+        (UrlRecognizer, "URL", "<https://example.com/path,>", "https://example.com/path,", 0.6),
+        (UrlRecognizer, "URL", "'https://example.com/path,'", "https://example.com/path,", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.5:8080/health", "10.0.0.5", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "192.168.1.1/index.html", "192.168.1.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://10.0.0.1/file", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://10.0.0.1/share", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "src_ip:10.0.0.1", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "client_ip:10.0.0.1", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "dead_key:10.0.0.1:65535/health", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/abc", "10.0.0.0", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234/abc", "10.1.2.3", 0.6),
+        (UrlRecognizer, "URL", 'He said "visit https://example.com."', "https://example.com", 0.6),
+        (UrlRecognizer, "URL", "'example.com,'", "example.com", 0.5),
+        (UrlRecognizer, "URL", "<https://example.com.>", "https://example.com", 0.6),
+        (UrlRecognizer, "URL", '"https://example.com/?x=1."', "https://example.com/?x=1.", 0.6),
+        (UrlRecognizer, "URL", "<https://example.com#part,>", "https://example.com#part,", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user@10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://@10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://@10.0.0.1:8080/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://" + "u" * 1000 + "@10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://user:pass@10.0.0.1:8080/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user%40name@10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/24foo", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/2025.json", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/8.1", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "IP 2001:db8::1 recorded", "2001:db8::1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "é 192.168.1.1 and 2001:db8::1", "192.168.1.1", 0.6),
+        (
+            IpRecognizer,
+            "IP_ADDRESS",
+            "2001:0db8:0000:0000:0000:0000:0000:0001",
+            "2001:0db8:0000:0000:0000:0000:0000:0001",
+            0.6,
+        ),
+        (IpRecognizer, "IP_ADDRESS", "fe80::1%eth0", "fe80::1%eth0", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "::ffff:192.0.2.128", "::ffff:192.0.2.128", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "http://192.168.1.1/123", "192.168.1.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "http://192.168.1.1:8080/path", "192.168.1.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234", "10.1.2.3", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/8", "10.0.0.0", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::1/64", "2001:db8::1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "::", "::", 0.1),
+    ],
+    ids=[
+        "url-prose-dot",
+        "url-query-exclamation",
+        "url-path-semicolon",
+        "url-fragment-exclamation",
+        "url-company-suffix",
+        "url-community-suffix",
+        "url-international-suffix",
+        "url-port",
+        "url-host-exclamation",
+        "url-scheme-in-path",
+        "url-uppercase-scheme",
+        "url-balanced-parentheses",
+        "url-delimited-path-dot",
+        "url-delimited-path-comma",
+        "url-quoted-path-comma",
+        "ipv4-port-health-path",
+        "ipv4-html-path",
+        "ftp-ipv4-path",
+        "smb-ipv4-path",
+        "ipv4-src-label",
+        "ipv4-client-label",
+        "ipv4-label-port-path",
+        "ipv4-nonnumeric-path",
+        "ipv4-port-nonnumeric-path",
+        "url-quoted-prose-bare-host-dot",
+        "url-quoted-bare-host-comma",
+        "url-delimited-bare-host-dot",
+        "url-quoted-query-dot",
+        "url-delimited-fragment-comma",
+        "ftp-ipv4-numeric-path",
+        "ftp-user-ipv4-numeric-path",
+        "ftp-empty-user-ipv4-numeric-path",
+        "smb-empty-user-ipv4-port-numeric-path",
+        "ftp-long-user-ipv4-numeric-path",
+        "smb-password-ipv4-port-numeric-path",
+        "ftp-encoded-user-ipv4-numeric-path",
+        "smb-ipv4-numeric-path",
+        "ipv4-numeric-word-path",
+        "ipv4-cidr-looking-json-path",
+        "ipv4-decimal-path",
+        "ipv6-prose",
+        "ipv4-unicode-offset",
+        "ipv6-expanded",
+        "ipv6-zone",
+        "ipv6-mapped",
+        "http-ipv4-numeric-path",
+        "http-ipv4-port-path",
+        "ipv4-port",
+        "ipv4-cidr",
+        "ipv6-cidr",
+        "ipv6-unspecified",
+    ],
+)
+def test_network_results_use_complete_original_candidate(recognizer_class, entity, text, expected, score):
+    recognizer = _registered_recognizer(recognizer_class)
+    results = recognizer.analyze(text, [entity])
+
+    assert any(text[result.start : result.end] == expected and result.score == score for result in results)
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(result.analysis_explanation.pattern_name for result in results)
+
+
+@pytest.mark.parametrize("length", [2049, 4999, 5000])
+def test_url_candidate_within_preprocessing_limit_keeps_full_span(length):
+    url = "https://example.com/" + "a" * (length - len("https://example.com/"))
+    recognizer = _registered_recognizer(UrlRecognizer)
+    results = recognizer.analyze(url, ["URL"])
+    assert [(result.start, result.end, url[result.start : result.end]) for result in results] == [(0, length, url)]
+
+
+def test_url_candidate_above_preprocessing_limit_is_bounded():
+    url = "https://example.com/" + "a" * (5001 - len("https://example.com/"))
+    recognizer = _registered_recognizer(UrlRecognizer)
+    assert recognizer.analyze(url, ["URL"]) == []
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text"),
+    [
+        (UrlRecognizer, "URL", "http://app.internal.local/path"),
+        (UrlRecognizer, "URL", "https://example.com.invalid/path"),
+        (UrlRecognizer, "URL", "user@example.com"),
+        (UrlRecognizer, "URL", "https://example.org:abc/path"),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::1g"),
+        (IpRecognizer, "IP_ADDRESS", "192.168.1.999"),
+        (IpRecognizer, "IP_ADDRESS", "x192.168.1.1"),
+        (IpRecognizer, "IP_ADDRESS", "192.168.1.1-invalid"),
+        (IpRecognizer, "IP_ADDRESS", "fe80::1%bad-scope"),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:65536"),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:abc"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/33"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/8/24"),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234/8"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/99999"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/24:80"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/24/path"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/" + "9" * 5000),
+        (IpRecognizer, "IP_ADDRESS", "abc:10.0.0.1"),
+        (IpRecognizer, "IP_ADDRESS", "::ffff:999.10.0.0.1"),
+        (IpRecognizer, "IP_ADDRESS", "bad_key:::ffff:999.10.0.0.1"),
+        (IpRecognizer, "IP_ADDRESS", "dead_key:2001:db8::1g"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "1ftp://user@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "not_ftp://user@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp:/user@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user/path@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user?name@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user#name@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user@@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user%ZZ@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/8:12"),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::10.0.0.1g"),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::1/129"),
+    ],
+)
+def test_network_rejects_invalid_longer_candidate(recognizer_class, entity, text):
+    recognizer = _registered_recognizer(recognizer_class)
+    assert recognizer.analyze(text, [entity]) == []
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text", "expected"),
+    [
+        (
+            CreditCardRecognizer,
+            "CREDIT_CARD",
+            "é 4111111111111111 5555555555554444",
+            [(2, 18, "4111111111111111"), (19, 35, "5555555555554444")],
+        ),
+        (
+            IpRecognizer,
+            "IP_ADDRESS",
+            "é 192.168.1.1 2001:db8::1",
+            [(2, 13, "192.168.1.1"), (14, 25, "2001:db8::1")],
+        ),
+        (
+            UrlRecognizer,
+            "URL",
+            "https://example.com/x https://example.org/y",
+            [(0, 21, "https://example.com/x"), (22, 43, "https://example.org/y")],
+        ),
+    ],
+)
+def test_multiple_candidates_have_exact_independent_spans(recognizer_class, entity, text, expected):
+    recognizer = _registered_recognizer(recognizer_class)
+    results = recognizer.analyze(text, [entity])
+    assert [(result.start, result.end, text[result.start : result.end]) for result in results] == expected
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text"),
+    [
+        (CreditCardRecognizer, "CREDIT_CARD", "4" * 10000),
+        (IpRecognizer, "IP_ADDRESS", "f:" * 5000),
+        (UrlRecognizer, "URL", "https://example.com/" + "a" * 5000),
+    ],
+)
+def test_pathological_candidate_runs_are_bounded(recognizer_class, entity, text):
+    recognizer = _registered_recognizer(recognizer_class)
+    assert recognizer.analyze(text, [entity]) == []
+
+
+def test_legacy_analyzer_uses_complete_candidate_spans():
+    analyzer = build_analyzer_engine()
+    text = "Card 4111-1111-1111-1111, https://example.company/a and 2001:db8::1"
+    results = analyzer.analyze(text, language="en", entities=["CREDIT_CARD", "URL", "IP_ADDRESS"])
+    assert {(result.entity_type, text[result.start : result.end]) for result in results} == {
+        ("CREDIT_CARD", "4111-1111-1111-1111"),
+        ("URL", "https://example.company/a"),
+        ("IP_ADDRESS", "2001:db8::1"),
+    }
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text", "candidate"),
+    [
+        (CreditCardRecognizer, "CREDIT_CARD", "é 4111-1111-1111-1111", "4111111111111111"),
+        (IpRecognizer, "IP_ADDRESS", "é 2001:db8::1/64", "2001:db8::1"),
+    ],
+    ids=["normalized-card", "ipv6-with-cidr"],
+)
+def test_candidate_analysis_preserves_upstream_results_and_artifact_coordinates(
+    monkeypatch, recognizer_class, entity, text, candidate
+):
+    upstream_analyze = recognizer_class.analyze
+    upstream_results = []
+    coordinates = []
+    candidate_artifacts = []
+
+    def capture(self, text, entities, nlp_artifacts=None, regex_flags=None):
+        candidate_artifacts.append(nlp_artifacts)
+        assert text == candidate
+        results = upstream_analyze(self, text, entities, nlp_artifacts, regex_flags)
+        upstream_results.extend(results)
+        coordinates.extend((result.start, result.end) for result in results)
+        return results
+
+    monkeypatch.setattr(recognizer_class, "analyze", capture)
+    recognizer = _registered_recognizer(recognizer_class)
+    engine = load_nlp_engine()
+    engine.load()
+    artifacts = engine.process_text(text, "en")
+    results = recognizer.analyze(text, [entity], artifacts)
+
+    assert candidate_artifacts == [None]
+    assert [(result.start, result.end) for result in upstream_results] == coordinates == [(0, len(candidate))]
+    assert len(results) == 1
+    assert results[0] is not upstream_results[0]
+    assert (results[0].start, results[0].end) == (2, 21 if entity == "CREDIT_CARD" else 13)
+    assert results[0].score == upstream_results[0].score
+    assert results[0].recognition_metadata == upstream_results[0].recognition_metadata
+    assert results[0].analysis_explanation == upstream_results[0].analysis_explanation
+
+
+def test_url_expansion_does_not_mutate_upstream_seed_offsets(monkeypatch):
+    upstream_analyze = UrlRecognizer.analyze
+    seeds = []
+    coordinates = []
+
+    def capture(self, text, entities, nlp_artifacts=None, regex_flags=None):
+        results = upstream_analyze(self, text, entities, nlp_artifacts, regex_flags)
+        seeds.extend(results)
+        coordinates.extend((result.start, result.end) for result in results)
+        return results
+
+    monkeypatch.setattr(UrlRecognizer, "analyze", capture)
+    text = '"https://example.com/a"'
+    results = _registered_recognizer(UrlRecognizer).analyze(text, ["URL"])
+    assert [(seed.start, seed.end) for seed in seeds] == coordinates == [(0, len(text))]
+    assert [(result.start, result.end) for result in results] == [(1, len(text) - 1)]
+    assert results[0] is not seeds[0]
+    assert results[0].score == seeds[0].score
+    assert results[0].recognition_metadata == seeds[0].recognition_metadata
+    assert results[0].analysis_explanation == seeds[0].analysis_explanation
+
+
+def test_url_seed_and_public_host_rules_remain_compatible_with_presidio():
+    upstream = UrlRecognizer()
+    value = '"https://example.com/a"'
+    seeds = upstream.analyze(value, ["URL"])
+    assert len(seeds) == 1
+    assert value[seeds[0].start] == '"'
+    assert seeds[0].analysis_explanation.pattern_name == "Quoted URL"
+    assert re.fullmatch(upstream.BASE_URL_REGEX, "example.company", re.IGNORECASE)
+    assert not re.fullmatch(upstream.BASE_URL_REGEX, "app.internal.local", re.IGNORECASE)
+    recognizer = _registered_recognizer(UrlRecognizer)
+    results = recognizer.analyze(value, ["URL"])
+    assert [(value[result.start : result.end], result.score) for result in results] == [
+        ("https://example.com/a", seeds[0].score)
+    ]
 
 
 def test_analyzer_supports_all_expected_pii_entities():
@@ -505,3 +928,31 @@ class TestDecorateRecognizer:
         composed = decorate_recognizer()
 
         assert callable(composed)
+
+
+def test_keyed_network_candidates_keep_unicode_offsets_and_metadata():
+    text = "é src_ip:10.0.0.1/path; client_ip:192.168.1.1:8080/health"
+    recognizer = _registered_recognizer(IpRecognizer)
+    results = recognizer.analyze(text, ["IP_ADDRESS"])
+    assert [(result.start, result.end) for result in results] == [(9, 17), (34, 45)]
+    assert [text[result.start : result.end] for result in results] == ["10.0.0.1", "192.168.1.1"]
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_IDENTIFIER_KEY] == recognizer.id for result in results
+    )
+
+
+def test_delimited_bare_urls_keep_independent_unicode_spans():
+    text = 'é "https://example.com." and <https://example.org,>'
+    recognizer = _registered_recognizer(UrlRecognizer)
+    results = recognizer.analyze(text, ["URL"])
+    assert [(result.start, result.end) for result in results] == [(3, 22), (30, 49)]
+    assert [text[result.start : result.end] for result in results] == ["https://example.com", "https://example.org"]
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_IDENTIFIER_KEY] == recognizer.id for result in results
+    )

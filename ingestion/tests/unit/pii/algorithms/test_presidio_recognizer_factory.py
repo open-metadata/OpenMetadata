@@ -193,6 +193,58 @@ class TestPresidioRecognizerFactory:
 
         assert isinstance(result, EntityRecognizer)
 
+    @pytest.mark.parametrize(
+        ("name", "language", "text", "expected", "entity", "expected_score"),
+        [
+            (
+                PredefinedRecognizerName.CreditCardRecognizer,
+                ClassificationLanguage.es,
+                "Card 4111-1111-1111-1111 issued",
+                "4111-1111-1111-1111",
+                "CREDIT_CARD",
+                1.0,
+            ),
+            (
+                PredefinedRecognizerName.UrlRecognizer,
+                ClassificationLanguage.en,
+                "Visit https://example.org/a?x=1",
+                "https://example.org/a?x=1",
+                "URL",
+                0.6,
+            ),
+            (
+                PredefinedRecognizerName.IpRecognizer,
+                ClassificationLanguage.en,
+                "IP 2001:db8::1",
+                "2001:db8::1",
+                "IP_ADDRESS",
+                0.6,
+            ),
+        ],
+    )
+    def test_configured_predefined_candidate_spans(self, name, language, text, expected, entity, expected_score):
+        config = Recognizer(
+            name=f"configured_{name.value}",
+            enabled=True,
+            confidenceThreshold=0.6,
+            recognizerConfig=RecognizerConfig(
+                root=PredefinedRecognizer(
+                    type="predefined",
+                    name=name,
+                    supportedLanguage=language,
+                    context=["customer"],
+                )
+            ),
+        )
+        recognizer = PresidioRecognizerFactory.create_recognizer(config, "PII.Test")
+
+        assert recognizer is not None
+        assert recognizer.supported_language == language.value
+        assert recognizer.context == ["customer"]
+        assert recognizer.supported_entities == [entity]
+        results = recognizer.analyze(text, [entity])
+        assert [(text[result.start : result.end], result.score) for result in results] == [(expected, expected_score)]
+
     def test_create_predefined_recognizer_invalid_name(self):
         """Test that invalid predefined recognizer names return None"""
         recognizer_config = Recognizer(

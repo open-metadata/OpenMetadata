@@ -1,10 +1,18 @@
+import re
+
 from presidio_analyzer import Pattern
+
+CARD_GROUPING_PATTERNS = (
+    re.compile(r"\d{12,19}"),
+    re.compile(r"\d{4}(?P<sep>[ -])\d{4}(?P=sep)\d{4}(?P=sep)\d{4}(?:(?P=sep)\d{3})?"),
+    re.compile(r"\d{4}(?P<sep>[ -])\d{6}(?P=sep)\d{5}"),
+)
 
 credit_cards = [
     Pattern("Credit Card Number", pattern, 0.7)
     for pattern in (
-        # Visa: 13 or 16 digits, starts with 4
-        r"^4\d{12}(?:\d{3})?$",
+        # Visa: 13, 16, or 19 digits, starts with 4
+        r"^4\d{12}(?:\d{3}(?:\d{3})?)?$",
         # Mastercard: 16 digits
         # Includes both old range (51-55) and new range (2221-2720)
         r"^(?:5[1-5]\d{2}|2(?:22[1-9]|2[3-9]\d|[3-6]\d{2}|7[01]\d|720))\d{12}$",
