@@ -16,17 +16,24 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import jakarta.ws.rs.core.SecurityContext;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -50,6 +57,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class ActivityStreamRepositoryTest {
 
@@ -157,6 +166,57 @@ class ActivityStreamRepositoryTest {
       verify(dao).deleteOlderThan(100L);
       entityMock.verify(Entity::getConversationRepository, never());
     }
+  }
+
+  // The default "Last 30 days" Inbox preset sets startTs to the start of the UTC day
+  // of now-30d, which is up to ~24h earlier than now - 30d (the `days` bound the
+  // server hard-caps at @Max(30)). When the absolute startTs is supplied it must
+  // become the DAO lower bound so the [startTs, now-30d) gap is fetched instead of
+  // dropped (issue #31911 regression).
+  @Test
+  void listActivityEventsUsesStartTsAsLowerBoundWhenProvided() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    long startTs = 1_700_000_000_000L;
+    when(dao.list(startTs, 200)).thenReturn(List.of());
+
+    try (MockedStatic<DefaultAuthorizer> authMock = mockStatic(DefaultAuthorizer.class)) {
+      SubjectContext subject = mock(SubjectContext.class);
+      when(subject.isAdmin()).thenReturn(true);
+      authMock.when(() -> getSubjectContext(securityContext)).thenReturn(subject);
+
+      repository.listActivityEvents(
+          securityContext, null, null, null, null, null, 30, startTs, 200);
+    }
+
+    // The absolute startTs overrides the relative now - 30d bound.
+    verify(dao).list(startTs, 200);
+  }
+
+  @Test
+  void listActivityEventsFallsBackToDaysWhenStartTsAbsent() {
+    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
+    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(dao.list(anyLong(), eq(200))).thenReturn(List.of());
+
+    try (MockedStatic<DefaultAuthorizer> authMock = mockStatic(DefaultAuthorizer.class)) {
+      SubjectContext subject = mock(SubjectContext.class);
+      when(subject.isAdmin()).thenReturn(true);
+      authMock.when(() -> getSubjectContext(securityContext)).thenReturn(subject);
+
+      repository.listActivityEvents(securityContext, null, null, null, null, null, 30, null, 200);
+    }
+
+    ArgumentCaptor<Long> after = ArgumentCaptor.forClass(Long.class);
+    verify(dao).list(after.capture(), eq(200));
+    // With no absolute window the bound is now - 30d (within a few seconds of the
+    // reading below; tolerate test-runtime slop), not the absolute startTs.
+    long expected = Instant.now().minus(30, ChronoUnit.DAYS).toEpochMilli();
+    assertTrue(
+        Math.abs(after.getValue() - expected) < 5_000,
+        "after bound should be ~now-30d when startTs is absent");
   }
 
   private static ChangeEvent changeEventWith(String userName) {
