@@ -555,6 +555,62 @@ public class ActivityResourceIT {
     }
   }
 
+  // Regression for the "Last 30 days" default-preset under-fetch (issue #31911).
+  // The preset's calendar-aligned startTs (start of the UTC day of now-30d) can
+  // be up to ~24h earlier than now - 30d, the relative `days` bound the server
+  // hard-caps at @Max(30). An event in the [startTs, now-30d) gap is inside the
+  // user's window but `days=30` alone drops it; the absolute `startTs` param
+  // must override `days` and fetch it.
+  @Test
+  void test_listActivityEvents_startTsOverridesDaysToFetchCalendarAlignedGap(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns, "startts-gap");
+    User admin = getAdminUser();
+    // ~2h older than now - 30d => inside the gap that days=30 cannot reach.
+    long gapEventTs = System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L - 2 * 60 * 60 * 1000L;
+    // Window start just before the gap event, like the default preset's startOfDay.
+    long startTs = gapEventTs - 1;
+
+    ActivityEvent gapEvent =
+        insertActivityEvent(
+            SdkClients.adminClient(),
+            new ActivityEvent()
+                .withId(UUID.randomUUID())
+                .withEventType(ActivityEventType.ENTITY_CREATED)
+                .withEntity(
+                    new EntityReference()
+                        .withId(table.getId())
+                        .withType(Entity.TABLE)
+                        .withName(table.getName())
+                        .withFullyQualifiedName(table.getFullyQualifiedName()))
+                .withActor(
+                    new EntityReference()
+                        .withId(admin.getId())
+                        .withType(Entity.USER)
+                        .withName(admin.getName())
+                        .withFullyQualifiedName(admin.getFullyQualifiedName()))
+                .withTimestamp(gapEventTs)
+                .withSummary("Gap event older than now-30d, inside the calendar-aligned window"));
+
+    // With the absolute startTs, the gap event is fetched even though days=30
+    // alone would filter it out (timestamp < now-30d).
+    ActivityEventList withStartTs =
+        listActivityEventsWithStartTs(
+            SdkClients.adminClient(), "table", table.getId(), startTs, 200, 30);
+    assertTrue(
+        withStartTs.getData().stream().anyMatch(e -> gapEvent.getId().equals(e.getId())),
+        "startTs must fetch the calendar-aligned gap event that days=30 drops");
+
+    // Regression guard: days=30 alone still drops the gap event (the bug being
+    // fixed), confirming it is startTs — not some other change — that recovers it.
+    ActivityEventList daysOnly =
+        listActivityEventsWithEntityFilter(
+            SdkClients.adminClient(), "table", table.getId(), 200, 30);
+    assertFalse(
+        daysOnly.getData().stream().anyMatch(e -> gapEvent.getId().equals(e.getId())),
+        "days=30 alone must not reach the gap event older than now-30d");
+  }
+
   // ==================== Entity Activity Tests ====================
 
   @Test
@@ -1417,6 +1473,36 @@ public class ActivityResourceIT {
         RequestOptions.builder()
             .queryParam("limit", String.valueOf(limit))
             .queryParam("days", String.valueOf(days));
+
+    if (entityType != null) {
+      builder.queryParam("entityType", entityType);
+    }
+    if (entityId != null) {
+      builder.queryParam("entityId", entityId.toString());
+    }
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ACTIVITY_PATH, null, builder.build());
+    return MAPPER.readValue(response, ActivityEventList.class);
+  }
+
+  // Lists activity events with an absolute startTs lower bound that overrides
+  // the relative `days` bound (see test_listActivityEvents_startTsOverridesDays...).
+  private ActivityEventList listActivityEventsWithStartTs(
+      OpenMetadataClient client,
+      String entityType,
+      UUID entityId,
+      long startTs,
+      int limit,
+      int days)
+      throws Exception {
+    RequestOptions.Builder builder =
+        RequestOptions.builder()
+            .queryParam("limit", String.valueOf(limit))
+            .queryParam("days", String.valueOf(days))
+            .queryParam("startTs", String.valueOf(startTs));
 
     if (entityType != null) {
       builder.queryParam("entityType", entityType);

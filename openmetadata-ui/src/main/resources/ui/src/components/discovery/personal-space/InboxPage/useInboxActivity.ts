@@ -107,9 +107,18 @@ export const fetchInboxActivity = async (
   if (!userId) {
     return { activities: [], threads: [], isCapped: false };
   }
+  // The activity API takes an absolute `startTs` (calendar-aligned lower bound)
+  // when the window is known, falling back to whole `days` (now - days) only when
+  // it isn't. The default "Last 30 days" preset's startTs is the start of the UTC
+  // day of now-30d, which can be up to ~24h earlier than now - 30d (the `days`
+  // bound, hard-capped at 30). Sending `days` alone dropped the [startTs, now-30d)
+  // gap, so conversations created in that sliver (filtered by absolute startTs)
+  // showed with no matching activity event. `startTs` makes both halves of the
+  // merged feed share one lower bound (issue #31911 regression).
   const days = getActivityWindowDays({ startTs, endTs });
   const activityRequest = ACTIVITY_REQUEST[filter]({
     days,
+    startTs,
     limit: ACTIVITY_LIMIT,
   });
   const filterType = CONVERSATION_FILTER[filter];

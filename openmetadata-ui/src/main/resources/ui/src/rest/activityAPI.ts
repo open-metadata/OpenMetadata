@@ -26,6 +26,10 @@ export interface ListActivityParams {
   actorId?: string;
   domains?: string;
   days?: number;
+  // Absolute lower bound (epoch millis) for the activity window; overrides
+  // `days` when supplied so a calendar-aligned window (e.g. the Inbox "Last
+  // 30 days" preset) fetches its full range instead of `now - days`.
+  startTs?: number;
   limit?: number;
 }
 
@@ -84,6 +88,9 @@ export const getUserActivity = async (
 
 interface ScopedActivityFeedParams {
   days?: number;
+  // Absolute lower bound (epoch millis) for the activity window; overrides
+  // `days` when supplied (see ListActivityParams.startTs).
+  startTs?: number;
   limit?: number;
   domain?: string;
 }
