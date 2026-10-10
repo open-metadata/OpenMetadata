@@ -906,7 +906,7 @@
           },
           "inferenceLevel": {
             "type": "string",
-            "description": "Optional. Reasoning level applied at query time: none (default), rdfs, owl, custom.",
+            "description": "Optional. none (default) queries the stored graph. custom also returns facts derived by materialized inference rules and needs materialized inference enabled. rdfs and owl are not available and fail.",
             "default": "none"
           },
           "maxBytes": {

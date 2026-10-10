@@ -243,6 +243,7 @@ export const TreeSelect = <T = unknown,>({
   showSelectAll = false,
   commitMode = 'immediate',
   offset,
+  placement,
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
@@ -286,7 +287,7 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
-  const { placement, triggerWidth } = useDropdownPlacement(
+  const { placement: autoPlacement, triggerWidth } = useDropdownPlacement(
     triggerRef,
     isOpen,
     usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
@@ -1012,7 +1013,7 @@ export const TreeSelect = <T = unknown,>({
       data-react-aria-top-layer="true"
       isOpen={isOpen}
       offset={offset}
-      placement={placement}
+      placement={placement ?? autoPlacement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
       // The input variant matches its trigger; measured, not `--trigger-width`.

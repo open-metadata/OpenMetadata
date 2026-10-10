@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **838**.
+Total project tokens: **834**.
 
 ## Spacing (57)
 
@@ -706,18 +706,17 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
 </details>
 
-## Legacy colors (195)
+## Legacy colors (191)
 
 Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.
 
-<details><summary>Show all 195</summary>
+<details><summary>Show all 191</summary>
 
 | Token | Value |
 | --- | --- |
 | `--om-legacy-color-0-0-0-0` | `rgba(0, 0, 0, 0)` |
 | `--om-legacy-color-0-0-0-0-1` | `rgba(0, 0, 0, 0.1)` |
 | `--om-legacy-color-0-0-0-0-2` | `rgba(0, 0, 0, 0.2)` |
-| `--om-legacy-color-0-0-0-0-3` | `rgba(0, 0, 0, 0.3)` |
 | `--om-legacy-color-0-0-0-0-04` | `rgba(0, 0, 0, 0.04)` |
 | `--om-legacy-color-0-0-0-0-05` | `rgba(0, 0, 0, 0.05)` |
 | `--om-legacy-color-0-0-0-0-5` | `rgba(0, 0, 0, 0.5)` |
@@ -731,7 +730,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-0-0-0-0-25` | `rgba(0, 0, 0, 0.25)` |
 | `--om-legacy-color-0-0-0-0-102` | `#0000001a` |
 | `--om-legacy-color-0c5460` | `#0c5460` |
-| `--om-legacy-color-0f141b` | `#0f141b` |
 | `--om-legacy-color-1f67e9` | `#1f67e9` |
 | `--om-legacy-color-1f242f` | `#1f242f` |
 | `--om-legacy-color-2eaadc` | `#2eaadc` |
@@ -850,10 +848,8 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-d93025` | `#d93025` |
 | `--om-legacy-color-d99600` | `#d99600` |
 | `--om-legacy-color-dadada` | `#dadada` |
-| `--om-legacy-color-dbe0e7` | `#dbe0e7` |
 | `--om-legacy-color-dbe4ff` | `#dbe4ff` |
 | `--om-legacy-color-dce3ec` | `rgb(220, 227, 236)` |
-| `--om-legacy-color-dcf6ff` | `#dcf6ff` |
 | `--om-legacy-color-dddddd` | `#ddd` |
 | `--om-legacy-color-dde3ea` | `#dde3ea` |
 | `--om-legacy-color-e1e4e8` | `#e1e4e8` |

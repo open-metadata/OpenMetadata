@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Alert } from 'antd';
+import { Alert, Box, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +19,6 @@ import { ReactComponent as AnnouncementsEmptyIcon } from '../../../assets/svg/an
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -70,52 +68,41 @@ function AnnouncementsWidget({
     }
 
     return (
-      <div className="announcement-container-list">
-        <Grid className="layout-row layout-grid" style={getLayoutGutter(8, 8)}>
-          {announcements.map((item) => {
-            const fqn = getEntityFQN(item.entityLink ?? '');
+      <Box className="announcement-container-list" direction="col" gap={2}>
+        {announcements.map((item) => {
+          const fqn = getEntityFQN(item.entityLink ?? '');
 
-            return (
-              <Grid.Item
-                className="layout-column"
-                data-testid={`announcement-${fqn}`}
-                key={item.id}
-                span={24}>
-                <Alert
-                  className="right-panel-announcement"
-                  description={
-                    <>
-                      <Typography className="d-block text-sm font-medium">
-                        {item.displayName ?? item.name}
-                      </Typography>
-                      <Typography
-                        className="d-block text-xs m-t-xs"
-                        color="secondary">
-                        {formatDateTime(item.updatedAt ?? item.createdAt)}
-                      </Typography>
-                      <RichTextEditorPreviewerV1
-                        className="p-t-xs"
-                        markdown={item.description}
-                        reducePreviewLineClass="max-three-lines"
-                        showReadMoreBtn={false}
-                      />
-                    </>
-                  }
-                  message={
-                    <div className="d-flex announcement-alert-heading">
-                      <AnnouncementIcon width={20} />
-                      <span className="text-sm p-l-xss">
-                        {t('label.announcement')}
-                      </span>
-                    </div>
-                  }
-                  type="info"
-                />
-              </Grid.Item>
-            );
-          })}
-        </Grid>
-      </div>
+          return (
+            <Alert
+              className="right-panel-announcement"
+              data-testid={`announcement-${fqn}`}
+              key={item.id}
+              showIcon={false}
+              title={
+                <Box align="center" className="announcement-alert-heading">
+                  <AnnouncementIcon width={20} />
+                  <span className="text-sm p-l-xss">
+                    {t('label.announcement')}
+                  </span>
+                </Box>
+              }
+              variant="brand">
+              <Typography className="d-block text-sm font-medium tw:text-primary">
+                {item.displayName ?? item.name}
+              </Typography>
+              <Typography className="d-block text-xs m-t-xs" color="secondary">
+                {formatDateTime(item.updatedAt ?? item.createdAt)}
+              </Typography>
+              <RichTextEditorPreviewerV1
+                className="p-t-xs"
+                markdown={item.description}
+                reducePreviewLineClass="max-three-lines"
+                showReadMoreBtn={false}
+              />
+            </Alert>
+          );
+        })}
+      </Box>
     );
   }, [isAnnouncementLoading, announcements]);
 
@@ -123,13 +110,9 @@ function AnnouncementsWidget({
     <div
       className="announcement-container card-widget h-full"
       data-testid="announcement-container">
-      <Box className="layout-row" justify="between" wrap="wrap">
-        <Box className="layout-column tw:block">
-          <Typography as="p" className="font-medium m-b-sm">
-            {t('label.recent-announcement-plural')}
-          </Typography>
-        </Box>
-      </Box>
+      <Typography as="p" className="font-medium m-b-sm">
+        {t('label.recent-announcement-plural')}
+      </Typography>
       {announcement}
     </div>
   );
