@@ -22,13 +22,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
-import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAddServiceAction';
 import {
   DATA_ESTATE_WINDOW_DAYS,
   DATA_ESTATE_WINDOW_OPTIONS,
   useDataEstate,
 } from '../../../../hooks/useDataEstate';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAddServiceAction';
 import ConnectorBreakdown from '../Common/TopicWidget/ConnectorBreakdown';
 import CoverageStat from '../Common/TopicWidget/CoverageStat';
 import FilterButton from '../Common/TopicWidget/FilterButton';

@@ -19,11 +19,11 @@ import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
-import { getCustomizePagePath } from '../../../../utils/RouterUtils';
 import {
   getCustomizePageCategories,
   getCustomizePageOptions,
 } from '../../../../utils/Persona/PersonaUtils';
+import { getCustomizePagePath } from '../../../../utils/RouterUtils';
 import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 
 export const CustomizeUI = () => {
