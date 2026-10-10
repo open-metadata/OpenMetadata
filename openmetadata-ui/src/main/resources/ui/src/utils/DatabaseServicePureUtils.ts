@@ -64,6 +64,8 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/hiveConnection.json'),
   [DatabaseServiceType.Impala]: () =>
     loadConnectionSchema('connections/database/impalaConnection.json'),
+  [DatabaseServiceType.Informix]: () =>
+    loadConnectionSchema('connections/database/informixConnection.json'),
   [DatabaseServiceType.MariaDB]: () =>
     loadConnectionSchema('connections/database/mariaDBConnection.json'),
   [DatabaseServiceType.Mssql]: () =>

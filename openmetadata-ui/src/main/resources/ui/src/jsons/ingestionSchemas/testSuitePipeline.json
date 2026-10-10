@@ -9939,14 +9939,6 @@
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
-                        },
-                        "supportsLineageExtraction": {
-                          "title": "Supports Lineage Extraction",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
-                        },
-                        "supportsUsageExtraction": {
-                          "title": "Supports Usage Extraction",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsUsageExtraction"
                         }
                       },
                       "additionalProperties": false,

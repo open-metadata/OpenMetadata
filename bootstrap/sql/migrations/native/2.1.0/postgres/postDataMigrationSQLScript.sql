@@ -326,6 +326,21 @@ WHERE name IN (
 UPDATE user_entity
 SET json = jsonb_set(json, '{email}', to_jsonb(lower(json ->> 'email')))
 WHERE json ->> 'email' <> lower(json ->> 'email');
+
+-- Informix no longer declares supportsLineageExtraction or supportsUsageExtraction:
+-- the connector implements neither, and while they were declared the UI offered
+-- Lineage and Usage pipelines that fail on import. The connection schema sets
+-- additionalProperties false, so a stored service still carrying either field can
+-- no longer be deserialised -- and one such row fails the whole databaseServices
+-- listing, not just its own service.
+UPDATE dbservice_entity
+SET json = (json::jsonb
+    #- '{connection,config,supportsLineageExtraction}'
+    #- '{connection,config,supportsUsageExtraction}')
+WHERE serviceType = 'Informix'
+  AND (jsonb_exists(json::jsonb #> '{connection,config}', 'supportsLineageExtraction')
+       OR jsonb_exists(json::jsonb #> '{connection,config}', 'supportsUsageExtraction'));
+
 -- External S3 sample-data storage support was removed (collate#5995), and with it the
 -- whole sampleDataStorageConfig property: once the external branch was gone the field
 -- could only ever hold an empty object, so it carried no information and was dropped
