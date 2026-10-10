@@ -33,6 +33,9 @@ public class ContextMemoryIndex implements TaggableIndex {
 
   public static final String FIELD_STATUS = "entityStatus";
   public static final String FIELD_ANCHOR_ID = "anchorId";
+  public static final String FIELD_MEMORY_SCOPE = "memoryScope";
+  public static final String FIELD_MEMORY_TYPE = "memoryType";
+  public static final String FIELD_PINNED = "pinned";
   public static final String UNANCHORED = "unanchored";
 
   private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
@@ -70,10 +73,9 @@ public class ContextMemoryIndex implements TaggableIndex {
     doc.put("summary", memory.getSummary());
     doc.put("question", memory.getQuestion());
     doc.put("answer", memory.getAnswer());
-    doc.put("memoryType", memory.getMemoryType() != null ? memory.getMemoryType().value() : null);
-    doc.put(
-        "memoryScope", memory.getMemoryScope() != null ? memory.getMemoryScope().value() : null);
-    doc.put("pinned", Boolean.TRUE.equals(memory.getPinned()));
+    doc.put(FIELD_MEMORY_TYPE, memoryTypeValue(memory));
+    doc.put(FIELD_MEMORY_SCOPE, memoryScopeValue(memory));
+    doc.put(FIELD_PINNED, Boolean.TRUE.equals(memory.getPinned()));
     doc.put("sourceType", memory.getSourceType() != null ? memory.getSourceType().value() : null);
     doc.put(
         "sourceConversation",
@@ -92,6 +94,14 @@ public class ContextMemoryIndex implements TaggableIndex {
     applyShareConfig(doc);
     applyEntityReferences(doc);
     return doc;
+  }
+
+  public static String memoryTypeValue(ContextMemory memory) {
+    return memory.getMemoryType() == null ? null : memory.getMemoryType().value();
+  }
+
+  public static String memoryScopeValue(ContextMemory memory) {
+    return memory.getMemoryScope() == null ? null : memory.getMemoryScope().value();
   }
 
   public static String statusValue(ContextMemory memory) {

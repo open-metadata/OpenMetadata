@@ -22,6 +22,16 @@ export interface AddTestCaseListFilterContext {
   waitAfterFilterUpdate: () => Promise<void>;
 }
 
+// The filters sit below the fold of the modal's scroll area. Playwright's
+// own scroll-before-click dispatches its scroll event after the popover has
+// opened, and react-aria closes a popover on any ancestor scroll. Scrolling
+// first lets that event flush before the click.
+async function openAddTestCaseListFilter(page: Page, searchKey: string) {
+  const trigger = page.getByTestId(`search-dropdown-${searchKey}`);
+  await trigger.scrollIntoViewIfNeeded();
+  await trigger.click();
+}
+
 // The filter dropdown is a popover rendered outside the Add Test Cases modal
 // and can close again right after it opens (timing-dependent). Reopen and
 // retype until the searched option is shown instead of racing that close.
@@ -36,7 +46,7 @@ async function searchAddTestCaseListFilterOption(
 
   await expect(async () => {
     if (!(await menu.isVisible())) {
-      await page.getByTestId(`search-dropdown-${searchKey}`).click();
+      await openAddTestCaseListFilter(page, searchKey);
     }
     await menu.getByTestId('search-input').fill(searchText, { timeout: 5_000 });
     await expect(option).toBeVisible({ timeout: 10_000 });
@@ -52,7 +62,7 @@ export async function addTestCaseListFilterByTestType(
   const listResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
-  await page.getByTestId('search-dropdown-Test Type').click();
+  await openAddTestCaseListFilter(page, 'Test Type');
   await page
     .getByTestId('drop-down-menu')
     .getByRole('menuitemradio', { name: label })
@@ -68,7 +78,7 @@ export async function addTestCaseListFilterByStatus(
   const listResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
-  await page.getByTestId('search-dropdown-Status').click();
+  await openAddTestCaseListFilter(page, 'Status');
   await page
     .getByTestId('drop-down-menu')
     .getByRole('menuitemradio', { name: label })
@@ -138,7 +148,7 @@ export async function addTestCaseListResetFilters(
   const clearTableResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
-  await page.getByTestId('search-dropdown-Table').click();
+  await openAddTestCaseListFilter(page, 'Table');
   await page.getByTestId('drop-down-menu').getByTestId(tableFqn).click();
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await clearTableResponse;
@@ -146,7 +156,7 @@ export async function addTestCaseListResetFilters(
   const clearColumnResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
-  await page.getByTestId('search-dropdown-Column').click();
+  await openAddTestCaseListFilter(page, 'Column');
   await page.getByTestId('drop-down-menu').getByTestId(columnName).click();
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await clearColumnResponse;
@@ -154,7 +164,7 @@ export async function addTestCaseListResetFilters(
   const clearStatusResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
-  await page.getByTestId('search-dropdown-Status').click();
+  await openAddTestCaseListFilter(page, 'Status');
   await page
     .getByTestId('drop-down-menu')
     .getByRole('menuitemradio', { name: 'Success' })

@@ -275,6 +275,37 @@ describe('Test AsyncSelect List Component', () => {
 
     await waitFor(() => screen.getByTestId('tag-tags-0'));
 
-    expect(screen.getByTestId('tag-tags-0')).toHaveClass('option-class');
+    expect(
+      screen.getByTestId('tag-tags-0').closest('[role="option"]')
+    ).toHaveClass('option-class');
+  });
+
+  it('should load the next page when the list is scrolled to the end', async () => {
+    mockFetchOptions.mockReset();
+    mockFetchOptions
+      .mockResolvedValueOnce({ ...ASYNC_SELECT_MOCK, paging: { total: 20 } })
+      .mockResolvedValueOnce({ data: [], paging: { total: 20 } });
+
+    await act(async () => {
+      render(<AsyncSelectList {...mockProps} mode="multiple" />);
+    });
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('combobox'));
+    });
+
+    const listBox = await screen.findByRole('listbox');
+    const scroller = listBox.closest('[data-trigger]') as HTMLElement;
+    Object.defineProperties(scroller, {
+      scrollHeight: { configurable: true, value: 500 },
+      offsetHeight: { configurable: true, value: 300 },
+      scrollTop: { configurable: true, value: 200 },
+    });
+
+    await act(async () => {
+      fireEvent.scroll(scroller);
+    });
+
+    expect(mockFetchOptions).toHaveBeenLastCalledWith('', 2);
   });
 });

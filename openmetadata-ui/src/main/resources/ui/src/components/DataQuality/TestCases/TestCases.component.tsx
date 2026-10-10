@@ -48,12 +48,12 @@ import { useTestCaseListPage } from './useTestCaseListPage';
 export const TestCases = () => {
   const { t } = useTranslation();
   const { createActions } = useDataQualityProvider();
+  const [form] = Form.useForm();
   const {
     testCasePermission,
     testSuitePermission,
     testCaseSummary,
     isTestCaseSummaryLoading,
-    form,
     searchValue,
     selectedFilter,
     hasActiveFilters,
@@ -84,7 +84,7 @@ export const TestCases = () => {
     showDeleted,
     handleShowDeletedChange,
     handleAfterDeleteAction,
-  } = useTestCaseListPage();
+  } = useTestCaseListPage({ form });
 
   // testCasePermission is a resource-level permission (usePermissionProvider().permissions.
   // testCase, threaded through useTestCaseListPage). Itself OperationPermission-shaped, so it
