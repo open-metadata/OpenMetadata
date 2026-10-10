@@ -676,10 +676,6 @@ UPDATE announcement_entity
 SET json = JSON_REMOVE(json, '$.status')
 WHERE JSON_EXTRACT(json, '$.status') IS NOT NULL;
 
--- Flowable schema upgrades run after this migration and inherit the database default. Existing
--- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
-ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
 -- Reasoning results record the serving dataset they read. Every promotion assigns a new generation,
 -- even when it reuses a physical dataset name, so a result computed before it never passes for
 -- current. Servers assign one on startup to a pointer row created before this column existed.
@@ -719,3 +715,7 @@ SET @rdf_projection_health_watermark_ddl = (
 PREPARE rdf_projection_health_watermark_stmt FROM @rdf_projection_health_watermark_ddl;
 EXECUTE rdf_projection_health_watermark_stmt;
 DEALLOCATE PREPARE rdf_projection_health_watermark_stmt;
+
+-- Flowable schema upgrades run after this migration and inherit the database default. Existing
+-- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
