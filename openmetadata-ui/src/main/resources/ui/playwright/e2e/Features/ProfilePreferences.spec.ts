@@ -48,9 +48,9 @@ test.describe(
       await page.reload();
       await expect(root(page)).toHaveClass(/dark-mode/);
 
-      await page.getByTestId('ask-ai-user-menu-trigger').click();
-      await page.getByTestId('ai-user-menu-profile').click();
-      await page.getByTestId('profile-nav-preferences').click();
+      // The settings modal lives in the URL hash, so the reload reopens it on
+      // Preferences; the user-menu trigger is behind its overlay.
+      await expect(page.getByTestId('preferences-panel')).toBeVisible();
       await page.getByTestId('theme-preference-light').click();
       await expect(root(page)).not.toHaveClass(/dark-mode/);
     });
