@@ -829,6 +829,39 @@ class DistributedIndexingStrategyTest {
     }
   }
 
+  /**
+   * Regression: a stop that lands before the executor exists finds nothing to stop. The executor
+   * created afterwards never heard of it, so it created and started the job the user had stopped.
+   */
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  void stopBeforeExecutorExistsIsHandedToTheExecutorCreatedAfterIt() {
+    EntityRepository entityRepository = mock(EntityRepository.class);
+    EntityDAO entityDao = mock(EntityDAO.class);
+
+    when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
+    when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedConstruction<DistributedSearchIndexExecutor> executorConstruction =
+            mockConstruction(
+                DistributedSearchIndexExecutor.class,
+                (mock, context) ->
+                    doThrow(new RuntimeException("end the run before job creation"))
+                        .when(mock)
+                        .performStartupRecovery())) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
+
+      strategy.stop();
+      strategy.execute(
+          ReindexingConfiguration.builder().entities(Set.of(Entity.TABLE)).build(),
+          context(APP_ID));
+
+      verify(executorConstruction.constructed().getFirst()).stop();
+    }
+  }
+
   @Test
   @SuppressWarnings({"rawtypes", "unchecked"})
   void executeClosesSinkAndReturnsFailedWhenDoExecuteThrowsAndSinkCloseAlsoFails()

@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -305,6 +306,56 @@ class ReindexingOrchestratorTest {
     assertEquals(EventPublisherJob.Status.STOPPED, jobData.getStatus());
     assertEquals(AppRunRecord.Status.STOPPED, appRunRecord.getStatus());
     assertNotNull(appRunRecord.getEndTime());
+  }
+
+  /**
+   * Regression: a stop that lands during preflight finds no strategy to stop. The strategy created
+   * afterwards never heard of it and ran the whole reindex the user had stopped.
+   */
+  @Test
+  void stopDuringPreflightIsHandedToTheStrategyCreatedAfterIt() {
+    EventPublisherJob jobData = new EventPublisherJob().withEntities(Set.of(Entity.TABLE));
+    EntityRepository entityRepository = mock(EntityRepository.class);
+    EntityDAO entityDao = mock(EntityDAO.class);
+
+    when(context.getJobName()).thenReturn("scheduled");
+    when(context.createProgressListener(jobData))
+        .thenReturn(mock(ReindexingProgressListener.class));
+    when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityDao.listCount(any())).thenReturn(5);
+    doAnswer(
+            invocation -> {
+              orchestrator.stop();
+              return null;
+            })
+        .when(searchRepository)
+        .ensureHybridSearchPipeline();
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class);
+        MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
+        MockedConstruction<OrphanedIndexCleaner> ignoredCleaner = mockOrphanCleaner();
+        MockedConstruction<DistributedIndexingStrategy> strategyConstruction =
+            mockConstruction(
+                DistributedIndexingStrategy.class,
+                (strategy, context1) ->
+                    when(strategy.execute(any(), any()))
+                        .thenReturn(
+                            ExecutionResult.builder()
+                                .status(ExecutionResult.Status.STOPPED)
+                                .startTime(10L)
+                                .endTime(20L)
+                                .build()))) {
+      metricsMock.when(ReindexingMetrics::getInstance).thenReturn(null);
+      websocketMock.when(WebSocketManager::getInstance).thenReturn(null);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
+
+      orchestrator.run(jobData);
+
+      verify(strategyConstruction.constructed().getFirst()).stop();
+      assertEquals(EventPublisherJob.Status.STOPPED, orchestrator.getJobData().getStatus());
+      assertEquals(AppRunRecord.Status.STOPPED, appRunRecord.getStatus());
+    }
   }
 
   @Test
