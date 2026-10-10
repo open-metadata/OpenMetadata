@@ -105,7 +105,7 @@ const getBoxItems = (
   itemClassName: string,
   keyPrefix = ''
 ): ReactNode[] =>
-  Children.toArray(children).flatMap((child, index) => {
+  Children.toArray(children).flatMap<ReactNode>((child, index) => {
     const key = `${keyPrefix}/${isValidElement(child) ? child.key : index}`;
 
     // Fragments group JSX, not layout items; keep their children independently spaced.

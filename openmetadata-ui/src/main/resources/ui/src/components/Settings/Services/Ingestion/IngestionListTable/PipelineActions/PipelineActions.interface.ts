@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ButtonProps } from 'antd';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../../../../enums/service.enum';
 import { IngestionPipeline } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -34,5 +33,5 @@ export interface PipelineActionsProps {
   handleEnableDisableIngestion?: (id: string) => Promise<void>;
   handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate?: () => void;
-  moreActionButtonProps?: ButtonProps;
+  moreActionButtonProps?: { disabled?: boolean };
 }

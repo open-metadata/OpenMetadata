@@ -159,6 +159,27 @@ describe('ActivityEventFooter', () => {
       expect(mockOnActivityClick).not.toHaveBeenCalled();
     });
 
+    it('lets the click reach the card container behind the footer', () => {
+      const activity = createMockActivity();
+      const mockOnActivityClick = jest.fn();
+      const mockContainerClick = jest.fn();
+
+      render(
+        <div role="presentation" onClick={mockContainerClick}>
+          <ActivityEventFooter
+            isForFeedTab
+            activity={activity}
+            onActivityClick={mockOnActivityClick}
+          />
+        </div>
+      );
+
+      fireEvent.click(screen.getByTestId('comment-button'));
+
+      expect(mockOnActivityClick).toHaveBeenCalledWith(activity);
+      expect(mockContainerClick).toHaveBeenCalled();
+    });
+
     it('should not throw when onActivityClick is not provided', () => {
       const activity = createMockActivity();
 

@@ -77,7 +77,7 @@ export const DescriptionTabs = ({
       </Tabs.List>
       <Tabs.Panel id="1">
         <Box
-          className="tw:mt-3 tw:rounded-md tw:border tw:border-primary tw:p-3"
+          className="tw:mt-3 tw:rounded-md tw:border tw:border-primary tw:bg-surface tw:p-3"
           direction="col">
           {description?.trim() ? (
             <RichTextEditorPreviewerV1
@@ -93,7 +93,7 @@ export const DescriptionTabs = ({
       </Tabs.Panel>
       <Tabs.Panel id="2">
         <DiffView
-          className="tw:mt-3 tw:rounded-md tw:border tw:border-primary tw:p-3"
+          className="tw:mt-3 tw:rounded-md tw:border tw:border-primary tw:bg-surface tw:p-3"
           diffArr={diffs}
         />
       </Tabs.Panel>

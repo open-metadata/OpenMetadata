@@ -891,3 +891,50 @@ export interface AuthorizerConfiguration {
   enableSecureSocketConnection: boolean;
   botPrincipals?: string[];
 }
+
+/**
+ * How the SSO configuration form groups its fields into cards. Shared by the
+ * classic settings page (`SSOGroupedFieldTemplate`) and the profile modal so
+ * both lay the form out the same way.
+ */
+export const SSO_AUTHENTICATION_FIELD_GROUPS = {
+  basic: ['provider', 'providerName'],
+  client: ['clientType', 'enableSelfSignup', 'clientId', 'callbackUrl'],
+  authority: ['authority', 'domain'],
+  security: ['publicKeyUrls', 'tokenValidationAlgorithm'],
+  credentials: ['secret', 'clientSecret'],
+  // Each provider object is a card of its own.
+  providerConfigs: [
+    'oidcConfiguration',
+    'ldapConfiguration',
+    'samlConfiguration',
+  ],
+  // Every provider honours these: LDAP maps them onto directory attributes (falling back to
+  // mailAttributeName/displayName) and SAML reads them as assertion attribute names, so the
+  // fields stay configurable for all of them.
+  identity: [
+    'emailClaim',
+    'displayNameClaim',
+    'jwtPrincipalClaims',
+    'jwtPrincipalClaimsMapping',
+    'jwtTeamClaimMapping',
+  ],
+};
+
+export const SSO_AUTHORIZER_FIELD_GROUPS = {
+  admin: ['adminEmails'],
+  domain: ['allowedEmailDomains', 'botDomain'],
+  connection: [
+    'enableSecureSocketConnection',
+    'className',
+    'containerRequestFilter',
+    'useRolesFromProvider',
+  ],
+  deprecated: [
+    'adminPrincipals',
+    'principalDomain',
+    'enforcePrincipalDomain',
+    'allowedDomains',
+    'botPrincipals',
+  ],
+};

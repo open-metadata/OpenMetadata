@@ -2090,6 +2090,20 @@ const getCsvOwnerEditor: CSVEditorFactory = ({
   };
 };
 
+// The modal's focus scope restores focus to the cell node rdg replaced while
+// editing, which leaves focus on <body> and breaks arrow-key navigation.
+// Focus the cell right away, so the next key press is not lost, and again once
+// the scope's own restore has run.
+const focusActiveGridCell = () => {
+  const focusCell = () =>
+    document
+      .querySelector<HTMLElement>('.rdg-cell[aria-selected="true"]')
+      ?.focus();
+
+  focusCell();
+  requestAnimationFrame(() => requestAnimationFrame(focusCell));
+};
+
 const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
   if (options.usePlainTextEditor) {
     return ({
@@ -2129,6 +2143,11 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
     const value = row[column.key];
     const handleSave = async (description: string) => {
       onRowChange({ ...row, [column.key]: description }, true);
+      focusActiveGridCell();
+    };
+    const handleCancel = () => {
+      onClose(false);
+      focusActiveGridCell();
     };
 
     return (
@@ -2139,7 +2158,7 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
           header="Edit Description"
           placeholder="Description"
           value={value}
-          onCancel={() => onClose(false)}
+          onCancel={handleCancel}
           onSave={handleSave}
         />
       </>
@@ -2432,15 +2451,20 @@ const getCsvCertificationEditor: CSVEditorFactory =
       );
     };
 
+    // The search box takes focus on open; keep its keydowns from the rdg EditCell.
+    // The trigger fills the cell, so the popover opens below the cell.
     return (
-      <Certification
-        permission
-        currentCertificate={value}
-        popoverProps={{ open: true }}
-        onCertificationUpdate={handleChange}
-        onClose={() => onClose(false)}>
-        <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
-      </Certification>
+      <KeyDownStopPropagationWrapper className="tw:h-full">
+        <Certification
+          permission
+          className="tw:flex tw:size-full"
+          currentCertificate={value}
+          popoverProps={{ open: true }}
+          onCertificationUpdate={handleChange}
+          onClose={() => onClose(false)}>
+          <ValueRendererOnEditCell>{value}</ValueRendererOnEditCell>
+        </Certification>
+      </KeyDownStopPropagationWrapper>
     );
   };
 

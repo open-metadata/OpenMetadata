@@ -13,7 +13,6 @@
 import {
   Box,
   Button,
-  Card,
   Dropdown,
   Input,
   Typography,
@@ -78,7 +77,10 @@ export const CustomPropertyCardList = ({
   }, [properties, extension, searchText, sortMode, propertyLayout]);
 
   return (
-    <Card className="tw:p-4" data-testid="custom-properties-card">
+    <Box
+      className="tw:p-4"
+      data-testid="custom-properties-card"
+      direction="col">
       <Box direction="col" gap={4}>
         <Box align="center" gap={3} justify="between" wrap="wrap">
           <Input
@@ -165,6 +167,6 @@ export const CustomPropertyCardList = ({
           </Typography>
         )}
       </Box>
-    </Card>
+    </Box>
   );
 };

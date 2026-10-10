@@ -53,7 +53,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // remove three more. Scoping the Policies rule description to its rule
     // card removes one more. The landing page's FeedWidget, Data Assets and My
     // Tasks suites went with the widgets they drove, taking six more with them.
-    'om-playwright/no-positional-locator': 588,
+    'om-playwright/no-positional-locator': 585,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

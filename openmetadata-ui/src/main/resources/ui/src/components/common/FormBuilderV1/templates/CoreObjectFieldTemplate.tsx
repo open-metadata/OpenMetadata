@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
-import { ObjectFieldTemplateProps } from '@rjsf/utils';
+import { getUiOptions, ObjectFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { Fragment, FunctionComponent, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -420,7 +420,8 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     properties,
     schema,
     isRoot,
-    isGatedCredentialConfig
+    isGatedCredentialConfig,
+    getUiOptions(uiSchema).advancedProperties as string[] | undefined
   );
 
   const orderedNormalProperties = getOrderedNormalProperties(

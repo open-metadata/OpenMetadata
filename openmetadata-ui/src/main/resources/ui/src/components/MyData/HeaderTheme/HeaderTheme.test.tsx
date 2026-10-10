@@ -111,10 +111,7 @@ describe('HeaderTheme Component', () => {
     it('should call setSelectedColor when a color option is clicked', () => {
       render(<HeaderTheme {...defaultProps} />);
 
-      const firstColorOption = document.querySelector(
-        '.option-color'
-      ) as HTMLElement;
-      fireEvent.click(firstColorOption);
+      fireEvent.click(screen.getAllByTestId('option-color')[0]);
 
       expect(mockSetSelectedColor).toHaveBeenCalledTimes(1);
       expect(mockSetSelectedColor).toHaveBeenCalledWith(
@@ -125,7 +122,7 @@ describe('HeaderTheme Component', () => {
     it('should call setSelectedColor with correct color for each option', () => {
       render(<HeaderTheme {...defaultProps} />);
 
-      const colorOptions = document.querySelectorAll('.option-color');
+      const colorOptions = screen.getAllByTestId('option-color');
 
       headerBackgroundColors.forEach((colorOption, index) => {
         fireEvent.click(colorOptions[index]);
@@ -141,7 +138,7 @@ describe('HeaderTheme Component', () => {
     it('should handle multiple color selections', () => {
       render(<HeaderTheme {...defaultProps} />);
 
-      const colorOptions = document.querySelectorAll('.option-color');
+      const colorOptions = screen.getAllByTestId('option-color');
 
       // Click first color
       fireEvent.click(colorOptions[0]);
@@ -158,6 +155,38 @@ describe('HeaderTheme Component', () => {
       );
 
       expect(mockSetSelectedColor).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Selected State', () => {
+    it('should render one labelled swatch per background color', () => {
+      render(<HeaderTheme {...defaultProps} />);
+
+      headerBackgroundColors.forEach(({ label }) => {
+        expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+      });
+    });
+
+    it('should mark only the selected color as pressed', () => {
+      const selected = headerBackgroundColors[1];
+      render(<HeaderTheme {...defaultProps} selectedColor={selected.color} />);
+
+      headerBackgroundColors.forEach(({ label, color }) => {
+        expect(screen.getByRole('button', { name: label })).toHaveAttribute(
+          'aria-pressed',
+          String(color === selected.color)
+        );
+      });
+    });
+
+    it('should paint each swatch with its color', () => {
+      render(<HeaderTheme {...defaultProps} />);
+
+      const [first] = screen.getAllByTestId('option-color');
+
+      expect(first).toHaveStyle({
+        backgroundColor: headerBackgroundColors[0].color,
+      });
     });
   });
 

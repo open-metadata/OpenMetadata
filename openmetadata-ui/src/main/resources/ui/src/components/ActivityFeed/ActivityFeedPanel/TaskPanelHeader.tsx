@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,19 +45,8 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
 
   return (
     <div className={classNames('feed-panel-header', className)}>
-      <Box
-        inline
-        align="center"
-        className="layout-space layout-space-horizontal w-full justify-between"
-        gap={2}
-        itemClassName="layout-space-item">
-        <Box
-          inline
-          align="stretch"
-          className="layout-space"
-          direction="col"
-          gap={0}
-          itemClassName="layout-space-item">
+      <Box align="center" className="w-full" gap={2} justify="between">
+        <Box direction="col">
           <Typography className="font-semibold text-md">
             {`#${getTaskDisplayId(task.taskId)} `}
             {t(taskTypeLabel)}
@@ -65,12 +57,7 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
             </Typography>
           )}
         </Box>
-        <Box
-          inline
-          align="center"
-          className="layout-space layout-space-horizontal"
-          gap={2}
-          itemClassName="layout-space-item">
+        <Box align="center" gap={2}>
           <Typography
             className={classNames('task-status-badge', {
               open: isOpen,
@@ -80,10 +67,12 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
             {task.status}
           </Typography>
           {onCancel && (
-            <Button
+            <ButtonUtility
+              aria-label={t('label.close')}
+              color="tertiary"
               data-testid="close-drawer-button"
-              icon={<CloseOutlined />}
-              type="text"
+              icon={XClose}
+              size="xs"
               onClick={onCancel}
             />
           )}

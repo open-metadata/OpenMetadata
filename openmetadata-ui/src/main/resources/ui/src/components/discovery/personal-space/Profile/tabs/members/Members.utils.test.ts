@@ -129,3 +129,38 @@ describe('formatOnlineStatus', () => {
     expect(result.colorClass).toBe('tw:text-error-primary');
   });
 });
+
+describe('contributed section hash routing', () => {
+  it('round-trips a section view', () => {
+    const view = { type: 'section' as const, key: 'provisioning' };
+
+    expect(viewToSubPath(view)).toBe('section/provisioning');
+    expect(hashSubPathToView('section/provisioning')).toEqual(view);
+  });
+
+  it('round-trips a section sub-path, which the section owns', () => {
+    const view = {
+      type: 'section' as const,
+      key: 'provisioning',
+      subPath: 'edit/mapping-1',
+    };
+
+    expect(viewToSubPath(view)).toBe('section/provisioning/edit/mapping-1');
+    expect(hashSubPathToView('section/provisioning/edit/mapping-1')).toEqual(
+      view
+    );
+  });
+
+  it('falls back to landing when the section key is missing', () => {
+    expect(hashSubPathToView('section')).toEqual({ type: 'landing' });
+  });
+
+  it('does not treat a team named "section" as a contributed section', () => {
+    // `section` is a top-level segment; team fqns live under `teams/`.
+    expect(hashSubPathToView('teams/section')).toEqual({
+      type: 'team-detail',
+      fqn: 'section',
+      name: 'section',
+    });
+  });
+});

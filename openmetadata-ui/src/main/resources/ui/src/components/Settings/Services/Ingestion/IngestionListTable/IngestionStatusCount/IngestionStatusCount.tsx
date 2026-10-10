@@ -12,8 +12,6 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-import { getLayoutGutter } from '../../../../../../utils/common/layout.utils';
-
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { getIngestionStatusCountData } from '../../../../../../utils/IngestionConfigUtils';
@@ -32,18 +30,19 @@ function IngestionStatusCount({
   return (
     <Box
       align="center"
-      className="layout-row ingestion-status-count"
+      className="ingestion-status-count"
+      gap={1}
       justify="evenly"
-      style={{ ...getLayoutGutter(4, 4) }}
       wrap="nowrap">
       {records.map((record) => (
         <Box
-          className="layout-column tw:block"
+          align="center"
+          className={classNames('status-count', record.type)}
+          direction="col"
+          justify="center"
           key={`${record.label}-${runId}`}>
-          <div className={classNames('status-count', record.type)}>
-            <Typography className="record-count">{record.value}</Typography>
-            <Typography className="record-label">{record.label}</Typography>
-          </div>
+          <Typography className="record-count">{record.value}</Typography>
+          <Typography className="record-label">{record.label}</Typography>
         </Box>
       ))}
     </Box>

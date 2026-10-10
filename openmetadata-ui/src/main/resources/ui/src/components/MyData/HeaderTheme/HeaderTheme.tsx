@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PageHeader, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Box,
+  Button,
+  PageHeader,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { headerBackgroundColors } from '../../../constants/Mydata.constants';
@@ -68,27 +73,34 @@ const HeaderTheme = ({ selectedColor, setSelectedColor }: HeaderThemeProps) => {
         <Typography className="display-xs font-semibold">
           {t('label.select-background')}
         </Typography>
-        <div className="select-background-options p-y-lg p-x-0 d-flex flex-wrap items-center">
-          <div className="d-flex flex-wrap items-center gap-2">
-            {headerBackgroundColors.map((value) => (
-              <Button
-                className="option-color-container cursor-pointer"
-                data-testid="option-color"
-                key={value.color}
-                style={{
-                  backgroundColor: value.color,
-                  borderColor: value.color,
-                }}
-                onClick={() => handleColorClick(value.color)}>
-                <div
-                  className={`option-color w-full h-full ${
-                    selectedColor === value.color ? 'white-border' : ''
-                  }`}
+        <Box align="center" className="tw:px-0 tw:py-6" gap={2} wrap="wrap">
+          {headerBackgroundColors.map((value) => (
+            <Button
+              aria-label={value.label}
+              aria-pressed={selectedColor === value.color}
+              className="tw:size-13 tw:rounded-full tw:border-2 tw:border-solid tw:p-px!"
+              color="tertiary"
+              data-testid="option-color"
+              iconLeading={
+                <span
+                  className={classNames(
+                    'option-color tw:size-full tw:rounded-full',
+                    {
+                      'tw:border-3 tw:border-solid tw:border-bg-primary':
+                        selectedColor === value.color,
+                    }
+                  )}
                 />
-              </Button>
-            ))}
-          </div>
-        </div>
+              }
+              key={value.color}
+              style={{
+                backgroundColor: value.color,
+                borderColor: value.color,
+              }}
+              onPress={() => handleColorClick(value.color)}
+            />
+          ))}
+        </Box>
       </div>
     </div>
   );

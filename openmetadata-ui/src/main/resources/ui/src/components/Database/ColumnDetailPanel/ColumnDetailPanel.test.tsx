@@ -105,6 +105,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+  Tooltip: ({ children }: React.PropsWithChildren) => children,
 }));
 
 jest.mock('@ant-design/icons', () => ({

@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
+import { TestCaseFailureReasonType } from '../../../generated/tests/resolved';
+import {
+  TestCaseResolutionStatus,
+  TestCaseResolutionStatusTypes,
+} from '../../../generated/tests/testCaseResolutionStatus';
+import { Option } from '../../../pages/TasksPage/TasksPage.interface';
 
 export interface TestCaseStatusModalProps {
   open: boolean;
@@ -18,4 +23,13 @@ export interface TestCaseStatusModalProps {
   testCaseFqn: string;
   onCancel: () => void;
   onSubmit: (data: TestCaseResolutionStatus) => void;
+}
+
+export interface TestCaseStatusFormValues {
+  testCaseResolutionStatusType: TestCaseResolutionStatusTypes;
+  testCaseResolutionStatusDetails?: {
+    testCaseFailureReason?: TestCaseFailureReasonType;
+    testCaseFailureComment?: string;
+    assignee?: Option[];
+  };
 }

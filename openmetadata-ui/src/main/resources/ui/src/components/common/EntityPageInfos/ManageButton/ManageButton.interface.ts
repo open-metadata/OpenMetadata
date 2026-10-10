@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DeleteOption } from '../../DeleteWidget/DeleteWidget.interface';
+import type { toManageMenuItems } from './ManageMenu';
 
 export interface ManageButtonProps {
   allowSoftDelete?: boolean;
@@ -31,7 +31,8 @@ export interface ManageButtonProps {
   canDelete?: boolean;
   canRestore?: boolean;
   isAsyncDelete?: boolean;
-  extraDropdownContent?: ItemType[];
+  /** antd-shaped `{ key, label, onClick, disabled }` entries; see `toManageMenuItems`. */
+  extraDropdownContent?: Parameters<typeof toManageMenuItems>[0];
   onAnnouncementClick?: () => void;
   /** Return true only after the entity has been restored successfully. */
   onRestoreEntity?: () => Promise<boolean>;

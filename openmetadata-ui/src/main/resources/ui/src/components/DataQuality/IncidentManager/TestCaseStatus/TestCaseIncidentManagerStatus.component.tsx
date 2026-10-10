@@ -13,9 +13,9 @@
 
 import {
   Box,
+  Tooltip,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -107,14 +107,16 @@ const TestCaseIncidentManagerStatus = ({
             />
           )}
         </div>
-        <Tooltip placement="bottom" title={tooltipTitle}>
+        <Tooltip
+          excludeTriggerFromTabOrder
+          isDisabled={!tooltipTitle}
+          placement="bottom"
+          title={tooltipTitle}>
           <Box
             inline
             align="center"
-            className="layout-space layout-space-horizontal"
             data-testid={`${data.testCaseReference?.name}-status`}
-            gap={2}
-            itemClassName="layout-space-item">
+            gap={2}>
             <AppBadge
               className={classNames(
                 'resolution',
@@ -153,15 +155,22 @@ const TestCaseIncidentManagerStatus = ({
       <Box
         inline
         align="center"
-        className="layout-space layout-space-horizontal"
         data-testid={`${data.testCaseReference?.name}-status`}
-        gap={2}
-        itemClassName="layout-space-item">
-        <Tooltip placement="bottom" title={tooltipTitle}>
-          <AppBadge
-            className={classNames('resolution', statusType.toLocaleLowerCase())}
-            label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
-          />
+        gap={2}>
+        <Tooltip
+          excludeTriggerFromTabOrder
+          isDisabled={!tooltipTitle}
+          placement="bottom"
+          title={tooltipTitle}>
+          <span>
+            <AppBadge
+              className={classNames(
+                'resolution',
+                statusType.toLocaleLowerCase()
+              )}
+              label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
+            />
+          </span>
         </Tooltip>
 
         {hasEditPermission && (

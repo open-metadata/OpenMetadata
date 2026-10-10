@@ -44,7 +44,7 @@ const buildSessionTuple = (mode: string) =>
  * cross-test leakage. The interceptor forwards the real request and mutates the
  * response, so every other preference the server returns is preserved.
  */
-const stubUserPreferencesAppMode = async (
+export const stubUserPreferencesAppMode = async (
   page: Page,
   mode: 'ai' | 'classic'
 ): Promise<void> => {

@@ -533,12 +533,10 @@ export const selectAssetTypes = async (
   assetTypes: string[] | 'all'
 ) => {
   const field = page.getByTestId('asset-type-select');
-  const search = field.getByRole('combobox');
-  await search.focus();
-  await search.press('ArrowDown');
-  const tree = page.getByRole('tree');
-  await expect(tree).toBeVisible();
-  await search.clear();
+  const search = field.getByRole('textbox');
+  await field.click();
+  const tree = page.getByTestId('asset-type-select-popover');
+  await expect(tree.getByTestId('tree-node-all')).toBeVisible();
 
   const types = assetTypes === 'all' ? ['all'] : assetTypes;
   for (const assetType of types) {
@@ -547,17 +545,21 @@ export const selectAssetTypes = async (
     );
     const index = assetType === 'all' ? 'all' : config?.index;
     expect(index, `Asset type configuration for ${assetType}`).toBeTruthy();
-    // TreeSelect filters its value, and virtualized options may not be mounted
-    // until filtered. Display labels can differ (the page value is "Article").
+    // The search matches the asset type value as well as its display label,
+    // which can differ (the page value is "Article").
     await search.fill(index ?? '');
-    const option = tree.getByTestId(`${index}-option`);
+    const option = tree.getByTestId(`tree-node-${index}`);
     await expect(option).toBeVisible();
     await option.click();
-    await expect(field.getByTestId(`${index}-option`)).toBeAttached();
+    await expect(tree.getByTestId(`checkbox-${index}`)).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
   }
 
-  // Escape also dismisses the parent modal when TreeSelect has already closed.
-  await search.press('Tab');
+  // Escape would also dismiss the parent modal, so close the tree by clicking
+  // outside it, on the modal title.
+  await page.getByTestId('curated-assets-modal-title').click();
   await expect(tree).toBeHidden();
 };
 
