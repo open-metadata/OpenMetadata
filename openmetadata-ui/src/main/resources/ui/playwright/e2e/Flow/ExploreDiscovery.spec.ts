@@ -275,9 +275,14 @@ test.describe('Explore Assets Discovery', () => {
     const suggestionsPopover = page.getByTestId('customise-search-popover');
 
     await expect(suggestionsPopover).toBeVisible();
-    await expect(suggestionsPopover).not.toContainText(
-      table1.entityResponseData.name
-    );
+    // Each suggestion is a `data-name` link labelled with the entity's FQN;
+    // the popover's "Press Enter to find …" hint also echoes the typed name,
+    // so assert on the suggestion links, not the popover text.
+    await expect(
+      suggestionsPopover
+        .getByTestId('data-name')
+        .filter({ hasText: table1.entityResponseData.fullyQualifiedName })
+    ).toHaveCount(0);
   });
 
   test('Should not display domain and owner of deleted asset in suggestions when showDeleted is off', async ({
