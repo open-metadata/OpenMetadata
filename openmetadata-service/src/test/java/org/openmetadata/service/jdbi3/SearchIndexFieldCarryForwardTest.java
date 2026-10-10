@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -16,6 +17,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.type.SearchIndexDataType;
 import org.openmetadata.schema.type.SearchIndexField;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -26,9 +28,10 @@ import org.openmetadata.service.util.EntityUtil;
  * <p>When a SearchIndex field's {@code dataType} changes between two ingestion runs, {@link
  * EntityUtil#searchIndexFieldMatch} (which matches on name AND dataType) classifies the old field as
  * deleted and the new field as added. The carry-forward block is then responsible for copying the
- * user-curated description from the deleted (old-datatype) field onto the added (new-datatype)
- * field. These tests pin that behavior and guard against regressions where the incoming field's
- * own description is incorrectly preserved (or incorrectly overwritten).
+ * user-curated description — and, when the re-added field carries no tags of its own, the
+ * user-applied tags — from the deleted (old-datatype) field onto the added (new-datatype) field.
+ * These tests pin that behavior and guard against regressions where the incoming field's own
+ * description or tags are incorrectly dropped (or incorrectly overwritten).
  */
 class SearchIndexFieldCarryForwardTest {
 
@@ -113,6 +116,14 @@ class SearchIndexFieldCarryForwardTest {
         .withDataType(type)
         .withDescription(description)
         .withFullyQualifiedName("elasticsearch.e2e.reviews_index." + name);
+  }
+
+  private static TagLabel manualTag(String fqn) {
+    return new TagLabel()
+        .withTagFQN(fqn)
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
   }
 
   /**
@@ -211,6 +222,90 @@ class SearchIndexFieldCarryForwardTest {
           reAddedChild.getDescription(),
           "User-curated description must be carried forward for child fields whose dataType "
               + "changes during re-ingestion");
+    }
+  }
+
+  /**
+   * Reproduction for the inverted-tag-guard bug: a user-applied tag on a field whose dataType
+   * changes between two ingestion runs must be carried forward onto the re-added (new-datatype)
+   * field rather than being silently dropped.
+   *
+   * <p>The buggy guard {@code nullOrEmpty(addedField.getTags()) && nullOrEmpty(deleted.getTags())}
+   * only fired when the deleted field had <em>no</em> tags (a no-op copy of empty onto empty). The
+   * one case it existed for — deleted had user tags, re-added has none — was the case it excluded,
+   * so {@code deleteTagsByTarget} removed the user tags with no backstop. The corrected guard
+   * {@code nullOrEmpty(addedField.getTags()) && !nullOrEmpty(deleted.getTags())} copies the deleted
+   * field's tags onto the re-added field, mirroring {@link EntityRepository#updateColumns}.
+   */
+  @Test
+  void carryForwardPreservesUserTagsWhenDataTypeChanges() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SearchIndexRepository repo = createRepo(entityMock);
+
+      SearchIndexField originalField =
+          field(FIELD_NAME, SearchIndexDataType.TEXT, USER_DESCRIPTION)
+              .withTags(List.of(manualTag("PersonalData.Personal")));
+      SearchIndexField updatedField = field(FIELD_NAME, SearchIndexDataType.KEYWORD, null);
+      assertRoutedThroughDeleteAndAdd(originalField, updatedField);
+
+      SearchIndex original = searchIndex(originalField);
+      SearchIndex updated = searchIndex(updatedField);
+
+      SearchIndexRepository.SearchIndexUpdater updater =
+          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT, null);
+
+      updater.entitySpecificUpdate(false);
+
+      SearchIndexField reAdded = updated.getFields().get(0);
+      assertEquals(
+          1,
+          listOrEmpty(reAdded.getTags()).size(),
+          "User-applied tags must be carried forward from the deleted (old-datatype) field "
+              + "onto the added (new-datatype) field — they must NOT be lost");
+      assertEquals(
+          "PersonalData.Personal",
+          reAdded.getTags().get(0).getTagFQN(),
+          "The exact user-applied tag must survive the dataType change carry-forward");
+    }
+  }
+
+  /**
+   * Non-regression: when the incoming (re-added) field already carries its own connector-supplied
+   * tag, the deleted field's user tags must NOT overwrite it. The carry-forward only fires when the
+   * incoming field lacks tags, mirroring {@code EntityRepository.updateColumns}. Guards against the
+   * fix over-correcting into clobbering connector-supplied tags.
+   */
+  @Test
+  void carryForwardDoesNotOverwriteIncomingTagsWhenDataTypeChanges() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SearchIndexRepository repo = createRepo(entityMock);
+
+      SearchIndexField originalField =
+          field(FIELD_NAME, SearchIndexDataType.TEXT, USER_DESCRIPTION)
+              .withTags(List.of(manualTag("PersonalData.Personal")));
+      SearchIndexField updatedField =
+          field(FIELD_NAME, SearchIndexDataType.KEYWORD, null)
+              .withTags(List.of(manualTag("PII.Sensitive")));
+      assertRoutedThroughDeleteAndAdd(originalField, updatedField);
+
+      SearchIndex original = searchIndex(originalField);
+      SearchIndex updated = searchIndex(updatedField);
+
+      SearchIndexRepository.SearchIndexUpdater updater =
+          repo.new SearchIndexUpdater(original, updated, EntityRepository.Operation.PUT, null);
+
+      updater.entitySpecificUpdate(false);
+
+      SearchIndexField reAdded = updated.getFields().get(0);
+      assertEquals(
+          1,
+          listOrEmpty(reAdded.getTags()).size(),
+          "An incoming tag must NOT be overwritten by the deleted field's tags");
+      assertEquals(
+          "PII.Sensitive",
+          reAdded.getTags().get(0).getTagFQN(),
+          "The incoming connector-supplied tag must be preserved, not replaced by the "
+              + "deleted field's user-applied tag");
     }
   }
 }
