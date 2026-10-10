@@ -35,17 +35,22 @@ import {
   normalizeLandingPageLayout,
 } from '../../../utils/CustomizeMyDataPageWidgetUtils';
 import { getPersonaPage } from '../../../utils/CustomizePage/PersonaPage.utils';
-import { getCustomizePagePath } from '../../../utils/GlobalSettingsUtils';
+import { getCustomizePagePath } from '../../../utils/RouterUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DeferredWidget from '../../common/DeferredWidget/DeferredWidget.component';
 import { TopicCollapseContext } from '../Widgets/Common/TopicWidget/TopicCollapseContext';
-import AnnouncementsRail from './AnnouncementsRail';
 import HomeLandingPageSkeleton from './HomeLandingPageSkeleton';
 import TopicsSectionHeader from './TopicsSectionHeader';
 import { useTopicsView } from './useTopicsView';
 
 const LandingPageWidgetRenderer = withSuspenseFallback(
   lazy(() => import('../LandingPageWidgetRenderer/LandingPageWidgetRenderer'))
+);
+
+// The rail's cards pull in entity icons, user popovers and rich-text helpers;
+// loading them in their own chunk keeps them off the route's first view.
+const AnnouncementsRail = withSuspenseFallback(
+  lazy(() => import('./AnnouncementsRail'))
 );
 
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
