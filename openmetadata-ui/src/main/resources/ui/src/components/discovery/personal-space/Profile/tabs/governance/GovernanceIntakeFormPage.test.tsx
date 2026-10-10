@@ -34,24 +34,31 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../../../../pages/IntakeForms/IntakeFormDesignerBody', () => {
-  const Component = React.forwardRef(
-    (
-      props: { onSubmit: (payload: unknown) => Promise<void>; open: boolean },
-      ref: React.Ref<{ submit: () => Promise<void> }>
-    ) => {
-      React.useImperativeHandle(ref, () => ({
-        submit: () =>
-          props.onSubmit({
-            name: 'dataProduct',
-            entityType: 'dataProduct',
-            enabled: true,
-            formFields: [],
-          }),
-      }));
-
-      return <div data-testid="intake-form-designer-body" />;
+  const Component = React.forwardRef<
+    { submit: () => Promise<void> },
+    {
+      onSubmit: (payload: unknown) => Promise<void>;
+      open: boolean;
+      entityType?: string;
     }
-  );
+  >((props, ref) => {
+    React.useImperativeHandle(ref, () => ({
+      submit: () =>
+        props.onSubmit({
+          name: props.entityType,
+          entityType: props.entityType,
+          enabled: true,
+          formFields: [],
+        }),
+    }));
+
+    return (
+      <div
+        data-entity-type={props.entityType}
+        data-testid="intake-form-designer-body"
+      />
+    );
+  });
   Component.displayName = 'IntakeFormDesignerBody';
 
   return { __esModule: true, default: Component };
@@ -218,5 +225,129 @@ describe('GovernanceIntakeFormPage — edit mode', () => {
     });
 
     expect(mockCreateIntakeForm).not.toHaveBeenCalled();
+  });
+});
+
+describe('GovernanceIntakeFormPage — prop-sync (stale resolvedEntityType)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockCreateIntakeForm.mockResolvedValue({
+      id: 'new-form',
+      entityType: 'dataProduct',
+    });
+  });
+
+  const renderAddWith = (entityType: TargetEntityType) =>
+    render(
+      <MemoryRouter>
+        <GovernanceIntakeFormPage
+          entityType={entityType}
+          onNavigate={mockOnNavigate}
+        />
+      </MemoryRouter>
+    );
+
+  it('designer body entityType follows the prop when it changes (simulating URL hash change)', async () => {
+    const { rerender } = renderAddWith(TargetEntityType.DataProduct);
+
+    expect(screen.getByTestId('intake-form-designer-body')).toHaveAttribute(
+      'data-entity-type',
+      TargetEntityType.DataProduct
+    );
+
+    await act(async () => {
+      rerender(
+        <MemoryRouter>
+          <GovernanceIntakeFormPage
+            entityType={TargetEntityType.Domain}
+            onNavigate={mockOnNavigate}
+          />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('intake-form-designer-body')).toHaveAttribute(
+      'data-entity-type',
+      TargetEntityType.Domain
+    );
+  });
+
+  it('submitted payload carries the current entityType after prop change', async () => {
+    const { rerender } = renderAddWith(TargetEntityType.DataProduct);
+
+    await act(async () => {
+      rerender(
+        <MemoryRouter>
+          <GovernanceIntakeFormPage
+            entityType={TargetEntityType.Domain}
+            onNavigate={mockOnNavigate}
+          />
+        </MemoryRouter>
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('intake-form-submit'));
+    });
+
+    const payload = mockCreateIntakeForm.mock.calls[0][0];
+
+    expect(payload.entityType).toBe(TargetEntityType.Domain);
+  });
+
+  it('stays in sync across multiple prop changes', async () => {
+    const { rerender } = renderAddWith(TargetEntityType.DataProduct);
+
+    await act(async () => {
+      rerender(
+        <MemoryRouter>
+          <GovernanceIntakeFormPage
+            entityType={TargetEntityType.Domain}
+            onNavigate={mockOnNavigate}
+          />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('intake-form-designer-body')).toHaveAttribute(
+      'data-entity-type',
+      TargetEntityType.Domain
+    );
+
+    await act(async () => {
+      rerender(
+        <MemoryRouter>
+          <GovernanceIntakeFormPage
+            entityType={TargetEntityType.GlossaryTerm}
+            onNavigate={mockOnNavigate}
+          />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('intake-form-designer-body')).toHaveAttribute(
+      'data-entity-type',
+      TargetEntityType.GlossaryTerm
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('intake-form-submit'));
+    });
+
+    const payload = mockCreateIntakeForm.mock.calls[0][0];
+
+    expect(payload.entityType).toBe(TargetEntityType.GlossaryTerm);
+  });
+
+  it('submit before any prop change still uses the initial entityType (no regression)', async () => {
+    renderAddWith(TargetEntityType.DataProduct);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('intake-form-submit'));
+    });
+
+    const payload = mockCreateIntakeForm.mock.calls[0][0];
+
+    expect(payload.entityType).toBe(TargetEntityType.DataProduct);
   });
 });

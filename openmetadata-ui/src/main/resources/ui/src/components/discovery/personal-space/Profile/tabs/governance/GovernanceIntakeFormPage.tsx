@@ -61,6 +61,14 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
   >(entityType);
 
   useEffect(() => {
+    if (editId) {
+      return; // edit flow owns resolvedEntityType via getIntakeFormById
+    }
+    setExisting(null);
+    setResolvedEntityType(entityType);
+  }, [editId, entityType]);
+
+  useEffect(() => {
     if (!editId) {
       return;
     }
