@@ -23,7 +23,7 @@ This skill is loaded automatically at session start. It ensures you follow the r
 | UI a11y / UX / design audit | `/web-design-guidelines` |
 | React perf work (re-renders, waterfalls, bundle) | `/react-best-practices` |
 | Code review / PR review | `/code-review` then `/test-enforcement` |
-| Opening / finalizing a PR | `/test-enforcement` then `/java-affected-tests` (any Java, schema, migration or pom change) then `/verification` then `/pr-checklist` |
+| Opening / finalizing a PR | `/test-enforcement` then `/java-affected-tests` (any Java, schema, migration or pom change) then `/verification` then `/pr-checklist` (includes `/ui-pr-recording` when creating a PR for a UI feature or feature task) |
 | Connector review | `/connector-review` |
 | E2E test creation | `/playwright` |
 | Finishing implementation | `/test-enforcement` then `/java-affected-tests` (Java side) then `/verification` |
@@ -59,7 +59,7 @@ This skill is loaded automatically at session start. It ensures you follow the r
 
 5. **Review before merging.** Use `/code-review` for two-stage review (spec compliance + code quality).
 
-6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue (a test fix needs none), high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps.
+6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue (a test fix needs none), high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps. When creating a PR for a UI feature or feature task, use [ui-pr-recording](../ui-pr-recording/SKILL.md): run the PR build in Docker with sample data and upload the verified feature video into the description. Other changes may explain N/A; this requirement does not activate during implementation or standalone review.
 
 ### OpenMetadata Cross-Layer Checklist
 
