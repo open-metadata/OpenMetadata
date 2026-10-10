@@ -21,6 +21,7 @@ import {
   getGlossaryTermAssets,
   getGlossaryTerms,
   getGlossaryTermsAssetCounts,
+  getGlossaryTermsById,
   getGlossaryTermsByIds,
   getOntologyDataGraph,
   getOntologySummary,
@@ -158,19 +159,13 @@ describe('useOntologyExplorer', () => {
     });
   });
 
-  it('loads a filtered glossary after the latest global request settles', async () => {
-    const firstLoad = createDeferredTerms();
-    const latestLoad = createDeferredTerms();
-    const pendingGlobalLoads = [firstLoad.terms, latestLoad.terms];
-    mockGetGlossaryTerms.mockImplementation(({ glossary }) => {
-      const response =
-        glossary === loadedGlossary.id
-          ? pendingGlobalLoads.shift() ??
-            Promise.resolve({ data: [], paging: {} })
-          : Promise.resolve({ data: [filteredTerm], paging: {} });
-
-      return response;
-    });
+  it('aborts a superseded global load and loads a filtered glossary after the active load settles', async () => {
+    const activeLoad = createDeferredTerms();
+    mockGetGlossaryTerms.mockImplementation(({ glossary }) =>
+      glossary === loadedGlossary.id
+        ? activeLoad.terms
+        : Promise.resolve({ data: [filteredTerm], paging: {} })
+    );
     const { result } = renderHook(
       () => useOntologyExplorer({ scope: 'global' }),
       { wrapper: StrictMode }
@@ -181,8 +176,14 @@ describe('useOntologyExplorer', () => {
         mockGetGlossaryTerms.mock.calls.filter(
           ([request]) => request.glossary === loadedGlossary.id
         )
-      ).toHaveLength(2)
+      ).toHaveLength(1)
     );
+
+    // StrictMode discards the first mount; its load must be cancelled, not run to completion.
+    expect(mockGetGlossariesList).toHaveBeenCalledTimes(2);
+    expect(mockGetGlossariesList.mock.calls[0][1]?.aborted).toBe(true);
+    expect(mockGetGlossaryTerms.mock.calls[0][1]?.aborted).toBe(false);
+
     act(() => {
       result.current.setFilters((previous) => ({
         ...previous,
@@ -191,34 +192,171 @@ describe('useOntologyExplorer', () => {
     });
 
     expect(mockGetGlossaryTerms).not.toHaveBeenCalledWith(
-      expect.objectContaining({ glossary: filteredGlossary.id })
+      expect.objectContaining({ glossary: filteredGlossary.id }),
+      expect.anything()
     );
 
     await act(async () => {
-      firstLoad.resolveTerms({
+      activeLoad.resolveTerms({
         data: createLoadedTerms(),
         paging: { total: 300 },
       });
-      await firstLoad.terms;
-    });
-
-    expect(mockGetGlossaryTerms).not.toHaveBeenCalledWith(
-      expect.objectContaining({ glossary: filteredGlossary.id })
-    );
-
-    latestLoad.resolveTerms({
-      data: createLoadedTerms(),
-      paging: { total: 300 },
+      await activeLoad.terms;
     });
 
     await waitFor(() =>
       expect(mockGetGlossaryTerms).toHaveBeenCalledWith(
-        expect.objectContaining({ glossary: filteredGlossary.id })
+        expect.objectContaining({ glossary: filteredGlossary.id }),
+        expect.anything()
       )
     );
     await waitFor(() =>
       expect(result.current.filteredGraphData?.nodes).toEqual([
         expect.objectContaining({ id: filteredTerm.id }),
+      ])
+    );
+  });
+
+  it('replaces a reference-only neighbour with the full term once its page loads', async () => {
+    const firstPage = createLoadedTerms();
+    firstPage[0] = {
+      ...firstPage[0],
+      relatedTerms: [
+        {
+          relationType: 'relatedTo',
+          term: {
+            fullyQualifiedName: filteredTerm.fullyQualifiedName,
+            id: filteredTerm.id,
+            name: filteredTerm.name,
+            type: 'glossaryTerm',
+          },
+        },
+      ],
+    };
+    mockGetGlossaryTerms.mockImplementation(({ glossary }) =>
+      Promise.resolve(
+        glossary === loadedGlossary.id
+          ? { data: firstPage, paging: { total: 300 } }
+          : { data: [filteredTerm], paging: { total: 1 } }
+      )
+    );
+    const { result } = renderHook(() =>
+      useOntologyExplorer({ scope: 'global' })
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.combinedGraphData?.nodes).toContainEqual(
+      expect.objectContaining({
+        glossaryId: filteredGlossary.id,
+        id: filteredTerm.id,
+        isReferenceOnly: true,
+      })
+    );
+    expect(result.current.hasMoreTerms).toBe(true);
+
+    act(() => result.current.handleLoadMore());
+
+    await waitFor(() =>
+      expect(
+        result.current.combinedGraphData?.nodes.find(
+          (node) => node.id === filteredTerm.id
+        )
+      ).toEqual(
+        expect.objectContaining({ description: filteredTerm.description })
+      )
+    );
+
+    expect(
+      result.current.combinedGraphData?.nodes.find(
+        (node) => node.id === filteredTerm.id
+      )?.isReferenceOnly
+    ).toBeUndefined();
+    expect(
+      result.current.combinedGraphData?.nodes.filter(
+        (node) => node.id === filteredTerm.id
+      )
+    ).toHaveLength(1);
+  });
+
+  it('cancels in-flight term requests when the explorer unmounts', async () => {
+    const pendingTerms = createDeferredTerms();
+    mockGetGlossaryTerms.mockReturnValue(pendingTerms.terms);
+    const { unmount } = renderHook(() =>
+      useOntologyExplorer({ scope: 'global' })
+    );
+
+    await waitFor(() => expect(mockGetGlossaryTerms).toHaveBeenCalledTimes(1));
+    const signal = mockGetGlossaryTerms.mock.calls[0][1];
+
+    expect(signal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it('loads only the term itself for the term relations graph', async () => {
+    const termId = '00000000-0000-4000-8000-000000000010';
+    const neighbourId = '00000000-0000-4000-8000-000000000011';
+    const parentId = '00000000-0000-4000-8000-000000000012';
+    const mockGetGlossaryTermsById =
+      getGlossaryTermsById as jest.MockedFunction<typeof getGlossaryTermsById>;
+    mockGetGlossaryTermsById.mockResolvedValue({
+      description: 'Focused term',
+      fullyQualifiedName: 'LoadedGlossary.Parent.Focused',
+      glossary: {
+        id: loadedGlossary.id,
+        name: loadedGlossary.name,
+        type: 'glossary',
+      },
+      id: termId,
+      name: 'Focused',
+      parent: {
+        fullyQualifiedName: 'LoadedGlossary.Parent',
+        id: parentId,
+        name: 'Parent',
+        type: 'glossaryTerm',
+      },
+      relatedTerms: [
+        {
+          relationType: 'broader',
+          term: {
+            fullyQualifiedName: 'FilteredGlossary.Neighbour',
+            id: neighbourId,
+            name: 'Neighbour',
+            type: 'glossaryTerm',
+          },
+        },
+      ],
+    });
+    const { result } = renderHook(() =>
+      useOntologyExplorer({ entityId: termId, scope: 'term' })
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(mockGetGlossaryTerms).not.toHaveBeenCalled();
+    expect(mockGetGlossaryTermsByIds).not.toHaveBeenCalled();
+    expect(result.current.filteredGraphData?.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: termId }),
+        expect.objectContaining({ id: parentId, isReferenceOnly: true }),
+        expect.objectContaining({
+          glossaryId: filteredGlossary.id,
+          id: neighbourId,
+          isReferenceOnly: true,
+        }),
+      ])
+    );
+    expect(result.current.filteredGraphData?.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ from: parentId, to: termId }),
+        expect.objectContaining({
+          from: termId,
+          relationType: 'broader',
+          to: neighbourId,
+        }),
       ])
     );
   });
