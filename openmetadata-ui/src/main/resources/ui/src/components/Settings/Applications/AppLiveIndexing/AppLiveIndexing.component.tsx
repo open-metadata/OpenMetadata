@@ -82,7 +82,7 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
         setIsLoading(false);
       }
     },
-    [fqn, pageSize]
+    [fqn, handlePagingChange, pageSize]
   );
 
   const handlePageChangeHandler = useCallback(
@@ -90,14 +90,15 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
       handlePageChange(page);
       fetchRetryQueue((page - 1) * pageSize);
     },
-    [fetchRetryQueue, pageSize]
+    [fetchRetryQueue, handlePageChange, pageSize]
   );
 
+  // Also refetches after a page-size change, since fetchRetryQueue depends on it.
   useEffect(() => {
     if (fqn) {
       fetchRetryQueue();
     }
-  }, [fqn]);
+  }, [fetchRetryQueue, fqn]);
 
   const columns: ColumnsType<SearchIndexRetryRecord> = useMemo(
     () => [
@@ -192,10 +193,7 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
         pageSizeOptions: ['10', '15', '25', '50'],
         onChange: (page) =>
           handlePageChangeHandler({ currentPage: page, cursorType: '' }),
-        onShowSizeChange: (_, size) => {
-          handlePageSizeChange(size);
-          fetchRetryQueue(0);
-        },
+        onShowSizeChange: (_, size) => handlePageSizeChange(size),
       }}
       paginationVisible={records.length > 0 && paging.total > pageSize}
       rowKey={(record) => `${record.entityId}-${record.entityFqn}`}

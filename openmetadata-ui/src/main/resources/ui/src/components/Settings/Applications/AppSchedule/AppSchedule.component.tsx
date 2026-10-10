@@ -293,9 +293,10 @@ const AppSchedule = ({
     };
   }, [appData.name, appData.appType, pipelineSchedules]);
 
+  // Re-checks the deployed state whenever the app changes (e.g. after a deploy).
   useEffect(() => {
     fetchPipelineDetails();
-  }, []);
+  }, [fetchPipelineDetails]);
 
   if (isLoading) {
     return <Loader />;

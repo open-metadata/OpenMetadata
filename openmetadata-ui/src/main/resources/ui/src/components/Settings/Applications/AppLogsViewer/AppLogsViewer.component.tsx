@@ -271,7 +271,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
         </Card>
       );
     },
-    [timestamp, formatDateTimeWithTimezone, status]
+    [timestamp, status, t]
   );
 
   const tableColumn = useMemo(() => {
@@ -416,7 +416,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
               ]
             : []),
         ];
-  }, [successContext, failureContext]);
+  }, [successContext, failureContext, t]);
 
   const entityStatsRenderer = useCallback(
     (entityStats: { [key: string]: StepStats }) => {
@@ -554,7 +554,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
         ),
       },
     ];
-  }, [serverStatsData]);
+  }, [serverStatsData, t]);
 
   const serverStatsRenderer = useCallback(() => {
     if (serverStatsData.length === 0) {
@@ -596,7 +596,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
         />
       </Card>
     );
-  }, [serverStatsData, serverStatsColumns, successContext?.serverCount]);
+  }, [serverStatsData, serverStatsColumns, successContext?.serverCount, t]);
 
   const renderOverallStats = (jobStats?: StepStats) =>
     jobStats
