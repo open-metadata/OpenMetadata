@@ -26,6 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/router.constants';
 import { ResourceEntity } from '../../enums/permissions.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   permissionQueryKeys,
@@ -59,13 +60,14 @@ export const PermissionContext = createContext<PermissionContextType>(
   {} as PermissionContextType
 );
 
-// Single seam for the resource-level conditionalAllow policy (see
-// permissionPolicy.ts for the full rationale and blast radius). Reads as
-// `false` while the policy stays 'strict', which is byte-for-byte the
-// pre-refactor (base commit 9cf866cd23) behavior — resource-level
-// conditionalAllow counts as denied, matching entity-level gating.
-const RESOURCE_ALLOW_CONDITIONAL =
-  PERMISSION_POLICY.resourceLevelConditionalAllow === 'attempt';
+// Single seam for the resource-level conditional-access policy (see
+// permissionPolicy.ts for the full rationale and blast radius). Permits a
+// resource-level conditionalAllow/conditionalDeny only for the View-class
+// operations the policy allow-lists (the fix for OpenMetadata#31783, #33834
+// and #33356) — every other operation stays denied, matching entity-level
+// gating byte-for-byte.
+const RESOURCE_ALLOW_CONDITIONAL = (operation: Operation): boolean =>
+  PERMISSION_POLICY.resourceLevelConditionalOperations.has(operation);
 
 /**
  *
@@ -100,11 +102,10 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const fetchLoggedInUserPermissions = useCallback(async () => {
     try {
       const response = await getLoggedInUserPermissions();
-      // Behavior parity with base (9cf866cd23): strict translation by
-      // default (RESOURCE_ALLOW_CONDITIONAL is false while the policy stays
-      // 'strict'). Flipping PERMISSION_POLICY.resourceLevelConditionalAllow
-      // to 'attempt' is the fix for OpenMetadata#31783 and ships as its own
-      // PR — see permissionPolicy.ts.
+      // Fix for OpenMetadata#31783/#33834/#33356: a resource-level conditionalAllow or
+      // conditionalDeny counts as permitted only for the View-class
+      // operations allow-listed in permissionPolicy.ts — see
+      // RESOURCE_ALLOW_CONDITIONAL above.
       setPermissions(
         getUIPermission(response.data || [], RESOURCE_ALLOW_CONDITIONAL)
       );
@@ -157,10 +158,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
       queryClient.fetchQuery({
         queryKey: permissionQueryKeys.resource(resource),
         queryFn: async () =>
-          // Behavior parity with base (9cf866cd23): strict translation by
-          // default. Flipping PERMISSION_POLICY.resourceLevelConditionalAllow
-          // to 'attempt' is the fix for OpenMetadata#31783 and ships as its
-          // own PR — see permissionPolicy.ts.
+          // Fix for OpenMetadata#31783/#33834/#33356 — see RESOURCE_ALLOW_CONDITIONAL above.
           getOperationPermissions(
             await getResourcePermission(resource),
             RESOURCE_ALLOW_CONDITIONAL

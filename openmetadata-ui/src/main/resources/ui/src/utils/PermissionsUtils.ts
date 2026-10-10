@@ -73,13 +73,17 @@ export const checkPermissionEntityResource = (
  * Translate access level to boolean, with optional handling for conditional grants.
  *
  * @param access - The access level from the backend (Allow, ConditionalAllow, etc.)
- * @param allowConditional - If true, treat ConditionalAllow as true (for resource-level gating).
- *                           If false, ConditionalAllow is false (for entity-level gating).
+ * @param operation - The operation being checked; used to consult `allowConditional`
+ *                    when it is operation-scoped.
+ * @param allowConditional - Either a flat boolean (entity-level gating passes `false`),
+ *                           or a predicate over the operation (resource-level gating,
+ *                           see `PERMISSION_POLICY.resourceLevelConditionalOperations`).
  * @returns boolean - true if access is allowed, false otherwise
  */
 const toAllowedBoolean = (
   access: Access | undefined,
-  allowConditional: boolean
+  operation: Operation,
+  allowConditional: boolean | ((operation: Operation) => boolean)
 ): boolean => {
   // Generated Permission.access is optional — absent means not granted.
   if (access === undefined) {
@@ -89,10 +93,15 @@ const toAllowedBoolean = (
     case Access.Allow:
       return true;
     case Access.ConditionalAllow:
-      // "Depends on the entity" — truthy only for resource-level gating,
-      // where the backend cannot evaluate conditions without an entity.
-      return allowConditional;
     case Access.ConditionalDeny:
+      // Both mean "depends on the entity": no unconditional rule matched and
+      // at least one conditional rule did, whose effect decides which of the
+      // two the backend reports. Truthy only for resource-level gating,
+      // where the backend cannot evaluate conditions without an entity, and
+      // then only for the operations the policy allow-lists.
+      return typeof allowConditional === 'function'
+        ? allowConditional(operation)
+        : allowConditional;
     case Access.Deny:
     case Access.NotAllow:
       return false;
@@ -113,12 +122,13 @@ const toAllowedBoolean = (
 /**
  *
  * @param permission ResourcePermission
- * @param allowConditional If true, treat ConditionalAllow as true. Default false (entity-level strict gating).
+ * @param allowConditional If true, treat ConditionalAllow/ConditionalDeny as true; if a predicate,
+ *   treat them as true only for the operations it accepts. Default false (entity-level strict gating).
  * @returns OperationPermission - {Operation:true/false}
  */
 export const getOperationPermissions = (
   permission: ResourcePermission,
-  allowConditional = false
+  allowConditional: boolean | ((operation: Operation) => boolean) = false
 ): OperationPermission => {
   return permission.permissions.reduce(
     (acc: OperationPermission, curr: Permission) => {
@@ -126,6 +136,7 @@ export const getOperationPermissions = (
         ...acc,
         [curr.operation as Operation]: toAllowedBoolean(
           curr.access,
+          curr.operation as Operation,
           allowConditional
         ),
       };
@@ -137,12 +148,13 @@ export const getOperationPermissions = (
 /**
  *
  * @param permissions Take ResourcePermission list
- * @param allowConditional If true, treat ConditionalAllow as true. Default false (entity-level strict gating).
+ * @param allowConditional If true, treat ConditionalAllow/ConditionalDeny as true; if a predicate,
+ *   treat them as true only for the operations it accepts. Default false (entity-level strict gating).
  * @returns UIPermission
  */
 export const getUIPermission = (
   permissions: ResourcePermission[],
-  allowConditional = false
+  allowConditional: boolean | ((operation: Operation) => boolean) = false
 ): UIPermission => {
   return permissions.reduce((acc: UIPermission, curr: ResourcePermission) => {
     return {
