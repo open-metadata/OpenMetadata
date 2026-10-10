@@ -11,6 +11,30 @@
  *  limitations under the License.
  */
 
+import {
+  AppAutopilot,
+  AppCacheWarmup,
+  AppCollateAiChat,
+  AppDataContractValidation,
+  AppDataInsights,
+  AppDataInsightsReport,
+  AppDataRetention,
+  AppMcpServer,
+  AppMemberWeeklyEmails,
+  AppMetadataExplorer,
+  AppMicrosoftTeams,
+  AppOnboarding,
+  AppQueryRunner,
+  AppRdfGraphIndexing,
+  AppRdfInferenceMaterialization,
+  AppReverseMetadata,
+  AppSearchIndexing,
+  AppSlack,
+  AppSupport,
+  AppTelemetry,
+  AppWeeklyInsightsDigest,
+  LayoutGrid01,
+} from '@openmetadata/ui-core-components/icons';
 import type { RJSFSchema } from '@rjsf/utils';
 import type { AxiosError } from 'axios';
 import type { ComponentType, FC } from 'react';
@@ -23,6 +47,7 @@ import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressio
 import type { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import type { AppConfigFormProps } from '../../../discovery/personal-space/Profile/tabs/applications/AppConfigForm';
 import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import type { AppPlugin } from '../plugins/AppPlugin';
 // Glob maps live in a sibling `.assets.ts` file so ts-jest can mock them (see
@@ -38,6 +63,43 @@ const ApplicationConfiguration =
   withSuspenseFallback<ApplicationConfigurationProps>(
     lazy(() => import('../ApplicationConfiguration/ApplicationConfiguration'))
   );
+
+const AppConfigForm = withSuspenseFallback<AppConfigFormProps>(
+  lazy(
+    () =>
+      import(
+        '../../../discovery/personal-space/Profile/tabs/applications/AppConfigForm'
+      )
+  )
+);
+
+type AppIcon = FC<{ className?: string }>;
+
+// Includes the Collate-distributed apps too: a name the server never returns
+// simply never matches, so one map serves both distributions.
+const APP_ICONS: Record<string, AppIcon> = {
+  AIChatApplication: AppCollateAiChat,
+  AutoPilotApplication: AppAutopilot,
+  CacheWarmupApplication: AppCacheWarmup,
+  CollateSupport: AppSupport,
+  DataContractValidationApplication: AppDataContractValidation,
+  DataInsightsApplication: AppDataInsights,
+  DataInsightsReportApplication: AppDataInsightsReport,
+  DataRetentionApplication: AppDataRetention,
+  McpApplication: AppMcpServer,
+  MemberWeeklyEmailApplication: AppMemberWeeklyEmails,
+  MetadataExporterApplication: AppMetadataExplorer,
+  OnboardingApplication: AppOnboarding,
+  QueryRunner: AppQueryRunner,
+  RdfIndexApp: AppRdfGraphIndexing,
+  RdfInferenceApp: AppRdfInferenceMaterialization,
+  ReverseMetadata: AppReverseMetadata,
+  SearchIndexingApplication: AppSearchIndexing,
+  SlackApplication: AppSlack,
+  TeamsApplication: AppMicrosoftTeams,
+  TelemetryApplication: AppTelemetry,
+  WeeklyInsightDigestApplication: AppWeeklyInsightsDigest,
+};
 
 // The sentinel the backend expands to every registered index. It is not an index itself, so the
 // endpoint does not return it, but it has to be in the enum for the `["all"]` default to validate.
@@ -181,6 +243,18 @@ class ApplicationsClassBase {
    */
   public getApplicationConfigurationComponent(): ComponentType<ApplicationConfigurationProps> {
     return ApplicationConfiguration;
+  }
+
+  /**
+   * Settings-modal (core-ui) counterparts of `importAppLogo` and
+   * `getApplicationConfigurationComponent`, overridable the same way.
+   */
+  public getAppIcon(appName?: string): AppIcon {
+    return (appName && APP_ICONS[appName]) || LayoutGrid01;
+  }
+
+  public getModalAppConfigurationComponent(): ComponentType<AppConfigFormProps> {
+    return AppConfigForm;
   }
 
   /**
