@@ -21,6 +21,6 @@ export const REACTION_LIST = [
   { emoji: '🎉', reaction: ReactionType.Hooray, alias: 'tada' },
   { emoji: '😕', reaction: ReactionType.Confused, alias: 'thinking_face' },
   { emoji: '❤️', reaction: ReactionType.Heart, alias: 'heart' },
-  { emoji: '👀', reaction: ReactionType.Eyes, alias: 'rocket' },
-  { emoji: '🚀', reaction: ReactionType.Rocket, alias: 'eyes' },
+  { emoji: '👀', reaction: ReactionType.Eyes, alias: 'eyes' },
+  { emoji: '🚀', reaction: ReactionType.Rocket, alias: 'rocket' },
 ];
