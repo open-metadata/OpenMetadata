@@ -135,6 +135,18 @@ export const mockCustomizePageClassBase = {
   landingPageMaxGridSize: 4,
   landingPageWidgetMargin: 16,
   landingPageRowHeight: 200,
+  getExcludedWidgetFqns: () => [] as string[],
+  // Required lazily: this mock is shared by suites that never touch the
+  // landing registry and should not pay for loading it.
+  getKnownWidgetKeyPrefixes: (): string[] => [
+    ...jest.requireActual('../utils/CustomizeMyDataPageWidgetUtils')
+      .MY_DATA_WIDGET_KEYS,
+  ],
+  getPickableWidgetKeyPrefixes: (): string[] => [
+    ...jest.requireActual('../utils/CustomizeMyDataPageWidgetUtils')
+      .MY_DATA_WIDGET_KEYS,
+  ],
+  getPlatformHealthInsight: () => null,
   getWidgetsFromKey: (i: string) => {
     if (!widgetComponentCache[i]) {
       widgetComponentCache[i] = () => <div data-testid={i}>{i}</div>;

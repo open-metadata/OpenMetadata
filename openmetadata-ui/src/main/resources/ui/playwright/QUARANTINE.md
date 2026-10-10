@@ -27,10 +27,14 @@ coverage, a retried one looks green.
 
 ## Entries
 
-No entries. The threshold for quarantining is **2 or more** failures, counted per
+The threshold for quarantining is **2 or more** failures, counted per
 generated variant rather than per source line. The 11 merge_group runs sampled
 on 2026-09-04 that seeded this list are all released now, as is the DataContracts
 entry that was tagged separately on 2026-09-11 (see *Released from quarantine*).
+
+| Spec / variant | Tests | Evidence and root cause | Owner / release condition |
+|---|---|---|---|
+| `e2e/Flow/Tour.spec.ts` | the whole describe (3 tests): Tour should work from help section; from welcome screen; from URL directly | **Not a flake** — a known break, quarantined 2026-10-09 while the tour page is redesigned. The new landing page (`HomeLandingPage`) no longer mounts `FeedWidget`, so the tour's first step anchor `#feedWidgetData` never appears, and `TourPage.waitForTourFeedWidget` waits for its bounding rect *before* `updateIsTourOpen(true)` — so the whole tour hangs on a blank page instead of skipping one step. Steps 2 and 3 anchor on `#searchBox`, which came from `CustomiseSearchBar` in the old landing header; that header is gone and `NavBar` hides `GlobalSearchBar` on `/tour`, so there is no search box on the tour page at all. Known fix if the redesign does not supersede it: anchor step 1 on the activity card's grid cell (`[data-testid="KnowledgePanel.ActivityFeed"]`, present before the deferred widget mounts) and drop `!isTourPage` from NavBar's `GlobalSearchBar` guard (`GlobalSearchBar` already routes input through `useTourProvider` when the tour is open); keep the domain selector hidden on `/tour`. | Landing-page owner. Remove the tag when the redesigned tour page lands and all three tests pass with `PLAYWRIGHT_RUN_QUARANTINED=true`. |
 
 ### Triage, 2026-09-09
 

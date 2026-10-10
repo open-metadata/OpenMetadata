@@ -469,3 +469,97 @@ SET json = (json::jsonb - 'status') || jsonb_build_object(
   END)
 WHERE jsonSchema = 'contextMemory'
   AND json::jsonb -> 'status' IS NOT NULL;
+
+-- Landing-page widgets: re-point the six panels whose widget was replaced, and drop the five
+-- whose widget was retired.
+--
+-- The seed loader (EntityRepository.initializeEntity) only inserts rows it cannot find -- it
+-- returns early on an existing fullyQualifiedName and never updates or deletes. So the new seed
+-- files reach a fresh install and nothing else: on an upgrade the four added panels appear, the
+-- rewritten ones keep the name and description of the widget they replaced, and the retired ones
+-- linger. KnowledgePanel.ActivityFeed renders the Team Activity card now, so without this the
+-- picker advertises it as "Activity Feed" and describes a feed that is no longer there.
+--
+-- Values mirror json/data/document/docs/*.json exactly, so an upgraded install ends up byte-equal
+-- to a fresh one. gridSizes is set on its own path rather than by replacing `data` wholesale, so
+-- the statement means the same thing as its MySQL counterpart. Re-runnable: every statement is an
+-- absolute write or a delete that matches nothing on a second pass.
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'displayName', 'Team Activity',
+      'description', 'Recent activity across the assets and domains the user owns, showing who changed what and when.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'ActivityFeed' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'description', 'A filtered list of high-impact assets. Ships with a certified Tier-1 rule and can be pointed at any saved filter from the persona editor.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'CuratedAssets' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'description', 'Data products across the platform with their owning domain, for quicker access to high-value products.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'DataProducts' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'description', 'Domain-by-domain overview of owner, description coverage, and failing tests, so a gap is visible without opening each one.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'Domains' AND entityType = 'KnowledgePanel';
+
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'displayName', 'KPIs',
+      'description', 'Progress against each active KPI: target, current pace, and whether it is on track to land by its end date.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'KPI' AND entityType = 'KnowledgePanel';
+
+-- Collate seeded this same fullyQualifiedName for its own Data Quality widget, which the topic
+-- card replaced. An install that came up through that build keeps the old row -- the loader skips
+-- the OSS seed -- and with it the old description and a single "small" grid size.
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'displayName', 'Data Quality',
+      'description', 'Overview of data quality test results (passing, failing, and aborted) with a link through to the failing tests.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'DataQuality' AND entityType = 'KnowledgePanel';
+
+-- The Context Center card moved into OSS from Collate, which seeded this fullyQualifiedName as
+-- "Knowledge Center" with a description of a widget that no longer exists. OSS installs get the
+-- row from the seed file; this brings an upgraded Collate row in line with it.
+UPDATE doc_store
+SET json = jsonb_set(
+    json || jsonb_build_object(
+      'displayName', 'Context Center',
+      'description', 'The most recently updated Context Center pages, articles and quick links, with how many changed this week.'
+    ),
+    '{data,gridSizes}', '["small","medium","large"]'::jsonb
+)
+WHERE name = 'KnowledgeCenter' AND entityType = 'KnowledgePanel';
+
+-- Retired: their seed files are gone and no component resolves their key, so the renderer would
+-- answer with a render-nothing component and leave an empty cell. The UI already filters them out
+-- of both the grid and the picker; this stops the rows accumulating.
+DELETE FROM doc_store
+WHERE entityType = 'KnowledgePanel'
+  AND name IN ('DataAssets', 'Following', 'MyData', 'MyTask', 'TotalAssets');

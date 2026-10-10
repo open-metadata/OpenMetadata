@@ -16,6 +16,7 @@ import {
   SEARCH_INDEX_PATH_MAP,
   type SearchIndexPathMap,
 } from '../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseSearchBar.constants';
+import type { PlatformHealthInsightProps } from '../components/MyData/Widgets/PlatformHealthWidget/PlatformHealthWidget.interface';
 import {
   CURATED_ASSETS_WIDGET_DEFAULT_VALUES,
   DEFAULT_LANDING_PAGE_LAYOUT,
@@ -27,13 +28,17 @@ import {
   LANDING_PAGE_WIDGET_MARGIN,
   MY_TASK_WIDGET_DEFAULT_VALUES,
 } from '../constants/CustomizeMyDataPage.constants';
+import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import type { SearchIndex } from '../enums/search.enum';
 import type {
   WidgetCommonProps,
   WidgetConfig,
 } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getMyDataWidgetImageFromKey } from './CustomizeMyDataPageImageUtils';
-import { getMyDataWidgetFromKey } from './CustomizeMyDataPageWidgetUtils';
+import {
+  getMyDataWidgetFromKey,
+  MY_DATA_WIDGET_KEYS,
+} from './CustomizeMyDataPageWidgetUtils';
 import type { LandingPageWidgetIconSource } from './LandingPageWidgetIconUtils.interface';
 
 const WIDGET_HEIGHT_KEY_MAP: Record<string, string> = {
@@ -49,6 +54,10 @@ const WIDGET_HEIGHT_KEY_MAP: Record<string, string> = {
   MyTask: 'myTask',
   Domains: 'domains',
   KnowledgeCenter: 'knowledgeCenter',
+  PlatformHealth: 'platformHealth',
+  DataEstate: 'dataEstate',
+  YoursAndFollowed: 'yoursAndFollowed',
+  DataQuality: 'dataQuality',
 };
 
 class CustomizeMyDataPageClassBase {
@@ -112,8 +121,56 @@ class CustomizeMyDataPageClassBase {
     return undefined;
   }
 
+  /**
+   * Widgets the landing-page picker must not offer.
+   *
+   * The topic-card widgets replaced these, but deleting their seed JSON only
+   * stops *new* installs from getting them — seeds are inserted once at
+   * startup, so an upgraded instance still has the `Document` rows. This is
+   * what keeps them out of the picker there.
+   */
   public getExcludedWidgetFqns(): string[] {
-    return [];
+    return [
+      LandingPageWidgetKeys.MY_DATA,
+      LandingPageWidgetKeys.FOLLOWING,
+      LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
+      LandingPageWidgetKeys.DATA_ASSETS,
+      LandingPageWidgetKeys.MY_TASK,
+    ];
+  }
+
+  /**
+   * Optional insight block for the Platform Health card.
+   *
+   * OSS has nothing to put here, so the card renders without it. Collate
+   * returns an agent-backed summary of the failing services; that component
+   * decides for itself whether the current app mode should show it, so this
+   * hook stays mode-agnostic.
+   */
+  public getPlatformHealthInsight(): ComponentType<PlatformHealthInsightProps> | null {
+    return null;
+  }
+
+  /**
+   * Widget keys a saved landing layout may keep, matched by prefix.
+   *
+   * Every key `getWidgetsFromKey` resolves has to be listed here, or reading a
+   * saved layout (`normalizeLandingPageLayout`) drops it as retired. A subclass
+   * that resolves extra keys in its `getWidgetsFromKey` override appends them.
+   */
+  public getKnownWidgetKeyPrefixes(): string[] {
+    return [...MY_DATA_WIDGET_KEYS];
+  }
+
+  /**
+   * Widget keys the Add Widgets picker may offer.
+   *
+   * The same set as `getKnownWidgetKeyPrefixes` unless a subclass narrows it
+   * for a widget the platform places on the page itself rather than one a
+   * user chooses.
+   */
+  public getPickableWidgetKeyPrefixes(): string[] {
+    return this.getKnownWidgetKeyPrefixes();
   }
 
   public getWidgetsFromKey(

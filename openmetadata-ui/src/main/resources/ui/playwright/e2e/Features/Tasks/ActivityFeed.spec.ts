@@ -293,39 +293,6 @@ test.describe('Activity Feed - Filters', () => {
     }
   });
 
-  test('Activity Feed widget filters should switch between All Activity, My Data, and Following', async ({
-    page,
-  }) => {
-    await regularUser.signIn(page);
-    await redirectToHomePage(page, false);
-
-    const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
-    await expect(feedWidget).toBeVisible();
-    const subFilterDropdown = feedWidget.getByTestId('widget-sort-by-dropdown');
-    await expect(subFilterDropdown).toBeVisible();
-
-    const selectFeedFilter = async (menuLabel: string) => {
-      await subFilterDropdown.click();
-      await page.getByRole('menuitem', { name: menuLabel }).click();
-      await expect(subFilterDropdown).toContainText(new RegExp(menuLabel, 'i'));
-    };
-
-    await subFilterDropdown.click();
-    await expect(
-      page.getByRole('menuitem', { name: 'All Activity' })
-    ).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: 'My Data' })).toBeVisible();
-    await expect(
-      page.getByRole('menuitem', { name: 'Following' })
-    ).toBeVisible();
-    await page.keyboard.press('Escape');
-
-    await selectFeedFilter('All Activity');
-    await selectFeedFilter('My Data');
-    await selectFeedFilter('Following');
-    await selectFeedFilter('All Activity');
-  });
-
   test('assignee should see assigned tasks in Tasks filter', async ({
     page,
   }) => {

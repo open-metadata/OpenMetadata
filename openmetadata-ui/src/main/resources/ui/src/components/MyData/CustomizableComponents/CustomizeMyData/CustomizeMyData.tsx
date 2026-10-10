@@ -40,12 +40,15 @@ import {
 } from '../../../../utils/CustomizableLandingPagePureUtils';
 import { getWidgetFromKey } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import {
+  getMyDataWidgetBaseKey,
+  normalizeLandingPageLayout,
+} from '../../../../utils/CustomizeMyDataPageWidgetUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { NavigationBlocker } from '../../../common/NavigationBlocker/NavigationBlocker';
 import { AdvanceSearchProvider } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
-import CustomiseLandingPageHeader from '../CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
@@ -65,10 +68,24 @@ function CustomizeMyData({
 
   const defaultLayout = customizeMyDataPageClassBase.defaultLayout;
 
-  const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    getLandingPageLayoutWithEmptyWidgetPlaceholder(
-      (initialPageData?.layout as WidgetConfig[]) ?? defaultLayout
-    )
+  // The editor has to read the persona's layout exactly as HomeLandingPage
+  // does, or it offers an arrangement the home page will not render: retired
+  // and excluded widgets resolve to render-nothing components and leave holes,
+  // and an `x` saved against a wider grid strands the column it vacated.
+  const normalizedLayout = useMemo(
+    () =>
+      normalizeLandingPageLayout(
+        initialPageData?.layout as WidgetConfig[] | undefined,
+        defaultLayout,
+        customizeMyDataPageClassBase.getExcludedWidgetFqns(),
+        customizeMyDataPageClassBase.landingPageMaxGridSize,
+        customizeMyDataPageClassBase.getKnownWidgetKeyPrefixes()
+      ),
+    [initialPageData?.layout, defaultLayout]
+  );
+
+  const [layout, setLayout] = useState<Array<WidgetConfig>>(() =>
+    getLandingPageLayoutWithEmptyWidgetPlaceholder(normalizedLayout)
   );
 
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
@@ -180,7 +197,16 @@ function CustomizeMyData({
             widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
         )
         .map((widget) => (
-          <div data-grid={widget} id={widget.i} key={widget.i}>
+          // Same handle the live page puts on its grid cell: the widgets share
+          // one shell now, so the cell is the only per-widget node left to
+          // carry the widget key. `id` stays the layout key — it has to be
+          // unique per cell — while the test handle is the base key, which a
+          // picker-added widget's `uniqueId` suffix would otherwise hide.
+          <div
+            data-grid={widget}
+            data-testid={getMyDataWidgetBaseKey(widget.i)}
+            id={widget.i}
+            key={widget.i}>
             {getWidgetFromKey({
               currentLayout: layout,
               handleLayoutUpdate: handleLayoutUpdate,
@@ -209,8 +235,15 @@ function CustomizeMyData({
   };
 
   const handleReset = useCallback(async () => {
-    const newMainPanelLayout =
-      getLandingPageLayoutWithEmptyWidgetPlaceholder(defaultLayout);
+    const newMainPanelLayout = getLandingPageLayoutWithEmptyWidgetPlaceholder(
+      normalizeLandingPageLayout(
+        undefined,
+        defaultLayout,
+        customizeMyDataPageClassBase.getExcludedWidgetFqns(),
+        customizeMyDataPageClassBase.landingPageMaxGridSize,
+        customizeMyDataPageClassBase.getKnownWidgetKeyPrefixes()
+      )
+    );
     setLayout(newMainPanelLayout);
     await handleBackgroundColorUpdate();
     await onSaveLayout();
@@ -241,14 +274,6 @@ function CustomizeMyData({
             without affecting the overall RTL layout of the page
           */}
           <div className="grid-wrapper" dir="ltr">
-            <CustomiseLandingPageHeader
-              overlappedContainer
-              addedWidgetsList={addedWidgetsList}
-              backgroundColor={backgroundColor}
-              dataTestId="customise-landing-page-header"
-              handleAddWidget={handleMainPanelAddWidget}
-              onBackgroundColorUpdate={handleBackgroundColorUpdate}
-            />
             {/* 
             ReactGridLayout with optimized drag and drop behavior
             - verticalCompact: Packs widgets tightly without gaps

@@ -84,12 +84,12 @@ test.describe.serial('Domain Widget Filter', () => {
       'KnowledgePanel.Domains'
     );
 
-    await expect(
-      domainWidget.getByTestId(`domain-card-${domainAId}`)
-    ).toBeVisible();
-    await expect(
-      domainWidget.getByTestId(`domain-card-${domainBId}`)
-    ).toBeVisible();
+    // The card lists one page of the estate's domains, so whether these two
+    // make that page depends on how many other specs have created domains.
+    // Both exist, though, so unfiltered it must list more than one.
+    await expect
+      .poll(() => domainWidget.locator('[data-testid^="domain-card-"]').count())
+      .toBeGreaterThan(1);
 
     // Navigate to explore page where domain-dropdown is available in navbar
     await redirectToExplorePage(page);
@@ -110,6 +110,9 @@ test.describe.serial('Domain Widget Filter', () => {
     await expect(
       filteredDomainWidget.getByTestId(`domain-card-${domainAId}`)
     ).toBeVisible();
+    await expect(
+      filteredDomainWidget.locator('[data-testid^="domain-card-"]')
+    ).toHaveCount(1);
     await expect(
       filteredDomainWidget.getByTestId(`domain-card-${domainBId}`)
     ).not.toBeVisible();

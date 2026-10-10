@@ -79,7 +79,7 @@ import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import { getSettingPath, isLandingPagePath } from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
@@ -133,12 +133,6 @@ const NavBar = () => {
     preferences: { isSidebarCollapsed },
     setPreference,
   } = useCurrentUserPreferences();
-
-  // Check if current route is the landing page (either `/` or `/my-data`)
-  const isHomePage = useMemo(
-    () => isLandingPagePath(location.pathname),
-    [location.pathname]
-  );
 
   const isTourPage = useMemo(() => {
     const pathname = location.pathname;
@@ -610,7 +604,13 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {!isHomePage && !isTourPage && !isDataMarketplacePage && (
+            {/* The home page used to own a search bar and a domain scope
+              control of its own, so the navbar suppressed its own pair there.
+              HomeLandingPage renders neither, so suppressing them now leaves
+              the home page with no way to search or to scope a domain at all.
+              The tour page keeps the suppression: it still mocks the old
+              landing page, and that whole page is being revamped. */}
+            {!isTourPage && !isDataMarketplacePage && (
               <>
                 <GlobalSearchBar />
                 {domainScopeSelector}

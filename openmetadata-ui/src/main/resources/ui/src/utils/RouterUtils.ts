@@ -889,3 +889,11 @@ export const getLogEntityPath = (
     getServiceRouteFromServiceType(logEntityType as ServiceTypes)
   );
 };
+
+export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
+  const path = ROUTES.CUSTOMIZE_PAGE;
+
+  return path
+    .replaceAll(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(personaFqn))
+    .replace(':pageFqn', pageFqn);
+};

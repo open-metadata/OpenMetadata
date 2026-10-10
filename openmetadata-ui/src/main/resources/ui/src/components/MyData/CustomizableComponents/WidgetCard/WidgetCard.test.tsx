@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
+import { PageType } from '../../../../generated/system/ui/page';
+import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
+import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import WidgetCard from './WidgetCard';
 
 const mockWidget: DocStoreDocument = {
@@ -187,6 +190,39 @@ describe('WidgetCard', () => {
 
       expect(mockOnSelectWidget).toHaveBeenCalledWith('widget-test-1');
       expect(mockOnSelectWidget).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('Preview image', () => {
+    afterEach(() => {
+      act(() => useCustomizeStore.setState({ currentPageType: null }));
+    });
+
+    // The caption reads displayName, so the alt text must too: the widget on
+    // `KnowledgePanel.ActivityFeed` is captioned "Team Activity" while its
+    // `name` still says ActivityFeed.
+    it('names the preview after the same label as the caption', () => {
+      useCustomizeStore.setState({ currentPageType: PageType.LandingPage });
+      (
+        customizeMyDataPageClassBase.getWidgetImageFromKey as jest.Mock
+      ).mockReturnValueOnce('preview.png');
+
+      render(
+        <WidgetCard
+          isSelected={false}
+          widget={{
+            ...mockWidget,
+            name: 'ActivityFeed',
+            displayName: 'Team Activity',
+          }}
+        />
+      );
+
+      expect(screen.getByTestId('widget-image')).toHaveAttribute(
+        'alt',
+        'Team Activity'
+      );
+      expect(screen.getByText('Team Activity')).toBeInTheDocument();
     });
   });
 });

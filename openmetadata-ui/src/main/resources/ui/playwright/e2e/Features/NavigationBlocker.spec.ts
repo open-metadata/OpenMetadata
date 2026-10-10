@@ -117,7 +117,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Make changes to trigger unsaved state
     await removeAndCheckWidget(adminPage, {
-      widgetKey: 'KnowledgePanel.Following',
+      widgetKey: 'KnowledgePanel.YoursAndFollowed',
     });
 
     // Try to navigate away
@@ -152,7 +152,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Verify the widget was removed (changes were saved)
     await expect(
-      adminPage.locator('[data-testid="KnowledgePanel.Following"]')
+      adminPage.locator('[data-testid="KnowledgePanel.YoursAndFollowed"]')
     ).not.toBeVisible();
 
     // Verify save button is disabled (no unsaved changes)
@@ -211,7 +211,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Make changes
     await removeAndCheckWidget(adminPage, {
-      widgetKey: 'KnowledgePanel.TotalAssets',
+      widgetKey: 'KnowledgePanel.PlatformHealth',
     });
 
     // Verify save button is enabled
@@ -269,7 +269,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Make changes to trigger unsaved state
     await removeAndCheckWidget(adminPage, {
-      widgetKey: 'KnowledgePanel.DataAssets',
+      widgetKey: 'KnowledgePanel.DataEstate',
     });
 
     // Try to navigate away
@@ -298,7 +298,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Verify changes are still there and save button is enabled
     await expect(
-      adminPage.locator('[data-testid="KnowledgePanel.DataAssets"]')
+      adminPage.locator('[data-testid="KnowledgePanel.DataEstate"]')
     ).not.toBeVisible();
     await expect(
       adminPage.locator('[data-testid="save-button"]')

@@ -26,8 +26,7 @@ import {
   uuid,
 } from '../../utils/common';
 import {
-  navigateToCustomizeLandingPage,
-  openAddCustomizeWidgetModal,
+  addCuratedAssetPlaceholder,
   selectAssetTypes,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -804,36 +803,15 @@ test.describe('Curated Assets – Description filter', () => {
     await afterAction();
   });
 
-  const addCuratedAssetWidget = async (
-    adminPage: import('@playwright/test').Page
-  ) => {
-    await navigateToCustomizeLandingPage(adminPage, {
-      personaName: curatedPersona.responseData.name,
-    });
-
-    await openAddCustomizeWidgetModal(adminPage);
-    await waitForAllLoadersToDisappear(adminPage);
-
-    await adminPage
-      .getByRole('dialog', { name: 'Customize Home' })
-      .getByTestId('KnowledgePanel.CuratedAssets')
-      .click();
-
-    await adminPage.locator('[data-testid="apply-btn"]').click();
-
-    await expect(
-      adminPage
-        .getByTestId('page-layout-v1')
-        .getByTestId('KnowledgePanel.CuratedAssets')
-    ).toBeVisible();
-  };
-
   test('Description Contains filter – table with matching description appears in widget', async ({
     adminPage,
   }) => {
     await test.step('Navigate to persona settings and add curated assets widget', async () => {
       await redirectToHomePage(adminPage);
-      await addCuratedAssetWidget(adminPage);
+      await addCuratedAssetPlaceholder({
+        page: adminPage,
+        personaName: curatedPersona.responseData.name,
+      });
     });
 
     await test.step('Click Create in curated assets widget and fill Description Contains filter', async () => {
@@ -889,8 +867,7 @@ test.describe('Curated Assets – Description filter', () => {
       await expect(
         adminPage
           .getByTestId('KnowledgePanel.CuratedAssets')
-          .locator('.entity-list-item-title')
-          .filter({ hasText: tableName })
+          .getByTestId(`curated-asset-${tableName}`)
       ).toBeVisible();
     });
   });

@@ -102,6 +102,9 @@ test.describe(
       await checkAllDefaultWidgets(adminPage);
     });
 
+    // Following, My Data and Total Assets are excluded from both the grid and
+    // the picker now; the three widgets driven here are their counterparts in
+    // the default layout, so the flow is unchanged and only the keys move.
     test('Add, Remove and Reset widget should work properly', async ({
       adminPage,
       persona,
@@ -121,7 +124,7 @@ test.describe(
           widgetKey: 'KnowledgePanel.ActivityFeed',
         });
         await removeAndCheckWidget(adminPage, {
-          widgetKey: 'KnowledgePanel.Following',
+          widgetKey: 'KnowledgePanel.YoursAndFollowed',
         });
         await removeAndCheckWidget(adminPage, {
           widgetKey: 'KnowledgePanel.KPI',
@@ -136,7 +139,7 @@ test.describe(
           adminPage.locator('[data-testid="KnowledgePanel.ActivityFeed"]')
         ).not.toBeVisible();
         await expect(
-          adminPage.locator('[data-testid="KnowledgePanel.Following"]')
+          adminPage.locator('[data-testid="KnowledgePanel.YoursAndFollowed"]')
         ).not.toBeVisible();
         await expect(
           adminPage.locator('[data-testid="KnowledgePanel.KPI"]')
@@ -155,7 +158,7 @@ test.describe(
           adminPage.locator('[data-testid="KnowledgePanel.ActivityFeed"]')
         ).not.toBeVisible();
         await expect(
-          adminPage.locator('[data-testid="KnowledgePanel.Following"]')
+          adminPage.locator('[data-testid="KnowledgePanel.YoursAndFollowed"]')
         ).not.toBeVisible();
         await expect(
           adminPage.locator('[data-testid="KnowledgePanel.KPI"]')
@@ -163,10 +166,10 @@ test.describe(
 
         // Check if other widgets are present
         await expect(
-          adminPage.locator('[data-testid="KnowledgePanel.MyData"]')
+          adminPage.locator('[data-testid="KnowledgePanel.DataEstate"]')
         ).toBeVisible();
         await expect(
-          adminPage.locator('[data-testid="KnowledgePanel.TotalAssets"]')
+          adminPage.locator('[data-testid="KnowledgePanel.PlatformHealth"]')
         ).toBeVisible();
 
         await openAddCustomizeWidgetModal(adminPage);
@@ -176,13 +179,13 @@ test.describe(
         // Check if 'check' icon is present for existing widgets
         await expect(
           adminPage
-            .locator('[data-testid="sidebar-option-KnowledgePanel.MyData"]')
+            .locator('[data-testid="sidebar-option-KnowledgePanel.DataEstate"]')
             .locator('.selected-widget-icon')
         ).toBeVisible();
         await expect(
           adminPage
             .locator(
-              '[data-testid="sidebar-option-KnowledgePanel.TotalAssets"]'
+              '[data-testid="sidebar-option-KnowledgePanel.PlatformHealth"]'
             )
             .locator('.selected-widget-icon')
         ).toBeVisible();
@@ -197,7 +200,9 @@ test.describe(
         ).not.toBeVisible();
         await expect(
           adminPage
-            .locator('[data-testid="sidebar-option-KnowledgePanel.Following"]')
+            .locator(
+              '[data-testid="sidebar-option-KnowledgePanel.YoursAndFollowed"]'
+            )
             .locator('.selected-widget-icon')
         ).not.toBeVisible();
         await expect(
@@ -208,13 +213,13 @@ test.describe(
 
         // Add Following widget
         await adminPage
-          .locator('[data-testid="KnowledgePanel.Following"]')
+          .locator('[data-testid="KnowledgePanel.YoursAndFollowed"]')
           .click();
 
         await adminPage.locator('[data-testid="apply-btn"]').click();
 
         await expect(
-          adminPage.locator('[data-testid="KnowledgePanel.Following"]')
+          adminPage.locator('[data-testid="KnowledgePanel.YoursAndFollowed"]')
         ).toBeVisible();
 
         // Check if check icons are present in tab labels for newly added widgets
@@ -223,7 +228,9 @@ test.describe(
         // Check if 'check' icon is present for the Following widget
         await expect(
           adminPage
-            .locator('[data-testid="sidebar-option-KnowledgePanel.Following"]')
+            .locator(
+              '[data-testid="sidebar-option-KnowledgePanel.YoursAndFollowed"]'
+            )
             .locator('.selected-widget-icon')
         ).toBeVisible();
 
@@ -245,7 +252,10 @@ test.describe(
         ).not.toBeVisible();
 
         // Check if newly added widgets are present on the landing page
-        await waitForLandingPageWidget(adminPage, 'KnowledgePanel.Following');
+        await waitForLandingPageWidget(
+          adminPage,
+          'KnowledgePanel.YoursAndFollowed'
+        );
       });
 
       await test.step('Resetting the layout flow should work properly', async () => {
@@ -304,10 +314,10 @@ test.describe(
 
       // Test dragging widgets to reorder them
       const widget1 = adminPage.locator(
-        '[data-testid="KnowledgePanel.MyData"]'
+        '[data-testid="KnowledgePanel.DataEstate"]'
       );
       const widget2 = adminPage.locator(
-        '[data-testid="KnowledgePanel.Following"]'
+        '[data-testid="KnowledgePanel.YoursAndFollowed"]'
       );
 
       if ((await widget1.count()) > 0 && (await widget2.count()) > 0) {
@@ -325,8 +335,14 @@ test.describe(
           await redirectToHomePage(adminPage, false);
           await waitForAllLoadersToDisappear(adminPage).catch(() => undefined);
 
-          await waitForLandingPageWidget(adminPage, 'KnowledgePanel.MyData');
-          await waitForLandingPageWidget(adminPage, 'KnowledgePanel.Following');
+          await waitForLandingPageWidget(
+            adminPage,
+            'KnowledgePanel.DataEstate'
+          );
+          await waitForLandingPageWidget(
+            adminPage,
+            'KnowledgePanel.YoursAndFollowed'
+          );
         }
       }
     });
@@ -345,7 +361,7 @@ test.describe(
       });
 
       await removeAndCheckWidget(adminPage, {
-        widgetKey: 'KnowledgePanel.MyData',
+        widgetKey: 'KnowledgePanel.DataEstate',
       });
 
       await adminPage.getByTestId('cancel-button').click();

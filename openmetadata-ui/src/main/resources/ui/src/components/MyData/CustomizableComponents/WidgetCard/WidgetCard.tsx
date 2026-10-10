@@ -55,6 +55,11 @@ const WidgetCard = ({
     }
   }, [currentPageType, widget]);
 
+  // `displayName` is what the widget is called today; `name` is the stable key
+  // and lags a rename. The preview's alt text has to name the same widget the
+  // caption below it does.
+  const widgetLabel = widget.displayName ?? startCase(widget.name);
+
   const handleClick = () => {
     onSelectWidget?.(widget.id ?? '');
   };
@@ -67,12 +72,22 @@ const WidgetCard = ({
       isSelected={isSelected}
       onClick={handleClick}>
       <Box className="widget-card-content tw:relative tw:min-h-0 tw:flex-1">
-        <img
-          alt={widget.name}
-          className="tw:h-full tw:w-full tw:object-cover"
-          data-testid="widget-image"
-          src={widgetImage}
-        />
+        {/* An empty src resolves against the page URL, so the browser paints a
+          broken-image icon rather than nothing. Widgets added without a preview
+          screenshot keep an empty tile instead. */}
+        {widgetImage ? (
+          <img
+            alt={widgetLabel}
+            className="tw:h-full tw:w-full tw:object-cover"
+            data-testid="widget-image"
+            src={widgetImage}
+          />
+        ) : (
+          <div
+            className="tw:h-full tw:w-full"
+            data-testid="widget-image-placeholder"
+          />
+        )}
         {isSelected && (
           <Box
             align="center"
@@ -88,7 +103,7 @@ const WidgetCard = ({
         direction="col"
         gap={1}>
         <Typography className="tw:text-primary" size="text-sm" weight="medium">
-          {startCase(widget.name)}
+          {widgetLabel}
         </Typography>
         <Typography
           as="p"
