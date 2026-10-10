@@ -41,6 +41,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -154,7 +155,7 @@ public class BundleWarmupBatcher {
     }
 
     final Map<String, String> bundleKeyValues = new HashMap<>(entitiesByFqnHash.size() * 2);
-    final String certClassification = resolveCertificationClassification();
+    final String certClassification = resolveCertificationClassification(entityType);
     int failed = 0;
     for (final Map.Entry<String, EntityInterface<?>> entry : entitiesByFqnHash.entrySet()) {
       final EntityInterface<?> entity = entry.getValue();
@@ -210,7 +211,20 @@ public class BundleWarmupBatcher {
     return normal;
   }
 
-  private static String resolveCertificationClassification() {
+  private static String resolveCertificationClassification(String entityType) {
+    EntityRepository<? extends EntityInterface<?>> repository;
+    try {
+      repository = Entity.getEntityRepository(entityType);
+    } catch (Exception e) {
+      LOG.debug(
+          "Bundle warmup: no repository for entity type {}; cert tags will not be filtered",
+          entityType,
+          e);
+      return null;
+    }
+    if (!repository.isSupportsCertification()) {
+      return null;
+    }
     try {
       return SettingsCache.getSettingOrDefault(
               SettingsType.ASSET_CERTIFICATION_SETTINGS,
