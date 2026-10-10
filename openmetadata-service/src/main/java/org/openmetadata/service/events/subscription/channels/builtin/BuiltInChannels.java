@@ -71,7 +71,7 @@ public final class BuiltInChannels implements ChannelProvider {
         SlackBlockKitRenderer::create,
         HttpWebhookTransport.shared(),
         new WebhookAddresses(SubscriptionConfig::getSlack),
-        new WebhookConfigRules(),
+        new SecretWebhookConfigRules(),
         (alert, destination) ->
             new SlackEventPublisher(alert, destination, WebhookConfigRules.stored(destination)));
   }
@@ -82,7 +82,7 @@ public final class BuiltInChannels implements ChannelProvider {
         TeamsAdaptiveCardRenderer::create,
         HttpWebhookTransport.shared(),
         new WebhookAddresses(SubscriptionConfig::getMsTeams),
-        new WebhookConfigRules(),
+        new SecretWebhookConfigRules(),
         (alert, destination) ->
             new MSTeamsPublisher(alert, destination, WebhookConfigRules.stored(destination)));
   }
@@ -93,7 +93,7 @@ public final class BuiltInChannels implements ChannelProvider {
         GChatCardRenderer::create,
         HttpWebhookTransport.shared(),
         new WebhookAddresses(SubscriptionConfig::getgChat),
-        new WebhookConfigRules(),
+        new SecretWebhookConfigRules(),
         (alert, destination) ->
             new GChatPublisher(alert, destination, WebhookConfigRules.stored(destination)));
   }
