@@ -1051,10 +1051,7 @@ export const DataAssetsHeader = ({
               {t('label.tier')}
             </Typography>
             {editTierPermission && (
-              <TierCard
-                currentTier={tier?.tagFQN}
-                footerActionButtonsClassName="p-x-md"
-                updateTier={onTierUpdate}>
+              <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                 <Pressable>
                   <EditIconButton
                     newLook
@@ -1095,9 +1092,7 @@ export const DataAssetsHeader = ({
             );
 
             return editTierPermission ? (
-              <TierCard
-                footerActionButtonsClassName="p-x-md"
-                updateTier={onTierUpdate}>
+              <TierCard updateTier={onTierUpdate}>
                 <Pressable>
                   <span
                     aria-label={t('label.edit-entity', {

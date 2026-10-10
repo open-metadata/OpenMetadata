@@ -13,27 +13,15 @@
 import { ReactNode } from 'react';
 import { Tag } from '../../../generated/entity/classification/tag';
 
-export type CardWithListItems = {
-  id: string;
-  description: string;
-  data: string;
-  title: string;
-  style: Tag['style'];
-};
-
 export interface TierCardProps {
   currentTier?: string;
-  tierCardClassName?: string;
-  footerActionButtonsClassName?: string;
-  updateTier?: (value?: Tag) => Promise<void>;
-  /**
-   * Uncontrolled (no `open`): a react-aria pressable trigger (core Button,
-   * ButtonUtility, or `Pressable`), wired up by PopoverTrigger.
-   * Controlled: only the anchor the card is positioned against; the caller
-   * owns whatever opens it.
-   */
+  updateTier?: (value?: Tag) => void | Promise<void>;
+  /** The element the picker opens from, e.g. an edit button. */
   children?: ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Called when the picker is dismissed without a pick or clear. */
   onClose?: () => void;
+  /** Classes for the trigger, e.g. to fill a grid cell. */
+  className?: string;
 }
