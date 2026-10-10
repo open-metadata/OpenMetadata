@@ -240,8 +240,8 @@ The nightly's `latency-report` job runs `.github/scripts/benchmark_trend.py` ove
   chart per scenario and per busy route (p95 per nightly run, light and dark variants) with the
   plotted values in a table under each group.
 - **Run summary and Slack** — the job summary lists every scenario's p95 against the median of the
-  previous 7 nights, the change, a sparkline and a verdict; the same verdicts are posted to Slack
-  when the `LATENCY_REPORT_SLACK_CHANNEL` repository variable is set.
+  previous 7 nights, the change, a sparkline and a verdict. CollateBot posts the same verdicts to
+  #java-playwrights, where the Java IT alerts go, on scheduled runs and on dispatches of `main`.
 - **Gate** — the job fails when a `lineage-scene-scale` scenario's p95 is more than 25% and 25 ms
   above that median. Nothing is judged before a scenario has 5 nights of history, and suite API
   traffic is never gated.
