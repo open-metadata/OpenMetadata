@@ -451,3 +451,154 @@ def test_needs_row_count(parameter_values, compute_passed_failed_row_count, expe
     validator = build_validator(ColumnValuesToBeNotNullValidator, parameter_values, compute_passed_failed_row_count)
 
     assert validator._needs_row_count() is expected
+
+
+def test_match_regex_reports_total_rows_against_non_null_values_when_row_counts_requested():
+    """The report denominator matches the verdict denominator when row counts are requested
+
+    5 of the 50 non-null values do not match: 10% of the non-null values (Failed under a 5%
+    threshold) but only 5% of the 100 rows. The structured `total_rows` is the non-null count,
+    not the table row count, so the percentages derived from it agree with the verdict.
+    """
+    validator = build_validator(
+        ColumnValuesToMatchRegexValidator,
+        [TestCaseParameterValue(name="regex", value="^[a-z]+$")] + threshold_params(5, ThresholdUnit.PERCENTAGE.value),
+        compute_passed_failed_row_count=True,
+    )
+
+    evaluation = evaluate(
+        validator,
+        {
+            Metrics.valuesCount.name: 50,
+            Metrics.regexCount.name: 45,
+            Metrics.rowCount.name: 100,
+        },
+    )
+
+    assert evaluation["matched"] is False
+    assert evaluation["total_rows"] == 50
+    assert evaluation["passed_rows"] == 45
+    assert evaluation["failed_rows"] == 5
+
+
+def test_match_regex_keeps_total_rows_none_when_row_counts_not_requested():
+    """The default config does not populate row counts even when the metric is present
+
+    Gating on `computePassedFailedRowCount` keeps the default configuration (flag off) from
+    populating passedRows/failedRows/percentages, the behavior the default had before the fix.
+    """
+    validator = build_validator(
+        ColumnValuesToMatchRegexValidator,
+        [TestCaseParameterValue(name="regex", value="^[a-z]+$")] + threshold_params(5, ThresholdUnit.PERCENTAGE.value),
+    )
+
+    evaluation = evaluate(
+        validator,
+        {
+            Metrics.valuesCount.name: 50,
+            Metrics.regexCount.name: 45,
+            Metrics.rowCount.name: 100,
+        },
+    )
+
+    assert evaluation["matched"] is False
+    assert evaluation["total_rows"] is None
+    assert evaluation["passed_rows"] == 45
+    assert evaluation["failed_rows"] == 5
+
+
+def test_match_regex_percentages_use_non_null_denominator_with_nulls(create_sqlite_table):
+    """Percentages are reported against the non-null values, not the table row count
+
+    `nickname` is NULL on one row per batch and empty on another, so over 80 rows the non-null
+    count is 70 and the match count is 60: 10 violations are 14.29% of the non-null values
+    (Failed under a 13% threshold) but only 12.5% of the 80 table rows. The reported
+    `failedRowsPercentage` therefore has to exceed the threshold and the two percentages
+    have to sum to 100; before the fix they summed to 87.5 and contradicted the verdict.
+    """
+    validator = ColumnValuesToMatchRegexValidator(
+        create_sqlite_table,
+        test_case=build_test_case(
+            [TestCaseParameterValue(name="regex", value="^[A-Z]")]
+            + threshold_params(13, ThresholdUnit.PERCENTAGE.value),
+            compute_passed_failed_row_count=True,
+            entity_link=ENTITY_LINK,
+        ),
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    result = validator.run_validation()
+
+    assert result.testCaseStatus == TestCaseStatus.Failed
+    assert result.passedRows == 60
+    assert result.failedRows == 10
+    assert round(result.passedRowsPercentage, 2) == 85.71
+    assert round(result.failedRowsPercentage, 2) == 14.29
+    assert round(result.failedRowsPercentage + result.passedRowsPercentage, 2) == 100.0
+    # The displayed failure rate must exceed the threshold, matching the Failed verdict
+    assert result.failedRowsPercentage > 13
+
+
+def test_match_regex_dimensional_percentages_use_non_null_denominator_with_nulls(create_sqlite_table):
+    """Dimensional percentages inherit the non-null denominator from the verdict
+
+    Grouped by `age`, the `nickname` of the age=NULL group is itself NULL on half its rows
+    (valuesCount 10, rowCount 20) while every non-null value matches. A 100%-matching group
+    must report 100% passed and 0% failed; before the fix it divided by rowCount and showed
+    50/50 despite zero failures.
+    """
+    test_case = TestCase(
+        name="my_test_case",
+        entityLink=ENTITY_LINK,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="regex", value="^[A-Z]"),
+            TestCaseParameterValue(name="threshold", value="13"),
+            TestCaseParameterValue(name="thresholdUnit", value=ThresholdUnit.PERCENTAGE.value),
+        ],
+        dimensionColumns=["age"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+    validator = ColumnValuesToMatchRegexValidator(
+        create_sqlite_table,
+        test_case=test_case,
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    result = validator.run_validation()
+
+    # Overall: 10 violations out of 70 non-null values -> 14.29% > 13% -> Failed
+    assert result.testCaseStatus == TestCaseStatus.Failed
+    assert result.passedRows == 60
+    assert result.failedRows == 10
+    assert round(result.passedRowsPercentage, 2) == 85.71
+    assert round(result.failedRowsPercentage, 2) == 14.29
+
+    by_key = {dim.dimensionKey: dim for dim in result.dimensionResults}
+
+    # age=30: the empty nickname mismatches, Ally and Chuck match -> 20/30 passed, 10 failed
+    age_30 = by_key["age=30"]
+    assert age_30.testCaseStatus == TestCaseStatus.Failed
+    assert age_30.passedRows == 20
+    assert age_30.failedRows == 10
+    assert round(age_30.passedRowsPercentage, 2) == 66.67
+    assert round(age_30.failedRowsPercentage, 2) == 33.33
+
+    # age=31: every value matches -> 30/30 passed -> Success
+    age_31 = by_key["age=31"]
+    assert age_31.testCaseStatus == TestCaseStatus.Success
+    assert age_31.passedRows == 30
+    assert age_31.failedRows == 0
+    assert round(age_31.passedRowsPercentage, 2) == 100.0
+    assert round(age_31.failedRowsPercentage, 2) == 0.0
+
+    # age=NULL: only "Evie" is non-null and it matches; the other row's nickname is NULL,
+    # so valuesCount 10 < rowCount 20. Without the fix this reports 50/50 with 0 failures.
+    age_null = by_key["age=NULL"]
+    assert age_null.testCaseStatus == TestCaseStatus.Success
+    assert age_null.passedRows == 10
+    assert age_null.failedRows == 0
+    assert round(age_null.passedRowsPercentage, 2) == 100.0
+    assert round(age_null.failedRowsPercentage, 2) == 0.0
