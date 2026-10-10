@@ -10,18 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Select } from 'antd';
+import { EditorView } from '@codemirror/view';
+import {
+  Box,
+  FormField,
+  FormItemLabel,
+  HintText,
+  HookForm,
+  Input,
+  Select,
+} from '@openmetadata/ui-core-components';
 import QueryString from 'qs';
-import { lazy, useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { CustomMetric } from '../../../generated/entity/data/table';
+import { CustomMetric } from '../../../generated/tests/customMetric';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import Loader from '../../common/Loader/Loader';
 import { CustomMetricFormProps } from './CustomMetricForm.interface';
 
 const SchemaEditor = withSuspenseFallback(
@@ -38,116 +46,167 @@ const CustomMetricForm = ({
 }: CustomMetricFormProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const [isLoading, setIsLoading] = useState(true);
+  const localForm = useForm<CustomMetric>({
+    defaultValues: { name: '', expression: '', ...initialValues },
+  });
+  const activeForm = form ?? localForm;
+  const { reset, getValues } = activeForm;
+  const queryLabel = t('label.sql-uppercase-query');
+  const queryError = activeForm.formState.errors.expression?.message;
+  const queryExtensions = useMemo(
+    () => [
+      EditorView.contentAttributes.of({
+        'aria-label': queryLabel,
+        'aria-invalid': String(Boolean(queryError)),
+        ...(queryError ? { 'aria-describedby': 'metric-query-error' } : {}),
+      }),
+    ],
+    [queryLabel, queryError]
+  );
 
   const { activeColumnFqn } = useMemo(() => {
     const param = location.search;
-    const searchData = QueryString.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
 
-    return searchData as { activeColumnFqn: string };
+    return QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    ) as { activeColumnFqn: string };
   }, [location.search]);
 
   const { metricNames, columnOptions } = useMemo(() => {
-    let customMetrics = table?.customMetrics ?? [];
-
-    if (isColumnMetric) {
-      customMetrics =
-        table?.columns?.find(
+    const customMetrics = isColumnMetric
+      ? table?.columns?.find(
           (column) => column.fullyQualifiedName === activeColumnFqn
-        )?.customMetrics ?? [];
-    }
+        )?.customMetrics ?? []
+      : table?.customMetrics ?? [];
 
     return {
       metricNames: customMetrics.map((metric) => metric.name),
-      columnOptions: table ? table.columns : [],
+      columnOptions:
+        table?.columns.map((column) => ({
+          id: column.name,
+          label: getEntityName(column),
+        })) ?? [],
     };
   }, [activeColumnFqn, isColumnMetric, table]);
 
   useEffect(() => {
-    if (form && initialValues) {
-      form.setFieldsValue(initialValues);
+    if (initialValues) {
+      reset({ ...getValues(), ...initialValues });
     }
-    setIsLoading(false);
-  }, [initialValues]);
-
-  if (isLoading) {
-    return <Loader />;
-  }
+  }, [initialValues, reset, getValues]);
 
   return (
-    <Form<CustomMetric>
+    <HookForm
+      className="tw:mb-6"
       data-testid="custom-metric-form"
-      form={form}
-      layout="vertical"
-      validateMessages={VALIDATION_MESSAGES}
-      onFinish={onFinish}>
-      <Form.Item
-        label={t('label.name')}
-        name="name"
-        rules={[
-          ...NAME_FIELD_RULES,
-          {
-            validator: (_, value) => {
-              if (metricNames.includes(value) && !isEditMode) {
-                return Promise.reject(
-                  t('message.entity-already-exists', {
-                    entity: t('label.custom-metric'),
-                  })
-                );
-              }
-
-              return Promise.resolve();
+      form={activeForm}
+      id="custom-metric-form"
+      validationBehavior="aria"
+      onSubmit={activeForm.handleSubmit(({ name, expression, columnName }) =>
+        onFinish({
+          name,
+          expression,
+          ...(isColumnMetric ? { columnName } : {}),
+        })
+      )}>
+      <Box direction="col" gap={6}>
+        <FormField
+          control={activeForm.control}
+          name="name"
+          rules={{
+            required: t('label.field-required', { field: t('label.name') }),
+            maxLength: {
+              value: 128,
+              message: t('message.entity-size-in-between', {
+                entity: t('label.name'),
+                min: 1,
+                max: 128,
+              }),
             },
-          },
-        ]}>
-        <Input
-          data-testid="custom-metric-name"
-          disabled={isEditMode}
-          placeholder={t('label.enter-entity', { entity: t('label.name') })}
-        />
-      </Form.Item>
-      {isColumnMetric && (
-        <Form.Item
-          label={t('label.column')}
-          name="columnName"
-          rules={[
-            {
-              required: true,
+            pattern: {
+              value: ENTITY_NAME_REGEX,
+              message: t('message.entity-name-validation'),
             },
-          ]}>
-          <Select
-            data-testid="custom-metric-column"
-            disabled={isEditMode}
-            placeholder={t('label.please-select-entity', {
-              entity: t('label.column'),
-            })}>
-            {columnOptions?.map((column) => (
-              <Select.Option key={column.name} value={column.name}>
-                {getEntityName(column)}
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
-      )}
-      <Form.Item
-        data-testid="sql-editor-container"
-        label={t('label.sql-uppercase-query')}
-        name="expression"
-        rules={[
-          {
-            required: true,
-          },
-        ]}
-        trigger="onChange">
-        <SchemaEditor
-          className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
-          mode={{ name: CSMode.SQL }}
-          showCopyButton={false}
-        />
-      </Form.Item>
-    </Form>
+            validate: (value) =>
+              isEditMode ||
+              !metricNames.includes(value) ||
+              t('message.entity-already-exists', {
+                entity: t('label.custom-metric'),
+              }),
+          }}>
+          {({ field, fieldState }) => (
+            <Input
+              {...field}
+              isRequired
+              hint={fieldState.error?.message}
+              inputDataTestId="custom-metric-name"
+              isDisabled={isEditMode}
+              isInvalid={!!fieldState.error}
+              label={t('label.name')}
+              placeholder={t('label.enter-entity', { entity: t('label.name') })}
+            />
+          )}
+        </FormField>
+        {isColumnMetric && (
+          <FormField
+            control={activeForm.control}
+            name="columnName"
+            rules={{
+              required: t('message.field-text-is-required', {
+                fieldText: t('label.column'),
+              }),
+            }}>
+            {({ field, fieldState }) => (
+              <Select
+                isRequired
+                data-testid="custom-metric-column"
+                hint={fieldState.error?.message}
+                isDisabled={isEditMode}
+                isInvalid={!!fieldState.error}
+                items={columnOptions}
+                label={t('label.column')}
+                placeholder={t('label.please-select-entity', {
+                  entity: t('label.column'),
+                })}
+                selectedKey={field.value ?? null}
+                onBlur={field.onBlur}
+                onSelectionChange={(key) =>
+                  field.onChange(key === null ? undefined : String(key))
+                }>
+                {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+              </Select>
+            )}
+          </FormField>
+        )}
+        <FormField
+          control={activeForm.control}
+          name="expression"
+          rules={{
+            required: t('message.field-text-is-required', {
+              fieldText: queryLabel,
+            }),
+          }}>
+          {({ field }) => (
+            <Box data-testid="sql-editor-container" direction="col" gap={2}>
+              <FormItemLabel required label={queryLabel} />
+              <SchemaEditor
+                className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+                extensions={queryExtensions}
+                mode={{ name: CSMode.SQL }}
+                showCopyButton={false}
+                value={field.value}
+                onChange={field.onChange}
+              />
+              {queryError && (
+                <HintText isInvalid id="metric-query-error">
+                  {queryError}
+                </HintText>
+              )}
+            </Box>
+          )}
+        </FormField>
+      </Box>
+    </HookForm>
   );
 };
 

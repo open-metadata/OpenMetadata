@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { TestCaseStatus } from '../../../../../generated/tests/dimensionResult';
 import DimensionalityHeatmap from './DimensionalityHeatmap.component';
@@ -21,18 +22,6 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <>{children}</>
 );
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Typography: ({
-    as: Component = 'span',
-    children,
-    ...props
-  }: {
-    as?: React.ElementType;
-    children: React.ReactNode;
-    [key: string]: unknown;
-  }) => <Component {...props}>{children}</Component>,
-}));
-
 jest.mock('./useScrollIndicator.hook', () => ({
   useScrollIndicator: jest.fn(() => ({
     showLeftIndicator: false,
@@ -40,12 +29,6 @@ jest.mock('./useScrollIndicator.hook', () => ({
     handleScrollLeft: jest.fn(),
     handleScrollRight: jest.fn(),
   })),
-}));
-
-jest.mock('./HeatmapCellTooltip.component', () => ({
-  HeatmapCellTooltip: jest
-    .fn()
-    .mockImplementation(() => <div>HeatmapCellTooltip</div>),
 }));
 
 describe('DimensionalityHeatmap Component', () => {
@@ -73,6 +56,39 @@ describe('DimensionalityHeatmap Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('shows the actual result details on hover and dismisses them on mouse leave', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const { container } = render(
+      <DimensionalityHeatmap
+        data={mockData}
+        endDate={endDate}
+        isLoading={false}
+        startDate={startDate}
+      />
+    );
+    const cell = container.querySelector('.dimensionality-heatmap__cell');
+    if (!cell) {
+      throw new Error('Heatmap cell missing');
+    }
+    const trigger = cell.closest('button');
+    if (!trigger) {
+      throw new Error('Heatmap tooltip trigger missing');
+    }
+    fireEvent.mouseMove(document);
+    await user.hover(trigger);
+    const tooltip = await screen.findByRole('tooltip');
+
+    expect(tooltip).toHaveTextContent('US');
+    expect(tooltip).toHaveTextContent('2025-01-01');
+    expect(within(tooltip).getByText('100')).toBeInTheDocument();
+    expect(within(tooltip).getByText('label.passed-rows')).toBeInTheDocument();
+    expect(within(tooltip).getByText('label.failed-rows')).toBeInTheDocument();
+
+    await user.unhover(trigger);
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 
   describe('Rendering States', () => {

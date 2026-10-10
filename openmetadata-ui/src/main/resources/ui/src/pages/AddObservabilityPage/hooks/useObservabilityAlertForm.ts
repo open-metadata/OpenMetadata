@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { useForm } from 'antd/lib/form/Form';
+import { useForm, UseFormReturn } from 'react-hook-form';
+import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
+import { ProviderType } from '../../../generated/entity/events/notificationTemplate';
+import { AlertType } from '../../../generated/events/eventSubscription';
 import {
   ModifiedCreateEventSubscription,
   UseAlertFormDataOptions,
@@ -20,12 +23,9 @@ import {
 import { useAlertFormData } from './useAlertFormData';
 import { useSelectedAlertSources } from './useObservabilityAlertResources';
 
-type ObservabilityAlertFormInstance = ReturnType<
-  typeof useForm<ModifiedCreateEventSubscription>
->[0];
+type ObservabilityAlertFormInstance =
+  UseFormReturn<ModifiedCreateEventSubscription>;
 
-// The classic antd form types live here, beside the only hook that creates the form, so the
-// shared AddObservabilityPage.interface stays antd-free for the AI alert modal.
 export interface UseObservabilityAlertFormOptions
   extends Omit<UseAlertFormDataOptions, 'input' | 'sources'> {
   form?: ObservabilityAlertFormInstance;
@@ -55,7 +55,17 @@ export function useObservabilityAlertForm({
   form: providedForm,
   ...options
 }: UseObservabilityAlertFormOptions = {}): UseObservabilityAlertFormReturn {
-  const [internalForm] = useForm<ModifiedCreateEventSubscription>();
+  const internalForm = useForm<ModifiedCreateEventSubscription>({
+    defaultValues: {
+      resources: [],
+      destinations: [],
+      input: {},
+      alertType: AlertType.Observability,
+      provider: ProviderType.User,
+      timeout: 10,
+      readTimeout: DEFAULT_READ_TIMEOUT,
+    },
+  });
   const form = providedForm ?? internalForm;
   const { sources, input } = useSelectedAlertSources(form);
 

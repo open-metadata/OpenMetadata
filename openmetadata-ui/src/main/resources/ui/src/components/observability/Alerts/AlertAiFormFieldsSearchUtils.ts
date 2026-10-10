@@ -19,6 +19,7 @@ import { UUID_REGEX } from '../../../constants/regex.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ObservabilityFilterResourceDescriptor } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import { searchEntity } from '../../../utils/Alerts/AlertsUtil';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
@@ -238,18 +239,60 @@ const ALERT_AI_ARGUMENT_CONFIG_BUILDERS: Record<
   testSuiteList: () => ({ searchIndex: SearchIndex.TEST_SUITE }),
 };
 
+const SOURCE_ARGUMENT_SEARCHERS: Record<
+  string,
+  (search: AlertSourceSearch, text: string) => Promise<SelectItemType[]>
+> = {
+  fqnList: async (search, text) =>
+    (await search.byName(text)).map(({ value, label }) => ({
+      id: value,
+      label,
+    })),
+  entityIdList: async (search, text) =>
+    (await search.byId(text)).map(({ id, fullyQualifiedName }) => ({
+      id,
+      label: id,
+      supportingText: fullyQualifiedName,
+    })),
+};
+const getSourceArgumentOptions = (
+  argument: string,
+  text: string,
+  search?: AlertSourceSearch
+) => {
+  if (!search) {
+    return undefined;
+  }
+
+  return SOURCE_ARGUMENT_SEARCHERS[argument]?.(search, text).catch((error) => {
+    showErrorToast(error as AxiosError);
+
+    return [];
+  });
+};
+
 export const searchAlertAiArgumentOptions = async ({
   argument,
   containerEntities = [],
   searchText,
   selectedSource,
+  sourceSearch,
 }: {
   argument: string;
   containerEntities?: string[];
   searchText: string;
   selectedSource?: string;
+  sourceSearch?: AlertSourceSearch;
 }): Promise<SelectItemType[]> => {
   const trimmedSearchText = searchText.trim();
+  const sourceOptions = getSourceArgumentOptions(
+    argument,
+    trimmedSearchText,
+    sourceSearch
+  );
+  if (sourceOptions) {
+    return sourceOptions;
+  }
 
   // A source whose names are not in the search indexes, such as a data contract, has a search of its own.
   const ownSearch = selectedSource

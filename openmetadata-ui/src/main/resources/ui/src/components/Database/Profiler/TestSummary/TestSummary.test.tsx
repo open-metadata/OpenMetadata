@@ -25,8 +25,8 @@ import {
   MOCK_SQL_TEST_CASE,
   MOCK_TEST_CASE,
 } from '../../../../mocks/TestSuite.mock';
+import { getPastDaysRange } from '../../../../utils/date-time/calendarDate.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { getPastDaysRange } from '../../../observability/DataQuality/Dashboard/calendarDate.utils';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummary from './TestSummary';
 
@@ -115,14 +115,11 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   ...jest.requireActual('../../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn().mockImplementation((val) => `date-${val}`),
 }));
-jest.mock(
-  '../../../observability/DataQuality/Dashboard/calendarDate.utils',
-  () => ({
-    getPastDaysRange: jest
-      .fn()
-      .mockReturnValue({ startTs: 1633948800000, endTs: 1633948800000 }),
-  })
-);
+jest.mock('../../../../utils/date-time/calendarDate.utils', () => ({
+  getPastDaysRange: jest
+    .fn()
+    .mockReturnValue({ startTs: 1633948800000, endTs: 1633948800000 }),
+}));
 
 describe('TestSummary component', () => {
   beforeEach(() => {

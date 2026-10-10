@@ -11,11 +11,14 @@ import { createContext, forwardRef, isValidElement } from 'react';
 import type { SelectProps as AriaSelectProps } from 'react-aria-components';
 import {
   Button as AriaButton,
-  ListBox as AriaListBox,
   Select as AriaSelect,
   SelectValue as AriaSelectValue,
 } from 'react-aria-components';
 import { ComboBox } from './combobox';
+import {
+  SELECT_VIRTUALIZATION_THRESHOLD,
+  SelectListBox,
+} from './select-list-box';
 import { Popover } from './popover';
 import { SelectItem } from './select-item';
 
@@ -198,6 +201,9 @@ const Select = forwardRef<HTMLDivElement, Omit<SelectProps, 'ref'>>(
     },
     ref
   ) {
+    const isVirtualized =
+      (items?.length ?? 0) > SELECT_VIRTUALIZATION_THRESHOLD;
+
     return (
       <SelectContext.Provider value={{ fontSize, size }}>
         <AriaSelect
@@ -224,15 +230,21 @@ const Select = forwardRef<HTMLDivElement, Omit<SelectProps, 'ref'>>(
                 icon={icon}
               />
 
-              <Popover className={rest.popoverClassName} size={size}>
-                <AriaListBox
-                  className="tw:size-full tw:outline-hidden"
+              <Popover
+                className={cx(
+                  isVirtualized && 'tw:overflow-hidden tw:py-0',
+                  rest.popoverClassName
+                )}
+                size={size}>
+                <SelectListBox
                   items={items}
                   renderEmptyState={() => (
                     <SelectEmptyState emptyState={emptyState} />
-                  )}>
+                  )}
+                  size={size}
+                  virtualize={isVirtualized}>
                   {children}
-                </AriaListBox>
+                </SelectListBox>
               </Popover>
 
               {hint && <HintText isInvalid={state.isInvalid}>{hint}</HintText>}

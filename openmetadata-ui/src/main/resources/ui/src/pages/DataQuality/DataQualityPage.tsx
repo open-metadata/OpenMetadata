@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Dropdown, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Card,
+  Dropdown,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-import { Card } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -165,69 +170,71 @@ const DataQualityPage = () => {
         direction="col"
         gap={4}>
         <Card>
-          <div className="tw:flex">
-            <div className="tw:w-2/3">
-              <PageHeader
-                data={{
-                  header: t('label.data-quality'),
-                  subHeader: t('message.page-sub-header-for-data-quality'),
-                }}
-                learningPageId={LEARNING_PAGE_IDS.DATA_QUALITY}
-              />
-            </div>
+          <Card.Content className="tw:p-5">
+            <Box>
+              <div className="tw:w-2/3">
+                <PageHeader
+                  data={{
+                    header: t('label.data-quality'),
+                    subHeader: t('message.page-sub-header-for-data-quality'),
+                  }}
+                  learningPageId={LEARNING_PAGE_IDS.DATA_QUALITY}
+                />
+              </div>
 
-            <div className="d-flex justify-end tw:w-1/3">
-              {activeTab === DataQualityPageTabs.TEST_SUITES &&
-                testSuitePermission?.Create && (
+              <Box className="tw:w-1/3" justify="end">
+                {activeTab === DataQualityPageTabs.TEST_SUITES &&
+                  testSuitePermission?.Create && (
+                    <Button
+                      data-testid="add-test-suite-btn"
+                      size="sm"
+                      onPress={handleOpenBundleSuiteModal}>
+                      {t('label.add-a-entity', {
+                        entity: t('label.bundle-suite'),
+                      })}
+                    </Button>
+                  )}
+                {activeTab === DataQualityPageTabs.TEST_CASES && (
                   <Button
-                    data-testid="add-test-suite-btn"
+                    data-testid="add-test-case-btn"
                     size="sm"
-                    onPress={handleOpenBundleSuiteModal}>
+                    onPress={handleOpenTestCaseModal}>
                     {t('label.add-a-entity', {
-                      entity: t('label.bundle-suite'),
+                      entity: t('label.test-case'),
                     })}
                   </Button>
                 )}
-              {activeTab === DataQualityPageTabs.TEST_CASES && (
-                <Button
-                  data-testid="add-test-case-btn"
-                  size="sm"
-                  onPress={handleOpenTestCaseModal}>
-                  {t('label.add-a-entity', {
-                    entity: t('label.test-case'),
-                  })}
-                </Button>
-              )}
-              {exportDataQualityDashboardButton}
+                {exportDataQualityDashboardButton}
 
-              {activeTab === DataQualityPageTabs.DASHBOARD &&
-                !isEmpty(addButtonContent) && (
-                  <Dropdown.Root>
-                    <Button
-                      className="m-l-md"
-                      data-testid="data-quality-add-button-menu"
-                      iconTrailing={<ChevronDown size={14} />}
-                      size="sm">
-                      {t('label.add')}
-                    </Button>
-                    <Dropdown.Popover className="tw:w-auto">
-                      <Dropdown.Menu
-                        aria-label={t('label.add')}
-                        selectionMode="none">
-                        {addButtonContent.map((item) => (
-                          <Dropdown.Item
-                            id={item.key}
-                            key={item.key}
-                            onAction={item.onClick}>
-                            {item.label}
-                          </Dropdown.Item>
-                        ))}
-                      </Dropdown.Menu>
-                    </Dropdown.Popover>
-                  </Dropdown.Root>
-                )}
-            </div>
-          </div>
+                {activeTab === DataQualityPageTabs.DASHBOARD &&
+                  !isEmpty(addButtonContent) && (
+                    <Dropdown.Root>
+                      <Button
+                        className="m-l-md"
+                        data-testid="data-quality-add-button-menu"
+                        iconTrailing={<ChevronDown size={14} />}
+                        size="sm">
+                        {t('label.add')}
+                      </Button>
+                      <Dropdown.Popover className="tw:w-auto">
+                        <Dropdown.Menu
+                          aria-label={t('label.add')}
+                          selectionMode="none">
+                          {addButtonContent.map((item) => (
+                            <Dropdown.Item
+                              id={item.key}
+                              key={item.key}
+                              onAction={item.onClick}>
+                              {item.label}
+                            </Dropdown.Item>
+                          ))}
+                        </Dropdown.Menu>
+                      </Dropdown.Popover>
+                    </Dropdown.Root>
+                  )}
+              </Box>
+            </Box>
+          </Card.Content>
         </Card>
         <Tabs
           className="tw:gap-3"

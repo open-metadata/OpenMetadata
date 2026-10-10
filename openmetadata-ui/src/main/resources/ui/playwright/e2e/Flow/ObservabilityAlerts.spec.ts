@@ -519,7 +519,7 @@ test('Data Contract Name filter lists matching data contracts', async ({
     await page.getByTestId('add-filters').click();
     await page.getByTestId('filter-select-0').click();
     await page
-      .locator('.ant-select-dropdown:visible')
+      .getByRole('listbox')
       .getByTestId('Data Contract Name-filter-option')
       .click();
 
@@ -528,8 +528,8 @@ test('Data Contract Name filter lists matching data contracts', async ({
     await fqnInput.fill(dataContractName);
 
     const dataContractOption = page
-      .locator('.ant-select-dropdown:visible')
-      .getByTitle(dataContractFqn);
+      .getByRole('listbox')
+      .getByRole('option', { name: dataContractFqn, exact: true });
     const searchFailureAlert = page
       .getByTestId('alert-bar')
       .filter({ hasText: 'Search failed' })
@@ -587,19 +587,15 @@ test('Alert operations for a user with and without permissions', async ({
 
         // Select filter
         await userWithPermissionsPage.click('[data-testid="filter-select-0"]');
-        await userWithPermissionsPage.click(
-          '.ant-select-dropdown:visible [data-testid="Table Name-filter-option"]'
-        );
         await userWithPermissionsPage
-          .locator('.ant-select-dropdown:visible')
+          .getByRole('option', { name: 'Table Name', exact: true })
+          .click();
+        await userWithPermissionsPage
+          .getByRole('listbox')
           .waitFor({ state: 'hidden' });
 
-        // The mode="multiple" AsyncSelect renders dropdown options whose `title`
-        // equals the entity FQN, not the bare name. Search and pick by FQN.
         const table1Fqn = table1.entityResponseData.fullyQualifiedName ?? '';
 
-        // Focus the combobox first so the search input becomes editable
-        // (mode="multiple" keeps the input readonly until focused).
         await userWithPermissionsPage.click(
           `[data-testid="fqn-list-select"] [role="combobox"]`
         );
@@ -610,17 +606,14 @@ test('Alert operations for a user with and without permissions', async ({
         );
         await userWithPermissionsPage.fill(
           `[data-testid="fqn-list-select"] [role="combobox"]`,
-          table1Fqn,
-          {
-            force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
-          }
+          table1Fqn
         );
 
         await searchOptions;
 
-        await userWithPermissionsPage.click(
-          `.ant-select-dropdown:visible [title="${table1Fqn}"]`
-        );
+        await userWithPermissionsPage
+          .getByRole('option', { name: table1Fqn, exact: true })
+          .click();
 
         // Check if option is selected
         await test
@@ -636,26 +629,22 @@ test('Alert operations for a user with and without permissions', async ({
 
         // Wait for the fqn-list-select dropdown to fully close before opening the trigger dropdown
         await userWithPermissionsPage
-          .locator('.ant-select-dropdown:visible')
+          .getByRole('listbox')
           .waitFor({ state: 'hidden' });
 
         // Select action
         await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
 
         // Adding the dropdown visibility check to avoid flakiness here
+        await userWithPermissionsPage.getByRole('listbox').waitFor({
+          state: 'visible',
+        });
         await userWithPermissionsPage
-          .locator(`.ant-select-dropdown:visible`)
-          .waitFor({
-            state: 'visible',
-          });
-        await userWithPermissionsPage.click(
-          '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
-        );
-        await userWithPermissionsPage
-          .locator(`.ant-select-dropdown:visible`)
-          .waitFor({
-            state: 'hidden',
-          });
+          .getByRole('option', { name: 'Get Schema Changes', exact: true })
+          .click();
+        await userWithPermissionsPage.getByRole('listbox').waitFor({
+          state: 'hidden',
+        });
 
         await userWithPermissionsPage.click(
           '[data-testid="add-destination-button"]'

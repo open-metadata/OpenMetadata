@@ -18,8 +18,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Form } from 'antd';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { useFqn } from '../../../hooks/useFqn';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
@@ -30,9 +29,7 @@ jest.mock('../../../hooks/useFqn', () => ({
 }));
 
 const FormWrapper = ({ children }: { children: ReactNode }) => (
-  <MemoryRouter>
-    <Form>{children}</Form>
-  </MemoryRouter>
+  <MemoryRouter>{children}</MemoryRouter>
 );
 
 describe('AlertFormSourceItem', () => {
@@ -75,76 +72,45 @@ describe('AlertFormSourceItem', () => {
     expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
   });
 
-  it('commits a different source and clears incompatible filters and destinations', async () => {
+  it('keeps the source selection controlled and reports the previous selection on removal', async () => {
     (useFqn as jest.Mock).mockReturnValue({ fqn: 'existing-alert' });
-    const onFinish = jest.fn();
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(
-      <MemoryRouter>
-        <Form
-          initialValues={{
-            resources: ['all'],
-            input: { filters: [{ name: 'filterByOwnerName' }] },
-            destinations: [{ category: 'Admins', type: 'Email' }],
-          }}
-          onFinish={onFinish}>
+    const changed = jest.fn();
+    const SourceForm = () => {
+      const [value, setValue] = useState(['all']);
+
+      return (
+        <MemoryRouter>
           <AlertFormSourceItem
             filterResources={[{ name: 'all' }, { name: 'dashboard' }]}
+            value={value}
+            onChange={(next, previous) => {
+              changed(next, previous);
+              setValue(next);
+            }}
           />
-          <Form.List name={['input', 'filters']}>
-            {(fields) =>
-              fields.map((field) => (
-                <div data-testid="existing-filter" key={field.key}>
-                  Owner
-                </div>
-              ))
-            }
-          </Form.List>
-          <Form.List name="destinations">
-            {(fields) =>
-              fields.map((field) => (
-                <div data-testid="existing-destination" key={field.key}>
-                  Email
-                </div>
-              ))
-            }
-          </Form.List>
-          <button type="submit">Save source</button>
-        </Form>
-      </MemoryRouter>
-    );
-
-    expect(screen.getByTestId('existing-filter')).toBeVisible();
-    expect(screen.getByTestId('existing-destination')).toBeVisible();
-
-    // The source field holds several sources, so switching takes the old one away first.
+        </MemoryRouter>
+      );
+    };
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<SourceForm />);
     const [removeAll] = within(
       screen.getByTestId('source-select')
     ).getAllByRole('button');
     await user.click(removeAll);
+
+    expect(changed).toHaveBeenLastCalledWith([], ['all']);
+
     await user.click(
       within(screen.getByTestId('source-select')).getByRole('combobox')
     );
     await user.click(screen.getByTestId('dashboard-option'));
     await user.keyboard('{Escape}');
-
     await waitFor(() =>
-      expect(screen.queryByTestId('existing-filter')).not.toBeInTheDocument()
+      expect(changed).toHaveBeenLastCalledWith(['dashboard'], [])
     );
 
-    expect(
-      screen.queryByTestId('existing-destination')
-    ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Save source' }));
-    await waitFor(() =>
-      expect(onFinish).toHaveBeenCalledWith(
-        expect.objectContaining({
-          resources: ['dashboard'],
-          input: { filters: undefined },
-          destinations: [],
-        })
-      )
+    expect(screen.getByTestId('source-select')).toHaveTextContent(
+      'label.dashboard'
     );
   });
 });

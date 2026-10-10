@@ -34,13 +34,13 @@ import {
   getListTestCaseResults,
   getTestCaseDimensionResultsByFqn,
 } from '../../../../rest/testAPI';
+import { getPastDaysRange } from '../../../../utils/date-time/calendarDate.utils';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import Loader from '../../../common/Loader/Loader';
 import RunDetailsCard from '../../../DataQuality/IncidentManager/RunDetailsCard/RunDetailsCard';
-import { getPastDaysRange } from '../../../observability/DataQuality/Dashboard/calendarDate.utils';
 import DqDateRangeFilter from '../../../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import { TestSummaryProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import RunSummaryTiles from './RunSummaryTiles/RunSummaryTiles';

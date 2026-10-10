@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { ValidatorType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -138,58 +143,64 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
   }, [entityId, entityType]);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      bodyStyle={{
-        maxHeight: 600,
-        overflowY: 'scroll',
-      }}
-      cancelButtonProps={{
-        type: 'link',
-      }}
-      closable={false}
-      confirmLoading={isUpdating}
-      data-testid="profiler-settings-modal"
-      maskClosable={false}
-      okButtonProps={{
-        form: 'profiler-setting-form',
-        htmlType: 'submit',
-      }}
-      okText={t('label.save')}
-      open={visible}
-      title={t('label.profiler-setting-plural')}
-      width={630}
-      onCancel={() => onVisibilityChange(false)}>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <Form<ProfilerConfig>
-          focusOnFirstError
-          noHtml5Validate
-          className={classNames('rjsf no-header profiler-settings-form')}
-          fields={{
-            BooleanField: BooleanFieldTemplate,
-          }}
-          formData={profilerConfig ?? {}}
-          id="profiler-setting-form"
-          idSeparator="/"
-          schema={profilerSettingsSchema as FormProps['schema']}
-          showErrorList={false}
-          templates={{
-            DescriptionFieldTemplate: DescriptionFieldTemplate,
-            FieldErrorTemplate: FieldErrorTemplate,
-            ObjectFieldTemplate: ProfilerObjectFieldTemplate,
-          }}
-          transformErrors={transformErrors}
-          uiSchema={uiSchema}
-          validator={validator as ValidatorType<ProfilerConfig>}
-          widgets={{ RangeWidget: CustomRangeWidget }}
-          onChange={handleOnChange}
-          onSubmit={handleUpdate}
-        />
-      )}
-    </Modal>
+    <ModalOverlay
+      isDismissable={false}
+      isOpen={visible}
+      onOpenChange={(isOpen) => !isOpen && onVisibilityChange(false)}>
+      <Modal>
+        <Dialog
+          data-testid="profiler-settings-modal"
+          title={t('label.profiler-setting-plural')}
+          width={630}>
+          <Dialog.Content>
+            {isLoading ? (
+              <Loader />
+            ) : (
+              <Form<ProfilerConfig>
+                focusOnFirstError
+                noHtml5Validate
+                className={classNames('rjsf no-header profiler-settings-form')}
+                fields={{
+                  BooleanField: BooleanFieldTemplate,
+                }}
+                formData={profilerConfig ?? {}}
+                id="profiler-setting-form"
+                idSeparator="/"
+                schema={profilerSettingsSchema as FormProps['schema']}
+                showErrorList={false}
+                templates={{
+                  DescriptionFieldTemplate: DescriptionFieldTemplate,
+                  FieldErrorTemplate: FieldErrorTemplate,
+                  ObjectFieldTemplate: ProfilerObjectFieldTemplate,
+                }}
+                transformErrors={transformErrors}
+                uiSchema={uiSchema}
+                validator={validator as ValidatorType<ProfilerConfig>}
+                widgets={{ RangeWidget: CustomRangeWidget }}
+                onChange={handleOnChange}
+                onSubmit={handleUpdate}
+              />
+            )}
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="link-color"
+              size="md"
+              onPress={() => onVisibilityChange(false)}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              form="profiler-setting-form"
+              isLoading={isUpdating}
+              size="md"
+              type="submit">
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

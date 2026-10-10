@@ -10,84 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
-import AlertFormSourceItem from './AlertFormSourceItem';
+import { getAlertSourceChanges } from '../../../pages/AddObservabilityPage/components/ObservabilityAlertForm.utils';
 
-const mockSetFieldValue = jest.fn();
-
-jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ fqn: 'an-alert' }),
-}));
-
-jest.mock('../AlertSourcePicker/AlertSourcePicker', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({
-        onChange,
-      }: {
-        onChange: (v: string[], previous: string[]) => void;
-      }) => (
-        <>
-          <button
-            data-testid="add-topic"
-            onClick={() => onChange(['table', 'topic'], ['table'])}>
-            add topic
-          </button>
-          <button
-            data-testid="only-topic"
-            onClick={() => onChange(['topic'], ['table'])}>
-            only topic
-          </button>
-        </>
-      )
-    )
-);
-
-jest.mock('antd', () => {
-  const antd = jest.requireActual('antd');
-
-  return {
-    ...antd,
-    Form: {
-      ...antd.Form,
-      useFormInstance: jest.fn().mockImplementation(() => ({
-        setFieldValue: mockSetFieldValue,
-        getFieldValue: jest.fn(),
-      })),
-    },
-  };
-});
-
-const renderItem = () =>
-  render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />, {
-    wrapper: MemoryRouter,
+describe('Classic alert source transitions', () => {
+  it('invalidates filters without resetting destinations when a source is added', () => {
+    expect(getAlertSourceChanges(['table', 'topic'], ['table'])).toEqual({
+      resources: ['table', 'topic'],
+      input: {},
+    });
   });
 
-describe('AlertFormSourceItem with several sources', () => {
-  beforeEach(() => {
-    mockSetFieldValue.mockClear();
-  });
-
-  it('keeps the destinations when a source is added', () => {
-    renderItem();
-    fireEvent.click(screen.getByTestId('add-topic'));
-
-    expect(mockSetFieldValue).toHaveBeenCalledWith('input', {});
-    expect(mockSetFieldValue).toHaveBeenCalledWith('resources', [
-      'table',
-      'topic',
-    ]);
-    expect(mockSetFieldValue).not.toHaveBeenCalledWith('destinations', []);
-  });
-
-  it('starts the destinations again when a source is taken away', () => {
-    renderItem();
-    fireEvent.click(screen.getByTestId('only-topic'));
-
-    expect(mockSetFieldValue).toHaveBeenCalledWith('destinations', []);
-    expect(mockSetFieldValue).toHaveBeenCalledWith('resources', ['topic']);
+  it('resets destinations when any source is removed or replaced', () => {
+    expect(getAlertSourceChanges(['topic'], ['table', 'topic'])).toEqual({
+      resources: ['topic'],
+      input: {},
+      destinations: [],
+    });
+    expect(getAlertSourceChanges(['dashboard'], ['table'])).toEqual({
+      resources: ['dashboard'],
+      input: {},
+      destinations: [],
+    });
   });
 });

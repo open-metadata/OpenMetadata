@@ -10,109 +10,115 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
   Box,
+  Button,
+  Card,
+  Divider,
   Grid,
+  HookForm,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Collapse, Form, Select, TreeSelect } from 'antd';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import {
+  Controller,
+  FormProvider,
+  useFieldArray,
+  useForm,
+  useWatch,
+} from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { ProfilerColumnSelect } from '../../components/Database/Profiler/TableProfiler/ProfilerSettingsModal/ProfilerColumnSelect';
+import { ProfilerMetricSelect } from '../../components/Database/Profiler/TableProfiler/ProfilerSettingsModal/ProfilerMetricSelect';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
-import {
-  DEFAULT_PROFILER_CONFIG_VALUE,
-  PROFILER_METRICS_TYPE_OPTIONS,
-} from '../../constants/profiler.constant';
-import {
-  DataType,
-  MetricConfigurationDefinition,
-  MetricType,
-  ProfilerConfiguration,
-} from '../../generated/configuration/profilerConfiguration';
-import { Settings, SettingType } from '../../generated/settings/settings';
+import { MetricType } from '../../generated/configuration/profilerConfiguration';
+import { SettingType } from '../../generated/settings/settings';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
-import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import './profiler-configuration-page.style.less';
 import profilerConfigurationClassBase from './ProfilerConfigurationClassBase';
+import {
+  getDataTypeItems,
+  getProfilerConfigurationPayload,
+  getProfilerConfigurationValues,
+  getSelectedDataType,
+  ProfilerConfigurationValues,
+} from './ProfilerConfigurationPage.utils';
 
+const METRIC_OPTIONS = Object.values(MetricType);
 const ProfilerConfigurationPage = () => {
-  const [form] = Form.useForm();
+  const form = useForm<ProfilerConfigurationValues>({
+    defaultValues: getProfilerConfigurationValues(),
+  });
+  const { control, reset, setValue } = form;
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'metricConfiguration',
+  });
+  const metricConfiguration = useWatch({
+    control,
+    name: 'metricConfiguration',
+  });
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const { t } = useTranslation();
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
-  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+  const { t } = useTranslation();
+  const breadcrumbs = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.profiler-configuration')
       ),
-    []
+    [t]
   );
+  const SparkAgentConfig =
+    profilerConfigurationClassBase.getSparkAgentConfigComponent();
 
-  // Watchers
-  const selectedMetricConfiguration = Form.useWatch<
-    MetricConfigurationDefinition[]
-  >('metricConfiguration', form);
-
-  const dataTypeOptions = useMemo(() => {
-    return values(DataType).map((value) => ({
-      label: value,
-      key: value,
-      value,
-      // Disable the metric type selection if the data type is already selected
-      disabled: selectedMetricConfiguration?.some(
-        (data) => data?.dataType === value
-      ),
-    }));
-  }, [selectedMetricConfiguration]);
-
-  const sparkAgentConfigComponent = useMemo(() => {
-    const SparkAgentConfig =
-      profilerConfigurationClassBase.getSparkAgentConfigComponent();
-
-    return SparkAgentConfig ? (
-      <Grid.Item className="layout-column" span={24}>
-        <SparkAgentConfig />
-      </Grid.Item>
-    ) : null;
-  }, []);
-
-  const handleSubmit = async (data: ProfilerConfiguration) => {
-    setIsFormSubmitting(true);
-    const metricConfiguration = data.metricConfiguration?.map((item) => {
-      if (isEqual(item.metrics, ['all'])) {
-        return {
-          ...item,
-          metrics: values(MetricType),
-        };
+  useEffect(() => {
+    let active = true;
+    const fetchConfiguration = async () => {
+      try {
+        const { data } = await getSettingsConfigFromConfigType(
+          SettingType.ProfilerConfiguration
+        );
+        if (active) {
+          reset(getProfilerConfigurationValues(data?.config_value));
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
       }
+    };
+    fetchConfiguration().catch(() => setIsLoading(false));
 
-      return item;
-    });
+    return () => {
+      active = false;
+    };
+  }, [reset]);
+
+  const handleSubmit = async (data: ProfilerConfigurationValues) => {
+    setIsFormSubmitting(true);
     try {
       await updateSettingsConfig({
         config_type: SettingType.ProfilerConfiguration,
-        config_value: {
-          metricConfiguration,
-          sampleDataConfig: data.sampleDataConfig,
-        } as Settings['config_value'],
+        config_value: getProfilerConfigurationPayload(data),
       });
       showSuccessToast(
         t('server.update-entity-success', {
@@ -125,311 +131,292 @@ const ProfilerConfigurationPage = () => {
       setIsFormSubmitting(false);
     }
   };
-
-  const fetchProfilerConfiguration = async () => {
-    setIsLoading(true);
-    try {
-      const { data } = await getSettingsConfigFromConfigType(
-        SettingType.ProfilerConfiguration
-      );
-
-      const configValue = data?.config_value as
-        | ProfilerConfiguration
-        | undefined;
-
-      form.setFieldsValue({
-        metricConfiguration: isEmpty(configValue?.metricConfiguration)
-          ? DEFAULT_PROFILER_CONFIG_VALUE.metricConfiguration
-          : configValue?.metricConfiguration,
-        sampleDataConfig:
-          configValue?.sampleDataConfig ??
-          DEFAULT_PROFILER_CONFIG_VALUE.sampleDataConfig,
-      });
-    } catch {
-      // do nothing
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProfilerConfiguration();
-  }, []);
-
   if (isLoading) {
     return <Loader />;
   }
 
   return (
     <PageLayoutV1 pageTitle={t('label.profiler-configuration')}>
-      <div className="m-b-mlg">
+      <Box className="tw:mb-4">
         <TitleBreadcrumb titleLinks={breadcrumbs} />
-      </div>
-      <Form<ProfilerConfiguration>
-        className="new-form-style"
-        data-testid="profiler-config-form"
-        form={form}
-        id="profiler-config"
-        layout="vertical"
-        onFinish={handleSubmit}>
-        <Grid
-          className="layout-row layout-grid profiler-configuration-page-container"
-          style={{ ...getLayoutGutter(0, 24) }}>
-          <Grid.Item className="layout-column" span={24}>
-            <PageHeader
-              data={{
-                header: t('label.profiler-configuration'),
-                subHeader: t(
-                  'message.page-sub-header-for-profiler-configuration'
-                ),
-              }}
-              learningPageId={LEARNING_PAGE_IDS.PROFILER_CONFIGURATION}
-              title={t('label.profiler-configuration')}
-            />
-          </Grid.Item>
-          <Grid.Item className="layout-column" span={24}>
-            <Collapse
-              className="profiler-configuration-collapse"
-              defaultActiveKey={['profileConfig']}
-              expandIconPosition="right">
-              <Collapse.Panel
-                header={
-                  <PageHeader
-                    data={{
-                      header: t('label.metric-configuration'),
-                      subHeader: t('message.metric-configuration-description'),
-                    }}
-                  />
-                }
-                key="profileConfig">
-                <Form.List name="metricConfiguration">
-                  {(fields, { add, remove }) => {
-                    return (
-                      <Grid
-                        className="layout-row layout-grid"
-                        style={{ ...getLayoutGutter(16, 16) }}>
-                        <Grid.Item className="layout-column" span={10}>
-                          {t('label.data-type')}
-                          <span className="text-failure">*</span>
+      </Box>
+      <Card className="tw:mt-4 tw:rounded tw:border-0">
+        <Card.Content className="tw:p-5">
+          <FormProvider {...form}>
+            <HookForm
+              data-testid="profiler-config-form"
+              form={form}
+              id="profiler-config"
+              validationBehavior="aria"
+              onSubmit={form.handleSubmit(handleSubmit)}>
+              <Box direction="col" gap={6}>
+                <PageHeader
+                  data={{
+                    header: t('label.profiler-configuration'),
+                    subHeader: t(
+                      'message.page-sub-header-for-profiler-configuration'
+                    ),
+                  }}
+                  learningPageId={LEARNING_PAGE_IDS.PROFILER_CONFIGURATION}
+                  title={t('label.profiler-configuration')}
+                />
+                <Accordion defaultExpandedKeys={['profileConfig']}>
+                  <AccordionItem id="profileConfig">
+                    <AccordionHeader className="tw:bg-secondary_subtle tw:px-4">
+                      <Box direction="col" gap={1}>
+                        <Typography size="text-sm" weight="semibold">
+                          {t('label.metric-configuration')}
+                        </Typography>
+                        <Typography
+                          color="secondary"
+                          size="text-sm"
+                          weight="regular">
+                          {t('message.metric-configuration-description')}
+                        </Typography>
+                      </Box>
+                    </AccordionHeader>
+                    <AccordionPanel className="tw:p-6">
+                      <Grid colGap="4" rowGap="4">
+                        <Grid.Item span={10}>
+                          <Typography>
+                            {t('label.data-type')}
+                            <Typography as="span" color="danger">
+                              *
+                            </Typography>
+                          </Typography>
                         </Grid.Item>
-                        <Grid.Item className="layout-column" span={11}>
+                        <Grid.Item span={11}>
                           {t('label.metric-type')}
                         </Grid.Item>
-                        <Grid.Item className="layout-column" span={3}>
-                          {t('label.disable')}
-                        </Grid.Item>
-                        {fields.map(({ key, name }) => (
-                          <Fragment key={key}>
-                            <Grid.Item className="layout-column" span={10}>
-                              <Form.Item
-                                name={[name, 'dataType']}
-                                rules={[
-                                  {
-                                    required: true,
-                                    message: t(
-                                      'message.field-text-is-required',
-                                      {
-                                        fieldText: t('label.data-type'),
-                                      }
-                                    ),
-                                  },
-                                ]}>
-                                <Select
-                                  allowClear
-                                  showSearch
-                                  data-testid="data-type-select"
-                                  options={dataTypeOptions}
-                                  placeholder={t('label.select-field', {
-                                    field: t('label.data-type'),
-                                  })}
-                                />
-                              </Form.Item>
-                            </Grid.Item>
-                            <Grid.Item className="layout-column" span={11}>
-                              <Form.Item
-                                noStyle
-                                shouldUpdate={(prevValues, currentValues) => {
-                                  return !isEqual(
-                                    prevValues['metricConfiguration']?.[name]?.[
-                                      'disabled'
-                                    ],
-                                    currentValues['metricConfiguration']?.[
-                                      name
-                                    ]?.['disabled']
-                                  );
-                                }}>
-                                {() => (
-                                  <Form.Item name={[name, 'metrics']}>
-                                    <TreeSelect
-                                      allowClear
-                                      treeCheckable
-                                      data-testid="metric-type-select"
-                                      disabled={form.getFieldValue([
-                                        'metricConfiguration',
-                                        name,
-                                        'disabled',
-                                      ])}
-                                      maxTagCount={5}
+                        <Grid.Item span={3}>{t('label.disable')}</Grid.Item>
+                        {fields.map((row, index) => (
+                          <Fragment key={row.id}>
+                            <Grid.Item
+                              data-testid={`profiler-data-type-${index}`}
+                              span={10}>
+                              <Controller
+                                control={control}
+                                name={`metricConfiguration.${index}.dataType`}
+                                render={({ field, fieldState }) => (
+                                  <Box direction="col" gap={1}>
+                                    <ProfilerColumnSelect
+                                      isDisabled={false}
+                                      isInvalid={Boolean(fieldState.error)}
+                                      items={getDataTypeItems(
+                                        metricConfiguration,
+                                        index
+                                      )}
+                                      label={t('label.data-type')}
                                       placeholder={t('label.select-field', {
-                                        field: t('label.metric-type'),
+                                        field: t('label.data-type'),
                                       })}
-                                      showCheckedStrategy={
-                                        TreeSelect.SHOW_PARENT
+                                      selectedKey={field.value ?? null}
+                                      testId="data-type-select"
+                                      onBlur={field.onBlur}
+                                      onSelectionChange={(key) =>
+                                        field.onChange(getSelectedDataType(key))
                                       }
-                                      treeData={PROFILER_METRICS_TYPE_OPTIONS}
                                     />
-                                  </Form.Item>
+                                    {fieldState.error && (
+                                      <Typography color="danger" size="text-sm">
+                                        {fieldState.error.message}
+                                      </Typography>
+                                    )}
+                                  </Box>
                                 )}
-                              </Form.Item>
+                                rules={{
+                                  required: t(
+                                    'message.field-text-is-required',
+                                    { fieldText: t('label.data-type') }
+                                  ),
+                                }}
+                              />
                             </Grid.Item>
                             <Grid.Item
-                              className="layout-column d-flex justify-between"
+                              data-testid={`profiler-metrics-${index}`}
+                              span={11}>
+                              <Controller
+                                control={control}
+                                name={`metricConfiguration.${index}.metrics`}
+                                render={({ field }) => (
+                                  <ProfilerMetricSelect
+                                    isDisabled={
+                                      metricConfiguration[index]?.disabled
+                                    }
+                                    label={t('label.metric-type')}
+                                    maxVisible={5}
+                                    options={METRIC_OPTIONS}
+                                    placeholder={t('label.select-field', {
+                                      field: t('label.metric-type'),
+                                    })}
+                                    testId="metric-type-select"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                  />
+                                )}
+                              />
+                            </Grid.Item>
+                            <Grid.Item
+                              data-testid={`profiler-disabled-${index}`}
                               span={3}>
-                              <Form.Item
-                                name={[name, 'disabled']}
-                                valuePropName="isSelected">
-                                <Toggle data-testid="disabled-switch" />
-                              </Form.Item>
-                              <Form.Item>
-                                <Button
-                                  data-testid={`remove-filter-${name}`}
-                                  icon={<CloseOutlined />}
-                                  size="small"
-                                  onClick={() => remove(name)}
+                              <Box align="center" gap={2} justify="between">
+                                <Controller
+                                  control={control}
+                                  name={`metricConfiguration.${index}.disabled`}
+                                  render={({ field }) => (
+                                    <Toggle
+                                      aria-label={t('label.disable')}
+                                      data-testid="disabled-switch"
+                                      isSelected={field.value ?? false}
+                                      onChange={field.onChange}
+                                    />
+                                  )}
                                 />
-                              </Form.Item>
+                                <Button
+                                  aria-label={t('label.remove-entity', {
+                                    entity: t('label.field'),
+                                  })}
+                                  color="secondary"
+                                  data-testid={`remove-filter-${index}`}
+                                  iconLeading={XClose}
+                                  size="xs"
+                                  onClick={() => remove(index)}
+                                />
+                              </Box>
                             </Grid.Item>
                           </Fragment>
                         ))}
-
-                        <Grid.Item className="layout-column" span={24}>
-                          <div className="matrix-collapse-footer">
-                            <Button
-                              className="text-primary p-0"
-                              data-testid="add-fields"
-                              icon={<PlusOutlined />}
-                              type="text"
-                              onClick={() => add()}>
-                              {t('label.add-new-field')}
-                            </Button>
-                          </div>
+                        <Grid.Item span={24}>
+                          <Box direction="col" gap={6}>
+                            <Divider />
+                            <Box>
+                              <Button
+                                color="link-color"
+                                data-testid="add-fields"
+                                iconLeading={Plus}
+                                size="sm"
+                                onClick={() => append({})}>
+                                {t('label.add-new-field')}
+                              </Button>
+                            </Box>
+                          </Box>
                         </Grid.Item>
                       </Grid>
-                    );
-                  }}
-                </Form.List>
-              </Collapse.Panel>
-            </Collapse>
-          </Grid.Item>
-
-          <Grid.Item className="layout-column" span={24}>
-            <Collapse
-              className="profiler-configuration-collapse"
-              defaultActiveKey={['sampleDataConfig']}
-              expandIconPosition="right">
-              <Collapse.Panel
-                header={
-                  <PageHeader
-                    data={{
-                      header: t('label.sample-data-ingestion-configuration'),
-                      subHeader: t(
-                        'message.sample-data-ingestion-config-description'
-                      ),
-                    }}
-                  />
-                }
-                key="sampleDataConfig">
-                <Grid
-                  className="layout-row layout-grid"
-                  data-testid="sample-data-ingestion-config"
-                  style={{ ...getLayoutGutter(0, 24) }}>
-                  <Grid.Item className="layout-column" span={24}>
-                    <Box
-                      align="center"
-                      className="layout-row"
-                      justify="between"
-                      wrap="nowrap">
-                      <Box
-                        className="layout-column tw:block"
-                        style={{ flex: 'auto' }}>
-                        <Typography weight="semibold">
-                          {t('label.enable-storing-of-sample-data')}
+                    </AccordionPanel>
+                  </AccordionItem>
+                </Accordion>
+                <Accordion defaultExpandedKeys={['sampleDataConfig']}>
+                  <AccordionItem id="sampleDataConfig">
+                    <AccordionHeader className="tw:bg-secondary_subtle tw:px-4">
+                      <Box direction="col" gap={1}>
+                        <Typography size="text-sm" weight="semibold">
+                          {t('label.sample-data-ingestion-configuration')}
                         </Typography>
-                        <Typography as="p" className="m-b-0" color="secondary">
-                          {t('message.enable-storing-sample-data-description')}
+                        <Typography
+                          color="secondary"
+                          size="text-sm"
+                          weight="regular">
+                          {t(
+                            'message.sample-data-ingestion-config-description'
+                          )}
                         </Typography>
                       </Box>
+                    </AccordionHeader>
+                    <AccordionPanel className="tw:p-6">
                       <Box
-                        className="layout-column tw:block p-l-lg"
-                        style={{ flex: 'none' }}>
-                        <Form.Item
-                          name={['sampleDataConfig', 'storeSampleData']}
-                          valuePropName="isSelected">
-                          <Toggle
-                            data-testid="store-sample-data-switch"
-                            onChange={(isSelected) => {
-                              if (isSelected) {
-                                form.setFieldValue(
-                                  ['sampleDataConfig', 'readSampleData'],
-                                  true
-                                );
-                              }
-                            }}
+                        data-testid="sample-data-ingestion-config"
+                        direction="col"
+                        gap={6}>
+                        <Box align="center" gap={6} justify="between">
+                          <Box direction="col">
+                            <Typography weight="semibold">
+                              {t('label.enable-storing-of-sample-data')}
+                            </Typography>
+                            <Typography color="secondary">
+                              {t(
+                                'message.enable-storing-sample-data-description'
+                              )}
+                            </Typography>
+                          </Box>
+                          <Controller
+                            control={control}
+                            name="sampleDataConfig.storeSampleData"
+                            render={({ field }) => (
+                              <Toggle
+                                aria-label={t(
+                                  'label.enable-storing-of-sample-data'
+                                )}
+                                data-testid="store-sample-data-switch"
+                                isSelected={field.value ?? false}
+                                onChange={(selected) => {
+                                  field.onChange(selected);
+                                  if (selected) {
+                                    setValue(
+                                      'sampleDataConfig.readSampleData',
+                                      true
+                                    );
+                                  }
+                                }}
+                              />
+                            )}
                           />
-                        </Form.Item>
+                        </Box>
+                        <Box align="center" gap={6} justify="between">
+                          <Box direction="col">
+                            <Typography weight="semibold">
+                              {t('label.enable-reading-of-sample-data')}
+                            </Typography>
+                            <Typography color="secondary">
+                              {t(
+                                'message.enable-reading-sample-data-description'
+                              )}
+                            </Typography>
+                          </Box>
+                          <Controller
+                            control={control}
+                            name="sampleDataConfig.readSampleData"
+                            render={({ field }) => (
+                              <Toggle
+                                aria-label={t(
+                                  'label.enable-reading-of-sample-data'
+                                )}
+                                data-testid="read-sample-data-switch"
+                                isSelected={field.value ?? false}
+                                onChange={field.onChange}
+                              />
+                            )}
+                          />
+                        </Box>
                       </Box>
-                    </Box>
-                  </Grid.Item>
-                  <Grid.Item className="layout-column" span={24}>
-                    <Box
-                      align="center"
-                      className="layout-row"
-                      justify="between"
-                      wrap="nowrap">
-                      <Box
-                        className="layout-column tw:block"
-                        style={{ flex: 'auto' }}>
-                        <Typography weight="semibold">
-                          {t('label.enable-reading-of-sample-data')}
-                        </Typography>
-                        <Typography as="p" className="m-b-0" color="secondary">
-                          {t('message.enable-reading-sample-data-description')}
-                        </Typography>
-                      </Box>
-                      <Box
-                        className="layout-column tw:block p-l-lg"
-                        style={{ flex: 'none' }}>
-                        <Form.Item
-                          name={['sampleDataConfig', 'readSampleData']}
-                          valuePropName="isSelected">
-                          <Toggle data-testid="read-sample-data-switch" />
-                        </Form.Item>
-                      </Box>
-                    </Box>
-                  </Grid.Item>
-                </Grid>
-              </Collapse.Panel>
-            </Collapse>
-          </Grid.Item>
-
-          <Grid.Item className="layout-column" span={24}>
-            <div className="d-flex justify-end gap-2">
-              <Button data-testid="cancel-button" onClick={() => navigate(-1)}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                data-testid="save-button"
-                htmlType="submit"
-                loading={isFormSubmitting}
-                type="primary">
-                {t('label.save')}
-              </Button>
-            </div>
-          </Grid.Item>
-
-          {sparkAgentConfigComponent}
-        </Grid>
-      </Form>
+                    </AccordionPanel>
+                  </AccordionItem>
+                </Accordion>
+                <Box gap={2} justify="end">
+                  <Button
+                    color="secondary"
+                    data-testid="cancel-button"
+                    size="md"
+                    onClick={() => navigate(-1)}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    data-testid="save-button"
+                    isLoading={isFormSubmitting}
+                    size="md"
+                    type="submit">
+                    {t('label.save')}
+                  </Button>
+                </Box>
+              </Box>
+            </HookForm>
+          </FormProvider>
+          {SparkAgentConfig && (
+            <Box className="tw:mt-6">
+              <SparkAgentConfig />
+            </Box>
+          )}
+        </Card.Content>
+      </Card>
     </PageLayoutV1>
   );
 };

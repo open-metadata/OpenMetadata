@@ -11,12 +11,15 @@ import {
   ComboBox as AriaComboBox,
   Group as AriaGroup,
   Input as AriaInput,
-  ListBox as AriaListBox,
   ComboBoxStateContext,
 } from 'react-aria-components';
 import { Avatar } from '@/components/base/avatar/avatar';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
+import {
+  SELECT_VIRTUALIZATION_THRESHOLD,
+  SelectListBox,
+} from './select-list-box';
 import { Popover } from '@/components/base/select/popover';
 import {
   type SelectCommonProps,
@@ -230,6 +233,8 @@ export const ComboBox = ({
     [fontSize, size]
   );
 
+  const isVirtualized = (items?.length ?? 0) > SELECT_VIRTUALIZATION_THRESHOLD;
+
   return (
     <SelectContext.Provider value={selectContextValue}>
       {/* items must live on the ComboBox (not the inner ListBox) so React
@@ -263,16 +268,20 @@ export const ComboBox = ({
             />
 
             <Popover
-              className={otherProps.popoverClassName}
+              className={cx(
+                isVirtualized && 'tw:overflow-hidden tw:py-0',
+                otherProps.popoverClassName
+              )}
               size={size}
               triggerRef={triggerRef}>
-              <AriaListBox
-                className="tw:size-full tw:outline-hidden"
+              <SelectListBox
                 renderEmptyState={() => (
                   <SelectEmptyState emptyState={emptyState} />
-                )}>
+                )}
+                size={size}
+                virtualize={isVirtualized}>
                 {children}
-              </AriaListBox>
+              </SelectListBox>
             </Popover>
 
             {otherProps.hint && (

@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
@@ -365,12 +366,12 @@ describe('TestCases component', () => {
       ).toBeInTheDocument();
     });
 
-    it('should keep the status filter on the Ant Design multi-select', async () => {
+    it('should render an accessible status multi-select', async () => {
       render(<TestCases />);
 
-      expect(await screen.findByTestId('status-select-filter')).toHaveClass(
-        'ant-select-multiple'
-      );
+      expect(
+        await screen.findByRole('combobox', { name: 'label.status' })
+      ).toBeInTheDocument();
     });
   });
 
@@ -517,11 +518,14 @@ describe('TestCases component', () => {
 
     it('should add statuses without replacing the existing selection', async () => {
       const { rerender } = render(<TestCases />);
-      const statusFilter = await screen.findByTestId('status-select-filter');
-      const selector = statusFilter.querySelector('.ant-select-selector');
-
-      fireEvent.mouseDown(selector as Element);
-      fireEvent.click(await screen.findByTitle('label.success'));
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const statusInput = await screen.findByRole('combobox', {
+        name: 'label.status',
+      });
+      await user.click(statusInput);
+      await user.click(
+        await screen.findByRole('option', { name: 'label.success' })
+      );
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenLastCalledWith({
@@ -531,8 +535,10 @@ describe('TestCases component', () => {
 
       mockLocation.search = '?testCaseStatus%5B%5D=Success';
       rerender(<TestCases />);
-      fireEvent.mouseDown(selector as Element);
-      fireEvent.click(await screen.findByTitle('label.queued'));
+      await user.click(statusInput);
+      await user.click(
+        await screen.findByRole('option', { name: 'label.queued' })
+      );
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenLastCalledWith({

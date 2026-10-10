@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Grid } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Button, Grid } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
 import { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -86,9 +85,10 @@ const SqlQueryTab = () => {
       {permissions.query?.Create && !isVersionPage && (
         <Grid.Item className="layout-column d-flex justify-end" span={24}>
           <Button
+            color="primary"
             data-testid="add-to-table-button"
-            type="primary"
-            onClick={() => setIsOpen(true)}>
+            size="md"
+            onPress={() => setIsOpen(true)}>
             {t('label.add-to-table')}
           </Button>
         </Grid.Item>

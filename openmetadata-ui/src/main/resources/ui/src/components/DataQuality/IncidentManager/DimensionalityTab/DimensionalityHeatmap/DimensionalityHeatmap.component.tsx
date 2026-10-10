@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
@@ -121,10 +120,9 @@ const DimensionalityHeatmap = ({
                 key={`row-${row.dimensionValue}`}>
                 {row.cells.map((cell) => (
                   <Tooltip
+                    containerClassName="tw:bg-transparent tw:p-0 tw:shadow-none"
                     key={`${cell.dimensionValue}-${cell.date}`}
-                    overlayClassName="dimensionality-heatmap-cell-tooltip"
                     placement="top"
-                    showArrow={false}
                     title={<HeatmapCellTooltip cell={cell} />}>
                     <div
                       aria-label={`${cell.dimensionValue}, ${getDateLabel(

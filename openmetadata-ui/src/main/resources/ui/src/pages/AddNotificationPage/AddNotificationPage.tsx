@@ -34,6 +34,8 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { AlertAiFormValidationErrors } from '../../components/observability/Alerts/AlertAiFormFields.interface';
+import { validateAlertAiForm } from '../../components/observability/Alerts/AlertAiFormFieldsValidationUtils';
 import {
   PAGE_SIZE_LARGE,
   ROUTES,
@@ -96,6 +98,8 @@ const NO_SOURCES: string[] = [];
 
 const AddNotificationPage = () => {
   const [form] = useForm<ModifiedCreateEventSubscription>();
+  const [ruleValidationErrors, setRuleValidationErrors] =
+    useState<AlertAiFormValidationErrors>({});
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { t } = useTranslation();
@@ -392,9 +396,32 @@ const AddNotificationPage = () => {
                                 maxWidth: '100%',
                                 flex: '0 0 100%',
                               }}>
-                              <AlertFormSourceItem
-                                filterResources={entityFunctions}
-                              />
+                              <Form.Item
+                                className="m-b-0"
+                                name="resources"
+                                rules={[
+                                  {
+                                    required: true,
+                                    message: t('label.please-select-entity', {
+                                      entity: t('label.data-asset'),
+                                    }),
+                                  },
+                                ]}>
+                                <AlertFormSourceItem
+                                  filterResources={entityFunctions}
+                                  onChange={(next, previous) => {
+                                    form.setFieldValue('input', {});
+                                    setRuleValidationErrors({});
+                                    if (
+                                      previous.some(
+                                        (source) => !next.includes(source)
+                                      )
+                                    ) {
+                                      form.setFieldValue('destinations', []);
+                                    }
+                                  }}
+                                />
+                              </Form.Item>
                             </Box>
                             {shouldShowFiltersSection && (
                               <>
@@ -411,7 +438,60 @@ const AddNotificationPage = () => {
                                     maxWidth: '100%',
                                     flex: '0 0 100%',
                                   }}>
-                                  <ObservabilityFormFiltersItem />
+                                  <ObservabilityFormFiltersItem
+                                    validationErrors={ruleValidationErrors}
+                                    value={values ?? form.getFieldsValue(true)}
+                                    onChange={(next) => {
+                                      const data =
+                                        typeof next === 'function'
+                                          ? next(form.getFieldsValue(true))
+                                          : next;
+                                      form.setFieldValue('input', data.input);
+                                      if (
+                                        Object.keys(ruleValidationErrors)
+                                          .length > 0
+                                      ) {
+                                        form
+                                          .validateFields(['input'])
+                                          .catch(() => undefined);
+                                      }
+                                    }}
+                                  />
+                                  <Form.Item
+                                    hidden
+                                    getValueProps={() => ({ value: '' })}
+                                    name="input"
+                                    rules={[
+                                      {
+                                        validator: async () => {
+                                          const errors = validateAlertAiForm(
+                                            form.getFieldsValue(true),
+                                            t
+                                          );
+                                          const ruleErrors = Object.fromEntries(
+                                            Object.entries(errors).filter(
+                                              ([path]) =>
+                                                path.startsWith('input.')
+                                            )
+                                          );
+                                          setRuleValidationErrors(ruleErrors);
+                                          if (
+                                            Object.keys(ruleErrors).length > 0
+                                          ) {
+                                            throw new Error(
+                                              Object.values(ruleErrors)[0]
+                                            );
+                                          }
+                                        },
+                                      },
+                                    ]}>
+                                    <input
+                                      readOnly
+                                      aria-hidden="true"
+                                      tabIndex={-1}
+                                      type="hidden"
+                                    />
+                                  </Form.Item>
                                 </Box>
                               </>
                             )}
@@ -480,6 +560,13 @@ const AddNotificationPage = () => {
                                             templateResourcePermission
                                           }
                                           templates={templates}
+                                          values={values}
+                                          onValuesChange={(changes) =>
+                                            Object.entries(changes).forEach(
+                                              ([key, value]) =>
+                                                form.setFieldValue(key, value)
+                                            )
+                                          }
                                         />
                                       </Box>
                                     </Fragment>
@@ -501,8 +588,16 @@ const AddNotificationPage = () => {
                         />
                         <Form.Item
                           hidden
-                          name="customNotificationTemplateData"
-                        />
+                          getValueProps={() => ({ value: '' })}
+                          name="notificationTemplate">
+                          <input readOnly aria-hidden="true" type="hidden" />
+                        </Form.Item>
+                        <Form.Item
+                          hidden
+                          getValueProps={() => ({ value: '' })}
+                          name="customNotificationTemplateData">
+                          <input readOnly aria-hidden="true" type="hidden" />
+                        </Form.Item>
 
                         {!isUndefined(inlineAlertDetails) && (
                           <Grid.Item className="layout-column" span={24}>
@@ -530,6 +625,12 @@ const AddNotificationPage = () => {
                                   }
                                   templates={templates}
                                   values={values}
+                                  onValuesChange={(changes) =>
+                                    Object.entries(changes).forEach(
+                                      ([key, value]) =>
+                                        form.setFieldValue(key, value)
+                                    )
+                                  }
                                 />
                               )
                             )}
