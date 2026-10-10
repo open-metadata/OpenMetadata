@@ -49,6 +49,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexStopSignal;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
@@ -350,6 +351,32 @@ class DistributedSearchIndexExecutorTest {
     verify(coordinator).requestStop(jobId);
     verify(coordinator).releaseReindexLock(jobId);
     verify(listener, never()).onJobStarted(any());
+  }
+
+  @Test
+  void executorCreatedForAnAlreadyStoppedRunIsStopped() {
+    ReindexStopSignal stopSignal = new ReindexStopSignal();
+    stopSignal.requestStop();
+
+    DistributedSearchIndexExecutor lateExecutor =
+        new DistributedSearchIndexExecutor(collectionDAO, 10, stopSignal);
+
+    assertTrue(lateExecutor.isStopped());
+  }
+
+  @Test
+  void stoppingTheRunStopsTheExecutorAndItsJob() throws Exception {
+    ReindexStopSignal stopSignal = new ReindexStopSignal();
+    executor = new DistributedSearchIndexExecutor(collectionDAO, 10, stopSignal);
+    setField("coordinator", coordinator);
+    SearchIndexJob job =
+        SearchIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.RUNNING).build();
+    setField("currentJob", job);
+
+    stopSignal.requestStop();
+
+    assertTrue(executor.isStopped());
+    verify(coordinator).requestStop(job.getId());
   }
 
   /**

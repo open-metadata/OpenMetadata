@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,19 +59,27 @@ class DistributedIndexingStrategyTest {
 
   private CollectionDAO collectionDAO;
   private SearchRepository searchRepository;
+  private ReindexStopSignal stopSignal;
   private DistributedIndexingStrategy strategy;
 
   @BeforeEach
   void setUp() {
     collectionDAO = mock(CollectionDAO.class);
     searchRepository = mock(SearchRepository.class);
+    stopSignal = new ReindexStopSignal();
     strategy =
         new DistributedIndexingStrategy(
-            collectionDAO, searchRepository, new EventPublisherJob(), APP_ID, 1234L, "admin");
+            collectionDAO,
+            searchRepository,
+            new EventPublisherJob(),
+            APP_ID,
+            1234L,
+            "admin",
+            stopSignal);
   }
 
   @Test
-  void lifecycleHelpersExposeInjectedStateAndStopDelegatesOnce() throws Exception {
+  void lifecycleHelpersExposeInjectedStateAndReadTheRunStopSignal() throws Exception {
     ReindexingProgressListener listener = mock(ReindexingProgressListener.class);
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
 
@@ -82,13 +91,11 @@ class DistributedIndexingStrategyTest {
     assertEquals(1, ((CompositeProgressListener) getField("listeners")).getListenerCount());
 
     setField("distributedExecutor", executor);
-    strategy.stop();
-    strategy.stop();
+    stopSignal.requestStop();
 
     assertTrue(strategy.isStopped());
     assertNotNull(strategy.getStats());
     assertEquals(executor, strategy.getDistributedExecutor());
-    verify(executor, times(1)).stop();
   }
 
   @Test
@@ -500,7 +507,7 @@ class DistributedIndexingStrategyTest {
         (Boolean)
             invokePrivate("hasIncompleteProcessing", new Class<?>[] {Stats.class}, withFailures));
 
-    strategy.stop();
+    stopSignal.requestStop();
     assertEquals(
         ExecutionResult.Status.STOPPED,
         invokePrivate("determineStatus", new Class<?>[] {Stats.class}, complete));
@@ -830,12 +837,12 @@ class DistributedIndexingStrategyTest {
   }
 
   /**
-   * Regression: a stop that lands before the executor exists finds nothing to stop. The executor
-   * created afterwards never heard of it, so it created and started the job the user had stopped.
+   * Regression: a stop that landed before the executor existed had no executor to reach, so it
+   * created and started the job the user had stopped. The executor now joins the run's stop signal.
    */
   @Test
   @SuppressWarnings({"rawtypes", "unchecked"})
-  void stopBeforeExecutorExistsIsHandedToTheExecutorCreatedAfterIt() {
+  void executorJoinsTheRunStopSignal() {
     EntityRepository entityRepository = mock(EntityRepository.class);
     EntityDAO entityDao = mock(EntityDAO.class);
 
@@ -843,22 +850,24 @@ class DistributedIndexingStrategyTest {
     when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
 
+    List<Object> executorArguments = new ArrayList<>();
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-        MockedConstruction<DistributedSearchIndexExecutor> executorConstruction =
+        MockedConstruction<DistributedSearchIndexExecutor> ignoredExecutor =
             mockConstruction(
                 DistributedSearchIndexExecutor.class,
-                (mock, context) ->
-                    doThrow(new RuntimeException("end the run before job creation"))
-                        .when(mock)
-                        .performStartupRecovery())) {
+                (mock, construction) -> {
+                  executorArguments.addAll(construction.arguments());
+                  doThrow(new RuntimeException("end the run before job creation"))
+                      .when(mock)
+                      .performStartupRecovery();
+                })) {
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
 
-      strategy.stop();
       strategy.execute(
           ReindexingConfiguration.builder().entities(Set.of(Entity.TABLE)).build(),
           context(APP_ID));
 
-      verify(executorConstruction.constructed().getFirst()).stop();
+      assertTrue(executorArguments.contains(stopSignal));
     }
   }
 

@@ -37,23 +37,28 @@ public class ReindexingOrchestrator {
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchRepository;
   private final OrchestratorContext context;
+  private final ReindexStopSignal stopSignal;
 
   @Getter private EventPublisherJob jobData;
-  private volatile boolean stopped = false;
   private volatile DistributedIndexingStrategy activeStrategy;
   private volatile Map<String, Object> resultMetadata = Collections.emptyMap();
 
   public ReindexingOrchestrator(
-      CollectionDAO collectionDAO, SearchRepository searchRepository, OrchestratorContext context) {
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      OrchestratorContext context,
+      ReindexStopSignal stopSignal) {
     this.collectionDAO = collectionDAO;
     this.searchRepository = searchRepository;
     this.context = context;
+    this.stopSignal = stopSignal;
   }
 
   public void run(EventPublisherJob initialJobData) {
     this.jobData = initialJobData;
     initializeState();
     initializeJobData();
+    stopSignal.onStop(this::recordStop);
 
     String jobId = UUID.randomUUID().toString().substring(0, 8);
     MDC.put("reindexJobId", jobId);
@@ -91,18 +96,8 @@ public class ReindexingOrchestrator {
     }
   }
 
-  public void stop() {
+  private void recordStop() {
     LOG.info("Reindexing job is being stopped.");
-    stopped = true;
-
-    DistributedIndexingStrategy strategy = this.activeStrategy;
-    if (strategy != null) {
-      try {
-        strategy.stop();
-      } catch (Exception e) {
-        LOG.error("Error stopping indexing strategy", e);
-      }
-    }
 
     if (jobData != null) {
       jobData.setStatus(EventPublisherJob.Status.STOPPED);
@@ -120,7 +115,6 @@ public class ReindexingOrchestrator {
   }
 
   private void initializeState() {
-    stopped = false;
     activeStrategy = null;
     resultMetadata = Collections.emptyMap();
   }
@@ -248,10 +242,6 @@ public class ReindexingOrchestrator {
 
     DistributedIndexingStrategy strategy = createDistributedStrategy();
     activeStrategy = strategy;
-    // A stop that landed before this strategy existed had nothing to stop yet; hand it on.
-    if (stopped) {
-      strategy.stop();
-    }
     registerProgressListeners(strategy);
 
     ReindexingConfiguration config = buildReindexingConfiguration();
@@ -283,7 +273,8 @@ public class ReindexingOrchestrator {
         jobData,
         appRecord.getAppId(),
         appRecord.getStartTime(),
-        context.getJobName());
+        context.getJobName(),
+        stopSignal);
   }
 
   private void registerProgressListeners(DistributedIndexingStrategy strategy) {
@@ -394,7 +385,7 @@ public class ReindexingOrchestrator {
       }
     }
 
-    if (stopped) {
+    if (stopSignal.isStopRequested()) {
       if (jobData != null) {
         jobData.setStatus(EventPublisherJob.Status.STOPPED);
       }
@@ -415,7 +406,7 @@ public class ReindexingOrchestrator {
   private void finalizeJobExecution() {
     sendUpdates();
 
-    if (stopped) {
+    if (stopSignal.isStopRequested()) {
       AppRunRecord appRecord = context.getJobRecord();
       appRecord.setStatus(AppRunRecord.Status.STOPPED);
       sanitizeRunRecordConfig(appRecord);

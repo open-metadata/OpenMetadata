@@ -39,6 +39,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.EntityReindexContextMapper;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexStopSignal;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
@@ -115,7 +116,11 @@ public class DistributedSearchIndexExecutor {
   private final CollectionDAO collectionDAO;
   private final DistributedSearchIndexCoordinator coordinator;
   private final JobRecoveryManager recoveryManager;
+  // Set by a stop of the run and by this executor's own shutdown (e.g. a job that ended on another
+  // server), so it is not the run's stop signal itself.
   private final AtomicBoolean stopped = new AtomicBoolean(false);
+  // Makes "check stopped, then start the job" atomic against stop() setting the flag.
+  private final Object startLock = new Object();
   private final String serverId;
   private final CompositeProgressListener listeners = new CompositeProgressListener();
 
@@ -159,15 +164,18 @@ public class DistributedSearchIndexExecutor {
   private final AtomicInteger coordinatorPartitionsFailed = new AtomicInteger(0);
 
   public DistributedSearchIndexExecutor(CollectionDAO collectionDAO) {
-    this(collectionDAO, 10000); // Default partition size
+    this(collectionDAO, 10000, new ReindexStopSignal()); // Default partition size
   }
 
-  public DistributedSearchIndexExecutor(CollectionDAO collectionDAO, int partitionSize) {
+  public DistributedSearchIndexExecutor(
+      CollectionDAO collectionDAO, int partitionSize, ReindexStopSignal stopSignal) {
     this.collectionDAO = collectionDAO;
     PartitionCalculator calculator = new PartitionCalculator(partitionSize, MAX_WORKER_THREADS);
     this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO, calculator);
     this.recoveryManager = new JobRecoveryManager(collectionDAO, partitionSize);
     this.serverId = ServerIdentityResolver.getInstance().getServerId();
+    // Last, once every field is set: if the run was already stopped, stop() runs right here.
+    stopSignal.onStop(this::stop);
   }
 
   /**
@@ -345,17 +353,13 @@ public class DistributedSearchIndexExecutor {
     }
 
     UUID jobId = currentJob.getId();
-    if (stopped.get()) {
-      return endJobStoppedBeforeStart(jobId);
-    }
-    LOG.info("Server {} starting execution of job {}", serverId, jobId);
-    boolean startedJob = false;
-
-    // Start the job if in READY state
-    if (currentJob.getStatus() == IndexJobStatus.READY) {
-      coordinator.startJob(jobId);
-      currentJob = coordinator.getJob(jobId).orElseThrow();
-      startedJob = true;
+    boolean startedJob;
+    synchronized (startLock) {
+      if (stopped.get()) {
+        return endJobStoppedBeforeStart(jobId);
+      }
+      LOG.info("Server {} starting execution of job {}", serverId, jobId);
+      startedJob = startJobIfReady(jobId);
     }
 
     if (currentJob.getStatus() != IndexJobStatus.RUNNING) {
@@ -633,11 +637,20 @@ public class DistributedSearchIndexExecutor {
     return finalResult(jobId);
   }
 
+  private boolean startJobIfReady(UUID jobId) {
+    boolean ready = currentJob.getStatus() == IndexJobStatus.READY;
+    if (ready) {
+      coordinator.startJob(jobId);
+      currentJob = coordinator.getJob(jobId).orElseThrow();
+    }
+    return ready;
+  }
+
   /**
-   * {@link #stop()} can land while {@link #createJob} is still building partitions, when there is
-   * no job yet to request a stop for. Starting the job anyway would flip it to RUNNING with none of
-   * our workers on it: peer servers then adopt it as an orphan and reindex what was just stopped,
-   * and nothing ever finishes the app run. Stop it before it starts instead.
+   * The run was stopped before this job started, possibly before {@link #createJob} had a job to
+   * request a stop for. Starting it anyway would flip it to RUNNING with none of our workers on it:
+   * peer servers then adopt it as an orphan and reindex what was just stopped, and nothing ever
+   * finishes the app run. Stop it before it starts instead.
    */
   private ExecutionResult endJobStoppedBeforeStart(UUID jobId) {
     LOG.info("Stop was requested before job {} started; not starting it", jobId);
@@ -1158,7 +1171,7 @@ public class DistributedSearchIndexExecutor {
    * Request to stop the current job execution.
    */
   public void stop() {
-    if (stopped.compareAndSet(false, true)) {
+    if (markStopped()) {
       LOG.info("Stop requested for distributed executor");
 
       // Interrupt lock-refresh and heartbeat threads first so they cannot flip
@@ -1188,6 +1201,13 @@ public class DistributedSearchIndexExecutor {
       if (workerExecutor != null && !workerExecutor.isShutdown()) {
         workerExecutor.shutdownNow();
       }
+    }
+  }
+
+  /** Returns whether this call is the one that stopped the executor. */
+  private boolean markStopped() {
+    synchronized (startLock) {
+      return stopped.compareAndSet(false, true);
     }
   }
 
