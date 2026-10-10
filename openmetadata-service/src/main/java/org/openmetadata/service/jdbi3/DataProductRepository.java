@@ -793,9 +793,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           continue;
         }
 
-        if (isAdd) {
-          addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
-        } else {
+        if (isAdd && !addRelationshipIfFromEntityExists(
+            entityId, ref.getId(), fromEntity, ref.getType(), relationship)) {
+          // The from-side entity (this data product) was deleted while this request was in
+          // flight. Surface it as a plain not-found instead of persisting an edge that would
+          // point at nothing and poison later bulk operations over the same asset.
+          throw new EntityNotFoundException(
+              String.format("%s instance for %s not found", fromEntity, entityId));
+        }
+        if (!isAdd) {
           deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
         }
 
@@ -810,6 +816,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
         searchRepository.updateEntity(ref);
+      } catch (EntityNotFoundException e) {
+        // The from-side entity (this data product) was deleted while this request was in flight.
+        // A not-found must escape the per-asset catch-and-collect below: swallowing it would turn a
+        // single-asset call into a FAILURE bulk row (HTTP 400) instead of the intended 404.
+        throw e;
       } catch (RuleValidationException e) {
         LOG.warn(
             "Validation failed for asset {} in bulk operation: {}", ref.getId(), e.getMessage());
