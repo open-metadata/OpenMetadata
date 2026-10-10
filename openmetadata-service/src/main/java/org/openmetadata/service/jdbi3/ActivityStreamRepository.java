@@ -81,8 +81,9 @@ public class ActivityStreamRepository {
       String domainsParam,
       String domain,
       int days,
+      Long startTs,
       int limit) {
-    long afterTimestamp = afterTimestamp(days);
+    long afterTimestamp = afterTimestamp(days, startTs);
     List<UUID> domainIds =
         nullOrEmpty(domain)
             ? getEffectiveDomains(securityContext, domainsParam)
@@ -131,7 +132,7 @@ public class ActivityStreamRepository {
   }
 
   public ResultList<ActivityEvent> getMyFeed(
-      SecurityContext securityContext, String domain, int days, int limit) {
+      SecurityContext securityContext, String domain, int days, Long startTs, int limit) {
     String userName = securityContext.getUserPrincipal().getName();
     EntityReference user = Entity.getEntityReferenceByName(Entity.USER, userName, null);
     return result(
@@ -139,30 +140,30 @@ public class ActivityStreamRepository {
             user.getId().toString(),
             getTeamIds(userName),
             getEffectiveDomainsByFqn(securityContext, domain),
-            afterTimestamp(days),
+            afterTimestamp(days, startTs),
             limit));
   }
 
   public ResultList<ActivityEvent> getFollowingFeed(
-      SecurityContext securityContext, String domain, int days, int limit) {
+      SecurityContext securityContext, String domain, int days, Long startTs, int limit) {
     EntityReference user = currentUser(securityContext);
     return result(
         listByFollowers(
             user.getId().toString(),
             getEffectiveDomainsByFqn(securityContext, domain),
-            afterTimestamp(days),
+            afterTimestamp(days, startTs),
             limit));
   }
 
   public ResultList<ActivityEvent> getMentionsFeed(
-      SecurityContext securityContext, String domain, int days, int limit) {
+      SecurityContext securityContext, String domain, int days, Long startTs, int limit) {
     String userName = securityContext.getUserPrincipal().getName();
     return result(
         listByMentions(
             currentUser(securityContext).getId().toString(),
             getTeamIds(userName),
             getEffectiveDomainsByFqn(securityContext, domain),
-            afterTimestamp(days),
+            afterTimestamp(days, startTs),
             limit));
   }
 
@@ -699,6 +700,18 @@ public class ActivityStreamRepository {
 
   private long afterTimestamp(int days) {
     return Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
+  }
+
+  /**
+   * Lower bound for the activity window. An absolute {@code startTs} reaches back to a
+   * calendar-aligned window the relative {@code now - days} bound cannot express: the default
+   * "Last 30 days" preset sets {@code startTs} to the start of the UTC day of {@code now - 30d},
+   * which can be up to ~24 hours earlier than {@code now - 30d}. Using {@code startTs} directly
+   * fetches the gap {@code [startTs, now - 30d)} that {@code days} would otherwise drop. Falls
+   * back to {@code now - days} for callers that don't supply a window (issue #31911 regression).
+   */
+  private long afterTimestamp(int days, Long startTs) {
+    return startTs != null ? startTs : afterTimestamp(days);
   }
 
   private ResultList<ActivityEvent> result(List<ActivityEvent> events) {

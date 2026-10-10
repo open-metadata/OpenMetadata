@@ -184,6 +184,15 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(
+              description =
+                  "Absolute lower bound (epoch millis) for the activity window. "
+                      + "When supplied, overrides `days` so a calendar-aligned window (e.g. the "
+                      + "Inbox \"Last 30 days\" preset whose start-of-day startTs can be up to ~24h "
+                      + "earlier than now - 30d) fetches its full range. Falls back to `days` "
+                      + "when absent.")
+          @QueryParam("startTs")
+          Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
@@ -204,7 +213,7 @@ public class ActivityResource {
       }
     }
     return activityStreamRepository.listActivityEvents(
-        securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit);
+        securityContext, entityType, entityId, actorId, domainsParam, domain, days, startTs, limit);
   }
 
   @GET
@@ -317,13 +326,19 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(
+              description =
+                  "Absolute lower bound (epoch millis) for the activity window; overrides "
+                      + "`days` when supplied (see /activity listActivityEvents).")
+          @QueryParam("startTs")
+          Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    return activityStreamRepository.getMyFeed(securityContext, domain, days, limit);
+    return activityStreamRepository.getMyFeed(securityContext, domain, days, startTs, limit);
   }
 
   @GET
@@ -350,13 +365,19 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(
+              description =
+                  "Absolute lower bound (epoch millis) for the activity window; overrides "
+                      + "`days` when supplied (see /activity listActivityEvents).")
+          @QueryParam("startTs")
+          Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    return activityStreamRepository.getFollowingFeed(securityContext, domain, days, limit);
+    return activityStreamRepository.getFollowingFeed(securityContext, domain, days, startTs, limit);
   }
 
   @GET
@@ -384,13 +405,20 @@ public class ActivityResource {
           @Max(30)
           @QueryParam("days")
           int days,
+      @Parameter(
+              description =
+                  "Absolute lower bound (epoch millis) for the mentions window; overrides "
+                      + "`days` when supplied. The bound applies to when the mention was made, "
+                      + "so an older event freshly mentioned still belongs in the window.")
+          @QueryParam("startTs")
+          Long startTs,
       @Parameter(description = "Maximum number of events to return")
           @DefaultValue("50")
           @Min(1)
           @Max(200)
           @QueryParam("limit")
           int limit) {
-    return activityStreamRepository.getMentionsFeed(securityContext, domain, days, limit);
+    return activityStreamRepository.getMentionsFeed(securityContext, domain, days, startTs, limit);
   }
 
   @GET
