@@ -15,18 +15,22 @@ package org.openmetadata.it.tests.search.scale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntUnaryOperator;
 import java.util.function.LongSupplier;
+import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterAll;
@@ -51,6 +55,7 @@ import org.openmetadata.it.factories.LineageFocusPoints;
 import org.openmetadata.it.factories.LineageGraphLoader;
 import org.openmetadata.it.factories.LineageGraphSpec;
 import org.openmetadata.it.factories.LineageGraphSummary;
+import org.openmetadata.it.factories.SeededLineageGraph;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.SearchClient;
 import org.openmetadata.it.server.ServerHandle;
@@ -110,6 +115,12 @@ class LineageScenePerformanceScaleIT {
   private static final String SCENE_PATH = "/v1/lineage/scene";
   private static final String SEARCH_LINEAGE_PATH = "/v1/lineage/getLineage";
   private static final String ENTITY_COUNT_LINEAGE_PATH = "/v1/lineage/getLineageByEntityCount";
+  private static final String ENTITY_LINEAGE_PATH = "/v1/lineage/table/name/";
+  private static final String PLATFORM_LINEAGE_PATH = "/v1/lineage/getPlatformLineage";
+  private static final String DOWNSTREAM_LINEAGE_PATH = "/v1/lineage/getLineage/Downstream";
+  private static final String PAGINATION_INFO_PATH = "/v1/lineage/getPaginationInfo";
+  private static final String LINEAGE_EDGE_PATH =
+      "/v1/lineage/getLineageEdge/table/name/%s/table/name/%s";
   private static final String TABLE_ENTITY_TYPE = "table";
   private static final String DATABASE_SERVICE_ENTITY_TYPE = "databaseService";
   private static final String DATABASE_ENTITY_TYPE = "database";
@@ -129,6 +140,8 @@ class LineageScenePerformanceScaleIT {
   private static final long FOCUSED_SCENE_P95_LIMIT_MS =
       Long.getLong("jpw.lineage.focusedSceneP95Ms", 20_000);
   private static final long LEGACY_P95_LIMIT_MS = Long.getLong("jpw.lineage.legacyP95Ms", 60_000);
+  private static final long OTHER_API_P95_LIMIT_MS =
+      Long.getLong("jpw.lineage.otherApiP95Ms", 60_000);
   private static final long FIRST_RENDER_P95_LIMIT_MS =
       Long.getLong("jpw.lineage.firstRenderP95Ms", 60_000);
   private static final long INTERACTION_P95_LIMIT_MS =
@@ -143,6 +156,7 @@ class LineageScenePerformanceScaleIT {
   private static final String ASSET_BAND = LineageBand.ASSET.value();
   private static final String FIELD_BAND = LineageBand.FIELD.value();
   private static final int ROOT_BREADCRUMB_INDEX = 0;
+  private static final int TABLE_LEVEL = 3;
   private static final String FQN_FIELD = "fullyQualifiedName";
   private static final String UPSTREAM_ENTRY_FIELD =
       "upstreamLineage.fromEntity.fullyQualifiedName.keyword";
@@ -154,21 +168,45 @@ class LineageScenePerformanceScaleIT {
 
   private final Map<String, Latency> latencies = new LinkedHashMap<>();
   private final Map<String, Object> counters = new LinkedHashMap<>();
+  private final Map<String, String> interactionFailures = new LinkedHashMap<>();
 
   private LineageGraphSpec spec;
   private OpenMetadataClient client;
   private TestNamespace namespace;
   private LineageGraphSummary graph;
+  private boolean attached;
 
   @BeforeAll
   void seedLineageGraph() {
     spec = LineageGraphSpec.fromSystemProperties();
     client = SdkClients.adminClient();
-    namespace = new TestNamespace(getClass().getSimpleName());
-    namespace.setMethodId("lineageScenePerformance");
-    graph = LineageGraphLoader.load(spec, namespace);
-    awaitIndexed();
+    final Optional<Path> manifest = SeededLineageGraph.manifest();
+    if (manifest.isPresent()) {
+      attachToSeededGraph(manifest.get());
+    } else {
+      namespace = new TestNamespace(getClass().getSimpleName());
+      namespace.setMethodId("lineageScenePerformance");
+      graph = LineageGraphLoader.load(spec, namespace);
+      awaitIndexed();
+    }
     recordGraphCounters();
+  }
+
+  /**
+   * Measures a graph {@code scripts/lineage_seed} created earlier — how a 2M-asset cohort is
+   * benchmarked without hours of seeding per run. It was indexed when it was seeded, so only the
+   * scene API's view of it is checked; and it is never cleaned up, because this run did not create
+   * it.
+   */
+  private void attachToSeededGraph(final Path manifest) {
+    attached = true;
+    graph = SeededLineageGraph.read(manifest);
+    LOG.info(
+        "Benchmarking the seeded graph in {}: {} tables, {} edges",
+        manifest,
+        graph.tables(),
+        graph.edges());
+    assertCohortVisibleToSceneApi();
   }
 
   /**
@@ -177,13 +215,13 @@ class LineageScenePerformanceScaleIT {
    */
   @AfterAll
   void publishMetricsThenCleanUp() throws IOException {
-    if (namespace == null) {
-      // Seeding threw before it created anything. Publishing here would NPE and bury the real
-      // failure under a teardown error.
-      return;
-    }
     if (graph != null) {
       publishMetrics();
+    }
+    if (namespace == null) {
+      // Either an attached seed-script graph, which this run must not delete, or seeding threw
+      // before it created anything.
+      return;
     }
     if (SKIP_CLEANUP) {
       LOG.warn("jpw.lineage.skipCleanup=true — leaving the seeded corpus on the cluster");
@@ -250,7 +288,7 @@ class LineageScenePerformanceScaleIT {
    */
   @EnabledIf("org.openmetadata.it.util.OssTestServer#isExternalMode")
   @ExtendWith(UiSessionExtension.class)
-  void lineageMapExplorationStaysWithinBudget(final UiSession ui) throws Exception {
+  void lineageMapExplorationStaysWithinBudget(final UiSession ui) {
     LineageMapPage.suppressOnboarding(ui);
     measureDrillInteractions(ui);
     measureZoomInteractions(ui);
@@ -264,12 +302,15 @@ class LineageScenePerformanceScaleIT {
    * ASSET band — the map only moves to FIELD when the drilled node is a table — which is why each
    * level is measured separately instead of as one "asset to field" hop.
    */
-  private void measureDrillInteractions(final UiSession ui) throws Exception {
-    measureInteraction(ui, "drill-service", iteration -> openDrilled(ui, 0), this::drillIntoChild);
-    measureInteraction(ui, "drill-database", iteration -> openDrilled(ui, 1), this::drillIntoChild);
-    measureInteraction(ui, "drill-schema", iteration -> openDrilled(ui, 2), this::drillIntoChild);
+  private void measureDrillInteractions(final UiSession ui) {
     measureInteraction(
-        ui, "drill-table-to-fields", iteration -> openDrilled(ui, 3), this::drillTableIntoFields);
+        ui, "drill-service", iteration -> openSettled(ui, 0), map -> drillIntoChild(map, 0));
+    measureInteraction(
+        ui, "drill-database", iteration -> openSettled(ui, 1), map -> drillIntoChild(map, 1));
+    measureInteraction(
+        ui, "drill-schema", iteration -> openSettled(ui, 2), map -> drillIntoChild(map, 2));
+    measureInteraction(
+        ui, "drill-table-to-fields", iteration -> openSettled(ui, 3), this::drillTableIntoFields);
     measureInteraction(
         ui,
         "breadcrumb-pop-to-layer",
@@ -277,13 +318,23 @@ class LineageScenePerformanceScaleIT {
         map -> map.popBreadcrumb(ROOT_BREADCRUMB_INDEX, LAYER_BAND));
   }
 
-  private void drillIntoChild(final LineageMapPage map) {
-    map.drillIntoNode(map.firstDrillableChildFqn());
+  /**
+   * Drills one level along the benchmark graph's own path — service, database, schema, hub table —
+   * so the scenario measures the same nodes every run. The map falls back to another on-screen
+   * child only when the path's node is not clickable.
+   */
+  private void drillIntoChild(final LineageMapPage map, final int level) {
+    map.drillIntoNode(map.drillableChildFqn(drillPath().get(level)));
+  }
+
+  private List<String> drillPath() {
+    final LineageFocusPoints focus = graph.focusPoints();
+    return List.of(focus.serviceFqn(), focus.databaseFqn(), focus.schemaFqn(), focus.hubTableFqn());
   }
 
   /** The post-check keeps the scenario honest: it must really have reached the FIELD band. */
   private void drillTableIntoFields(final LineageMapPage map) {
-    drillIntoChild(map);
+    drillIntoChild(map, TABLE_LEVEL);
     if (!FIELD_BAND.equals(map.currentBand())) {
       throw new IllegalStateException(
           "Drilling a schema's child landed on band "
@@ -292,11 +343,20 @@ class LineageScenePerformanceScaleIT {
     }
   }
 
+  /**
+   * {@link #openDrilled}, then waits out the map's post-render work — the 300ms-debounced prefetch
+   * of adjacent bands and the semantic-zoom cooldown — so the timed drill does not share the browser
+   * and the server with it.
+   */
+  private LineageMapPage openSettled(final UiSession ui, final int levels) {
+    return openDrilled(ui, levels).settle();
+  }
+
   /** Opens the root scene and drills {@code levels} deep — the untimed setup of an interaction. */
   private LineageMapPage openDrilled(final UiSession ui, final int levels) {
     final LineageMapPage map = LineageMapPage.openPlatformScene(ui, LAYER_BAND);
     for (int level = 0; level < levels; level++) {
-      drillIntoChild(map);
+      drillIntoChild(map, level);
     }
     return map;
   }
@@ -306,7 +366,7 @@ class LineageScenePerformanceScaleIT {
    * viewport centre, so it changes focus as well as band. The suppression window is waited out in
    * setup, outside the timed region — it is the map's own cooldown, not its latency.
    */
-  private void measureZoomInteractions(final UiSession ui) throws Exception {
+  private void measureZoomInteractions(final UiSession ui) {
     measureInteraction(
         ui,
         "semantic-zoom-in",
@@ -325,7 +385,7 @@ class LineageScenePerformanceScaleIT {
    * fetches at all — so both isolate client-side ELK layout cost from the API's. A regression here
    * is a layout regression, not a backend one.
    */
-  private void measureViewInteractions(final UiSession ui) throws Exception {
+  private void measureViewInteractions(final UiSession ui) {
     measureInteraction(
         ui,
         "band-switch-prefetched",
@@ -338,19 +398,40 @@ class LineageScenePerformanceScaleIT {
         LineageMapPage::fitToScreen);
   }
 
+  /**
+   * Measures one interaction and records, rather than throws, a failure: one interaction the map
+   * cannot complete must not cost the nightly every interaction measured after it. {@link
+   * #assertInteractionsWithinBudget} fails the test on any recorded failure once all have run.
+   */
   private void measureInteraction(
       final UiSession ui,
       final String name,
       final StagedSetup<LineageMapPage> setup,
-      final StagedAction<LineageMapPage> action)
-      throws Exception {
+      final StagedAction<LineageMapPage> action) {
     final String id = INTERACTION_PREFIX + name;
-    latencies.put(
-        id, LatencySampler.measureStaged(INTERACTION_WARMUPS, INTERACTION_SAMPLES, setup, action));
-    LOG.info("Interaction {} -> {}", id, latencies.get(id));
+    try {
+      latencies.put(
+          id,
+          LatencySampler.measureStaged(INTERACTION_WARMUPS, INTERACTION_SAMPLES, setup, action));
+      LOG.info("Interaction {} -> {}", id, latencies.get(id));
+    } catch (final Exception | AssertionError e) {
+      interactionFailures.put(id, firstLine(e));
+      LOG.warn("Interaction {} could not complete; measuring the rest", id, e);
+    }
+  }
+
+  private static String firstLine(final Throwable error) {
+    final String message = String.valueOf(error.getMessage());
+    final int newline = message.indexOf('\n');
+    return newline < 0 ? message : message.substring(0, newline);
   }
 
   private void assertInteractionsWithinBudget() {
+    counters.put("interactionFailures", interactionFailures.size());
+    counters.put("failedInteractions", List.copyOf(interactionFailures.keySet()));
+    assertThat(interactionFailures)
+        .as("interactions the map could not complete over %d assets", graph.tables())
+        .isEmpty();
     latencies.entrySet().stream()
         .filter(entry -> entry.getKey().startsWith(INTERACTION_PREFIX))
         .forEach(
@@ -371,6 +452,7 @@ class LineageScenePerformanceScaleIT {
     scenarios.addAll(rootScenarios());
     scenarios.addAll(focusedScenarios());
     scenarios.addAll(legacyScenarios());
+    scenarios.addAll(otherLineageApiScenarios());
     return List.copyOf(scenarios);
   }
 
@@ -434,12 +516,93 @@ class LineageScenePerformanceScaleIT {
     return List.of(
         new Scenario(
             "legacy-get-lineage-depth3",
-            iteration -> requestLegacy(SEARCH_LINEAGE_PATH, legacySearchRequest(hubFqn)),
+            iteration -> requestGet(SEARCH_LINEAGE_PATH, legacySearchRequest(hubFqn)),
             LEGACY_P95_LIMIT_MS),
         new Scenario(
             "legacy-entity-count-downstream",
-            iteration -> requestLegacy(ENTITY_COUNT_LINEAGE_PATH, legacyEntityCountRequest(hubFqn)),
+            iteration -> requestGet(ENTITY_COUNT_LINEAGE_PATH, legacyEntityCountRequest(hubFqn)),
             LEGACY_P95_LIMIT_MS));
+  }
+
+  /**
+   * The rest of the lineage read surface, over the same hub: the DB-backed entity lineage the
+   * entity page and SDK use (an N+1 per record, capped at depth 3), the platform view, the paged
+   * directional search, the pagination counts and a single edge. With the scene and the legacy
+   * search above, every lineage read endpoint the UI calls has a p95 here.
+   */
+  private List<Scenario> otherLineageApiScenarios() {
+    final String hubFqn = graph.focusPoints().hubTableFqn();
+    final String hubEdgePath = String.format(LINEAGE_EDGE_PATH, hubFqn, firstDownstreamOf(hubFqn));
+    return List.of(
+        otherApi("entity-lineage-by-fqn-depth1", ENTITY_LINEAGE_PATH + hubFqn, depths(1, 1)),
+        otherApi("entity-lineage-by-fqn-depth3", ENTITY_LINEAGE_PATH + hubFqn, depths(3, 3)),
+        otherApi(
+            "platform-lineage-service",
+            PLATFORM_LINEAGE_PATH,
+            RequestOptions.builder()
+                .queryParam("view", "service")
+                .queryParam("includeDeleted", "false")
+                .build()),
+        otherApi(
+            "lineage-downstream-depth3",
+            DOWNSTREAM_LINEAGE_PATH,
+            tableScoped(hubFqn)
+                .queryParam("upstreamDepth", "0")
+                .queryParam("downstreamDepth", "3")
+                .build()),
+        otherApi(
+            "lineage-pagination-info",
+            PAGINATION_INFO_PATH,
+            tableScoped(hubFqn)
+                .queryParam("upstreamDepth", "3")
+                .queryParam("downstreamDepth", "3")
+                .build()),
+        otherApi("lineage-edge-by-name", hubEdgePath, RequestOptions.builder().build()));
+  }
+
+  private Scenario otherApi(final String id, final String path, final RequestOptions options) {
+    return new Scenario(id, iteration -> requestGet(path, options), OTHER_API_P95_LIMIT_MS);
+  }
+
+  private static RequestOptions depths(final int upstream, final int downstream) {
+    return RequestOptions.builder()
+        .queryParam("upstreamDepth", String.valueOf(upstream))
+        .queryParam("downstreamDepth", String.valueOf(downstream))
+        .build();
+  }
+
+  private static RequestOptions.Builder tableScoped(final String fqn) {
+    return RequestOptions.builder()
+        .queryParam("fqn", fqn)
+        .queryParam("type", TABLE_ENTITY_TYPE)
+        .queryParam("includeDeleted", "false");
+  }
+
+  /**
+   * Read from the server rather than from the edge plan: the loader tolerates individual failed
+   * edges, and a planned edge that was never created would turn this scenario into a 404.
+   */
+  private String firstDownstreamOf(final String fqn) {
+    final JsonNode lineage =
+        readTree(
+            client
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, ENTITY_LINEAGE_PATH + fqn, null, depths(0, 1)));
+    final String downstreamId = lineage.path("downstreamEdges").path(0).path("toEntity").asText("");
+    return StreamSupport.stream(lineage.path("nodes").spliterator(), false)
+        .filter(node -> downstreamId.equals(node.path("id").asText()))
+        .map(node -> node.path("fullyQualifiedName").asText())
+        .findFirst()
+        .orElseThrow(
+            () -> new IllegalStateException("Hub " + fqn + " has no downstream edge to benchmark"));
+  }
+
+  private static JsonNode readTree(final String json) {
+    try {
+      return MAPPER.readTree(json);
+    } catch (IOException e) {
+      throw new IllegalStateException("Unreadable lineage response", e);
+    }
   }
 
   private Scenario root(final String id, final LineageBand band, final IntUnaryOperator size) {
@@ -515,7 +678,7 @@ class LineageScenePerformanceScaleIT {
     return MAPPER.readValue(response, LineageScene.class);
   }
 
-  private void requestLegacy(final String path, final RequestOptions options) {
+  private void requestGet(final String path, final RequestOptions options) {
     client.getHttpClient().executeForString(HttpMethod.GET, path, null, options);
   }
 
@@ -652,6 +815,13 @@ class LineageScenePerformanceScaleIT {
     counters.put("tables", graph.tables());
     counters.put("edges", graph.edges());
     counters.put("columnEdges", graph.columnEdges());
+    if (!attached) {
+      recordSeedThroughput();
+    }
+  }
+
+  /** An attached graph was seeded by another process, so this run has no seeding speed to report. */
+  private void recordSeedThroughput() {
     counters.put("seedTableMillis", graph.tableDuration().toMillis());
     counters.put("seedEdgeMillis", graph.edgeDuration().toMillis());
     counters.put("seedTablesPerSecond", graph.tablesPerSecond());
@@ -662,7 +832,7 @@ class LineageScenePerformanceScaleIT {
     recordSceneShape();
     BenchmarkMetrics.publish(
         BenchmarkMetrics.report(client, "lineage-scene-scale", params(), latencies, counters),
-        "lineage-scene-scale-" + spec.tables() + ".json");
+        "lineage-scene-scale-" + cohortTables() + ".json");
   }
 
   /**
@@ -686,22 +856,45 @@ class LineageScenePerformanceScaleIT {
     }
   }
 
+  /** The requested size when this run seeds; the seeded graph's own size when attached. */
+  private int cohortTables() {
+    return attached ? graph.tables() : spec.tables();
+  }
+
   private Map<String, Object> params() {
     final Map<String, Object> params = new LinkedHashMap<>();
-    params.put("tables", spec.tables());
-    params.put("edges", spec.edges());
-    params.put("services", spec.services());
-    params.put("databasesPerService", spec.databasesPerService());
-    params.put("schemasPerDatabase", spec.schemasPerDatabase());
-    params.put("depth", spec.depth());
-    params.put("hubCount", spec.hubCount());
-    params.put("hubFanout", spec.hubFanout());
-    params.put("columnsPerTable", spec.columnsPerTable());
-    params.put("columnEdgeRatio", spec.columnEdgeRatio());
+    params.put("tables", cohortTables());
+    params.put("edges", attached ? graph.edges() : spec.edges());
+    params.put("graphSource", attached ? "seed-manifest" : "loader");
+    params.putAll(attached ? seededGraphShape() : loaderSpec());
     params.put("warmups", WARMUPS);
     params.put("samples", SAMPLES);
     params.put("renderSamples", RENDER_SAMPLES);
-    params.put("randomSeed", spec.randomSeed());
     return params;
+  }
+
+  /** The loader's knobs; they describe the graph only when this run built it. */
+  private Map<String, Object> loaderSpec() {
+    final Map<String, Object> shape = new LinkedHashMap<>();
+    shape.put("services", spec.services());
+    shape.put("databasesPerService", spec.databasesPerService());
+    shape.put("schemasPerDatabase", spec.schemasPerDatabase());
+    shape.put("depth", spec.depth());
+    shape.put("hubCount", spec.hubCount());
+    shape.put("hubFanout", spec.hubFanout());
+    shape.put("columnsPerTable", spec.columnsPerTable());
+    shape.put("columnEdgeRatio", spec.columnEdgeRatio());
+    shape.put("randomSeed", spec.randomSeed());
+    return shape;
+  }
+
+  private Map<String, Object> seededGraphShape() {
+    final Map<String, Object> shape = new LinkedHashMap<>();
+    shape.put("cohortFqnPrefix", graph.cohortFqnPrefix());
+    shape.put("services", graph.services());
+    shape.put("databases", graph.databases());
+    shape.put("schemas", graph.schemas());
+    shape.put("columnEdges", graph.columnEdges());
+    return shape;
   }
 }

@@ -54,6 +54,7 @@ import ReactFlow, {
   ReactFlowInstance,
   ReactFlowProvider,
   type FitViewOptions,
+  type Viewport,
 } from 'reactflow';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import {
@@ -133,6 +134,7 @@ import {
   getLensRootLabelKey,
   getParentSceneRequest,
   getSceneFocus,
+  getSceneLandingViewport,
   getSceneLevelLabelKey,
   getSceneNodeCountSubtitle,
   getSceneOriginFocus,
@@ -329,6 +331,25 @@ const getSceneNodeBounds = (
   };
 };
 
+const getSceneLayoutBoxes = (
+  flowNodes: Node<SceneFlowNodeData>[],
+  nodeIds?: string[]
+) => {
+  const selectedNodeIds = nodeIds ? new Set(nodeIds) : undefined;
+
+  return flowNodes
+    .filter((node) => !selectedNodeIds || selectedNodeIds.has(node.id))
+    .map((node) => ({
+      x: node.position.x,
+      y: node.position.y,
+      width: node.width ?? NODE_WIDTH,
+      height: node.height ?? NODE_HEIGHT,
+      isFocus: node.data.sceneNode.isFocus,
+      isOrigin: node.data.sceneNode.isOrigin,
+      isGhost: node.data.sceneNode.isGhost,
+    }));
+};
+
 const getActiveLayersFromBand = (band: LineageBand) =>
   band === LineageBand.Field ? [LineageLayer.ColumnLevelLineage] : [];
 
@@ -424,10 +445,16 @@ const prefetchSceneBands = (
 const fitSceneBounds = (
   instance: ReactFlowInstance,
   bounds: SceneNodeBounds,
-  band?: LineageBand
+  band?: LineageBand,
+  landing?: Viewport
 ) => {
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
+      if (landing) {
+        instance.setViewport(landing);
+
+        return;
+      }
       instance.fitBounds(bounds, getSceneFitViewOptions(band));
       window.requestAnimationFrame(() => {
         const minZoom = getSceneFitViewMinZoom(band);
@@ -890,14 +917,10 @@ const LineageMapStatusPanel = ({
       )}
       {(sampled || hasHiddenNodes) && (
         <Alert
-          title={
-            sampled
-              ? t('message.showing-count-of-total-assets', {
-                  count: nodes.length,
-                  total: nodes.length + hiddenNodeCount,
-                })
-              : t('message.knowledge-graph-truncated')
-          }
+          title={t('label.showing-count-of-total-assets', {
+            count: nodes.length,
+            total: nodes.length + hiddenNodeCount,
+          })}
           variant="warning"
         />
       )}
@@ -1420,7 +1443,20 @@ const LineageMapCanvas = ({
         return;
       }
       suppressSemanticZoom();
-      fitSceneBounds(reactFlowInstance, nodeBounds, scene?.band);
+      fitSceneBounds(
+        reactFlowInstance,
+        nodeBounds,
+        scene?.band,
+        getSceneLandingViewport(
+          getSceneLayoutBoxes(nodes, nodeIds),
+          {
+            width: wrapperRef.current?.clientWidth ?? 0,
+            height: wrapperRef.current?.clientHeight ?? 0,
+          },
+          getSceneFitViewMinZoom(scene?.band),
+          CONTROL_INSET_PADDING
+        )
+      );
     },
     [nodes, reactFlowInstance, scene?.band, suppressSemanticZoom]
   );

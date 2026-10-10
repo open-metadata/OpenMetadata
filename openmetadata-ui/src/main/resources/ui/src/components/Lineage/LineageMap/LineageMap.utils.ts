@@ -13,6 +13,7 @@
 
 import type { TFunction } from 'i18next';
 import Qs from 'qs';
+import type { Viewport } from 'reactflow';
 import {
   LineageBand,
   LineageLens,
@@ -626,4 +627,87 @@ export const getParentSceneRequest = (
   }
 
   return undefined;
+};
+
+export interface SceneLayoutBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isFocus?: boolean;
+  isOrigin?: boolean;
+  isGhost?: boolean;
+}
+
+const getBoxesBounds = (boxes: SceneLayoutBox[]) =>
+  boxes.reduce(
+    (bounds, box) => ({
+      minX: Math.min(bounds.minX, box.x),
+      minY: Math.min(bounds.minY, box.y),
+      maxX: Math.max(bounds.maxX, box.x + box.width),
+      maxY: Math.max(bounds.maxY, box.y + box.height),
+    }),
+    {
+      minX: Number.POSITIVE_INFINITY,
+      minY: Number.POSITIVE_INFINITY,
+      maxX: Number.NEGATIVE_INFINITY,
+      maxY: Number.NEGATIVE_INFINITY,
+    }
+  );
+
+/**
+ * The viewport a scene opens at when it is too big for the canvas at its
+ * minimum readable zoom; undefined when it fits and a plain fit applies.
+ *
+ * Clamping a fit's zoom keeps the centre of the whole scene in view. In the
+ * layered layout that centre falls between layers, where only the collapsed
+ * context nodes sit, so the scene's own nodes would open off-screen. Instead
+ * the scene opens at the minimum zoom on what it was opened for: the focus
+ * node, else the origin node, centred; or else the top of the left-most column
+ * of real nodes, inset the way a fit would pad it.
+ */
+export const getSceneLandingViewport = (
+  boxes: SceneLayoutBox[],
+  canvas: { width: number; height: number },
+  minZoom: number,
+  padding: number
+): Viewport | undefined => {
+  if (boxes.length === 0 || canvas.width <= 0 || canvas.height <= 0) {
+    return undefined;
+  }
+  const bounds = getBoxesBounds(boxes);
+  const fitZoom = Math.min(
+    canvas.width / ((bounds.maxX - bounds.minX) * (1 + padding)),
+    canvas.height / ((bounds.maxY - bounds.minY) * (1 + padding))
+  );
+  if (fitZoom >= minZoom) {
+    return undefined;
+  }
+
+  const focusBoxes = boxes.filter((box) => box.isFocus);
+  const rootBoxes =
+    focusBoxes.length > 0 ? focusBoxes : boxes.filter((box) => box.isOrigin);
+  if (rootBoxes.length > 0) {
+    const rootBounds = getBoxesBounds(rootBoxes);
+
+    return {
+      x: canvas.width / 2 - ((rootBounds.minX + rootBounds.maxX) / 2) * minZoom,
+      y:
+        canvas.height / 2 - ((rootBounds.minY + rootBounds.maxY) / 2) * minZoom,
+      zoom: minZoom,
+    };
+  }
+
+  const realBoxes = boxes.filter((box) => !box.isGhost);
+  const firstBox = (realBoxes.length > 0 ? realBoxes : boxes).reduce(
+    (first, box) =>
+      box.x < first.x || (box.x === first.x && box.y < first.y) ? box : first
+  );
+  const inset = padding / (2 * (1 + padding));
+
+  return {
+    x: canvas.width * inset - firstBox.x * minZoom,
+    y: canvas.height * inset - firstBox.y * minZoom,
+    zoom: minZoom,
+  };
 };

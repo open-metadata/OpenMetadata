@@ -12,6 +12,7 @@
  */
 
 import type { TFunction } from 'i18next';
+import type { Viewport } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   LineageBand,
@@ -30,11 +31,13 @@ import {
   getLensRootLabelKey,
   getParentSceneRequest,
   getSceneFocus,
+  getSceneLandingViewport,
   getSceneLevelLabelKey,
   getSceneNodeCountSubtitle,
   getSceneOriginFocus,
   getSceneRequestFromSearch,
   getSceneSearch,
+  type SceneLayoutBox,
 } from './LineageMap.utils';
 
 describe('scene focus validation', () => {
@@ -600,5 +603,145 @@ describe('LineageMap utils', () => {
     );
 
     expect(subtitle).toBe('service · 25 tables');
+  });
+});
+
+describe('scene landing viewport', () => {
+  const canvas = { width: 1200, height: 640 };
+  const minZoom = 0.55;
+  const padding = 0.2;
+  const inset = padding / (2 * (1 + padding));
+
+  const box = (
+    x: number,
+    y: number,
+    flags: Partial<SceneLayoutBox> = {}
+  ): SceneLayoutBox => ({ x, y, width: 400, height: 66, ...flags });
+
+  // A benchmark schema of 32 tables as the layered layout places it: 22 down
+  // the first layer, the rest along the top of later layers, and the two
+  // services their lineage rolls up to collapsed into context nodes mid-height.
+  const schemaScene = [
+    ...Array.from({ length: 22 }, (_, index) => box(12, 12 + index * 131)),
+    ...[492, 972, 1452, 1932].flatMap((x) => [box(x, 12), box(x, 158)]),
+    box(2412, 12),
+    box(2892, 12),
+    box(700, 1539, { isGhost: true }),
+    box(1290, 1539, { isGhost: true }),
+  ];
+
+  const visibleBoxes = (boxes: SceneLayoutBox[], viewport: Viewport) => {
+    const left = -viewport.x / viewport.zoom;
+    const top = -viewport.y / viewport.zoom;
+    const right = left + canvas.width / viewport.zoom;
+    const bottom = top + canvas.height / viewport.zoom;
+
+    return boxes.filter(
+      (candidate) =>
+        candidate.x < right &&
+        candidate.x + candidate.width > left &&
+        candidate.y < bottom &&
+        candidate.y + candidate.height > top
+    );
+  };
+
+  const screenCentre = (target: SceneLayoutBox, viewport: Viewport) => ({
+    x: (target.x + target.width / 2) * viewport.zoom + viewport.x,
+    y: (target.y + target.height / 2) * viewport.zoom + viewport.y,
+  });
+
+  it('leaves a scene that fits at the minimum zoom to a plain fit', () => {
+    expect(
+      getSceneLandingViewport(
+        [box(0, 0), box(600, 0), box(600, 200)],
+        canvas,
+        minZoom,
+        padding
+      )
+    ).toBeUndefined();
+  });
+
+  it('opens a scene too big to fit on its own nodes, not on the context nodes at its centre', () => {
+    const centredOnScene = {
+      x: canvas.width / 2 - ((12 + 3292) / 2) * minZoom,
+      y: canvas.height / 2 - ((12 + 12 + 21 * 131 + 66) / 2) * minZoom,
+      zoom: minZoom,
+    };
+
+    const viewport = getSceneLandingViewport(
+      schemaScene,
+      canvas,
+      minZoom,
+      padding
+    );
+
+    expect(
+      visibleBoxes(schemaScene, centredOnScene).every(
+        (candidate) => candidate.isGhost
+      )
+    ).toBe(true);
+    expect(viewport?.zoom).toBe(minZoom);
+    expect(
+      visibleBoxes(schemaScene, viewport as Viewport).filter(
+        (candidate) => !candidate.isGhost
+      ).length
+    ).toBeGreaterThanOrEqual(12);
+  });
+
+  it('places the top of the left-most real column at the fit inset, skipping context nodes further left', () => {
+    const viewport = getSceneLandingViewport(
+      [box(-600, 900, { isGhost: true }), ...schemaScene],
+      canvas,
+      minZoom,
+      padding
+    ) as Viewport;
+
+    expect(12 * viewport.zoom + viewport.x).toBeCloseTo(canvas.width * inset);
+    expect(12 * viewport.zoom + viewport.y).toBeCloseTo(canvas.height * inset);
+  });
+
+  it('centres the origin node of a scene too big to fit, and the focus node over it', () => {
+    const origin = box(2412, 2600, { isOrigin: true });
+    const focus = box(1452, 1200, { isFocus: true });
+
+    const onOrigin = getSceneLandingViewport(
+      [...schemaScene, origin],
+      canvas,
+      minZoom,
+      padding
+    ) as Viewport;
+    const onFocus = getSceneLandingViewport(
+      [...schemaScene, origin, focus],
+      canvas,
+      minZoom,
+      padding
+    ) as Viewport;
+
+    expect(screenCentre(origin, onOrigin).x).toBeCloseTo(canvas.width / 2);
+    expect(screenCentre(origin, onOrigin).y).toBeCloseTo(canvas.height / 2);
+    expect(screenCentre(focus, onFocus).x).toBeCloseTo(canvas.width / 2);
+    expect(screenCentre(focus, onFocus).y).toBeCloseTo(canvas.height / 2);
+  });
+
+  it('anchors on context nodes when a scene has nothing else', () => {
+    const viewport = getSceneLandingViewport(
+      [box(0, 3000, { isGhost: true }), box(0, 0, { isGhost: true })],
+      canvas,
+      minZoom,
+      padding
+    ) as Viewport;
+
+    expect(viewport.y).toBeCloseTo(canvas.height * inset);
+  });
+
+  it('waits for a measured canvas', () => {
+    expect(
+      getSceneLandingViewport(
+        schemaScene,
+        { width: 0, height: 0 },
+        minZoom,
+        padding
+      )
+    ).toBeUndefined();
   });
 });

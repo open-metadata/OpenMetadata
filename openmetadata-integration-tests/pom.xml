@@ -313,6 +313,9 @@
                 <include>org/openmetadata/it/factories/**</include>
                 <include>org/openmetadata/it/server/**</include>
                 <include>org/openmetadata/it/search/**</include>
+                <!-- SdkClients, the server handles and UiSessionExtension feed ApiLatencyRecorder, and
+                     META-INF/services below registers ApiLatencyReportListener — both must ship. -->
+                <include>org/openmetadata/it/bench/**</include>
                 <include>org/openmetadata/playwright/**</include>
                 <include>org/openmetadata/it/tests/BaseEntityIT*</include>
                 <include>private_key.der</include>
