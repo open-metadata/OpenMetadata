@@ -131,15 +131,25 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           if (item.type === 'user') {
             return getUserByName(item.name, {
               fields: TabSpecificField.PROFILE,
-            }).then((res) => {
-              newMatches[index] = {
-                ...item,
-                avatarEle: userMentionItemWithAvatar(
-                  item,
-                  userProfilePics[item.name] ?? res
-                ),
-              };
-            });
+            })
+              .then((res) => {
+                newMatches[index] = {
+                  ...item,
+                  avatarEle: userMentionItemWithAvatar(
+                    item,
+                    userProfilePics[item.name] ?? res
+                  ),
+                };
+              })
+              .catch(() => {
+                // Fallback: render without avatar on fetch failure so the
+                // index is always populated and quill-mention's renderList
+                // never dereferences an undefined (holey) array element.
+                newMatches[index] = {
+                  ...item,
+                  avatarEle: userMentionItemWithAvatar(item),
+                };
+              });
           } else if (item.type === 'team') {
             newMatches[index] = {
               ...item,
