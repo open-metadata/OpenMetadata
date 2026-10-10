@@ -28,6 +28,7 @@ import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import {
@@ -96,8 +97,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   );
 
   const handleFilterSelect = useCallback(
-    (key: Key) => setFilter(key as AlertRecentEventFilters),
-    [filter]
+    (key: Key) => {
+      setFilter(key as AlertRecentEventFilters);
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [handlePageChange]
   );
 
   const getAlertRecentEvents = useCallback(
