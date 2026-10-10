@@ -839,6 +839,18 @@
       ]
     },
     {
+      "_comment": "AI-mode settings modal, Preferences panel (theme incl. system, compact sidebar, language) and the shared theme/sidebar state it drives.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/preferences/**",
+        "openmetadata-ui/src/main/resources/ui/src/context/UntitledUIThemeProvider/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/Sidebar/useSidebarState.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ProfilePreferences.spec.ts"
+      ]
+    },
+    {
       "_comment": "Shared shell of the AI-mode settings modal: the nav registry, its ids and the section/row layout every panel renders. A change here can move or restyle any panel, so every modal spec runs.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.tsx",
