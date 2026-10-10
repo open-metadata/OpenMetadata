@@ -33,6 +33,7 @@ import {
   isGraphColumnNode,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { SearchSourceDetails } from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
 import { getNodeTypeLabel } from './GraphElements/CustomNode';
 import {
@@ -347,9 +348,14 @@ const GraphNodeInspector = ({
           showUnmappedCTA={canShowGapNotes && coverage === 'unmapped'}
         />
         {bodyDescription && (
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {bodyDescription}
-          </Typography>
+          <div className="kg-inspector-description tw:text-xs tw:text-tertiary">
+            <RichTextEditorPreviewerNew
+              clampByLines
+              enableSeeMoreVariant
+              markdown={bodyDescription}
+              maxLineLength="6"
+            />
+          </div>
         )}
         {node.ontologyProperty && (
           <OntologyDetails property={node.ontologyProperty} />
