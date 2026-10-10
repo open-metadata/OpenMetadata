@@ -11,7 +11,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -42,10 +41,10 @@ public class DistributedIndexingStrategy {
   private final UUID appId;
   private final Long appStartTime;
   private final String createdBy;
+  private final ReindexStopSignal stopSignal;
   private final DistributedReindexStatsMapper statsMapper;
 
   private final CompositeProgressListener listeners = new CompositeProgressListener();
-  private final AtomicBoolean stopped = new AtomicBoolean(false);
   private final AtomicReference<Stats> currentStats = new AtomicReference<>();
 
   private volatile DistributedSearchIndexExecutor distributedExecutor;
@@ -58,13 +57,15 @@ public class DistributedIndexingStrategy {
       EventPublisherJob jobData,
       UUID appId,
       Long appStartTime,
-      String createdBy) {
+      String createdBy,
+      ReindexStopSignal stopSignal) {
     this.collectionDAO = collectionDAO;
     this.searchRepository = searchRepository;
     this.jobData = jobData;
     this.appId = appId;
     this.appStartTime = appStartTime;
     this.createdBy = createdBy;
+    this.stopSignal = stopSignal;
     this.statsMapper = new DistributedReindexStatsMapper(collectionDAO);
   }
 
@@ -102,7 +103,8 @@ public class DistributedIndexingStrategy {
     currentStats.set(stats);
 
     int partitionSize = jobData.getPartitionSize() != null ? jobData.getPartitionSize() : 10000;
-    distributedExecutor = new DistributedSearchIndexExecutor(collectionDAO, partitionSize);
+    distributedExecutor =
+        new DistributedSearchIndexExecutor(collectionDAO, partitionSize, stopSignal);
     distributedExecutor.performStartupRecovery();
 
     distributedExecutor.addListener(listeners);
@@ -164,7 +166,7 @@ public class DistributedIndexingStrategy {
         finalizeAllEntityReindex(
             stagedIndexHandler,
             stagedIndexContext,
-            !stopped.get() && !hasIncompleteProcessing(stats));
+            !isStopped() && !hasIncompleteProcessing(stats));
 
     // Promotion sweep is done; flip the job from PROMOTING to its terminal status. The job stayed
     // non-terminal until now, so the pod was not torn down mid-promotion.
@@ -231,7 +233,7 @@ public class DistributedIndexingStrategy {
       monitor.scheduleAtFixedRate(
           () -> {
             try {
-              if (stopped.get()) {
+              if (isStopped()) {
                 LOG.info("Stop signal received, stopping distributed job");
                 distributedExecutor.stop();
                 completionLatch.countDown();
@@ -284,7 +286,7 @@ public class DistributedIndexingStrategy {
   }
 
   private ExecutionResult.Status determineStatus(Stats stats) {
-    if (stopped.get()) {
+    if (isStopped()) {
       return ExecutionResult.Status.STOPPED;
     }
     if (hasIncompleteProcessing(stats)) {
@@ -395,25 +397,8 @@ public class DistributedIndexingStrategy {
     return Optional.ofNullable(currentStats.get());
   }
 
-  public void stop() {
-    if (stopped.compareAndSet(false, true)) {
-      LOG.info("Stopping distributed indexing strategy");
-
-      if (distributedExecutor != null) {
-        try {
-          distributedExecutor.stop();
-        } catch (Exception e) {
-          LOG.error("Error stopping distributed executor", e);
-        }
-      }
-      // Do NOT close the sink here — workers may still be writing to it.
-      // The sink is properly flushed and closed by flushAndAwaitSink() in doExecute()
-      // after the monitor exits and the executor's finally block completes.
-    }
-  }
-
   public boolean isStopped() {
-    return stopped.get();
+    return stopSignal.isStopRequested();
   }
 
   Stats initializeTotalRecords(Set<String> entities) {
