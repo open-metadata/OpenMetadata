@@ -149,14 +149,15 @@ dimensions, resumable across interruptions — then point the benchmark at it as
 ```bash
 python3 scripts/lineage_seed/seed_lineage_graph.py seed --server https://om.example.com --assets 2000000
 export OM_URL=https://om.example.com OM_ADMIN_TOKEN=...
-mvn verify -P scale-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
-  -Dit.test=LineageScenePerformanceScaleIT -Dfailsafe.failIfNoSpecifiedTests=false \
-  -Djpw.lineage.seedManifest=$HOME/.cache/openmetadata-lineage-seed/acme-2000000-32050/manifest.json
+LINEAGE_SEED_MANIFEST=$HOME/.cache/openmetadata-lineage-seed/acme-2000000-32050/manifest.json \
+  ./scripts/lineage-scale-benchmark.sh
 ```
 
-With `jpw.lineage.seedManifest` the benchmark reads its focus points and cohort size from the
-manifest, skips seeding and index waits, and never deletes the graph. The published report carries
-`params.graphSource = seed-manifest` and the seeded size, so it trends as its own series.
+With a seed manifest (`jpw.lineage.seedManifest`, which the script passes on), the benchmark reads
+its focus points and the graph's shape from the manifest, skips seeding and index waits, and never
+deletes the graph. The report's `params` carry `graphSource: seed-manifest` and the seeded graph's
+own counts in place of the loader's knobs, and so does the published `workload`. The script builds
+the IT's modules first; pass `BUILD=false` on later runs.
 
 The IT can still seed a large cohort itself:
 
@@ -250,6 +251,14 @@ The same script runs locally against downloaded artifacts:
 ```bash
 .github/scripts/benchmark_trend.py --reports ./artifacts --history ./benchmark-history --ref main \
   --write-trends --summary-out summary.md
+```
+
+It also tracks local runs. Record each run's output directory into a history of your own, and that
+directory gets the same `TRENDS.md`, charts and verdicts, judged from the fifth run on:
+
+```bash
+.github/scripts/benchmark_trend.py --reports <run output> --history ~/lineage-bench-history \
+  --ref local --record --write-trends --summary-out /dev/stdout
 ```
 
 ## Comparing two runs

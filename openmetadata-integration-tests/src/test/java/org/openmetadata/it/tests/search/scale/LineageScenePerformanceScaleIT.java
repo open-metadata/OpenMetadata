@@ -815,6 +815,13 @@ class LineageScenePerformanceScaleIT {
     counters.put("tables", graph.tables());
     counters.put("edges", graph.edges());
     counters.put("columnEdges", graph.columnEdges());
+    if (!attached) {
+      recordSeedThroughput();
+    }
+  }
+
+  /** An attached graph was seeded by another process, so this run has no seeding speed to report. */
+  private void recordSeedThroughput() {
     counters.put("seedTableMillis", graph.tableDuration().toMillis());
     counters.put("seedEdgeMillis", graph.edgeDuration().toMillis());
     counters.put("seedTablesPerSecond", graph.tablesPerSecond());
@@ -859,18 +866,35 @@ class LineageScenePerformanceScaleIT {
     params.put("tables", cohortTables());
     params.put("edges", attached ? graph.edges() : spec.edges());
     params.put("graphSource", attached ? "seed-manifest" : "loader");
-    params.put("services", spec.services());
-    params.put("databasesPerService", spec.databasesPerService());
-    params.put("schemasPerDatabase", spec.schemasPerDatabase());
-    params.put("depth", spec.depth());
-    params.put("hubCount", spec.hubCount());
-    params.put("hubFanout", spec.hubFanout());
-    params.put("columnsPerTable", spec.columnsPerTable());
-    params.put("columnEdgeRatio", spec.columnEdgeRatio());
+    params.putAll(attached ? seededGraphShape() : loaderSpec());
     params.put("warmups", WARMUPS);
     params.put("samples", SAMPLES);
     params.put("renderSamples", RENDER_SAMPLES);
-    params.put("randomSeed", spec.randomSeed());
     return params;
+  }
+
+  /** The loader's knobs; they describe the graph only when this run built it. */
+  private Map<String, Object> loaderSpec() {
+    final Map<String, Object> shape = new LinkedHashMap<>();
+    shape.put("services", spec.services());
+    shape.put("databasesPerService", spec.databasesPerService());
+    shape.put("schemasPerDatabase", spec.schemasPerDatabase());
+    shape.put("depth", spec.depth());
+    shape.put("hubCount", spec.hubCount());
+    shape.put("hubFanout", spec.hubFanout());
+    shape.put("columnsPerTable", spec.columnsPerTable());
+    shape.put("columnEdgeRatio", spec.columnEdgeRatio());
+    shape.put("randomSeed", spec.randomSeed());
+    return shape;
+  }
+
+  private Map<String, Object> seededGraphShape() {
+    final Map<String, Object> shape = new LinkedHashMap<>();
+    shape.put("cohortFqnPrefix", graph.cohortFqnPrefix());
+    shape.put("services", graph.services());
+    shape.put("databases", graph.databases());
+    shape.put("schemas", graph.schemas());
+    shape.put("columnEdges", graph.columnEdges());
+    return shape;
   }
 }

@@ -120,14 +120,42 @@ A default laptop Docker VM does not have that. Before a 2M run:
 
 ```bash
 export OM_URL=http://localhost:8585 OM_ADMIN_TOKEN=<admin JWT>
-mvn verify -P scale-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
-  -Dit.test=LineageScenePerformanceScaleIT -Dfailsafe.failIfNoSpecifiedTests=false \
-  -Djpw.lineage.seedManifest=$HOME/.cache/openmetadata-lineage-seed/acme-2000000-32050/manifest.json
+LINEAGE_SEED_MANIFEST=$HOME/.cache/openmetadata-lineage-seed/acme-2000000-32050/manifest.json \
+LINEAGE_OUTPUT=/tmp/lineage-bench/run-1 ./scripts/lineage-scale-benchmark.sh
 ```
 
-It reads the hub, leaf and container FQNs from the manifest, never deletes the graph, and writes
-`lineage-scene-scale-<tables>.json` plus `api-latency-*.json` to `target/benchmark/`. Feed those to
-`.github/scripts/benchmark_trend.py`, or compare two runs with `compare_benchmark_metrics.py`.
+- **What it does:** it builds the modules the IT needs, then measures the scene API at every level,
+  the other lineage read APIs, first render and the map's drill, zoom and fit interactions. Pass
+  `BUILD=false` on later runs to skip the build.
+- **What it reads:** the hub, leaf and container FQNs from the manifest. It never deletes the graph.
+- **What it writes to `LINEAGE_OUTPUT`:**
+  - `lineage-scene-scale-<tables>.json`, every scenario's p50/p95;
+  - `api-latency-*.json`, every API route the run called;
+  - `manifest.json`, the graph's shape.
+
+To follow your runs over time, record each run into a history of your own. It gets the nightly's
+`TRENDS.md` and charts, and from the fifth run on it flags regressions:
+
+```bash
+python3 .github/scripts/benchmark_trend.py --reports /tmp/lineage-bench/run-1 \
+  --history ~/lineage-bench-history --ref local --record --write-trends --summary-out /dev/stdout
+```
+
+Compare two runs with `.github/scripts/compare_benchmark_metrics.py --baseline <run> --candidate <run>`.
+
+For a single scene, time the API directly. Of 20 sorted calls, the 19th is the p95:
+
+```bash
+URL="$OM_URL/api/v1/lineage/scene?lens=service&band=ASSET&size=200&entityType=databaseSchema&focusFqn=<schema FQN>"
+for i in $(seq 1 20); do
+  curl -s -o /dev/null -w '%{time_total}\n' -H "Authorization: Bearer $OM_ADMIN_TOKEN" "$URL"
+done | sort -n
+```
+
+- **Focused scenes** (a service, database, schema or table) are never cached, so every call
+  is cold.
+- **The unfocused root scene** is cached for admins after the first call. Use the viewer
+  account, or change `size` on each call, to measure it cold.
 
 ## How it works
 
