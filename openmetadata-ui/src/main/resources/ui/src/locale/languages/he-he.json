@@ -4918,6 +4918,7 @@
     "ontology-relation-subtype": "{{from}} הוא {{to}}",
     "ontology-relationships-feature-description": "קשר מונחים במשמעות: \"קשור ל\", \"חלק מ\" או סוגים משלך כמו \"מחושב מ\".",
     "ontology-studio-edit-coming-soon": "עריכה חזותית של קשרים תגיע בקרוב. בינתיים, חקרו את גרף האונטולוגיה או הריצו שאילתות SPARQL.",
+    "ontology-studio-subtitle": "חקרו, צרו ותשאלו את האונטולוגיה העסקית שמאחורי מונחי המילון שלכם.",
     "ontology-tree-description": "מושגים במילוני המונחים שנבחרו, מסודרים לפי היררכיה. מונחים מבודדים ובעלי היררכיה מרובה מסומנים.",
     "ontology-unlocks-feature-description": "עקוב אחר כל מונח עד להורים, לחלקים ולתלויות שלו — הקשר מלא, לא הגדרה בודדת.",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

@@ -4918,6 +4918,7 @@
     "ontology-relation-subtype": "{{from}} は {{to}} の一種",
     "ontology-relationships-feature-description": "「関連する」「〜の一部」など意味を持たせて用語をリンクしたり、「〜から算出」のような独自のタイプを作成できます。",
     "ontology-studio-edit-coming-soon": "リレーションシップのビジュアル編集は近日公開予定です。当面は、オントロジーグラフを探索するか、SPARQLクエリを実行してください。",
+    "ontology-studio-subtitle": "用語集の用語を支えるビジネスオントロジーを探索、作成、クエリします。",
     "ontology-tree-description": "選択した用語集の概念を階層別に整理しています。孤立した用語と多重階層の用語には印が付きます。",
     "ontology-unlocks-feature-description": "任意の用語からその親・構成要素・依存関係までたどれます。孤立した定義ではなく、完全なコンテキストが得られます。",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

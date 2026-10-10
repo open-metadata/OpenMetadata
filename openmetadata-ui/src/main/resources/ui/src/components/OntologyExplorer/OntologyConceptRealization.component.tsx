@@ -33,6 +33,7 @@ import {
 import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { InspectorSectionHeading } from './OntologyInspectorSection';
 
 export interface OntologyConceptRealizationProps {
   readonly termId?: string;
@@ -291,14 +292,10 @@ export const OntologyConceptRealization: React.FC<
         isInspector ? 'tw:gap-1.5' : 'tw:gap-2'
       )}
       data-testid="ontology-realizations">
-      <div className="tw:mb-1 tw:flex tw:items-center tw:gap-2">
-        <Typography as="h3" size="text-sm" weight="semibold">
-          {t('label.realized-in')}
-        </Typography>
-        <Badge color="gray" size="sm" type="color">
-          {realizations.length}
-        </Badge>
-      </div>
+      <InspectorSectionHeading
+        count={realizations.length}
+        label={t('label.realized-in')}
+      />
       {realizations.length === 0 ? (
         <Typography as="p" className="tw:text-tertiary" size="text-xs">
           {t('message.no-concept-realization')}

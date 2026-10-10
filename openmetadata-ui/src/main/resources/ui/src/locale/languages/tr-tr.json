@@ -4918,6 +4918,7 @@
     "ontology-relation-subtype": "{{from}}, bir {{to}}",
     "ontology-relationships-feature-description": "Terimleri anlamla bağlayın: \"İlişkili\", \"Parçası\" veya \"şundan hesaplanır\" gibi kendi türleriniz.",
     "ontology-studio-edit-coming-soon": "Görsel ilişki düzenleme yakında geliyor. Şimdilik ontoloji grafiğini keşfedin veya SPARQL sorguları çalıştırın.",
+    "ontology-studio-subtitle": "Sözlük terimlerinizin arkasındaki iş ontolojisini keşfedin, oluşturun ve sorgulayın.",
     "ontology-tree-description": "Seçilen sözlüklerdeki kavramlar hiyerarşiye göre düzenlenir. Yalıtılmış ve çoklu hiyerarşiye sahip terimler işaretlenir.",
     "ontology-unlocks-feature-description": "Herhangi bir terimi üst öğelerine, parçalarına ve bağımlılıklarına kadar izleyin; tek başına bir tanım değil, tam bağlam.",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

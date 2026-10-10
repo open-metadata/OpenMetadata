@@ -4918,6 +4918,7 @@
     "ontology-relation-subtype": "{{from}} हा एक {{to}} आहे",
     "ontology-relationships-feature-description": "अर्थासह संज्ञा जोडा: \"शी संबंधित\", \"चा भाग\" किंवा \"पासून गणना केलेले\" यासारखे तुमचे स्वतःचे प्रकार.",
     "ontology-studio-edit-coming-soon": "व्हिज्युअल रिलेशनशिप संपादन लवकरच येत आहे. सध्या, ऑन्टोलॉजी आलेख एक्सप्लोर करा किंवा SPARQL क्वेरी चालवा.",
+    "ontology-studio-subtitle": "तुमच्या शब्दकोश संज्ञांमागील व्यवसाय ऑन्टोलॉजी एक्सप्लोर करा, तयार करा आणि क्वेरी करा.",
     "ontology-tree-description": "निवडलेल्या शब्दसंग्रहांतील संकल्पना श्रेणीक्रमानुसार मांडल्या आहेत. विलग आणि बहु-श्रेणीक्रमीय संज्ञा चिन्हांकित केल्या आहेत.",
     "ontology-unlocks-feature-description": "कोणत्याही संज्ञेचा तिच्या मूळ, भाग आणि अवलंबनांपर्यंत मागोवा घ्या — संपूर्ण संदर्भ, एकाकी व्याख्या नाही.",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

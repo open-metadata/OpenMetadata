@@ -68,7 +68,7 @@ describe('OntologyConceptDraftInspector', () => {
     jest.clearAllMocks();
   });
 
-  it('opens as a draft with glossary required in the side panel', () => {
+  it('opens as a draft without pre-flagging the empty required fields', () => {
     render(
       <OntologyConceptDraftInspector
         glossaries={[GLOSSARY]}
@@ -84,8 +84,29 @@ describe('OntologyConceptDraftInspector', () => {
       screen.getByTestId('ontology-concept-draft-inspector')
     ).toBeVisible();
     expect(screen.getByTestId('ontology-draft-glossary-field')).toBeVisible();
-    expect(screen.getAllByText('label.field-required')).toHaveLength(3);
+    expect(screen.queryAllByText('label.field-required')).toHaveLength(0);
     expect(screen.getByTestId('ontology-draft-save')).toBeDisabled();
+  });
+
+  it('flags a required field once the user leaves it empty', () => {
+    render(
+      <OntologyConceptDraftInspector
+        glossaries={[GLOSSARY]}
+        isLeaseOwned={false}
+        node={DRAFT_NODE}
+        onCancel={onCancel}
+        onChange={onChange}
+        onCreated={onCreated}
+      />
+    );
+
+    fireEvent.blur(
+      within(screen.getByTestId('ontology-draft-name-field')).getByRole(
+        'textbox'
+      )
+    );
+
+    expect(screen.getAllByText('label.field-required')).toHaveLength(1);
   });
 
   it('updates the draft node when glossary and name are filled', async () => {

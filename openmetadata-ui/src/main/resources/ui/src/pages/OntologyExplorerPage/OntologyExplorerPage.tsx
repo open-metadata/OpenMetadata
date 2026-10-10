@@ -11,18 +11,31 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import {
-  ChevronDown,
+  BadgeWithDot,
+  Button,
+  FilterSelect,
+  Input,
+  PageHeader,
+  SearchInputIcon,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ClipboardCheck,
+  Code01,
+  Edit02,
+  Eye,
   Globe01,
   Grid01,
   LayersThree01,
   Plus,
   Share07,
+  Stars01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { useOntologyAiCapability } from '../../components/OntologyExplorer/hooks/useOntologyAiCapability';
@@ -33,7 +46,10 @@ import {
 import OntologyAiAssistant from '../../components/OntologyExplorer/OntologyAiAssistant';
 import OntologyEditLeaseStatus from '../../components/OntologyExplorer/OntologyEditLeaseStatus';
 import OntologyExplorer from '../../components/OntologyExplorer/OntologyExplorer';
-import { OntologyGraphData } from '../../components/OntologyExplorer/OntologyExplorer.interface';
+import {
+  ExplorationMode,
+  OntologyGraphData,
+} from '../../components/OntologyExplorer/OntologyExplorer.interface';
 import OntologyImportExportMenu from '../../components/OntologyExplorer/OntologyImportExportMenu';
 import OntologyLibrary from '../../components/OntologyExplorer/OntologyLibrary';
 import OntologyMemoryReviewPanel from '../../components/OntologyExplorer/OntologyMemoryReviewPanel';
@@ -41,6 +57,11 @@ import OntologyModelingWorkbench from '../../components/OntologyExplorer/Ontolog
 import { ONTOLOGY_STUDIO_STYLE } from '../../components/OntologyExplorer/OntologyStudio.styles';
 import OntologyStudioQueryConsole from '../../components/OntologyExplorer/OntologyStudioQueryConsole';
 import OntologyVisualQueryBuilder from '../../components/OntologyExplorer/OntologyVisualQueryBuilder';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import {
+  getGlossaryHomeCrumb,
+  getHomeCrumb,
+} from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -50,7 +71,6 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useAuth } from '../../hooks/authHooks';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { generateUUID } from '../../utils/StringUtils';
@@ -66,6 +86,7 @@ interface StudioTab {
 }
 
 interface StudioModeTab {
+  icon: FC<{ className?: string }>;
   id: StudioMode;
   label: string;
 }
@@ -76,19 +97,11 @@ interface StudioSubMode {
   label: string;
 }
 
-const MODE_TAB_CLASS =
-  'tw:flex tw:items-center tw:justify-center tw:rounded-lg tw:border-0 tw:px-5 tw:py-2 ' +
-  'tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:transition-colors ' +
-  'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1 tw:focus-visible:outline-brand-600';
 const SUBMODE_TAB_CLASS =
   'tw:flex tw:items-center tw:justify-center tw:rounded-[7px] tw:border-0 tw:px-[13px] tw:py-1.5 ' +
   'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:transition-colors ' +
   'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1 tw:focus-visible:outline-brand-600';
 const ALL_GLOSSARIES_KEY = 'all-glossaries';
-
-const GlossaryMenuIcon = ({ className }: { className?: string }) => (
-  <Globe01 aria-hidden="true" className={className} />
-);
 
 function getStatCount(stats: string[], label: string): string {
   const normalizedLabel = label.toLocaleLowerCase();
@@ -97,16 +110,6 @@ function getStatCount(stats: string[], label: string): string {
   );
 
   return item?.split(' ')[0] ?? '0';
-}
-
-function getInitials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0))
-    .join('')
-    .toLocaleUpperCase();
 }
 
 function RdfDisabledNotice() {
@@ -203,20 +206,20 @@ function computeModeTabs(
   isOntologyAiEnabled: boolean
 ): StudioModeTab[] {
   const editModeTabs: StudioModeTab[] = canEditOntology
-    ? [{ id: 'edit', label: t('label.edit') }]
+    ? [{ icon: Edit02, id: 'edit', label: t('label.edit') }]
     : [];
   const reviewModeTabs: StudioModeTab[] = canEditOntology
-    ? [{ id: 'review', label: t('label.needs-review') }]
+    ? [{ icon: ClipboardCheck, id: 'review', label: t('label.needs-review') }]
     : [];
   const aiModeTabs: StudioModeTab[] = isOntologyAiEnabled
-    ? [{ id: 'ai', label: t('label.ai') }]
+    ? [{ icon: Stars01, id: 'ai', label: t('label.ai') }]
     : [];
 
   return [
-    { id: 'view', label: t('label.view') },
+    { icon: Eye, id: 'view', label: t('label.view') },
     ...editModeTabs,
     ...reviewModeTabs,
-    { id: 'query', label: t('label.query') },
+    { icon: Code01, id: 'query', label: t('label.query') },
     ...aiModeTabs,
   ];
 }
@@ -243,24 +246,6 @@ function getEditLeaseState(
   state: OntologyEditLeaseState
 ): OntologyEditLeaseState | 'acquiring' {
   return isOwned && !isForCurrentGlossary ? 'acquiring' : state;
-}
-
-function getUserName(
-  currentUser: { displayName?: string; name?: string } | undefined,
-  t: TFunction
-): string {
-  return currentUser?.displayName ?? currentUser?.name ?? t('label.user');
-}
-
-function getSelectedGlossaryLabel(
-  selectedGlossary: Glossary | undefined,
-  allGlossariesLabel: string
-): string {
-  return (
-    selectedGlossary?.displayName ??
-    selectedGlossary?.name ??
-    allGlossariesLabel
-  );
 }
 
 function resolveGraphLeaseGlossary(
@@ -290,6 +275,7 @@ function getLeaseOwnership(
 
 interface StudioVisibilityFlags {
   showAiAssistant: boolean;
+  showDefaultSurface: boolean;
   showModelingWorkbench: boolean;
   showQuerySurface: boolean;
   showReviewSurface: boolean;
@@ -303,13 +289,23 @@ function computeVisibilityFlags(
   isRdfEnabled: boolean,
   isCapabilityLoading: boolean
 ): StudioVisibilityFlags {
+  const showAiAssistant = mode === 'ai' && isOntologyAiEnabled;
+  const showQuerySurface = mode === 'query';
+  const showReviewSurface = mode === 'review';
+  const showRdfDisabledNotice =
+    showQuerySurface && !isRdfEnabled && !isCapabilityLoading;
+
   return {
-    showAiAssistant: mode === 'ai' && isOntologyAiEnabled,
+    showAiAssistant,
+    showDefaultSurface:
+      !showAiAssistant &&
+      !showQuerySurface &&
+      !showReviewSurface &&
+      !showRdfDisabledNotice,
     showModelingWorkbench: mode === 'edit' && editSurface === 'model',
-    showQuerySurface: mode === 'query',
-    showReviewSurface: mode === 'review',
-    showRdfDisabledNotice:
-      mode === 'query' && !isRdfEnabled && !isCapabilityLoading,
+    showQuerySurface,
+    showReviewSurface,
+    showRdfDisabledNotice,
   };
 }
 
@@ -384,6 +380,19 @@ function getSubModeConfiguration(
   return configByMode[mode]();
 }
 
+interface StudioChrome {
+  headerVariant: 'gradient' | 'flat';
+  layoutVariant: 'compact' | 'default';
+}
+
+// AI mode gets the brand gradient header and the compact page gutters; classic
+// keeps the plain white card, matching the Workflow builder.
+function getStudioChrome(isAiMode: boolean): StudioChrome {
+  return isAiMode
+    ? { headerVariant: 'gradient', layoutVariant: 'compact' }
+    : { headerVariant: 'flat', layoutVariant: 'default' };
+}
+
 function resolveViewSurfaceChange(id: string): ViewSurface | undefined {
   return id === 'graph' || id === 'tree' ? (id as ViewSurface) : undefined;
 }
@@ -415,7 +424,6 @@ const OntologyExplorerPage: React.FC = () => {
   const isAiMode = useIsAiMode();
   const { isAdminUser } = useAuth();
   const { permissions } = usePermissionProvider();
-  const { currentUser } = useApplicationStore();
   const {
     isEnabled: isOntologyAiEnabled,
     isRdfEnabled,
@@ -438,6 +446,9 @@ const OntologyExplorerPage: React.FC = () => {
   const [explorerRevision, setExplorerRevision] = useState(0);
   const [generatedQuery, setGeneratedQuery] = useState<string>();
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [conceptSearch, setConceptSearch] = useState('');
+  const [explorationMode, setExplorationMode] =
+    useState<ExplorationMode>('model');
   const [conceptDraft, setConceptDraft] = useState<{
     defaultGlossaryId?: string;
     id: string;
@@ -483,6 +494,32 @@ const OntologyExplorerPage: React.FC = () => {
 
     return `${label.charAt(0)}${label.slice(1).toLocaleLowerCase()}`;
   }, [t]);
+  // Same split as ColumnBulkOperations: the base crumb is chosen per mode, and
+  // AI mode renders the trail inside the gradient header.
+  const breadcrumbEl = useMemo(
+    () => (
+      <HeaderBreadcrumb
+        noMargin
+        items={[
+          isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
+          { label: t('label.ontology-studio') },
+        ]}
+        showHome={false}
+      />
+    ),
+    [isAiMode, t]
+  );
+
+  const glossaryOptions = useMemo(
+    () =>
+      glossaries.map((glossary) => ({
+        count: glossary.termCount ?? 0,
+        icon: Globe01,
+        label: glossary.displayName ?? glossary.name,
+        value: glossary.id,
+      })),
+    [glossaries]
+  );
   const selectedGlossary = glossaries.find(
     (glossary) => glossary.id === selectedGlossaryId
   );
@@ -517,17 +554,12 @@ const OntologyExplorerPage: React.FC = () => {
     () => (selectedGlossaryId ? [selectedGlossaryId] : []),
     [selectedGlossaryId]
   );
-  const selectedGlossaryLabel = getSelectedGlossaryLabel(
-    selectedGlossary,
-    allGlossariesLabel
-  );
   const termCount = getStatCount(stats, t('label.term-plural'));
   const relationCount = getStatCount(stats, t('label.relation-plural'));
   const isolatedCount = getStatCount(stats, t('label.isolated'));
-  const userName = getUserName(currentUser, t);
-  const userInitials = getInitials(userName);
   const explorerSurface = mode === 'view' ? viewSurface : 'graph';
 
+  const { headerVariant, layoutVariant } = getStudioChrome(isAiMode);
   const canEditOntology = computeCanEditOntology(isAdminUser, permissions);
   const changeSetPermissions = computeChangeSetPermissions(
     isAdminUser,
@@ -588,6 +620,7 @@ const OntologyExplorerPage: React.FC = () => {
 
   const {
     showAiAssistant,
+    showDefaultSurface,
     showModelingWorkbench,
     showQuerySurface,
     showReviewSurface,
@@ -599,12 +632,6 @@ const OntologyExplorerPage: React.FC = () => {
     isRdfEnabled,
     isCapabilityLoading
   );
-
-  const showDefaultSurface =
-    !showAiAssistant &&
-    !showQuerySurface &&
-    !showReviewSurface &&
-    !showRdfDisabledNotice;
 
   const defaultModeContent = showModelingWorkbench ? (
     <OntologyModelingWorkbench
@@ -623,6 +650,7 @@ const OntologyExplorerPage: React.FC = () => {
       isEditMode={mode === 'edit' && isLeaseOwned}
       key={explorerRevision}
       scope="global"
+      searchValue={conceptSearch}
       showHealth={mode === 'view'}
       surface={explorerSurface}
       onConceptCreated={(concept) => {
@@ -632,6 +660,7 @@ const OntologyExplorerPage: React.FC = () => {
         }
       }}
       onConceptDraftClose={() => setConceptDraft(undefined)}
+      onExplorationModeChange={setExplorationMode}
       onGlossariesChange={handleGlossariesChange}
       onGraphDataChange={handleGraphDataChange}
       onRelationTypesChange={handleRelationTypesChange}
@@ -639,6 +668,7 @@ const OntologyExplorerPage: React.FC = () => {
         setEditSurface('graph');
         setMode('edit');
       }}
+      onSearchChange={setConceptSearch}
       onSelectedNodeChange={(node) => setAuthoringGlossaryId(node?.glossaryId)}
       onStatsChange={handleStatsChange}
     />
@@ -646,119 +676,103 @@ const OntologyExplorerPage: React.FC = () => {
 
   function renderGlossaryMenu() {
     return (
-      <div className="tw:relative tw:shrink-0">
-        <Dropdown.Root>
-          <Button
-            noTextPadding
-            className={classNames(
-              'tw:flex tw:items-center tw:gap-[7px] tw:rounded-lg tw:border tw:border-secondary',
-              'tw:bg-primary tw:px-[11px] tw:py-1.5 tw:font-body tw:text-xs tw:leading-normal',
-              'tw:font-medium tw:text-secondary tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1',
-              'tw:focus-visible:outline-brand-600'
-            )}
-            color="tertiary"
-            data-selected-glossary-id={selectedGlossaryId ?? ''}
-            data-testid="ontology-glossary-menu-trigger"
-            iconLeading={
-              <Globe01
-                aria-hidden="true"
-                className="tw:size-3.5 tw:text-fg-tertiary"
-              />
-            }
-            iconTrailing={
-              <ChevronDown
-                aria-hidden="true"
-                className="tw:size-[13px] tw:text-fg-quaternary"
-              />
-            }>
-            <span className="tw:max-w-52 tw:truncate tw:font-semibold">
-              {selectedGlossaryLabel}
-            </span>
-          </Button>
-          <Dropdown.Popover className="tw:w-60" placement="bottom left">
-            <Dropdown.Menu
-              aria-label={t('label.glossary-plural')}
-              selectedKeys={new Set([selectedGlossaryId ?? ALL_GLOSSARIES_KEY])}
-              onAction={(key) =>
-                setSelectedGlossaryId(
-                  key === ALL_GLOSSARIES_KEY ? undefined : String(key)
-                )
-              }>
-              <Dropdown.Item
-                addon={`${glossaries.length} ${t(
-                  'label.glossary-plural'
-                ).toLocaleLowerCase()}`}
-                icon={GlossaryMenuIcon}
-                id={ALL_GLOSSARIES_KEY}
-                label={allGlossariesLabel}
-                textValue={allGlossariesLabel}
-              />
-              {glossaries.map((glossary) => {
-                const label = glossary.displayName ?? glossary.name;
-
-                return (
-                  <Dropdown.Item
-                    addon={`${glossary.termCount ?? 0} ${t(
-                      'label.term-plural'
-                    ).toLocaleLowerCase()}`}
-                    data-testid={glossary.id}
-                    icon={GlossaryMenuIcon}
-                    id={glossary.id}
-                    key={glossary.id}
-                    label={label}
-                    textValue={label}
-                  />
-                );
-              })}
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown.Root>
-      </div>
+      <FilterSelect
+        bordered
+        searchable
+        data-testid="ontology-glossary-menu-trigger"
+        label={t('label.glossary')}
+        nullOption={{
+          count: glossaries.length,
+          icon: Globe01,
+          label: allGlossariesLabel,
+          value: ALL_GLOSSARIES_KEY,
+        }}
+        options={glossaryOptions}
+        selectedValues={[selectedGlossaryId ?? ALL_GLOSSARIES_KEY]}
+        selectionMode="single"
+        triggerIcon={Globe01}
+        triggerVariant="button"
+        onChange={([value]) =>
+          setSelectedGlossaryId(
+            !value || value === ALL_GLOSSARIES_KEY ? undefined : value
+          )
+        }
+      />
     );
   }
 
   function renderModeTabsBar() {
     return (
-      <div className="tw:flex tw:min-w-max tw:flex-1 tw:justify-center">
-        <div className="tw:flex tw:gap-[3px] tw:rounded-[10px] tw:border tw:border-secondary tw:bg-tertiary tw:p-[3px]">
+      <Tabs
+        className="tw:mt-2"
+        selectedKey={mode}
+        onSelectionChange={(key) => {
+          const nextMode = String(key) as StudioMode;
+          if (nextMode !== 'edit') {
+            setConceptDraft(undefined);
+          }
+          setMode(nextMode);
+        }}>
+        <Tabs.List
+          aria-label={t('label.ontology-studio')}
+          className="tw:gap-7 tw:before:hidden"
+          size="sm"
+          type="underline">
           {modeTabs.map((tab) => (
-            <Button
-              noTextPadding
-              aria-pressed={mode === tab.id}
-              className={classNames(
-                MODE_TAB_CLASS,
-                mode === tab.id
-                  ? 'tw:bg-primary tw:text-brand-secondary tw:shadow-xs'
-                  : 'tw:bg-transparent tw:text-quaternary'
-              )}
-              color="tertiary"
+            <Tabs.Item
               data-testid={`mode-tab-${tab.id}`}
+              id={tab.id}
               key={tab.id}
-              onClick={() => {
-                if (tab.id !== 'edit') {
-                  setConceptDraft(undefined);
-                }
-                setMode(tab.id);
-              }}>
-              {tab.label}
-            </Button>
+              label={
+                <span className="tw:inline-flex tw:items-center tw:gap-2">
+                  <tab.icon aria-hidden="true" className="tw:size-4" />
+                  {tab.label}
+                </span>
+              }
+            />
           ))}
-        </div>
+        </Tabs.List>
+      </Tabs>
+    );
+  }
+
+  // Lives beside the surface switch rather than floating over the canvas, so
+  // the whole toolbar reads as one row. Model-only: it filters concept nodes,
+  // which the Data projection does not render.
+  function renderConceptSearch() {
+    if (!showDefaultSurface || explorerSurface !== 'graph') {
+      return null;
+    }
+
+    if (explorationMode !== 'model') {
+      return null;
+    }
+
+    return (
+      <div className="tw:w-[260px] tw:shrink-0">
+        <Input
+          aria-label={t('label.find-concept')}
+          icon={SearchInputIcon}
+          inputClassName="tw:text-xs"
+          inputDataTestId="ontology-graph-search"
+          placeholder={`${t('label.find-concept')}…`}
+          size="sm"
+          value={conceptSearch}
+          onChange={setConceptSearch}
+        />
       </div>
     );
   }
 
   function renderSubModeNav() {
-    if (mode === 'ai' || mode === 'review') {
+    // AI owns the whole surface — it has no Graph/Tree switch and no stats.
+    if (subModeConfiguration.items.length === 0) {
       return null;
     }
 
     return (
-      <nav className="tw:flex tw:h-[46px] tw:shrink-0 tw:items-center tw:gap-2.5 tw:border-b tw:border-secondary tw:bg-primary tw:px-[18px]">
-        <span className="tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
-          {subModeConfiguration.label}
-        </span>
-        <div className="tw:flex tw:gap-0.5">
+      <nav className="tw:flex tw:h-[46px] tw:shrink-0 tw:items-center tw:gap-3 tw:border-b tw:border-secondary tw:bg-surface tw:px-[18px]">
+        <div className="tw:flex tw:shrink-0 tw:gap-0.5">
           {subModeConfiguration.items.map((item) => (
             <Button
               noTextPadding
@@ -766,7 +780,7 @@ const OntologyExplorerPage: React.FC = () => {
               className={classNames(
                 SUBMODE_TAB_CLASS,
                 subModeConfiguration.id === item.id
-                  ? 'tw:bg-primary tw:text-brand-secondary tw:shadow-xs'
+                  ? 'tw:bg-brand-primary tw:text-brand-secondary'
                   : 'tw:bg-transparent tw:text-quaternary'
               )}
               color="tertiary"
@@ -777,40 +791,56 @@ const OntologyExplorerPage: React.FC = () => {
             </Button>
           ))}
         </div>
+
         <span className="tw:flex-1" />
-        {mode === 'edit' && editSurface === 'graph' && canCreateConcept ? (
-          <Button
-            color="secondary"
-            data-testid="ontology-add-concept"
-            iconLeading={Plus}
-            isDisabled={Boolean(conceptDraft)}
-            size="xs"
-            onPress={() => {
-              const defaultGlossaryId = graphLeaseGlossary?.id;
-              setAuthoringGlossaryId(defaultGlossaryId);
-              setConceptDraft({
-                defaultGlossaryId,
-                id: `ontology-concept-draft-${generateUUID()}`,
-              });
-            }}>
-            {t('label.add-entity', { entity: t('label.concept') })}
-          </Button>
-        ) : null}
-        {mode === 'edit' && leaseGlossary ? (
-          <OntologyEditLeaseStatus
-            hasResource
-            lock={editLease.lock}
-            state={editLeaseState}
-            onRetry={editLease.retry}
-          />
-        ) : null}
-        <span
-          className="tw:font-body tw:text-[11px] tw:leading-normal tw:font-medium tw:text-quaternary"
-          data-testid="ontology-explorer-stats">
-          {termCount} {t('label.term-plural').toLocaleLowerCase()}{' '}
-          <span aria-hidden="true">·</span> {relationCount}{' '}
-          {t('label.relation-plural').toLocaleLowerCase()}
-        </span>
+
+        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-3">
+          {renderConceptSearch()}
+
+          {renderGlossaryMenu()}
+
+          {mode === 'edit' && editSurface === 'graph' && canCreateConcept ? (
+            <Button
+              color="secondary"
+              data-testid="ontology-add-concept"
+              iconLeading={Plus}
+              isDisabled={Boolean(conceptDraft)}
+              size="sm"
+              onPress={() => {
+                const defaultGlossaryId = graphLeaseGlossary?.id;
+                setAuthoringGlossaryId(defaultGlossaryId);
+                setConceptDraft({
+                  defaultGlossaryId,
+                  id: `ontology-concept-draft-${generateUUID()}`,
+                });
+              }}>
+              {t('label.add-entity', { entity: t('label.concept') })}
+            </Button>
+          ) : null}
+          {mode === 'edit' && leaseGlossary ? (
+            <OntologyEditLeaseStatus
+              hasResource
+              lock={editLease.lock}
+              state={editLeaseState}
+              onRetry={editLease.retry}
+            />
+          ) : null}
+          <span
+            className="tw:font-body tw:text-[11px] tw:leading-normal tw:font-medium tw:whitespace-nowrap tw:text-quaternary"
+            data-testid="ontology-explorer-stats">
+            {termCount} {t('label.term-plural').toLocaleLowerCase()}{' '}
+            <span aria-hidden="true">·</span> {relationCount}{' '}
+            {t('label.relation-plural').toLocaleLowerCase()}
+          </span>
+
+          <BadgeWithDot
+            color="warning"
+            data-testid="ontology-header-isolated-count"
+            size="sm"
+            type="pill-color">
+            {`${isolatedCount} ${t('label.isolated').toLocaleLowerCase()}`}
+          </BadgeWithDot>
+        </div>
       </nav>
     );
   }
@@ -883,8 +913,12 @@ const OntologyExplorerPage: React.FC = () => {
           'tw:flex tw:min-h-0 tw:flex-1',
           mode === 'query' || mode === 'ai' || mode === 'review'
             ? 'tw:bg-secondary'
-            : 'tw:bg-primary'
-        )}>
+            : 'tw:bg-surface',
+          // The Library is a sibling surface, not an overlay: hiding the graph
+          // rather than unmounting it keeps its layout, zoom and loaded data.
+          isLibraryOpen && 'tw:hidden'
+        )}
+        hidden={isLibraryOpen}>
         {/* Query and AI must not discard the loaded graph or restart its requests. */}
         <div
           className={classNames(
@@ -902,95 +936,74 @@ const OntologyExplorerPage: React.FC = () => {
   return (
     <PageLayoutV1
       fullHeight
-      className={classNames('tw:p-0!', {
-        'tw:h-full!': isAiMode,
-      })}
       mainContainerClassName={classNames('ontology-studio-page-layout', {
         'tw:h-full!': isAiMode,
       })}
-      pageTitle={t('label.ontology-studio')}>
+      pageTitle={t('label.ontology-studio')}
+      variant={layoutVariant}>
       <main
-        className="tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-tertiary tw:font-body tw:antialiased"
+        className="tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:font-body tw:antialiased"
         data-testid="ontology-studio-shell"
         style={ONTOLOGY_STUDIO_STYLE}>
-        <header className="tw:flex tw:h-14 tw:shrink-0 tw:items-center tw:gap-3.5 tw:overflow-x-auto tw:border-b tw:border-secondary tw:bg-primary tw:px-[18px]">
-          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[9px]">
-            <span className="tw:grid tw:size-7 tw:place-items-center tw:rounded-lg tw:bg-brand-solid tw:text-white">
-              <LayersThree01 aria-hidden="true" className="tw:size-[17px]" />
-            </span>
-            <h1
-              className="tw:m-0 tw:font-body tw:text-[15px] tw:leading-normal tw:font-bold tw:tracking-[-0.01em] tw:text-primary"
-              data-testid="heading">
+        {!isAiMode && <div className="tw:mb-3 tw:shrink-0">{breadcrumbEl}</div>}
+
+        <PageHeader
+          actions={
+            <>
+              <OntologyImportExportMenu
+                glossaries={glossaries}
+                glossary={selectedGlossary}
+                isAdminUser={Boolean(isAdminUser)}
+                relationCount={relationCount}
+                termCount={termCount}
+              />
+
+              <Button
+                aria-haspopup="dialog"
+                color="secondary"
+                data-testid="ontology-library-trigger"
+                iconLeading={Grid01}
+                size="sm"
+                onPress={() => setIsLibraryOpen(true)}>
+                {t('label.library')}
+              </Button>
+            </>
+          }
+          breadcrumb={isAiMode ? breadcrumbEl : undefined}
+          className="tw:shrink-0 tw:pb-0!"
+          footer={renderModeTabsBar()}
+          icon={LayersThree01}
+          subtitle={t('message.ontology-studio-subtitle')}
+          title={
+            <Typography
+              ellipsis
+              as="h3"
+              className="tw:min-w-0"
+              data-testid="heading"
+              size="text-xl"
+              weight="semibold">
               {t('label.ontology-studio')}
-            </h1>
-          </div>
-          <span
-            aria-hidden="true"
-            className="tw:h-[22px] tw:w-px tw:bg-quaternary"
-          />
+            </Typography>
+          }
+          variant={headerVariant}
+        />
 
-          {renderGlossaryMenu()}
+        <div className="tw:mt-3 tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-card tw:border tw:border-secondary tw:bg-surface">
+          {isLibraryOpen ? null : renderSubModeNav()}
 
-          {renderModeTabsBar()}
+          {renderMainSection()}
 
-          <OntologyImportExportMenu
-            glossaries={glossaries}
-            glossary={selectedGlossary}
-            isAdminUser={Boolean(isAdminUser)}
-            relationCount={relationCount}
-            termCount={termCount}
-          />
-
-          <Button
-            aria-haspopup="dialog"
-            className="tw:gap-[7px]! tw:rounded-[9px]! tw:border tw:border-primary tw:px-3! tw:py-[7px]! tw:text-xs! tw:font-semibold! tw:shadow-none! tw:before:hidden tw:after:outline-0!"
-            color="secondary"
-            data-testid="ontology-library-trigger"
-            iconLeading={
-              <Grid01 className="tw:size-[15px] tw:text-fg-brand-primary" />
-            }
-            size="sm"
-            onPress={() => setIsLibraryOpen(true)}>
-            {t('label.library')}
-          </Button>
-
-          <div
-            className={classNames(
-              'tw:flex tw:shrink-0 tw:items-center tw:gap-1.5 tw:rounded-full tw:border',
-              'tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-[11px] tw:py-[5px] tw:font-body',
-              'tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-utility-warning-700'
-            )}
-            data-testid="ontology-header-isolated-count">
-            <span
-              aria-hidden="true"
-              className="tw:size-[7px] tw:rounded-full tw:bg-utility-warning-500"
+          {isLibraryOpen ? (
+            <OntologyLibrary
+              canInstall={Boolean(isAdminUser)}
+              installedPacks={
+                selectedGlossary?.ontologyConfiguration?.installedPacks ?? []
+              }
+              onClose={() => setIsLibraryOpen(false)}
+              onOpenGlossary={handleOpenGlossary}
             />
-            <span>{isolatedCount}</span>
-            <span className="tw:lowercase">{t('label.isolated')}</span>
-          </div>
-
-          <span
-            aria-label={userName}
-            className="tw:grid tw:size-[30px] tw:shrink-0 tw:place-items-center tw:rounded-full tw:bg-brand-solid tw:font-body tw:text-[11px] tw:leading-normal tw:font-bold tw:text-white"
-            role="img">
-            {userInitials}
-          </span>
-        </header>
-
-        {renderSubModeNav()}
-
-        {renderMainSection()}
-
-        {isLibraryOpen ? (
-          <OntologyLibrary
-            canInstall={Boolean(isAdminUser)}
-            installedPacks={
-              selectedGlossary?.ontologyConfiguration?.installedPacks ?? []
-            }
-            onClose={() => setIsLibraryOpen(false)}
-            onOpenGlossary={handleOpenGlossary}
-          />
-        ) : null}
+          ) : null}
+        </div>
       </main>
     </PageLayoutV1>
   );

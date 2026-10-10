@@ -4918,6 +4918,7 @@
     "ontology-relation-subtype": "{{from}} เป็น {{to}}",
     "ontology-relationships-feature-description": "เชื่อมโยงคำศัพท์ด้วยความหมาย: \"เกี่ยวข้องกับ\", \"เป็นส่วนหนึ่งของ\" หรือประเภทของคุณเองเช่น \"คำนวณจาก\"",
     "ontology-studio-edit-coming-soon": "การสร้างความสัมพันธ์แบบภาพกำลังจะมาเร็ว ๆ นี้ ในระหว่างนี้ สำรวจกราฟออนโทโลยีหรือรันคำสั่ง SPARQL",
+    "ontology-studio-subtitle": "สำรวจ สร้าง และสอบถามออนโทโลยีธุรกิจที่อยู่เบื้องหลังคำศัพท์ในอภิธานศัพท์ของคุณ",
     "ontology-tree-description": "แนวคิดในอภิธานศัพท์ที่เลือกจะจัดตามลำดับชั้น และทำเครื่องหมายคำศัพท์ที่แยกเดี่ยวหรืออยู่ในหลายลำดับชั้น",
     "ontology-unlocks-feature-description": "ติดตามคำศัพท์ใด ๆ ไปยังรายการหลัก ส่วนประกอบ และการพึ่งพา — บริบทที่สมบูรณ์ ไม่ใช่คำนิยามที่โดดเดี่ยว",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

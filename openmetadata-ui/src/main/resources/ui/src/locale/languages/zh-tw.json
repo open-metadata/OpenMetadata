@@ -4918,6 +4918,7 @@
     "ontology-relation-subtype": "{{from}} 是一種 {{to}}",
     "ontology-relationships-feature-description": "用含義連結詞彙：「相關於」「屬於」，或您自訂的類型，例如「計算自」。",
     "ontology-studio-edit-coming-soon": "關係視覺化編輯即將推出。目前，您可以瀏覽本體圖譜或執行 SPARQL 查詢。",
+    "ontology-studio-subtitle": "探索、編輯並查詢詞彙表術語背後的業務本體。",
     "ontology-tree-description": "依階層整理所選詞彙表中的概念，並標示孤立術語與多重階層術語。",
     "ontology-unlocks-feature-description": "沿著任一詞彙追溯其父項、組成部分和相依性——取得完整的脈絡，而非孤立的定義。",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",

@@ -13,8 +13,11 @@
 
 import {
   Alert,
+  Badge,
   Button,
+  ButtonUtility,
   Card,
+  PageHeader,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -23,7 +26,6 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { InstallOntologyPack } from '../../generated/api/data/installOntologyPack';
 import { OntologyPackInstallResult } from '../../generated/api/data/ontologyPackInstallResult';
@@ -39,7 +41,6 @@ import OntologyLibraryCatalogue from './OntologyLibraryCatalogue';
 import OntologyLibraryDetail, {
   OntologyLibraryAction,
 } from './OntologyLibraryDetail';
-import { ONTOLOGY_STUDIO_STYLE } from './OntologyStudio.styles';
 
 interface OntologyLibraryProps {
   canInstall?: boolean;
@@ -49,13 +50,6 @@ interface OntologyLibraryProps {
 }
 
 const EMPTY_INSTALLATIONS: OntologyPackInstallation[] = [];
-const LIBRARY_ICON_CLASS =
-  'tw:grid tw:size-8 tw:shrink-0 tw:place-items-center tw:rounded-[9px] ' +
-  'tw:bg-[linear-gradient(160deg,var(--tw-color-utility-blue-light-500),var(--tw-color-bg-brand-solid))] tw:text-white';
-const INSTALLED_COUNT_CLASS =
-  'tw:inline-flex tw:shrink-0 tw:items-center tw:rounded-full tw:border ' +
-  'tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-[11px] tw:py-1 ' +
-  'tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-utility-success-700';
 
 const OntologyLibrary = ({
   canInstall = false,
@@ -279,54 +273,52 @@ const OntologyLibrary = ({
     );
   }
 
-  return createPortal(
-    <div
+  return (
+    <section
       aria-labelledby="ontology-library-title"
-      aria-modal="true"
-      className="tw:fixed tw:inset-x-0 tw:bottom-0 tw:z-10000 tw:flex tw:min-h-0 tw:flex-col tw:bg-tertiary tw:font-body tw:antialiased"
-      data-testid="ontology-library"
-      role="dialog"
-      style={{
-        ...ONTOLOGY_STUDIO_STYLE,
-        top: 'calc(100vh - var(--om-page-height))',
-      }}>
-      <header className="tw:flex tw:h-16 tw:shrink-0 tw:items-center tw:gap-[13px] tw:border-b tw:border-secondary tw:bg-primary tw:px-6">
-        <span className={LIBRARY_ICON_CLASS}>
-          <BookOpen01 aria-hidden="true" className="tw:size-[18px]" />
-        </span>
-        <div className="tw:min-w-0 tw:flex-1">
-          <h1
-            className="tw:m-0 tw:font-body tw:text-[15px] tw:leading-normal tw:font-bold tw:text-primary"
-            id="ontology-library-title">
+      className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:bg-tertiary tw:font-body tw:antialiased"
+      data-testid="ontology-library">
+      <PageHeader
+        actions={
+          <>
+            <Badge
+              color="success"
+              data-testid="ontology-library-installed-count"
+              size="sm"
+              type="pill-color">
+              {`${installedCount} ${t('label.installed-lowercase')}`}
+            </Badge>
+            <ButtonUtility
+              aria-label={t('label.close')}
+              color="tertiary"
+              data-testid="ontology-library-close"
+              icon={XClose}
+              size="sm"
+              onClick={onClose}
+            />
+          </>
+        }
+        className="tw:shrink-0 tw:rounded-none! tw:border-x-0! tw:border-t-0!"
+        density="compact"
+        icon={BookOpen01}
+        subtitle={t('message.ontology-library-description')}
+        title={
+          <Typography
+            ellipsis
+            as="h3"
+            className="tw:min-w-0"
+            id="ontology-library-title"
+            size="text-xl"
+            weight="semibold">
             {sentenceCaseLibraryTitle}
-          </h1>
-          <p className="tw:m-0 tw:font-body tw:text-xs tw:leading-normal tw:font-normal tw:text-quaternary">
-            {t('message.ontology-library-description')}
-          </p>
-        </div>
-        <span
-          className={INSTALLED_COUNT_CLASS}
-          data-testid="ontology-library-installed-count">
-          {installedCount} {t('label.installed-lowercase')}
-        </span>
-        <Button
-          aria-label={t('label.close')}
-          className="tw:size-8! tw:rounded-lg! tw:border tw:border-secondary tw:p-0! tw:shadow-none! tw:before:hidden tw:after:outline-0!"
-          color="secondary"
-          data-testid="ontology-library-close"
-          iconLeading={
-            <XClose className="tw:size-[17px] tw:text-fg-quaternary_hover" />
-          }
-          size="xs"
-          onPress={onClose}
-        />
-      </header>
+          </Typography>
+        }
+      />
 
       <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6">
         <div className="tw:mx-auto tw:max-w-[1040px]">{libraryBody}</div>
       </div>
-    </div>,
-    document.body
+    </section>
   );
 };
 

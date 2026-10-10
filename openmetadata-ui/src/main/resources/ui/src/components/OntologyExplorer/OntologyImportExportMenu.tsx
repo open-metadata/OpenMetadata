@@ -39,12 +39,9 @@ const OntologyImportExportMenu = ({
   return (
     <>
       <Button
-        className="tw:gap-[7px]! tw:rounded-[9px]! tw:border tw:border-primary tw:px-3! tw:py-[7px]! tw:text-xs! tw:font-semibold! tw:shadow-none! tw:before:hidden tw:after:outline-0!"
         color="secondary"
         data-testid="ontology-import-export-trigger"
-        iconLeading={
-          <Download01 className="tw:size-[15px] tw:text-fg-brand-primary" />
-        }
+        iconLeading={Download01}
         size="sm"
         onPress={() => setIsOpen(true)}>
         {t('label.import-export')}
