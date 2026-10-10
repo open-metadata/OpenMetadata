@@ -185,7 +185,9 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       emptyState={isLoading ? <DataAssetPickerLoading /> : undefined}
       filterOption={() => true}
       id={id}
-      items={items}
+      // Swap the list for the loader on every search, as DataAssetPickerShell does,
+      // rather than leave the previous query's results looking current.
+      items={isLoading ? [] : items}
       multiple={multiple}
       placeholder={placeholder}
       popoverClassName={popoverClassName}

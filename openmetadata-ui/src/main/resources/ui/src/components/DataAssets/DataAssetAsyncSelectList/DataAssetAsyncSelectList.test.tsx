@@ -30,6 +30,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onItemCleared,
       onOpenChange,
       onPopoverScroll,
+      onSearchChange,
       popoverHeader,
       popoverFooter,
       emptyState,
@@ -42,6 +43,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onItemCleared: (key: string) => void;
       onOpenChange: (isOpen: boolean) => void;
       onPopoverScroll: (e: UIEvent<HTMLElement>) => void;
+      onSearchChange: (value: string) => void;
       popoverHeader?: ReactNode;
       popoverFooter?: ReactNode;
       emptyState?: ReactNode;
@@ -61,6 +63,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
             {item.label}
           </button>
         ))}
+        <input
+          aria-label="search"
+          data-testid="search"
+          onChange={(e) => onSearchChange(e.target.value)}
+        />
         {popoverHeader}
         <div data-testid="listbox" onScroll={onPopoverScroll}>
           {items.length === 0 && emptyState}
@@ -208,6 +215,42 @@ describe('DataAssetAsyncSelectList', () => {
 
     expect(screen.queryByTestId('picker-loading')).not.toBeInTheDocument();
     expect(screen.getByTestId('option-svc.db.orders')).toBeInTheDocument();
+  });
+
+  it('replaces the previous results with the loading state while a new search runs', async () => {
+    jest.useFakeTimers();
+    render(<DataAssetAsyncSelectList debounceTimeout={100} />);
+    await open();
+
+    expect(screen.getByTestId('option-svc.db.orders')).toBeInTheDocument();
+
+    const resolvers: Array<(value: unknown) => void> = [];
+    mockSearchQuery.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        })
+    );
+    fireEvent.change(screen.getByTestId('search'), {
+      target: { value: 'users' },
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(screen.getByTestId('picker-loading')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('option-svc.db.orders')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolvers[0](searchResponse([TABLES[1]]));
+    });
+
+    expect(screen.queryByTestId('picker-loading')).not.toBeInTheDocument();
+    expect(screen.getByTestId('option-svc.db.users')).toBeInTheDocument();
+
+    jest.useRealTimers();
   });
 
   it('renders a profile picture for user options', async () => {
