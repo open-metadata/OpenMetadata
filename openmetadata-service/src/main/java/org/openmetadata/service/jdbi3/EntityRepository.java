@@ -4153,6 +4153,34 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public final PutResponse<T> createOrUpdate(
       UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
+    return createOrUpdate(uriInfo, updated, updatedBy, impersonatedBy, null);
+  }
+
+  /**
+   * Create or update an entity, scoping the update diff to {@code patchedFields} so the
+   * relationship-backed collections the caller did not load are neither compared nor rewritten.
+   *
+   * <p>This is the programmatic equivalent of a field-scoped PATCH: it still routes through the PUT
+   * update pipeline (so session-change consolidation, which only fires for {@link
+   * Operation#PATCH}, never replays a whole-entity diff) but sets {@link
+   * EntityUpdater#setPatchedFields(Set) patchedFields} so that {@link
+   * EntityUpdater#shouldCompare(String)} returns {@code false} for every untouched field. A caller
+   * that loads a partial entity (only the field being edited), mutates it, and stores it back must
+   * use this overload with the edited field name — routing such a partial entity through {@link
+   * #createOrUpdate(UriInfo, Object, String)} runs the whole-entity PUT diff with {@code
+   * patchedFields == null}, which compares nulled-out relationship collections against the stored
+   * values and unconditionally deletes them (e.g. glossary-term attribute edits wiping
+   * reviewers/relatedTerms/realizedIn).
+   *
+   * @param patchedFields field names to compare and persist; {@code null} diffs every field
+   *     (whole-entity PUT semantics, identical to {@link #createOrUpdate(UriInfo, Object, String)})
+   */
+  public final PutResponse<T> createOrUpdate(
+      UriInfo uriInfo,
+      T updated,
+      String updatedBy,
+      String impersonatedBy,
+      Set<String> patchedFields) {
     // Check if parent entity is being deleted
     if (lockManager != null) {
       try {
@@ -4177,7 +4205,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return new PutResponse<>(Status.CREATED, created, ENTITY_CREATED);
     }
     try (var ignored = phase("upsertUpdate")) {
-      return update(uriInfo, original, updated, updatedBy, impersonatedBy);
+      return update(uriInfo, original, updated, updatedBy, impersonatedBy, patchedFields);
     }
   }
 
@@ -4489,12 +4517,27 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public final PutResponse<T> update(
       UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
-    return updateInternal(uriInfo, original, updated, updatedBy, impersonatedBy, false);
+    return update(uriInfo, original, updated, updatedBy, impersonatedBy, null);
+  }
+
+  /**
+   * Update an existing entity, scoping the update diff to {@code patchedFields}. See {@link
+   * #createOrUpdate(UriInfo, Object, String, String, Set)} for the semantics and rationale.
+   */
+  public final PutResponse<T> update(
+      UriInfo uriInfo,
+      T original,
+      T updated,
+      String updatedBy,
+      String impersonatedBy,
+      Set<String> patchedFields) {
+    return updateInternal(
+        uriInfo, original, updated, updatedBy, impersonatedBy, false, patchedFields);
   }
 
   public final PutResponse<T> updateIfCurrent(
       UriInfo uriInfo, T original, T updated, String updatedBy) {
-    return updateInternal(uriInfo, original, updated, updatedBy, null, true);
+    return updateInternal(uriInfo, original, updated, updatedBy, null, true, null);
   }
 
   private PutResponse<T> updateInternal(
@@ -4504,6 +4547,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       String updatedBy,
       String impersonatedBy,
       boolean requireCurrentVersion) {
+    return updateInternal(
+        uriInfo, original, updated, updatedBy, impersonatedBy, requireCurrentVersion, null);
+  }
+
+  private PutResponse<T> updateInternal(
+      UriInfo uriInfo,
+      T original,
+      T updated,
+      String updatedBy,
+      String impersonatedBy,
+      boolean requireCurrentVersion,
+      Set<String> patchedFields) {
     // Get all the fields in the original entity that can be updated during PUT operation
     try (var ignored = phase("putHydrateOriginal")) {
       setFieldsInternal(original, putFields);
@@ -4519,11 +4574,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
-    // Update the attributes and relationships of an entity
+    // Update the attributes and relationships of an entity. When patchedFields is non-null, only
+    // those fields are compared and persisted (EntityUpdater.shouldCompare returns false for the
+    // rest), so a partial-entity load-mutate-store can edit a single field without wiping the
+    // relationship-backed collections the loader never populated.
     EntityUpdater entityUpdater =
         requireCurrentVersion
             ? getUpdater(original, updated, Operation.PUT, null, true)
             : getUpdater(original, updated, Operation.PUT, null);
+    entityUpdater.setPatchedFields(patchedFields);
     try (var ignored = phase("putEntityUpdate")) {
       if (requireCurrentVersion) {
         entityUpdater.updateWithOptimisticLocking();
