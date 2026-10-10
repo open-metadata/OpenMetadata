@@ -13,7 +13,8 @@
 
 import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import type { Edge, Node } from 'reactflow';
-import { NODE_WIDTH } from '../../../constants/Lineage.constants';
+import { NODE_HEIGHT, NODE_WIDTH } from '../../../constants/Lineage.constants';
+import { layoutLargeGraphWithoutElk } from './LargeGraphLayout';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getNodeHeight } from '../../CanvasUtils';
 import { getEntityChildrenAndLabel } from '../../EntityLineageNodeUtils';
@@ -29,6 +30,16 @@ import { getEntityChildrenAndLabel } from '../../EntityLineageNodeUtils';
  * render with G6/antv-dagre and never call ELK.
  */
 const loadElkLayout = async () => (await import('./ELKUtil/ELKUtil')).default;
+
+const LARGE_GRAPH_NODE_THRESHOLD = 500;
+const LARGE_GRAPH_EDGE_THRESHOLD = 1000;
+
+const VERY_LARGE_GRAPH_NODE_THRESHOLD = 1000;
+const VERY_LARGE_GRAPH_EDGE_THRESHOLD = 4000;
+
+const LARGE_GRAPH_LAYOUT_OPTIONS = {
+  'elk.layered.thoroughness': '1',
+};
 
 export const getELKLayoutedElements = async (
   nodes: Node[],
@@ -60,8 +71,32 @@ export const getELKLayoutedElements = async (
   }));
 
   try {
+    const isVeryLargeGraph =
+      elkNodes.length > VERY_LARGE_GRAPH_NODE_THRESHOLD ||
+      elkEdges.length > VERY_LARGE_GRAPH_EDGE_THRESHOLD;
+
+    if (isVeryLargeGraph) {
+      const calculatedHeights = new Map(
+        elkNodes.map((node) => [node.id, node.height ?? NODE_HEIGHT])
+      );
+
+      return {
+        nodes: layoutLargeGraphWithoutElk(nodes, calculatedHeights),
+        edges: edges ?? [],
+      };
+    }
+
     const ELKLayout = await loadElkLayout();
-    const layoutedGraph = await ELKLayout.layoutGraph(elkNodes, elkEdges);
+
+    const isLargeGraph =
+      elkNodes.length > LARGE_GRAPH_NODE_THRESHOLD ||
+      elkEdges.length > LARGE_GRAPH_EDGE_THRESHOLD;
+
+    const layoutedGraph = await ELKLayout.layoutGraph(
+      elkNodes,
+      elkEdges,
+      isLargeGraph ? LARGE_GRAPH_LAYOUT_OPTIONS : undefined
+    );
     const layoutedMap = new Map(
       (layoutedGraph?.children ?? []).map((n) => [n.id, n])
     );
