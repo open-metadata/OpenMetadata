@@ -561,8 +561,12 @@ jobs:
           path: ${{ runner.temp }}/playwright-selection/selection.json
           retention-days: 1
 
+  # Plans in parallel with `build`: planning reads only the checkout, the
+  # playwright-selection artifact and detect-changes' outputs, never the
+  # distribution. Every job that does consume the build (fixture prepare,
+  # shards) still lists `build` in its own `needs`.
   plan-playwright:
-    needs: [build, detect-changes]
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -1466,7 +1470,23 @@ jobs:
       # eviction is what kept turning cache "hits" into cold registry
       # fetches. The main-scoped copy is saved exclusively by
       # populate-playwright-caches.yml on main.
+      #
+      # With `--ignore-scripts` node_modules is a pure function of yarn.lock,
+      # the Node ABI and the runner platform (the one `link:` dependency is a
+      # symlink into the checkout), so a shard restores the tree the populate
+      # job installed on main instead of re-linking ~2000 packages: ~25 s
+      # yarn-cache restore + ~30 s install per shard (medians, Oct 2026). The
+      # install step still runs: it verifies the restored tree against
+      # yarn.lock and installs normally on a miss or a mismatch.
+      - name: Restore node_modules
+        id: restore-node-modules
+        uses: actions/cache/restore@v6
+        with:
+          path: openmetadata-ui/src/main/resources/ui/node_modules
+          key: playwright-node-modules-v1-${{ runner.os }}-${{ runner.arch }}-node${{ steps.setup-node.outputs.node-version }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
       - name: Restore yarn package cache
+        if: ${{ steps.restore-node-modules.outputs.cache-hit != 'true' }}
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
@@ -1477,8 +1497,16 @@ jobs:
       - name: Install dependencies
         id: install-dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
+        env:
+          NODE_MODULES_CACHE_HIT: ${{ steps.restore-node-modules.outputs.cache-hit }}
         run: |
           corepack enable
+          # --integrity compares node_modules/.yarn-integrity with yarn.lock,
+          # the install flags and the Node ABI; it needs no network.
+          if [[ "$NODE_MODULES_CACHE_HIT" == "true" ]] && yarn check --integrity --ignore-scripts; then
+            echo "Restored node_modules matches yarn.lock; skipping yarn install"
+            exit 0
+          fi
           for attempt in 1 2 3; do
             yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
             if [[ "$attempt" -eq 3 ]]; then

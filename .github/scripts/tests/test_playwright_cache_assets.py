@@ -263,9 +263,15 @@ def test_ingestion_fingerprint_covers_every_dockerfile_ci_copy_input(
         ".github/scripts/playwright_cache_fingerprint.py": "FORMAT_VERSION = 'v1'\n",
         "ingestion/Dockerfile.ci": "COPY ingestion /home/airflow/ingestion\n",
         "ingestion/setup.py": "NAME = 'ingestion'\n",
-        "openmetadata-spec/schema.json": "{}",
+        "ingestion/src/metadata/cmd.py": "print('cli')\n",
+        "ingestion/src/metadata/data_quality/data/README.md": "package data\n",
+        "ingestion/examples/sample_data/tables.json": "{}",
+        "ingestion/scripts/strip_spacy_test_fixture.sh": "rm -rf fixture\n",
+        "openmetadata-spec/src/main/resources/json/schema/entity/table.json": "{}",
+        "openmetadata-spec/src/main/antlr4/org/openmetadata/schema/Fqn.g4": "grammar Fqn;\n",
         "scripts/datamodel_generation.py": "print('generate')\n",
         "openmetadata-airflow-apis/setup.py": "NAME = 'airflow-apis'\n",
+        "docker/development/docker-compose-postgres.yml": "services: {}\n",
     }
     for relative, content in inputs.items():
         write(tmp_path, relative, content)
@@ -275,6 +281,61 @@ def test_ingestion_fingerprint_covers_every_dockerfile_ci_copy_input(
         before = fingerprints.fingerprint("ingestion", root=tmp_path)
         write(tmp_path, relative, f"{inputs[relative]}# changed\n")
         assert fingerprints.fingerprint("ingestion", root=tmp_path) != before
+
+
+def test_ingestion_fingerprint_ignores_files_the_image_never_builds_from(
+    tmp_path: Path,
+) -> None:
+    write(tmp_path, "ingestion/Dockerfile.ci", "COPY ingestion /home/airflow/ingestion\n")
+    ignored = (
+        "pom.xml",
+        "docker/development/Dockerfile",
+        "ingestion/tests/unit/test_cli.py",
+        "ingestion/docs/connector.md",
+        "ingestion/README.md",
+        "ingestion/Dockerfile",
+        "ingestion/Makefile",
+        "ingestion/noxfile.py",
+        "ingestion/.ruff-g004-baseline.json",
+        "ingestion/.basedpyright/baseline.json",
+        "ingestion/stubs/google/cloud/__init__.pyi",
+        "ingestion/operators/docker/Dockerfile.ci",
+        "openmetadata-spec/pom.xml",
+        "openmetadata-spec/src/main/java/org/openmetadata/schema/Entity.java",
+        "openmetadata-spec/src/main/resources/elasticsearch/en/table_index_mapping.json",
+        "openmetadata-spec/src/main/resources/rdf/ontology/openmetadata.ttl",
+        "openmetadata-spec/src/test/resources/json/entity/table.json",
+        "openmetadata-airflow-apis/tests/unit/test_deploy.py",
+        "openmetadata-airflow-apis/development/airflow/airflow.cfg",
+        "openmetadata-airflow-apis/README.md",
+    )
+    for relative in ignored:
+        write(tmp_path, relative, "before\n")
+    initialize_repository(tmp_path)
+
+    before = fingerprints.fingerprint("ingestion", root=tmp_path)
+    for relative in ignored:
+        write(tmp_path, relative, "after\n")
+    assert fingerprints.fingerprint("ingestion", root=tmp_path) == before
+
+    selected = fingerprints.select_files("ingestion", sorted(ignored), tmp_path)
+    assert selected == []
+
+
+def test_ingestion_fingerprint_reads_every_path_dockerfile_ci_copies() -> None:
+    """A new COPY source must be fingerprinted, or the image goes stale silently."""
+    dockerfile = (ROOT / "ingestion/Dockerfile.ci").read_text()
+    sources = [
+        line.split()[-2]
+        for line in dockerfile.splitlines()
+        if line.startswith("COPY ") and "--from=" not in line
+    ]
+    assert sources
+    for source in sources:
+        assert fingerprints.matches_prefix(source, fingerprints.INGESTION_PREFIXES) or any(
+            prefix.startswith(f"{source}/") for prefix in fingerprints.INGESTION_PREFIXES
+        ), source
+        assert fingerprints.is_runtime_ingestion_file(source), source
 
 
 def token(email: str, session_id: str, expiry: int = 4_000_000_000) -> str:
@@ -484,6 +545,25 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "rotate_playwright_auth_state.py" in fixture_start
 
 
+def test_planning_runs_in_parallel_with_the_build() -> None:
+    """The planner only needs the selection, so it must not wait ~6 min for Maven.
+
+    Every job that consumes the distribution must still wait for the build.
+    """
+    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    plan_job = workflow.split("  plan-playwright:\n", 1)[1].split("  restore-playwright-fixture:", 1)[0]
+    assert plan_job.startswith("    needs: [detect-changes]\n")
+    assert "needs.build" not in plan_job
+    assert "openmetadata-distribution" not in plan_job
+
+    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split("  playwright-ci:", 1)[0]
+    shard_job = workflow.split("  playwright-ci:", 1)[1].split("  slack-notify:", 1)[0]
+    for consumer in (prepare_job, shard_job):
+        assert "name: openmetadata-distribution" in consumer
+        needs = consumer.split("needs:", 1)[1].split("runs-on:", 1)[0]
+        assert "build" in needs
+
+
 def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
     """Merge-queue refs are deleted on dequeue, so a save there helps nobody.
 
@@ -550,3 +630,50 @@ def test_prune_workflow_only_deletes_caches_on_dead_queue_refs() -> None:
     # an empty list must never read as "every queue ref is dead".
     listing = prune.split("live=$(gh api", 1)[0]
     assert "set -euo pipefail" in listing
+
+
+def test_shards_restore_the_node_modules_tree_that_only_main_writes() -> None:
+    """A drifted key is a cache nobody restores; a shard-side save is a budget leak."""
+    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    warm = (ROOT / ".github/workflows/populate-playwright-caches.yml").read_text()
+    key_line = next(
+        line.strip()
+        for line in workflow.splitlines()
+        if line.strip().startswith("key: playwright-node-modules-")
+    )
+    assert "steps.setup-node.outputs.node-version" in key_line
+    assert "hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock')" in key_line
+    assert workflow.count(key_line) == 1
+    assert warm.count(key_line) == 2
+
+    save_step = warm.split("- name: Save node_modules cache (main-scoped writer)", 1)[1].split("- name:", 1)[0]
+    assert "steps.warm-yarn.outcome == 'success'" in save_step
+    assert "uses: actions/cache/save@" in save_step
+
+    shard_job = workflow.split("  playwright-ci:", 1)[1].split("  slack-notify:", 1)[0]
+    install_step = shard_job.split("- name: Install dependencies", 1)[1].split("- name:", 1)[0]
+    assert "yarn check --integrity --ignore-scripts" in install_step
+    assert "yarn --ignore-scripts --frozen-lockfile" in install_step
+
+
+def test_visual_regression_fixture_path_is_opt_in_and_restore_only() -> None:
+    """Required PR / merge-queue checks keep the MySQL bootstrap until the
+    baselines are proven on the fixture's data."""
+    visual = (ROOT / ".github/workflows/playwright-visual.yml").read_text()
+    reusable = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+
+    assert "default: full-docker" in visual
+    gate = visual.split("- name: Restore golden Playwright fixture", 1)[1].split("run:", 1)[0]
+    assert "github.event_name == 'workflow_dispatch' && inputs.setup_mode == 'postgres-fixture'" in gate
+    assert "uses: actions/cache/save@" not in visual
+    key = "playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-"
+    assert key in visual and key in reusable
+
+    fallback = visual.split("- name: Setup Openmetadata Test Environment", 1)[1].split("- name:", 1)[0]
+    assert "if: ${{ steps.fixture.outputs.usable != 'true' }}" in fallback
+    assert 'args: "-d mysql"' in fallback
+
+    config = (ROOT / "openmetadata-ui/src/main/resources/ui/playwright.config.ts").read_text()
+    visual_project = config.split("name: 'visual-regression'", 1)[1].split("},", 1)[0]
+    assert "dependencies: entityDependencies" in visual_project
+    assert ": ['setup', 'entity-data-setup'];" in config.split("const entityDependencies", 1)[1].split("\n", 3)[2]

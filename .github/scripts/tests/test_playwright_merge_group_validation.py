@@ -334,3 +334,17 @@ def test_shard_reports_every_retry_pass_in_one_annotation(tmp_path):
     [warning] = [line for line in result.stdout.splitlines() if line.startswith("::warning")]
     message = warning.split("::", 2)[2].replace("%0A", "\n").replace("%25", "%")
     assert sorted(line.split(" › ")[1] for line in message.splitlines()) == sorted(titles)
+
+
+def test_rdf_workflow_starts_one_run_per_pr_event():
+    """No pull_request_target sibling: each PR event used to start two runs."""
+    rdf = workflow("playwright-knowledge-graph-postgresql-e2e.yml")
+    triggers = rdf.get("on", rdf.get(True))
+    assert "pull_request_target" not in triggers
+    assert "labeled" not in triggers["pull_request"]["types"]
+    assert "merge_group" in triggers
+    summary = rdf["jobs"]["playwright-rdf-summary"]
+    assert summary["name"] == "Playwright RDF (Knowledge Graph + Ontology)"
+    gate = rdf["jobs"]["gate"]["steps"][0]["run"]
+    assert "merge_group|workflow_dispatch) decide true" in gate
+    assert '"$EVENT" == "pull_request" && "$HEAD_REPO" == "$BASE_REPO"' in gate

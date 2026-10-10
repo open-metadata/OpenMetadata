@@ -36,6 +36,20 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+    inputs:
+      setup_mode:
+        # `postgres-fixture` boots the server from a freshly built distribution
+        # plus the golden PostgreSQL fixture the E2E pipeline caches, the way
+        # every playwright-ci shard does (~6 min build + ~1.5 min start), instead
+        # of the full MySQL build-and-seed (~21 of ~25 min). Dispatch-only until
+        # a run shows the baselines hold on the fixture's data: the seeded
+        # database differs from the MySQL `-d mysql` seed, and a page that
+        # renders seeded data would need its snapshot re-captured. A fixture
+        # cache miss falls back to `full-docker`.
+        description: Environment bootstrap (full-docker | postgres-fixture).
+        type: choice
+        options: [full-docker, postgres-fixture]
+        default: full-docker
 
 concurrency:
   group: playwright-visual-${{ github.event.pull_request.number || github.run_id }}
@@ -146,7 +160,73 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Restore golden Playwright fixture
+        id: restore-fixture
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.setup_mode == 'postgres-fixture' }}
+        run: |
+          fingerprint=$(python3 .github/scripts/playwright_cache_fingerprint.py --kind fixture)
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+          echo "FIXTURE_CACHE_DIR=$RUNNER_TEMP/playwright-fixture-cache" >> "$GITHUB_ENV"
+
+      # Restore-only: populate-playwright-caches.yml is the one writer of this
+      # key, and the key must match what playwright-e2e-reusable.yml restores.
+      - name: Restore golden fixture cache
+        id: fixture-cache
+        if: ${{ steps.restore-fixture.outcome == 'success' }}
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ env.FIXTURE_CACHE_DIR }}
+          key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.restore-fixture.outputs.fingerprint }}
+
+      - name: Validate golden fixture
+        id: fixture
+        if: ${{ steps.restore-fixture.outcome == 'success' }}
+        env:
+          CACHE_HIT: ${{ steps.fixture-cache.outputs.cache-hit }}
+          EXPECTED_FINGERPRINT: ${{ steps.restore-fixture.outputs.fingerprint }}
+        run: |
+          usable=false
+          fixture="$FIXTURE_CACHE_DIR/playwright-fixture.tar.zst"
+          if [[ "$CACHE_HIT" == "true" && -s "$fixture" ]] &&
+            .github/scripts/validate_playwright_fixture.sh "$fixture" "$EXPECTED_FINGERPRINT"; then
+            usable=true
+            echo "path=$fixture" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No usable golden fixture for this commit; falling back to the full-docker setup."
+          fi
+          echo "usable=$usable" >> "$GITHUB_OUTPUT"
+
+      - name: Setup JDK 21
+        if: ${{ steps.fixture.outputs.usable == 'true' }}
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # Same build the E2E pipeline's distribution comes from, minus its
+      # PW_E2E_* bundle-chunking flags, which change chunk layout, not pixels.
+      - name: Build OpenMetadata distribution
+        id: distribution
+        if: ${{ steps.fixture.outputs.usable == 'true' }}
+        run: |
+          sudo make install_antlr_cli
+          mvn -DskipTests clean package -pl openmetadata-dist -am
+          distribution=$(find openmetadata-dist/target -maxdepth 1 -type f -name 'openmetadata-*.tar.gz' -print -quit)
+          test -n "$distribution"
+          echo "path=$(realpath "$distribution")" >> "$GITHUB_OUTPUT"
+
+      - name: Start OpenMetadata from the golden fixture
+        if: ${{ steps.fixture.outputs.usable == 'true' }}
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          fast-mode: "true"
+          fixture-path: ${{ steps.fixture.outputs.path }}
+          distribution-path: ${{ steps.distribution.outputs.path }}
+          install-test-dependencies: "false"
+
       - name: Setup Openmetadata Test Environment
+        if: ${{ steps.fixture.outputs.usable != 'true' }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
@@ -170,17 +250,28 @@ jobs:
       # shared memory. node_modules were installed on the host above and are bind-mounted in, so
       # only `npx` (bundled with the container's Node) is needed - no dependency on yarn/corepack
       # being set up inside the image.
+      # On the fixture path the seeded auth/entity state is symlinked into
+      # playwright/ from PW_RUNTIME_ROOT, so that directory is mounted at the
+      # same path, and PW_PRESEEDED_STATE drops the setup projects the fixture
+      # already ran.
       - name: Run visual regression suite
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:8585
+          PW_PRESEEDED_STATE: ${{ steps.fixture.outputs.usable == 'true' && 'true' || 'false' }}
         run: |
+          runtime_mount=()
+          if [[ "$PW_PRESEEDED_STATE" == "true" ]]; then
+            runtime_mount=(-v "$PW_RUNTIME_ROOT:$PW_RUNTIME_ROOT")
+          fi
           docker run --rm \
             --network host \
             --ipc host \
             -e CI=true \
             -e PLAYWRIGHT_IS_OSS=true \
             -e PLAYWRIGHT_TEST_BASE_URL \
+            -e PW_PRESEEDED_STATE \
+            "${runtime_mount[@]}" \
             -v "$PWD:/work" \
             -w /work \
             mcr.microsoft.com/playwright:v1.57.0-jammy \
@@ -199,7 +290,13 @@ jobs:
       - name: Clean Up
         if: always()
         continue-on-error: true
+        env:
+          FAST_FIXTURE: ${{ steps.fixture.outputs.usable }}
         run: |
+          if [[ "$FAST_FIXTURE" == "true" ]]; then
+            ./.github/scripts/stop_playwright_fast_environment.sh
+            exit 0
+          fi
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf "${PWD}/docker-volume"

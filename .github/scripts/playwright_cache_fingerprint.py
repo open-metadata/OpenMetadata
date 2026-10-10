@@ -144,17 +144,53 @@ DISTRIBUTION_PREFIXES = (
     ".github/scripts/playwright_distribution_cache.sh",
 )
 
+# What the INGESTION image is built from: the inputs of ingestion/Dockerfile.ci
+# (built from the repository root, so the root .dockerignore applies) plus the
+# compose/launcher files that pass it build args. Of openmetadata-spec/ the
+# image reads only the JSON schemas (datamodel_generation.py) and the ANTLR
+# grammars, so its Java sources, search mappings and RDF files are left out, as
+# are root pom.xml and docker/development/Dockerfile (the server image). Together
+# with the exclusions below this takes the share of main commits invalidating
+# the image from 23.8% to 20.3% (1601 first-parent commits, Aug-Oct 2026); the
+# rest change ingestion/src, which the image genuinely installs.
 INGESTION_PREFIXES = (
-    "pom.xml",
     ".dockerignore",
     "ingestion/",
-    "openmetadata-spec/",
+    "openmetadata-spec/src/main/resources/json/schema/",
+    "openmetadata-spec/src/main/antlr4/",
     "openmetadata-airflow-apis/",
     "scripts/datamodel_generation.py",
-    "docker/development/Dockerfile",
     "docker/development/docker-compose-postgres.yml",
     "docker/run_local_docker.sh",
     "docker/run_local_docker_common.sh",
+)
+
+# COPY'd by Dockerfile.ci but never read by the build or at runtime: tests,
+# other images' Dockerfiles, type stubs, and lint/analysis configuration.
+# `pip install .` packages only ingestion/src (and openmetadata_managed_apis),
+# so none of these reach the installed packages. ingestion/scripts/ is NOT
+# here: the Dockerfile runs strip_spacy_test_fixture.sh from it.
+INGESTION_EXCLUDED_PREFIXES = (
+    "ingestion/tests/",
+    "ingestion/docs/",
+    "ingestion/operators/",
+    "ingestion/stubs/",
+    "ingestion/.basedpyright/",
+    "openmetadata-airflow-apis/tests/",
+    "openmetadata-airflow-apis/development/",
+)
+INGESTION_EXCLUDED_FILES = frozenset(
+    {
+        "ingestion/.dockerignore",
+        "ingestion/.importlinter",
+        "ingestion/.ruff-g004-baseline.json",
+        "ingestion/.snyk",
+        "ingestion/Dockerfile",
+        "ingestion/Makefile",
+        "ingestion/noxfile.py",
+        "ingestion/sonar-project.properties",
+        "openmetadata-airflow-apis/sonar-project.properties",
+    }
 )
 
 # playwright.config.ts is deliberately NOT an entrypoint. It only *consumes*
@@ -205,11 +241,14 @@ def is_runtime_distribution_file(path: str) -> bool:
 
 
 def is_runtime_ingestion_file(path: str) -> bool:
-    if path.startswith("ingestion/") and (
-        "/tests/" in f"/{path}" or path.startswith("ingestion/tests/")
+    if path in INGESTION_EXCLUDED_FILES or matches_prefix(
+        path, INGESTION_EXCLUDED_PREFIXES
     ):
         return False
-    return "/docs/" not in f"/{path}" and not path.startswith("ingestion/docs/")
+    if "/tests/" in f"/{path}" or "/docs/" in f"/{path}":
+        return False
+    # Package data under src/ ships with the wheel; markdown elsewhere is prose.
+    return not path.endswith((".md", ".mdx")) or path.startswith("ingestion/src/")
 
 
 def resolve_typescript_import(source: Path, specifier: str) -> Path | None:
