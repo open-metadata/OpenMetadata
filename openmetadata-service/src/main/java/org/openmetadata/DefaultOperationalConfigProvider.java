@@ -17,6 +17,8 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.operations.OperationalConfiguration;
+import org.openmetadata.service.exception.SystemSettingsException;
+import org.openmetadata.service.util.OpenMetadataBaseUrlValidator;
 
 @Getter
 @Setter
@@ -66,6 +68,17 @@ public class DefaultOperationalConfigProvider {
     if (serverUrl == null) {
       throw new IllegalStateException(
           "Operations configuration is missing the required 'serverUrl' block.");
+    }
+    String openMetadataUrl = serverUrl.getOpenMetadataUrl();
+    if (openMetadataUrl == null || openMetadataUrl.isBlank()) {
+      serverUrl = getDefaultServerUrl();
+    } else {
+      try {
+        OpenMetadataBaseUrlValidator.validateUrl(openMetadataUrl);
+      } catch (SystemSettingsException ex) {
+        throw new IllegalStateException(
+            "Operations configuration has an invalid 'openMetadataUrl': " + ex.getMessage(), ex);
+      }
     }
     this.emailSettings = email;
     this.serverUrl = serverUrl;
