@@ -301,3 +301,180 @@ class TestData360PipelineSourceMetadata:
         source = _build_source()
         source.log_warning("something went wrong")
         assert len(source.status.warnings) == 1
+
+
+class TestData360PipelineListingIsolation:
+    """A failure in one Data 360 listing must not abort the remaining listings.
+
+    The topology runner swallows producer exceptions and still runs the root node's
+    ``post_process`` (``mark_pipelines_as_deleted``) unconditionally. With the old
+    bare ``yield from`` chain, an exception in any listing aborted the remaining
+    listings, leaving ``pipeline_source_state`` partial — yet deletion still ran and
+    soft-deleted pipelines whose type was never fetched. Each listing is now isolated
+    so a failure is recorded without breaking the chain.
+    """
+
+    def test_datastreams_failure_does_not_abort_subsequent_listings(self):
+        source = _build_source()
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                side_effect=RuntimeError("datastreams down"),
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                return_value=[{"apiName": "ci1", "calculatedInsightStatus": "ACTIVE"}],
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                return_value=[{"name": "dt1", "status": "ACTIVE"}],
+            ),
+        ):
+            pipelines = list(source.get_pipelines_list())
+        # datastreams raised so ds1 is absent, but CIOs and transforms still listed
+        assert [p.get_name() for p in pipelines] == ["ci1", "dt1"]
+        assert source._pipeline_listing_complete is False
+        assert len(source.status.failures) == 1
+
+    def test_calculated_insights_failure_does_not_abort_datatransforms(self):
+        source = _build_source()
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                return_value=[{"name": "ds1", "status": "ACTIVE"}],
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                side_effect=RuntimeError("calculated insights down"),
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                return_value=[{"name": "dt1", "status": "ACTIVE"}],
+            ),
+        ):
+            pipelines = list(source.get_pipelines_list())
+        # Previously a CIO failure would have skipped the transforms listing entirely
+        assert [p.get_name() for p in pipelines] == ["ds1", "dt1"]
+        assert source._pipeline_listing_complete is False
+        assert len(source.status.failures) == 1
+
+    def test_listing_complete_flag_resets_between_runs(self):
+        source = _build_source()
+        # First run fails
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                side_effect=RuntimeError("down"),
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                return_value=[],
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                return_value=[],
+            ),
+        ):
+            list(source.get_pipelines_list())
+        assert source._pipeline_listing_complete is False
+        # Second run succeeds — flag should reset to True, not carry over
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                return_value=[{"name": "ds1", "status": "ACTIVE"}],
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                return_value=[],
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                return_value=[],
+            ),
+        ):
+            list(source.get_pipelines_list())
+        assert source._pipeline_listing_complete is True
+
+    def test_partial_yield_before_failure_still_flags_incomplete(self):
+        """A listing that yields some items then raises must still mark the run
+        incomplete, since the live set for that type is partial."""
+        source = _build_source()
+
+        def partial_then_raise(*args, **kwargs):
+            yield {"name": "ds1", "status": "ACTIVE"}
+            raise RuntimeError("datastreams died mid-listing")
+
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                side_effect=partial_then_raise,
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                return_value=[{"apiName": "ci1", "calculatedInsightStatus": "ACTIVE"}],
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                return_value=[],
+            ),
+        ):
+            pipelines = list(source.get_pipelines_list())
+        # ds1 was yielded before the failure, plus ci1 from the next listing
+        assert [p.get_name() for p in pipelines] == ["ds1", "ci1"]
+        assert source._pipeline_listing_complete is False
+        assert len(source.status.failures) == 1
+
+
+class TestData360PipelineMarkDeleted:
+    """``mark_pipelines_as_deleted`` must skip stale-pipeline deletion when the
+    listing was incomplete, so a partial live set is not reconciled as the full one."""
+
+    DELETE_PATH = "metadata.ingestion.source.pipeline.pipeline_service.delete_entity_from_source"
+
+    def test_mark_pipelines_as_deleted_skips_when_listing_incomplete(self):
+        source = _build_source()
+        source._pipeline_listing_complete = False
+        source.pipeline_source_state = set()
+        with patch(self.DELETE_PATH) as mock_delete:
+            results = list(source.mark_pipelines_as_deleted())
+        assert results == []
+        mock_delete.assert_not_called()
+
+    def test_mark_pipelines_as_deleted_delegates_when_listing_complete(self):
+        source = _build_source()
+        source._pipeline_listing_complete = True
+        source.pipeline_source_state = set()
+        with patch(self.DELETE_PATH, return_value=iter([])) as mock_delete:
+            results = list(source.mark_pipelines_as_deleted())
+        assert results == []
+        mock_delete.assert_called_once()
+
+    def test_incomplete_listing_prevents_deletion_end_to_end(self):
+        """End-to-end: a failure in the first listing leaves pipeline_source_state
+        empty, but mark_pipelines_as_deleted must NOT call delete_entity_from_source
+        (previously it would have soft-deleted every pipeline under the service)."""
+        source = _build_source()
+        source.pipeline_source_state = set()
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                side_effect=RuntimeError("datastreams down"),
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                return_value=[{"apiName": "ci1", "calculatedInsightStatus": "ACTIVE"}],
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                return_value=[{"name": "dt1", "status": "ACTIVE"}],
+            ),
+            patch(self.DELETE_PATH) as mock_delete,
+        ):
+            # Drive the producer + stage (yield_pipeline registers records), then
+            # the root node's post_process — mimicking the topology runner order.
+            for detail in source.get_pipeline():
+                for either in source.yield_pipeline(detail):  # noqa: B007
+                    pass
+            deleted = list(source.mark_pipelines_as_deleted())
+        assert deleted == []
+        mock_delete.assert_not_called()
