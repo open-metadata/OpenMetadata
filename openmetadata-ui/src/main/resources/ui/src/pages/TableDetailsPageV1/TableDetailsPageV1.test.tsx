@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { useTestCaseStore } from '../../components/DataQuality/IncidentManager/useTestCase.store';
@@ -496,6 +496,93 @@ describe('TestDetailsPageV1 component', () => {
         'data-has-edit-access',
         'true'
       );
+    });
+  });
+
+  // The tab strip is the one piece of TableDetailsPageV1 that historically gated on
+  // `isTourOpen` alone (selectedKey + handleTabChange) instead of the union
+  // `isTourOpen || isTourPage` the rest of the page uses (e.g. mock-data seeding). On
+  // /tour there is no :fqn or :tab, so on an X-close (isTourOpen → false while
+  // isTourPage stays true) the displayed tab snapped to Schema and a tab click
+  // navigated to /table//<tab> (an empty-FQN route that renders blank). These tests
+  // cover the post-X-close split state that the tour-mode tests above never reach.
+  describe('tab-strip tour-mode gating on /tour', () => {
+    const setTourState = (tourState: {
+      isTourOpen: boolean;
+      isTourPage: boolean;
+      activeTabForTourDatasetPage: EntityTabs;
+    }) => {
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: tourState.isTourOpen,
+        isTourPage: tourState.isTourPage,
+        activeTabForTourDatasetPage: tourState.activeTabForTourDatasetPage,
+        tourMockDatasetData: mockDatasetData,
+      }));
+    };
+
+    beforeEach(() => {
+      setMockPermissions();
+      mockNavigate.mockClear();
+      // /tour carries no :fqn or :tab, so both route params are absent — making
+      // tableFqn '' and activeTab undefined, the exact state the bug exploits.
+      (useParams as jest.Mock).mockImplementation(() => ({}));
+    });
+
+    afterEach(() => {
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: false,
+        activeTabForTourDatasetPage: 'schema',
+        isTourPage: false,
+      }));
+      (useParams as jest.Mock).mockImplementation(() => ({
+        fqn: 'fqn',
+        tab: 'schema',
+      }));
+    });
+
+    it('keeps the tour-controlled tab selected after X-close while still on /tour', async () => {
+      setTourState({
+        isTourOpen: false, // X-close dismissed the overlay…
+        isTourPage: true, // …but the user is still on /tour
+        activeTabForTourDatasetPage: EntityTabs.SAMPLE_DATA,
+      });
+
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      // Sample Data stays selected (does not snap to Schema): the tour-controlled
+      // panel renders while the Schema panel does not.
+      expect(
+        await screen.findByText('testSampleDataTable')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('GenericTab')).not.toBeInTheDocument();
+    });
+
+    it('does not navigate when a tab is clicked after X-close while still on /tour', async () => {
+      setTourState({
+        isTourOpen: false,
+        isTourPage: true,
+        activeTabForTourDatasetPage: EntityTabs.SAMPLE_DATA,
+      });
+
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      await screen.findByText('testSampleDataTable');
+      fireEvent.click(screen.getByText('label.lineage'));
+
+      // Navigation stays suppressed: no /table//<tab> transition off the demo.
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 
