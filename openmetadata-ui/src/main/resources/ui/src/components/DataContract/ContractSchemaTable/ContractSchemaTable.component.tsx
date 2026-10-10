@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Badge, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -136,8 +137,10 @@ const ContractSchemaTable: React.FC<{
   );
 
   return (
-    <Row className="contract-schema-component-container" gutter={[20, 0]}>
-      <Col span={12}>
+    <Grid
+      className="layout-row layout-grid contract-schema-component-container"
+      style={{ ...getLayoutGutter(20) }}>
+      <Grid.Item className="layout-column" span={12}>
         <Table
           columns={schemaColumns}
           dataSource={schemaDetail}
@@ -145,8 +148,8 @@ const ContractSchemaTable: React.FC<{
           rowKey="name"
           size="small"
         />
-      </Col>
-      <Col className="d-flex justify-end" span={12}>
+      </Grid.Item>
+      <Grid.Item className="layout-column d-flex justify-end" span={12}>
         {contractStatus && (
           <div className="contract-status-container">
             <Typography className="contract-status-label">{`${t(
@@ -162,8 +165,8 @@ const ContractSchemaTable: React.FC<{
             />
           </div>
         )}
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

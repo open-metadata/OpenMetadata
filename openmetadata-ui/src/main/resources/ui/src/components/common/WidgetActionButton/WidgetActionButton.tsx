@@ -10,97 +10,55 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ButtonUtility,
-  Tooltip,
-  TooltipTrigger,
-} from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import type { ReactNode } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
 import { ReactComponent as ListConversationIcon } from '../../../assets/svg/action-icons/list-conversation.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/action-icons/plus.svg';
 import { ReactComponent as RequestUpdateIcon } from '../../../assets/svg/action-icons/request-update.svg';
 import { WidgetActionButtonProps } from './WidgetActionButton.interface';
 
-export const WidgetEditButton = ({
-  title,
-  onClick,
-  ...props
-}: WidgetActionButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      <TooltipTrigger>
-        <ButtonUtility
-          className="tw:p-1"
-          color="tertiary"
-          icon={<EditIcon height={16} width={16} />}
-          size="xs"
-          onClick={onClick}
-          {...props}
-        />
-      </TooltipTrigger>
-    </Tooltip>
+// ButtonUtility's own tooltip names the button and anchors on it; a
+// TooltipTrigger around it nested a second, unnamed button with no focus ring.
+//
+// Disabled is sent as aria-disabled: the button stays the one tab stop and
+// keeps its tooltip, which often says why it is disabled. ButtonUtility's
+// isDisabled turns that tooltip off too, and a bare `disabled` made Tooltip
+// wrap the still-enabled button in a second tab stop.
+const createWidgetButton = (icon: ReactNode) => {
+  const WidgetButton = ({
+    title,
+    disabled,
+    onClick,
+    ...props
+  }: WidgetActionButtonProps) => (
+    <ButtonUtility
+      aria-disabled={disabled || undefined}
+      className="tw:p-1 tw:aria-disabled:cursor-not-allowed tw:aria-disabled:text-fg-disabled_subtle"
+      color="tertiary"
+      icon={icon}
+      size="xs"
+      tooltip={title}
+      onClick={disabled ? undefined : onClick}
+      {...props}
+    />
   );
+
+  return WidgetButton;
 };
 
-export const WidgetPlusButton = ({
-  title,
-  onClick,
-  ...props
-}: WidgetActionButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      <TooltipTrigger>
-        <ButtonUtility
-          className="tw:p-1"
-          color="tertiary"
-          icon={<PlusIcon height={15} width={15} />}
-          size="xs"
-          onClick={onClick}
-          {...props}
-        />
-      </TooltipTrigger>
-    </Tooltip>
-  );
-};
+export const WidgetEditButton = createWidgetButton(
+  <EditIcon height={16} width={16} />
+);
 
-export const WidgetCommentButton = ({
-  title,
-  onClick,
-  ...props
-}: WidgetActionButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      <TooltipTrigger>
-        <ButtonUtility
-          className="tw:p-1"
-          color="tertiary"
-          icon={<ListConversationIcon height={16} width={16} />}
-          size="xs"
-          onClick={onClick}
-          {...props}
-        />
-      </TooltipTrigger>
-    </Tooltip>
-  );
-};
+export const WidgetPlusButton = createWidgetButton(
+  <PlusIcon height={15} width={15} />
+);
 
-export const WidgetRequestButton = ({
-  title,
-  onClick,
-  ...props
-}: WidgetActionButtonProps) => {
-  return (
-    <Tooltip title={title}>
-      <TooltipTrigger>
-        <ButtonUtility
-          className="tw:p-1"
-          color="tertiary"
-          icon={<RequestUpdateIcon height={16} width={16} />}
-          size="xs"
-          onClick={onClick}
-          {...props}
-        />
-      </TooltipTrigger>
-    </Tooltip>
-  );
-};
+export const WidgetCommentButton = createWidgetButton(
+  <ListConversationIcon height={16} width={16} />
+);
+
+export const WidgetRequestButton = createWidgetButton(
+  <RequestUpdateIcon height={16} width={16} />
+);

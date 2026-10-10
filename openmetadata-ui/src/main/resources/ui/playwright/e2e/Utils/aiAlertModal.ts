@@ -12,6 +12,7 @@
  */
 
 import { expect, Locator, Page } from '@playwright/test';
+import { waitForCapabilitiesOf } from '../../utils/alert';
 import {
   scrollIntoViewAndSettle,
   selectOptionWithRetry,
@@ -85,11 +86,25 @@ export const fillAlertName = async (dialog: Locator, name: string) => {
   await dialog.getByTestId('alert-name-input').getByRole('textbox').fill(name);
 };
 
+// The source a label names: "Data Contract" is dataContract.
+const sourceNameOf = (label: string) =>
+  label
+    .split(' ')
+    .map((word, index) =>
+      index === 0
+        ? word.toLowerCase()
+        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )
+    .join('');
+
+// What the form offers follows the server's answer about the chosen source, so wait for it.
 export const selectAlertSource = async (page: Page, source: string) => {
+  const answered = waitForCapabilitiesOf(page, [sourceNameOf(source)]);
   await selectOptionWithRetry(
     page.getByTestId('source-select').getByRole('button'),
     page.getByRole('option', { name: source, exact: true })
   );
+  await answered;
 };
 
 export const getDestinationCategoryOptions = async (
@@ -165,12 +180,16 @@ export const getFilterArgumentOptions = async (
 };
 
 export const saveAlertModal = async (page: Page, dialog: Locator) => {
-  const saveRequest = page.waitForRequest(
-    (request) =>
-      /\/api\/v1\/events\/subscriptions(\/[^/]+)?$/.test(
-        new URL(request.url()).pathname
-      ) && ['POST', 'PATCH'].includes(request.method())
-  );
+  // The form also asks what its sources support with a POST to .../capabilities, which is not the save.
+  const saveRequest = page.waitForRequest((request) => {
+    const path = new URL(request.url()).pathname;
+
+    return (
+      /\/api\/v1\/events\/subscriptions(\/[^/]+)?$/.test(path) &&
+      !path.endsWith('/capabilities') &&
+      ['POST', 'PATCH'].includes(request.method())
+    );
+  });
   await dialog.getByTestId('save-button').click();
   const request = await saveRequest;
   const response = await request.response();

@@ -17,6 +17,7 @@ import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.Set;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.RelationshipCardinality;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 
@@ -92,20 +93,38 @@ public final class RelationshipTypeValidator {
   }
 
   private static void validateInverse(final RelationshipType relationshipType) {
-    final boolean hasInvalidSymmetricInverse =
-        has(relationshipType, RelationshipCharacteristic.SYMMETRIC)
-            && (relationshipType.getInverse() == null
-                || !relationshipType.getId().equals(relationshipType.getInverse().getId()));
-    if (hasInvalidSymmetricInverse) {
+    if (!has(relationshipType, RelationshipCharacteristic.SYMMETRIC)) {
+      return;
+    }
+    final EntityReference inverse = relationshipType.getInverse();
+    if (inverse == null || !isSelfReference(relationshipType, inverse)) {
       throw new BadRequestException("A symmetric relationship must be its own inverse");
     }
   }
 
   private static void validateReplacement(final RelationshipType relationshipType) {
     if (relationshipType.getReplacedBy() != null
-        && relationshipType.getId().equals(relationshipType.getReplacedBy().getId())) {
+        && isSelfReference(relationshipType, relationshipType.getReplacedBy())) {
       throw new BadRequestException("A relationship type cannot replace itself");
     }
+  }
+
+  /**
+   * Identity check that works both for hydrated references (id populated) and for public-API
+   * references supplied by FQN (id == null). The mapper always populates {@code
+   * fullyQualifiedName}, so an FQN match is a reliable identity signal even when the id is absent.
+   */
+  private static boolean isSelfReference(
+      final RelationshipType relationshipType, final EntityReference reference) {
+    final boolean selfById =
+        reference.getId() != null
+            && relationshipType.getId() != null
+            && relationshipType.getId().equals(reference.getId());
+    final boolean selfByFqn =
+        reference.getFullyQualifiedName() != null
+            && relationshipType.getFullyQualifiedName() != null
+            && relationshipType.getFullyQualifiedName().equals(reference.getFullyQualifiedName());
+    return selfById || selfByFqn;
   }
 
   private static boolean has(

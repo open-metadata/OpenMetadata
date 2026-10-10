@@ -13,11 +13,12 @@
 
 import {
   Badge,
+  Box,
   ButtonGroup,
   ButtonGroupItem,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Col, Row, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -57,6 +58,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -488,7 +490,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
 
     return (
-      <Col>
+      <Box className="layout-column tw:block">
         <Typography color="secondary">{t('label.schema')}</Typography>
         {schemaTypePlaceholder ?? (
           <Badge
@@ -499,17 +501,18 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             {messageSchema.schemaType}
           </Badge>
         )}
-      </Col>
+      </Box>
     );
   };
 
+  // These helpers return flex-row siblings, so full-width sections need explicit widths.
   const renderViewToggle = () => {
     if (isEmpty(messageSchema?.schemaFields) || isVersionView) {
       return null;
     }
 
     return (
-      <Col span={24}>
+      <Box className="layout-column tw:block tw:flex-none tw:w-full">
         <ButtonGroup
           disallowEmptySelection
           className={SEGMENT_TOGGLE_GROUP_CLASS}
@@ -530,7 +533,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             </ButtonGroupItem>
           ))}
         </ButtonGroup>
-      </Col>
+      </Box>
     );
   };
 
@@ -591,13 +594,18 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     return (
       <>
         {renderViewToggle()}
-        <Col span={24}>{renderSchemaContent()}</Col>
+        <Box className="layout-column tw:block tw:flex-none tw:w-full">
+          {renderSchemaContent()}
+        </Box>
       </>
     );
   };
 
   return (
-    <Row gutter={[16, 16]}>
+    <Box
+      className="layout-row"
+      style={{ ...getLayoutGutter(16, 16) }}
+      wrap="wrap">
       {renderSchemaTypeBadge()}
       {renderSchemaBody()}
       {editFieldDescription && (
@@ -618,7 +626,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           />
         </EntityAttachmentProvider>
       )}
-    </Row>
+    </Box>
   );
 };
 

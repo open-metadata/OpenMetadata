@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Space, Tooltip } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
@@ -283,7 +283,12 @@ const AddQueryPage = () => {
                   />
                 </Form.Item>
                 <Form.Item>
-                  <Space className="w-full justify-end" size={16}>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal w-full justify-end"
+                    gap={4}
+                    itemClassName="layout-space-item">
                     <Button
                       data-testid="cancel-btn"
                       type="default"
@@ -305,7 +310,7 @@ const AddQueryPage = () => {
                         {t('label.save')}
                       </Button>
                     </Tooltip>
-                  </Space>
+                  </Box>
                 </Form.Item>
               </Form>
             </div>

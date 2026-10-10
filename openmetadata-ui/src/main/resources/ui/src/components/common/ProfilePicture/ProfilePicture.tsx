@@ -113,6 +113,21 @@ function getAvatarStyle(
     : ({ '--avatar-hue': hue } as CSSProperties);
 }
 
+// How the avatar is edged. The outlined look draws a contrast outline and a
+// tinted border; a borderless avatar takes the neutral variant, which has no
+// border, while its fill and text colors still come from the hue classes.
+function getAvatarEdge(
+  isSolid: boolean,
+  borderless: boolean,
+  matchRingToFill: boolean
+) {
+  return {
+    colorVariant: borderless ? ('neutral' as const) : undefined,
+    contrastBorder: !isSolid && !borderless,
+    matchRingToFill: matchRingToFill && !borderless,
+  };
+}
+
 interface Props extends UserData {
   /**
    * Preferred: a defined core Avatar size (`xxs`…`2xl`). Takes precedence over
@@ -133,6 +148,11 @@ interface Props extends UserData {
    * from the initial alone, so e.g. a blue fill can get a pink ring.
    */
   matchRingToFill?: boolean;
+  /**
+   * A plain filled circle, with neither the contrast outline nor a ring. Wins
+   * over `matchRingToFill`.
+   */
+  borderless?: boolean;
 }
 
 const ProfilePicture = ({
@@ -144,6 +164,7 @@ const ProfilePicture = ({
   isTeam = false,
   avatarType = 'outlined',
   matchRingToFill = false,
+  borderless = false,
 }: Props) => {
   const { permissions } = usePermissionProvider();
   const avatarName = displayName ?? name ?? '';
@@ -162,6 +183,7 @@ const ProfilePicture = ({
   });
 
   const isLoadingWithoutUrl = isPicLoading && !profileURL;
+  const edge = getAvatarEdge(isSolid, borderless, matchRingToFill);
 
   if (isTeam) {
     return (
@@ -179,8 +201,9 @@ const ProfilePicture = ({
 
   return (
     <Avatar
-      className={getAvatarClassName(isSolid, matchRingToFill, className)}
-      contrastBorder={!isSolid}
+      className={getAvatarClassName(isSolid, edge.matchRingToFill, className)}
+      colorVariant={edge.colorVariant}
+      contrastBorder={edge.contrastBorder}
       data-testid="profile-avatar"
       initials={isLoadingWithoutUrl ? undefined : character}
       placeholder={getLoaderPlaceholder(

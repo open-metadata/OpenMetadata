@@ -13,6 +13,7 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Document } from '../../src/generated/entity/docStore/document';
 import { PersonaPreferences } from '../../src/generated/type/personaPreferences';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { GlobalSettingOptions } from '../constant/settings';
 import { PersonaClass } from '../support/persona/PersonaClass';
 import { UserClass } from '../support/user/UserClass';
@@ -156,7 +157,7 @@ export const navigateToPersonaWithPagination = async (
             response.request().method() === 'GET' &&
             response.url().includes('/api/v1/personas/name/'),
           200,
-          { timeout: 30000 }
+          { timeout: ACTION_TIMEOUT }
         );
 
         await locator.click();

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Space, Tooltip as AntDTooltip } from 'antd';
+import { Tooltip as AntDTooltip } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
@@ -120,22 +120,34 @@ const ResizablePanels = withSuspenseFallback(
 
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (
-  <Space direction="vertical" size="middle">
+  <Box
+    inline
+    align="stretch"
+    className="layout-space"
+    direction="col"
+    gap={4}
+    itemClassName="layout-space-item">
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
-        <Space direction="vertical" size={0}>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space"
+          direction="col"
+          gap={0}
+          itemClassName="layout-space-item">
           <Typography className="tw:text-primary_on-brand">{`${t(
             type
           )} :`}</Typography>
           <Typography as="p" className="m-0 tw:text-primary_on-brand">
             {t(description)}
           </Typography>
-        </Space>
+        </Box>
 
         {index !== 2 && <Divider className="m-0" />}
       </Fragment>
     ))}
-  </Space>
+  </Box>
 );
 
 export const renderDomainLink = (

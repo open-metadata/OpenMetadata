@@ -49,11 +49,11 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
@@ -514,7 +514,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       String q,
       String queryString,
       SubjectContext subjectContext,
-      List<EntityStatus> statuses)
+      List<ContextMemoryStatus> statuses)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
@@ -1157,7 +1157,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private void applyContextMemoryVisibility(
       SubjectContext subjectContext,
       OpenSearchRequestBuilder requestBuilder,
-      List<EntityStatus> statuses) {
+      List<ContextMemoryStatus> statuses) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses);
     if (visibilityBuilder != null) {

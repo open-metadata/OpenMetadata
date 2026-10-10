@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { expect, test } from '../../support/fixtures/userPages';
 
 /**
@@ -37,12 +38,12 @@ const expectSignedIn = async (page: Page, role: string) => {
   await expect(
     page.getByTestId('left-sidebar'),
     `${role} did not render the app shell`
-  ).toBeAttached({ timeout: 30_000 });
+  ).toBeAttached({ timeout: ACTION_TIMEOUT });
 
   await expect(
     page.getByTestId('dropdown-profile'),
     `${role} rendered the shell but no signed-in user`
-  ).toBeVisible({ timeout: 30_000 });
+  ).toBeVisible({ timeout: ACTION_TIMEOUT });
 };
 
 test.describe('role fixture sessions', () => {

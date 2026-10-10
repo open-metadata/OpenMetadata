@@ -30,7 +30,6 @@ import {
   EntityRightPanelTab,
   EntityRightPanelVerticalNavProps,
 } from './EntityRightPanelVerticalNav.interface';
-import './EntityRightPanelVerticalNav.less';
 
 const shouldShowCustomPropertiesTab = (
   entityType: EntityType,
@@ -136,9 +135,11 @@ const EntityRightPanelVerticalNav: React.FC<
   return (
     <div
       className={classNames(
-        'entity-right-panel-vertical-nav',
+        'entity-right-panel-vertical-nav tw:flex tw:w-20 tw:flex-col tw:items-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface',
         verticalNavConatinerclassName,
-        { 'drawer-entity-right-panel-vertical-nav': isSideDrawer }
+        isSideDrawer
+          ? 'tw:mr-2 tw:h-screen tw:max-h-[calc(100vh-70px)]'
+          : 'tw:h-full'
       )}>
       <Tabs
         className="tw:w-full"
@@ -154,13 +155,14 @@ const EntityRightPanelVerticalNav: React.FC<
               className={({ isSelected }) =>
                 classNames(
                   'tw:relative tw:h-auto tw:w-full tw:flex-col tw:justify-center tw:gap-1.5 tw:rounded-none tw:bg-transparent tw:p-0 tw:font-normal tw:whitespace-normal tw:shadow-none',
-                  'tw:text-utility-gray-600 tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-7)] tw:[&>svg]:size-6 tw:[&>svg]:transition-all tw:[&>svg]:duration-200',
-                  isSelected && [
-                    'tw:text-[var(--ant-primary-6)] tw:hover:text-[var(--ant-primary-6)]',
-                    'tw:before:absolute tw:before:top-1/2 tw:before:left-0 tw:before:h-8 tw:before:w-1',
-                    'tw:before:-translate-y-1/2 tw:before:rounded-r-sm tw:before:bg-[var(--ant-primary-6)]',
-                    'tw:dark:text-utility-brand-300 tw:dark:before:bg-utility-brand-300 tw:dark:hover:text-utility-brand-300',
-                  ]
+                  'tw:[&>svg]:size-6',
+                  isSelected
+                    ? [
+                        'tw:bg-brand-primary tw:text-fg-brand-primary',
+                        'tw:before:absolute tw:before:top-1/2 tw:before:left-0 tw:before:h-8 tw:before:w-1',
+                        'tw:before:-translate-y-1/2 tw:before:rounded-r-sm tw:before:bg-fg-brand-primary',
+                      ]
+                    : 'tw:text-tertiary tw:hover:bg-transparent tw:hover:text-brand-secondary'
                 )
               }
               data-testid={testId}

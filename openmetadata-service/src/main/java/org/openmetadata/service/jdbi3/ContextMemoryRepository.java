@@ -30,14 +30,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
@@ -90,15 +91,56 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   /** Memory-specific stages and transitions; the shared repository validates every stage change. */
-  public static final EntityLifecycle LIFECYCLE =
-      new EntityLifecycle(
+  public static final EntityLifecycle<ContextMemoryStatus> LIFECYCLE =
+      new EntityLifecycle<>(
+          ContextMemoryStatus.class,
           Map.of(
-              EntityStatus.DRAFT, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
-              EntityStatus.APPROVED,
-                  Set.of(EntityStatus.ARCHIVED, EntityStatus.DEPRECATED, EntityStatus.REJECTED),
-              EntityStatus.DEPRECATED, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
-              EntityStatus.REJECTED, Set.of(EntityStatus.APPROVED, EntityStatus.ARCHIVED),
-              EntityStatus.ARCHIVED, Set.of(EntityStatus.APPROVED)));
+              ContextMemoryStatus.UNPROCESSED,
+                  Set.of(
+                      ContextMemoryStatus.DRAFT,
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.DEPRECATED,
+                      ContextMemoryStatus.REJECTED,
+                      ContextMemoryStatus.SUPERSEDED,
+                      ContextMemoryStatus.INVALIDATED,
+                      ContextMemoryStatus.ARCHIVED),
+              ContextMemoryStatus.DRAFT,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.REJECTED,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.APPROVED,
+                  Set.of(
+                      ContextMemoryStatus.DRAFT,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.DEPRECATED,
+                      ContextMemoryStatus.REJECTED,
+                      ContextMemoryStatus.SUPERSEDED,
+                      ContextMemoryStatus.INVALIDATED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.DEPRECATED,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.REJECTED,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.SUPERSEDED,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.INVALIDATED,
+                  Set.of(
+                      ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.ARCHIVED,
+                      ContextMemoryStatus.UNPROCESSED),
+              ContextMemoryStatus.ARCHIVED,
+                  Set.of(ContextMemoryStatus.APPROVED, ContextMemoryStatus.UNPROCESSED)));
 
   public ContextMemoryRepository() {
     super(
@@ -110,7 +152,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         UPDATE_FIELDS);
     supportsSearch = true;
     entityLifecycle = LIFECYCLE;
-    defaultEntityStatus = EntityStatus.APPROVED;
+    defaultEntityStatus = ContextMemoryStatus.UNPROCESSED;
   }
 
   @Override
@@ -551,13 +593,32 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   private static List<EntityReference> anchorDomains(EntityReference anchor) {
-    EntityInterface entity = Entity.getEntity(anchor, Entity.FIELD_DOMAINS, Include.NON_DELETED);
+    EntityInterface<?> entity = Entity.getEntity(anchor, Entity.FIELD_DOMAINS, Include.NON_DELETED);
     return entity.getDomains();
   }
 
   @Override
   public void storeEntity(ContextMemory entity, boolean update) {
     store(entity, update);
+  }
+
+  @Override
+  protected void storeEntityWithVersion(
+      ContextMemory entity, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    int updatedRows =
+        daoCollection
+            .contextMemoryDAO()
+            .updateWithVersionAndTimestamp(
+                entity.getId(),
+                entity.getFullyQualifiedName(),
+                serializeForStorage(entity),
+                expectedVersion.toString(),
+                expectedUpdatedAt);
+    if (updatedRows == 0) {
+      throw new PreconditionFailedException(
+          "The memory has been modified. Please refresh and retry.");
+    }
+    invalidate(entity);
   }
 
   @Override
@@ -633,6 +694,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     public ContextMemoryUpdater(
         ContextMemory original, ContextMemory updated, Operation operation) {
       super(original, updated, operation);
+      // Consolidated edits still need distinct timestamps for conditional lifecycle writes.
+      if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
+        updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
+      }
     }
 
     @Override
@@ -689,6 +754,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Relationship.APPLIED_TO,
           Entity.CONTEXT_MEMORY,
           original.getId());
+      // Partial PUTs omit relationship-derived fields during reconciliation. Preserve those
+      // links, while allowing an explicit PATCH removal or empty list to clear them.
+      if (operation == Operation.PUT && updated.getRelatedEntities() == null) {
+        updated.setRelatedEntities(original.getRelatedEntities());
+      }
       updateFromRelationships(
           FIELD_RELATED_ENTITIES,
           Entity.CONTEXT_MEMORY,
@@ -743,6 +813,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
     private void updateLifecycle(boolean consolidatingChanges) {
       if (operation == Operation.PUT) {
+        updated.setLastReviewedAt(original.getLastReviewedAt());
         updated.setStatusReason(original.getStatusReason());
         updated.setSupersededBy(original.getSupersededBy());
         updated.setDisputes(original.getDisputes());
@@ -754,6 +825,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
             (reference, field) -> resolveLiveMemory(reference, field, updated.getUpdatedBy()));
       }
       recordChange("statusReason", original.getStatusReason(), updated.getStatusReason());
+      recordChange("lastReviewedAt", original.getLastReviewedAt(), updated.getLastReviewedAt());
       recordChange(
           ContextMemoryLifecycle.FIELD_SUPERSEDED_BY,
           original.getSupersededBy(),

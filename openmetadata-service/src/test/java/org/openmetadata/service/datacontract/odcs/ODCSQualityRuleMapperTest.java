@@ -184,6 +184,59 @@ class ODCSQualityRuleMapperTest {
     assertEquals("[\"N/A\",\"\"]", parameter(test, "missingValueMatch"));
   }
 
+  @Test
+  void missingValuesWithPercentUnitAndNonzeroMustBeIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            library(
+                    "Five percent missing",
+                    ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES,
+                    "status")
+                .withMustBe(5.0)
+                .withUnit("percent"));
+
+    assertTrue(outcome.reason().contains("percentage"));
+    assertTrue(outcome.reason().contains("mustBe 5"));
+  }
+
+  @Test
+  void missingValuesWithPercentUnitAndZeroMustBeIsAnAbsoluteZeroCount() {
+    CreateTestCase test =
+        mapToTestCase(
+            library("No missing", ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES, "status")
+                .withMustBe(0.0)
+                .withUnit("percent"));
+
+    assertEquals("columnValuesMissingCount", test.getTestDefinition());
+    assertEquals("0", parameter(test, "missingCountValue"));
+    assertNull(parameter(test, "threshold"));
+    assertNull(parameter(test, "thresholdUnit"));
+  }
+
+  @Test
+  void missingValuesWithAbsoluteCountAndNoUnitBecomesMissingCountTest() {
+    CreateTestCase test =
+        mapToTestCase(
+            library("Exactly five", ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES, "status")
+                .withMustBe(5.0));
+
+    assertEquals("columnValuesMissingCount", test.getTestDefinition());
+    assertEquals("5", parameter(test, "missingCountValue"));
+    assertNull(parameter(test, "threshold"));
+    assertNull(parameter(test, "thresholdUnit"));
+  }
+
+  @Test
+  void missingValuesWithInequalityIsNotExecutable() {
+    UnsupportedOutcome outcome =
+        mapToUnsupported(
+            library("Few missing", ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES, "status")
+                .withMustBeLessOrEqualTo(5.0)
+                .withUnit("percent"));
+
+    assertTrue(outcome.reason().contains("mustBeLessOrEqualTo"));
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {"regex", "pattern"})
   void patternRuleWithoutAPatternIsNotRun(String ruleName) {

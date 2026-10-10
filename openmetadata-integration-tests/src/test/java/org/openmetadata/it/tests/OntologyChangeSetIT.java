@@ -46,10 +46,10 @@ import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.OntologyMemoryProposalStatus;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
@@ -132,6 +132,7 @@ public class OntologyChangeSetIT {
             memories.create(
                 new CreateContextMemory()
                     .withName(ns.prefix("revenueMemory"))
+                    .withEntityStatus(ContextMemoryStatus.APPROVED)
                     .withDescription("Subscription revenue definition")
                     .withQuestion("What is monthly recurring revenue?")
                     .withAnswer("Recurring subscription revenue in a month.")));
@@ -223,6 +224,7 @@ public class OntologyChangeSetIT {
             memories.create(
                 new CreateContextMemory()
                     .withName(ns.prefix("retiredSource"))
+                    .withEntityStatus(ContextMemoryStatus.APPROVED)
                     .withQuestion("What is the canonical orders table?")
                     .withAnswer("sales.orders is canonical.")));
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
@@ -256,7 +258,8 @@ public class OntologyChangeSetIT {
     assertEquals(
         OntologyChangeSetState.DRAFT,
         client.ontologyChangeSets().get(changeSet.getId()).getState());
-    assertEquals(EntityStatus.REJECTED, memories.get(memory.getId().toString()).getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.REJECTED, memories.get(memory.getId().toString()).getEntityStatus());
   }
 
   @Test
@@ -529,6 +532,7 @@ public class OntologyChangeSetIT {
   private static CreateContextMemory memoryRequest(String name) {
     return new CreateContextMemory()
         .withName(name)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withDescription("Memory behind an ontology draft")
         .withQuestion("What is an active subscriber?")
         .withAnswer("A customer with a paid subscription this month.");

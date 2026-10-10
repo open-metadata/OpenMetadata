@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Box, Owner, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
@@ -189,63 +188,62 @@ function FollowingWidget({
             const extraInfo = getEntityExtraInfo(item);
 
             return (
-              <div
-                className="following-widget-list-item w-full p-xs border-radius-sm"
+              <Box
+                align="center"
+                className="tw:w-full tw:max-w-full tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-2"
                 data-testid={`Following-${getEntityName(item)}`}
+                justify="between"
                 key={item.id}>
-                <div className="d-flex items-center justify-between w-full">
-                  <Link
-                    className="item-link w-min-0"
-                    to={getEntityLinkFromType(
-                      item.fullyQualifiedName as string,
-                      item.entityType as EntityType
-                    )}>
-                    <Button
-                      className="entity-button flex items-center gap-2 p-0 w-full"
-                      icon={
-                        <div className="d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(item, EntityIconSize.Size24)}
-                        </div>
-                      }
-                      type="text">
-                      <div className="d-flex w-max-full w-min-0 flex-column">
-                        {'serviceType' in item && item.serviceType && (
-                          <Typography
-                            className="text-left text-sm font-regular text-grey-600"
-                            ellipsis={{
-                              tooltip: true,
-                              excludeTriggerFromTabOrder: true,
-                            }}>
-                            {item.serviceType}
-                          </Typography>
-                        )}
+                <Link
+                  className="tw:min-w-0 tw:flex-1 tw:no-underline tw:hover:no-underline"
+                  to={getEntityLinkFromType(
+                    item.fullyQualifiedName as string,
+                    item.entityType as EntityType
+                  )}>
+                  <Box align="center" className="tw:w-full" gap={2}>
+                    <Box
+                      align="center"
+                      className="tw:shrink-0"
+                      justify="center">
+                      {getEntityIcon(item, EntityIconSize.Size24)}
+                    </Box>
+                    <Box className="tw:min-w-0 tw:max-w-full" direction="col">
+                      {'serviceType' in item && item.serviceType && (
                         <Typography
-                          className="text-left text-sm font-regular text-grey-800"
+                          className="tw:text-left tw:text-sm tw:font-normal tw:text-tertiary"
                           ellipsis={{
                             tooltip: true,
                             excludeTriggerFromTabOrder: true,
                           }}>
-                          {getEntityName(item)}
+                          {item.serviceType}
                         </Typography>
-                      </div>
-                    </Button>
-                  </Link>
-                  {isExpanded && (
-                    <div className="d-flex items-center gap-3 flex-wrap">
-                      {extraInfo.map((info, i) => (
-                        <>
-                          <EntitySummaryDetails data={info} key={info.key} />
-                          {i !== extraInfo.length - 1 && (
-                            <span className="px-1.5 d-inline-block text-xl font-semibold">
-                              {t('label.middot-symbol')}
-                            </span>
-                          )}
-                        </>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+                      )}
+                      <Typography
+                        className="tw:text-left tw:text-sm tw:font-normal tw:text-primary"
+                        ellipsis={{
+                          tooltip: true,
+                          excludeTriggerFromTabOrder: true,
+                        }}>
+                        {getEntityName(item)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Link>
+                {isExpanded && (
+                  <Box align="center" gap={3} wrap="wrap">
+                    {extraInfo.map((info, i) => (
+                      <Fragment key={info.key}>
+                        <EntitySummaryDetails data={info} />
+                        {i !== extraInfo.length - 1 && (
+                          <span className="tw:inline-block tw:px-1.5 tw:text-xl tw:font-semibold">
+                            {t('label.middot-symbol')}
+                          </span>
+                        )}
+                      </Fragment>
+                    ))}
+                  </Box>
+                )}
+              </Box>
             );
           })}
         </div>

@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row, Space, Tooltip } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { DataNode } from 'antd/lib/tree';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
 import React from 'react';
@@ -23,6 +24,7 @@ import {
   Task,
   TaskStatus,
 } from '../generated/entity/data/pipeline';
+import { getLayoutGutter } from './common/layout.utils';
 import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
 import { getStatusBadgeIcon } from './PipelineDetailsUtils';
@@ -43,7 +45,12 @@ export interface ViewDataInterface {
 }
 
 export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
-  <Space>
+  <Box
+    inline
+    align="center"
+    className="layout-space layout-space-horizontal"
+    gap={2}
+    itemClassName="layout-space-item">
     <Icon
       alt="result"
       className="align-middle"
@@ -59,7 +66,7 @@ export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
       {status === StatusType.Pending ? MenuOptions[StatusType.Pending] : ''}
       {status === StatusType.Skipped ? MenuOptions[StatusType.Skipped] : ''}
     </p>
-  </Space>
+  </Box>
 );
 
 /**
@@ -200,15 +207,25 @@ export const getTreeData = (
     (value: ViewDataInterface[], key: string) => ({
       key,
       value: (
-        <Row gutter={16} key={key}>
-          <Col>
+        <Box
+          className="layout-row"
+          key={key}
+          style={{ ...getLayoutGutter(16) }}
+          wrap="wrap">
+          <Box className="layout-column tw:block">
             <div className="execution-node-container">
               {value.map((status: ViewDataInterface) => (
                 <Tooltip
                   key={`${status.timestamp}-${status.executionStatus}`}
                   placement="top"
                   title={
-                    <Space direction="vertical">
+                    <Box
+                      inline
+                      align="stretch"
+                      className="layout-space"
+                      direction="col"
+                      gap={2}
+                      itemClassName="layout-space-item">
                       <div>{status.timestamp}</div>
                       <div>{status.executionStatus}</div>
                       {status.startTime && (
@@ -228,7 +245,7 @@ export const getTreeData = (
                           {t('label.duration')}: {status.duration}
                         </div>
                       )}
-                    </Space>
+                    </Box>
                   }>
                   <Icon
                     alt="result"
@@ -240,8 +257,8 @@ export const getTreeData = (
                 </Tooltip>
               ))}
             </div>
-          </Col>
-        </Row>
+          </Box>
+        </Box>
       ),
     })
   );

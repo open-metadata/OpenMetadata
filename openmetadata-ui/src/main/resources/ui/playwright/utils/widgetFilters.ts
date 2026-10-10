@@ -16,7 +16,6 @@ import {
   type Page,
   type Response,
 } from '@playwright/test';
-import { waitForAntdPopupToSettle } from './common';
 import { waitForLandingPageWidget } from './customizeLandingPage';
 import { waitForAllLoadersToDisappear } from './entity';
 
@@ -49,16 +48,11 @@ const searchQueryMatcher =
  * Opens a widget's sort/filter dropdown, picks an option, and returns the response
  * the option was expected to trigger.
  *
- * Two guards make this reliable, and both are load bearing:
+ * The trigger-label assertion guards against a click landing on the wrong option:
+ * it fails immediately with "expected Following, received My Data" instead of
+ * leaving the caller blocked on a response that can never arrive.
  *
- * 1. `waitForAntdPopupToSettle` — without it the click can land on the option *above*
- *    the intended one while the menu is still scaling open, silently selecting the
- *    wrong filter.
- * 2. The trigger-label assertion — if a click still drifts, this fails immediately
- *    with "expected Following, received My Data" instead of leaving the caller blocked
- *    on a response that can never arrive.
- *
- * The response listener is registered after the menu has settled but before the click,
+ * The response listener is registered after the menu is visible but before the click,
  * so a request fired synchronously by the selection cannot be missed.
  */
 export const selectWidgetSortOption = async (
@@ -68,14 +62,13 @@ export const selectWidgetSortOption = async (
   responseMatcher: ResponseMatcher
 ): Promise<Response> => {
   const trigger = widget.getByTestId('widget-sort-by-dropdown');
-  const menuItem = widget.getByRole('menuitem', {
+  const menuItem = page.getByRole('menuitem', {
     name: optionName,
     exact: true,
   });
 
   await trigger.click();
   await expect(menuItem).toBeVisible();
-  await waitForAntdPopupToSettle(page);
 
   const filterResponse = page.waitForResponse(responseMatcher);
   // Nothing resolves this promise if the selection assertion below fails. Marking it

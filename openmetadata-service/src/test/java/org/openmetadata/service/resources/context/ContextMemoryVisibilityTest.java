@@ -284,7 +284,7 @@ class ContextMemoryVisibilityTest {
    */
   @Test
   void testEnforceVisibility_onEntityInterface_deniesAnotherUsersPrivateMemory() {
-    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    EntityInterface<?> privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     SecurityContext bob = securityContextFor(BOB);
 
     withSubject(
@@ -298,7 +298,7 @@ class ContextMemoryVisibilityTest {
 
   @Test
   void testEnforceVisibility_onEntityInterface_allowsTheOwnersOwnPrivateMemory() {
-    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    EntityInterface<?> privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     SecurityContext alice = securityContextFor(ALICE);
 
     withSubject(
@@ -311,7 +311,7 @@ class ContextMemoryVisibilityTest {
 
   @Test
   void testEnforceVisibility_onEntityInterface_ignoresTypesWithoutVisibilityRules() {
-    EntityInterface table = new Table().withName("orders").withFullyQualifiedName("s.d.orders");
+    EntityInterface<?> table = new Table().withName("orders").withFullyQualifiedName("s.d.orders");
 
     assertDoesNotThrow(
         () -> ContextMemoryVisibility.enforceVisibility(table, securityContextFor(BOB)));
@@ -319,7 +319,7 @@ class ContextMemoryVisibilityTest {
 
   @Test
   void testEnforceVisibility_onEntityInterface_letsAnAdminReadEveryMemory() {
-    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    EntityInterface<?> privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     SecurityContext admin = securityContextFor(BOB);
 
     try (MockedStatic<DefaultAuthorizer> authorizer = Mockito.mockStatic(DefaultAuthorizer.class)) {

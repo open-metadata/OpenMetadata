@@ -50,6 +50,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
@@ -64,6 +65,7 @@ import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
@@ -82,7 +84,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
@@ -601,7 +602,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void createEntityIndexBuildsAndWritesSearchDocument() throws IOException {
     UUID entityId = UUID.randomUUID();
-    EntityInterface entity = mockEntity(Entity.TABLE, entityId, "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, entityId, "orders");
     when(searchIndexFactory.buildIndex(Entity.TABLE, entity))
         .thenReturn(new MapBackedSearchIndex(entity, Map.of("name", "orders")));
 
@@ -647,7 +648,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void createEntityIndexPreservesEntityTypeWhenSearchIsUnavailable() throws IOException {
     UUID entityId = UUID.randomUUID();
-    EntityInterface entity = mockEntity(Entity.TABLE, entityId, "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, entityId, "orders");
     when(searchClient.isClientAvailable()).thenReturn(false);
 
     try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
@@ -667,8 +668,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEntitiesIndexBulkWritesDocumentsOfTheSameType() throws IOException {
-    EntityInterface first = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
-    EntityInterface second = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
+    EntityInterface<?> first = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> second = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
     when(searchIndexFactory.buildIndex(Entity.TABLE, first))
         .thenReturn(new MapBackedSearchIndex(first, Map.of("name", "orders")));
     when(searchIndexFactory.buildIndex(Entity.TABLE, second))
@@ -685,8 +686,8 @@ class SearchRepositoryBehaviorTest {
   @Test
   void createEntitiesIndexDoesNotRetryNonIndexableEntitiesWhenSearchIsUnavailable()
       throws IOException {
-    EntityInterface hidden = mockEntity(Entity.TABLE, UUID.randomUUID(), "private-memory");
-    EntityInterface visible = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> hidden = mockEntity(Entity.TABLE, UUID.randomUUID(), "private-memory");
+    EntityInterface<?> visible = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
     doReturn(false).when(tableRepository).isSearchIndexable(hidden);
     when(searchClient.isClientAvailable()).thenReturn(false);
@@ -714,8 +715,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEntitiesIndexSkipsFailedDocumentsAndContinuesBulkCreate() throws IOException {
-    EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
-    EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
+    EntityInterface<?> broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
+    EntityInterface<?> valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
     when(searchIndexFactory.buildIndex(Entity.TABLE, broken))
         .thenThrow(new IllegalStateException("cannot index broken entity"));
     when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
@@ -733,8 +734,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEntitiesIndexSkipsEntityWhenIndexabilityCheckFails() throws IOException {
-    EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
-    EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
+    EntityInterface<?> broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
+    EntityInterface<?> valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
     when(broken.getEntityReference())
         .thenThrow(new IllegalStateException("cannot resolve entity reference"));
     when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
@@ -752,8 +753,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEntitiesIndexSkipsBulkCreateWhenNoDocumentCanBeBuilt() throws IOException {
-    EntityInterface first = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_1");
-    EntityInterface second = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_2");
+    EntityInterface<?> first = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_1");
+    EntityInterface<?> second = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_2");
     when(searchIndexFactory.buildIndex(Entity.TABLE, first))
         .thenThrow(new IllegalStateException("cannot index first"));
     when(searchIndexFactory.buildIndex(Entity.TABLE, second))
@@ -951,7 +952,8 @@ class SearchRepositoryBehaviorTest {
   @Test
   void propagateInheritedFieldsToChildrenUsesServiceParentFieldForServiceDisplayNameChanges()
       throws IOException {
-    EntityInterface serviceEntity = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    EntityInterface<?> serviceEntity =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
     ChangeDescription changeDescription =
         changeDescription(
             List.of(),
@@ -985,7 +987,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void propagateInheritedFieldsToChildrenUpdatesDomainChildrenAndDataProductsSeparately()
       throws IOException {
-    EntityInterface domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+    EntityInterface<?> domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
     ChangeDescription changeDescription =
         changeDescription(
             List.of(),
@@ -1016,7 +1018,7 @@ class SearchRepositoryBehaviorTest {
             .childAliases(List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT))
             .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
             .build();
-    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    EntityInterface<?> testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
     when(testCase.getOwners())
         .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
     when(testCase.getDomains())
@@ -1046,7 +1048,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void propagateInheritedFieldsToChildrenOnlyTargetsNonTimeSeriesChildren() throws IOException {
-    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    EntityInterface<?> testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
     when(testCase.getOwners())
         .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
     when(testCase.getDomains())
@@ -1095,7 +1097,7 @@ class SearchRepositoryBehaviorTest {
             .childAliases(List.of("unregisteredChild", Entity.TABLE_COLUMN))
             .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
             .build();
-    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    EntityInterface<?> testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
     ChangeDescription changeDescription =
         changeDescription(
             List.of(),
@@ -1123,7 +1125,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityByFqnPrefixUsesEntityIndex() throws IOException {
-    EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     repository.deleteEntityByFQNPrefix(entity);
 
@@ -1434,7 +1436,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void deleteAndSoftDeleteOperationsSkipUnsupportedTypesButHandleMappedEntities()
       throws IOException {
-    EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     SearchRepository spyRepository = spy(repository);
     doNothing().when(spyRepository).deleteOrUpdateChildren(any(), any());
     doNothing().when(spyRepository).softDeleteOrRestoredChildren(any(), any(), anyBoolean());
@@ -1454,7 +1456,7 @@ class SearchRepositoryBehaviorTest {
     verify(queryRepository)
         .forEachQueryBatchForDomainSource(eq(Entity.TABLE), eq(entityId), eq(entityFqn), any());
 
-    EntityInterface unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
+    EntityInterface<?> unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
     spyRepository.deleteEntityIndex(unsupported);
     verify(searchClient, never())
         .deleteEntity("cluster_unsupported_search_index", unsupported.getId().toString());
@@ -1462,7 +1464,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityIndexRemovesTagReferencesFromChildren() {
-    EntityInterface tag = mockEntity(Entity.TAG, UUID.randomUUID(), "revenue");
+    EntityInterface<?> tag = mockEntity(Entity.TAG, UUID.randomUUID(), "revenue");
     when(tag.getFullyQualifiedName()).thenReturn("Glossary.Revenue");
 
     repository.deleteEntityIndex(tag);
@@ -1477,7 +1479,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityIndexDeletesServiceChildrenByServiceId() throws Exception {
-    EntityInterface service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "warehouse");
+    EntityInterface<?> service =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "warehouse");
 
     repository.deleteEntityIndex(service);
 
@@ -1491,7 +1494,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityIndexDeletesGenericChildrenByEntityTypeId() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     repository.deleteEntityIndex(table);
 
@@ -1521,9 +1524,9 @@ class SearchRepositoryBehaviorTest {
                 Entity.DATABASE_SCHEMA, DATABASE_SCHEMA_MAPPING,
                 Entity.TABLE_COLUMN, COLUMN_MAPPING),
             "cluster");
-    EntityInterface service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
-    EntityInterface database = mockEntity(Entity.DATABASE, UUID.randomUUID(), "db");
-    EntityInterface schema = mockEntity(Entity.DATABASE_SCHEMA, UUID.randomUUID(), "schema");
+    EntityInterface<?> service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    EntityInterface<?> database = mockEntity(Entity.DATABASE, UUID.randomUUID(), "db");
+    EntityInterface<?> schema = mockEntity(Entity.DATABASE_SCHEMA, UUID.randomUUID(), "schema");
 
     repo.deleteEntityIndex(service);
     repo.deleteEntityIndex(database);
@@ -1589,7 +1592,7 @@ class SearchRepositoryBehaviorTest {
         newRepository(
             Map.of(Entity.TABLE, tableWithChildren, Entity.TABLE_COLUMN, COLUMN_MAPPING),
             "cluster");
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
       repo.deleteEntityIndex(table);
@@ -1758,7 +1761,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesMarkAddedOwnersDomainsFollowersAndNestedDisplayName() throws Exception {
-    EntityInterface serviceEntity = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    EntityInterface<?> serviceEntity =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
     when(serviceEntity.getOwners())
         .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
     when(serviceEntity.getDomains())
@@ -1804,7 +1808,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void inheritedFieldChangesHandleUpdatedTestSuitesAndDeletedInheritedReferences()
       throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     when(tableEntity.getOwners())
         .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
     when(tableEntity.getDomains())
@@ -1843,7 +1847,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesSimpleValueBindsValueAsParamAndTerminatesStatements() throws Exception {
-    EntityInterface tagEntity = mockEntity(Entity.TAG, UUID.randomUUID(), "PII.Sensitive");
+    EntityInterface<?> tagEntity = mockEntity(Entity.TAG, UUID.randomUUID(), "PII.Sensitive");
 
     String renamedTag = "O'Brien's Tag";
     String certification = "Gold's";
@@ -1876,7 +1880,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesAddTagsMarksThemAsDerived() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag1 =
         new TagLabel()
@@ -1915,7 +1919,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesDeleteTagsMarksThemAsDerived() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag =
         new TagLabel()
@@ -1948,7 +1952,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesUpdateTagsPopulatesBothAddedAndDeleted() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel oldTag =
         new TagLabel()
@@ -1992,7 +1996,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesIgnoreTagsForEntityWithoutTagDescriptor() throws Exception {
-    EntityInterface domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "engineering");
+    EntityInterface<?> domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "engineering");
 
     TagLabel tag =
         new TagLabel()
@@ -2016,7 +2020,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesTagAddScriptContainsDedupAndSortLogic() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag =
         new TagLabel()
@@ -2041,7 +2045,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesTagDeleteScriptRemovesByFqn() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag =
         new TagLabel()
@@ -2069,7 +2073,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesTagAddWithEmptyListProducesEmptyData() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     String emptyTagsJson = JsonUtils.pojoToJson(List.of());
 
@@ -2090,7 +2094,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesAddDataProductsOnTableMarksInherited() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     UUID dpId = UUID.randomUUID();
     when(tableEntity.getDataProducts())
         .thenReturn(
@@ -2120,7 +2124,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesDeleteDataProductsOnTable() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     UUID dpId = UUID.randomUUID();
     when(tableEntity.getDataProducts())
         .thenReturn(
@@ -2149,7 +2153,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesUpdateDataProductsOnTable() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     UUID dpId = UUID.randomUUID();
     when(tableEntity.getDataProducts())
         .thenReturn(
@@ -2177,7 +2181,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesAddRawReplaceTestSuites() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -2197,7 +2201,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesDeleteRawReplaceTestSuites() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -2217,7 +2221,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesDeleteNestedFieldDisplayName() throws Exception {
-    EntityInterface serviceEntity = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    EntityInterface<?> serviceEntity =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -2236,7 +2241,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesEntityReferenceListUpdateMarksInherited() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     UUID ownerId = UUID.randomUUID();
     when(tableEntity.getOwners())
         .thenReturn(
@@ -2261,7 +2266,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesUnknownFieldReturnsEmptyRefList() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     when(tableEntity.getDataProducts()).thenReturn(null);
 
     ChangeDescription changeDescription =
@@ -2283,7 +2288,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void getScriptWithParamsBuildsFollowerDescriptionAndReducedQueryDomainUpdates() {
-    EntityInterface queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
+    EntityInterface<?> queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
     EntityReference queryDomain =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -2348,9 +2353,10 @@ class SearchRepositoryBehaviorTest {
   @Test
   void requiresPropagationRecognizesGlossaryTagCertificationPageAndRelationshipChanges()
       throws Exception {
-    EntityInterface glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
-    EntityInterface page = mockEntity(Entity.PAGE, UUID.randomUUID(), "docs");
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> glossaryTerm =
+        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+    EntityInterface<?> page = mockEntity(Entity.PAGE, UUID.randomUUID(), "docs");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     Tag certificationTag = mock(Tag.class);
     EntityReference tagReference =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.TAG).withName("Gold");
@@ -2405,7 +2411,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForInheritableFieldAdded() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2418,7 +2424,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForInheritableFieldUpdated() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2432,7 +2438,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForInheritableFieldDeleted() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2445,7 +2451,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsFalseForNonInheritableField() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertFalse(
         invokeRequiresPropagation(
             changeDescription(
@@ -2462,7 +2468,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsFalseForGlossaryTermNameChangeNotInDescriptors() throws Exception {
-    EntityInterface glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+    EntityInterface<?> glossaryTerm =
+        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
     assertFalse(
         invokeRequiresPropagation(
             changeDescription(
@@ -2479,7 +2486,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForGlossaryTermTagDeleted() throws Exception {
-    EntityInterface glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+    EntityInterface<?> glossaryTerm =
+        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2545,7 +2553,7 @@ class SearchRepositoryBehaviorTest {
     // Regression for issue #28229: a cert-only PATCH on a Table must open the propagation gate
     // so cascadeCertificationToChildren can push the new cert onto every denormalized child doc
     // (test_case, test_case_result, test_case_resolution_status, test_suite, column).
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2562,7 +2570,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForTableCertificationAdded() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2575,7 +2583,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForTableCertificationRemoved() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2589,7 +2597,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void requiresPropagationReturnsFalseForUpstreamEntityRelationshipNotInDescriptors()
       throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertFalse(
         invokeRequiresPropagation(
             changeDescription(
@@ -2630,7 +2638,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsFalseForPageParentNotInDescriptors() throws Exception {
-    EntityInterface page = mockEntity(Entity.PAGE, UUID.randomUUID(), "docs");
+    EntityInterface<?> page = mockEntity(Entity.PAGE, UUID.randomUUID(), "docs");
     assertFalse(
         invokeRequiresPropagation(
             changeDescription(
@@ -2643,7 +2651,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void propagateToRelatedEntitiesUsesClusteredPageIndexForParentChanges() {
-    EntityInterface page = mockEntity(Entity.PAGE, UUID.randomUUID(), "child");
+    EntityInterface<?> page = mockEntity(Entity.PAGE, UUID.randomUUID(), "child");
     when(page.getFullyQualifiedName()).thenReturn("docs.parent.child");
 
     ChangeDescription changeDescription =
@@ -2692,7 +2700,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void propagateToRelatedEntitiesUpdatesGlossaryTagFqnsAndDisplayNames() {
-    EntityInterface glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+    EntityInterface<?> glossaryTerm =
+        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
     when(glossaryTerm.getFullyQualifiedName()).thenReturn("BusinessGlossary.Income");
 
     ChangeDescription changeDescription =
@@ -2765,16 +2774,17 @@ class SearchRepositoryBehaviorTest {
     EntityReference entityReference =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
     @SuppressWarnings("unchecked")
-    org.openmetadata.service.jdbi3.EntityRepository<EntityInterface> entityRepository =
+    org.openmetadata.service.jdbi3.EntityRepository<EntityInterface<?>> entityRepository =
         mock(org.openmetadata.service.jdbi3.EntityRepository.class);
-    EntityInterface entity = mockEntity(Entity.TABLE, entityReference.getId(), "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, entityReference.getId(), "orders");
 
     doNothing().when(spyRepository).updateEntityIndex(entity);
 
     try (var entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
       when(entityRepository.getFields("*")).thenReturn(null);
-      when(entityRepository.get(null, entityReference.getId(), null)).thenReturn(entity);
+      Mockito.<EntityInterface<?>>when(entityRepository.get(null, entityReference.getId(), null))
+          .thenReturn(entity);
 
       spyRepository.updateEntity(entityReference);
     }
@@ -2846,7 +2856,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityIndexRemovesDomainReferencesAndChildren() throws Exception {
-    EntityInterface domain = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+    EntityInterface<?> domain = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
 
     repository.deleteEntityIndex(domain);
 
@@ -2869,7 +2879,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityIndexRemovesDataProductReferences() throws Exception {
-    EntityInterface dataProduct = mockEntity(Entity.DATA_PRODUCT, UUID.randomUUID(), "revenue");
+    EntityInterface<?> dataProduct = mockEntity(Entity.DATA_PRODUCT, UUID.randomUUID(), "revenue");
 
     repository.deleteEntityIndex(dataProduct);
 
@@ -2938,7 +2948,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void softDeleteOrRestoreEntityIndexPropagatesServiceDeletionToChildren() throws Exception {
-    EntityInterface service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "service");
+    EntityInterface<?> service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "service");
     String scriptTxt =
         new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless();
 
@@ -3026,7 +3036,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void getScriptWithParamsBuildsExtensionAndDescriptionUpdates() {
-    EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     when(entity.getUpdatedAt()).thenReturn(99L);
     when(entity.getDescription()).thenReturn("new description");
     when(entity.getExtension()).thenReturn(Map.of("reviewer", "alice"));
@@ -3054,7 +3064,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void getScriptWithParamsRemovesFollowersAndDescriptions() {
-    EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     EntityReference removedFollower = new EntityReference().withId(UUID.randomUUID());
     Map<String, Object> params = new HashMap<>();
     ChangeDescription changeDescription =
@@ -3409,7 +3419,7 @@ class SearchRepositoryBehaviorTest {
     SubjectContext subjectContext = mock(SubjectContext.class);
 
     when(filter.getCondition(Entity.TABLE)).thenReturn("status = 'Active'");
-    when(filter.getMemoryStatuses()).thenReturn(List.of(EntityStatus.DEPRECATED));
+    when(filter.getMemoryStatuses()).thenReturn(List.of(ContextMemoryStatus.DEPRECATED));
     when(searchClient.listWithOffset(
             "status = 'Active'", 25, 10, "cluster_table_search_index", sortFilter, "orders", null))
         .thenReturn(listMapper);
@@ -3422,7 +3432,7 @@ class SearchRepositoryBehaviorTest {
             "orders",
             "query",
             subjectContext,
-            List.of(EntityStatus.DEPRECATED)))
+            List.of(ContextMemoryStatus.DEPRECATED)))
         .thenReturn(listMapper);
     when(searchClient.listWithDeepPagination(
             "cluster_table_search_index",
@@ -3519,7 +3529,7 @@ class SearchRepositoryBehaviorTest {
   void bulkTimeoutCompletedDuringClosePropagatesWithoutReplayOrRetry() throws Exception {
     when(searchClient.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-    EntityInterface service =
+    EntityInterface<?> service =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
     String serviceId = service.getId().toString();
     when(service.getChangeDescription())
@@ -3559,7 +3569,7 @@ class SearchRepositoryBehaviorTest {
   void bulkFailureDoesNotPropagateAnUnconfirmedRoot() throws Exception {
     when(searchClient.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-    EntityInterface service =
+    EntityInterface<?> service =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
     ChangeDescription displayNameChange =
         changeDescription(
@@ -3601,7 +3611,7 @@ class SearchRepositoryBehaviorTest {
   void nonQuiescentBulkDefersPropagationUntilRetryCompletes() throws Exception {
     when(searchClient.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-    EntityInterface service =
+    EntityInterface<?> service =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
     ChangeDescription displayNameChange =
         changeDescription(
@@ -3643,9 +3653,9 @@ class SearchRepositoryBehaviorTest {
   void partiallyFailedBulkPropagatesOnlyConfirmedRoots() throws Exception {
     when(searchClient.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-    EntityInterface failedService =
+    EntityInterface<?> failedService =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "failed-service");
-    EntityInterface successfulService =
+    EntityInterface<?> successfulService =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "successful-service");
     ChangeDescription displayNameChange =
         changeDescription(
@@ -3865,8 +3875,8 @@ class SearchRepositoryBehaviorTest {
     }
   }
 
-  private EntityInterface mockEntity(String entityType, UUID id, String name) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private EntityInterface<?> mockEntity(String entityType, UUID id, String name) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     EntityReference entityReference =
         new EntityReference().withId(id).withType(entityType).withName(name);
     when(entity.getEntityReference()).thenReturn(entityReference);
@@ -3898,7 +3908,7 @@ class SearchRepositoryBehaviorTest {
 
   @SuppressWarnings("unchecked")
   private Pair<String, Map<String, Object>> invokeGetInheritedFieldChanges(
-      ChangeDescription changeDescription, EntityInterface entity) throws Exception {
+      ChangeDescription changeDescription, EntityInterface<?> entity) throws Exception {
     Method method =
         SearchRepository.class.getDeclaredMethod(
             "getInheritedFieldChanges",
@@ -3911,7 +3921,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   private boolean invokeRequiresPropagation(
-      ChangeDescription changeDescription, String entityType, EntityInterface entity)
+      ChangeDescription changeDescription, String entityType, EntityInterface<?> entity)
       throws Exception {
     return (Boolean)
         invokePrivateMethod(

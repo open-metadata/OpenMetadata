@@ -13,9 +13,10 @@
 import {
   ButtonGroup,
   ButtonGroupItem,
+  Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Table } from 'antd';
+import { Button, Table } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -418,9 +419,12 @@ const SchemaFieldCardsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row>
+      <Grid className="layout-row layout-grid">
         {columns.map((column) => (
-          <Col key={column.fullyQualifiedName ?? column.name} span={24}>
+          <Grid.Item
+            className="layout-column"
+            key={column.fullyQualifiedName ?? column.name}
+            span={24}>
             <NestedFieldCard
               column={column}
               expandedRowKeys={expandedRowKeys}
@@ -428,9 +432,9 @@ const SchemaFieldCardsV1: React.FC<{
               tableConstraints={entityInfo.tableConstraints}
               onToggleExpand={handleToggleExpand}
             />
-          </Col>
+          </Grid.Item>
         ))}
-      </Row>
+      </Grid>
       {loadMoreBtn}
     </div>
   );
@@ -635,12 +639,12 @@ const PipelineTasksV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row>
+      <Grid className="layout-row layout-grid">
         {filteredTasks.map((task: Task) => {
           const isHighlighted = highlights?.tasks?.includes(task.name);
 
           return (
-            <Col key={task.name} span={24}>
+            <Grid.Item className="layout-column" key={task.name} span={24}>
               <FieldCard
                 dataType={task.taskType || t('label.task')}
                 description={task.description}
@@ -649,10 +653,10 @@ const PipelineTasksV1: React.FC<{
                 isHighlighted={isHighlighted}
                 tags={task.tags}
               />
-            </Col>
+            </Grid.Item>
           );
         })}
-      </Row>
+      </Grid>
     </div>
   );
 };
@@ -755,14 +759,17 @@ const APICollectionEndpointsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row>
+      <Grid className="layout-row layout-grid">
         {filteredEndpoints.map((endpoint: EntityReference) => {
           const isHighlighted = highlights?.apiEndpoints?.includes(
             endpoint.name
           );
 
           return (
-            <Col key={endpoint.id || endpoint.name} span={24}>
+            <Grid.Item
+              className="layout-column"
+              key={endpoint.id || endpoint.name}
+              span={24}>
               <FieldCard
                 dataType={endpoint.requestMethod || t('label.api-endpoint')}
                 description={endpoint.description}
@@ -770,10 +777,10 @@ const APICollectionEndpointsV1: React.FC<{
                 isHighlighted={isHighlighted}
                 tags={endpoint.tags}
               />
-            </Col>
+            </Grid.Item>
           );
         })}
-      </Row>
+      </Grid>
     </div>
   );
 };
@@ -862,12 +869,12 @@ const DatabaseSchemaTablesV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row>
+      <Grid className="layout-row layout-grid">
         {filteredTables.map((table) => {
           const isHighlighted = highlights?.table?.includes(table.name);
 
           return (
-            <Col key={table.name} span={24}>
+            <Grid.Item className="layout-column" key={table.name} span={24}>
               <FieldCard
                 dataType={table.tableType || 'Table'}
                 description={table.description}
@@ -875,10 +882,10 @@ const DatabaseSchemaTablesV1: React.FC<{
                 isHighlighted={isHighlighted}
                 tags={table.tags}
               />
-            </Col>
+            </Grid.Item>
           );
         })}
-      </Row>
+      </Grid>
       {loadMoreBtn}
     </div>
   );
@@ -918,12 +925,12 @@ const DashboardChartsV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row>
+      <Grid className="layout-row layout-grid">
         {filteredCharts.map((chart: EntityReference) => {
           const isHighlighted = highlights?.chart?.includes(chart.name);
 
           return (
-            <Col key={chart.id} span={24}>
+            <Grid.Item className="layout-column" key={chart.id} span={24}>
               <FieldCard
                 dataType="Chart"
                 description={chart.description}
@@ -931,10 +938,10 @@ const DashboardChartsV1: React.FC<{
                 isHighlighted={isHighlighted}
                 tags={chart.tags}
               />
-            </Col>
+            </Grid.Item>
           );
         })}
-      </Row>
+      </Grid>
     </div>
   );
 };
@@ -1197,20 +1204,20 @@ const DatabaseSchemasV1: React.FC<{
 
   return (
     <div className="schema-field-cards-container">
-      <Row>
+      <Grid className="layout-row layout-grid">
         {filteredSchemas.map((schema: EntityReference) => {
           return (
-            <Col key={schema.id} span={24}>
+            <Grid.Item className="layout-column" key={schema.id} span={24}>
               <FieldCard
                 dataType={schema.type || 'Database Schema'}
                 description={schema.description || ''}
                 fieldName={getEntityName(schema)}
                 tags={schema.tags || []}
               />
-            </Col>
+            </Grid.Item>
           );
         })}
-      </Row>
+      </Grid>
     </div>
   );
 };

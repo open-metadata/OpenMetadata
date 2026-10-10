@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Toggle } from '@openmetadata/ui-core-components';
-import { Button, Col, Modal, Row, Space, Tooltip } from 'antd';
+import { Box, Grid, Toggle } from '@openmetadata/ui-core-components';
+import { Button, Modal, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -52,6 +52,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { searchQuery } from '../../rest/searchAPI';
 import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
@@ -321,10 +322,12 @@ const UserListPageV1 = () => {
         key: 'actions',
         width: 90,
         render: (_, record) => (
-          <Space
+          <Box
+            inline
             align="center"
-            className="w-full justify-center action-icons"
-            size={8}>
+            className="layout-space layout-space-horizontal w-full justify-center action-icons"
+            gap={2}
+            itemClassName="layout-space-item">
             {showRestore && (
               <Tooltip
                 placement={isAdminUser ? 'bottom' : 'left'}
@@ -373,7 +376,7 @@ const UserListPageV1 = () => {
                 }}
               />
             </Tooltip>
-          </Space>
+          </Box>
         ),
       },
     ];
@@ -481,14 +484,14 @@ const UserListPageV1 = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.user-plural')}>
-      <Row
-        className="user-listing p-b-md"
+      <Grid
+        className="layout-row layout-grid user-listing p-b-md"
         data-testid="user-list-v1-component"
-        gutter={[0, 16]}>
-        <Col span={24}>
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={12}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
           <PageHeader
             data={
               isAdminPage
@@ -504,9 +507,14 @@ const UserListPageV1 = () => {
             learningPageId={LEARNING_PAGE_IDS.USERS}
             title={t('label.user')}
           />
-        </Col>
-        <Col span={12}>
-          <Space align="center" className="w-full justify-end" size={16}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-end"
+            gap={4}
+            itemClassName="layout-space-item">
             {isAdminUser && (
               <LimitWrapper resource="user">
                 <Button
@@ -519,10 +527,10 @@ const UserListPageV1 = () => {
                 </Button>
               </LimitWrapper>
             )}
-          </Space>
-        </Col>
+          </Box>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             className="user-list-table"
             columns={columns}
@@ -557,7 +565,7 @@ const UserListPageV1 = () => {
             searchProps={searchProps}
             size="small"
           />
-        </Col>
+        </Grid.Item>
 
         <Modal
           cancelButtonProps={{
@@ -600,7 +608,7 @@ const UserListPageV1 = () => {
             setSelectedUser(undefined);
           }}
         />
-      </Row>
+      </Grid>
     </PageLayoutV1>
   );
 };

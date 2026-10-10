@@ -678,6 +678,13 @@ export interface PipelineServiceClientConfiguration {
      */
     connectTimeout?: number;
     /**
+     * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
+     * it bounds how much of the MCP client's context one call can use. A saved change applies
+     * right away on the server that handled the save; other servers in a cluster pick it up on
+     * restart.
+     */
+    maxResponseChars?: number;
+    /**
      * Name of the MCP server
      */
     mcpServerName?: string;
@@ -716,6 +723,12 @@ export interface PipelineServiceClientConfiguration {
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Tenant-wide default order of columns in table schema views. Users can still change the
+     * order per page from the Sort menu; that choice is not saved. Null means no tenant default
+     * is configured, and columns are ordered alphabetically.
+     */
+    defaultColumnOrder?: DefaultColumnOrder | null;
     /**
      * Timestamp when the fingerprints were last persisted.
      */
@@ -1952,6 +1965,11 @@ export interface Aws {
 export enum DefaultAppMode {
     AI = "ai",
     Classic = "classic",
+}
+
+export enum DefaultColumnOrder {
+    Alphabetical = "alphabetical",
+    SourceOrder = "sourceOrder",
 }
 
 /**

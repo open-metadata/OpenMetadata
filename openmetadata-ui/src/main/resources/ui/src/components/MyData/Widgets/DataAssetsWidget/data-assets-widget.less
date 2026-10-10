@@ -57,34 +57,13 @@
     height: fit-content;
   }
 
-  .service-card.ant-card {
-    height: 100%;
-    border: none;
-    cursor: pointer;
-    transition: var(--om-duration-300) ease-in-out;
-
-    &:hover {
-      background: @grey-1;
-    }
-
-    .ant-card-body {
-      display: flex;
-      flex-direction: column;
-      text-align: center;
-      align-items: center;
-      padding: @size-sm @size-mlg;
-      max-height: 100%;
-
-      .data-asset-badge {
-        width: max-content;
-        padding: @size-xs @size-sm;
-        background-color: @blue-1;
-        .ant-typography,
-        > span {
-          color: @primary-color;
-          font-size: @size-sm;
-        }
-      }
+  .service-card .data-asset-badge {
+    width: max-content;
+    padding: @size-xs @size-sm;
+    .ant-typography,
+    > span {
+      color: @primary-color;
+      font-size: @size-sm;
     }
   }
 }

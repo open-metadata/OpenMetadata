@@ -206,7 +206,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Chart entity, String fields) {
+  public EntityInterface<?> getParentEntity(Chart entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }

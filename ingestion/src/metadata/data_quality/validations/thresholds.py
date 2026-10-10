@@ -42,6 +42,8 @@ logger = test_suite_logger()
 # Failure threshold parameters, declared on the test definitions that support them
 THRESHOLD_PARAM = "threshold"
 THRESHOLD_UNIT_PARAM = "thresholdUnit"
+DIMENSION_FAILURE_POLICY_PARAM = "dimensionFailurePolicy"
+MIN_ROWS_PER_DIMENSION_PARAM = "minRowsPerDimension"
 
 
 class ThresholdUnit(str, Enum):
@@ -49,6 +51,26 @@ class ThresholdUnit(str, Enum):
 
     ABSOLUTE = "ABSOLUTE"
     PERCENTAGE = "PERCENTAGE"
+
+
+class DimensionFailurePolicy(str, Enum):
+    """How the dimension group verdicts roll up into the test case status
+
+    Groups beyond `topDimensions` are collapsed into a single `Others` group, so they only ever
+    take part in the roll-up in aggregate: one failing small group in the tail can be diluted
+    below the threshold by the healthy groups it is collapsed with.
+    """
+
+    OVERALL_ONLY = "OVERALL_ONLY"
+    """Only the aggregate decides. Group verdicts are reported, never acted on."""
+
+    ANY_DIMENSION = "ANY_DIMENSION"
+    """The test case fails when the aggregate or any group fails.
+
+    Under a PERCENTAGE threshold, a group with fewer rows than `minRowsPerDimension` is left out of
+    the roll-up: one violation in a 3-row group is 33%, so long-tail groups would otherwise fail the
+    test case on noise. Such a group is still evaluated and reported with its own status.
+    """
 
 
 class FailureThreshold(BaseModel):

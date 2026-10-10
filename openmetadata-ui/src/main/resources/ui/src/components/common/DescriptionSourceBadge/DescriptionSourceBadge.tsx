@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -97,7 +97,11 @@ const ActorInfo = ({
       })}
       data-testid="source-actor">
       {config ? (
-        <CheckCircleIcon className="text-primary" height={12} width={12} />
+        <CheckCircleIcon
+          className="tw:text-fg-brand-primary"
+          height={12}
+          width={12}
+        />
       ) : null}
       <span className="d-flex items-center gap-1">
         <span className="text-grey-500">{actorLabel}</span>

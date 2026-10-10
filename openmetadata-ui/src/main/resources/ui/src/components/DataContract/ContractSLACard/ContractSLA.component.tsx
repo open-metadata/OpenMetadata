@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   FailedTests,
   MinusCircle,
   SuccessfulTests,
 } from '@openmetadata/ui-core-components/icons';
-import { Col, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -235,8 +240,8 @@ const ContractSLA: React.FC<{
   ) : null;
 
   return (
-    <Col
-      className="contract-card-items"
+    <Grid.Item
+      className="layout-column contract-card-items"
       data-testid="contract-sla-card"
       span={24}>
       <div className="contract-card-header-container">
@@ -301,7 +306,7 @@ const ContractSLA: React.FC<{
           )}
         </Box>
       )}
-    </Col>
+    </Grid.Item>
   );
 };
 

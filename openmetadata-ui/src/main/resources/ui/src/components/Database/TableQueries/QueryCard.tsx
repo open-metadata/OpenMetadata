@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from '@openmetadata/ui-core-components';
+import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -37,6 +37,7 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
@@ -173,7 +174,12 @@ const QueryCard: FC<QueryCardProp> = ({
   };
 
   const renderCardTitle = () => (
-    <Space className="font-normal p-y-xs" size={8}>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal font-normal p-y-xs"
+      gap={2}
+      itemClassName="layout-space-item">
       <Typography className="text-sm">{queryDate}</Typography>
       {duration && (
         <>
@@ -183,7 +189,7 @@ const QueryCard: FC<QueryCardProp> = ({
           </Typography>
         </>
       )}
-    </Space>
+    </Box>
   );
 
   const renderExpandIcon = () =>
@@ -199,7 +205,12 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const renderEditActions = () =>
     isEditMode && (
-      <Space align="end" className="w-full justify-end p-r-md" size={16}>
+      <Box
+        inline
+        align="end"
+        className="layout-space layout-space-horizontal w-full justify-end p-r-md"
+        gap={4}
+        itemClassName="layout-space-item">
         <Button
           data-testid="cancel-query-btn"
           key="cancel"
@@ -217,12 +228,16 @@ const QueryCard: FC<QueryCardProp> = ({
           onClick={updateSqlQuery}>
           {t('label.save')}
         </Button>
-      </Space>
+      </Box>
     );
 
   return (
-    <Row gutter={[0, 8]}>
-      <Col span={isExpanded && QueryExtras ? 12 : 24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 8) }}>
+      <Grid.Item
+        className="layout-column"
+        span={isExpanded && QueryExtras ? 12 : 24}>
         {/* Light values reproduce the antd Card head this replaced. */}
         <Card
           className={classNames(
@@ -252,7 +267,12 @@ const QueryCard: FC<QueryCardProp> = ({
             </div>
           </div>
           <div className="tw:pt-px">
-            <Space className="query-entity-button" size={8}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal query-entity-button"
+              gap={2}
+              itemClassName="layout-space-item">
               <Button
                 className="flex-center"
                 data-testid="query-entity-expand-button"
@@ -267,7 +287,7 @@ const QueryCard: FC<QueryCardProp> = ({
                   onClick={onCopyToClipBoard}
                 />
               </Tooltip>
-            </Space>
+            </Box>
 
             <div
               className={classNames(
@@ -292,21 +312,23 @@ const QueryCard: FC<QueryCardProp> = ({
                 onChange={handleQueryChange}
               />
             </div>
-            <Row align="middle" className="p-y-md border-top">
-              <Col className="p-l-md" span={20}>
+            <Grid className="layout-row layout-grid tw:items-center p-y-md border-top">
+              <Grid.Item className="layout-column p-l-md" span={20}>
                 <QueryUsedByOtherTable
                   isEditMode={isEditMode}
                   query={query}
                   onChange={(value) => setSelectedTables(value)}
                 />
-              </Col>
-              <Col span={4}>{renderEditActions()}</Col>
-            </Row>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={4}>
+                {renderEditActions()}
+              </Grid.Item>
+            </Grid>
           </div>
         </Card>
-      </Col>
+      </Grid.Item>
       {isExpanded && QueryExtras && <QueryExtras />}
-    </Row>
+    </Grid>
   );
 };
 

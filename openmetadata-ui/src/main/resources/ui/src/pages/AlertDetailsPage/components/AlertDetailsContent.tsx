@@ -13,7 +13,7 @@
 
 import { SyncOutlined } from '@ant-design/icons';
 import { Box, Owner, Skeleton, Tabs } from '@openmetadata/ui-core-components';
-import { Button, Card, Space, Tooltip } from 'antd';
+import { Button, Card, Tooltip } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -126,7 +126,12 @@ function AlertDetailsContent({
               </Box>
             </div>
             <div>
-              <Space align="center" size={8}>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={2}
+                itemClassName="layout-space-item">
                 <Tooltip
                   title={t('label.sync-alert-offset', {
                     entity: t('label.alert'),
@@ -173,7 +178,7 @@ function AlertDetailsContent({
                       />
                     </Tooltip>
                   )}
-              </Space>
+              </Box>
             </div>
           </Box>
         </div>

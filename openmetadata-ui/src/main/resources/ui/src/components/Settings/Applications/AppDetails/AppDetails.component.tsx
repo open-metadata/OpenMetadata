@@ -20,8 +20,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Button, Dropdown, Space, Tooltip } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -31,7 +30,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
@@ -63,6 +61,10 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -229,7 +231,7 @@ const AppDetails = () => {
     t,
   ]);
 
-  const manageButtonContent: ItemType[] = useMemo(
+  const manageButtonContent: ManageMenuItem[] = useMemo(
     () => [
       ...(appData?.deleted
         ? ([
@@ -252,7 +254,7 @@ const AppDetails = () => {
               },
               key: 'restore-button',
             },
-          ] as ItemType[])
+          ] as ManageMenuItem[])
         : [
             {
               label: (
@@ -617,7 +619,14 @@ const AppDetails = () => {
             href={appData?.developerUrl}
             rel="noopener noreferrer"
             target="_blank">
-            <Space>{t('label.visit-developer-website')}</Space>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              {t('label.visit-developer-website')}
+            </Box>
           </a>
         </Typography>
       </div>
@@ -675,39 +684,26 @@ const AppDetails = () => {
         </div>
         <div className="tw:flex-[0_0_360px]">
           <div className="d-flex gap-2 justify-end">
-            <Dropdown
-              align={{ targetOffset: [-12, 0] }}
-              className="m-l-xs"
-              menu={{
-                items: manageButtonContent,
-              }}
-              open={showActions}
-              overlayClassName="glossary-manage-dropdown-list-container"
-              overlayStyle={{ width: '350px' }}
-              placement="bottomRight"
-              trigger={['click']}
-              onOpenChange={setShowActions}>
-              <Tooltip
-                placement="topRight"
-                title={t('label.manage-entity', {
-                  entity: t('label.application'),
-                })}>
-                <Button
-                  className="glossary-manage-dropdown-button p-x-xs"
-                  data-testid="manage-button"
-                  icon={
-                    <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                  }
-                  onClick={() => setShowActions(true)}
-                />
-              </Tooltip>
-            </Dropdown>
+            <ManageMenu
+              isOpen={showActions}
+              items={manageButtonContent}
+              label={t('label.manage-entity', {
+                entity: t('label.application'),
+              })}
+              triggerClassName="m-l-xs"
+              onOpenChange={setShowActions}
+            />
           </div>
         </div>
       </Box>
       <Box direction="col">
         <div>
-          <Space className="app-details-header w-full" size={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal app-details-header w-full"
+            gap={6}
+            itemClassName="layout-space-item">
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
@@ -715,28 +711,38 @@ const AppDetails = () => {
               {renderRuntimeDisabledBadge()}
 
               <div className="d-flex items-center flex-wrap gap-6">
-                <Space size={8}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <ClockCircleOutlined />
                   <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
                   </Typography>
-                </Space>
+                </Box>
 
-                <Space size={8}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <UserOutlined />
                   <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}
                   </Typography>
-                </Space>
+                </Box>
 
                 {renderDeveloperUrl()}
               </div>
             </div>
-          </Space>
+          </Box>
         </div>
         <div>{renderAppDetailsBody()}</div>
       </Box>

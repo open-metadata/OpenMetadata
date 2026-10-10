@@ -167,6 +167,25 @@ CREATE TABLE IF NOT EXISTS rdf_inference_rule (
   KEY rdf_inference_rule_dirty_index (dirty, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- A materialization run clears a rule's dirty flag only if dirtyVersion still holds the value the
+-- run read, so rule edits and graph writes that land during the run stay pending.
+SET @rdf_inference_rule_dirty_version_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_inference_rule'
+        AND column_name = 'dirtyVersion'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_inference_rule ADD COLUMN dirtyVersion bigint unsigned NOT NULL DEFAULT 0'
+  )
+);
+PREPARE rdf_inference_rule_dirty_version_stmt FROM @rdf_inference_rule_dirty_version_ddl;
+EXECUTE rdf_inference_rule_dirty_version_stmt;
+DEALLOCATE PREPARE rdf_inference_rule_dirty_version_stmt;
+
 ALTER TABLE entity_relationship ADD COLUMN relationshipId varchar(36) DEFAULT NULL;
 
 ALTER TABLE entity_relationship ADD COLUMN relationshipTypeId varchar(36) DEFAULT NULL;
@@ -632,6 +651,70 @@ SET @container_parent_children_index_ddl = (
 PREPARE container_parent_children_index_stmt FROM @container_parent_children_index_ddl;
 EXECUTE container_parent_children_index_stmt;
 DEALLOCATE PREPARE container_parent_children_index_stmt;
+
+-- Announcement status is derived from startTime/endTime on every read and the ?status= filter
+-- compares the window directly. Nothing rewrote the stored value when the window opened or
+-- closed, so it only went stale: drop the column (its index goes with it) and the stored value.
+SET @announcement_status_column_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'announcement_entity'
+        AND column_name = 'status'
+    ),
+    'ALTER TABLE announcement_entity DROP COLUMN status',
+    'SELECT 1'
+  )
+);
+PREPARE announcement_status_column_stmt FROM @announcement_status_column_ddl;
+EXECUTE announcement_status_column_stmt;
+DEALLOCATE PREPARE announcement_status_column_stmt;
+
+UPDATE announcement_entity
+SET json = JSON_REMOVE(json, '$.status')
+WHERE JSON_EXTRACT(json, '$.status') IS NOT NULL;
+
+-- Reasoning results record the serving dataset they read. Every promotion assigns a new generation,
+-- even when it reuses a physical dataset name, so a result computed before it never passes for
+-- current. Servers assign one on startup to a pointer row created before this column existed.
+SET @rdf_active_dataset_generation_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_active_dataset'
+        AND column_name = 'generation'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_active_dataset ADD COLUMN generation varchar(36) DEFAULT NULL'
+  )
+);
+PREPARE rdf_active_dataset_generation_stmt FROM @rdf_active_dataset_generation_ddl;
+EXECUTE rdf_active_dataset_generation_stmt;
+DEALLOCATE PREPARE rdf_active_dataset_generation_stmt;
+
+-- Highest live-write queue ID handed out, kept because processed rows are deleted. Writes to the
+-- serving graph made outside the queue take an ID too, so a reasoning result records how far the
+-- projection had got and is current only while no write has been given a higher ID since.
+SET @rdf_projection_health_watermark_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_projection_health'
+        AND column_name = 'enqueuedWatermark'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_projection_health ADD COLUMN enqueuedWatermark bigint NOT NULL DEFAULT 0'
+  )
+);
+PREPARE rdf_projection_health_watermark_stmt FROM @rdf_projection_health_watermark_ddl;
+EXECUTE rdf_projection_health_watermark_stmt;
+DEALLOCATE PREPARE rdf_projection_health_watermark_stmt;
 
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.

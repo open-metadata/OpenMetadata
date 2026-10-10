@@ -281,12 +281,12 @@ public class ElasticSearchVectorService implements VectorIndexService {
   }
 
   @Override
-  public Map<String, Object> generateEmbeddingFields(EntityInterface entity) {
+  public Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity) {
     return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
   }
 
   @Override
-  public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
+  public void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
     try {
       String entityId = entity.getId().toString();
       String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);

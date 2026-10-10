@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
 import { EntityReference } from '../../../generated/entity/data/table';
+import { SelectablePopoverProps } from '../AnchoredPopover/AnchoredPopover';
 
 export interface EntitySelectableListConfig<T> {
   toEntityReference: (items: T[]) => EntityReference[];
@@ -34,7 +34,7 @@ export interface EntitySelectableListProps<T> {
   onUpdate: (items: T[]) => Promise<void>;
   onCancel: () => void;
   children: React.ReactNode;
-  popoverProps?: Partial<PopoverProps>;
+  popoverProps?: SelectablePopoverProps;
   listHeight?: number;
   config: EntitySelectableListConfig<T>;
   multiSelect?: boolean;
