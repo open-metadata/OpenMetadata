@@ -61,9 +61,25 @@ any sample-loader failures. Failures affecting the demo must be fixed before rec
 
 Use the available browser recording tool or the UI project's installed Playwright. Confirm the
 tool produces an actual video; screenshot-only tools cannot satisfy this task. For Playwright,
-create a browser context with `recordVideo` and a readable viewport, retain `page.video()`, then
-close the context before reading/saving the video. If reusing login state, include IndexedDB in
+set both `viewport` and `recordVideo.size` explicitly to the same dimensions; start with
+1920×1080 for a desktop flow. Without an explicit video size,
+[Playwright scales the video to fit 800×800](https://playwright.dev/docs/videos).
+Retain `page.video()`, then await context closure before reading/saving the video.
+If reusing login state, include IndexedDB in
 `storageState` when authentication uses it. Keep authentication files and tokens out of artifacts.
+
+Check a short sample before recording the whole flow. Choose a viewport suited to the feature and
+keep small labels legible at the size reviewers will watch; extra pixels alone do not fix tiny text.
+For a sharper capture or clearer cursor movement, consider a native recorder when available:
+
+| Recorder | Useful when |
+| --- | --- |
+| [OBS Studio](https://obsproject.com/kb/recording-encoder-presets-guide) | Recording the browser window at its native resolution; its **Indistinguishable** preset favors quality over file size. |
+| [Screen Studio](https://screen.studio/) (macOS) | Adding focused zooms and cursor/click emphasis; it supports MP4 exports up to 4K at 60 fps. |
+
+These are optional capture choices, not required dependencies or purchases. Keep actions and
+outcomes visible when zooming. Capture at the desired resolution/frame rate instead of upscaling
+or interpolating an existing clip; re-encoding cannot recover detail lost during capture.
 
 Show navigation to the feature, the action and its visible result against the Docker server.
 For a preference, show both states and switching back. Include persistence, permission or
@@ -83,6 +99,18 @@ results without clipped dialogs. Check duration/file size and inspect frames fro
 changed state and end. Prefer H.264 MP4 for browser compatibility; MOV and WebM are also supported
 by [GitHub attachments](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/attaching-files).
 Compress or split a rejected oversized upload without hiding relevant behavior.
+
+Keep the original capture. If MP4 conversion is needed, encode once from that source. A useful
+quality-oriented starting point with [FFmpeg's libx264 encoder](https://ffmpeg.org/ffmpeg-codecs.html#libx264_002c-libx264rgb)
+is CRF 18 and the slow preset, preserving the source dimensions and frame rate:
+
+```bash
+ffmpeg -n -i recording.webm -c:v libx264 -preset slow -crf 18 \
+  -pix_fmt yuv420p -c:a aac -movflags +faststart recording.mp4
+```
+
+Inspect the result before choosing a smaller export. Check small text, moving/scrolling regions and
+captions in the uploaded version too; a higher bitrate or a larger file is not proof of readability.
 
 ## 4. Upload into the PR description
 
