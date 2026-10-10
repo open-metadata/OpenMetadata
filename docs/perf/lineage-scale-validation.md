@@ -297,16 +297,21 @@ _(empty — first run pending)_
   celebrated.
 - `LineageRepository.getUpstream/DownstreamLineage` resolves an entity reference per record inside
   its recursion (an N+1), bounded only by the endpoint's `@Max(3)`.
-- **A focused schema can render without its tables.** On a 500-table graph (4 services × 2
-  databases × 2 schemas), drilling into a schema whose tables' lineage all rolls up to collapsed
-  context nodes went wrong on every local run:
-  - the scene API answered 200, with 32 tables and 2 context services;
-  - the URL and breadcrumb moved to the schema, and the loader cleared;
-  - but only the context services were ever in the DOM, even after the map's own fit-to-screen.
+- **Found and fixed: a large scene opened on its context nodes.** A scene too big for the canvas at
+  its band's minimum readable zoom (0.55 for ASSET, just above the 0.5 zoom-out threshold) used to
+  clamp the zoom and keep the centre of the whole graph in view. In the layered layout that centre
+  falls between layers, where only the collapsed context nodes sit. So the scene's own nodes opened
+  off-screen, and `onlyRenderVisibleElements` kept them out of the DOM:
+  - On the 500-table loader graph, a drill into a schema showed its 2 context services and none
+    of its 32 tables, even after fit-to-screen.
+  - Opened by link at 1440×900, two schemas of the 20k seed showed one context service and none of
+    their 120 and 190 tables.
 
-  The map's layout effect swallows layout errors (`.catch(() => setLoading(false))`), which would
-  produce exactly this, but that cause is unconfirmed. The 20k seed's schema drills render
-  normally.
+  Such a scene now opens at the minimum zoom on what it was opened for (`getSceneLandingViewport`):
+  - its focus node, else its origin node, centred;
+  - otherwise the top of its left-most column of real nodes.
+
+  The drill waits caught it, because they need a child of the focused container on screen.
 - **Lineage writes do not scale with edge count.** Each `PUT /v1/lineage` runs an Elasticsearch
   `update_by_query` with `refresh=true` on the downstream entity's index
   (`ElasticSearchEntityManager.updateLineage`). Every edge therefore forces a shard refresh. It also
