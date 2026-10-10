@@ -1665,6 +1665,10 @@ public class LineageRepository {
     }
   }
 
+  public CollectionDAO.EntityRelationshipObject getLineageEdgeRecord(UUID fromId, UUID toId) {
+    return dao.relationshipDAO().getRecord(fromId, toId, Relationship.UPSTREAM.ordinal());
+  }
+
   public Response getLineageEdge(UUID fromId, UUID toId) {
     String json = dao.relationshipDAO().getRelation(fromId, toId, Relationship.UPSTREAM.ordinal());
     if (json != null) {
