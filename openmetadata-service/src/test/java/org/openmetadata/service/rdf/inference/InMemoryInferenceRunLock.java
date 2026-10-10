@@ -16,6 +16,7 @@ package org.openmetadata.service.rdf.inference;
 /** Single-process stand-in for the cluster-wide materialization lease. */
 final class InMemoryInferenceRunLock implements InferenceRunLock {
   private String holder;
+  private boolean keptAlive;
 
   @Override
   public boolean tryAcquire(final String runId) {
@@ -36,6 +37,16 @@ final class InMemoryInferenceRunLock implements InferenceRunLock {
     if (runId.equals(holder)) {
       holder = null;
     }
+  }
+
+  @Override
+  public Runnable keepAlive(final String runId) {
+    keptAlive = true;
+    return () -> keptAlive = false;
+  }
+
+  boolean isKeptAlive() {
+    return keptAlive;
   }
 
   void holdForAnotherRun() {

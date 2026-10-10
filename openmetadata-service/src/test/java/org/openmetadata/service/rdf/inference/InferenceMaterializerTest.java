@@ -25,6 +25,7 @@ import jakarta.ws.rs.WebApplicationException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -182,6 +183,32 @@ class InferenceMaterializerTest {
     assertEquals(1, result.getFailedRules());
     assertTrue(status(result, COPY_A_TO_B).getLastError().contains("took over"));
     assertTrue(runLock.isHeld(), "The run must not release a lock another run now holds");
+  }
+
+  @Test
+  void aRunWhoseUpdateOutcomeIsUnknownKeepsTheLockUntilItExpires() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
+    store.timeOutUpdatesContaining("INSERT");
+
+    final InferenceMaterializationResult result = materializer().materialize(false, null);
+
+    assertEquals(1, result.getFailedRules());
+    assertTrue(runLock.isHeld(), "Fuseki may still be applying the update the run gave up on");
+    final WebApplicationException next =
+        assertThrows(WebApplicationException.class, () -> materializer().materialize(true, null));
+    assertEquals(409, next.getResponse().getStatus());
+  }
+
+  @Test
+  void theLockIsKeptAliveWhileTheRunWaitsOnFuseki() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
+    final List<Boolean> keptAliveDuringUpdate = new ArrayList<>();
+    store.afterNextUpdate(() -> keptAliveDuringUpdate.add(runLock.isKeptAlive()));
+
+    materializer().materialize(false, null);
+
+    assertEquals(List.of(true), keptAliveDuringUpdate);
+    assertFalse(runLock.isKeptAlive());
   }
 
   @Test
