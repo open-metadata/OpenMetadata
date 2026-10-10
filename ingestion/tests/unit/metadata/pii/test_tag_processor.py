@@ -12,10 +12,12 @@
 Unit tests for Tag Processor
 """
 
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from dirty_equals import Contains, HasAttributes, IsFloat, IsInstance, IsUUID
+from presidio_analyzer.nlp_engine import NlpEngine
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
     TagFactory,
@@ -41,6 +43,8 @@ from metadata.generated.schema.entity.data.table import Column, ColumnName, Data
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import PipelineState
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
 )
@@ -76,6 +80,46 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.algorithms.tag_scoring import ScoreTagsForColumnService
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_processor import TagProcessor
+from metadata.workflow.base import BaseWorkflow
+from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+
+
+class ClassificationWorkflow(BaseWorkflow):
+    """Exercise terminal-state calculation and SDK status upload with synthetic records."""
+
+    def __init__(self, config, metadata, successes):
+        self.config = config
+        self.workflow_config = config.workflowConfig
+        self.metadata = metadata
+        self.successes = successes
+        self._timer = None
+        self._steps_closed = False
+        self._start_ts = 1
+        self._ingestion_pipeline = SimpleNamespace(fullyQualifiedName=SimpleNamespace(root="svc.pipeline"))
+        self.processor = None
+
+    @classmethod
+    def create(cls, config_dict):
+        raise NotImplementedError
+
+    def post_init(self):
+        pass
+
+    def execute_internal(self):
+        self.processor = TagProcessor(self.config, self.metadata, score_tags_for_column=lambda *_: [])
+        self.processor.status.record_count = self.successes
+
+    def workflow_steps(self):
+        return [self.processor] if self.processor is not None else []
+
+    def get_failures(self):
+        return self.processor.status.failures if self.processor is not None else []
+
+    def send_progress_update(self, update_type):
+        pass
+
+    def print_status(self):
+        pass
 
 
 class TestTagProcessor:
@@ -198,6 +242,168 @@ class TestTagProcessor:
         assert tag_label.source is TagSource.Classification
         assert tag_label.state is State.Suggested
         assert tag_label.labelType is LabelType.Generated
+
+    def test_default_manager_records_loading_failure_in_processor_status(
+        self, workflow_config, mock_metadata, pii_classification
+    ) -> None:
+        mock_metadata.list_all_entities.side_effect = [[pii_classification], RuntimeError("private response")]
+
+        processor = TagProcessor(
+            config=workflow_config,
+            metadata=mock_metadata,
+            score_tags_for_column=lambda *_: [],
+        )
+
+        assert processor.enabled_classifications == [pii_classification]
+        assert processor.candidate_tags == []
+        assert len(processor.status.failures) == 1
+        assert "PII" in processor.status.failures[0].error
+        assert "private response" not in processor.status.failures[0].error
+
+        workflow = SimpleNamespace(
+            workflow_steps=lambda: [processor], workflow_config=SimpleNamespace(successThreshold=90)
+        )
+        payload = WorkflowStatusMixin.build_ingestion_status(workflow).model_dump(mode="json")
+        assert payload[0]["name"] == "Tag Classification Processor"
+        assert payload[0]["errors"] == 1
+        assert payload[0]["failures"][0]["name"] == "PII"
+
+        for successes, expected in [(0, False), (1, False), (5, False), (20, True)]:
+            processor.status.record_count = successes
+            assert BaseWorkflow._step_meets_success_threshold(workflow, processor) is expected
+
+        processor.status.failures.clear()
+        assert BaseWorkflow._step_meets_success_threshold(workflow, processor)
+        assert WorkflowStatusMixin.build_ingestion_status(workflow).root[0].errors == 0
+
+    def test_pipeline_payload_limits_details_but_keeps_full_error_count(self, processor):
+        for index in range(12):
+            processor.status.failed(StackTraceError(name=f"PII.Bad{index}", error="missing supportedLanguage"))
+        workflow = SimpleNamespace(workflow_steps=lambda: [processor])
+
+        payload = WorkflowStatusMixin.build_ingestion_status(workflow).model_dump(mode="json")
+
+        assert payload[0]["errors"] == 12
+        assert len(payload[0]["failures"]) == 10
+
+    @pytest.mark.parametrize("successes", [0, 1, 5, 20])
+    @pytest.mark.parametrize("fetch_failure", [False, True])
+    def test_execute_saves_warning_success_or_fetch_failure_state(
+        self, workflow_config, pii_classification, email_tag_pii, successes, fetch_failure
+    ):
+        bad = email_tag_pii.model_dump(mode="json", exclude_none=True)
+        bad["recognizers"][0]["recognizerConfig"].pop("supportedLanguage")
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.side_effect = [
+            {"data": [pii_classification.model_dump(mode="json", exclude_none=True)], "paging": {"total": 1}},
+            RuntimeError("private response") if fetch_failure else {"data": [bad], "paging": {"total": 1}},
+        ]
+        sdk.get_pipeline_status = Mock(return_value=None)
+        sdk.create_or_update_pipeline_status = Mock()
+        workflow_config.ingestionPipelineFQN = "svc.pipeline"
+        workflow_config.workflowConfig.successThreshold = 90
+        workflow = ClassificationWorkflow(workflow_config, sdk, successes)
+
+        workflow.execute()
+
+        uploaded = sdk.create_or_update_pipeline_status.call_args.args[1]
+        expected_state = PipelineState.success
+        if fetch_failure:
+            expected_state = PipelineState.partialSuccess if successes == 20 else PipelineState.failed
+        assert uploaded.pipelineState is expected_state
+        assert uploaded.status.root[0].warnings == int(not fetch_failure)
+        assert uploaded.status.root[0].errors == int(fetch_failure)
+        assert workflow.calculate_success() == (
+            {0: 50, 1: 50, 5: 83.33, 20: 95.24}[successes] if fetch_failure else 100
+        )
+
+    @pytest.mark.parametrize("malformed_spi", [True, False])
+    def test_real_sdk_parsing_scores_pii_pattern_and_uploads_status(
+        self, workflow_config, pii_classification, malformed_spi, caplog
+    ) -> None:
+        pattern = PatternFactory.create(name="acct-num", regex="ACCT_NUM", score=0.85)
+        pii_recognizer = RecognizerFactory.create(
+            name="acct-num",
+            recognizerConfig=PatternRecognizerFactory.create(patterns=[pattern], supportedLanguage="en"),
+            target=recognizer.Target.column_name,
+        )
+        pii_tag = TagFactory.create(
+            tag_name="PII",
+            tag_classification=pii_classification,
+            autoClassificationEnabled=True,
+            recognizers=[pii_recognizer],
+        )
+        spi = pii_tag.model_dump(mode="json", exclude_none=True)
+        spi["name"] = "SPI"
+        spi["fullyQualifiedName"] = "PII.SPI"
+        spi["recognizers"][0]["recognizerConfig"]["patterns"][0]["regex"] = "DOES_NOT_MATCH"
+        if malformed_spi:
+            spi["recognizers"][0]["recognizerConfig"].pop("supportedLanguage")
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.side_effect = [
+            {"data": [pii_classification.model_dump(mode="json", exclude_none=True)], "paging": {"total": 1}},
+            {"data": [pii_tag.model_dump(mode="json", exclude_none=True), spi], "paging": {"total": 2}},
+        ]
+        workflow_config.source.sourceConfig.config.confidence = 80
+        workflow_config.ingestionPipelineFQN = "svc.pipeline"
+        nlp_engine = Mock(spec=NlpEngine)
+        nlp_engine.process_text.return_value = SimpleNamespace(tokens=[], tokens_indices=[], lemmas=[], entities=[])
+        processor = TagProcessor(
+            config=workflow_config,
+            metadata=sdk,
+            classification_filter=["PII"],
+            score_tags_for_column=ScoreTagsForColumnService(nlp_engine=nlp_engine),
+        )
+
+        assert [tag.fullyQualifiedName for tag in processor.candidate_tags] == (
+            ["PII.PII"] if malformed_spi else ["PII.PII", "PII.SPI"]
+        )
+
+        column = Column(
+            name=ColumnName(root="ACCT_NUM"), fullyQualifiedName="svc.db.table.ACCT_NUM", dataType=DataType.VARCHAR
+        )
+        labels = processor.create_column_tag_labels(column, [])
+        assert [label.tagFQN.root for label in labels] == ["PII.PII"]
+        assert processor.status.failures == []
+        assert len(processor.status.warnings) == int(malformed_spi)
+        if malformed_spi:
+            assert "PII.SPI" in processor.status.warnings[0]
+            assert "supportedLanguage" in processor.status.warnings[0]["PII.SPI"]
+            assert "PII.SPI" in caplog.text
+            assert "supportedLanguage" in caplog.text
+            assert len([record for record in caplog.records if "Could not load tag PII.SPI" in record.message]) == 1
+
+        threshold_workflow = SimpleNamespace(workflow_config=SimpleNamespace(successThreshold=90))
+        for successes in (0, 1, 5, 20):
+            processor.status.record_count = successes
+            assert processor.status.calculate_success() == 100
+            assert BaseWorkflow._step_meets_success_threshold(threshold_workflow, processor)
+
+        class PipelineHarness(WorkflowStatusMixin):
+            def workflow_steps(self):
+                return [processor]
+
+        workflow = PipelineHarness()
+        workflow.config = workflow_config
+        workflow.metadata = sdk
+        workflow.ingestion_pipeline = SimpleNamespace(fullyQualifiedName=SimpleNamespace(root="svc.pipeline"))
+        workflow._start_ts = 1
+        sdk.get_pipeline_status = Mock(return_value=None)
+        sdk.create_or_update_pipeline_status = Mock()
+        payload = workflow.build_ingestion_status()
+        workflow.set_ingestion_pipeline_status(PipelineState.success, payload)
+
+        sdk.create_or_update_pipeline_status.assert_called_once()
+        fqn, uploaded = sdk.create_or_update_pipeline_status.call_args.args
+        assert fqn == "svc.pipeline"
+        assert uploaded.pipelineState is PipelineState.success
+        assert uploaded.status.root[0].errors == 0
+        assert uploaded.status.root[0].warnings == int(malformed_spi)
+        assert uploaded.status.root[0].failures is None
 
     def test_skip_column_with_existing_pii_tag(self, processor: TagProcessor) -> None:
         """Test that columns with existing PII tags are skipped"""
