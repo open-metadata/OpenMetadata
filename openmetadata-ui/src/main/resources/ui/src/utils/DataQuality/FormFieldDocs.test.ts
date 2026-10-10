@@ -134,6 +134,16 @@ describe('loadFormFieldDocs', () => {
     expect(docs.testType).toContain('Choose the type of test');
   });
 
+  it('loads docs from another folder when one is given', async () => {
+    mockFetchMarkdownFile.mockResolvedValueOnce(SAMPLE_MD);
+
+    await loadFormFieldDocs('SampleApp', 'Applications');
+
+    expect(mockFetchMarkdownFile).toHaveBeenCalledWith(
+      'en-US/Applications/SampleApp.md'
+    );
+  });
+
   it('caches per form so the file is fetched at most once', async () => {
     mockFetchMarkdownFile.mockResolvedValue(SAMPLE_MD);
 

@@ -365,6 +365,7 @@ const ProfilePage: React.FC = () => {
             description={headerDescription}
             icon={headerIcon}
             iconNode={headerOverride?.iconNode}
+            meta={headerOverride?.meta}
             title={headerTitle}
             titleInput={headerOverride?.titleInput}
             titleSuffix={headerOverride?.titleSuffix}

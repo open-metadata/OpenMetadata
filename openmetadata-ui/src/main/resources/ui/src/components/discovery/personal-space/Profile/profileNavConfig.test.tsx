@@ -37,12 +37,19 @@ jest.mock('./tabs/platform-settings/PlatformSettingsPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('./tabs/applications/ApplicationsPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 jest.mock('../../../../assets/svg/entity/bot.svg', () => ({
   ReactComponent: () => null,
 }));
 
+import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   DEFAULT_PROFILE_NAV_ID,
+  FEATURES_NAV_ITEMS,
   getProfileNavItem,
   PROFILE_NAV_GROUP_LABEL,
   PROFILE_NAV_GROUP_ORDER,
@@ -117,5 +124,18 @@ describe('profileNavConfig', () => {
     expect(getProfileNavItem('does-not-exist' as never)).toBe(
       PROFILE_NAV_ITEMS[0]
     );
+  });
+
+  it('lists Applications under Features for users who can view apps', () => {
+    const applications = FEATURES_NAV_ITEMS.find(
+      (item) => item.id === 'applications'
+    );
+    const canView = {
+      [ResourceEntity.APPLICATION]: { ViewAll: true },
+    } as unknown as UIPermission;
+
+    expect(applications?.group).toBe('features');
+    expect(applications?.isVisible?.(canView, false)).toBe(true);
+    expect(applications?.isVisible?.({} as UIPermission, false)).toBeFalsy();
   });
 });

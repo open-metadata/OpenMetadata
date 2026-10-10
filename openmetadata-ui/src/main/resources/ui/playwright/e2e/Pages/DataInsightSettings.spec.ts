@@ -70,7 +70,10 @@ test.describe.serial(
       });
 
       // Click on deploy button
-      await page.click('.ant-modal-body [data-testid="deploy-button"]');
+      await page
+        .getByTestId('update-schedule-modal')
+        .getByTestId('deploy-button')
+        .click();
 
       await toastNotification(page, 'Schedule saved successfully');
 

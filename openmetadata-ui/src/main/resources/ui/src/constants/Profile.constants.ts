@@ -26,6 +26,7 @@ export const PROFILE_NAV_ID_LIST = [
   'notification',
   'members',
   'governance',
+  'applications',
   'billing',
   'platform-settings',
 ] as const;
