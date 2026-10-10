@@ -50,6 +50,8 @@ BLOCK_START = "<!-- local-playwright-results:start -->"
 BLOCK_END = "<!-- local-playwright-results:end -->"
 PLAYWRIGHT_HEADING = "#### Playwright (UI) tests"
 # Setup/teardown projects ride along with every run; they are not "extra" specs.
+# Mirrors FIXTURE_TEST_MATCH in playwright.config.ts
+# (ADR:2026-10-10-local-playwright-planner-isolates-dependency-expanding-specs).
 FIXTURE_FILE = re.compile(r"(?:\.(?:setup|teardown)\.ts|dataInsightApp\.ts)$")
 LIST_WORKERS = 6
 
@@ -233,11 +235,17 @@ def list_run(ui_root: Path, specs: list[str]) -> Listing:
         ["npx", "playwright", "test", "--list", "--reporter=json", *specs],
         cwd=ui_root,
         env=playwright_env(),
-        check=True,
+        check=False,
         capture_output=True,
         text=True,
     )
-    report = json.loads(result.stdout[result.stdout.index("{") :])
+    start = result.stdout.find("{")
+    if result.returncode != 0 or start < 0:
+        sys.exit(
+            "`npx playwright test --list` failed, so the plan cannot be checked "
+            f"for dependency expansion:\n{result.stderr or result.stdout}"
+        )
+    report = json.loads(result.stdout[start:])
     test_dir = Path(report["config"]["rootDir"])
     projects: dict[str, set[str]] = {}
 
@@ -254,6 +262,7 @@ def list_run(ui_root: Path, specs: list[str]) -> Listing:
             _relative_spec(suite["file"], test_dir, ui_root), set()
         )
         collect(suite, names)
+    # ADR:2026-10-10-local-playwright-planner-isolates-dependency-expanding-specs
     dedicated = {
         project["name"]
         for project in report["config"].get("projects", [])

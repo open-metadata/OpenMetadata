@@ -289,3 +289,18 @@ def test_merge_reports_keeps_both_passes() -> None:
     assert merged["errors"] == ["boom"]
     assert merged["stats"] == {"startTime": "t0", "duration": 1500.0}
     assert merged["config"] == first["config"]
+
+
+def test_failed_listing_exits_with_playwrights_own_error(monkeypatch, tmp_path):
+    def failed_list(*args, **kwargs):
+        return subprocess.CompletedProcess(
+            args, 1, stdout="", stderr="Error: Cannot find module '@playwright/test'"
+        )
+
+    monkeypatch.setattr(PLANNER.subprocess, "run", failed_list)
+    try:
+        PLANNER.list_run(tmp_path, ["playwright/e2e/Pages/Foo.spec.ts"])
+    except SystemExit as exit_:
+        assert "Cannot find module '@playwright/test'" in str(exit_.code)
+    else:
+        raise AssertionError("a failed listing must exit")
