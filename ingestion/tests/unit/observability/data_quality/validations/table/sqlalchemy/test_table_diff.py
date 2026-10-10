@@ -1,5 +1,6 @@
 import datetime
 import inspect
+import logging
 from collections.abc import Generator
 from unittest.mock import MagicMock, Mock, patch
 
@@ -510,3 +511,70 @@ class TestRun:
         assert table_diff.result_list == []
         # Closing the diff is what stops data-diff's worker pool
         assert inspect.getgeneratorstate(table_diff.diff) == inspect.GEN_CLOSED
+
+
+@pytest.fixture
+def data_diff() -> Generator[MagicMock, None, None]:
+    """The data-diff library: the validator's connections and diff go through it."""
+    with patch("metadata.data_quality.validations.table.sqlalchemy.tableDiff.data_diff") as data_diff:
+        yield data_diff
+
+
+def build_parallel_queries_validator(parallel_queries: str | None) -> TableDiffValidator:
+    validator = build_duplicate_key_validator()
+    validator.test_case = TestCase.model_construct(
+        parameterValues=[]
+        if parallel_queries is None
+        else [TestCaseParameterValue(name="parallelQueries", value=parallel_queries)]
+    )
+    return validator
+
+
+def thread_counts(data_diff: MagicMock) -> list[int]:
+    return [call.kwargs["thread_count"] for call in data_diff.connect_to_table.call_args_list]
+
+
+class TestParallelQueries:
+    """Each database runs up to `parallelQueries` queries at once, and both are always queried at the same time."""
+
+    @pytest.mark.parametrize(
+        "parallel_queries, expected",
+        (
+            (None, 1),
+            ("", 1),  # a number field cleared in the test case form
+            ("1", 1),
+            ("4", 4),
+            ("4.0", 4),
+        ),
+    )
+    def test_it_sizes_both_databases_and_the_diff_from_the_parameter(
+        self, data_diff: MagicMock, parallel_queries: str | None, expected: int
+    ) -> None:
+        validator = build_parallel_queries_validator(parallel_queries)
+
+        validator.get_table_diff()
+
+        assert thread_counts(data_diff) == [expected, expected]
+        # Twice the queries per database: data-diff runs a segment's two tables on that same pool
+        assert data_diff.diff_tables.call_args.kwargs["max_threadpool_size"] == 2 * expected
+
+    @pytest.mark.parametrize("parallel_queries", ("0", "-2", "2.5", "many"))
+    def test_an_invalid_value_falls_back_to_one_query_per_database(
+        self, data_diff: MagicMock, parallel_queries: str, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        validator = build_parallel_queries_validator(parallel_queries)
+
+        with caplog.at_level(logging.WARNING, logger="TestSuite"):
+            validator.get_table_diff()
+
+        assert thread_counts(data_diff) == [1, 1]
+        assert data_diff.diff_tables.call_args.kwargs["max_threadpool_size"] == 2
+        assert f"Ignoring parallelQueries={parallel_queries!r}" in caplog.text
+
+    def test_the_column_check_opens_connections_sized_for_the_diff(self, data_diff: MagicMock) -> None:
+        """data-diff caches connections by URL alone, so the diff reuses the ones the column check opens first."""
+        validator = build_parallel_queries_validator("4")
+
+        validator.get_incomparable_columns()
+
+        assert thread_counts(data_diff) == [4, 4]

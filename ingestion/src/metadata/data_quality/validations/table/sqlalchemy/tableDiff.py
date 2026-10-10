@@ -16,7 +16,7 @@ import traceback
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from decimal import Decimal
-from functools import reduce
+from functools import cached_property, reduce
 from itertools import islice
 from typing import cast
 from urllib.parse import urlparse
@@ -344,11 +344,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         Returns:
             List[str]: A list of column names that have incomparable types
         """
-
+        # data-diff caches connections by URL alone, and the diff reuses the ones opened here: they must
+        # get the diff's thread_count, or the diff silently runs on a single connection per database.
         table1 = data_diff.connect_to_table(
             self.runtime_params.table1.data_diff_service_url,
             self.runtime_params.table1.path,
             self.runtime_params.table1.key_columns,
+            thread_count=self.parallel_queries,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
             key_content=normalize_pem_string(self.runtime_params.table1.privateKey.get_secret_value())
@@ -362,6 +364,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table2.data_diff_service_url,
             self.runtime_params.table2.path,
             self.runtime_params.table2.key_columns,
+            thread_count=self.parallel_queries,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
             key_content=normalize_pem_string(self.runtime_params.table2.privateKey.get_secret_value())
@@ -426,6 +429,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table1.data_diff_service_url,
             self.runtime_params.table1.path,
             self.runtime_params.table1.key_columns,  # type: ignore
+            thread_count=self.parallel_queries,
             extra_columns=self.runtime_params.table1.extra_columns,
             case_sensitive=self.get_case_sensitive(),
             where=left_where,
@@ -440,6 +444,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table2.data_diff_service_url,
             self.runtime_params.table2.path,
             self.runtime_params.table2.key_columns,  # type: ignore
+            thread_count=self.parallel_queries,
             extra_columns=self.runtime_params.table2.extra_columns,
             case_sensitive=self.get_case_sensitive(),
             where=right_where,
@@ -452,6 +457,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
         data_diff_kwargs = {
             "where": self.get_where(),
+            # data-diff uses this both for how many segments it diffs at once and for the pool that queries a
+            # segment's two tables. At twice the per-database limit both databases are queried at the same time
+            # and each can be kept busy, even at one query per database.
+            "max_threadpool_size": 2 * self.parallel_queries,
         }
         logger.debug(
             "Calling table diff with parameters: table1=%s, table2=%s, kwargs=%s",
@@ -464,6 +473,27 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     def get_where(self) -> str | None:
         """Returns the where clause from the test case parameters or None if it is a blank string."""
         return self.runtime_params.whereClause or None
+
+    @cached_property
+    def parallel_queries(self) -> int:
+        """How many queries the diff may run at once against each database (`parallelQueries`, defaults to 1)."""
+        value = cast(
+            "str | None",
+            self.get_test_case_param_value(self.test_case.parameterValues or [], "parallelQueries", str),
+        )
+        if value is None:
+            return 1
+        try:
+            parallel_queries = float(value)
+        except ValueError:
+            parallel_queries = 0.0
+        if parallel_queries < 1 or not parallel_queries.is_integer():
+            logger.warning(
+                "Ignoring parallelQueries=%r: it must be a whole number of at least 1. Using 1.",
+                value,
+            )
+            return 1
+        return int(parallel_queries)
 
     def sample_where_clause(self) -> tuple[str | None, str | None]:
         """We use a where clause to sample the data for the diff. This is useful because with data diff
