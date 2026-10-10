@@ -12,17 +12,19 @@
  */
 import {
   Box,
+  Button,
+  Checkbox,
   Divider,
   EmptyPlaceholder,
-  Grid,
+  GridList,
+  GridListItem,
+  ListLayout,
   Typography,
+  Virtualizer,
 } from '@openmetadata/ui-core-components';
-import { Button, Checkbox, List } from 'antd';
-import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
-import VirtualList from 'rc-virtual-list';
 import {
   UIEventHandler,
   useCallback,
@@ -52,7 +54,6 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import {
   COLUMN_AGGREGATE_FIELD,
   getColumnNameFromColumnFilterKey,
@@ -541,8 +542,7 @@ export const AddTestCaseList = ({
   });
 
   const handlePageSelectAllCheckbox = useCallback(
-    (e: CheckboxChangeEvent) => {
-      const checked = e.target.checked;
+    (checked: boolean) => {
       if (items.length === 0) {
         return;
       }
@@ -695,114 +695,132 @@ export const AddTestCaseList = ({
     [debounceFetchTableData, debounceFetchColumnData, fetchColumnOptions]
   );
 
-  const listSource = items;
+  const listSource = useMemo(
+    () =>
+      items.map((test) => ({
+        id: test.id ?? test.fullyQualifiedName ?? test.name,
+        test,
+      })),
+    [items]
+  );
 
   const renderList = useMemo(() => {
     const source = listSource;
     if (!isLoading && isEmpty(source)) {
       return (
-        <Grid.Item className="layout-column" span={24}>
-          <Box className="tw:relative tw:min-h-80 tw:w-full">
-            <EmptyPlaceholder
-              description={t('message.try-adjusting-filter')}
-              icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
-              title={t('label.no-result-found')}
-              variant="blank"
-            />
-          </Box>
-        </Grid.Item>
+        <Box className="tw:relative tw:min-h-80 tw:w-full">
+          <EmptyPlaceholder
+            description={t('message.try-adjusting-filter')}
+            icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+            title={t('label.no-result-found')}
+            variant="blank"
+          />
+        </Box>
       );
     } else {
       return (
-        <Grid.Item className="layout-column" span={24}>
-          <List
-            loading={{
-              spinning: isLoading,
-              indicator: <Loader />,
-            }}>
-            <VirtualList
-              data={listSource}
-              height={500}
-              itemKey="id"
+        <Box className="tw:relative" direction="col">
+          {isLoading && (
+            <Box
+              align="center"
+              className="tw:absolute tw:inset-0 tw:z-10"
+              justify="center">
+              <Loader />
+            </Box>
+          )}
+          <Virtualizer
+            layout={ListLayout}
+            layoutOptions={{ estimatedRowHeight: 128 }}>
+            <GridList
+              aria-label={t('label.test-case-plural')}
+              className="tw:h-125 tw:overflow-y-auto"
+              data-testid="add-test-case-list-scroll"
+              dependencies={[
+                selectedItems,
+                selectAll,
+                excludedIds,
+                handleCardClick,
+                t,
+              ]}
+              items={listSource}
               onScroll={onScroll}>
-              {(test) => {
+              {({ id, test }) => {
                 const tableFqn = getEntityFQN(test.entityLink);
                 const tableName = getNameFromFQN(tableFqn);
                 const isColumn = test.entityLink.includes('::columns::');
 
                 return (
-                  <Box
-                    inline
-                    align="stretch"
-                    className="layout-space m-b-md border rounded-4 p-sm cursor-pointer tw:bg-primary"
-                    direction="col"
-                    gap={2}
-                    itemClassName="layout-space-item"
-                    onClick={() => handleCardClick(test)}>
+                  <GridListItem
+                    className="tw:pb-4"
+                    id={id}
+                    textValue={getEntityName(test)}>
                     <Box
-                      inline
-                      align="center"
-                      className="layout-space layout-space-horizontal justify-between w-full"
+                      className="border rounded-4 p-sm cursor-pointer tw:bg-primary"
+                      direction="col"
                       gap={2}
-                      itemClassName="layout-space-item">
+                      key={test.id}
+                      onClick={() => handleCardClick(test)}>
+                      <Box
+                        align="center"
+                        className="w-full"
+                        gap={2}
+                        justify="between">
+                        <Typography
+                          as="p"
+                          className="m-0 font-medium text-base w-max-500 tw:text-primary"
+                          data-testid={test.name}
+                          ellipsis={{ tooltip: true }}>
+                          {getEntityName(test)}
+                        </Typography>
+
+                        <Checkbox
+                          aria-label={getEntityName(test)}
+                          data-testid={`checkbox-${test.name}`}
+                          isSelected={
+                            selectAll
+                              ? !excludedIds.has(test.id ?? '')
+                              : selectedItems?.has(test.id ?? '')
+                          }
+                          onChange={() => handleCardClick(test)}
+                        />
+                      </Box>
                       <Typography
                         as="p"
-                        className="m-0 font-medium text-base w-max-500 tw:text-primary"
-                        data-testid={test.name}
+                        className="m-0 w-max-500 tw:text-primary"
                         ellipsis={{ tooltip: true }}>
-                        {getEntityName(test)}
+                        {getEntityName(test.testDefinition)}
                       </Typography>
-
-                      <Checkbox
-                        checked={
-                          selectAll
-                            ? !excludedIds.has(test.id ?? '')
-                            : selectedItems?.has(test.id ?? '')
-                        }
-                        data-testid={`checkbox-${test.name}`}
-                      />
+                      <Typography as="p" className="m-0 tw:text-primary">
+                        <Link
+                          data-testid="table-link"
+                          to={getEntityDetailsPath(
+                            EntityType.TABLE,
+                            tableFqn,
+                            EntityTabs.PROFILER
+                          )}
+                          onClick={(e) => e.stopPropagation()}>
+                          {tableName}
+                        </Link>
+                      </Typography>
+                      {isColumn && (
+                        <Box align="center" gap={2}>
+                          <Typography className="font-medium text-xs tw:text-primary">{`${t(
+                            'label.column'
+                          )}:`}</Typography>
+                          <Typography className="text-xs" color="secondary">
+                            {replacePlus(
+                              getColumnNameFromEntityLink(test.entityLink)
+                            ) ?? '--'}
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
-                    <Typography
-                      as="p"
-                      className="m-0 w-max-500 tw:text-primary"
-                      ellipsis={{ tooltip: true }}>
-                      {getEntityName(test.testDefinition)}
-                    </Typography>
-                    <Typography as="p" className="m-0 tw:text-primary">
-                      <Link
-                        data-testid="table-link"
-                        to={getEntityDetailsPath(
-                          EntityType.TABLE,
-                          tableFqn,
-                          EntityTabs.PROFILER
-                        )}
-                        onClick={(e) => e.stopPropagation()}>
-                        {tableName}
-                      </Link>
-                    </Typography>
-                    {isColumn && (
-                      <Box
-                        inline
-                        align="center"
-                        className="layout-space layout-space-horizontal"
-                        gap={2}
-                        itemClassName="layout-space-item">
-                        <Typography className="font-medium text-xs tw:text-primary">{`${t(
-                          'label.column'
-                        )}:`}</Typography>
-                        <Typography className="text-xs" color="secondary">
-                          {replacePlus(
-                            getColumnNameFromEntityLink(test.entityLink)
-                          ) ?? '--'}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Box>
+                  </GridListItem>
                 );
               }}
-            </VirtualList>
-          </List>
-        </Grid.Item>
+            </GridList>
+          </Virtualizer>
+        </Box>
       );
     }
   }, [
@@ -882,45 +900,34 @@ export const AddTestCaseList = ({
   );
 
   return (
-    <Grid
-      className="layout-row layout-grid"
-      style={{ ...getLayoutGutter(0, 8) }}>
-      <Grid.Item className="layout-column" span={24}>
-        <Searchbar
-          removeMargin
-          showClearSearch
-          showLoadingStatus
-          placeholder={t('label.search-entity', {
-            entity: t('label.test-case-plural'),
-          })}
-          searchValue={searchTerm}
-          onSearch={handleSearch}
-        />
-      </Grid.Item>
-      <Grid.Item className="layout-column" span={24}>
-        <AddTestCaseListFilters
-          filterLoading={filterLoading}
-          filterOptions={filterOptions}
-          filterSelectedKeys={filterSelectedKeys}
-          getPopupContainer={getPopupContainer}
-          hideTableFilter={hideTableFilter}
-          onChange={handleFilterChange}
-          onSearch={handleFilterSearch}
-        />
-      </Grid.Item>
+    <Box direction="col" gap={2}>
+      <Searchbar
+        removeMargin
+        showClearSearch
+        showLoadingStatus
+        placeholder={t('label.search-entity', {
+          entity: t('label.test-case-plural'),
+        })}
+        searchValue={searchTerm}
+        onSearch={handleSearch}
+      />
+      <AddTestCaseListFilters
+        filterLoading={filterLoading}
+        filterOptions={filterOptions}
+        filterSelectedKeys={filterSelectedKeys}
+        getPopupContainer={getPopupContainer}
+        hideTableFilter={hideTableFilter}
+        onChange={handleFilterChange}
+        onSearch={handleFilterSearch}
+      />
       {items.length > 0 && (
-        <Grid.Item className="layout-column m-b-xs" span={24}>
+        <Box className="m-b-xs" direction="col">
           <Divider className="m-b-sm m-t-0" />
-          <Box
-            inline
-            align="center"
-            className="layout-space layout-space-horizontal w-full"
-            gap={2}
-            itemClassName="layout-space-item"
-            wrap="wrap">
+          <Box align="center" className="w-full" gap={2} wrap="wrap">
             <Checkbox
-              checked={allLoadedSelected}
+              aria-label={t('label.select-all')}
               data-testid="select-all-test-cases"
+              isSelected={allLoadedSelected}
               onChange={handlePageSelectAllCheckbox}
             />
             <Typography className="tw:text-primary">
@@ -936,10 +943,9 @@ export const AddTestCaseList = ({
               <>
                 <Typography color="secondary">|</Typography>
                 <Button
-                  className="h-auto p-0 font-normal"
+                  color="link-color"
                   data-testid="select-all-total-test-cases"
-                  type="link"
-                  onClick={handleSelectAllMatchingTotal}>
+                  onPress={handleSelectAllMatchingTotal}>
                   {t('label.select-all-count-test-cases', {
                     count: totalCount,
                   })}
@@ -947,25 +953,23 @@ export const AddTestCaseList = ({
               </>
             )}
           </Box>
-        </Grid.Item>
+        </Box>
       )}
       {renderList}
       {showButton && (
-        <Grid.Item
-          className="layout-column d-flex justify-end items-center p-y-sm gap-4"
-          span={24}>
-          <Button data-testid="cancel" type="link" onClick={onCancel}>
+        <Box align="center" className="p-y-sm" gap={4} justify="end">
+          <Button color="link-color" data-testid="cancel" onPress={onCancel}>
             {cancelText ?? t('label.cancel')}
           </Button>
           <Button
+            color="primary"
             data-testid="submit"
-            loading={isLoading}
-            type="primary"
-            onClick={handleSubmit}>
+            isLoading={isLoading}
+            onPress={handleSubmit}>
             {submitText ?? t('label.create')}
           </Button>
-        </Grid.Item>
+        </Box>
       )}
-    </Grid>
+    </Box>
   );
 };

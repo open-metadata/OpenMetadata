@@ -10,11 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Box } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  TextArea,
+} from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button, Input, Tooltip } from 'antd';
-import { TextAreaRef } from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import 'katex/dist/katex.min.css';
 import { FC, useRef, useState } from 'react';
@@ -29,7 +32,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
   editor,
 }) => {
   const { t } = useTranslation();
-  const inputRef = useRef<TextAreaRef>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const equation = node.attrs.math_equation;
 
   const [isEditing, setIsEditing] = useState(() =>
@@ -38,8 +41,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
 
   const handleSaveEquation = () => {
     updateAttributes({
-      math_equation:
-        inputRef.current?.resizableTextArea?.textArea.value ?? equation,
+      math_equation: inputRef.current?.value ?? equation,
       isEditing: false,
     });
     setIsEditing(false);
@@ -53,33 +55,36 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
         })}>
         {isEditing ? (
           <div className="math-equation-edit-input-wrapper">
-            <Input.TextArea
+            <TextArea
               // eslint-disable-next-line jsx-a11y/no-autofocus -- focus required to edit equation inline
               autoFocus
-              bordered={false}
-              className="math-equation-input"
+              aria-label={t('label.equation')}
               defaultValue={equation}
               placeholder='Enter your equation here. For example: "x^2 + y^2 = z^2"'
-              ref={inputRef}
               rows={2}
+              size="sm"
+              textAreaClassName={({ isFocused }) =>
+                classNames(
+                  'math-equation-input tw:bg-transparent tw:shadow-none',
+                  { 'tw:outline-transparent': !isFocused }
+                )
+              }
+              textAreaRef={inputRef}
             />
-            <Box
-              inline
-              align="center"
-              className="layout-space layout-space-horizontal"
-              gap={2}
-              itemClassName="layout-space-item">
+            <Box align="center" gap={2}>
               <Button
-                icon={<CloseOutlined />}
-                size="small"
-                type="default"
-                onClick={() => setIsEditing(false)}
+                aria-label={t('label.cancel')}
+                color="secondary"
+                iconLeading={XClose}
+                size="xs"
+                onPress={() => setIsEditing(false)}
               />
               <Button
-                icon={<CheckOutlined />}
-                size="small"
-                type="primary"
-                onClick={handleSaveEquation}
+                aria-label={t('label.save')}
+                color="primary"
+                iconLeading={Check}
+                size="xs"
+                onPress={handleSaveEquation}
               />
             </Box>
           </div>
@@ -88,16 +93,14 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
         )}
         {/* Show edit button only when the editor is editable */}
         {!isEditing && editor.isEditable && (
-          <Tooltip
-            title={t('label.edit-entity', { entity: t('label.equation') })}>
-            <Button
-              className="edit-button"
-              icon={<EditIcon width={16} />}
-              size="small"
-              type="text"
-              onClick={() => setIsEditing(true)}
-            />
-          </Tooltip>
+          <ButtonUtility
+            className="edit-button"
+            color="tertiary"
+            icon={<EditIcon width={16} />}
+            size="xs"
+            tooltip={t('label.edit-entity', { entity: t('label.equation') })}
+            onClick={() => setIsEditing(true)}
+          />
         )}
       </div>
     </NodeViewWrapper>

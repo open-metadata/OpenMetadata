@@ -47,9 +47,11 @@ export const checkDescriptionInEditModal = async (
 
   await taskActionMenu.getByRole('menuitem', { name: 'edit' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  const editTaskModal = page.getByTestId('suggestion-edit-task-modal');
 
-  await expect(page.locator('.ant-modal-title')).toContainText(
+  await expect(editTaskModal).toBeVisible();
+
+  await expect(editTaskModal.getByRole('heading')).toContainText(
     `Update description for table ${taskValue.term} columns/${taskValue.columnName}`
   );
 

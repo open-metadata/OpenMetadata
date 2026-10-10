@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { TableProps } from 'antd';
 import { ReactNode } from 'react';
 import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { SORT_ORDER } from '../../../../../enums/common.enum';
@@ -24,7 +23,10 @@ import {
 import { Paging } from '../../../../../generated/type/paging';
 import { UsePagingInterface } from '../../../../../hooks/paging/usePaging';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import { ColumnsType } from '../../../../common/Table/Table.interface';
+import {
+  ColumnsType,
+  TableProps,
+} from '../../../../common/Table/Table.interface';
 
 export interface IngestionListTableProps {
   tableContainerClassName?: string;

@@ -21,6 +21,7 @@ const createMockResource = (url: string): LearningResource => ({
   displayName: 'Test Storylane Tour',
   resourceType: 'Storylane',
   source: { url },
+  categories: [],
   contexts: [{ pageId: 'glossary' }],
 });
 
@@ -29,7 +30,7 @@ describe('StorylaneTour', () => {
     const resource = createMockResource('https://app.storylane.io/demo/abc123');
     render(<StorylaneTour resource={resource} />);
 
-    expect(document.querySelector('.ant-spin')).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).toBeInTheDocument();
   });
 
   it('should render iframe with correct URL', () => {
@@ -62,7 +63,7 @@ describe('StorylaneTour', () => {
     const iframe = screen.getByTitle('Test Storylane Tour');
     fireEvent.load(iframe);
 
-    expect(document.querySelector('.ant-spin')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 
   it('should use resource name as title fallback', () => {
@@ -71,6 +72,7 @@ describe('StorylaneTour', () => {
       name: 'storylane-name',
       resourceType: 'Storylane',
       source: { url: 'https://app.storylane.io/demo/abc123' },
+      categories: [],
       contexts: [{ pageId: 'glossary' }],
     };
     render(<StorylaneTour resource={resource} />);

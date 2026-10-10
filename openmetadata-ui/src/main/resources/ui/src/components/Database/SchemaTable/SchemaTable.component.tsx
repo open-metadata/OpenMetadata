@@ -18,7 +18,7 @@ import {
   Label,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Select, TableProps, Tooltip } from 'antd';
+import { Button, Select, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -102,6 +102,7 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import {
   ColumnsType,
   ExpandableConfig,
+  TableProps,
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
