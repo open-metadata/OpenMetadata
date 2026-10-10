@@ -2,6 +2,7 @@ package org.openmetadata.playwright.ui.pages;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.TimeoutError;
 import com.microsoft.playwright.assertions.LocatorAssertions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
@@ -45,6 +46,7 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   // Rendered only on a scene's origin/focus node — see awaitFocusedSceneSettled.
   private static final String ROOT_NODE_BADGE = ".lineage-node-badge";
   private static final double DRILL_REGISTER_TIMEOUT_MS = 15_000;
+  private static final double CLICKABLE_PROBE_MS = 1_000;
   private static final String BAND_QUERY_PARAM = "lineageBand";
   private static final String FOCUS_QUERY_PARAM = "lineageFocus";
   private static final String ONBOARDING_COOKIE = "lineageMapsOnboardingSeen";
@@ -52,12 +54,11 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   private static final double RENDER_TIMEOUT_MS = 120_000;
 
   /**
-   * React Flow's zoom button steps by 1.2x. From a post-fit zoom of <= 1.0, four steps clear the
-   * map's 1.9 drill-in threshold (1.0 -> 1.2 -> 1.44 -> 1.728 -> 2.074); the same count clears 0.5
-   * going out. One extra for headroom, since the starting zoom depends on how fit-view framed the
-   * graph.
+   * React Flow's zoom button steps by 1.2x, and the map drills in at a zoom of 1.9. From a post-fit
+   * zoom of 1.0 that is four steps; a root scene of a few hundred services fits nearer 0.05, which
+   * is about twenty. Forty bounds the loop without ever being the reason it stops.
    */
-  private static final int SEMANTIC_ZOOM_STEPS = 5;
+  private static final int MAX_SEMANTIC_ZOOM_STEPS = 40;
 
   /**
    * The map suppresses semantic zoom for 1200ms after every scene load and every navigation, and
@@ -128,17 +129,19 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   // ---------------- exploration ----------------
 
   /**
-   * Drills into a node by clicking it, then waits for the scene focused on that node.
+   * Drills into a node through its drill button, then waits for the scene focused on that node.
    *
    * <p>The target band is the map's decision, not the caller's: {@code getDrillBand} sends a
    * container node (database, schema) to another ASSET scene and only an asset node (a table) to
-   * FIELD. So readiness is keyed on the focus rather than the band. The click lands at the node's
-   * top-left corner because the map's click handler ignores clicks inside a {@code button},
-   * {@code input}, {@code a}, a React Flow handle or a column container.
+   * FIELD. So readiness is keyed on the focus rather than the band.
+   *
+   * <p>The button calls the same {@code handleDrill} as a click on the node's body, but it is a
+   * target that survives zooming out: a root scene of a few hundred services fits the view at a
+   * scale where a node is a few pixels tall, and a click at a fixed offset into the body misses it.
    */
   public LineageMapPage drillIntoNode(final String nodeFqn) {
-    byTestId(NODE_TESTID_PREFIX + nodeFqn)
-        .click(new Locator.ClickOptions().setPosition(10, 10).setTimeout(RENDER_TIMEOUT_MS));
+    drillButton(byTestId(NODE_TESTID_PREFIX + nodeFqn))
+        .click(new Locator.ClickOptions().setTimeout(RENDER_TIMEOUT_MS));
     awaitDrillRegistered(nodeFqn);
     awaitFocusedSceneSettled(nodeFqn);
     return this;
@@ -166,10 +169,18 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
     return semanticZoom(TESTID_ZOOM_OUT, expectedBand);
   }
 
+  /**
+   * Clicks the zoom control until the map crosses its semantic-zoom threshold. The threshold is an
+   * absolute zoom level, and a root scene of a few hundred services fits the view far further out
+   * than one of twenty, so a fixed number of clicks only works for small graphs. A click or two
+   * past the crossing is harmless: the map suppresses semantic zoom right after every scene load.
+   */
   private LineageMapPage semanticZoom(final String zoomTestId, final String expectedBand) {
     requireBandChange(expectedBand);
     final Locator zoom = byTestId(zoomTestId);
-    for (int step = 0; step < SEMANTIC_ZOOM_STEPS; step++) {
+    for (int step = 0;
+        step < MAX_SEMANTIC_ZOOM_STEPS && !expectedBand.equals(currentBand());
+        step++) {
       zoom.click(new Locator.ClickOptions().setTimeout(RENDER_TIMEOUT_MS));
     }
     awaitSceneSettled(expectedBand);
@@ -233,7 +244,7 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
     final Optional<String> focus = currentFocus();
     for (final Locator node : page.locator(NODE_SELECTOR).all()) {
       final String fqn = nodeFqn(node);
-      if (isChildOf(fqn, focus) && isDrillable(node)) {
+      if (isChildOf(fqn, focus) && isDrillable(node) && isClickable(node)) {
         return fqn;
       }
     }
@@ -241,6 +252,39 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
         "No expandable child of "
             + focus.orElse("the root scene")
             + " is rendered, so there is nothing to drill into");
+  }
+
+  /**
+   * {@code preferredFqn} when it is rendered, expandable and clickable, otherwise {@link
+   * #firstDrillableChildFqn}. Preferring a fixed path keeps every run drilling through the same
+   * nodes of the benchmark's own graph, even on a server that holds other graphs, whose services
+   * would otherwise change which node comes first.
+   */
+  public String drillableChildFqn(final String preferredFqn) {
+    final Locator preferred = byTestId(NODE_TESTID_PREFIX + preferredFqn);
+    final boolean usable =
+        preferred.count() > 0 && isDrillable(preferred) && isClickable(preferred);
+    return usable ? preferredFqn : firstDrillableChildFqn();
+  }
+
+  /**
+   * Whether the node's drill button would receive a click. React Flow keeps nodes in the DOM that
+   * are outside the visible pane, where the pane intercepts the click and {@link #drillIntoNode}
+   * would wait out its whole timeout. A trial click runs Playwright's own hit test without clicking.
+   */
+  private boolean isClickable(final Locator node) {
+    try {
+      drillButton(node)
+          .click(new Locator.ClickOptions().setTrial(true).setTimeout(CLICKABLE_PROBE_MS));
+      return true;
+    } catch (final TimeoutError e) {
+      return false;
+    }
+  }
+
+  private static Locator drillButton(final Locator node) {
+    return node.getByRole(
+        AriaRole.BUTTON, new Locator.GetByRoleOptions().setName(DRILL_BUTTON_LABEL));
   }
 
   /** At the unfocused root every node counts as a child. */
@@ -254,10 +298,7 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   }
 
   private boolean isDrillable(final Locator node) {
-    return node.getByRole(
-                AriaRole.BUTTON, new Locator.GetByRoleOptions().setName(DRILL_BUTTON_LABEL))
-            .count()
-        > 0;
+    return drillButton(node).count() > 0;
   }
 
   public String currentBand() {

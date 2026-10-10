@@ -9,14 +9,16 @@
 # REST API — there is no bulk lineage endpoint, so every edge is one PUT — so it runs from here,
 # on demand, against a long-lived cluster.
 #
-#   export OM_URL=https://om.example.com/api OM_ADMIN_TOKEN=...
+#   export OM_URL=https://om.example.com OM_ADMIN_TOKEN=...
 #   LINEAGE_TABLES=2000000 LINEAGE_EDGES=2000000 ./scripts/lineage-scale-benchmark.sh
 #
 # Knobs (all optional; defaults match the IT's own):
 #   LINEAGE_TABLES, LINEAGE_EDGES, LINEAGE_SERVICES, LINEAGE_DATABASES_PER_SERVICE,
 #   LINEAGE_SCHEMAS_PER_DATABASE, LINEAGE_DEPTH, LINEAGE_HUB_COUNT, LINEAGE_HUB_FANOUT,
 #   LINEAGE_SAMPLES, LINEAGE_WARMUPS, LINEAGE_WORKERS, LINEAGE_LABEL, LINEAGE_OUTPUT,
-#   SKIP_CLEANUP (default true here — a multi-hour corpus is worth keeping), BUILD (default true)
+#   SKIP_CLEANUP (default true here — a multi-hour corpus is worth keeping), BUILD (default true),
+#   LINEAGE_SEED_MANIFEST — benchmark a graph scripts/lineage_seed already created (its
+#   manifest.json) instead of seeding one; the LINEAGE_* sizes are then ignored
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -62,6 +64,7 @@ mvn -B verify -P scale-it -pl :openmetadata-integration-tests \
   -Djpw.lineage.warmups="${LINEAGE_WARMUPS:-5}" \
   -Djpw.lineage.workers="${LINEAGE_WORKERS:-32}" \
   -Djpw.lineage.skipCleanup="${SKIP_CLEANUP:-true}" \
+  -Djpw.lineage.seedManifest="${LINEAGE_SEED_MANIFEST:-}" \
   -Djpw.bench.gitSha="$(git rev-parse HEAD)" \
   2>&1 | tee "$lineage_output/run.log"
 maven_status="${PIPESTATUS[0]}"
