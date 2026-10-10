@@ -44,7 +44,7 @@ class SettingsCacheDefaultCaseTest {
 
       SettingsCache.CACHE.invalidate(key);
 
-      Settings result = SettingsCache.CACHE.get(key);
+      Settings result = SettingsCache.CACHE.get(key).settings();
 
       assertNotNull(result);
     }

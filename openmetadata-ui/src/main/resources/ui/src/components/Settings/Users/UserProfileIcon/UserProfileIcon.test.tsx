@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import { User } from '../../../../generated/entity/teams/user';
@@ -36,7 +37,7 @@ jest.mock('../../../../utils/NavbarUtilClassBase', () => ({
   default: {
     getUserProfileExtraItems: jest
       .fn()
-      .mockReturnValue([{ key: 'extra-item', label: 'app-mode-extra-item' }]),
+      .mockReturnValue([<span key="extra-item">app-mode-extra-item</span>]),
   },
 }));
 const translationState = {
@@ -154,16 +155,14 @@ describe('UserProfileIcon', () => {
     document.documentElement.style.removeProperty('color-scheme');
   });
 
-  const openDropdown = () => {
-    const userButton = screen.getByRole('button');
-    fireEvent.click(userButton);
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
-    return userButton;
+  const openDropdown = async () => {
+    await user.click(screen.getByTestId('dropdown-profile'));
   };
 
-  const expandPersonas = () => {
-    const moreButton = screen.getByText('1 label.more');
-    fireEvent.click(moreButton);
+  const expandPersonas = async () => {
+    await user.click(screen.getByText('1 label.more'));
   };
 
   it('should render user profile dropdown', () => {
@@ -173,17 +172,17 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByTestId('dropdown-profile')).toBeInTheDocument();
   });
 
-  it('should render extra profile menu items provided by the navbar util', () => {
+  it('should render extra profile menu items provided by the navbar util', async () => {
     render(
       <MockWrapper>
         <UserProfileIcon />
       </MockWrapper>
     );
 
-    openDropdown();
+    await openDropdown();
 
     expect(screen.getByText('app-mode-extra-item')).toBeInTheDocument();
   });
@@ -195,7 +194,7 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    openDropdown();
+    await openDropdown();
     await screen.findByText('label.switch-persona');
 
     // Initially shows 2 personas (pagination)
@@ -208,7 +207,7 @@ describe('UserProfileIcon', () => {
     expect(screen.getByTestId('default-persona-tag')).toBeInTheDocument();
 
     // Expand to show all personas
-    expandPersonas();
+    await expandPersonas();
     personaLabels = screen.getAllByTestId('persona-label');
 
     expect(personaLabels).toHaveLength(3);
@@ -227,9 +226,9 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    openDropdown();
+    await openDropdown();
     await screen.findByText('label.switch-persona');
-    expandPersonas();
+    await expandPersonas();
 
     const alphaPersonaLabel = screen
       .getAllByTestId('persona-label')
@@ -237,7 +236,7 @@ describe('UserProfileIcon', () => {
         label.textContent?.includes('Alpha Persona')
       ) as HTMLElement;
 
-    fireEvent.click(alphaPersonaLabel);
+    await user.click(alphaPersonaLabel);
 
     expect(mockSetSelectedPersona).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -247,7 +246,7 @@ describe('UserProfileIcon', () => {
     );
   });
 
-  it('should handle missing default persona', () => {
+  it('should handle missing default persona', async () => {
     mockUseApplicationStore.mockReturnValue(
       createMockStoreData({
         currentUser: { ...mockUser, defaultPersona: undefined },
@@ -260,7 +259,7 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    openDropdown();
+    await openDropdown();
 
     expect(screen.queryByTestId('default-persona-tag')).not.toBeInTheDocument();
     expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
@@ -273,7 +272,7 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    openDropdown();
+    await openDropdown();
     await screen.findByText('label.switch-persona');
 
     expect(screen.getByText('label.role-plural')).toBeInTheDocument();
@@ -302,31 +301,20 @@ describe('UserProfileIcon', () => {
       </MockWrapper>
     );
 
-    const dropdownTrigger = openDropdown();
+    await openDropdown();
 
     const switcher = await screen.findByRole('switch', {
       name: 'label.dark-mode',
     });
-    const profileDropdown = screen
-      .getByText('label.logout')
-      .closest('.profile-dropdown');
-    const switcherRow = switcher.closest('label');
-    const themeMenuGroup = switcher.closest('.ant-dropdown-menu-item-group');
 
-    expect(profileDropdown).toContainElement(switcher);
-    expect(switcherRow).toHaveClass(
-      'tw:pl-6',
-      'tw:[&>div>p]:text-xs',
-      'tw:[&>div>p]:font-semibold'
-    );
-    expect(themeMenuGroup?.previousElementSibling).toHaveClass(
-      'ant-dropdown-menu-item-divider'
-    );
+    expect(
+      screen.getByText('label.logout').closest('.user-profile-dropdown-overlay')
+    ).toContainElement(switcher);
 
-    fireEvent.click(switcher);
+    await user.click(switcher);
 
     expect(switcher).toBeChecked();
-    expect(dropdownTrigger).toHaveClass('ant-dropdown-open');
+    expect(screen.getByRole('menu')).toBeInTheDocument();
     expect(localStorage.getItem('ui-theme')).toBe('dark');
   });
 });

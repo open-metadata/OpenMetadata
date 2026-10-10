@@ -10,16 +10,3 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
-import { Paging } from '../../../generated/type/paging';
-
-export interface ContractAllResult {
-  data: DataContractResult[];
-  paging: Paging;
-}
-
-export interface ContractResultFilter {
-  startTs: number;
-  endTs: number;
-  limit?: number;
-}

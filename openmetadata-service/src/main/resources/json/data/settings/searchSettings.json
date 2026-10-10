@@ -1,6 +1,7 @@
 {
   "globalSettings": {
     "enableAccessControl": false,
+    "enableColumnIndexing": true,
     "maxAggregateSize": 10000,
     "maxResultHits": 10000,
     "maxAnalyzedOffset": 1000,
@@ -2742,13 +2743,15 @@
       },
       "disMaxTieBreaker": 0.05,
       "signals": {
-        "purpose": "Use entity type, Tier, Status, Usage, and Votes only to break ties between similarly relevant results.",
+        "purpose": "Use entity type, Tier, Tags, Certification, Status, Usage, and Votes only to break ties between similarly relevant results.",
         "boostMode": "sum",
         "scoreMode": "sum",
         "maxBoost": 2.0,
         "fields": [
           "entityType",
           "tier.tagFQN",
+          "tags.tagFQN",
+          "certification.tagLabel.tagFQN",
           "entityStatus",
           "usageSummary.weeklyStats.count",
           "usageSummary.weeklyStats.percentileRank",

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Skeleton } from 'antd';
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -153,7 +153,17 @@ function EditEmailConfigPage() {
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         {loading ? (
-          <Skeleton title paragraph={{ rows: 8 }} />
+          <div className="tw:flex tw:flex-col tw:gap-3">
+            <Skeleton animation={false} height={16} width="40%" />
+            {Array.from({ length: 8 }, (_, index) => (
+              <Skeleton
+                animation={false}
+                height={16}
+                key={index}
+                width={index === 7 ? '60%' : '100%'}
+              />
+            ))}
+          </div>
         ) : (
           <EmailConfigForm
             emailConfigValues={emailConfigValues}

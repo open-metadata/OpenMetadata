@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,25 +31,16 @@ import {
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
-import { AuthProvider } from '../../../generated/settings/settings';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getLoginConfig } from '../../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const LoginConfigurationPage = () => {
   const { t } = useTranslation();
-  const { authConfig } = useApplicationStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(false);
   const [loginConfig, setLoginConfig] = useState<LoginConfiguration>();
-
-  const isBasicAuth = useMemo(() => {
-    return (
-      authConfig?.provider === AuthProvider.Basic ||
-      authConfig?.provider === AuthProvider.LDAP
-    );
-  }, [authConfig]);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -77,11 +69,11 @@ const LoginConfigurationPage = () => {
     navigate(ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG);
   };
 
+  // SettingsRouter only mounts this page under a provider whose login OpenMetadata owns, so the
+  // config is always meaningful here — no provider check of its own.
   useEffect(() => {
-    if (isBasicAuth) {
-      fetchLoginConfig();
-    }
-  }, [isBasicAuth]);
+    fetchLoginConfig();
+  }, []);
 
   if (loading) {
     return <Loader />;
@@ -89,34 +81,40 @@ const LoginConfigurationPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.login-configuration')}>
-      <Row className="p-lg bg-white border-radius-sm" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-lg bg-white border-radius-sm"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Row align="middle" justify="space-between">
-            <Col>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-row"
+            justify="between"
+            wrap="wrap">
+            <Box className="layout-column tw:block">
               <PageHeader
                 data={{
                   header: t(PAGE_HEADERS.LOGIN_CONFIGURATION.header),
                   subHeader: t(PAGE_HEADERS.LOGIN_CONFIGURATION.subHeader),
                 }}
               />
-            </Col>
-            <Col>
+            </Box>
+            <Box className="layout-column tw:block">
               <Button
                 data-testid="edit-button"
                 icon={<Icon component={IconEdit} size={12} />}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Grid className="layout-row layout-grid tw:items-center">
+            <Grid.Item className="layout-column" span={24}>
+              <Typography className="m-0" color="secondary">
                 {t('label.max-login-fail-attempt-plural')}
                 <Tooltip
                   placement="top"
@@ -128,19 +126,19 @@ const LoginConfigurationPage = () => {
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <Typography.Text data-testid="max-login-fail-attampts">
+              </Typography>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
+              <Typography data-testid="max-login-fail-attampts">
                 {loginConfig?.maxLoginFailAttempts ?? NO_DATA_PLACEHOLDER}
-              </Typography.Text>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              </Typography>
+            </Grid.Item>
+          </Grid>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Grid className="layout-row layout-grid tw:items-center">
+            <Grid.Item className="layout-column" span={24}>
+              <Typography className="m-0" color="secondary">
                 {t('label.access-block-time')}
                 <Tooltip
                   placement="top"
@@ -152,19 +150,19 @@ const LoginConfigurationPage = () => {
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <Typography.Text data-testid="access-block-time">
+              </Typography>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
+              <Typography data-testid="access-block-time">
                 {loginConfig?.accessBlockTime ?? NO_DATA_PLACEHOLDER}
-              </Typography.Text>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              </Typography>
+            </Grid.Item>
+          </Grid>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Grid className="layout-row layout-grid tw:items-center">
+            <Grid.Item className="layout-column" span={24}>
+              <Typography className="m-0" color="secondary">
                 {t('label.jwt-token-expiry-time')}
                 <Tooltip
                   placement="top"
@@ -176,17 +174,17 @@ const LoginConfigurationPage = () => {
                     style={{ color: GRAYED_OUT_COLOR }}
                   />
                 </Tooltip>
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <Typography.Text data-testid="jwt-token-expiry-time">
+              </Typography>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
+              <Typography data-testid="jwt-token-expiry-time">
                 {loginConfig?.jwtTokenExpiryTime ?? NO_DATA_PLACEHOLDER}{' '}
                 {t('label.second-plural')}
-              </Typography.Text>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+              </Typography>
+            </Grid.Item>
+          </Grid>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

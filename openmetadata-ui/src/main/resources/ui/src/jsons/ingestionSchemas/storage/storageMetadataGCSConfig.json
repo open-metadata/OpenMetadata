@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Storage Metadata GCS Config",
   "description": "Storage Metadata Manifest file GCS path config.",
   "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig",
@@ -7,7 +6,6 @@
   "properties": {
     "securityConfig": {
       "title": "GCS Security Config",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "GCP credentials configs.",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
@@ -96,7 +94,6 @@
           "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
               "title": "GCP Credentials Values",
@@ -190,7 +187,6 @@
               "$ref": "#/properties/securityConfig/definitions/gcpCredentialsPath"
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
               "title": "GCP External Account",
@@ -255,7 +251,6 @@
     },
     "prefixConfig": {
       "title": "Storage Metadata Prefix Config",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Details of the bucket where the storage metadata manifest file is stored",
       "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails",
       "type": "object",

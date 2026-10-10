@@ -78,6 +78,7 @@ export interface RelationshipOperation {
 export enum OperationType {
     AddRelationship = "ADD_RELATIONSHIP",
     BindAsset = "BIND_ASSET",
+    CreateGlossary = "CREATE_GLOSSARY",
     CreateRelationshipType = "CREATE_RELATIONSHIP_TYPE",
     CreateTerm = "CREATE_TERM",
     DeleteAttribute = "DELETE_ATTRIBUTE",
@@ -121,8 +122,10 @@ export enum Provenance {
 }
 
 /**
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",

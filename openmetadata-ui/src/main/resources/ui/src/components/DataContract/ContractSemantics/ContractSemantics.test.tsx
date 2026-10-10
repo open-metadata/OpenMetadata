@@ -159,6 +159,25 @@ describe('ContractSemantics', () => {
     });
   });
 
+  describe('Disabled rules', () => {
+    it('shows a disabled rule as not run, not as passed', () => {
+      const { container } = render(
+        <ContractSemantics
+          latestContractResults={mockLatestContractResults}
+          semantics={[
+            mockSemantics[0],
+            { ...mockSemantics[1], enabled: false },
+          ]}
+        />
+      );
+
+      const ruleIcons = container.querySelectorAll('.rule-icon');
+
+      expect(ruleIcons[0]).not.toHaveClass('rule-icon-default');
+      expect(ruleIcons[1]).toHaveClass('rule-icon-default');
+    });
+  });
+
   describe('Contract Status Display', () => {
     it('should display contract status when provided', () => {
       render(

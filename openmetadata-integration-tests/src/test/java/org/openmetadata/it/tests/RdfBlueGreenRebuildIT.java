@@ -14,6 +14,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,6 +45,8 @@ import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -70,6 +73,8 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /** Real SQL transactions and HTTP/TDB2, including two independent server routing instances. */
+@Tag("rdf")
+@EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfBlueGreenRebuildIT {
   private static final String BASE = "https://open-metadata.org/";
@@ -372,6 +377,34 @@ public class RdfBlueGreenRebuildIT {
                       .one());
       assertTrue(dirty);
     }
+  }
+
+  @ParameterizedTest
+  @EnumSource(Database.class)
+  void promotionInvalidatesTheDirtyVersionARunningMaterializationRead(final Database database) {
+    try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
+      database.jdbi.useHandle(
+          handle ->
+              handle.execute(
+                  "INSERT INTO rdf_inference_rule (name, json, updatedAt, dirty) VALUES ('clean-rule', '{}', 1, FALSE)"));
+      final long readByRun = dirtyVersion(database, "clean-rule");
+      final BuildTarget target = fixture.primary.begin();
+      write(fixture.primary.buildStorage(target), UUID.randomUUID(), "rebuilt source");
+
+      fixture.primary.promote(target, "test");
+
+      assertNotEquals(readByRun, dirtyVersion(database, "clean-rule"));
+    }
+  }
+
+  private static long dirtyVersion(final Database database, final String rule) {
+    return database.jdbi.withHandle(
+        handle ->
+            handle
+                .createQuery("SELECT dirtyVersion FROM rdf_inference_rule WHERE name = :name")
+                .bind("name", rule)
+                .mapTo(Long.class)
+                .one());
   }
 
   @ParameterizedTest

@@ -21,7 +21,6 @@ import { useParams } from 'react-router-dom';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   TagLabel,
@@ -43,7 +42,6 @@ import {
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtilsPure';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getTagsWithoutTier,
   getTierTags,
@@ -169,22 +167,13 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
             getDerivedPermissionFlags(testCasePermission).canEditAll,
           hasEditDescriptionPermission:
             testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditDescription
-            ),
+            getDerivedPermissionFlags(testCasePermission).canEditDescription,
           hasEditTagsPermission:
             testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditTags
-            ),
+            getDerivedPermissionFlags(testCasePermission).canEditTags,
           hasEditGlossaryTermsPermission:
             testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditGlossaryTerms
-            ),
+            getDerivedPermissionFlags(testCasePermission).canEditGlossaryTerms,
         };
   }, [testCasePermission, isReadOnly]);
 

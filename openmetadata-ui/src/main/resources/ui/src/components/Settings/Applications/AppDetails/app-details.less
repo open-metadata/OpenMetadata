@@ -12,14 +12,6 @@
  */
 @import '../../../../styles/variables.less';
 
-.app-details-page-tabs {
-  .ant-tabs-tabpane {
-    height: @app-details-page-tabs-height;
-    overflow-y: auto;
-    background-color: initial !important;
-  }
-}
-
 .app-image {
   height: 220px;
   width: 220px;
@@ -31,7 +23,7 @@
 }
 
 .app-details-header {
-  > .ant-space-item:last-child {
+  > :is(.ant-space-item, .layout-space-item):last-child {
     width: 100%;
   }
 }

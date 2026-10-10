@@ -92,7 +92,9 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -156,6 +158,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         Entity.TASK, "approvedById", MetadataOperation.RESOLVE_TASK);
     ResourceRegistry.mapEntityFieldOperation(
         Entity.TASK, "approvedAt", MetadataOperation.RESOLVE_TASK);
+    // PATCH on description must require EditAll, not the default EditDescription. `description`
+    // is the task's body text, and DataConsumerPolicy grants EditDescription on every resource to
+    // every authenticated user — without this any user could rewrite any task's text (issue
+    // #18158). EditAll still reaches the filer (TaskAuthorPolicy) and the target entity's owners.
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, Entity.FIELD_DESCRIPTION, MetadataOperation.EDIT_ALL);
   }
 
   @Override
@@ -285,6 +293,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+  }
+
+  private void applyTaskSearch(ListFilter filter, String q) {
+    if (!nullOrEmpty(q)) {
+      filter.addQueryParam("taskSearch", q);
+    }
   }
 
   private void applyTaskTimeRange(ListFilter filter, Long startTs, Long endTs) {
@@ -513,9 +527,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (assigneeId != null) {
       filter.addQueryParam("assigneeId", assigneeId.toString());
     }
-    if (!nullOrEmpty(q)) {
-      filter.addQueryParam("darSearch", q);
-    }
+    applyTaskSearch(filter, q);
     repository.addDomainFilter(filter, domain);
 
     Fields fields = getFields(fieldsParam);
@@ -579,11 +591,20 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description =
+                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
+                      + "Matches case-insensitive against task name, displayName, the request "
+                      + "reason in the payload, and the about-entity displayName / "
+                      + "fullyQualifiedName.")
+          @QueryParam("q")
+          String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    applyTaskSearch(filter, q);
     filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
     applyTaskTimeRange(filter, startTs, endTs);
 
@@ -639,11 +660,20 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description =
+                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
+                      + "Matches case-insensitive against task name, displayName, the request "
+                      + "reason in the payload, and the about-entity displayName / "
+                      + "fullyQualifiedName.")
+          @QueryParam("q")
+          String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    applyTaskSearch(filter, q);
     addCurrentUserVisibleFilters(filter, uriInfo, securityContext);
     applyTaskTimeRange(filter, startTs, endTs);
 
@@ -698,6 +728,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description =
+                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
+                      + "Matches case-insensitive against task name, displayName, the request "
+                      + "reason in the payload, and the about-entity displayName / "
+                      + "fullyQualifiedName.")
+          @QueryParam("q")
+          String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -715,6 +753,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
 
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    applyTaskSearch(filter, q);
     filter.addQueryParam("ownedByIds", String.join(",", ownerIds));
     applyTaskTimeRange(filter, startTs, endTs);
 
@@ -767,6 +806,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description =
+                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
+                      + "Matches case-insensitive against task name, displayName, the request "
+                      + "reason in the payload, and the about-entity displayName / "
+                      + "fullyQualifiedName.")
+          @QueryParam("q")
+          String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -775,6 +822,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     User user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
 
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    applyTaskSearch(filter, q);
     filter.addQueryParam("createdById", user.getId().toString());
     applyTaskTimeRange(filter, startTs, endTs);
 
@@ -981,6 +1029,17 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
+  private void authorizeViewOnAboutEntity(
+      SecurityContext securityContext, EntityReference aboutRef) {
+    if (aboutRef == null || aboutRef.getType() == null || aboutRef.getId() == null) {
+      return;
+    }
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(aboutRef.getType(), MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null, Include.ALL));
+  }
+
   /**
    * Enforce domain-only policy: Users with DOMAIN_ONLY_ACCESS_ROLE can only create tasks on entities
    * within their domains.
@@ -1038,7 +1097,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   private List<EntityReference> getEntityDomains(EntityReference entityRef) {
     try {
       EntityRepository<?> repo = Entity.getEntityRepository(entityRef.getType());
-      Object entity = repo.get(null, entityRef.getId(), repo.getFields("domains"));
+      // Drop the field where the target type does not declare it (e.g. a Domain has none).
+      Object entity =
+          repo.get(null, entityRef.getId(), repo.getOnlySupportedFields(Entity.FIELD_DOMAINS));
 
       java.lang.reflect.Method getDomainsMethod = entity.getClass().getMethod("getDomains");
       Object domains = getDomainsMethod.invoke(entity);
@@ -1102,7 +1163,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task original = repository.get(uriInfo, id, repository.getPatchFields());
     Task patched = JsonUtils.applyPatch(original, patch, Task.class);
     validateTaskPatch(original, patched, isAdmin(securityContext));
-    return patchInternal(uriInfo, securityContext, id, patch);
+    // Authorize against TaskResourceContext for the same reason DELETE does: the generic
+    // ResourceContext leaves createdBy null and resolves isOwner() to the Task's own owners
+    // rather than the target entity's, so both isTaskFiler() and the entity-owner rule would
+    // silently fail to match on PATCH while matching on DELETE.
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(
+                new OperationContext(Entity.TASK, patch), new TaskResourceContext(original)));
+    return patchInternal(uriInfo, securityContext, authRequests, AuthorizationLogic.ALL, id, patch);
   }
 
   private boolean isAdmin(SecurityContext securityContext) {
@@ -1886,12 +1955,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
 
-    // Report M4 note: QA flagged that this endpoint returns the full Task with private
-    // payload / assignee / comment history to whoever calls it. That is a *view-side*
-    // information-disclosure concern that belongs on the GET / listing paths, not here — add-
-    // comment is intentionally open (any collaborator can add a comment, same as the feed),
-    // so we do NOT gate this on EDIT_TASK. Follow-up: redact `payload` on GET responses for
-    // callers that don't hold viewer-level permission on the DAR's target entity.
+    // The response returns the full Task (payload, assignees, comment history), so adding a
+    // comment discloses the task's target entity. Require the same ViewBasic the entity itself
+    // requires — otherwise a caller denied access to the entity reads its task through this
+    // endpoint (issue #18158). A task with no target has nothing to gate.
+    authorizeViewOnAboutEntity(securityContext, task.getAbout());
 
     TaskComment comment =
         new TaskComment()

@@ -21,7 +21,8 @@ import {
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
 
-import { FormActionButtons, MetadataFormSection } from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface SinkTaskFormProps {
   node: Node;

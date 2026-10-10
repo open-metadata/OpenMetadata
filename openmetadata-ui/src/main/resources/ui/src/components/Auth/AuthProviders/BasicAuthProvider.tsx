@@ -34,7 +34,7 @@ import {
   showInfoToast,
   showSuccessToast,
 } from '../../../utils/ToastUtils';
-import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
+import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsSessionUtils';
 import { BasicAuthContext } from './BasicAuthContext';
 
 import { toLower } from 'lodash';

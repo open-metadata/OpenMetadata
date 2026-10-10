@@ -91,6 +91,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -1024,8 +1025,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
-            config.getJwtTokenConfiguration());
+            SecurityConfigurationManager.getCurrentAuthConfig(), config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
     AppMarketPlaceRepository appMarketRepository =
@@ -1299,6 +1299,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       searchRepository.updateIndexes();
       LOG.info("Update Index Templates.");
       searchRepository.createOrUpdateIndexTemplates();
+      detachOrphanedIndexes();
       printChangeLog();
       // update entities secrets if required
       new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
@@ -1307,6 +1308,24 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
       return 1;
+    }
+  }
+
+  /**
+   * An upgrade that renames or drops an entity type leaves its index attached to the parent aliases
+   * the old release gave it, so {@code index=all} keeps querying it with this release's clauses.
+   * SearchIndexApp sweeps this on every reindex, but an upgrade is not obliged to reindex —
+   * {@code executeSearchReindexApp} returns before launching the app when no mapping changed — so
+   * migrate does it too. This is the ops CLI, not server start, so it costs no boot time.
+   */
+  private void detachOrphanedIndexes() {
+    try {
+      int detached = new OrphanedIndexCleaner().detachOrphanedIndexesFromAliases(searchRepository);
+      if (detached > 0) {
+        LOG.info("Detached {} orphaned index-to-alias links", detached);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to detach orphaned indexes from aliases: {}", e.getMessage());
     }
   }
 
@@ -1794,7 +1813,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           producerExecutor.submit(
               () -> {
                 try {
-                  org.openmetadata.schema.utils.ResultList<? extends EntityInterface> batch =
+                  org.openmetadata.schema.utils.ResultList<? extends EntityInterface<?>> batch =
                       source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
                   if (batch != null && batch.getData() != null && !batch.getData().isEmpty()) {
                     taskQueue.put(new ReembedTask(entityType, batch));
@@ -1853,7 +1872,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private record ReembedTask(
       String entityType,
-      org.openmetadata.schema.utils.ResultList<? extends EntityInterface> batch) {}
+      org.openmetadata.schema.utils.ResultList<? extends EntityInterface<?>> batch) {}
 
   private java.util.concurrent.CountDownLatch startReembedConsumers(
       int consumerThreads,
@@ -1903,7 +1922,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           LOG.warn("No index mapping found for entity type: {}, skipping batch", entityType);
           continue;
         }
-        for (EntityInterface entity : task.batch().getData()) {
+        for (EntityInterface<?> entity : task.batch().getData()) {
           try {
             vecService.updateEntityEmbeddings(entity, entityIndexName);
             processedCounts
@@ -2106,7 +2125,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().deleteOnDemandJob(app);
-    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+    AppScheduler.getInstance()
+        .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
 
     int result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
 
@@ -2318,7 +2338,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().deleteOnDemandJob(app);
-    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+    AppScheduler.getInstance()
+        .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
     return waitAndReturnReindexingAppStatus(app, currentTime);
   }
 
@@ -2476,7 +2497,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Trigger Application
       long currentTime = System.currentTimeMillis();
-      AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+      AppScheduler.getInstance()
+          .triggerOnDemandApplication(app, JsonUtils.getMap(config), ADMIN_USER_NAME);
 
       // Wait for completion and return status
       return waitAndReturnReindexingAppStatus(app, currentTime, null);
@@ -2968,7 +2990,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       JWTTokenGenerator.getInstance()
           .init(
-              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              SecurityConfigurationManager.getCurrentAuthConfig(),
               config.getJwtTokenConfiguration());
 
       initOrganization();
@@ -3084,7 +3106,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void analyzeEntityTable(String entity) {
     try {
-      EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
+      EntityRepository<? extends EntityInterface<?>> repository =
+          Entity.getEntityRepository(entity);
       LOG.info("Analyzing table for [{}] Entity", entity);
       repository.getDao().analyzeTable();
     } catch (EntityNotFoundException e) {

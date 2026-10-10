@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -24,8 +30,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { ColumnsType } from '../../common/Table/Table.interface';
 
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
   TABLE_SCROLL_VALUE,
@@ -318,7 +329,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   const renderDataType = useCallback(
     (dataType: DataType, record: Field) => (
-      <Typography.Text>
+      <Typography className="tw:text-primary">
         {isVersionView ? (
           <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
@@ -326,7 +337,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         ) : (
           record.dataTypeDisplay ?? dataType
         )}
-      </Typography.Text>
+      </Typography>
     ),
     [isVersionView]
   );
@@ -492,8 +503,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   );
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <Table
           className={classNames('align-table-filter-left')}
           columns={columns}
@@ -508,12 +521,26 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           }}
           extraTableFilters={
             <div className="d-flex justify-between items-center w-full">
-              <Segmented
-                className="segment-toggle"
-                options={viewTypeOptions}
-                value={viewType}
-                onChange={(value) => setViewType(value as SchemaViewType)}
-              />
+              <ButtonGroup
+                disallowEmptySelection
+                className={SEGMENT_TOGGLE_GROUP_CLASS}
+                selectedKeys={[viewType]}
+                size="sm"
+                onSelectionChange={(keys) => {
+                  const selected = [...keys][0];
+                  if (selected) {
+                    setViewType(selected as SchemaViewType);
+                  }
+                }}>
+                {viewTypeOptions.map(({ label, value }) => (
+                  <ButtonGroupItem
+                    className={SEGMENT_TOGGLE_ITEM_CLASS}
+                    id={value}
+                    key={value}>
+                    {label}
+                  </ButtonGroupItem>
+                ))}
+              </ButtonGroup>
 
               <ToggleExpandButton
                 allRowKeys={schemaAllRowKeys}
@@ -531,7 +558,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
           onChange={handleTableChange}
         />
-      </Col>
+      </Grid.Item>
       {editFieldDescription && (
         <EntityAttachmentProvider
           entityFqn={editFieldDescription.fullyQualifiedName}
@@ -550,7 +577,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           />
         </EntityAttachmentProvider>
       )}
-    </Row>
+    </Grid>
   );
 };
 

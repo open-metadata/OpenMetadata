@@ -26,6 +26,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,8 @@ class ContextMemoryVisibilityTest {
 
   private static final String ALICE = "alice";
   private static final String BOB = "bob";
+  private static final EntityReference ANCHOR =
+      new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE).withName("orders");
 
   private MockedStatic<Entity> entityStaticMock;
 
@@ -122,6 +125,14 @@ class ContextMemoryVisibilityTest {
   }
 
   @Test
+  void testPublicMemory_visibleToEveryoneWithoutAsset() {
+    ContextMemory publicMemory = memoryOwnedBy(ALICE, MemoryVisibility.PUBLIC);
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(publicMemory, BOB, false));
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(publicMemory, "charlie", false));
+  }
+
+  @Test
   void testSharedMemory_visibleOnlyToListedPrincipals() {
     ContextMemory shared =
         memoryOwnedBy(ALICE, MemoryVisibility.SHARED)
@@ -140,6 +151,49 @@ class ContextMemoryVisibilityTest {
     assertFalse(
         ContextMemoryVisibility.isVisibleToUser(shared, "charlie", false),
         "charlie is not in the sharedWith list and must not see the memory");
+  }
+
+  @Test
+  void testAnchoredEntityMemory_visibleOnlyToReadersOfTheAnchor() {
+    ContextMemory anchored =
+        memoryOwnedBy(ALICE, MemoryVisibility.ENTITY).withPrimaryEntity(ANCHOR);
+    ContextMemoryVisibility.AnchorAccess onlyBobReadsIt =
+        (userName, anchor) -> BOB.equals(userName) && ANCHOR.getId().equals(anchor.getId());
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(anchored, BOB, false, onlyBobReadsIt));
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(anchored, "charlie", false, onlyBobReadsIt));
+  }
+
+  @Test
+  void testAnchoredEntityMemory_ownerAndAdminSkipTheAnchorCheck() {
+    ContextMemory anchored =
+        memoryOwnedBy(ALICE, MemoryVisibility.ENTITY).withPrimaryEntity(ANCHOR);
+    ContextMemoryVisibility.AnchorAccess nobodyReadsIt = (userName, anchor) -> false;
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(anchored, ALICE, false, nobodyReadsIt));
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(anchored, BOB, true, nobodyReadsIt));
+  }
+
+  @Test
+  void testUnanchoredEntityMemory_neverConsultsTheAnchorCheck() {
+    ContextMemory orgWide = memoryOwnedBy(ALICE, MemoryVisibility.ENTITY);
+    ContextMemoryVisibility.AnchorAccess mustNotBeCalled =
+        (userName, anchor) -> {
+          throw new AssertionError("an unanchored Entity memory is org-wide");
+        };
+
+    assertTrue(ContextMemoryVisibility.isVisibleToUser(orgWide, "charlie", false, mustNotBeCalled));
+  }
+
+  @Test
+  void testAnchorAccess_neverOpensAPrivateMemory() {
+    ContextMemory privateAnchored =
+        memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE).withPrimaryEntity(ANCHOR);
+    ContextMemoryVisibility.AnchorAccess everyoneReadsIt = (userName, anchor) -> true;
+
+    assertFalse(
+        ContextMemoryVisibility.isVisibleToUser(privateAnchored, BOB, false, everyoneReadsIt));
   }
 
   @Test
@@ -173,6 +227,24 @@ class ContextMemoryVisibilityTest {
             List.of(alicePrivate, bobPrivate), "admin", true);
 
     assertEquals(2, visibleToAdmin.size());
+  }
+
+  @Test
+  void testFilterByVisibility_checksEachAnchorOncePerPage() {
+    ContextMemory first = memoryOwnedBy(ALICE, MemoryVisibility.ENTITY).withPrimaryEntity(ANCHOR);
+    ContextMemory second = memoryOwnedBy(ALICE, MemoryVisibility.ENTITY).withPrimaryEntity(ANCHOR);
+    AtomicInteger checks = new AtomicInteger();
+    ContextMemoryVisibility.AnchorAccess denied =
+        (userName, anchor) -> {
+          checks.incrementAndGet();
+          return false;
+        };
+
+    List<ContextMemory> visible =
+        ContextMemoryVisibility.filterByVisibility(List.of(first, second), BOB, false, denied);
+
+    assertTrue(visible.isEmpty());
+    assertEquals(1, checks.get());
   }
 
   @Test
@@ -212,7 +284,7 @@ class ContextMemoryVisibilityTest {
    */
   @Test
   void testEnforceVisibility_onEntityInterface_deniesAnotherUsersPrivateMemory() {
-    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    EntityInterface<?> privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     SecurityContext bob = securityContextFor(BOB);
 
     withSubject(
@@ -226,7 +298,7 @@ class ContextMemoryVisibilityTest {
 
   @Test
   void testEnforceVisibility_onEntityInterface_allowsTheOwnersOwnPrivateMemory() {
-    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    EntityInterface<?> privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     SecurityContext alice = securityContextFor(ALICE);
 
     withSubject(
@@ -239,7 +311,7 @@ class ContextMemoryVisibilityTest {
 
   @Test
   void testEnforceVisibility_onEntityInterface_ignoresTypesWithoutVisibilityRules() {
-    EntityInterface table = new Table().withName("orders").withFullyQualifiedName("s.d.orders");
+    EntityInterface<?> table = new Table().withName("orders").withFullyQualifiedName("s.d.orders");
 
     assertDoesNotThrow(
         () -> ContextMemoryVisibility.enforceVisibility(table, securityContextFor(BOB)));
@@ -247,7 +319,7 @@ class ContextMemoryVisibilityTest {
 
   @Test
   void testEnforceVisibility_onEntityInterface_letsAnAdminReadEveryMemory() {
-    EntityInterface privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
+    EntityInterface<?> privateOwnedByAlice = memoryOwnedBy(ALICE, MemoryVisibility.PRIVATE);
     SecurityContext admin = securityContextFor(BOB);
 
     try (MockedStatic<DefaultAuthorizer> authorizer = Mockito.mockStatic(DefaultAuthorizer.class)) {
@@ -267,21 +339,22 @@ class ContextMemoryVisibilityTest {
     assertFalse(ContextMemoryVisibility.hasVisibilityRules(null));
   }
 
-  /**
-   * Owners is a relationship field, null unless the fetch asked for it. A read path that fetches a
-   * memory without owners hands the guard an ownerless memory and denies the owner their own
-   * private memory - so the guard states the fields its own decision reads.
-   */
+  /** The guard fetches the relationship fields used for the visibility decision. */
   @Test
-  void testGuardFields_addsOwnersForMemoriesOnly() {
+  void testGuardFields_addsTheDecisionFieldsForMemoriesOnly() {
     assertEquals(
-        Entity.FIELD_OWNERS, ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, ""));
+        "owners,primaryEntity", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, ""));
     assertEquals(
-        Entity.FIELD_OWNERS, ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, null));
-    assertEquals("tags,owners", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "tags"));
+        "owners,primaryEntity", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, null));
     assertEquals(
-        "sourceFile,owners",
+        "tags,owners,primaryEntity",
+        ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "tags"));
+    assertEquals(
+        "sourceFile,owners,primaryEntity",
         ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "sourceFile,owners"));
+    assertEquals(
+        "primaryEntity,owners",
+        ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "primaryEntity"));
     assertEquals("*", ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "*"));
     assertEquals("", ContextMemoryVisibility.guardFields(Entity.TABLE, ""));
   }

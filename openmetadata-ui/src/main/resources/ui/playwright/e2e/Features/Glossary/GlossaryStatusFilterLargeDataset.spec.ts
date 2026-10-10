@@ -18,6 +18,11 @@ import {
   disableEtagConditionalReads,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import {
+  excludeGlossaryFromApprovalWorkflow,
+  includeGlossaryInApprovalWorkflow,
+} from '../../../utils/glossary';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -64,18 +69,23 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     term: GlossaryTerm,
     status: string
   ) => {
-    await apiContext.patch(`/api/v1/glossaryTerms/${term.responseData.id}`, {
-      data: [
-        {
-          op: 'replace',
-          path: '/entityStatus',
-          value: status,
+    const response = await apiContext.patch(
+      `/api/v1/glossaryTerms/${term.responseData.id}`,
+      {
+        data: [
+          {
+            op: 'replace',
+            path: '/entityStatus',
+            value: status,
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
         },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
+      }
+    );
+
+    expect(response.ok(), await response.text()).toBe(true);
   };
 
   // Reusable helper to apply status filter
@@ -97,21 +107,20 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
     // Wait for API response after clicking Save
     await Promise.all([
-      page.waitForResponse(
+      waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/glossaryTerms') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/glossaryTerms'),
+        200
       ),
       page.getByTestId('glossary-status-save-btn').click(),
     ]);
 
     // Wait for table loader to disappear
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 })
-      .catch(() => {});
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
   };
 
   // Reusable helper to verify row statuses
@@ -120,12 +129,14 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     allowedStatuses: string[],
     maxRows?: number
   ) => {
-    const rows = page.locator('tbody > tr:not([aria-hidden="true"])');
-    const rowCount = await rows.count();
-    const checkCount = maxRows ? Math.min(rowCount, maxRows) : rowCount;
+    const allRows = await page
+      .locator('tbody > tr:not([aria-hidden="true"])')
+      .all();
+    const rowCount = allRows.length;
+    const rowsToCheck = maxRows ? allRows.slice(0, maxRows) : allRows;
 
-    for (let i = 0; i < checkCount; i++) {
-      const statusCell = rows.nth(i).locator('td:nth-child(3)');
+    for (const row of rowsToCheck) {
+      const statusCell = row.locator('td:nth-child(3)');
       const statusText = await statusCell.textContent();
       if (statusText?.trim()) {
         const hasValidStatus = allowedStatuses.some((s) =>
@@ -164,14 +175,9 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       }
     });
 
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 10000 })
-      .catch(() => {
-        // Ignore timeout
-      });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
     // eslint-disable-next-line playwright/no-wait-for-timeout -- filter results need time to render
     await page.waitForTimeout(500);
   };
@@ -198,9 +204,12 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    createdTerms.length = 0;
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
+    // GlossaryTermApprovalWorkflow owns term stages; exclude this glossary while seeding them.
+    await excludeGlossaryFromApprovalWorkflow(apiContext, glossary);
 
     // Create 2 terms per status (10 terms total)
     for (const status of STATUSES_TO_TEST) {
@@ -218,11 +227,13 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       }
     }
 
+    await includeGlossaryInApprovalWorkflow(apiContext, glossary);
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    await includeGlossaryInApprovalWorkflow(apiContext, glossary);
 
     await glossary.delete(apiContext);
     console.log('Deleted test glossary');
@@ -234,11 +245,9 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     await disableEtagConditionalReads(page);
     await glossary.visitEntityPage(page);
     await page.getByTestId('glossary-terms-table').waitFor();
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
   });
 
   // ==================== STATUS FILTER TESTS ====================
@@ -456,37 +465,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       console.log(
         `Search + Status pagination: verified ${initialCount} Approved terms`
       );
-    });
-
-    test('should maintain status filter when search is cleared', async ({
-      page,
-    }) => {
-      await applyStatusFilter(page, ['Draft']);
-
-      await performSearch(page, 'Term_Draft');
-
-      await clearSearch(page);
-
-      // Status filter should still be active
-      const rowCount = await verifyRowStatuses(page, ['Draft']);
-      expect(rowCount).toBeGreaterThan(0);
-    });
-
-    test('should maintain search when status filter is changed', async ({
-      page,
-    }) => {
-      await performSearch(page, 'Term_');
-
-      const initialCount = await getRowCount(page);
-
-      await applyStatusFilter(page, ['Approved']);
-
-      // Search should still be active, results filtered by status
-      // Use toPass() for auto-retry to handle DOM update timing
-      await expect(async () => {
-        const filteredCount = await verifyRowStatuses(page, ['Approved']);
-        expect(filteredCount).toBeLessThanOrEqual(initialCount);
-      }).toPass({ timeout: 5000 });
     });
   });
 

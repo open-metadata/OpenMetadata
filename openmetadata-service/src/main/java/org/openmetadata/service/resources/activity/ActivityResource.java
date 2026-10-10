@@ -36,18 +36,29 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.ConversationReply;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ActivityStreamRepository;
 import org.openmetadata.service.jdbi3.ConversationRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -79,6 +90,39 @@ public class ActivityResource {
     this.authorizer = authorizer;
     this.activityStreamRepository = new ActivityStreamRepository();
     this.conversationRepository = Entity.getConversationRepository();
+  }
+
+  /**
+   * Activity events embed the old and new values of the fields they report on, so reading an
+   * entity's activity discloses that entity's contents. Entity-addressed reads therefore require
+   * the same ViewBasic the entity itself requires — otherwise a policy denying a user access to a
+   * table still leaves its full change history readable through this API (issue #18158).
+   */
+  private void authorizeTargetView(
+      SecurityContext securityContext, ResourceContextInterface target) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(target.getResource(), MetadataOperation.VIEW_BASIC),
+        target);
+  }
+
+  /**
+   * Unlike the id- and fqn-addressed endpoints, {@code /about} takes a free-form EntityLink that
+   * may point at a column or field, and its documented contract is to return an empty list for a
+   * link that matches nothing. A link that resolves to no entity has no permissions to honour —
+   * it can only match events about entities that no longer exist — so skip the check rather than
+   * turn an unknown link into a 404.
+   */
+  private void authorizeEntityLinkView(SecurityContext securityContext, String entityLink) {
+    EntityReference target;
+    try {
+      target = EntityUtil.validateEntityLink(EntityLink.parse(entityLink));
+    } catch (EntityNotFoundException exception) {
+      return;
+    }
+    authorizeTargetView(
+        securityContext,
+        new ResourceContext<>(target.getType(), target.getId(), null, Include.ALL));
   }
 
   @GET
@@ -146,6 +190,19 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
+    // A listing scoped to one entity returns that entity's change history (old and new field
+    // values), so a caller who cannot view the entity must not read it here (issue #18158). This
+    // endpoint already degrades to a permission/domain-filtered feed, so a denied target yields an
+    // empty page rather than a 403 — matching the domain-only-access contract exercised by
+    // ActivityResourceIT.
+    if (entityType != null && entityId != null) {
+      try {
+        authorizeTargetView(
+            securityContext, new ResourceContext<>(entityType, entityId, null, Include.ALL));
+      } catch (AuthorizationException | EntityNotFoundException denied) {
+        return new ResultList<>(List.of(), null, null, 0);
+      }
+    }
     return activityStreamRepository.listActivityEvents(
         securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit);
   }
@@ -187,6 +244,8 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
+    authorizeTargetView(
+        securityContext, new ResourceContext<>(entityType, entityId, null, Include.ALL));
     return activityStreamRepository.getEntityActivityById(
         securityContext, entityType, entityId, domain, days, limit);
   }
@@ -229,6 +288,7 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
+    authorizeTargetView(securityContext, new ResourceContext<>(entityType, null, fqn, Include.ALL));
     return activityStreamRepository.getEntityActivityByFqn(
         securityContext, entityType, fqn, domain, days, limit);
   }
@@ -300,6 +360,40 @@ public class ActivityResource {
   }
 
   @GET
+  @Path("/mentions")
+  @Operation(
+      operationId = "getMentionsActivityFeed",
+      summary = "Get activity whose replies mention the current user",
+      description =
+          "Get activity events with a reply that mentions the current user or one of their teams.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Activity feed of mentions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ActivityEventList.class)))
+      })
+  public ResultList<ActivityEvent> getMentionsFeed(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
+      @Parameter(description = "Number of days to look back")
+          @DefaultValue("7")
+          @Min(1)
+          @Max(30)
+          @QueryParam("days")
+          int days,
+      @Parameter(description = "Maximum number of events to return")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(200)
+          @QueryParam("limit")
+          int limit) {
+    return activityStreamRepository.getMentionsFeed(securityContext, domain, days, limit);
+  }
+
+  @GET
   @Path("/about")
   @Operation(
       operationId = "getActivityByEntityLink",
@@ -333,6 +427,7 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
+    authorizeEntityLinkView(securityContext, entityLink);
     return activityStreamRepository.getActivityByEntityLink(
         securityContext, entityLink, domain, days, limit);
   }

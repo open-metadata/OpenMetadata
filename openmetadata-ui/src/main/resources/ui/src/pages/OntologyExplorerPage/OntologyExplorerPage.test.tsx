@@ -16,6 +16,13 @@ import { ReactNode } from 'react';
 import { Glossary } from '../../generated/entity/data/glossary';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
+let mockSearchParams = new URLSearchParams();
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useSearchParams: () => [mockSearchParams, jest.fn()],
+}));
+
 interface ExplorerMockProps {
   conceptDraftId?: string;
   defaultConceptGlossaryId?: string;
@@ -98,8 +105,9 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
   ),
 }));
 
-jest.mock('../../components/OntologyExplorer', () => ({
-  OntologyExplorer: jest.fn((props: ExplorerMockProps) => {
+jest.mock('../../components/OntologyExplorer/OntologyExplorer', () => ({
+  __esModule: true,
+  default: jest.fn((props: ExplorerMockProps) => {
     mockOntologyExplorer(props);
 
     return (
@@ -138,6 +146,14 @@ jest.mock('../../components/OntologyExplorer/OntologyAiAssistant', () => ({
     </div>
   )),
 }));
+
+jest.mock(
+  '../../components/OntologyExplorer/OntologyMemoryReviewPanel',
+  () => ({
+    __esModule: true,
+    default: jest.fn(() => <div data-testid="ontology-memory-review-panel" />),
+  })
+);
 
 jest.mock('../../components/OntologyExplorer/OntologyImportExportMenu', () => ({
   __esModule: true,
@@ -476,8 +492,32 @@ describe('OntologyExplorerPage', () => {
     render(<OntologyExplorerPage />);
 
     expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
     expect(screen.getByTestId('mode-tab-view')).toBeVisible();
     expect(screen.getByTestId('mode-tab-query')).toBeVisible();
+  });
+
+  it('opens saved proposals for review when ontology AI is disabled', () => {
+    render(<OntologyExplorerPage />);
+
+    fireEvent.click(screen.getByTestId('mode-tab-review'));
+
+    expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
+    expect(screen.getByTestId('ontology-explorer')).not.toBeVisible();
+  });
+
+  it('opens a linked draft directly in Studio review', () => {
+    mockSearchParams = new URLSearchParams('draft=draft-16');
+
+    render(<OntologyExplorerPage />);
+
+    expect(screen.getByTestId('mode-tab-review')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
+
+    mockSearchParams = new URLSearchParams();
   });
 
   it('does not expose an AI affordance when the effective flag is disabled', () => {

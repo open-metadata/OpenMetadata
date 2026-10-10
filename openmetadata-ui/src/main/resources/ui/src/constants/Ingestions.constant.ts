@@ -48,3 +48,6 @@ export const PIPELINE_TYPE_LOCALIZATION = {
  * raw `name`, which is machine-generated for UI-created agents.
  */
 export const SORT_FIELD_DISPLAY_NAME = 'displayName';
+
+/** Page size when listing a test suite's pipelines; a suite has only a few. */
+export const TEST_SUITE_PIPELINE_LIMIT = 100;

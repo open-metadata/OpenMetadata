@@ -26,6 +26,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -34,10 +35,14 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
+import org.openmetadata.it.util.RdfInferenceRuns;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -193,6 +198,9 @@ public class RdfInferenceMaterializationIT {
   }
 
   @Test
+  // Every RDF write through the server marks all rules dirty, so the clean state right after
+  // materializing is only observable while no other test is writing.
+  @ResourceLock(value = Resources.GLOBAL, mode = ResourceAccessMode.READ_WRITE)
   void persistsInvalidatesMaterializesAndClearsCustomRules(final TestNamespace namespace)
       throws Exception {
     final String suffix = namespace.uniqueShortId();
@@ -202,9 +210,11 @@ public class RdfInferenceMaterializationIT {
             ruleName,
             TEST_RESOURCE_BASE + "subject:" + suffix,
             TEST_RESOURCE_BASE + "object:" + suffix,
-            INFERRED_GRAPH_BASE + ruleName);
+            INFERRED_GRAPH_BASE + ruleName,
+            TEST_RESOURCE_BASE + "graph:" + suffix,
+            SOURCE_PREDICATE + ":" + suffix);
     final InferenceRuleService service = SdkClients.adminClient().inferenceRules();
-    final InferenceRule rule = rule(ruleName);
+    final InferenceRule rule = fixtureRule(fixture);
 
     service.upsert(ruleName, rule);
     try {
@@ -228,12 +238,19 @@ public class RdfInferenceMaterializationIT {
     rules.upsert(ruleName, rule(ruleName));
     try {
       insertScopedSource(glossary, subject, object);
-      rules.materialize(true, ruleName);
+      RdfInferenceRuns.materializeWhenIdle(true, ruleName);
 
+      // A scheduled run empties rule graphs before recomputing them, so wait for it to settle.
       final OntologyInferenceExplanation explanation =
-          SdkClients.adminClient()
-              .ontologyReasoning()
-              .explain(explanationRequest(glossary, subject, object));
+          Awaitility.await("materialized explanation")
+              .atMost(Duration.ofMinutes(3))
+              .pollInterval(Duration.ofSeconds(1))
+              .until(
+                  () ->
+                      SdkClients.adminClient()
+                          .ontologyReasoning()
+                          .explain(explanationRequest(glossary, subject, object)),
+                  candidate -> Boolean.TRUE.equals(candidate.getInferred()));
       final OntologyInferenceExplanation isolated =
           SdkClients.adminClient()
               .ontologyReasoning()
@@ -263,6 +280,15 @@ public class RdfInferenceMaterializationIT {
 
   private static InferenceRule ruleWithBody(final String name, final String body) {
     return rule(name).withRuleBody(body);
+  }
+
+  // A source predicate of its own keeps this rule from matching the sources of
+  // tests running alongside it.
+  private static InferenceRule fixtureRule(final MaterializationFixture fixture) {
+    return ruleWithBody(
+        fixture.ruleName(),
+        "CONSTRUCT { ?subject <%s> ?object } WHERE { ?subject <%s> ?object }"
+            .formatted(INFERRED_PREDICATE, fixture.sourcePredicate()));
   }
 
   private static ValidationOutcome validateRule(final InferenceRule rule) throws Exception {
@@ -327,17 +353,23 @@ public class RdfInferenceMaterializationIT {
     insertInvalidatingTriple(fixture);
     assertTrue(service.get(fixture.ruleName()).getDirty());
     service.delete(fixture.ruleName());
+    // A scheduled run in progress during the delete leaves the graph for the next run to empty.
+    RdfInferenceRuns.materializeWhenIdle(false, null);
     assertFalse(hasInferredTriple(fixture));
   }
 
   private static void assertSuccessfulMaterialization(
       final InferenceRuleService service, final MaterializationFixture fixture) {
     final InferenceRuleStatus dirty = service.get(fixture.ruleName());
-    final InferenceMaterializationResult result = service.materialize(false, fixture.ruleName());
+    final InferenceMaterializationResult result =
+        RdfInferenceRuns.materializeWhenIdle(true, fixture.ruleName());
     final InferenceRuleStatus materialized = service.get(fixture.ruleName());
 
     assertTrue(dirty.getDirty());
-    assertEquals(1, result.getSuccessfulRules());
+    assertEquals(0, result.getFailedRules(), () -> "Failed rules: " + result.getProcessedRules());
+    assertTrue(
+        result.getProcessedRules().stream()
+            .anyMatch(status -> fixture.ruleName().equals(status.getRule().getName())));
     assertFalse(materialized.getDirty());
     assertEquals(1, materialized.getTripleCount());
     assertTrue(hasInferredTriple(fixture));
@@ -350,21 +382,33 @@ public class RdfInferenceMaterializationIT {
     return RdfTestUtils.executeSparqlAsk(ask);
   }
 
+  // The store's default graph is the union of its named graphs, so a triple
+  // written without GRAPH is invisible to rules; sources go in a named graph.
   private static void insertSourceTriple(final MaterializationFixture fixture) throws Exception {
     update(
-        "INSERT DATA { <%s> <%s> <%s> }"
-            .formatted(fixture.subject(), SOURCE_PREDICATE, fixture.object()));
+        "INSERT DATA { GRAPH <%s> { <%s> <%s> <%s> } }"
+            .formatted(
+                fixture.sourceGraph(),
+                fixture.subject(),
+                fixture.sourcePredicate(),
+                fixture.object()));
   }
 
   private static void insertInvalidatingTriple(final MaterializationFixture fixture)
       throws Exception {
     update(
-        "INSERT DATA { <%s> <%s> <%s> }"
-            .formatted(fixture.subject(), INVALIDATION_PREDICATE, fixture.object()));
+        "INSERT DATA { GRAPH <%s> { <%s> <%s> <%s> } }"
+            .formatted(
+                fixture.sourceGraph(),
+                fixture.subject(),
+                INVALIDATION_PREDICATE,
+                fixture.object()));
   }
 
   private static void deleteSourceTriples(final MaterializationFixture fixture) throws Exception {
-    update("DELETE WHERE { <%s> ?predicate <%s> }".formatted(fixture.subject(), fixture.object()));
+    update(
+        "DELETE WHERE { GRAPH <%s> { <%s> ?predicate <%s> } }"
+            .formatted(fixture.sourceGraph(), fixture.subject(), fixture.object()));
   }
 
   private static void insertScopedSource(
@@ -426,7 +470,12 @@ public class RdfInferenceMaterializationIT {
   }
 
   private record MaterializationFixture(
-      String ruleName, String subject, String object, String graphUri) {}
+      String ruleName,
+      String subject,
+      String object,
+      String graphUri,
+      String sourceGraph,
+      String sourcePredicate) {}
 
   private record ValidationOutcome(boolean valid, List<String> errors) {
     private ValidationOutcome {

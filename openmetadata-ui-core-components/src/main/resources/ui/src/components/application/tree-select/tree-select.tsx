@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
+import { ChevronDown, RefreshCw01, Search, XClose } from '../../../icons';
 import {
-  SearchInputIcon,
+  DropdownSearchField,
+  DropdownStagedFooter,
+  DropdownStatusFooter,
+  selectedTriggerClassName,
   TriggerCountBadge,
 } from '../filter-select/filter-select.shared';
 import {
@@ -23,6 +26,7 @@ import {
   useMemo,
   useRef,
   useState,
+  Fragment,
 } from 'react';
 import { FocusScope } from 'react-aria';
 import type { Key, Selection } from 'react-aria-components';
@@ -30,13 +34,16 @@ import { Button } from '@/components/base/buttons/button';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { HintText } from '@/components/base/input/hint-text';
-import { Input } from '@/components/base/input/input';
 import { Label } from '@/components/base/input/label';
 import { sizes } from '@/components/base/select/select';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { Tree } from '../tree/tree';
-import { TreeSelectTreeItemContent } from './tree-select-node';
+import {
+  TreeSelectEmptyItemContent,
+  TreeSelectLoadMoreItemContent,
+  TreeSelectTreeItemContent,
+} from './tree-select-node';
 import type { TreeSelectNode, TreeSelectProps } from './tree-select.types';
 import { useTreeSelectData } from './use-tree-select-data';
 import {
@@ -44,24 +51,32 @@ import {
   useTreeSelectSearch,
 } from './use-tree-select-search';
 import {
+  getNodeSelectionState,
   hasExclusiveChildren,
   useTreeSelectSelection,
 } from './use-tree-select-selection';
 
+/** Row id of a branch's load-more item; a real node is matched first. */
+const LOAD_MORE_SUFFIX = '__more';
+/** Row id of the root listing's load-more item. Null byte: no node can collide. */
+const ROOT_LOAD_MORE_ID = '\u0000root__more';
+
 /** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
-const DROPDOWN_CHROME_WIDTH = 320;
+export const DROPDOWN_CHROME_WIDTH = 320;
 /** Matches react-aria's default overlay `containerPadding`. */
 const VIEWPORT_PADDING = 12;
 
 type DropdownPlacement = 'bottom left' | 'bottom right';
 
 // Left edge of the trigger, mirrored right when there is no room on screen.
-const useDropdownPlacement = (
+// Width is measured: `--trigger-width` is unset for a bare Popover + triggerRef.
+export const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   width?: number
-): DropdownPlacement => {
+): { placement: DropdownPlacement; triggerWidth?: number } => {
   const [placement, setPlacement] = useState<DropdownPlacement>('bottom left');
+  const [triggerWidth, setTriggerWidth] = useState<number>();
 
   useEffect(() => {
     if (!isOpen) {
@@ -73,6 +88,7 @@ const useDropdownPlacement = (
       if (!rect) {
         return;
       }
+      setTriggerWidth(rect.width);
       const needed = (width ?? rect.width) + VIEWPORT_PADDING;
       const fitsRight = window.innerWidth - rect.left >= needed;
       const fitsLeft = rect.right >= needed;
@@ -82,10 +98,20 @@ const useDropdownPlacement = (
     measure();
     window.addEventListener('resize', measure);
 
-    return () => window.removeEventListener('resize', measure);
+    // The trigger can reflow while open, e.g. a grid cell editor mounting its
+    // buttons beside it, and a width measured once would then be stale.
+    const observer = new ResizeObserver(measure);
+    if (triggerRef.current) {
+      observer.observe(triggerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer.disconnect();
+    };
   }, [isOpen, width, triggerRef]);
 
-  return placement;
+  return { placement, triggerWidth };
 };
 
 const shouldLazyLoad = <T,>(
@@ -169,11 +195,18 @@ const collectSelectableNodes = <T,>(
 ): TreeSelectNode<T>[] => {
   const result: TreeSelectNode<T>[] = [];
   for (const node of nodes) {
-    if (node.allowSelection !== false) {
+    if (node.allowSelection !== false && !hasExclusiveChildren(node)) {
       result.push(node);
     }
     if (node.children) {
-      result.push(...collectSelectableNodes(node.children));
+      result.push(
+        ...collectSelectableNodes(
+          node.children.filter(
+            (child) =>
+              !child.isParentMutuallyExclusive && !hasExclusiveChildren(child)
+          )
+        )
+      );
     }
   }
 
@@ -200,39 +233,59 @@ export const TreeSelect = <T = unknown,>({
   searchable = false,
   lazyLoad = false,
   showCheckbox = true,
+  showExpandIcon = true,
   showIcon = true,
   cascadeSelection = false,
   debounceMs = 300,
   pageSize = 50,
   noDataMessage,
+  emptyBranchMessage,
   loadingMessage,
   searchPlaceholder,
   triggerVariant = 'input',
+  triggerClassName,
+  fullWidthTrigger = false,
+  onFetchError,
+  renderSelectedItem,
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
+  offset,
+  placement,
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
+  triggerIcon,
   onNodeExpand,
   onNodeCollapse,
+  defaultExpandedKeys,
+  maxIndentLevel,
   onSearch,
   filterNode,
 }: TreeSelectProps<T>): ReactElement => {
   const { t } = useCoreTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledIsOpen ?? internalOpen;
-  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(new Set());
+  const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
+    () => new Set(defaultExpandedKeys ?? [])
+  );
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevValueRef = useRef<typeof value>(undefined);
+  // Armed until a focus event consumes it; a timed reset loses the race and reopens.
+  const skipNextFocusOpen = useRef(false);
   // What was expanded before a search took over, restored when it clears.
   const preSearchExpandedRef = useRef<Set<Key> | null>(null);
   // Parents already opened for this search, so a later result never reopens one.
   const autoExpandedRef = useRef<Set<Key>>(new Set());
   const lastSearchRef = useRef('');
+  // Which defaultExpandedKeys have been applied. Per-key, not a single boolean:
+  // the keys form an ancestor chain and a lazy tree only reveals one level per
+  // fetch, so deeper keys do not exist yet on the pass that applies the root.
+  // Each key is still applied at most once, so a later user collapse sticks.
+  const appliedDefaultExpandRef = useRef<Set<Key>>(new Set());
   // Stable root IDs captured before any search replaces treeData, so
   // displayedSelectedCount is not zeroed out while the user is searching.
   const [stableRootIds, setStableRootIds] = useState<Set<string>>(new Set());
@@ -242,7 +295,7 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
-  const placement = useDropdownPlacement(
+  const { placement: autoPlacement, triggerWidth } = useDropdownPlacement(
     triggerRef,
     isOpen,
     usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
@@ -259,8 +312,30 @@ export const TreeSelect = <T = unknown,>({
   const { inputValue, searchTerm, setInputValue, clearSearch } =
     useTreeSelectSearch({ debounceMs, onSearch });
 
-  const { treeData, loading, loadingNodes, loadChildren } =
-    useTreeSelectData<T>({ fetchData, searchTerm, pageSize });
+  // Latched on first open so reopening reuses the loaded tree.
+  const [hasOpened, setHasOpened] = useState(isOpen);
+  if (isOpen && !hasOpened) {
+    setHasOpened(true);
+  }
+
+  // The button badge excludes root ids, so it needs the tree while closed.
+  const {
+    treeData,
+    loading,
+    loadingNodes,
+    loadChildren,
+    loadMoreChildren,
+    hasMoreRoot,
+    rootTotal,
+    loadingMoreRoot,
+    loadMoreRoot,
+  } = useTreeSelectData<T>({
+    fetchData,
+    searchTerm,
+    pageSize,
+    onFetchError,
+    enabled: hasOpened || isButtonVariant,
+  });
 
   const visibleNodeIds = useMemo(
     () =>
@@ -275,13 +350,18 @@ export const TreeSelect = <T = unknown,>({
   // Staged mode reports once on Apply, not per toggle.
   const commit = isStaged ? undefined : onChange;
 
-  const { selectedData, isNodeSelected, toggleNodeSelection, setSelection } =
-    useTreeSelectSelection<T>({
-      multiple,
-      cascadeSelection,
-      treeData,
-      onChange: commit,
-    });
+  const {
+    selectedData,
+    isNodeSelected,
+    getDescendantSelection,
+    toggleNodeSelection,
+    setSelection,
+  } = useTreeSelectSelection<T>({
+    multiple,
+    cascadeSelection,
+    treeData,
+    onChange: commit,
+  });
 
   useEffect(() => {
     if (value !== prevValueRef.current) {
@@ -303,6 +383,40 @@ export const TreeSelect = <T = unknown,>({
       setStableRootIds(new Set(treeData.map((n) => n.id)));
     }
   }, [treeData, searchTerm]);
+
+  // Expand each defaultExpandedKeys node as it first appears in the tree, and
+  // fetch its children when it loads lazily. Both halves are needed to reveal a
+  // selection nested more than one level deep: expanding an ancestor is what
+  // makes the next key materialise, and without the fetch that ancestor opens
+  // empty, so the chain stops at the first lazy node.
+  useEffect(() => {
+    if (!defaultExpandedKeys?.length) {
+      return;
+    }
+    const pending = defaultExpandedKeys.filter(
+      (key) =>
+        !appliedDefaultExpandRef.current.has(key) && findNode(treeData, key)
+    );
+    if (pending.length === 0) {
+      return;
+    }
+    pending.forEach((key) => appliedDefaultExpandRef.current.add(key));
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      pending.forEach((key) => next.add(key));
+
+      return next;
+    });
+    pending.forEach((key) => {
+      const id = String(key);
+      if (
+        shouldLazyLoad(findNode(treeData, id), lazyLoad) &&
+        !loadingNodes.has(id)
+      ) {
+        loadChildren(id);
+      }
+    });
+  }, [treeData, defaultExpandedKeys, lazyLoad, loadingNodes, loadChildren]);
 
   // Each parent opens once as it appears; clearing the search restores the old set.
   useEffect(() => {
@@ -346,7 +460,8 @@ export const TreeSelect = <T = unknown,>({
 
   const loadAllDescendants = useCallback(
     async (node: TreeSelectNode<T>): Promise<TreeSelectNode<T>> => {
-      if (node.children?.length) {
+      // A truncated branch is refetched whole; its page is only a subset.
+      if (node.children?.length && !node.hasMoreChildren) {
         const deepChildren = await Promise.all(
           node.children.map((child) => loadAllDescendants(child))
         );
@@ -360,7 +475,8 @@ export const TreeSelect = <T = unknown,>({
 
       // Fetch directly — do NOT call loadChildren here to avoid a duplicate
       // API request (loadChildren would re-fetch the same parentId).
-      const response = await fetchData({ parentId: node.id });
+      // `loadAll`: a cascade cannot select a page, so it opts out of paging.
+      const response = await fetchData({ parentId: node.id, loadAll: true });
 
       if (response.nodes.length > 0) {
         const deepChildren = await Promise.all(
@@ -382,13 +498,15 @@ export const TreeSelect = <T = unknown,>({
       }
 
       let nodeForSelection = node;
+      // Rendered state, not membership: a parent checked via descendants deselects.
+      const { isFullySelected } = getNodeSelectionState(
+        getDescendantSelection(node),
+        isNodeSelected(node.id),
+        multiple && cascadeSelection
+      );
 
-      if (
-        cascadeSelection &&
-        multiple &&
-        !isNodeSelected(node.id) &&
-        node.isLeaf !== true
-      ) {
+      // Both directions: a branch selected while collapsed keeps children out of the tree.
+      if (cascadeSelection && multiple && node.isLeaf !== true) {
         try {
           nodeForSelection = await loadAllDescendants(node);
         } catch {
@@ -397,10 +515,12 @@ export const TreeSelect = <T = unknown,>({
         }
       }
 
-      toggleNodeSelection(nodeForSelection, parentNode);
+      toggleNodeSelection(nodeForSelection, parentNode, isFullySelected);
       // Staged single-select waits for Apply, so the dropdown stays open.
       if (!multiple && !isStaged) {
         clearSearch();
+        // The pick returns focus to the trigger; reopening would hide the value.
+        skipNextFocusOpen.current = true;
         setOpen(false);
       }
     },
@@ -411,6 +531,7 @@ export const TreeSelect = <T = unknown,>({
       clearSearch,
       cascadeSelection,
       isNodeSelected,
+      getDescendantSelection,
       loadAllDescendants,
       isStaged,
       setOpen,
@@ -455,6 +576,94 @@ export const TreeSelect = <T = unknown,>({
     ]
   );
 
+  const resolvedEmptyBranchMessage =
+    emptyBranchMessage ?? noDataMessage ?? t('label.no-data-found');
+
+  // Only once a page has landed; before that `remaining` is the whole branch.
+  const renderLoadMore = useCallback(
+    (node: TreeSelectNode<T>) => {
+      if (!node.hasMoreChildren) {
+        return null;
+      }
+
+      const loaded = node.children?.length ?? 0;
+      const remaining = node.childrenTotal
+        ? node.childrenTotal - loaded
+        : undefined;
+      const nextCount = Math.min(pageSize, remaining ?? pageSize);
+
+      if (nextCount <= 0) {
+        return null;
+      }
+
+      return (
+        <Tree.Item
+          id={`${node.id}${LOAD_MORE_SUFFIX}`}
+          key={`${node.id}${LOAD_MORE_SUFFIX}`}
+          textValue={t('label.show-count-more', { count: nextCount })}>
+          <TreeSelectLoadMoreItemContent
+            isLoading={loadingNodes.has(node.id)}
+            maxIndentLevel={maxIndentLevel}
+            nextCount={nextCount}
+            parentId={node.id}
+            remaining={remaining}
+            showExpandIcon={showExpandIcon}
+            onLoadMore={() => loadMoreChildren(node.id)}
+          />
+        </Tree.Item>
+      );
+    },
+    [
+      pageSize,
+      loadingNodes,
+      maxIndentLevel,
+      showExpandIcon,
+      loadMoreChildren,
+      t,
+    ]
+  );
+
+  // The root listing's own tail — the glossary level of a glossary/term tree.
+  const renderRootLoadMore = useCallback(() => {
+    if (!hasMoreRoot) {
+      return null;
+    }
+
+    const remaining = rootTotal ? rootTotal - treeData.length : undefined;
+    const nextCount = Math.min(pageSize, remaining ?? pageSize);
+
+    if (nextCount <= 0) {
+      return null;
+    }
+
+    return (
+      <Tree.Item
+        id={ROOT_LOAD_MORE_ID}
+        key={ROOT_LOAD_MORE_ID}
+        textValue={t('label.show-count-more', { count: nextCount })}>
+        <TreeSelectLoadMoreItemContent
+          isLoading={loadingMoreRoot}
+          maxIndentLevel={maxIndentLevel}
+          nextCount={nextCount}
+          parentId="root"
+          remaining={remaining}
+          showExpandIcon={showExpandIcon}
+          onLoadMore={loadMoreRoot}
+        />
+      </Tree.Item>
+    );
+  }, [
+    hasMoreRoot,
+    rootTotal,
+    treeData.length,
+    pageSize,
+    loadingMoreRoot,
+    maxIndentLevel,
+    showExpandIcon,
+    loadMoreRoot,
+    t,
+  ]);
+
   const renderNodes = useCallback(
     (
       nodes: TreeSelectNode<T>[],
@@ -464,6 +673,11 @@ export const TreeSelect = <T = unknown,>({
 
       return visibleNodes.map((node) => {
         const isExclusiveGroup = hasExclusiveChildren(node);
+        const { isFullySelected, isPartiallySelected } = getNodeSelectionState(
+          getDescendantSelection(node),
+          isNodeSelected(node.id),
+          multiple && cascadeSelection
+        );
 
         return (
           <Tree.Item id={node.id} key={node.id} textValue={node.label}>
@@ -472,11 +686,14 @@ export const TreeSelect = <T = unknown,>({
               hasChildItems={
                 Boolean(node.children?.length) || node.isLeaf === false
               }
+              isIndeterminate={isPartiallySelected}
               isLoading={loadingNodes.has(node.id)}
-              isSelected={isNodeSelected(node.id)}
+              isSelected={isFullySelected}
+              maxIndentLevel={maxIndentLevel}
               multiple={multiple}
               node={node}
               showCheckbox={showCheckbox && !isExclusiveGroup}
+              showExpandIcon={showExpandIcon}
               showIcon={showIcon}
               onNodeClick={() => {
                 if (!isExclusiveGroup) {
@@ -484,20 +701,44 @@ export const TreeSelect = <T = unknown,>({
                 }
               }}
             />
-            {node.children && renderNodes(node.children, node)}
+            {node.children?.length || node.hasMoreChildren ? (
+              <Fragment key={`${node.id}__children`}>
+                {renderNodes(node.children ?? [], node)}
+                {renderLoadMore(node)}
+              </Fragment>
+            ) : (
+              node.children &&
+              node.isLeaf === false &&
+              !loadingNodes.has(node.id) && (
+                <Tree.Item
+                  id={`${node.id}__empty`}
+                  key={`${node.id}__empty`}
+                  textValue={resolvedEmptyBranchMessage}>
+                  <TreeSelectEmptyItemContent
+                    message={resolvedEmptyBranchMessage}
+                    parentId={node.id}
+                  />
+                </Tree.Item>
+              )
+            )}
           </Tree.Item>
         );
       });
     },
     [
+      resolvedEmptyBranchMessage,
       isNodeVisible,
       isNodeSelected,
+      getDescendantSelection,
       loadingNodes,
       disabled,
       multiple,
       showCheckbox,
+      showExpandIcon,
       showIcon,
+      maxIndentLevel,
       handleNodeAction,
+      renderLoadMore,
     ]
   );
 
@@ -513,7 +754,7 @@ export const TreeSelect = <T = unknown,>({
 
   const displayValue = isOpen
     ? inputValue
-    : !multiple
+    : !multiple && !renderSelectedItem
     ? selectedData[0]?.label ?? ''
     : '';
 
@@ -523,14 +764,25 @@ export const TreeSelect = <T = unknown,>({
     }
   };
 
+  const openOnFocus = () => {
+    if (skipNextFocusOpen.current) {
+      skipNextFocusOpen.current = false;
+
+      return;
+    }
+    openTrigger();
+  };
+
   // Every close but Apply drops the draft, else the trigger shows stale state.
   const dismiss = useCallback(() => {
+    skipNextFocusOpen.current = true;
     if (isStaged) {
       setSelection(toArray(value));
     }
+    clearSearch();
     setOpen(false);
     setShowSelectedOnly(false);
-  }, [isStaged, setSelection, value, setOpen]);
+  }, [isStaged, setSelection, value, clearSearch, setOpen]);
 
   // Closing through the trigger is a non-Apply close, so it discards the draft.
   const toggleOpen = useCallback(() => {
@@ -564,12 +816,13 @@ export const TreeSelect = <T = unknown,>({
         dismiss();
       }
     };
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
+    // Capture: an overlay stopping propagation would otherwise hide the click.
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleEscape, true);
 
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleEscape, true);
     };
   }, [isOpen, dismiss]);
 
@@ -656,9 +909,10 @@ export const TreeSelect = <T = unknown,>({
 
   const handleApply = useCallback(() => {
     onChange?.(multiple ? selectedData : selectedData[0] ?? null);
+    clearSearch();
     setOpen(false);
     setShowSelectedOnly(false);
-  }, [onChange, multiple, selectedData, setOpen]);
+  }, [onChange, multiple, selectedData, clearSearch, setOpen]);
 
   const treeDropdownContent = (
     <div
@@ -666,16 +920,12 @@ export const TreeSelect = <T = unknown,>({
       data-testid={dataTestId ? `${dataTestId}-popover` : undefined}
       ref={popoverRef}>
       {usesDropdownChrome && searchable && (
-        <div className="tw:p-2">
-          <Input
-            icon={SearchInputIcon}
-            inputDataTestId={dataTestId ? `${dataTestId}-search` : undefined}
-            placeholder={searchPlaceholder ?? t('label.search')}
-            size="sm"
-            value={inputValue}
-            onChange={(val) => searchable && setInputValue(val)}
-          />
-        </div>
+        <DropdownSearchField
+          inputDataTestId={dataTestId ? `${dataTestId}-search` : undefined}
+          placeholder={searchPlaceholder ?? t('label.search')}
+          value={inputValue}
+          onChange={(val) => searchable && setInputValue(val)}
+        />
       )}
       {showSelectAllRow && (
         <div
@@ -711,8 +961,17 @@ export const TreeSelect = <T = unknown,>({
             expandedKeys={filteredExpandedKeys}
             selectionMode="none"
             onAction={(key) => {
-              const node = findNode(treeData, String(key));
+              const id = String(key);
+              const node = findNode(treeData, id);
+              // Keyboard activation lands here too, so the load-more row needs
+              // to answer it — its button alone is not reachable by arrow keys.
               if (!node) {
+                if (id === ROOT_LOAD_MORE_ID) {
+                  loadMoreRoot();
+                } else if (id.endsWith(LOAD_MORE_SUFFIX)) {
+                  loadMoreChildren(id.slice(0, -LOAD_MORE_SUFFIX.length));
+                }
+
                 return;
               }
               if (!hasExclusiveChildren(node)) {
@@ -720,62 +979,31 @@ export const TreeSelect = <T = unknown,>({
               }
             }}
             onExpandedChange={handleExpandedChange}>
-            {renderNodes(filteredTreeData)}
+            {[...renderNodes(filteredTreeData), renderRootLoadMore()].filter(
+              Boolean
+            )}
           </Tree>
         )}
       </div>
       {showFooter && (
-        <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:p-3">
-          <Button
-            color="tertiary"
-            data-testid="clear-filter-btn"
-            isDisabled={selectedData.length === 0}
-            size="sm"
-            onPress={handleClearAll}>
-            {t('label.clear-all')}
-          </Button>
-          <div className="tw:flex tw:items-center tw:gap-2">
-            <Button
-              color="secondary"
-              data-testid="close-btn"
-              size="sm"
-              onPress={dismiss}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="update-btn"
-              size="sm"
-              onPress={handleApply}>
-              {selectedData.length > 0
-                ? t('label.apply-count', { count: selectedData.length })
-                : t('label.apply')}
-            </Button>
-          </div>
-        </div>
+        <DropdownStagedFooter
+          count={displayedSelectedCount}
+          isClearDisabled={selectedData.length === 0}
+          onApply={handleApply}
+          onCancel={dismiss}
+          onClear={handleClearAll}
+        />
       )}
 
       {showStatusFooter && (
-        <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
-          <span
-            className="tw:text-xs tw:font-normal tw:text-tertiary"
-            data-testid="selected-count">
-            {displayedSelectedCount === 0
-              ? t('label.none-selected')
-              : t('label.count-selected', { count: displayedSelectedCount })}
-          </span>
-          <Button
-            color="tertiary"
-            data-testid="clear-filter-btn"
-            isDisabled={selectedData.length === 0}
-            size="sm"
-            onPress={() => {
-              handleClearAll();
-              setShowSelectedOnly(false);
-            }}>
-            {t('label.clear-all')}
-          </Button>
-        </div>
+        <DropdownStatusFooter
+          count={displayedSelectedCount}
+          isClearDisabled={selectedData.length === 0}
+          onClear={() => {
+            handleClearAll();
+            setShowSelectedOnly(false);
+          }}
+        />
       )}
     </div>
   );
@@ -786,31 +1014,52 @@ export const TreeSelect = <T = unknown,>({
       isNonModal
       className={cx(
         // `w-full` would size against the portal root.
-        usesDropdownChrome ? 'tw:w-80' : 'tw:w-(--trigger-width)',
+        usesDropdownChrome && 'tw:w-80',
         popoverClassName
       )}
       // Stops a dismissable ancestor reading clicks here as outside ones.
       data-react-aria-top-layer="true"
       isOpen={isOpen}
-      placement={placement}
+      offset={offset}
+      placement={placement ?? autoPlacement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
+      // The input variant matches its trigger; measured, not `--trigger-width`.
+      style={
+        usesDropdownChrome || triggerWidth === undefined
+          ? undefined
+          : { width: triggerWidth }
+      }
       triggerRef={triggerRef}
-      onOpenChange={setOpen}>
+      // `isNonModal` makes react-aria close the popover on any ancestor scroll
+      // (`usePopover` passes `onClose: state.close` to `useOverlayPosition`).
+      // Opening the dropdown scrolls the trigger into view, and a page still
+      // settling after an unrelated save scrolls too, so the picker closed
+      // itself ~100ms after it opened and the next press only reopened it. This
+      // component owns dismissal — Escape and outside-pointerdown listeners
+      // above, plus the explicit apply/select/cancel paths — so a close request
+      // from react-aria is dropped and only its open request is honoured.
+      onOpenChange={(open: boolean) => {
+        if (open) {
+          setOpen(true);
+        }
+      }}>
       {treeDropdownContent}
     </Dropdown.Popover>
   );
 
   if (renderTrigger) {
     return (
-      <div className={cx('tw:relative tw:inline-block', className)}>
-        <div ref={triggerRef}>
+      <div className={cx('tw:relative tw:inline-flex', className)}>
+        <div
+          className={cx('tw:flex tw:min-w-0', fullWidthTrigger && 'tw:w-full')}
+          ref={triggerRef}>
           {renderTrigger({
             isOpen,
             toggle: toggleOpen,
             open: openTrigger,
             close: dismiss,
-            selectedCount: selectedData.length,
+            selectedCount: displayedSelectedCount,
           })}
         </div>
         {isOpen && treeDropdown}
@@ -823,19 +1072,20 @@ export const TreeSelect = <T = unknown,>({
     const triggerText = label ?? placeholder ?? '';
 
     return (
-      <div className={cx('tw:relative tw:inline-block', className)}>
-        <div ref={triggerRef}>
+      <div className={cx('tw:relative tw:inline-flex', className)}>
+        <div className="tw:flex" ref={triggerRef}>
           <Button
             className={cx(
               'tw:whitespace-nowrap',
               !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
-              hasSelection &&
-                'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary',
-              hasSelection && bordered && 'tw:after:outline-brand'
+              hasSelection && selectedTriggerClassName(bordered),
+              triggerClassName
             )}
             color={bordered ? 'secondary' : 'tertiary'}
             data-testid={dataTestId}
-            iconTrailing={ChevronDown}
+            iconLeading={triggerIcon}
+            // A disabled trigger opens nothing, so the affordance would lie.
+            iconTrailing={disabled ? undefined : ChevronDown}
             isDisabled={disabled}
             size={bordered ? 'md' : 'sm'}
             onPress={toggleOpen}>
@@ -876,9 +1126,16 @@ export const TreeSelect = <T = unknown,>({
             openTrigger();
             inputRef.current?.focus();
           }}>
-          <SearchLg className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
+          <Search className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
 
-          {multiple &&
+          {renderSelectedItem
+            ? selectedData.map((node) => (
+                <Fragment key={node.id}>{renderSelectedItem(node)}</Fragment>
+              ))
+            : null}
+
+          {!renderSelectedItem &&
+            multiple &&
             selectedData.map((node) => (
               <span
                 className="tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
@@ -917,7 +1174,7 @@ export const TreeSelect = <T = unknown,>({
               onChange={(event) =>
                 searchable && setInputValue(event.target.value)
               }
-              onFocus={openTrigger}
+              onFocus={openOnFocus}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
                   dismiss();

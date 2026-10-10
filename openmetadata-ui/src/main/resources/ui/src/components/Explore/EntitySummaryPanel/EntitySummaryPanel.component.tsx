@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { XClose } from '@untitledui/icons';
-import { Button, Card } from 'antd';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation as FastJsonPatchOperation } from 'fast-json-patch';
@@ -20,15 +20,15 @@ import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { LineageData } from '../../../components/Lineage/Lineage.interface';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference, Type } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
+import { LineageData } from '../../../interface/lineage.interface';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import {
   getApiCollectionByFQN,
@@ -109,14 +109,14 @@ import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRig
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import { EntityDetailsObjectInterface } from '../ExplorePage.interface';
-import CustomPropertiesSection from './CustomPropertiesSection';
+import CustomPropertiesSection from './CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import {
   EntitySummaryPanelProps,
   SearchSourceDetails,
 } from './EntitySummaryPanel.interface';
-import { LineageTabContent } from './LineageTab';
+import LineageTabContent from './LineageTab/LineageTabContent';
 
 type EntityFetchResolution =
   | { immediate: true }
@@ -1088,8 +1088,6 @@ export default function EntitySummaryPanel({
             entityType
           )}
           entityData={entityData ?? undefined}
-          entityDetails={entityDetails}
-          entityType={entityType}
           entityTypeDetail={entityTypeDetail}
           hasEditPermissions={canEditCustomFields}
           isEntityDataLoading={isEntityDataLoading || isEntityTypeLoading}
@@ -1176,30 +1174,35 @@ export default function EntitySummaryPanel({
             tooltipPlacement="bottom left"
             onDisplayNameUpdate={handleDisplayNameUpdate}
           />
-          <Button
+          <ButtonUtility
             aria-label={t('label.close')}
-            className="drawer-close-icon flex-center mr-2"
+            className="tw:mr-2 tw:size-9 tw:rounded-lg tw:p-0 tw:text-primary tw:hover:bg-transparent tw:hover:text-primary"
+            color="tertiary"
             data-testid="drawer-close-icon"
-            icon={<XClose />}
-            size="small"
+            icon={XClose}
+            size="xs"
             onClick={handleClosePanel}
           />
         </div>
       )}
       <div className="d-flex gap-2 w-full h-full">
-        <Card
-          bordered={false}
-          className={`summary-panel-container${
-            isSideDrawer ? ' drawer-summary-panel-container' : ''
-          }`}>
-          <Card
-            className={`content-area ${
-              isSideDrawer ? 'drawer-content-area' : ''
-            }`}
-            style={{ width: '100%', display: 'block' }}>
-            {renderTabContent()}
-          </Card>
-        </Card>
+        <div
+          className={classNames('summary-panel-container tw:bg-surface', {
+            'drawer-summary-panel-container': isSideDrawer,
+          })}>
+          <div
+            className={classNames('tw:relative tw:flex tw:w-full', {
+              'tw:max-h-[calc(100vh-70px)]': isSideDrawer,
+            })}>
+            <div
+              className={classNames(
+                'content-area tw:relative tw:block tw:w-full tw:border tw:border-utility-gray-blue-100 tw:dark:border-subtle',
+                { 'drawer-content-area': isSideDrawer }
+              )}>
+              <div className="tw:relative">{renderTabContent()}</div>
+            </div>
+          </div>
+        </div>
         {entityType && !sideDrawerOverviewOnly && (
           <EntityRightPanelVerticalNav
             activeTab={activeTab}

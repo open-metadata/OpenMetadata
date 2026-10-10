@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Pipeline, Task } from '../../../generated/entity/data/pipeline';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
@@ -177,6 +178,34 @@ describe('PipelineTaskTab', () => {
 
     return column.render(task.tags, task, 0).props;
   };
+
+  const renderNameCell = (sourceUrl: string) => {
+    const { columns } =
+      MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];
+    const column = columns.find((c: { key: string }) => c.key === 'name');
+    const task = { ...mockTasks[0], sourceUrl };
+
+    render(<MemoryRouter>{column.render(task.name, task, 0)}</MemoryRouter>);
+  };
+
+  it('renders an http(s) sourceUrl as an external link without opener access', () => {
+    renderPipelineTaskTab();
+    renderNameCell('https://airflow.example.com/task');
+
+    const link = screen.getByRole('link');
+
+    expect(link).toHaveAttribute('href', 'https://airflow.example.com/task');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('renders a non-http(s) sourceUrl as plain text', () => {
+    renderPipelineTaskTab();
+    renderNameCell('javascript:alert(1)');
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByText('extract')).toBeInTheDocument();
+  });
 
   it('denies description edit when EditDescription is explicitly false, even with EditAll true', () => {
     renderPipelineTaskTab({}, { EditAll: true, EditDescription: false });

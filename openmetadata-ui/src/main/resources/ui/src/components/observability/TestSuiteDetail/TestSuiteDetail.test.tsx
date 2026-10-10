@@ -240,6 +240,7 @@ const baseHookReturn = {
   canAddMultipleUserOwners: true,
   canAddMultipleTeamOwner: false,
   fetchTestCases: jest.fn(),
+  handleTestCasesRemoved: jest.fn(),
   handleSortTestCase: jest.fn(),
   handleAddTestCaseSubmit: jest.fn(),
   onUpdateOwner: jest.fn(),
@@ -284,10 +285,12 @@ describe('TestSuiteDetail', () => {
     );
   });
 
-  it('should align the detail header card with the inset tab content', () => {
+  it('should keep the detail header card on the shell header band', () => {
     render(<TestSuiteDetail />);
 
-    expect(screen.getByTestId('test-suite-header-container')).toHaveClass(
+    // AI padding standard: the header band sits at the shell's 8px padding,
+    // 8px outside the 16px-inset tab content, like the other shell pages.
+    expect(screen.getByTestId('test-suite-header-container')).not.toHaveClass(
       'tw:mx-4'
     );
   });

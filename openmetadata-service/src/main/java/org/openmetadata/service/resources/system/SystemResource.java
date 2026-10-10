@@ -82,7 +82,10 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
+import org.openmetadata.schema.system.TestLoginCredentialsRequest;
 import org.openmetadata.schema.system.TestLoginResult;
+import org.openmetadata.schema.system.TestLoginSession;
+import org.openmetadata.schema.system.TestLoginStartRequest;
 import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
@@ -93,14 +96,12 @@ import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -117,9 +118,10 @@ import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLoginCandidates;
+import org.openmetadata.service.security.auth.TestLoginRoundTrip;
 import org.openmetadata.service.security.auth.TestLoginService;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -161,8 +163,6 @@ public class SystemResource {
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
-  private PipelineServiceClientInterface pipelineServiceClient;
-  private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
 
@@ -173,14 +173,6 @@ public class SystemResource {
 
   public void initialize(OpenMetadataApplicationConfig config) {
     this.applicationConfig = config;
-    this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            config.getPipelineServiceClientConfiguration());
-
-    this.jwtFilter =
-        new JwtFilter(
-            SecurityConfigurationManager.getCurrentAuthConfig(),
-            SecurityConfigurationManager.getCurrentAuthzConfig());
   }
 
   public static class SettingsList extends ResultList<Settings> {
@@ -707,9 +699,15 @@ public class SystemResource {
                   mergedSettings.getGlobalSettings().getKeywordWeight(),
                   mergedSettings.getGlobalSettings().getSemanticWeight());
         } catch (Exception e) {
-          LOG.error("Failed to update hybrid search pipeline", e);
-          throw new SystemSettingsException(
-              "Failed to update hybrid search pipeline: " + e.getMessage());
+          // Refreshing the named pipeline is a cluster-scoped write, so it fails outright on a
+          // deployment whose search role is confined to its own <clusterAlias>* prefix. Failing
+          // the whole settings save on that made search settings unsaveable there. The weights
+          // being saved here are the ones hybrid search reads per query, so they take effect
+          // regardless of whether the stored pipeline could be refreshed.
+          LOG.warn(
+              "Saved search settings but could not refresh the named hybrid search pipeline; "
+                  + "the new weights still apply to hybrid queries",
+              e);
         }
       }
     }
@@ -993,7 +991,7 @@ public class SystemResource {
                     schema = @Schema(implementation = ServicesCount.class)))
       })
   public ValidationResponse validate() {
-    return systemRepository.validateSystem(applicationConfig, pipelineServiceClient, jwtFilter);
+    return systemRepository.validateSystem(applicationConfig);
   }
 
   @GET
@@ -1372,7 +1370,7 @@ public class SystemResource {
     validateConfigurationOfActiveProvider(securityConfig);
     String currentUsername = SecurityUtil.getUserName(securityContext);
     return systemRepository.validateSecurityConfiguration(
-        securityConfig, applicationConfig, currentUsername);
+        withLiveSecretsRestored(securityConfig), applicationConfig, currentUsername);
   }
 
   @POST
@@ -1399,6 +1397,115 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
     return TestLoginService.resolveFromIdToken(
         request.getSecurityConfiguration(), request.getIdToken());
+  }
+
+  @POST
+  @Path("/security/test-login/start")
+  @Operation(
+      operationId = "testLoginStart",
+      summary = "Start an interactive Test Login against a candidate security configuration",
+      description =
+          "Admin-only. Starts a real sign-in round-trip against a candidate (unsaved) configuration "
+              + "for providers whose live login runs on the server: confidential-client OIDC, SAML, "
+              + "LDAP and Basic. Returns either an authorization URL to open in a popup or a request "
+              + "for credentials; poll the result endpoint for the outcome. Never changes the live "
+              + "configuration, creates a user, issues a token or starts a session.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login session",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginSession.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Invalid candidate, or a public-client OIDC provider (tested with validate-token)")
+      })
+  public TestLoginSession testLoginStart(
+      @Context SecurityContext securityContext, TestLoginStartRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+    SecurityConfiguration candidate = requireTestLoginCandidate(request);
+    // Scope bean validation to the active provider, as the validate and PUT endpoints do.
+    validateConfigurationOfActiveProvider(candidate);
+    return TestLoginRoundTrip.getInstance()
+        .start(SecurityUtil.getUserName(securityContext), withLiveSecretsRestored(candidate));
+  }
+
+  @GET
+  @Path("/security/test-login/result/{testSessionId}")
+  @Operation(
+      operationId = "testLoginResult",
+      summary = "Get the outcome of a Test Login",
+      description =
+          "Admin-only, and only for the admin who started the test. Returns the staged outcome of a "
+              + "Test Login, or a pending timeline while the sign-in is still in progress.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Unknown or expired test, or one started by another admin")
+      })
+  public TestLoginResult testLoginResult(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id returned when the test login was started")
+          @PathParam("testSessionId")
+          String testSessionId) {
+    authorizer.authorizeAdmin(securityContext);
+    return TestLoginRoundTrip.getInstance()
+        .result(SecurityUtil.getUserName(securityContext), testSessionId);
+  }
+
+  @POST
+  @Path("/security/test-login/credentials")
+  @Operation(
+      operationId = "testLoginCredentials",
+      summary = "Complete an LDAP or Basic Test Login with credentials",
+      description =
+          "Admin-only, and only for the admin who started the test. Verifies the credentials "
+              + "against the candidate configuration exactly as login would, without provisioning a "
+              + "user, issuing a token, starting a session, or counting a failed attempt against the "
+              + "account. Each test completes once, and attempts are rate-limited per admin.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginResult.class))),
+        @ApiResponse(responseCode = "400", description = "The test is not waiting for credentials"),
+        @ApiResponse(responseCode = "404", description = "Unknown or expired test"),
+        @ApiResponse(responseCode = "429", description = "Too many credential test logins")
+      })
+  public TestLoginResult testLoginCredentials(
+      @Context SecurityContext securityContext, @Valid TestLoginCredentialsRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+    return TestLoginRoundTrip.getInstance()
+        .submitCredentials(SecurityUtil.getUserName(securityContext), request);
+  }
+
+  /**
+   * The SSO form only ever holds the saved secrets masked, so its checks and its Test Login would
+   * otherwise send the mask to the provider or directory and always fail.
+   */
+  private static SecurityConfiguration withLiveSecretsRestored(SecurityConfiguration candidate) {
+    return TestLoginCandidates.withLiveSecretsRestored(
+        candidate, SecurityConfigurationManager.getInstance().getCurrentSecurityConfig());
+  }
+
+  private static SecurityConfiguration requireTestLoginCandidate(TestLoginStartRequest request) {
+    if (request == null || request.getSecurityConfiguration() == null) {
+      throw new BadRequestException("A candidate securityConfiguration is required.");
+    }
+    return request.getSecurityConfiguration();
   }
 
   @GET
@@ -1681,7 +1788,7 @@ public class SystemResource {
     if (id == null && normalizedFqn != null) {
       try {
         EntityRepository<?> repository = Entity.getEntityRepository(type);
-        EntityInterface resolved = repository.findByName(normalizedFqn, Include.ALL, false);
+        EntityInterface<?> resolved = repository.findByName(normalizedFqn, Include.ALL, false);
         if (resolved != null) {
           id = resolved.getId();
         }

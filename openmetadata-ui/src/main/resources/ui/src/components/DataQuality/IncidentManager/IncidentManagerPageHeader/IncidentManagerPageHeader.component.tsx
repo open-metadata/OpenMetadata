@@ -145,7 +145,6 @@ const IncidentManagerPageHeader = ({
         <HeaderDotSeparator />
         <div className="tw:min-w-0" data-testid="assignee">
           <Owner
-            className="header-owner-heading"
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
             owners={details?.assignee ? [details.assignee] : []}
@@ -205,15 +204,15 @@ const IncidentManagerPageHeader = ({
         entityId={testCaseData?.id ?? ''}
         entityType={EntityType.TEST_CASE}
         hasPermission={hasEditDomainPermission}
+        labelClassName="tw:text-secondary!"
         multiple={false}
-        textClassName="render-domain-lebel-style"
+        textClassName="render-domain-lebel-style tw:text-secondary!"
         onUpdate={handleDomainUpdate}
       />
       <HeaderDotSeparator />
       <Owner
         showDashPlaceholder
         avatarSize={24}
-        className="header-owner-heading"
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}

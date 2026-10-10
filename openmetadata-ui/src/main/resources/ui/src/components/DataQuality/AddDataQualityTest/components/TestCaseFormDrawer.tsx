@@ -16,10 +16,10 @@ import {
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Lightbulb05 } from '@untitledui/icons';
+import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -35,7 +35,6 @@ import { EntityType as EntityTypeEnum } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
-import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
@@ -53,6 +52,7 @@ import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/Tes
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
+import { omitInapplicableDimensionParams } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
@@ -215,8 +215,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const createTestCasePipeline = useCallback(
     async (values: FormValues, created: TestCase) => {
-      const pipelineTestSuite =
-        (created.testSuite as TestSuite | undefined) ?? testSuite;
+      const pipelineTestSuite = created.testSuite ?? testSuite;
       if (!formContext?.canCreatePipeline || !pipelineTestSuite) {
         return;
       }
@@ -224,7 +223,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       const pipeline = buildTestSuitePipelinePayload(values, {
         testSuite: pipelineTestSuite,
         createdTestCaseName: created.name,
-        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        // Prefer the raw form FQN: `canCreatePipeline` is gated on it, so it can
+        // be submitted while `selectedTableData` is still being fetched.
+        selectedTable:
+          formContext?.selectedTableFqn ??
+          formContext?.selectedTableData?.fullyQualifiedName,
         table,
       });
 
@@ -259,6 +262,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       const normalizedValues = normalizeFormValuesForPayload(
         values,
         resolvedDefinition
+      );
+      normalizedValues.params = omitInapplicableDimensionParams(
+        normalizedValues.params,
+        !isEmpty(normalizedValues.dimensionColumns)
       );
       const formValue = normalizedValues as unknown as TestCaseFormType;
       const jsonPatch = createUpdatedTestCasePatch({
@@ -300,7 +307,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         selectedColumn: formContext?.selectedColumn,
         selectedTestLevel: formContext?.selectedTestLevel ?? TestLevel.TABLE,
         table,
-        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        // `resolveEntityLink` falls back to '' when every source is empty, so
+        // this must also prefer the raw form FQN over the fetched table.
+        selectedTable:
+          formContext?.selectedTableFqn ??
+          formContext?.selectedTableData?.fullyQualifiedName,
         generateName: formContext?.generateName ?? (() => ''),
       });
 

@@ -69,7 +69,6 @@ public class ElasticSearchVectorService implements VectorIndexService {
       ElasticsearchClient client, EmbeddingClient embeddingClient, int knnNumCandidatesMultiplier) {
     if (instance != null) {
       LOG.warn("ElasticSearchVectorService already initialized, reinitializing");
-      EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
     ElasticSearchVectorService svc =
         new ElasticSearchVectorService(client, embeddingClient, knnNumCandidatesMultiplier);
@@ -93,7 +92,9 @@ public class ElasticSearchVectorService implements VectorIndexService {
   private void registerVectorEmbeddingHandler() {
     try {
       VectorEmbeddingHandler handler = new VectorEmbeddingHandler(this);
-      EntityLifecycleEventDispatcher.getInstance().registerHandler(handler);
+      // Replace, so a re-init hands over to the new service without a window in which entity
+      // writes see no vector handler at all.
+      EntityLifecycleEventDispatcher.getInstance().replaceHandler(handler);
       LOG.info("Registered VectorEmbeddingHandler for entity lifecycle events");
     } catch (Exception e) {
       LOG.error("Failed to register VectorEmbeddingHandler", e);
@@ -280,12 +281,12 @@ public class ElasticSearchVectorService implements VectorIndexService {
   }
 
   @Override
-  public Map<String, Object> generateEmbeddingFields(EntityInterface entity) {
+  public Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity) {
     return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
   }
 
   @Override
-  public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
+  public void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
     try {
       String entityId = entity.getId().toString();
       String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);

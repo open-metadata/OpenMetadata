@@ -162,7 +162,13 @@ button {
 
 .ant-btn.ant-btn-icon-only.bordered {
   border: 1px solid @grey-300;
-  background-color: var(--tw-color-bg-primary);
+  background-color: var(--om-color-bg-surface);
+
+  // Dark: a filled box reads as a patch on surface/secondary hosts (e.g. the
+  // entity summary header); let the host surface show through.
+  .dark-mode & {
+    background-color: transparent;
+  }
 
   &.ant-btn-default {
     .icon-button-default();
@@ -174,6 +180,12 @@ button {
 
   svg {
     color: @grey-600;
+  }
+
+  // Antd shows focus only as a border tint, too faint to find by keyboard.
+  &:focus-visible {
+    outline: var(--om-space-2) solid var(--om-color-focus-ring);
+    outline-offset: var(--om-space-2);
   }
 }
 
@@ -222,11 +234,6 @@ button {
   }
 }
 
-// Remove background color from button
-.remove-button-background-hover.ant-btn-text:hover {
-  background-color: var(--tw-color-bg-primary);
-  color: inherit;
-}
 .ant-btn.ant-btn-dangerous {
   background: @red-14;
   border-color: @red-14;
@@ -258,4 +265,12 @@ button {
       box-shadow: @button-box-shadow-disabled;
     }
   }
+}
+
+// Disabled antd buttons use @disabled-color (fade(@black, 25%)), compiled to a
+// static near-black that vanishes in dark; retint to the disabled text token.
+.dark-mode .ant-btn[disabled],
+.dark-mode .ant-btn[disabled]:hover,
+.dark-mode .ant-btn[disabled]:focus {
+  color: var(--om-color-text-disabled);
 }

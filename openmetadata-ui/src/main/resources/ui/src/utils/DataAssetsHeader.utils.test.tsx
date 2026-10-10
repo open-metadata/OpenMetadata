@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { render } from '@testing-library/react';
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from 'antd';
 import React from 'react';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -144,6 +145,12 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.row-plural');
     expect(JSON.stringify(assetData.extraInfo)).toContain('14567');
 
+    // source-system creation time, read from lifeCycle.created
+    expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
+    expect(JSON.stringify(assetData.extraInfo)).toContain(
+      'formatted-1609459200000'
+    );
+
     //  If Data does not present
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
       EntityType.TABLE,
@@ -153,6 +160,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
         retentionPeriod: undefined,
         usageSummary: undefined,
         profile: undefined,
+        lifeCycle: undefined,
       },
       'Redshift',
       []
@@ -185,6 +193,22 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
       '14567'
     );
+
+    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+      'label.created-time'
+    );
+  });
+
+  it('Function getDataAssetsHeaderInfo should render an epoch-0 table creation time', () => {
+    const assetData = getDataAssetsHeaderInfo(
+      EntityType.TABLE,
+      { ...MOCK_TABLE, lifeCycle: { created: { timestamp: 0 } } },
+      'Redshift',
+      []
+    );
+
+    expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
+    expect(JSON.stringify(assetData.extraInfo)).toContain('formatted-0');
   });
 
   // Test for Topic entity
@@ -748,9 +772,9 @@ describe('ExtraInfoLabel', () => {
   it('should handle React node as value', () => {
     const nodeValue = (
       <Tooltip title="Full text value">
-        <Typography.Text ellipsis className="w-full">
+        <Typography ellipsis className="w-full">
           Truncated text value
-        </Typography.Text>
+        </Typography>
       </Tooltip>
     );
 

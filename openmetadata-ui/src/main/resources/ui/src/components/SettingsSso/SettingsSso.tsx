@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch, Tabs, Typography } from 'antd';
+import { Tabs, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -22,6 +22,7 @@ import {
   SecurityConfiguration,
 } from '../../rest/securityConfigAPI';
 import '../../styles/variables.less';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { getProviderDisplayName, getProviderIcon } from '../../utils/SSOUtils';
@@ -138,18 +139,16 @@ const SettingsSso = () => {
           <div className="enable-sso-card-container">
             <div className="flex justify-between items-start">
               <div className="flex flex-col">
-                <Typography.Title className="enable-self-signup-header m-b-xs">
+                <Typography
+                  as="h1"
+                  className="enable-self-signup-header m-b-xs">
                   {t('label.enable-sso')}
-                </Typography.Title>
-                <Typography.Text className="enable-self-signup-desc">
+                </Typography>
+                <Typography className="enable-self-signup-desc">
                   {t('message.allow-user-to-login-via-sso')}
-                </Typography.Text>
+                </Typography>
               </div>
-              <Switch
-                checked={ssoEnabled}
-                size="default"
-                onChange={handleSSOToggle}
-              />
+              <Toggle isSelected={ssoEnabled} onChange={handleSSOToggle} />
             </div>
           </div>
         </div>
@@ -379,19 +378,31 @@ const SettingsSso = () => {
                     />
                   )}
                 </div>
-                <Typography.Title className="m-0 sso-form-header text-md">
+                <Typography as="h1" className="m-0 sso-form-header text-md">
                   {getProviderDisplayName(currentProvider)}
-                </Typography.Title>
+                </Typography>
               </div>
             </div>
           </div>
         )}
 
         <Tabs
-          activeKey={activeTab}
-          items={tabItems}
-          onChange={handleTabChange}
-        />
+          className="tw:gap-4"
+          selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+          onSelectionChange={(key) => handleTabChange(String(key))}>
+          <Tabs.List size="sm" type="underline">
+            {tabItems.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabItems.map(({ key, children }) => (
+            <Tabs.Panel id={key} key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
       </div>
     </PageLayoutV1>
   );

@@ -84,6 +84,12 @@ export const DATA_QUALITY_DASHBOARD_HEADER = {
   },
 };
 
+export const DQ_FILTER_TYPES = {
+  OWNER: 'owner',
+  SEARCH: 'search',
+  GLOSSARY_TERM: 'glossaryTerm',
+} as const;
+
 export const DQ_FILTER_KEYS = {
   OWNER: 'owner',
   TIER: 'tier',

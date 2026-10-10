@@ -12,9 +12,9 @@
  */
 
 import '@github/g-emoji-element';
-import { Button, Popover } from 'antd';
+import { Button, HoverCard } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { createElement, FC, useEffect, useMemo, useState } from 'react';
+import { createElement, FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
@@ -29,7 +29,7 @@ interface EmojiProps {
   onReactionSelect: (
     reaction: ReactionType,
     operation: ReactionOperation
-  ) => void;
+  ) => void | Promise<void>;
 }
 
 const Emoji: FC<EmojiProps> = ({
@@ -39,14 +39,11 @@ const Emoji: FC<EmojiProps> = ({
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const [reactionType, setReactionType] = useState(reaction);
-  const [isClicked, setIsClicked] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // get reaction object based on current reactionType
   const reactionObject = useMemo(
-    () => REACTION_LIST.find((value) => value.reaction === reactionType),
-    [reactionType]
+    () => REACTION_LIST.find((value) => value.reaction === reaction),
+    [reaction]
   );
 
   const { image } = useImage(`emojis/${reactionObject?.reaction}`);
@@ -60,14 +57,18 @@ const Emoji: FC<EmojiProps> = ({
     getEntityName(reactionItem.user)
   );
 
-  const handleEmojiOnClick = (e: React.MouseEvent) => {
+  const handleEmojiOnClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isClicked) {
+    if (!isUpdating) {
+      setIsUpdating(true);
       const operation = isReacted
         ? ReactionOperation.REMOVE
         : ReactionOperation.ADD;
-      onReactionSelect(reactionObject?.reaction as ReactionType, operation);
-      setIsClicked(true);
+      try {
+        await onReactionSelect(reaction, operation);
+      } finally {
+        setIsUpdating(false);
+      }
     }
   };
 
@@ -83,16 +84,11 @@ const Emoji: FC<EmojiProps> = ({
           ? `, +${moreList.length} ${t('label.more-lowercase')}`
           : ''}{' '}
         <span className="font-normal text-sm">
-          {t('message.reacted-with-emoji', { type: reactionType })}
+          {t('message.reacted-with-emoji', { type: reaction })}
         </span>
       </p>
     );
   };
-
-  useEffect(() => {
-    setReactionType(reaction);
-    setIsClicked(false);
-  }, [reaction]);
 
   const element = createElement(
     'g-emoji',
@@ -106,34 +102,31 @@ const Emoji: FC<EmojiProps> = ({
   );
 
   return (
-    <Popover
-      content={popoverContent}
+    <HoverCard
+      className="tw:p-3"
+      content={popoverContent()}
       key={reaction}
-      open={visible}
-      trigger="hover"
-      zIndex={9999}
-      onOpenChange={setVisible}>
+      placement="top">
       <Button
         className={classNames(
-          'ant-btn-reaction m-r-xss flex-center transparent',
-          {
-            'ant-btn-isReacted': isReacted,
-          }
+          'tw:h-[22px] tw:gap-1 tw:rounded-md! tw:px-2! tw:py-0!',
+          isReacted
+            ? 'tw:text-brand-secondary tw:after:outline-brand'
+            : 'tw:text-secondary'
         )}
+        color="secondary"
         data-testid="emoji-button"
-        key={reaction}
-        shape="round"
-        size="small"
-        onClick={handleEmojiOnClick}
-        onMouseOver={() => setVisible(true)}>
+        isDisabled={isUpdating}
+        size="xs"
+        onClick={handleEmojiOnClick}>
         {element}
-        <span className="text-xs m-l-xs self-center" data-testid="emoji-count">
+        <span className="tw:ml-1 tw:text-xs" data-testid="emoji-count">
           {reactionList.length.toLocaleString('en-US', {
             useGrouping: false,
           })}
         </span>
       </Button>
-    </Popover>
+    </HoverCard>
   );
 };
 

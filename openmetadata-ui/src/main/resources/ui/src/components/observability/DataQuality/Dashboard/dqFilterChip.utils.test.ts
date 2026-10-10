@@ -11,32 +11,47 @@
  *  limitations under the License.
  */
 import {
+  chipChevronClassName,
   chipCountBadgeClassName,
   chipTriggerClassName,
-  chipTriggerSelectedClassName,
 } from './dqFilterChip.utils';
 
 describe('dqFilterChip utils', () => {
   describe('chipTriggerClassName', () => {
-    it('should carry the borderless quick-filter treatment', () => {
-      expect(chipTriggerClassName).toContain('tw:text-tertiary');
-      expect(chipTriggerClassName).toContain('tw:p-1');
+    it('should carry the bordered pill treatment', () => {
+      // The owner trigger sits beside FilterSelect chips rendered with
+      // `bordered`; a borderless trigger here is the visual drift this guards
+      // against.
+      const className = chipTriggerClassName(false);
+
+      expect(className).toContain('tw:shadow-xs-skeuomorphic');
+      expect(className).toContain('tw:after:outline-primary');
+      expect(className).toContain('tw:bg-surface');
+      expect(className).toContain('tw:px-3.5');
     });
 
-    it('should not carry the bordered chip treatment', () => {
-      // The owner trigger sits beside FilterSelect chips rendered as borderless
-      // buttons; a border or skeuomorphic shadow here is the visual drift this
-      // guards against.
-      expect(chipTriggerClassName).not.toContain('shadow-xs-skeuomorphic');
-      expect(chipTriggerClassName).not.toContain('after:outline-primary');
+    it('should not carry the borderless quick-filter treatment', () => {
+      expect(chipTriggerClassName(false)).not.toContain('tw:text-tertiary');
+      expect(chipTriggerClassName(false)).not.toContain('tw:p-1 ');
+    });
+
+    it('should swap the neutral label and outline for brand once a value is picked', () => {
+      const selected = chipTriggerClassName(true);
+
+      expect(selected).toContain('tw:text-fg-brand-primary');
+      expect(selected).toContain('tw:after:outline-brand');
+      expect(selected).toContain('tw:dark:after:outline-fg-brand-primary_alt');
+      expect(selected).not.toContain('tw:text-secondary');
+      expect(selected).not.toContain('tw:after:outline-primary');
+      expect(chipTriggerClassName(false)).not.toContain('brand-primary');
     });
   });
 
-  describe('chipTriggerSelectedClassName', () => {
-    it('should brand the trigger the way FilterSelect does', () => {
-      expect(chipTriggerSelectedClassName).toContain(
-        'tw:text-fg-brand-primary'
-      );
+  describe('chipChevronClassName', () => {
+    it('should brand the chevron once a value is picked, like FilterSelect does', () => {
+      expect(chipChevronClassName(true)).toContain('tw:text-fg-brand-primary');
+      expect(chipChevronClassName(true)).not.toContain('tw:text-fg-quaternary');
+      expect(chipChevronClassName(false)).toContain('tw:text-fg-quaternary');
     });
   });
 

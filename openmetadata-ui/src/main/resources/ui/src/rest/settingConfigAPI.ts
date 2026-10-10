@@ -12,7 +12,6 @@
  */
 
 import { AxiosResponse } from 'axios';
-import axiosClient from '.';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
@@ -21,6 +20,7 @@ import { LoginConfiguration } from '../generated/configuration/loginConfiguratio
 import { SearchSettings } from '../generated/configuration/searchSettings';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../generated/settings/settings';
+import axiosClient from './axiosClient';
 
 export type RelationCategory = 'hierarchical' | 'associative' | 'equivalence';
 export { RelationCardinality };
@@ -93,16 +93,18 @@ export const getAppConfiguration = async (): Promise<AppConfiguration> => {
 };
 
 /**
- * Admin-only. Writes through the generic `/system/settings` PUT, matching
- * the `config_type`/`config_value` shape the backend's `createOrUpdateSetting`
- * expects (see how `updateGlossaryTermRelationSettings` above writes).
+ * Admin-only. Updates only the given keys: the generic `/system/settings` PUT
+ * replaces the whole document, and several pages (Default App Mode, Table &
+ * Schema) each own one key of it, so the stored value is merged first.
+ * See ADR:2026-10-09-app-configuration-keys-are-owned-and-merged-on-write.
  */
 export const patchAppConfiguration = async (
   patch: Partial<AppConfiguration>
 ): Promise<AppConfiguration> => {
+  const current = await getAppConfiguration();
   const response = await axiosClient.put<Settings>(`/system/settings`, {
     config_type: SettingType.AppConfiguration,
-    config_value: patch,
+    config_value: { ...current, ...patch },
   });
 
   return (response.data.config_value as AppConfiguration) ?? {};

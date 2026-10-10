@@ -21,6 +21,7 @@ import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.AssetRealization;
@@ -147,6 +148,37 @@ class OntologyChangeSetValidatorTest {
       assertInvalid(missingAsset);
       assertInvalid(missingAssetId);
     }
+  }
+
+  @Test
+  void requiresPlannedGlossaryBeforeItsTerms() {
+    final Glossary glossary =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("Sales")
+            .withFullyQualifiedName("Sales")
+            .withDescription("Sales concepts");
+    final OntologyChangeOperation createGlossary =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.CREATE_GLOSSARY)
+            .withGlossary(glossary);
+    final OntologyChangeOperation createTerm =
+        createTermOperation().withTerm(term().withGlossary(glossary.getEntityReference()));
+
+    assertDoesNotThrow(
+        () ->
+            OntologyChangeSetValidator.normalizeAndValidate(
+                new OntologyChangeSet()
+                    .withOperations(List.of(createGlossary, createTerm))
+                    .withUndoCursor(2)));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            OntologyChangeSetValidator.normalizeAndValidate(
+                new OntologyChangeSet()
+                    .withOperations(List.of(createTerm, createGlossary))
+                    .withUndoCursor(2)));
   }
 
   private static void assertInvalid(final OntologyChangeOperation operation) {

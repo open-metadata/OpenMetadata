@@ -45,6 +45,7 @@ export interface QueryFieldInterface {
   term?: Partial<Record<string, EsTermQuery | FieldValue>>;
   terms?: EsTermsQuery;
   exists?: EsExistsQuery;
+  ids?: { values: string[] };
 }
 
 export interface QueryFilterInterface {

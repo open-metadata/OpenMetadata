@@ -88,7 +88,7 @@
         min-height: 40px !important;
         border-radius: var(--om-radius-md) !important;
         border: 1px solid @grey-22 !important;
-        background-color: @white !important;
+        background-color: var(--om-color-bg-surface) !important;
         padding: var(--om-space-4) var(--om-space-2) !important;
         .ant-select-selector {
           border: none !important;
@@ -106,52 +106,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: var(--om-space-8);
-
-        .show-more-terms-button {
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-          padding: 0;
-          height: auto;
-          width: 100%;
-          background-color: transparent;
-          border: none;
-          color: @primary-7;
-          font-size: var(--om-font-size-xs);
-          font-weight: var(--om-font-weight-regular);
-          cursor: pointer;
-          transition: all var(--om-duration-200) ease;
-
-          &:hover {
-            text-decoration: underline;
-          }
-
-          &:focus {
-            outline: none;
-          }
-        }
       }
     }
-  }
-}
-
-// Container for glossary terms select dropdown
-.glossary-terms-select-container {
-  min-width: 450px;
-  width: 100%;
-}
-.glossary-term-select-popover {
-  width: 285px;
-  padding-bottom: 0;
-  .ant-popover-inner {
-    border-radius: var(--om-radius-2xl);
-  }
-  .ant-popover-inner-content {
-    padding: var(--om-space-8) var(--om-space-12);
-    padding-bottom: 0;
-  }
-  .ant-list-sm .ant-list-item {
-    padding: var(--om-space-8) var(--om-space-12);
-    align-items: center;
   }
 }

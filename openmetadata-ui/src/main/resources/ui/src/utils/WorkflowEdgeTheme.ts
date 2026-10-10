@@ -18,7 +18,7 @@ export const WORKFLOW_EDGE_THEME = {
   customLabel: 'var(--om-color-fg-brand, #1570EF)',
   // React Flow embeds marker colors in SVG URL ids, so fallback delimiters
   // would make the generated marker reference browser-dependent.
-  edge: 'var(--om-color-border-primary)',
+  edge: 'var(--om-color-border-hover)',
   labelBorder: 'var(--om-color-bg-primary, #FFFFFF)',
   negativeBackground: 'var(--om-color-bg-error, #FEF3F2)',
   negativeLabel: 'var(--om-color-fg-error, #D92D20)',

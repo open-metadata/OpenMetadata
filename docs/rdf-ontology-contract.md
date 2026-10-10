@@ -15,6 +15,24 @@ ontology preserves these vocabulary terms without advertising them as populated
 metadata fields. Declarations of external predicates document projection usage;
 their authoritative definitions remain in their original vocabularies.
 
+## Change history and votes
+
+`changeDescription` and `votes` are outside the metadata projection. The JSON-LD
+context and SQL-to-SPARQL mappings do not advertise them, and the ontology does
+not declare their proposed predicates as `om:Stored`. SPARQL with
+`inference=none` cannot answer change-history questions, vote counts, or vote
+direction from the graph.
+
+Entity version APIs (`getVersion` and `listVersions`) own change history; an
+entity's current `changeDescription` is not durable history by itself. Entity
+reads with `fields=votes` return current vote counts and voter references. The
+vote relationship store owns those values.
+
+The relationship writer still projects each vote as a `<user> om:voted <entity>`
+edge. The edge records who voted on an entity but not the vote direction, so
+counting `om:voted` edges mixes up-votes and down-votes and is not a popularity
+measure.
+
 ## Lineage direction
 
 For a SQL lineage edge from `source` to `output`, both the live writer and the
@@ -39,6 +57,48 @@ source to output. That predicate is deprecated. Live writes and reconciliation
 remove the legacy edge and repair old live PROV edges while preserving a valid
 reciprocal lineage edge. Graph exports normalize lineage predicates to match the
 exported source-to-output orientation.
+
+## Column-level lineage
+
+A lineage edge's details node links each column mapping through
+`om:hasColumnLineage`. Live lineage writes and the RDF indexing app write the same
+triples, using the edge's details as currently stored:
+
+```turtle
+<details> om:hasColumnLineage <columnLineage> .
+<columnLineage> a om:ColumnLineage ;
+    om:fromColumn <https://open-metadata.org/entity/column/service.db.schema.customers.email> ;
+    om:fromColumnFqn "service.db.schema.customers.email" ;
+    om:toColumn <https://open-metadata.org/entity/column/service.db.schema.contacts.email> ;
+    om:toColumnFqn "service.db.schema.contacts.email" .
+```
+
+`om:fromColumn` and `om:toColumn` reference the same column IRIs that `om:hasColumn`
+mints for the table, so queries and inference rules can join column lineage with column
+tags. Match by name with `om:fromColumnFqn` and `om:toColumnFqn`. Stores indexed before
+2.1 hold FQN literals in `om:fromColumn` and `om:toColumn` until the lineage edge is
+written again or the store is rebuilt.
+
+## Domain membership
+
+An asset's `domains` are projected as `om:belongsToDomain`, the predicate already used
+for the singular `domain` field. `om:domains` is deprecated: the next projection of
+each entity removes it, and a full rebuild removes it everywhere.
+
+## Concept realizations
+
+Each entry in a glossary term's `realizedIn` links the term to the asset twice: with
+`om:mappedTo`, written from the stored realization relationship, and with a predicate
+for the asset's role:
+
+| Role | Predicate |
+|---|---|
+| `PRIMARY_STORE` (the default) | `om:hasPrimaryStore` |
+| `DERIVED` | `om:hasDerivedAsset` |
+| `REPLICA` | `om:hasReplica` |
+
+`om:realizedIn` is deprecated. Earlier releases stored realizations under it as a JSON
+literal, which the term's next projection removes.
 
 ## Custom extension values
 
@@ -72,7 +132,10 @@ uses the configured dataset strategy and durable live-write recovery process.
 `RdfOntologyContractTest` projects populated fields from every entity JSON Schema,
 structured fixtures, every built-in relationship enum value, detailed lineage,
 and every built-in glossary relationship definition. It checks predicate
-coverage in both directions and requires explicit annotations for unprojected
+coverage in both directions, checks `base.jsonld` and the nested SQL mappings
+against stored projected predicates, pins pre-existing unprojected flat SQL
+mappings as known gaps (the other JSON-LD contexts and those gaps are tracked in
+issue #34307), and requires explicit annotations for unprojected
 terms. A Java syntax-tree scan additionally checks constant predicates in
 conditional mapper branches. The tests never derive the writer's predicate list
 from the ontology itself.

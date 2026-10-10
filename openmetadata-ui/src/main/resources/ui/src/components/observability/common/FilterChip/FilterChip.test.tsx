@@ -30,6 +30,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     selectionMode,
     commitMode,
     searchable,
+    bordered,
+    className,
     triggerVariant,
     resolveMissingLabel,
     onChange,
@@ -51,6 +53,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
     return (
       <div
+        data-bordered={String(Boolean(bordered))}
+        data-classname={className ?? ''}
         data-commit={commitMode}
         data-searchable={String(Boolean(searchable))}
         data-selection={selectionMode}
@@ -97,7 +101,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span data-testid="chevron-icon" />,
   Columns01: () => <span data-testid="columns-icon" />,
   LayoutAlt04: () => <span data-testid="layout-icon" />,
@@ -331,22 +335,13 @@ describe('FilterChip', () => {
     expect(descriptor.onChange).toHaveBeenCalledWith('');
   });
 
-  it('should render the label above the input trigger for the input variant', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({ controlType: 'select', value: 'success' }) as any
-        }
-        variant="input"
-      />
-    );
+  it('should render the chip bordered', () => {
+    render(<FilterChip descriptor={baseDescriptor() as any} />);
 
-    expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
-      'data-variant',
-      'input'
+      'data-bordered',
+      'true'
     );
-    expect(screen.getByTestId('trigger-text')).toHaveTextContent('Success');
   });
 
   it('should use the button trigger for the chip variant', () => {
@@ -355,70 +350,6 @@ describe('FilterChip', () => {
     expect(screen.getByTestId('search-dropdown-status')).toHaveAttribute(
       'data-variant',
       'button'
-    );
-  });
-
-  it('should render the user picker for the user control type', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({
-            controlType: 'user',
-            label: 'Assignee',
-            key: 'assignee',
-            value: '',
-            onOwnerChange: jest.fn(),
-          }) as any
-        }
-      />
-    );
-
-    expect(screen.getByTestId('user-team-selectable-list')).toBeInTheDocument();
-    expect(screen.getByTestId('search-dropdown-assignee')).toBeInTheDocument();
-  });
-
-  it('should call onOwnerChange when an owner is selected in the user picker', () => {
-    const onOwnerChange = jest.fn();
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({
-            controlType: 'user',
-            label: 'Assignee',
-            key: 'assignee',
-            value: '',
-            onOwnerChange,
-          }) as any
-        }
-      />
-    );
-
-    fireEvent.click(screen.getByTestId('trigger-owner-update'));
-
-    expect(onOwnerChange).toHaveBeenCalledWith([
-      { id: 'owner-1', name: 'owner-1' },
-    ]);
-  });
-
-  it('should show the selected owner display name for the user control type', () => {
-    render(
-      <FilterChip
-        descriptor={
-          baseDescriptor({
-            controlType: 'user',
-            label: 'Assignee',
-            key: 'assignee',
-            value: '',
-            selectedOwners: [{ id: 'owner-1', displayName: 'Owner One' }],
-            onOwnerChange: jest.fn(),
-          }) as any
-        }
-        variant="input"
-      />
-    );
-
-    expect(screen.getByTestId('search-dropdown-assignee')).toHaveTextContent(
-      'Owner One'
     );
   });
 });

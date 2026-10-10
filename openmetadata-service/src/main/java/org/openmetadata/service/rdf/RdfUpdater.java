@@ -78,7 +78,7 @@ public final class RdfUpdater {
     }
   }
 
-  public static void updateEntity(final EntityInterface entity) {
+  public static void updateEntity(final EntityInterface<?> entity) {
     if (isEnabled() && !RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity))) {
       submit(RdfLiveWrite.EntityUpdate.capture(entity));
     }

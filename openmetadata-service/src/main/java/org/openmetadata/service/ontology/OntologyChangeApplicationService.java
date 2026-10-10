@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
@@ -310,7 +311,11 @@ public final class OntologyChangeApplicationService {
     return new Dependencies(
         productionPreflight(),
         new OntologyChangeOperationExecutor(
-            termRepository, axiomRepository, relationshipTypeRepository, clock),
+            (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY),
+            termRepository,
+            axiomRepository,
+            relationshipTypeRepository,
+            clock),
         new OntologyChangeEventPublisher(),
         work -> termRepository.executeInTransaction(work),
         OntologyChangeApplicationService::invalidateEntityCache);

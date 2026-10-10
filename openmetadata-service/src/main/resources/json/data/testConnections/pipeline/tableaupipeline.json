@@ -1,0 +1,32 @@
+{
+   "name": "TableauPipeline",
+   "displayName": "Tableau Pipeline Test Connection",
+   "description": "This Test Connection validates the access against the Tableau server and basic metadata extraction of Prep Flows.",
+   "steps": [
+       {
+           "name": "GetPipelines",
+           "description": "List all the Tableau Prep flows available to the user",
+           "errorMessage": "Failed to fetch pipelines, please validate the credentials or validate if user has access to fetch Tableau Prep flows",
+           "shortCircuit": true,
+           "mandatory": true
+       },
+       {
+           "name": "GetRuns",
+           "description": "List the Tableau Prep flow runs visible to the user, ingested as pipeline status",
+           "errorMessage": "Failed to fetch flow runs. Pipeline status will not be ingested; non-admin users only see runs of flows they can view.",
+           "mandatory": false
+       },
+       {
+           "name": "GetJobs",
+           "description": "List the extract refresh jobs of the site, ingested as the status of extract refresh pipelines",
+           "errorMessage": "Failed to fetch extract refresh jobs. Tableau only lists background jobs to site administrators; extract refresh pipelines will be ingested without status.",
+           "mandatory": false
+       },
+       {
+           "name": "GetLineage",
+           "description": "Query flows through the Tableau Metadata API to verify lineage extraction will work",
+           "errorMessage": "Failed to query the Tableau Metadata API. Lineage extraction requires the Metadata API to be enabled: https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html",
+           "mandatory": false
+       }
+   ]
+}

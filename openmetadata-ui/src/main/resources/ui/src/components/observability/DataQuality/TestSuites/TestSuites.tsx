@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { Box, EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus } from '@untitledui/icons';
-import classNames from 'classnames';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,8 +24,8 @@ import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/U
 import { TestSuiteListPanel } from '../../../DataQuality/TestSuite/TestSuiteList/TestSuiteListPanel.component';
 import { useTestSuitesListPage } from '../../../DataQuality/TestSuite/TestSuiteList/useTestSuitesListPage';
 import {
+  chipChevronClassName,
   chipTriggerClassName,
-  chipTriggerSelectedClassName,
 } from '../Dashboard/dqFilterChip.utils';
 import DqSummaryPanel from '../DqSummaryPanel';
 
@@ -121,15 +120,12 @@ const TestSuites = () => {
           popoverProps={{ placement: 'bottomLeft' }}
           onUpdate={handleOwnerSelect}>
           <button
-            className={classNames(chipTriggerClassName, {
-              [chipTriggerSelectedClassName]: Boolean(ownerFilterValue),
-            })}
+            className={chipTriggerClassName(Boolean(ownerFilterValue))}
             data-testid="owner-select-filter"
             type="button">
             {ownerFilterValue?.label ?? t('label.owner')}
             <ChevronDown
-              className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
-              data-icon="true"
+              className={chipChevronClassName(Boolean(ownerFilterValue))}
             />
           </button>
         </UserTeamSelectableList>

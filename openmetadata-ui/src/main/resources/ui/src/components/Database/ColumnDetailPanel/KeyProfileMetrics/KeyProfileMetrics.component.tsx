@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Tooltip } from '@openmetadata/ui-core-components';
-import { HelpCircle } from '@untitledui/icons';
+import { HelpCircle } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getKeyProfileMetrics } from '../../../../utils/TableProfilerUtils';

@@ -12,7 +12,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Home01, Link02, SearchLg } from '@untitledui/icons';
+import { Home01, Link02, Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -190,7 +190,7 @@ const AINotFoundPage: FC = () => {
           <Button
             color="secondary"
             data-testid="ai-not-found-explore-button"
-            iconLeading={<SearchLg className="tw:w-5 tw:h-5" />}
+            iconLeading={<Search className="tw:w-5 tw:h-5" />}
             size="md"
             onPress={() => navigate(ROUTES.EXPLORE)}>
             {t('label.explore')}

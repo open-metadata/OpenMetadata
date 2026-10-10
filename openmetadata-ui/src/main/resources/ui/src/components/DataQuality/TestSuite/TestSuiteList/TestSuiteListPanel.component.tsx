@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Input, Tabs } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -87,7 +87,7 @@ export const TestSuiteListPanel = ({
 
   return (
     <Box
-      className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
+      className="tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:outline-1 tw:outline-secondary"
       data-testid="test-suite-list-panel"
       direction="col">
       <Box align="center" className="tw:p-4" gap={4} justify="between">
@@ -112,7 +112,7 @@ export const TestSuiteListPanel = ({
         </Tabs>
         <div className="tw:w-75" data-testid="searchbar-component">
           <Input
-            icon={SearchLg}
+            icon={Search}
             inputDataTestId="searchbar"
             placeholder={t('label.search-entity', {
               entity:

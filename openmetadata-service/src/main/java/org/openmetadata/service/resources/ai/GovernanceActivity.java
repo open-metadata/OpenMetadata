@@ -54,10 +54,10 @@ final class GovernanceActivity {
   private GovernanceActivity() {}
 
   static AIGovernanceActivityResponse compute(String entityType, String entityId, int limit) {
-    List<EntityInterface> assets = new ArrayList<>();
+    List<EntityInterface<?>> assets = new ArrayList<>();
     boolean singleEntity = entityType != null && entityId != null;
     if (singleEntity) {
-      EntityInterface single = loadSingle(entityType, entityId);
+      EntityInterface<?> single = loadSingle(entityType, entityId);
       if (single != null) {
         assets.add(single);
       }
@@ -70,7 +70,7 @@ final class GovernanceActivity {
     }
 
     List<AIGovernanceActivityEvent> events = new ArrayList<>();
-    for (EntityInterface entity : assets) {
+    for (EntityInterface<?> entity : assets) {
       events.addAll(eventsFor(entity, singleEntity));
     }
     events.sort(Comparator.comparing(AIGovernanceActivityEvent::getAt).reversed());
@@ -79,11 +79,12 @@ final class GovernanceActivity {
     return new AIGovernanceActivityResponse().withEvents(events.subList(0, effective));
   }
 
-  private static EntityInterface loadSingle(String entityType, String entityId) {
-    EntityInterface result = null;
+  private static EntityInterface<?> loadSingle(String entityType, String entityId) {
+    EntityInterface<?> result = null;
     if (SUPPORTED_TYPES.contains(entityType)) {
       try {
-        EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
+        EntityRepository<? extends EntityInterface<?>> repo =
+            Entity.getEntityRepository(entityType);
         result = repo.get(null, UUID.fromString(entityId), repo.getFields(fieldList(entityType)));
       } catch (Exception error) {
         LOG.warn("Activity feed: failed to load {}:{}", entityType, entityId, error);
@@ -92,14 +93,14 @@ final class GovernanceActivity {
     return result;
   }
 
-  private static void collect(String entityType, List<EntityInterface> out) {
+  private static void collect(String entityType, List<EntityInterface<?>> out) {
     try {
-      EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
+      EntityRepository<? extends EntityInterface<?>> repo = Entity.getEntityRepository(entityType);
       Fields fields = repo.getFields(fieldList(entityType));
       ListFilter filter = new ListFilter();
       String after = null;
       do {
-        ResultList<? extends EntityInterface> page =
+        ResultList<? extends EntityInterface<?>> page =
             repo.listAfter(null, fields, filter, PAGE_SIZE, after);
         out.addAll(page.getData());
         after = page.getPaging() == null ? null : page.getPaging().getAfter();
@@ -115,7 +116,7 @@ final class GovernanceActivity {
         : "owners,governanceMetadata";
   }
 
-  static List<AIGovernanceActivityEvent> eventsFor(EntityInterface entity) {
+  static List<AIGovernanceActivityEvent> eventsFor(EntityInterface<?> entity) {
     return eventsFor(entity, true);
   }
 
@@ -126,7 +127,7 @@ final class GovernanceActivity {
    *     true so both submission and approval events are shown.
    */
   static List<AIGovernanceActivityEvent> eventsFor(
-      EntityInterface entity, boolean reconstructHistory) {
+      EntityInterface<?> entity, boolean reconstructHistory) {
     List<AIGovernanceActivityEvent> events = new ArrayList<>();
     String entityType =
         entity.getEntityReference() == null ? null : entity.getEntityReference().getType();
@@ -207,7 +208,7 @@ final class GovernanceActivity {
   }
 
   private static AIGovernanceActivityEvent event(
-      EntityInterface entity, String entityType, String type, String text, long at, Object who) {
+      EntityInterface<?> entity, String entityType, String type, String text, long at, Object who) {
     AIGovernanceActivityEvent event =
         new AIGovernanceActivityEvent()
             .withEntityType(entityType)
@@ -231,7 +232,7 @@ final class GovernanceActivity {
    * {@code scheduledAt} carries the future date the event refers to.
    */
   private static AIGovernanceActivityEvent scheduledEvent(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       String entityType,
       String type,
       String text,
@@ -243,7 +244,7 @@ final class GovernanceActivity {
     return event;
   }
 
-  private static long reviewFallback(ActivityGovernance governance, EntityInterface entity) {
+  private static long reviewFallback(ActivityGovernance governance, EntityInterface<?> entity) {
     Long registeredAt = governance.registeredAt();
     long result;
     if (registeredAt != null) {
@@ -256,7 +257,8 @@ final class GovernanceActivity {
     return result;
   }
 
-  private static ActivityGovernance governance(EntityInterface entity, boolean reconstructHistory) {
+  private static ActivityGovernance governance(
+      EntityInterface<?> entity, boolean reconstructHistory) {
     ActivityGovernance result = ActivityGovernance.EMPTY;
     if (entity instanceof AIApplication app) {
       result = governance(app.getGovernanceMetadata());
@@ -321,7 +323,7 @@ final class GovernanceActivity {
       return result;
     }
     try {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getEntityRepository(Entity.LLM_MODEL);
       List<Object> versions = repository.listVersions(llm.getId()).getVersions();
       if (versions == null) {

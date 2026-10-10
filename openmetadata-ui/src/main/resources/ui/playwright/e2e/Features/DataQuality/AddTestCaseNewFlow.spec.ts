@@ -69,8 +69,7 @@ test.describe(
       await page.click('[id="root\\/column"]');
       const columnOption = page
         .getByRole('option')
-        .filter({ hasText: columnName })
-        .first();
+        .filter({ hasText: columnName });
       await columnOption.waitFor({
         state: 'visible',
       });
@@ -189,6 +188,17 @@ test.describe(
         const response = await tableTestCaseResponse;
 
         expect(response.status()).toBe(201);
+      }
+
+      // The drawer closes only after the pipeline is created and deployed, and on Airflow 3 the
+      // deploy call blocks until the scheduler registers the DAG (up to 60s), so the default
+      // expect timeout on the next page is not enough. Waiting here also lets the no-pipeline
+      // check below see a POST that lands after the test case response.
+      await page
+        .getByTestId('test-case-form-v1')
+        .waitFor({ state: 'detached' });
+
+      if (!expectSchedulerCard) {
         expect(ingestionPipelineCalled).toBe(false);
       }
     };
@@ -396,10 +406,6 @@ test.describe(
         expectSchedulerCard: false,
       });
 
-      await page.getByTestId('test-case-form-v1').waitFor({
-        state: 'detached',
-      });
-
       await expect(
         page.getByTestId('test-cases').getByTestId('count')
       ).toHaveText('2');
@@ -430,15 +436,13 @@ test.describe(
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid="loader"]').waitFor({
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       const selectAllSwitch = page
-        .getByRole('switch')
-        .and(page.getByTestId('select-all-test-cases'));
+        .getByTestId('select-all-test-cases')
+        .getByRole('switch');
       await selectAllSwitch.waitFor({ state: 'visible' });
 
-      await expect(selectAllSwitch).toHaveAttribute('aria-checked', 'true');
+      await expect(selectAllSwitch).toBeChecked();
     });
 
     /**

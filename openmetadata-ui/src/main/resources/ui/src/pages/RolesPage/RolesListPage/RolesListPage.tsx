@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Popover, Row, Space, Tag, Tooltip } from 'antd';
+import {
+  Badge,
+  Box,
+  Grid,
+  Popover,
+  PopoverTrigger,
+} from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
@@ -36,14 +44,15 @@ import {
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getRoles } from '../../../rest/rolesAPIV1';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
@@ -136,7 +145,14 @@ const RolesListPage = () => {
           const hasMore = listLength > LIST_CAP;
 
           return record.policies?.length ? (
-            <Space wrap data-testid="policy-link" size={4}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              data-testid="policy-link"
+              gap={1}
+              itemClassName="layout-space-item"
+              wrap="wrap">
               {record.policies.slice(0, LIST_CAP).map((policy) =>
                 viewPolicyPermission ? (
                   <Link
@@ -151,10 +167,27 @@ const RolesListPage = () => {
                 )
               )}
               {hasMore && (
-                <Popover
-                  className="cursor-pointer"
-                  content={
-                    <Space wrap size={4}>
+                <PopoverTrigger>
+                  <AriaButton
+                    className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
+                    data-testid="plus-more-count">
+                    <Badge
+                      className="tw:inline-flex tw:mr-2 m-l-xss"
+                      color="gray"
+                      size="sm"
+                      type="color">{`+${listLength - LIST_CAP} more`}</Badge>
+                  </AriaButton>
+                  <Popover
+                    arrow
+                    containerClassName="tw:w-40 tw:px-4 tw:py-3 tw:text-center"
+                    placement="bottom">
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={1}
+                      itemClassName="layout-space-item"
+                      wrap="wrap">
                       {record.policies.slice(LIST_CAP).map((policy) =>
                         viewPolicyPermission ? (
                           <Link
@@ -172,16 +205,11 @@ const RolesListPage = () => {
                           </Tooltip>
                         )
                       )}
-                    </Space>
-                  }
-                  overlayClassName="w-40 text-center"
-                  trigger="click">
-                  <Tag className="m-l-xss" data-testid="plus-more-count">{`+${
-                    listLength - LIST_CAP
-                  } more`}</Tag>
-                </Popover>
+                    </Box>
+                  </Popover>
+                </PopoverTrigger>
               )}
-            </Space>
+            </Box>
           ) : (
             '-- '
           );
@@ -286,15 +314,20 @@ const RolesListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.role-plural').toString()}>
-      <Row
-        className="roles-list-container"
+      <Grid
+        className="layout-row layout-grid roles-list-container"
         data-testid="roles-list-container"
-        gutter={[0, 16]}>
-        <Col span={24}>
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Space className="w-full justify-between">
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-between"
+            gap={2}
+            itemClassName="layout-space-item">
             <PageHeader
               data={{
                 header: t(PAGE_HEADERS.ROLES.header),
@@ -312,9 +345,9 @@ const RolesListPage = () => {
                 {t('label.add-entity', { entity: t('label.role').toString() })}
               </Button>
             )}
-          </Space>
-        </Col>
-        <Col span={24}>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             columns={columns}
             containerClassName="roles-list-table"
@@ -360,8 +393,8 @@ const RolesListPage = () => {
               onDelete={handleRoleDelete}
             />
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

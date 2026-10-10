@@ -823,6 +823,70 @@ class SecurityUtilTest {
   }
 
   @Test
+  void validateRedirectUri_rejectsSchemeRelativeRedirect() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "//attacker.example/collect", Set.of("https://app.example.com/auth/callback")));
+
+    assertEquals("Redirect URI must be same-origin", exception.getMessage());
+  }
+
+  @Test
+  void validateRedirectUri_rejectsFragmentEvenWhenConfigured() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://app.example.com/auth/callback#continue",
+                    Set.of("https://app.example.com/auth/callback#continue")));
+
+    assertEquals("Redirect URI must not contain a fragment", exception.getMessage());
+  }
+
+  @Test
+  void validateRedirectUri_rejectsUserInfoInRequestedRedirect() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://attacker@app.example.com/auth/callback",
+                    Set.of("https://app.example.com/auth/callback")));
+
+    assertEquals("Redirect URI must not contain user-info", exception.getMessage());
+  }
+
+  @Test
+  void validateRedirectUri_rejectsUserInfoInTrustedConfiguration() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://app.example.com/auth/callback",
+                    Set.of("https://attacker@app.example.com/auth/callback")));
+
+    assertEquals("Trusted redirect URI must not contain user-info", exception.getMessage());
+  }
+
+  @Test
+  void validateRedirectUri_rejectsFragmentInTrustedConfiguration() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://app.example.com/auth/callback",
+                    Set.of("https://app.example.com/auth/callback#continue")));
+
+    assertEquals("Trusted redirect URI must not contain a fragment", exception.getMessage());
+  }
+
+  @Test
   void buildRedirectWithToken_usesFragmentNotQueryString() {
     String redirectUrl =
         SecurityUtil.buildRedirectWithToken(
@@ -838,6 +902,23 @@ class SecurityUtilTest {
     assertTrue(fragment.contains("email="));
     assertTrue(fragment.contains("name="));
     assertTrue(fragment.contains("%26"));
+  }
+
+  @Test
+  void sendRedirectWithToken_disablesCachingAndReferrers() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    String redirectUri = "https://app.example.com/callback";
+
+    SecurityUtil.sendRedirectWithToken(
+        response, redirectUri, "token-value", "user@example.com", "Jane Doe");
+
+    verify(response).setHeader("Cache-Control", "no-store");
+    verify(response).setHeader("Pragma", "no-cache");
+    verify(response).setHeader("Referrer-Policy", "no-referrer");
+    verify(response)
+        .sendRedirect(
+            SecurityUtil.buildRedirectWithToken(
+                redirectUri, "token-value", "user@example.com", "Jane Doe"));
   }
 
   @Test
@@ -1201,6 +1282,51 @@ class SecurityUtilTest {
     } finally {
       Locale.setDefault(previous);
     }
+  }
+
+  @Test
+  void testBuildPrincipalClaimsMappingKeepsAColonInsideTheClaimName() {
+    // Splitting on every colon dropped this entry via the length filter (and before #28780
+    // truncated it to "urn"), silently losing the email mapping.
+    assertEquals(
+        Map.of("username", "preferred_username", "email", "urn:oid:0.9.2342.19200300.100.1.3"),
+        SecurityUtil.buildPrincipalClaimsMapping(
+            List.of("username:preferred_username", "email:urn:oid:0.9.2342.19200300.100.1.3")));
+  }
+
+  @Test
+  void testBuildPrincipalClaimsMappingSkipsAnEntryWithoutAColon() {
+    assertEquals(
+        Map.of("email", "email"),
+        SecurityUtil.buildPrincipalClaimsMapping(List.of("email:email", "garbage-no-colon")));
+  }
+
+  @Test
+  void originOf_keepsSchemeHostAndExplicitPortOnly() {
+    assertEquals(
+        "https://om.example.org:8443",
+        SecurityUtil.originOf("https://om.example.org:8443/callback?x=1#frag"));
+    assertEquals(
+        "https://om.example.org", SecurityUtil.originOf("  https://om.example.org/callback "));
+  }
+
+  @Test
+  void originOf_keepsBracketedIpv6Hosts() {
+    assertEquals("http://[::1]:8585", SecurityUtil.originOf("http://[::1]:8585/callback"));
+  }
+
+  @Test
+  void originOf_dropsUserInfo() {
+    assertEquals("https://om.example.org", SecurityUtil.originOf("https://user@om.example.org/cb"));
+  }
+
+  @Test
+  void originOf_returnsNullForAnythingWithoutAnOrigin() {
+    assertNull(SecurityUtil.originOf(null));
+    assertNull(SecurityUtil.originOf("  "));
+    assertNull(SecurityUtil.originOf("/callback"));
+    assertNull(SecurityUtil.originOf("not a url"));
+    assertNull(SecurityUtil.originOf("mailto:admin@example.org"));
   }
 
   private static Map<String, Claim> jwtClaims(Map<String, Object> values) {

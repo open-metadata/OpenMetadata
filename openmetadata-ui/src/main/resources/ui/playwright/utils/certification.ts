@@ -29,17 +29,13 @@ export const openCertificationDropdown = async (page: Page) => {
   );
   await page.getByTestId('edit-certification').click();
   await certificationResponse;
-  await page.locator('.certification-card-popover').waitFor({
-    state: 'visible',
-  });
+  await page.getByTestId('drop-down-menu').waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 };
 
 export const closeCertificationDropdown = async (page: Page) => {
-  await page.getByTestId('close-certification').click();
-  await page.locator('.certification-card-popover').waitFor({
-    state: 'hidden',
-  });
+  await page.keyboard.press('Escape');
+  await page.getByTestId('drop-down-menu').waitFor({ state: 'hidden' });
 };
 
 export const SYSTEM_CERTIFICATION_TAGS = [

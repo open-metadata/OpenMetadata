@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { Button, Space, Typography } from 'antd';
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -27,7 +28,12 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
 
   return (
     <Fragment>
-      <Space className="w-full justify-between">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-between"
+        gap={2}
+        itemClassName="layout-space-item">
         <span
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
@@ -48,9 +54,9 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
             }}
           />
         )}
-      </Space>
+      </Box>
       {isEmpty(properties) ? (
-        <Typography>{t('message.no-config-plural')}</Typography>
+        <Typography as="article">{t('message.no-config-plural')}</Typography>
       ) : (
         properties.map((element) => (
           <div

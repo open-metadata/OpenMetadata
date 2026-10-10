@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -28,14 +29,21 @@ import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfInferenceRuleDAO;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfInferenceRuleDAO.RdfInferenceRuleRow;
 
 /** Durable inference-rule definitions and materialization state. */
+@Slf4j
 public final class InferenceRuleRepository implements InferenceDirtyMarker {
   private static final int DEFAULT_PRIORITY = 100;
   private static final String INFERRED_GRAPH_PATH = "graph/inferred/";
+  private static final String NON_CONFORMING_REASON =
+      "Disabled because the rule no longer passes validation: %s. Fix the rule body and enable it"
+          + " again.";
+  private static final Comparator<InferenceRuleStatus> EXECUTION_ORDER =
+      Comparator.comparingInt(InferenceRuleRepository::priority)
+          .thenComparing(status -> status.getRule().getName());
 
   private final RdfInferenceRuleDAO ruleDAO;
   private final Clock clock;
   private final String inferredGraphBaseUri;
-  private volatile boolean starterPackInitialized;
+  private volatile boolean initialized;
 
   public InferenceRuleRepository(
       final RdfInferenceRuleDAO ruleDAO, final Clock clock, final String rdfBaseUri) {
@@ -44,31 +52,36 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
     this.inferredGraphBaseUri = normalizeBaseUri(rdfBaseUri) + INFERRED_GRAPH_PATH;
   }
 
+  /** A rule as a materialization run read it, with the version it must still have to end clean. */
+  public record RuleSnapshot(InferenceRuleStatus status, long dirtyVersion) {
+    public String name() {
+      return status.getRule().getName();
+    }
+
+    public boolean isEnabled() {
+      return !Boolean.FALSE.equals(status.getRule().getEnabled());
+    }
+  }
+
   public List<InferenceRuleStatus> list() {
-    initializeStarterPack();
-    return ruleDAO.listActive().stream()
-        .map(this::toStatus)
-        .sorted(
-            Comparator.comparingInt(InferenceRuleRepository::priority)
-                .thenComparing(status -> status.getRule().getName()))
-        .toList();
+    return listForRun().stream().map(RuleSnapshot::status).toList();
   }
 
   public InferenceRuleStatus get(final String name) {
-    initializeStarterPack();
+    initialize();
     return toStatus(requireRow(name));
   }
 
   public InferenceRuleStatus upsert(final String pathName, final InferenceRule rule) {
     requireMatchingName(pathName, rule);
     InferenceRuleValidator.requireValid(rule, pathName);
-    initializeStarterPack();
+    initialize();
     ruleDAO.upsert(pathName, JsonUtils.pojoToJson(rule), clock.millis());
     return get(pathName);
   }
 
   public void delete(final String name) {
-    initializeStarterPack();
+    initialize();
     final RdfInferenceRuleRow row = requireRow(name);
     if (row.systemRule()) {
       throw new BadRequestException(
@@ -77,23 +90,41 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
     ruleDAO.softDelete(name, clock.millis());
   }
 
-  public List<InferenceRuleStatus> listForMaterialization(
-      final boolean force, final String requestedRule) {
-    return list().stream()
-        .filter(status -> isRequested(status, requestedRule))
-        .filter(status -> force || Boolean.TRUE.equals(status.getDirty()))
+  /** Every active rule, enabled or not, in execution order. */
+  public List<RuleSnapshot> listForRun() {
+    initialize();
+    return ruleDAO.listActive().stream()
+        .map(row -> new RuleSnapshot(toStatus(row), row.dirtyVersion()))
+        .sorted(Comparator.comparing(RuleSnapshot::status, EXECUTION_ORDER))
         .toList();
   }
 
-  public InferenceRuleStatus recordMaterialized(
-      final String name, final long completedAt, final long tripleCount) {
-    ruleDAO.markMaterialized(name, completedAt, tripleCount);
-    return get(name);
+  /**
+   * The graph of every rule ever stored. A rule deleted while a run was writing its graph keeps
+   * those conclusions until a later run empties this whole set.
+   */
+  public List<String> graphUrisOfAllRules() {
+    return ruleDAO.listNames().stream().map(this::graphUri).toList();
   }
 
-  public InferenceRuleStatus recordFailure(final String name, final String error) {
-    ruleDAO.markFailed(name, error);
-    return get(name);
+  /** The rule's refreshed status, or empty when it was deleted during the run. */
+  public Optional<InferenceRuleStatus> recordMaterialized(
+      final RuleSnapshot snapshot, final long completedAt, final long tripleCount) {
+    ruleDAO.markMaterialized(snapshot.name(), completedAt, tripleCount, snapshot.dirtyVersion());
+    return findActive(snapshot.name());
+  }
+
+  /** Records a disabled rule's emptied graph; its last error, such as why it was disabled, stays. */
+  public Optional<InferenceRuleStatus> recordCleared(
+      final RuleSnapshot snapshot, final long completedAt) {
+    ruleDAO.markCleared(snapshot.name(), completedAt, snapshot.dirtyVersion());
+    return findActive(snapshot.name());
+  }
+
+  public Optional<InferenceRuleStatus> recordFailure(
+      final RuleSnapshot snapshot, final String error) {
+    ruleDAO.markFailed(snapshot.name(), error);
+    return findActive(snapshot.name());
   }
 
   @Override
@@ -101,22 +132,46 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
     ruleDAO.markAllDirty();
   }
 
-  private void initializeStarterPack() {
-    if (starterPackInitialized) {
+  private void initialize() {
+    if (initialized) {
       return;
     }
     synchronized (this) {
-      if (starterPackInitialized) {
-        return;
+      if (!initialized) {
+        insertStarterPack();
+        ruleDAO.listActive().forEach(this::disableIfNonConforming);
+        initialized = true;
       }
-      final long updatedAt = clock.millis();
-      InferenceRuleStarterPack.load()
-          .forEach(
-              rule ->
-                  ruleDAO.insertIfAbsent(
-                      rule.getName(), JsonUtils.pojoToJson(rule), true, updatedAt));
-      starterPackInitialized = true;
     }
+  }
+
+  private void insertStarterPack() {
+    final long updatedAt = clock.millis();
+    InferenceRuleStarterPack.load()
+        .forEach(
+            rule ->
+                ruleDAO.insertIfAbsent(
+                    rule.getName(), JsonUtils.pojoToJson(rule), true, updatedAt));
+  }
+
+  /**
+   * Validation grows stricter across releases. A stored rule that no longer passes would fail
+   * every run, so it is disabled with the reason recorded instead of being rewritten or dropped.
+   */
+  private void disableIfNonConforming(final RdfInferenceRuleRow row) {
+    final InferenceRule rule = readRule(row);
+    final List<String> errors =
+        Boolean.FALSE.equals(rule.getEnabled()) ? List.of() : InferenceRuleValidator.validate(rule);
+    if (!errors.isEmpty()) {
+      final String reason = NON_CONFORMING_REASON.formatted(String.join("; ", errors));
+      LOG.warn("Inference rule '{}': {}", row.name(), reason);
+      ruleDAO.disable(
+          row.name(), JsonUtils.pojoToJson(rule.withEnabled(false)), reason, clock.millis());
+    }
+  }
+
+  private Optional<InferenceRuleStatus> findActive(final String name) {
+    return Optional.ofNullable(ruleDAO.findActive(name)).map(this::toStatus);
   }
 
   private RdfInferenceRuleRow requireRow(final String name) {
@@ -125,10 +180,9 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
   }
 
   private InferenceRuleStatus toStatus(final RdfInferenceRuleRow row) {
-    final InferenceRule rule = JsonUtils.readValue(row.json(), InferenceRule.class);
     final InferenceRuleStatus status =
         new InferenceRuleStatus()
-            .withRule(rule)
+            .withRule(readRule(row))
             .withGraphUri(URI.create(graphUri(row.name())))
             .withSystemRule(row.systemRule())
             .withDirty(row.dirty())
@@ -142,13 +196,13 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
     return inferredGraphBaseUri + ruleName;
   }
 
+  private static InferenceRule readRule(final RdfInferenceRuleRow row) {
+    return JsonUtils.readValue(row.json(), InferenceRule.class);
+  }
+
   private static int priority(final InferenceRuleStatus status) {
     final Integer configuredPriority = status.getRule().getPriority();
     return configuredPriority == null ? DEFAULT_PRIORITY : configuredPriority;
-  }
-
-  private static boolean isRequested(final InferenceRuleStatus status, final String requestedRule) {
-    return requestedRule == null || requestedRule.equals(status.getRule().getName());
   }
 
   private static void requireMatchingName(final String pathName, final InferenceRule rule) {

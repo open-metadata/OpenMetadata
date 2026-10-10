@@ -15,7 +15,6 @@ package org.openmetadata.service.rdf;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import java.io.StringWriter;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,7 +30,6 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.OWL2;
@@ -45,7 +43,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.AssetRealization;
-import org.openmetadata.schema.type.AssetRealizationRole;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
@@ -64,6 +61,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexDAO;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexRow;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
+import org.openmetadata.service.rdf.translator.RdfRealizationMapper;
 
 public final class GlossaryOntologyExporter {
   private static final String OM = "https://open-metadata.org/ontology/";
@@ -342,21 +340,13 @@ public final class GlossaryOntologyExporter {
     for (final AssetRealization realization : listOrEmpty(realizations)) {
       final Resource asset = model.createResource(assetIri(realization.getAsset()));
       term.addProperty(model.createProperty(OM, MAPPED_TO_PREDICATE), asset);
-      term.addProperty(model.createProperty(OM, rolePredicate(realization.getRole())), asset);
+      term.addProperty(
+          model.createProperty(RdfRealizationMapper.rolePredicate(realization.getRole())), asset);
     }
   }
 
   private String assetIri(final EntityReference asset) {
     return publicBaseUri.resolve("entity/" + asset.getType() + "/" + asset.getId()).toString();
-  }
-
-  private static String rolePredicate(final AssetRealizationRole role) {
-    final AssetRealizationRole resolved = role == null ? AssetRealizationRole.PRIMARY_STORE : role;
-    return switch (resolved) {
-      case PRIMARY_STORE -> "hasPrimaryStore";
-      case DERIVED -> "hasDerivedAsset";
-      case REPLICA -> "hasReplica";
-    };
   }
 
   private static Property mappingProperty(final ConceptMapping.ConceptMappingType mappingType) {
@@ -530,13 +520,19 @@ public final class GlossaryOntologyExporter {
 
   private static String predicateIri(
       final EntityReference reference, final List<RelationshipType> allTypes) {
+    final String referenceFqn = reference.getFullyQualifiedName();
     return allTypes.stream()
-        .filter(type -> type.getId().equals(reference.getId()))
+        .filter(
+            type ->
+                (reference.getId() != null && type.getId().equals(reference.getId()))
+                    || (referenceFqn != null && referenceFqn.equals(type.getFullyQualifiedName())))
         .findFirst()
         .orElseThrow(
             () ->
                 new IllegalArgumentException(
-                    "Relationship type '" + reference.getId() + "' is not registered"))
+                    "Relationship type '"
+                        + (reference.getId() != null ? reference.getId() : referenceFqn)
+                        + "' is not registered"))
         .getRdfPredicate()
         .toString();
   }
@@ -578,9 +574,7 @@ public final class GlossaryOntologyExporter {
   }
 
   private static String serialize(final Model model, final RdfSerializationFormat format) {
-    final StringWriter writer = new StringWriter();
-    RDFDataMgr.write(writer, model, format.rdfFormat());
-    return writer.toString();
+    return RdfGraphSerializer.asString(model, format);
   }
 
   private static void addLiteral(

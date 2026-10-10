@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
@@ -69,6 +70,7 @@ import {
   importOMViaDropdown,
   navigateToContractTab,
   openContractActionsDropdown,
+  reloadContractPage,
   saveAndTriggerDataContractValidation,
   saveContractAndWait,
   saveSecurityAndSLADetails,
@@ -85,6 +87,11 @@ import {
   assignTier,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
+import {
+  glossaryFieldTrigger,
+  pickGlossaryTermInField,
+} from '../../utils/glossaryPicker';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { selectOnDemandSchedule } from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
@@ -113,6 +120,12 @@ const entitiesWithDataContracts = [
   DatabaseSchemaClass,
 ] as const;
 
+const dataContractEntities = pickEntityMatrix(
+  __filename,
+  entitiesWithDataContracts,
+  [TableClass]
+);
+
 // Helper function to check if entity supports specific features
 const entitySupportsSchema = (entityType: string): boolean => {
   return ['Table', 'Topic', 'DashboardDataModel', 'ApiEndpoint'].includes(
@@ -137,15 +150,11 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
   });
 
-  entitiesWithDataContracts.forEach((EntityClass) => {
+  dataContractEntities.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
-    // Quarantined: for the Table variant the contract's quality/test-suite run
-    // can finish without producing a result, so `qualityValidation` never
-    // populates and `contractExecutionStatus` hangs on `Running` — the poll
-    // then times out. See playwright/QUARANTINE.md.
     const testDetails = entitySupportsQuality(entityType)
-      ? { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag, '@quarantine'] }
+      ? { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag] }
       : {};
     const testTitle = `Create Data Contract and validate for ${entityType}`;
 
@@ -391,9 +400,7 @@ test.describe('Data Contracts', () => {
         await triggerContractValidation(page, contractId);
         await toastPromise;
 
-        await page.reload();
-
-        await waitForAllLoadersToDisappear(page);
+        await reloadContractPage(page);
 
         await expect(
           page.getByTestId('contract-status-card-item-semantics-status')
@@ -432,32 +439,39 @@ test.describe('Data Contracts', () => {
             NEW_TABLE_TEST_CASE.value
           );
 
-          await page.click('[data-testid="tags-selector"] input');
-          await page.fill(
-            '[data-testid="tags-selector"] input',
-            testTag.data.name
-          );
-          await page
-            .getByTestId(
-              `tag-option-${testTag.responseData.fullyQualifiedName}`
+          await expect
+            .poll(
+              async () => {
+                await page.getByTestId('tags-input').click();
+
+                return page.getByTestId('search-input').isVisible();
+              },
+              { timeout: 10_000 }
             )
+            .toBe(true);
+          await page.getByTestId('search-input').fill(testTag.data.name);
+          await page
+            .getByTestId('drop-down-menu')
+            .getByTestId(testTag.responseData.fullyQualifiedName ?? '')
             .click();
 
           await page.keyboard.press('Escape');
 
-          await page.click('[data-testid="glossary-terms-selector"] input');
-          await page.fill(
-            '[data-testid="glossary-terms-selector"] input',
-            testGlossaryTerm.data.name
+          // The glossary field is a TreeSelect popover picker, not a flat tag
+          // autocomplete, so drive it through the tree picker helper.
+          await pickGlossaryTermInField(
+            page,
+            glossaryFieldTrigger(
+              page.getByTestId('glossary-terms-selector'),
+              'tag-suggestion'
+            ),
+            {
+              name: testGlossaryTerm.data.name,
+              displayName: testGlossaryTerm.responseData.displayName,
+              fullyQualifiedName:
+                testGlossaryTerm.responseData.fullyQualifiedName ?? '',
+            }
           );
-
-          await page
-            .getByTestId(
-              `tag-option-${testGlossaryTerm.responseData.fullyQualifiedName}`
-            )
-            .click();
-
-          await page.keyboard.press('Escape');
 
           await page
             .getByTestId('pipeline-name')
@@ -1185,9 +1199,7 @@ test.describe('Data Contracts', () => {
     await triggerContractValidation(page, contractId1104);
     await toastPromise;
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1379,9 +1391,7 @@ test.describe('Data Contracts', () => {
     await triggerContractValidation(page, contractId1289);
     await toastPromise;
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
@@ -1543,9 +1553,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('contract-run-now-button').click();
 
-    await page.reload();
-
-    await waitForAllLoadersToDisappear(page);
+    await reloadContractPage(page);
 
     await expect(
       page.getByTestId('contract-status-card-item-schema-status')
@@ -1987,7 +1995,7 @@ test.describe('Data Contracts', () => {
           `${table.columnsName[filter.index]} = ${filter.values[0]},${
             filter.values[1]
           }`,
-          { timeout: 30_000 }
+          { timeout: ACTION_TIMEOUT }
         );
       }
 
@@ -2012,7 +2020,7 @@ test.describe('Data Contracts', () => {
         page.getByText(
           `Column: Represents data refresh time corresponding to ${table.columnsName[0]}`
         )
-      ).toBeVisible({ timeout: 30_000 });
+      ).toBeVisible({ timeout: ACTION_TIMEOUT });
 
       await openContractActionsDropdown(page);
       await page.getByTestId('contract-edit-button').click();
@@ -2063,7 +2071,7 @@ test.describe('Data Contracts', () => {
           `${table.columnsName[filter.index]} = ${filter.values[0]},${
             filter.values[1]
           },${filter.values[2]},${filter.values[3]}`,
-          { timeout: 30_000 }
+          { timeout: ACTION_TIMEOUT }
         );
       }
 
@@ -2090,7 +2098,7 @@ test.describe('Data Contracts', () => {
         page.getByText(
           `Column: Represents data refresh time corresponding to ${table.columnsName[1]}`
         )
-      ).toBeVisible({ timeout: 30_000 });
+      ).toBeVisible({ timeout: ACTION_TIMEOUT });
 
       await clickEditContractButton(page);
       await validateSecurityAndSLADetails(
@@ -2299,7 +2307,7 @@ description:
   });
 });
 
-entitiesWithDataContracts.forEach((EntityClass) => {
+dataContractEntities.forEach((EntityClass) => {
   const adminUser = new UserClass();
   const entity = new EntityClass();
   const entityType = entity.getType();
@@ -2307,7 +2315,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
   const testPersona = base.extend<{ page: Page }>({
     page: async ({ browser }, use) => {
       const adminPage = await browser.newPage();
-      await adminUser.login(adminPage);
+      await adminUser.signIn(adminPage);
       await use(adminPage);
       await adminPage.close();
     },
@@ -2462,9 +2470,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               await settingClick(page, GlobalSettingOptions.PERSONA);
               await personaGetResponse;
 
-              await page.locator('.ant-skeleton-content').first().waitFor({
-                state: 'detached',
-              });
+              await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
 
               // Navigate to persona details
               await navigateToPersonaWithPagination(

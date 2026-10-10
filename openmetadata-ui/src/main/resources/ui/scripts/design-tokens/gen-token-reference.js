@@ -109,7 +109,7 @@ const GROUPS = [
     note: 'transition / animation. See foundations/motion.md.',
   },
   {
-    key: /^--om-color-(text|bg|border|fg|link|interactive|focus)/,
+    key: /^--om-color-(text|bg|border|fg|link|interactive|focus|utility)/,
     title: 'Semantic colors',
     note: 'Prefer these — they adapt to dark mode.',
   },
@@ -127,6 +127,11 @@ const GROUPS = [
     key: /^--om-legacy-color-/,
     title: 'Legacy colors',
     note: 'Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.',
+  },
+  {
+    key: /^--om-/,
+    title: 'Legacy LESS aliases',
+    note: 'Existing LESS palette names retain their light fallbacks; app.less supplies dark-mode overrides. Prefer semantic tokens for new work.',
   },
 ];
 

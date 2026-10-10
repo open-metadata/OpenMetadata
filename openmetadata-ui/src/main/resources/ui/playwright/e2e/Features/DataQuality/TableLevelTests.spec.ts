@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
+import { clickCodeEditor } from '../../../utils/codeEditor';
 import {
   createNewPage,
   getApiContext,
@@ -625,10 +627,19 @@ test.describe(
      * 3. Submit and verify in Data Quality tab; then edit to add additional key/use columns; delete at the end.
      */
     test('Table Difference', async ({ page }) => {
+      // Multi-step flow (visit create form, select tableDiff type, wait
+      // for tables listing, edit for additional columns, delete) — 60s
+      // is tight under SharedInfra load where the tables search
+      // response can take 30-60s to return.
+      test.slow();
       await redirectToHomePage(page);
       const { apiContext } = await getApiContext(page);
-      table1 = new TableClass(undefined, undefined, service);
-      table2 = new TableClass(undefined, undefined, service);
+      table1 = new TableClass({
+        service: new DatabaseServiceClass(undefined, service),
+      });
+      table2 = new TableClass({
+        service: new DatabaseServiceClass(undefined, service),
+      });
       await table1.create(apiContext);
       await table2.create(apiContext);
       const testCase = {
@@ -692,6 +703,7 @@ test.describe(
           .filter({
             hasText: table2.entityResponseData?.['fullyQualifiedName'] ?? '',
           })
+
           .first();
 
         await expect(table2Option).toBeVisible();
@@ -703,7 +715,6 @@ test.describe(
           page
             .getByRole('option')
             .filter({ hasText: table1.entity?.columns[0].name })
-            .first()
         );
 
         // Table 1's popover is still animating out over table 2's trigger;
@@ -716,7 +727,6 @@ test.describe(
           page
             .getByRole('option')
             .filter({ hasText: table2.entity?.columns[0].name })
-            .first()
         );
 
         await expect(table2KeyColumnsInput).not.toBeDisabled();
@@ -729,12 +739,10 @@ test.describe(
         );
         const keyColumnOption = page
           .getByRole('option')
-          .filter({ hasText: table1.entity?.columns[0].name })
-          .first();
+          .filter({ hasText: table1.entity?.columns[0].name });
         const useColumnOption = page
           .getByRole('option')
-          .filter({ hasText: table1.entity?.columns[1].name })
-          .first();
+          .filter({ hasText: table1.entity?.columns[1].name });
         // selectOptionWithRetry, inlined to assert on the open list before
         // picking: if the popover closes first, reopen instead of letting the
         // click wait out the test timeout.
@@ -832,7 +840,6 @@ test.describe(
           page
             .getByRole('option')
             .filter({ hasText: table1.entity?.columns[3].name })
-            .first()
         );
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
@@ -842,7 +849,6 @@ test.describe(
           page
             .getByRole('option')
             .filter({ hasText: table1.entity?.columns[2].name })
-            .first()
         );
 
         await clickUpdateButton(page);
@@ -894,14 +900,17 @@ test.describe(
           page.locator('[data-id="tableCustomSQLQuery"]')
         ).toBeVisible();
 
-        await page.locator('.CodeMirror-scroll').click();
+        await clickCodeEditor(page);
         await page
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(testCase.sqlQuery);
+        // The strategy options read as sentences, not as the stored ROWS/COUNT
+        // enum, and react-aria's listbox items expose no key attribute — so
+        // they are matched on the distinctive part of their wording.
         await selectOptionWithRetry(
           page.locator('#testCaseFormV1_params_strategy'),
-          page.getByRole('option', { name: 'ROWS' })
+          page.getByRole('option', { name: 'count the rows' })
         );
         await page.fill('#testCaseFormV1_params_threshold', '23');
         await submitTestCaseForm(page);
@@ -944,14 +953,14 @@ test.describe(
         await page.locator('[id="root\\/displayName"]').clear();
         await page.fill('[id="root\\/displayName"]', testCase.displayName);
 
-        await page.locator('.CodeMirror-scroll').click();
+        await clickCodeEditor(page);
         await page
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(' update');
         await selectOptionWithRetry(
-          page.getByRole('button', { name: 'ROWS Strategy' }),
-          page.getByRole('option', { name: 'COUNT' })
+          page.locator('#testCaseFormV1_params_strategy'),
+          page.getByRole('option', { name: 'use the single number' })
         );
         await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
           state: 'visible',
@@ -1029,8 +1038,7 @@ test.describe(
         await page.click('#testCaseFormV1_params_columnName');
         const columnNameOption = page
           .getByRole('option')
-          .filter({ hasText: testCase.columnName })
-          .first();
+          .filter({ hasText: testCase.columnName });
         await columnNameOption.waitFor({ state: 'visible' });
         await columnNameOption.click();
 

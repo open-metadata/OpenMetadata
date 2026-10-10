@@ -13,4 +13,5 @@
 
 export const TEST_CASE_NEXT_RUN_QUERY_KEY = 'test-case-next-run';
 export const TEST_SUITE_PIPELINE_FIELDS = ['airflowConfig'];
-export const TEST_SUITE_PIPELINE_LIMIT = 100;
+// Lives in constants/ so components can use it without importing a page.
+export { TEST_SUITE_PIPELINE_LIMIT } from '../../../constants/Ingestions.constant';

@@ -113,11 +113,7 @@ const InboxIconButton: React.FC = () => {
           {isActive ? (
             <InboxIconActive height={20} width={20} />
           ) : (
-            <InboxIconDefault
-              className="tw:text-fg-quaternary"
-              height={20}
-              width={20}
-            />
+            <InboxIconDefault height={20} width={20} />
           )}
 
           {badgeLabel && (

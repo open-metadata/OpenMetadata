@@ -338,7 +338,7 @@ public class TestCaseResultResource
           securityContext,
           fields,
           searchListFilter,
-          "testCaseFQN.keyword",
+          TestCaseResultRepository.LATEST_PER_TEST_CASE,
           searchTerm,
           limit,
           offset,

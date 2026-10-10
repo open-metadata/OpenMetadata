@@ -11,19 +11,16 @@
  *  limitations under the License.
  */
 
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
-  Col,
   Form,
   FormProps,
   Input,
   InputNumber,
-  Row,
   Select,
   Slider,
-  Space,
   Tooltip,
-  Typography,
 } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -48,6 +45,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { useFqn } from '../../hooks/useFqn';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getKPIByName, patchKPI } from '../../rest/KpiAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import {
   getDataInsightPathWithFqn,
   getDisabledDates,
@@ -226,13 +224,11 @@ const EditKPIPage = () => {
         children: (
           <div data-testid="edit-kpi-container">
             <TitleBreadcrumb className="m-t-0 my-4" titleLinks={breadcrumb} />
-            <Typography.Paragraph
-              className="text-base"
-              data-testid="form-title">
+            <Typography as="p" className="text-base" data-testid="form-title">
               {t('label.edit-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
-            </Typography.Paragraph>
+            </Typography>
             <Form
               data-testid="kpi-form"
               form={form}
@@ -305,8 +301,10 @@ const EditKPIPage = () => {
                   <>
                     {metricType === KpiTargetType.Percentage && (
                       <>
-                        <Row gutter={32}>
-                          <Col span={20}>
+                        <Grid
+                          className="layout-row layout-grid"
+                          style={getLayoutGutter(32)}>
+                          <Grid.Item className="layout-column" span={20}>
                             <Form.Item
                               noStyle
                               name="targetValue"
@@ -324,8 +322,8 @@ const EditKPIPage = () => {
                                 }}
                               />
                             </Form.Item>
-                          </Col>
-                          <Col span={4}>
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={4}>
                             <Form.Item
                               noStyle
                               name="targetValue"
@@ -337,8 +335,8 @@ const EditKPIPage = () => {
                                 step={1}
                               />
                             </Form.Item>
-                          </Col>
-                        </Row>
+                          </Grid.Item>
+                        </Grid>
                       </>
                     )}
                     {metricType === KpiTargetType.Number && (
@@ -354,8 +352,10 @@ const EditKPIPage = () => {
                 </Form.Item>
               )}
 
-              <Row gutter={[8, 8]}>
-                <Col span={12}>
+              <Grid
+                className="layout-row layout-grid"
+                style={getLayoutGutter(8, 8)}>
+                <Grid.Item className="layout-column" span={12}>
                   <Form.Item
                     label={t('label.start-entity', {
                       entity: t('label.date'),
@@ -379,8 +379,8 @@ const EditKPIPage = () => {
                       format={KPI_DATE_PICKER_FORMAT}
                     />
                   </Form.Item>
-                </Col>
-                <Col span={12}>
+                </Grid.Item>
+                <Grid.Item className="layout-column" span={12}>
                   <Form.Item
                     label={t('label.end-date')}
                     messageVariables={{ fieldName: 'endDate' }}
@@ -400,14 +400,19 @@ const EditKPIPage = () => {
                       format={KPI_DATE_PICKER_FORMAT}
                     />
                   </Form.Item>
-                </Col>
-              </Row>
+                </Grid.Item>
+              </Grid>
               <EntityAttachmentProvider
                 entityFqn={kpiData?.fullyQualifiedName}
                 entityType={EntityType.KPI}>
                 {getField(descriptionField)}
               </EntityAttachmentProvider>
-              <Space align="center" className="w-full justify-end">
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal w-full justify-end"
+                gap={2}
+                itemClassName="layout-space-item">
                 <Button
                   data-testid="cancel-btn"
                   type="link"
@@ -425,7 +430,7 @@ const EditKPIPage = () => {
                     </Button>
                   </Tooltip>
                 ) : null}
-              </Space>
+              </Box>
             </Form>
           </div>
         ),
@@ -438,12 +443,12 @@ const EditKPIPage = () => {
       secondPanel={{
         children: (
           <div data-testid="right-panel">
-            <Typography.Paragraph className="text-base font-medium">
+            <Typography as="p" className="text-base font-medium">
               {t('label.edit-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
-            </Typography.Paragraph>
-            <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
+            </Typography>
+            <Typography>{t('message.add-kpi-message')}</Typography>
           </div>
         ),
         className: 'content-resizable-panel-container',

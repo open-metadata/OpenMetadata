@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/ontologyChangeOperation.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyChangeOperation",
   "description": "A typed, reversible operation in an ontology authoring session.",
   "type": "object",
@@ -10,6 +10,7 @@
       "javaType": "org.openmetadata.schema.type.OntologyChangeOperationType",
       "type": "string",
       "enum": [
+        "CREATE_GLOSSARY",
         "CREATE_TERM",
         "UPDATE_TERM",
         "DELETE_TERM",
@@ -83,6 +84,31 @@
       "description": "Fingerprint of the change-set discovery context supporting this operation.",
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
+    },
+    "glossary": {
+      "$ref": "../entity/data/glossary.json"
+    },
+    "sourceMemoryIds": {
+      "description": "Published context memories that support this AI suggestion.",
+      "type": "array",
+      "items": { "$ref": "basic.json#/definitions/uuid" },
+      "uniqueItems": true,
+      "maxItems": 20
+    },
+    "confidence": {
+      "description": "Model confidence in this AI suggestion, from 0 to 1.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "rationale": {
+      "description": "Model explanation of the evidence behind this AI suggestion.",
+      "type": "string",
+      "maxLength": 2000
+    },
+    "modelId": {
+      "description": "Identifier of the model that produced this AI suggestion.",
+      "type": "string"
     },
     "state": {
       "$ref": "#/definitions/state"

@@ -11,19 +11,22 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Typography } from 'antd';
+import { Box, Grid, Input, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { TEST_DEFINITION_FILTERS } from '../../../constants/TestDefinition.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import {
   SelectMode,
   useQuickFiltersWithComponent,
 } from '../../common/atoms/filters/useQuickFiltersWithComponent';
+import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
@@ -36,6 +39,7 @@ const TestDefinitionList = () => {
   const {
     testDefinitions,
     isLoading,
+    isInitialLoading,
     createPermission,
     viewPermission,
     testDefinitionPermissions,
@@ -46,7 +50,11 @@ const TestDefinitionList = () => {
     showPagination,
     urlFilters,
     parsedFilters,
+    searchQuery,
+    sortDescriptor,
+    handleSortChange,
     handleFilterChange,
+    handleSearchChange,
     isFormVisible,
     selectedDefinition,
     isDeleteModalVisible,
@@ -76,10 +84,19 @@ const TestDefinitionList = () => {
     mode: SelectMode.SINGLE,
   });
 
+  const { searchInputProps } = useListSearchInput({
+    searchQuery,
+    onSearchChange: handleSearchChange,
+  });
+
+  const searchLabel = t('label.search-entity', {
+    entity: t('label.test-definition-plural'),
+  });
+
   const { filterSelectionDisplay } = useFilterSelection({
     urlState: {
       filters: urlFilters,
-      searchQuery: '',
+      searchQuery,
       currentPage,
       pageSize,
     },
@@ -94,26 +111,32 @@ const TestDefinitionList = () => {
 
   return (
     <>
-      <Row className="p-b-md" gutter={[16, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-b-md"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <Card>
-            <Row justify="space-between">
-              <Col>
+            <Box className="layout-row" justify="between" wrap="wrap">
+              <Box className="layout-column tw:block">
                 <div className="flex gap-2 items-center m-b-xss">
-                  <Typography.Title className="m-b-0" level={5}>
+                  <Typography
+                    as="h5"
+                    className="m-b-0"
+                    size="text-md"
+                    weight="semibold">
                     {t('label.data-quality-rule-plural')}
-                  </Typography.Title>
+                  </Typography>
                   <LearningIcon
                     pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
                     title={t('label.data-quality-rule-plural')}
                   />
                 </div>
-                <Typography.Text type="secondary">
+                <Typography color="secondary">
                   {t('message.page-sub-header-for-test-definitions')}
-                </Typography.Text>
-              </Col>
+                </Typography>
+              </Box>
               {createPermission && (
-                <Col>
+                <Box className="layout-column tw:block">
                   <Button
                     data-testid="add-test-definition-button"
                     type="primary"
@@ -122,19 +145,27 @@ const TestDefinitionList = () => {
                       entity: t('label.test-definition'),
                     })}
                   </Button>
-                </Col>
+                </Box>
               )}
-            </Row>
+            </Box>
           </Card>
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Card
             bodyStyle={{
               padding: 0,
             }}>
             <div className="tw:flex tw:flex-col tw:gap-2 tw:p-4">
               <div className="tw:flex tw:gap-2 tw:items-center">
+                <Input
+                  {...searchInputProps}
+                  aria-label={searchLabel}
+                  className="tw:w-72"
+                  inputDataTestId="test-definition-search"
+                  placeholder={searchLabel}
+                  size="sm"
+                />
                 {quickFilters}
               </div>
               {!isEmpty(urlFilters) && <div>{filterSelectionDisplay}</div>}
@@ -142,20 +173,23 @@ const TestDefinitionList = () => {
 
             <TestDefinitionTable
               hasActiveFilters={hasActiveFilters}
+              isInitialLoading={isInitialLoading}
               isLoading={isLoading}
               pagingData={pagingData}
               permissionLoading={permissionLoading}
               showPagination={showPagination}
+              sortDescriptor={sortDescriptor}
               testDefinitionPermissions={testDefinitionPermissions}
               testDefinitions={testDefinitions}
               onClearFilters={clearAllFilters}
               onDelete={handleDeleteClick}
               onEdit={handleEdit}
               onEnableToggle={handleEnableToggle}
+              onSortChange={handleSortChange}
             />
           </Card>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
       {isFormVisible && (
         <TestDefinitionForm

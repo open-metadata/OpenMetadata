@@ -435,6 +435,10 @@ describe('SSOUtils', () => {
       expect(result.authenticationConfiguration.oidcConfiguration?.scope).toBe(
         'openid email profile'
       );
+      expect(
+        result.authenticationConfiguration.oidcConfiguration
+          ?.endSessionWithProvider
+      ).toBe(false);
     });
 
     it('should return defaults for Auth0 provider', () => {

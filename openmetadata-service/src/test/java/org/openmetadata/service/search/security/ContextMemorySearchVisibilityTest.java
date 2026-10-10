@@ -31,12 +31,14 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
@@ -87,10 +89,16 @@ class ContextMemorySearchVisibilityTest {
 
     assertFieldExists(
         json,
-        "$.bool.should[0].bool.must_not[?(@.term['entityType'].value=='"
+        "$.bool.should[0].bool.must_not[?(@.terms['entityType'] contains '"
             + Entity.CONTEXT_MEMORY
             + "')]",
-        "non-memory documents pass through via a must_not entityType branch");
+        "ungoverned documents pass through via a must_not entityType branch");
+    assertFieldExists(
+        json,
+        "$.bool.should[0].bool.must_not[?(@.terms['entityType'] contains '"
+            + Entity.CONTEXT_FILE
+            + "')]",
+        "context files are governed too, so the pass-through branch excludes them as well");
   }
 
   @Test
@@ -105,18 +113,95 @@ class ContextMemorySearchVisibilityTest {
         "the memory branch is scoped to contextMemory documents");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.term['visibility'].value=='Entity')]",
-        "Entity-visibility memories are visible to everyone");
+        "$.bool.should[1].bool.must[1].bool.must[?(@.term['entityStatus'].value=='Approved')]",
+        "normal search only admits Active memories");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.nested.query.term['owners.id'].value=='"
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.bool.must[?(@.term['anchorId'].value=='unanchored')])]",
+        "non-owner Entity memories must have an explicit unanchored marker");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[0].bool.must[0].bool.should[?(@.term['visibility'].value=='Public')]",
+        "unanchored Public memories are visible to everyone");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.nested.query.term['owners.id'].value=='"
             + USER_ID
             + "')]",
         "owners see their own (including Private) memories");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
         "Shared memories are matched via sharedWithIds (gated by visibility=Shared)");
+  }
+
+  @Test
+  void nonAdminSubjectRestrictsFileDocumentsToVisibleOnes() {
+    DocumentContext json = JsonPath.parse(buildElasticJson(nonAdminSubject()));
+
+    assertFieldExists(
+        json,
+        "$.bool.should[2].bool.must[?(@.term['entityType'].value=='" + Entity.CONTEXT_FILE + "')]",
+        "the file branch is scoped to contextFile documents");
+    assertFieldExists(
+        json,
+        "$.bool.should[2].bool.must[1].bool.should[1].bool.should[?(@.nested.query.term['owners.id'].value=='"
+            + USER_ID
+            + "')]",
+        "owners see their own Private documents");
+    assertFieldDoesNotExist(
+        json,
+        "$.bool.should[2].bool.must[1].bool.should[1].bool.should[?(@.term['visibility'].value=='Public')]",
+        "Public files are not visible to non-owners through search");
+  }
+
+  @Test
+  void aFileWithNoVisibilityStampedStaysVisible() {
+    // Every document uploaded before sharing existed has no visibility. Applying the memory rule to
+    // those would empty the Context Center rather than protect anything, so the file branch admits
+    // them explicitly — matching ContextFileVisibility#isVisibleToUser on the REST side.
+    DocumentContext json = JsonPath.parse(buildElasticJson(nonAdminSubject()));
+
+    assertFieldExists(
+        json,
+        "$.bool.should[2].bool.must[1].bool.should[?(@.bool.must_not[?(@.exists.field=='visibility')])]",
+        "a document with no visibility stamped is not restricted");
+  }
+
+  @Test
+  void orgWideOnlyFilterKeepsUnstampedFilesReadable() {
+    DocumentContext json = JsonPath.parse(orgWideOnlyJson());
+
+    assertFieldExists(
+        json,
+        "$.bool.should[2].bool.must[1].bool.should[?(@.bool.must_not[?(@.exists.field=='visibility')])]",
+        "the fail-closed default still admits documents that predate sharing");
+  }
+
+  @Test
+  void statusAwareListingRetainsVisibilityAndLimitsStatuses() {
+    OMQueryBuilder filter =
+        new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
+            .buildVisibilityFilter(
+                nonAdminSubject(),
+                List.of(ContextMemoryStatus.APPROVED, ContextMemoryStatus.REJECTED));
+    DocumentContext json =
+        JsonPath.parse(serializeElasticQuery(((ElasticQueryBuilder) filter).build()));
+
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.must[?(@.terms['entityStatus'])]",
+        "the status-aware list restricts results to the selected statuses");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.nested.query.term['owners.id'].value=='"
+            + USER_ID
+            + "')]",
+        "retired memories keep the owner visibility constraint");
+    String query = serializeElasticQuery(((ElasticQueryBuilder) filter).build());
+    assertTrue(query.contains("Approved"));
+    assertTrue(query.contains("Rejected"));
+    assertFalse(query.contains("Deprecated"));
   }
 
   @Test
@@ -128,15 +213,15 @@ class ContextMemorySearchVisibilityTest {
 
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.term['visibility'].value=='Shared')])]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.bool.must[?(@.term['visibility'].value=='Shared')])]",
         "the sharedWithIds match sits in a bool.must alongside visibility=Shared");
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
         "that same gated branch carries the sharedWithIds terms");
     assertFieldDoesNotExist(
         json,
-        "$.bool.should[1].bool.must[1].bool.should[?(@.terms['sharedWithIds'])]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.should[?(@.terms['sharedWithIds'])]",
         "sharedWithIds must never appear as an ungated (bare) should clause");
   }
 
@@ -174,13 +259,15 @@ class ContextMemorySearchVisibilityTest {
   }
 
   @Test
-  void adminSubjectGetsNoVisibilityFilter() {
+  void adminSubjectStillGetsActiveFilter() {
     User admin = new User().withId(USER_ID).withName("root").withIsAdmin(true);
-    OMQueryBuilder filter =
-        new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
-            .buildVisibilityFilter(new SubjectContext(admin, null));
+    DocumentContext json = JsonPath.parse(buildElasticJson(new SubjectContext(admin, null)));
 
-    assertNull(filter, "Admins bypass memory visibility, mirroring ContextMemoryVisibility");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.must[?(@.term['entityStatus'].value=='Approved')]",
+        "admin search still excludes retired memories");
+    assertFieldDoesNotExist(json, "$..term['visibility']", "admins bypass visibility");
   }
 
   @Test
@@ -198,20 +285,38 @@ class ContextMemorySearchVisibilityTest {
 
     assertFieldExists(
         json,
-        "$.bool.should[0].bool.must_not[?(@.term['entityType'].value=='"
+        "$.bool.should[0].bool.must_not[?(@.terms['entityType'] contains '"
             + Entity.CONTEXT_MEMORY
             + "')]",
-        "non-memory documents pass through via a must_not entityType branch");
+        "ungoverned documents pass through via a must_not entityType branch");
+    assertFieldExists(
+        json,
+        "$.bool.should[0].bool.must_not[?(@.terms['entityType'] contains '"
+            + Entity.CONTEXT_FILE
+            + "')]",
+        "context files are governed too, so the pass-through branch excludes them as well");
   }
 
   @Test
-  void orgWideOnlyFilterAdmitsOnlyEntityVisibilityMemories() {
+  void orgWideOnlyFilterAdmitsPublicAndEntityMemories() {
     DocumentContext json = JsonPath.parse(orgWideOnlyJson());
 
     assertFieldExists(
         json,
-        "$.bool.should[1].bool.must[?(@.term['visibility'].value=='Entity')]",
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.must[0].bool.should[?(@.term['visibility'].value=='Entity')]",
         "the memory branch admits Entity-visibility memories");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.must[0].bool.should[?(@.term['visibility'].value=='Public')]",
+        "the memory branch admits Public memories");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.must[0].bool.must[?(@.term['anchorId'].value=='unanchored')]",
+        "anonymous search admits only explicitly unanchored memories");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.must[?(@.term['entityStatus'].value=='Approved')]",
+        "anonymous search excludes retired memories");
     assertFieldDoesNotExist(
         json, "$..term['owners.id']", "a subject-less path must not match by ownership");
     assertFieldDoesNotExist(
@@ -230,7 +335,7 @@ class ContextMemorySearchVisibilityTest {
   }
 
   @Test
-  void isOrgWideReadableAdmitsEveryNonMemoryDocument() {
+  void isOrgWideReadableAdmitsDocumentsWithoutVisibilityRules() {
     assertTrue(ContextMemorySearchVisibility.isOrgWideReadable(null));
     assertTrue(ContextMemorySearchVisibility.isOrgWideReadable(Map.of()));
     assertTrue(
@@ -242,6 +347,8 @@ class ContextMemorySearchVisibilityTest {
   void isOrgWideReadableRejectsRestrictedMemories() {
     assertTrue(
         ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.ENTITY)));
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.PUBLIC)));
     assertFalse(
         ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.PRIVATE)));
     assertFalse(
@@ -250,10 +357,69 @@ class ContextMemorySearchVisibilityTest {
         ContextMemorySearchVisibility.isOrgWideReadable(
             Map.of("entityType", Entity.CONTEXT_MEMORY)),
         "a memory with no indexed visibility is not org-wide");
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType",
+                Entity.CONTEXT_MEMORY,
+                "visibility",
+                MemoryVisibility.ENTITY.value())),
+        "old memory documents without an anchor marker remain hidden");
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType",
+                Entity.CONTEXT_MEMORY,
+                "visibility",
+                MemoryVisibility.ENTITY.value(),
+                "anchorId",
+                UUID.randomUUID().toString())),
+        "an anchored Entity memory is not readable without a subject");
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType",
+                Entity.CONTEXT_MEMORY,
+                "visibility",
+                MemoryVisibility.ENTITY.value(),
+                "anchorId",
+                ContextMemoryIndex.UNANCHORED,
+                "entityStatus",
+                ContextMemoryStatus.DEPRECATED.value())),
+        "retired memories do not appear in anonymous search reads");
+  }
+
+  @Test
+  void isOrgWideReadableKeepsUnstampedFilesAndRejectsRestrictedFiles() {
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(Map.of("entityType", Entity.CONTEXT_FILE)));
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType", Entity.CONTEXT_FILE, "visibility", MemoryVisibility.ENTITY.value())));
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType",
+                Entity.CONTEXT_FILE,
+                "visibility",
+                MemoryVisibility.PRIVATE.value())));
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of(
+                "entityType", Entity.CONTEXT_FILE, "visibility", MemoryVisibility.PUBLIC.value())));
   }
 
   private Map<String, Object> memoryDocument(MemoryVisibility visibility) {
-    return Map.of("entityType", Entity.CONTEXT_MEMORY, "visibility", visibility.value());
+    return Map.of(
+        "entityType",
+        Entity.CONTEXT_MEMORY,
+        "visibility",
+        visibility.value(),
+        "anchorId",
+        ContextMemoryIndex.UNANCHORED,
+        "entityStatus",
+        ContextMemoryStatus.APPROVED.value());
   }
 
   private String orgWideOnlyJson() {
@@ -275,6 +441,8 @@ class ContextMemorySearchVisibilityTest {
     assertTrue(json.contains("\"visibility\""), "OpenSearch filter matches the visibility field");
     assertTrue(json.contains("owners.id"), "OpenSearch filter matches owners.id");
     assertTrue(json.contains("sharedWithIds"), "OpenSearch filter matches sharedWithIds");
+    assertTrue(json.contains("\"entityStatus\""), "OpenSearch filter constrains memory status");
+    assertTrue(json.contains("Approved"), "OpenSearch filter admits Active memories");
     assertTrue(json.contains(USER_ID.toString()), "OpenSearch filter binds the user id");
   }
 }

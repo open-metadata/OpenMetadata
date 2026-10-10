@@ -20,6 +20,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { ObservabilityFilterResourceDescriptor } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { searchEntity } from '../../../utils/Alerts/AlertsUtil';
+import alertsClassBase from '../../../utils/AlertsClassBase';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import {
   getEntityName,
@@ -249,6 +250,17 @@ export const searchAlertAiArgumentOptions = async ({
   selectedSource?: string;
 }): Promise<SelectItemType[]> => {
   const trimmedSearchText = searchText.trim();
+
+  // A source whose names are not in the search indexes, such as a data contract, has a search of its own.
+  const ownSearch = selectedSource
+    ? alertsClassBase.getSourceNameSearch()[selectedSource]
+    : undefined;
+  if (argument === 'fqnList' && ownSearch) {
+    const names = await ownSearch(trimmedSearchText);
+
+    return names.map(({ value }) => ({ id: value, label: value }));
+  }
+
   const buildConfig = ALERT_AI_ARGUMENT_CONFIG_BUILDERS[argument];
 
   if (!buildConfig) {

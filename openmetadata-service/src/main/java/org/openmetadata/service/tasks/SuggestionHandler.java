@@ -77,7 +77,7 @@ public class SuggestionHandler {
     }
 
     EntityRepository<?> repository = Entity.getEntityRepository(about.getType());
-    EntityInterface entity = repository.get(null, about.getId(), repository.getFields("*"));
+    EntityInterface<?> entity = repository.get(null, about.getId(), repository.getFields("*"));
 
     String origJson = JsonUtils.pojoToJson(entity);
     JsonPatch patch = generatePatch(entity, suggestionPayload);
@@ -136,7 +136,7 @@ public class SuggestionHandler {
   /**
    * Generate JSON Patch based on suggestion type and field path.
    */
-  private JsonPatch generatePatch(EntityInterface entity, SuggestionPayload payload) {
+  private JsonPatch generatePatch(EntityInterface<?> entity, SuggestionPayload payload) {
     String fieldPath = payload.getFieldPath();
     SuggestionPayload.SuggestionType suggestionType = payload.getSuggestionType();
 

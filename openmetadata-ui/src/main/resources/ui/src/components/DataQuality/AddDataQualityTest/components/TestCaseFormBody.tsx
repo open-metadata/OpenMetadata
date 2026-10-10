@@ -24,11 +24,19 @@ import {
   useFieldDoc,
   useFieldDocRegistry,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@untitledui/icons';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { debounce, snakeCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { debounce, isEmpty, snakeCase } from 'lodash';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
@@ -43,7 +51,7 @@ import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { TagSource } from '../../../../generated/entity/data/container';
@@ -54,6 +62,7 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../../generated/tests/testDefinition';
+import { useThresholdProfilerConfig } from '../../../../hooks/observability/data-quality/useThresholdProfilerConfig';
 import { useDataQualityDimensions } from '../../../../hooks/useDataQualityDimensions';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
@@ -73,11 +82,18 @@ import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
 import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
+import {
+  DIMENSION_FAILURE_POLICY_PARAM,
+  getThresholdPreviewTarget,
+  MIN_ROWS_PER_DIMENSION_PARAM,
+} from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
+import ThresholdPreview from '../../../observability/data-quality/ThresholdPreview/ThresholdPreview';
+import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import ParameterFields from './ParameterFields';
 import {
   FormValues,
@@ -141,6 +157,11 @@ const getHasTestSuite = (
   selectedTableData?: Table
 ): boolean => Boolean(testSuite?.id || selectedTableData?.testSuite?.id);
 
+const DIMENSION_ROLL_UP_PARAMS = [
+  DIMENSION_FAILURE_POLICY_PARAM,
+  MIN_ROWS_PER_DIMENSION_PARAM,
+];
+
 const getShowParameterFields = (
   hasParameterDefinition: boolean,
   useDynamicAssertionValue: unknown
@@ -152,7 +173,55 @@ const getCanShowSchedulerSection = (
   selectedTableFqn: string | undefined
 ): boolean => !showOnlyParameter && !isEditMode && Boolean(selectedTableFqn);
 
+// Edit mode lets dimension columns be added to or removed from a column test
+// without changing its test level, so only the columns tell there. Must match
+// what the create and edit submits keep in the payload.
+const getIsDimensionalTest = (
+  isEditMode: boolean,
+  testLevel: TestLevel,
+  dimensionColumns: unknown
+): boolean =>
+  isEditMode
+    ? !isEmpty(unwrapSelectValues(dimensionColumns))
+    : testLevel === TestLevel.COLUMN_DIMENSION;
+
+// A dynamic assertion learns the bounds, which hides the parameter inputs, but
+// the dimension roll-up still applies to the learned bounds.
+const getShowDimensionPolicyOnly = (
+  showParameterFields: boolean,
+  isDimensionalTest: boolean,
+  definition: TestDefinition | undefined
+): boolean =>
+  !showParameterFields &&
+  isDimensionalTest &&
+  Boolean(
+    definition?.parameterDefinition?.some(
+      (param) => param.name === DIMENSION_FAILURE_POLICY_PARAM
+    )
+  );
+
 // ─── Sub-sections (kept in-file: JSX helpers for the large form body) ─────────
+
+const DimensionPolicyOnlyField: FC<{
+  show: boolean;
+  definition?: TestDefinition;
+  form: UseFormReturn<FormValues>;
+  table?: Table;
+  fieldDocs: Record<string, string>;
+}> = ({ show, definition, form, table, fieldDocs }) =>
+  show && definition ? (
+    <ParameterFields
+      isDimensionalTest
+      definition={definition}
+      form={form}
+      onlyParams={DIMENSION_ROLL_UP_PARAMS}
+      table={table}
+      testDefinitionDoc={getFieldDoc(
+        fieldDocs[definition.name ?? ''],
+        definition.description
+      )}
+    />
+  ) : null;
 
 const TestLevelAndTableCard: FC<{
   isEditMode: boolean;
@@ -262,6 +331,9 @@ const TestTypeCard: FC<{
   isComputeRowCountFieldVisible: boolean;
   computeRowCountField: FieldProp;
   dataQualityDimensionField: FieldProp;
+  thresholdPreview: ReactNode;
+  isDimensionalTest: boolean;
+  showDimensionPolicyOnly: boolean;
 }> = ({
   isEditMode,
   selectedTestLevel,
@@ -280,6 +352,9 @@ const TestTypeCard: FC<{
   isComputeRowCountFieldVisible,
   computeRowCountField,
   dataQualityDimensionField,
+  thresholdPreview,
+  isDimensionalTest,
+  showDimensionPolicyOnly,
 }) => (
   <div
     className="form-card-section test-type-card test-type-section"
@@ -309,14 +384,24 @@ const TestTypeCard: FC<{
         <ParameterFields
           definition={selectedTestDefinition}
           form={form}
+          isDimensionalTest={isDimensionalTest}
           table={selectedTableData}
           testDefinitionDoc={getFieldDoc(
             fieldDocs[selectedTestDefinition.name ?? ''],
             selectedTestDefinition.description
           )}
         />
+        {thresholdPreview}
       </div>
     )}
+
+    <DimensionPolicyOnlyField
+      definition={selectedTestDefinition}
+      fieldDocs={fieldDocs}
+      form={form}
+      show={showDimensionPolicyOnly}
+      table={selectedTableData}
+    />
 
     {isComputeRowCountFieldVisible && getField(computeRowCountField)}
 
@@ -374,7 +459,9 @@ const TestDetailsCard: FC<{
     <FormField control={form.control} name="tags">
       {({ field }) => (
         <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
-          <TagSuggestion
+          <TagSelector
+            className="tw:w-full"
+            data-testid="tags-input"
             label={t('label.tag-plural')}
             placeholder={t('label.select-field', {
               field: t('label.tag-plural'),
@@ -607,6 +694,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
     return result;
   }, [testLevelFieldValue]);
+
+  const isDimensionalTest = getIsDimensionalTest(
+    isEditMode,
+    testLevelFieldValue,
+    dimensionColumnsValue
+  );
 
   const hasTestSuite = getHasTestSuite(testSuite, selectedTableData);
 
@@ -1017,6 +1110,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     Boolean(selectedTestDefinition?.parameterDefinition),
     useDynamicAssertionValue
   );
+  // A dynamic assertion learns the bounds, which hides the parameter inputs,
+  // but the dimension roll-up still applies to the learned bounds.
+  const showDimensionPolicyOnly = getShowDimensionPolicyOnly(
+    showParameterFields,
+    isDimensionalTest,
+    selectedTestDefinition
+  );
 
   useEffect(() => {
     fetchExistingTestCases();
@@ -1085,6 +1185,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     onContextChange?.({
       selectedDefinition: selectedTestDefinition,
       selectedTableData,
+      selectedTableFqn,
       selectedColumn,
       selectedTestLevel,
       generateName: generateDynamicTestName,
@@ -1094,6 +1195,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   }, [
     selectedTestDefinition,
     selectedTableData,
+    selectedTableFqn,
     selectedColumn,
     selectedTestLevel,
     generateDynamicTestName,
@@ -1390,6 +1492,17 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }
   }, [fieldDocEntries, setActiveFieldDoc]);
 
+  const tableProfilerConfig = useThresholdProfilerConfig(
+    selectedTestDefinition,
+    selectedTableData?.id
+  );
+  const thresholdPreviewTarget = getThresholdPreviewTarget({
+    isColumnLevel: selectedTestLevel === TestLevel.COLUMN,
+    columnName: selectedColumn,
+    tableName: selectedTableData?.name,
+    tableFqn: selectedTableFqn,
+  });
+
   const canShowSchedulerSection = getCanShowSchedulerSection(
     showOnlyParameter,
     isEditMode,
@@ -1441,14 +1554,26 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         handleCustomQueryToggle={handleCustomQueryToggle}
         isComputeRowCountFieldVisible={isComputeRowCountFieldVisible}
         isCustomQuery={isCustomQuery}
+        isDimensionalTest={isDimensionalTest}
         isEditMode={isEditMode}
         selectedTableData={selectedTableData}
         selectedTestDefinition={selectedTestDefinition}
         selectedTestLevel={selectedTestLevel}
         selectedTestType={selectedTestType}
+        showDimensionPolicyOnly={showDimensionPolicyOnly}
         showParameterFields={showParameterFields}
         t={t}
         testTypeField={testTypeField}
+        thresholdPreview={
+          selectedTestDefinition && (
+            <ThresholdPreview
+              definition={selectedTestDefinition}
+              form={form}
+              profilerConfig={tableProfilerConfig}
+              target={thresholdPreviewTarget}
+            />
+          )
+        }
       />
 
       {!showOnlyParameter && (

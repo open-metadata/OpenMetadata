@@ -12,39 +12,46 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Col, InputNumber, Row, Slider, Tooltip } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button, InputNumber, Slider, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { percentageFormatter } from '../../../utils/ChartUtils';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { SliderWithInputProps } from './SliderWithInput.interface';
 const SliderWithInput = ({
   value,
   onChange,
   className,
+  min = 0,
 }: SliderWithInputProps) => {
   const { t } = useTranslation();
 
   return (
-    <Row className={className} data-testid="percentage-input" gutter={20}>
-      <Col flex="auto">
+    <Box
+      className={`layout-row ${className}`}
+      data-testid="percentage-input"
+      style={getLayoutGutter(20)}
+      wrap="wrap">
+      <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
         <Slider
           marks={{
-            0: '0%',
+            [min]: `${min}%`,
             100: '100%',
           }}
           max={100}
-          min={0}
+          min={min}
           tooltip={{ open: false }}
           value={value}
           onChange={onChange}
         />
-      </Col>
-      <Col className="w-32">
+      </Box>
+      <Box className="layout-column tw:block w-32">
         <div className="flex items-center gap-2">
           <InputNumber
             data-testid="slider-input"
             formatter={percentageFormatter}
             max={100}
-            min={0}
+            min={min}
             step={1}
             value={value}
             onChange={onChange}
@@ -59,8 +66,8 @@ const SliderWithInput = ({
             </Button>
           </Tooltip>
         </div>
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

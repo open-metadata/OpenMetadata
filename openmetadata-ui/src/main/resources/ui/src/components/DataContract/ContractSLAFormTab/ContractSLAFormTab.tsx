@@ -10,17 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Grid, Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
   Card,
-  Col,
   Form,
   InputNumber,
-  Row,
   Select,
   TimePicker,
   Tooltip,
-  Typography,
 } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
@@ -40,6 +38,7 @@ import {
   Timezone,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { generateSelectOptionsFromString } from '../../../utils/DataContract/DataContractUtils';
 import { filterSelectOptions } from '../../../utils/FilterQueryUtils';
 import { getPopupContainer } from '../../../utils/formPureUtils';
@@ -159,12 +158,12 @@ export const ContractSLAFormTab: React.FC<{
     <>
       <Card className="sla-container container bg-grey p-box">
         <div>
-          <Typography.Text className="contract-detail-form-tab-title">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.sla')}
-          </Typography.Text>
-          <Typography.Paragraph className="contract-detail-form-tab-description">
+          </Typography>
+          <Typography as="p" className="contract-detail-form-tab-description">
             {t('message.data-contract-sla-description')}
-          </Typography.Paragraph>
+          </Typography>
         </div>
 
         <Form
@@ -172,17 +171,21 @@ export const ContractSLAFormTab: React.FC<{
           form={form}
           layout="vertical"
           onValuesChange={handleFormChange}>
-          <Row gutter={[12, 12]}>
-            <Col span={12}>
+          <Grid
+            className="layout-row layout-grid"
+            style={{ ...getLayoutGutter(12, 12) }}>
+            <Grid.Item className="layout-column" span={12}>
               <div className="sla-form-card-container">
-                <Typography.Text className="sla-form-card-title">
+                <Typography className="sla-form-card-title">
                   {t('label.refresh-frequency')}
-                </Typography.Text>
-                <Typography.Text className="sla-form-card-description">
+                </Typography>
+                <Typography className="sla-form-card-description">
                   {t('message.refresh-frequency-contract-description')}
-                </Typography.Text>
-                <Row gutter={12}>
-                  <Col span={12}>
+                </Typography>
+                <Grid
+                  className="layout-row layout-grid"
+                  style={{ ...getLayoutGutter(12) }}>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       label={t('label.interval')}
                       name="refresh_frequency_interval"
@@ -203,8 +206,8 @@ export const ContractSLAFormTab: React.FC<{
                         })}
                       />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       required
                       label={t('label.unit')}
@@ -219,20 +222,22 @@ export const ContractSLAFormTab: React.FC<{
                         popupClassName="refresh-frequency-unit-select"
                       />
                     </Form.Item>
-                  </Col>
-                </Row>
+                  </Grid.Item>
+                </Grid>
               </div>
-            </Col>
-            <Col span={12}>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={12}>
               <div className="sla-form-card-container">
-                <Typography.Text className="sla-form-card-title">
+                <Typography className="sla-form-card-title">
                   {t('label.max-latency')}
-                </Typography.Text>
-                <Typography.Text className="sla-form-card-description">
+                </Typography>
+                <Typography className="sla-form-card-description">
                   {t('message.max-latency-contract-description')}
-                </Typography.Text>
-                <Row gutter={24}>
-                  <Col span={12}>
+                </Typography>
+                <Grid
+                  className="layout-row layout-grid"
+                  style={{ ...getLayoutGutter(24) }}>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       label={t('label.value')}
                       name="max_latency_value"
@@ -253,8 +258,8 @@ export const ContractSLAFormTab: React.FC<{
                         })}
                       />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       required
                       label={t('label.unit')}
@@ -269,22 +274,24 @@ export const ContractSLAFormTab: React.FC<{
                         popupClassName="max-latency-unit-select"
                       />
                     </Form.Item>
-                  </Col>
-                </Row>
+                  </Grid.Item>
+                </Grid>
               </div>
-            </Col>
-            <Col span={12}>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={12}>
               <div className="sla-form-card-container">
-                <Typography.Text className="sla-form-card-title">
+                <Typography className="sla-form-card-title">
                   {t('label.availability-time')}
-                </Typography.Text>
-                <Typography.Text className="sla-form-card-description">
+                </Typography>
+                <Typography className="sla-form-card-description">
                   {t('message.availability-time-contract-description')}
-                </Typography.Text>
-                <Typography.Text className="text-grey-muted text-xs m-b-xs" />
+                </Typography>
+                <Typography className="text-xs m-b-xs" color="secondary" />
 
-                <Row gutter={24}>
-                  <Col span={12}>
+                <Grid
+                  className="layout-row layout-grid"
+                  style={{ ...getLayoutGutter(24) }}>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item label={t('label.time')} name="availabilityTime">
                       <TimePicker
                         className="availability-time-picker w-full"
@@ -295,8 +302,8 @@ export const ContractSLAFormTab: React.FC<{
                         suffixIcon={null}
                       />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       label={t('label.timezone')}
                       name="timezone"
@@ -320,20 +327,22 @@ export const ContractSLAFormTab: React.FC<{
                         ))}
                       </Select>
                     </Form.Item>
-                  </Col>
-                </Row>
+                  </Grid.Item>
+                </Grid>
               </div>
-            </Col>
-            <Col span={12}>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={12}>
               <div className="sla-form-card-container">
-                <Typography.Text className="sla-form-card-title">
+                <Typography className="sla-form-card-title">
                   {t('label.retention')}
-                </Typography.Text>
-                <Typography.Text className="sla-form-card-description">
+                </Typography>
+                <Typography className="sla-form-card-description">
                   {t('message.time-line-data-retention-description')}
-                </Typography.Text>
-                <Row gutter={24}>
-                  <Col span={12}>
+                </Typography>
+                <Grid
+                  className="layout-row layout-grid"
+                  style={{ ...getLayoutGutter(24) }}>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       label={t('label.period')}
                       name="retention_period"
@@ -354,8 +363,8 @@ export const ContractSLAFormTab: React.FC<{
                         })}
                       />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
                     <Form.Item
                       required
                       label={t('label.unit')}
@@ -370,19 +379,19 @@ export const ContractSLAFormTab: React.FC<{
                         popupClassName="retention-unit-select"
                       />
                     </Form.Item>
-                  </Col>
-                </Row>
+                  </Grid.Item>
+                </Grid>
               </div>
-            </Col>
+            </Grid.Item>
 
-            <Col span={12}>
+            <Grid.Item className="layout-column" span={12}>
               <div className="sla-form-card-container">
-                <Typography.Text className="sla-form-card-title">
+                <Typography className="sla-form-card-title">
                   {t('label.column')}
-                </Typography.Text>
-                <Typography.Text className="sla-form-card-description">
+                </Typography>
+                <Typography className="sla-form-card-description">
                   {t('message.contract-sla-column-name-description')}
-                </Typography.Text>
+                </Typography>
 
                 <Form.Item label={t('label.column-name')} name="columnName">
                   <Select
@@ -399,8 +408,8 @@ export const ContractSLAFormTab: React.FC<{
                   />
                 </Form.Item>
               </div>
-            </Col>
-          </Row>
+            </Grid.Item>
+          </Grid>
         </Form>
       </Card>
       <div className="d-flex justify-between m-t-md">

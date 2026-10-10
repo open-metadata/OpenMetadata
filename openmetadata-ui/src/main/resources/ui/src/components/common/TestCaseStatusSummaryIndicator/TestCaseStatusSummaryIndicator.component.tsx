@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Tooltip, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Tooltip } from 'antd';
 import { omit, startCase } from 'lodash';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -39,7 +40,12 @@ const TestCaseStatusSummaryIndicator = ({
   );
 
   return testCaseStatusCounts ? (
-    <Space size={16}>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={4}
+      itemClassName="layout-space-item">
       {Object.entries(
         omit(testCaseStatusCounts, ['entityLink', 'total', 'queued'])
       ).map((test) => (
@@ -49,11 +55,11 @@ const TestCaseStatusSummaryIndicator = ({
           </Link>
         </Tooltip>
       ))}
-    </Space>
+    </Box>
   ) : (
-    <Typography.Text data-testid="no-data-placeholder">
+    <Typography data-testid="no-data-placeholder">
       {NO_DATA_PLACEHOLDER}
-    </Typography.Text>
+    </Typography>
   );
 };
 

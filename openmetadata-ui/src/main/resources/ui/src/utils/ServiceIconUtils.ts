@@ -21,6 +21,7 @@ import clickzetta from '../assets/img/service-icon-clickzetta.svg';
 import cockroach from '../assets/img/service-icon-cockroach.webp';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
 import data360 from '../assets/img/service-icon-data360.png';
+import databend from '../assets/img/service-icon-databend.webp';
 import databrick from '../assets/img/service-icon-databrick.webp';
 import datalake from '../assets/img/service-icon-datalake.webp';
 import deltalake from '../assets/img/service-icon-delta-lake.webp';
@@ -84,6 +85,7 @@ import ssrs from '../assets/img/service-icon-ssrs.webp';
 import superset from '../assets/img/service-icon-superset.webp';
 import tableau from '../assets/img/service-icon-tableau.webp';
 import hex from '../assets/svg/service-icon-hex.svg';
+import rill from '../assets/svg/service-icon-rill.svg';
 
 // Pipeline services
 import airbyte from '../assets/img/Airbyte.webp';
@@ -162,6 +164,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   clickhouse: clickhouse,
   clickzetta: clickzetta,
   databricks: databrick,
+  databend: databend,
   unitycatalog: unitycatalog,
   db2: ibmdb2,
   doris: doris,
@@ -216,6 +219,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   microstrategy: microstrategy,
   grafana: grafana,
   hex: hex,
+  rill: rill,
   ssrs: ssrs,
   customdashboard: dashboarddefault,
 
@@ -237,6 +241,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   databrickspipeline: databrick,
   gluepipeline: glue,
   custompipeline: pipelinedefault,
+  tableaupipeline: tableau,
 
   // ML Model services
   mlflow: mlflow,
@@ -300,3 +305,12 @@ export const getServiceIcon = (iconKey: string): string => {
 
   return icon;
 };
+
+// These connector assets are monochrome dark artwork. Inverting only those
+// assets preserves the colors of branded logos and leaves light mode unchanged.
+export const getServiceLogoThemeClass = (serviceType = '') =>
+  ['powerbi', 'kafka', 'kafkaconnect'].includes(
+    serviceType.toLowerCase().replaceAll(/[_-]/g, '')
+  )
+    ? 'tw:dark:brightness-0 tw:dark:invert'
+    : '';

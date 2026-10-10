@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
+import { Grid, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -39,12 +40,10 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import {
   AlertType,
   EventSubscription,
@@ -54,6 +53,7 @@ import { Paging } from '../../generated/type/paging';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -279,7 +279,11 @@ const NotificationListPage = () => {
             (alert) => alert.id === record.id
           );
           if (loadingCount > 0) {
-            return <Skeleton active className="p-r-lg" paragraph={false} />;
+            return (
+              <div className="p-r-lg">
+                <Skeleton height={16} />
+              </div>
+            );
           }
 
           if (
@@ -287,9 +291,9 @@ const NotificationListPage = () => {
             (!alertPermission.edit && !alertPermission.delete)
           ) {
             return (
-              <Typography.Text className="p-l-xs">
+              <Typography className="p-l-xs tw:text-primary">
                 {NO_DATA_PLACEHOLDER}
-              </Typography.Text>
+              </Typography>
             );
           }
 
@@ -330,11 +334,13 @@ const NotificationListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.alert-plural')}>
-      <Row gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <div className="d-flex justify-between">
             <PageHeader
               data={{
@@ -363,8 +369,8 @@ const NotificationListPage = () => {
               </LimitWrapper>
             )}
           </div>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             columns={columns}
             customPaginationProps={{
@@ -404,8 +410,8 @@ const NotificationListPage = () => {
             rowKey="id"
             size="small"
           />
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <DeleteModal
             entityTitle={getEntityName(selectedAlert)}
             isDeleting={isDeleting}
@@ -418,8 +424,8 @@ const NotificationListPage = () => {
             }}
             onDelete={handleAlertHardDelete}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

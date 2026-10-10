@@ -472,8 +472,10 @@ test.describe.serial('Persona AI Context', () => {
     await entityTypePopup.getByText('Data Product', { exact: true }).click();
     await expect(adminPage.getByText(/every asset it contains/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Article', { exact: true }).click();
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Article', { exact: true })
+    );
 
     await expect(adminPage.getByText(/Generic content/)).toBeVisible();
     await expect(
@@ -500,8 +502,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/18 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Metric', { exact: true }).click();
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Metric', { exact: true })
+    );
     for (const section of [
       'Definition',
       'Formula / expression',
@@ -516,8 +520,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/27 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Glossary Term', { exact: true }).click();
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Glossary Term', { exact: true })
+    );
     for (const section of [
       'Definition',
       'Synonyms',
@@ -531,8 +537,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/143 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Table', { exact: true }).click();
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Table', { exact: true })
+    );
     for (const section of [
       'Description',
       'Schema',
@@ -564,8 +572,10 @@ test.describe.serial('Persona AI Context', () => {
     );
     await adminPage.getByTestId('delete-condition-button').last().click();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Article', { exact: true }).click();
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Article', { exact: true })
+    );
     await adminPage.getByTestId('context-rule-max-assets').fill('25');
 
     const createRuleRequest = adminPage.waitForRequest(
@@ -1158,8 +1168,8 @@ test.describe.serial('Persona AI Context', () => {
     await page.getByTestId('add-context-condition').click();
 
     await expect(
-      page.getByTestId('delete-condition-button').last()
-    ).toBeVisible();
+      page.getByTestId('delete-condition-button').filter({ visible: true })
+    ).not.toHaveCount(0);
   };
 
   // A condition with a field but no value serializes to `{"term":{}}`, which the search engines

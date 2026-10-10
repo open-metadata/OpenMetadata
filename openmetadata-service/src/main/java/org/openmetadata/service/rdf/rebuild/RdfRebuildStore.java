@@ -254,7 +254,11 @@ public final class RdfRebuildStore {
           current.buildDataset(),
           clock.millis(),
           updatedBy);
-      handle.execute("UPDATE rdf_inference_rule SET dirty = TRUE WHERE deleted = FALSE");
+      // Bumping dirtyVersion keeps a materialization run that read the old dataset from marking
+      // its rules clean when it finishes after the flip.
+      handle.execute(
+          "UPDATE rdf_inference_rule SET dirty = TRUE, dirtyVersion = dirtyVersion + 1 "
+              + "WHERE deleted = FALSE");
       remove(rebuildId);
       return true;
     }

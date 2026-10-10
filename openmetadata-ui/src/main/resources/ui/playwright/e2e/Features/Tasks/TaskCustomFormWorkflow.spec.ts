@@ -29,6 +29,7 @@ import { expect, test } from '../../../support/fixtures/base';
 import { authenticateAdminPage } from '../../../utils/admin';
 import { getApiContext, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 type TaskFormSchema = {
   id?: string;
@@ -69,7 +70,7 @@ test.describe.serial(
       let taskId: string | undefined;
       let workflowId: string | undefined;
       let schemaToRestore: TaskFormSchema | undefined;
-      let createdSchemaId: string | undefined;
+      let createdSchema: TaskFormSchema | undefined;
 
       await authenticateAdminPage(page);
 
@@ -381,8 +382,7 @@ test.describe.serial(
             }
           );
           expect(createSchemaResponse.ok()).toBeTruthy();
-          const createdSchema = await createSchemaResponse.json();
-          createdSchemaId = createdSchema.id;
+          createdSchema = await createSchemaResponse.json();
         }
 
         await expect
@@ -393,7 +393,9 @@ test.describe.serial(
               );
 
               if (!resolvedSchemaResponse.ok()) {
-                return null;
+                throw new Error(
+                  `HTTP ${resolvedSchemaResponse.status()} querying ${resolvedSchemaResponse.url()}`
+                );
               }
 
               const resolvedSchemaPayload = await resolvedSchemaResponse.json();
@@ -433,11 +435,16 @@ test.describe.serial(
         await table.visitEntityPage(page);
         await page.getByTestId('activity_feed').click();
         await waitForAllLoadersToDisappear(page);
-        await page.getByRole('menuitem', { name: /tasks/i }).click();
+        await page
+          .getByTestId('global-setting-left-panel')
+          .getByRole('button', { name: /tasks/i })
+          .click();
         await waitForAllLoadersToDisappear(page);
         await expect(
-          page.locator('[data-testid="task-feed-card"]').first()
-        ).toBeVisible();
+          page
+            .locator('[data-testid="task-feed-card"]')
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
         await page.locator('[data-testid="task-feed-card"]').first().click();
         await expect(page.getByTestId('task-tab')).toBeVisible();
         await expect(page.getByTestId('task-payload-details')).toContainText(
@@ -466,25 +473,22 @@ test.describe.serial(
 
         const visibleModal = page.getByRole('dialog').first();
         await expect(visibleModal).toBeVisible();
-        const proposedTextField = visibleModal
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Proposed Text' })
-          .getByRole('textbox')
-          .first();
-        const reviewNotesField = visibleModal
-          .locator('.ant-form-item')
-          .filter({ hasText: 'Review Notes' })
-          .getByRole('textbox')
-          .first();
+        const proposedTextField = visibleModal.getByRole('textbox', {
+          name: /Proposed Text/,
+        });
+        const reviewNotesField = visibleModal.getByRole('textbox', {
+          name: /Review Notes/,
+        });
 
         await proposedTextField.fill(updatedDescription);
         await reviewNotesField.fill(updatedReviewNotes);
 
-        const resolveTaskResponse = page.waitForResponse(
+        const resolveTaskResponse = waitForResponseWithStatus(
+          page,
           (response) =>
             response.url().includes(`/api/v1/tasks/${taskId}/resolve`) &&
-            response.request().method() === 'POST' &&
-            response.ok()
+            response.request().method() === 'POST',
+          'ok'
         );
 
         await visibleModal.getByRole('button', { name: /^ok$/i }).click();
@@ -498,7 +502,9 @@ test.describe.serial(
               );
 
               if (!updatedTableResponse.ok()) {
-                return null;
+                throw new Error(
+                  `HTTP ${updatedTableResponse.status()} querying ${updatedTableResponse.url()}`
+                );
               }
 
               const updatedTable = await updatedTableResponse.json();
@@ -536,10 +542,23 @@ test.describe.serial(
               data: schemaToRestore,
             })
             .catch(() => null);
-        } else if (createdSchemaId) {
+        } else if (createdSchema?.id) {
+          // The server caches each task type's form schema and refreshes it
+          // only on a create or update, not a delete: relax the schema first,
+          // so whatever stays cached cannot reject the Custom tasks later
+          // specs create.
+          await apiContext
+            .put('/api/v1/taskFormSchemas', {
+              data: {
+                ...createdSchema,
+                formSchema: { type: 'object' },
+                workflowDefinitionRef: null,
+              },
+            })
+            .catch(() => null);
           await apiContext
             .delete(
-              `/api/v1/taskFormSchemas/${createdSchemaId}?hardDelete=true&recursive=true`
+              `/api/v1/taskFormSchemas/${createdSchema.id}?hardDelete=true&recursive=true`
             )
             .catch(() => null);
         }

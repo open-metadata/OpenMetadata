@@ -10,9 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { BadgeWithDot, Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
-import { DataQualityLegendItemProps } from './DataQualitySection.interface';
+import {
+  DataQualityLegendItemProps,
+  DataQualityType,
+} from './DataQualitySection.interface';
+
+const LEGEND_BADGE_COLOR: Record<
+  DataQualityType,
+  'success' | 'warning' | 'error'
+> = {
+  success: 'success',
+  aborted: 'warning',
+  failed: 'error',
+};
 
 export const DataQualityLegendItem: React.FC<DataQualityLegendItemProps> = ({
   count,
@@ -24,12 +36,12 @@ export const DataQualityLegendItem: React.FC<DataQualityLegendItemProps> = ({
   }
 
   return (
-    <div className="legend-item">
-      <span className={`legend-dot ${type}`} />
-      <span className="legend-text">
-        <Typography.Text className="legend-text-label">{label}</Typography.Text>
-        <Typography.Text className="legend-text-value">{count}</Typography.Text>
-      </span>
-    </div>
+    <BadgeWithDot
+      className={`legend-item ${type}`}
+      color={LEGEND_BADGE_COLOR[type]}
+      size="sm">
+      <Typography>{label}</Typography>
+      <Typography>{count}</Typography>
+    </BadgeWithDot>
   );
 };
