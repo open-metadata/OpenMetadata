@@ -14,6 +14,7 @@
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle,
   ChevronRight,
   Database01,
@@ -260,25 +261,32 @@ export const InspectorSection = ({ title, meta, children }: SectionProps) => (
   </Box>
 );
 
-interface RowProps {
+interface RelationshipRowProps {
   tile: ReactNode;
-  name: string;
-  detail: string;
+  subject: string;
+  predicate: string;
+  object: string;
   isDisabled?: boolean;
   onPress?: () => void;
 }
 
-/** A clickable row: tile, name over detail, chevron; the name and detail read as one accessible label. */
-export const InspectorRow = ({
+/**
+ * Full relationship row in the drawer: tile, then `subject → [predicate pill]
+ * → object` with a trailing chevron. Subject + object render as emphasised
+ * entity text; the predicate wears a bordered pill so the triple reads as the
+ * same statement the user picked out of the canvas. Wraps on narrow drawers.
+ */
+export const InspectorRelationshipRow = ({
   tile,
-  name,
-  detail,
+  subject,
+  predicate,
+  object,
   isDisabled,
   onPress,
-}: RowProps) => (
+}: RelationshipRowProps) => (
   <Button
     noTextPadding
-    className="kg-inspector-row tw:w-full tw:justify-start tw:*:data-text:flex-1"
+    className="kg-inspector-row kg-inspector-rel-row tw:w-full tw:justify-start tw:*:data-text:flex-1"
     color="tertiary"
     iconTrailing={ChevronRight}
     isDisabled={isDisabled}
@@ -286,15 +294,39 @@ export const InspectorRow = ({
     onPress={onPress}>
     <Box align="center" className="tw:min-w-0 tw:flex-1 tw:text-left" gap={2}>
       {tile}
-      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={0}>
+      <Box
+        align="center"
+        className="tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2 tw:gap-y-1"
+        wrap="wrap">
         <Typography
-          className="tw:truncate tw:text-primary"
+          className="tw:text-brand-secondary"
           size="text-sm"
           weight="medium">
-          {name}
+          {subject}
         </Typography>
-        <Typography className="tw:text-tertiary" size="text-xs">
-          {detail}
+        <ArrowRight
+          aria-hidden="true"
+          className="tw:shrink-0 tw:text-tertiary"
+          size={12}
+        />
+        <span className="tw:inline-flex tw:items-center tw:rounded-full tw:border tw:border-primary tw:bg-surface tw:px-1.5 tw:py-0">
+          <Typography
+            className="tw:text-primary"
+            size="text-xs"
+            weight="medium">
+            {predicate}
+          </Typography>
+        </span>
+        <ArrowRight
+          aria-hidden="true"
+          className="tw:shrink-0 tw:text-tertiary"
+          size={12}
+        />
+        <Typography
+          className="tw:text-brand-secondary"
+          size="text-sm"
+          weight="medium">
+          {object}
         </Typography>
       </Box>
     </Box>

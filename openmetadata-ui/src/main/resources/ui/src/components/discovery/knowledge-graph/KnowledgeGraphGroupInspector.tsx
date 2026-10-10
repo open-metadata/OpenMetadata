@@ -23,7 +23,7 @@ import { GraphNode, KnowledgeGraphG6Edge } from './KnowledgeGraph.interface';
 import { getRelationStyle } from './KnowledgeGraph.relations';
 import {
   entityTile,
-  InspectorRow,
+  InspectorRelationshipRow,
   InspectorSection,
   InspectorStatement,
 } from './KnowledgeGraphInspectorParts';
@@ -122,16 +122,20 @@ const KnowledgeGraphGroupInspector = ({
             const relationship = bundle?.data.members?.find(
               (edge) => edge.from === member.id || edge.to === member.id
             );
+            const memberIsSubject = relationship?.from === member.id;
+            const other = memberIsSubject
+              ? nodes.get(relationship?.to ?? '')
+              : nodes.get(relationship?.from ?? '');
+            const subject = memberIsSubject ? member.label : other?.label ?? '';
+            const object = memberIsSubject ? other?.label ?? '' : member.label;
 
             return (
-              <InspectorRow
-                detail={
-                  (relationship?.from === member.id ? '← ' : '→ ') +
-                  presentation?.predicate
-                }
+              <InspectorRelationshipRow
                 isDisabled={!relationship?.id}
                 key={member.id}
-                name={member.label}
+                object={object}
+                predicate={presentation?.predicate ?? ''}
+                subject={subject}
                 tile={entityTile(member.type, 'sm')}
                 onPress={() => {
                   if (relationship?.id) {
