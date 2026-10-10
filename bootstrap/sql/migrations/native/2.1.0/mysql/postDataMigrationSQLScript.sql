@@ -500,3 +500,13 @@ SET json = JSON_REMOVE(
   '$.status')
 WHERE jsonSchema = 'contextMemory'
   AND JSON_CONTAINS_PATH(json, 'one', '$.status');
+
+-- transitive-lineage-closure stores every ancestor/descendant pair, which grows quadratically with
+-- lineage depth, so it now ships disabled. Turn off rows that pre-release builds seeded as enabled.
+UPDATE rdf_inference_rule
+SET json = JSON_SET(json, '$.enabled', CAST('false' AS JSON)),
+    dirty = TRUE,
+    dirtyVersion = dirtyVersion + 1
+WHERE name = 'transitive-lineage-closure'
+  AND systemRule = TRUE
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.enabled')) = 'true';

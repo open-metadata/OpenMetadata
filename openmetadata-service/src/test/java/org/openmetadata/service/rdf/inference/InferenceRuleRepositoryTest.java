@@ -18,15 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
@@ -34,91 +25,176 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfInferenceRuleDAO;
-import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfInferenceRuleDAO.RdfInferenceRuleRow;
+import org.openmetadata.service.rdf.inference.InferenceRuleRepository.RuleSnapshot;
 
 class InferenceRuleRepositoryTest {
   private static final long NOW = 1_750_000_000_000L;
-  private RdfInferenceRuleDAO ruleDAO;
-  private InferenceRuleRepository repository;
+  private static final Clock CLOCK = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC);
+  private static final String BASE_URI = "https://metadata.example";
+  private static final String RULE = "custom-rule";
+  private static final String LEGACY_RULE = "legacy-rule";
+  private static final String OPTIONAL_BODY =
+      "CONSTRUCT { ?s <urn:copy> ?o } WHERE { ?s <urn:source> ?o OPTIONAL { ?o <urn:label> ?l } }";
 
-  @BeforeEach
-  void setUp() {
-    ruleDAO = mock(RdfInferenceRuleDAO.class);
-    final Clock clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC);
-    repository = new InferenceRuleRepository(ruleDAO, clock, "https://metadata.example");
-  }
+  private final InMemoryInferenceRuleDAO ruleDAO = new InMemoryInferenceRuleDAO();
+  private final InferenceRuleRepository repository =
+      new InferenceRuleRepository(ruleDAO, CLOCK, BASE_URI);
 
   @Test
-  void initializesTheStarterPackOnceAndOrdersRulesByPriorityThenName() {
-    when(ruleDAO.listActive())
-        .thenReturn(
-            List.of(row(rule("z-rule", 20, true), false), row(rule("a-rule", 10, true), false)));
+  void seedsTheStarterPackAsSystemRulesInPriorityOrder() {
+    final List<InferenceRuleStatus> rules = repository.list();
 
-    final List<InferenceRuleStatus> first = repository.list();
-    final List<InferenceRuleStatus> second = repository.list();
-
-    assertEquals(List.of("a-rule", "z-rule"), names(first));
-    assertEquals(List.of("a-rule", "z-rule"), names(second));
     assertEquals(
-        "https://metadata.example/graph/inferred/a-rule",
-        first.getFirst().getGraphUri().toString());
-    verify(ruleDAO, times(4)).insertIfAbsent(anyString(), anyString(), anyBoolean(), anyLong());
+        List.of(
+            "transitive-lineage-closure",
+            "pii-propagation-via-lineage",
+            "schema-tag-inheritance",
+            "domain-membership-inheritance"),
+        names(rules));
+    assertTrue(rules.stream().allMatch(InferenceRuleStatus::getSystemRule));
   }
 
   @Test
-  void retriesStarterPackInitializationAfterAnInsertFails() {
-    doThrow(new IllegalStateException("database unavailable"))
-        .doNothing()
-        .when(ruleDAO)
-        .insertIfAbsent(anyString(), anyString(), anyBoolean(), anyLong());
-    when(ruleDAO.listActive()).thenReturn(List.of());
+  void ordersRulesByPriorityThenName() {
+    repository.upsert("z-rule", rule("z-rule", 10));
+    repository.upsert("a-rule", rule("a-rule", 10));
+    repository.upsert("late-rule", rule("late-rule", 500));
+
+    final List<String> names = names(repository.list());
+
+    assertEquals(List.of("a-rule", "z-rule"), names.subList(0, 2));
+    assertEquals("late-rule", names.getLast());
+  }
+
+  @Test
+  void retriesSeedingAfterAFailedInsert() {
+    ruleDAO.failNextInsert();
 
     assertThrows(IllegalStateException.class, repository::list);
-    assertTrue(repository.list().isEmpty());
-
-    verify(ruleDAO, times(InferenceRuleStarterPack.load().size() + 1))
-        .insertIfAbsent(anyString(), anyString(), anyBoolean(), anyLong());
+    assertEquals(InferenceRuleStarterPack.load().size(), repository.list().size());
   }
 
   @Test
-  void returnsOnlyDirtyOrForcedMaterializationTargetsIncludingDisabledRules() {
-    final InferenceRuleStatus disabledDirty = status(rule("disabled-rule", 10, false), true);
-    final InferenceRuleStatus enabledClean = status(rule("clean-rule", 20, true), false);
-    when(ruleDAO.listActive())
-        .thenReturn(
-            List.of(
-                row(disabledDirty.getRule(), disabledDirty.getDirty()),
-                row(enabledClean.getRule(), enabledClean.getDirty())));
+  void runSnapshotsIncludeDisabledRules() {
+    repository.upsert(RULE, rule(RULE, 10).withEnabled(false));
 
-    assertEquals(List.of("disabled-rule"), names(repository.listForMaterialization(false, null)));
-    assertEquals(
-        List.of("disabled-rule", "clean-rule"),
-        names(repository.listForMaterialization(true, null)));
+    final RuleSnapshot snapshot = snapshot(RULE);
+
+    assertFalse(snapshot.isEnabled());
+    assertTrue(snapshot.status().getDirty());
+  }
+
+  @Test
+  void recordingAMaterializationClearsTheDirtyFlag() {
+    repository.upsert(RULE, rule(RULE, 10));
+
+    final InferenceRuleStatus status =
+        repository.recordMaterialized(snapshot(RULE), NOW + 5_000L, 7).orElseThrow();
+
+    assertFalse(status.getDirty());
+    assertEquals(7, status.getTripleCount());
+    assertEquals(NOW + 5_000L, status.getLastMaterializedAt());
+    assertNull(status.getLastError());
+  }
+
+  @Test
+  void anInvalidationAfterTheSnapshotKeepsTheRuleDirty() {
+    repository.upsert(RULE, rule(RULE, 10));
+    final RuleSnapshot snapshot = snapshot(RULE);
+    repository.markAllDirty();
+
+    assertTrue(repository.recordMaterialized(snapshot, NOW, 7).orElseThrow().getDirty());
+  }
+
+  @Test
+  void anEditAfterTheSnapshotKeepsTheRuleDirty() {
+    repository.upsert(RULE, rule(RULE, 10));
+    final RuleSnapshot snapshot = snapshot(RULE);
+    repository.upsert(RULE, rule(RULE, 20));
+
+    assertTrue(repository.recordMaterialized(snapshot, NOW, 7).orElseThrow().getDirty());
+  }
+
+  @Test
+  void recordingAFailureKeepsTheRuleDirtyWithTheError() {
+    repository.upsert(RULE, rule(RULE, 10));
+    repository.recordMaterialized(snapshot(RULE), NOW, 1);
+
+    final InferenceRuleStatus status =
+        repository.recordFailure(snapshot(RULE), "SPARQL execution timed out").orElseThrow();
+
+    assertTrue(status.getDirty());
+    assertEquals("SPARQL execution timed out", status.getLastError());
+  }
+
+  @Test
+  void recordingARuleDeletedDuringTheRunReturnsNothing() {
+    repository.upsert(RULE, rule(RULE, 10));
+    final RuleSnapshot snapshot = snapshot(RULE);
+    repository.delete(RULE);
+
+    assertTrue(repository.recordMaterialized(snapshot, NOW, 1).isEmpty());
+  }
+
+  @Test
+  void graphsOfDeletedRulesAreStillListedForClearing() {
+    repository.upsert(RULE, rule(RULE, 10));
+    repository.delete(RULE);
+
+    assertTrue(repository.graphUrisOfAllRules().contains(BASE_URI + "/graph/inferred/" + RULE));
+  }
+
+  @Test
+  void storedRulesThatNoLongerValidateAreDisabledWithTheReason() {
+    storeRule(rule(LEGACY_RULE, 10).withRuleBody(OPTIONAL_BODY));
+
+    final InferenceRuleStatus status = repository.get(LEGACY_RULE);
+
+    assertFalse(status.getRule().getEnabled());
+    assertTrue(status.getDirty());
+    assertTrue(status.getLastError().contains("no longer passes validation"));
+    assertTrue(status.getLastError().contains("OPTIONAL is not allowed"), status.getLastError());
+    assertEquals(OPTIONAL_BODY, status.getRule().getRuleBody());
+  }
+
+  @Test
+  void clearingADisabledRuleKeepsTheReasonItWasDisabled() {
+    storeRule(rule(LEGACY_RULE, 10).withRuleBody(OPTIONAL_BODY));
+    final String reason = repository.get(LEGACY_RULE).getLastError();
+
+    final InferenceRuleStatus status =
+        repository.recordCleared(snapshot(LEGACY_RULE), NOW).orElseThrow();
+
+    assertEquals(reason, status.getLastError());
+    assertEquals(0, status.getTripleCount());
+    assertFalse(status.getDirty());
+  }
+
+  @Test
+  void rulesDisabledByTheirAuthorAreNotRevalidated() {
+    storeRule(rule(LEGACY_RULE, 10).withRuleBody(OPTIONAL_BODY).withEnabled(false));
+
+    assertNull(repository.get(LEGACY_RULE).getLastError());
   }
 
   @Test
   void rejectsMismatchedNamesBeforeWriting() {
-    final InferenceRule rule = rule("body-name", 10, true);
+    final InferenceRule rule = rule("body-name", 10);
 
     assertThrows(BadRequestException.class, () -> repository.upsert("path-name", rule));
-
-    verify(ruleDAO, never()).upsert(anyString(), anyString(), anyLong());
+    assertThrows(NotFoundException.class, () -> repository.get("path-name"));
   }
 
   @Test
   void preventsSystemRuleDeletion() {
-    final InferenceRule rule = rule("system-rule", 10, true);
-    when(ruleDAO.findActive("system-rule")).thenReturn(row(rule, true, true));
+    final String systemRule = repository.list().getFirst().getRule().getName();
 
-    assertThrows(BadRequestException.class, () -> repository.delete("system-rule"));
-
-    verify(ruleDAO, never()).softDelete(anyString(), anyLong());
+    assertThrows(BadRequestException.class, () -> repository.delete(systemRule));
+    assertEquals(systemRule, repository.get(systemRule).getRule().getName());
   }
 
   @Test
@@ -130,42 +206,10 @@ class InferenceRuleRepositoryTest {
   }
 
   @Test
-  void recordMaterializedMarksTheRuleAndReturnsRefreshedTripleCount() {
-    final InferenceRule rule = rule("done-rule", 10, true);
-    final long completedAt = NOW + 5_000L;
-    final long tripleCount = 42L;
-    when(ruleDAO.findActive("done-rule"))
-        .thenReturn(materializedRow(rule, completedAt, tripleCount));
+  void leavesMaterializationFieldsUnsetUntilTheRuleIsMaterialized() {
+    repository.upsert(RULE, rule(RULE, 10));
 
-    final InferenceRuleStatus status = repository.recordMaterialized("done-rule", completedAt, 7L);
-
-    verify(ruleDAO, times(1)).markMaterialized("done-rule", completedAt, 7L);
-    assertEquals(42, status.getTripleCount());
-    assertEquals(completedAt, status.getLastMaterializedAt());
-    assertFalse(status.getDirty());
-    assertNull(status.getLastError());
-  }
-
-  @Test
-  void recordFailureMarksTheRuleAndReReadsPersistedError() {
-    final InferenceRule rule = rule("broken-rule", 10, true);
-    when(ruleDAO.findActive("broken-rule"))
-        .thenReturn(failedRow(rule, "SPARQL execution timed out"));
-
-    final InferenceRuleStatus status =
-        repository.recordFailure("broken-rule", "SPARQL execution timed out");
-
-    verify(ruleDAO, times(1)).markFailed("broken-rule", "SPARQL execution timed out");
-    assertEquals("SPARQL execution timed out", status.getLastError());
-    assertTrue(status.getDirty());
-  }
-
-  @Test
-  void leavesOptionalMaterializationFieldsUnsetWhenTheRowOmitsThem() {
-    final InferenceRule rule = rule("fresh-rule", 10, true);
-    when(ruleDAO.findActive("fresh-rule")).thenReturn(row(rule, false));
-
-    final InferenceRuleStatus status = repository.get("fresh-rule");
+    final InferenceRuleStatus status = repository.get(RULE);
 
     assertNull(status.getLastMaterializedAt());
     assertNull(status.getLastError());
@@ -173,100 +217,52 @@ class InferenceRuleRepositoryTest {
   }
 
   @Test
-  void populatesOptionalMaterializationFieldsWhenTheRowProvidesThem() {
-    final InferenceRule rule = rule("aged-rule", 10, true);
-    when(ruleDAO.findActive("aged-rule"))
-        .thenReturn(
-            new RdfInferenceRuleRow(
-                "aged-rule",
-                JsonUtils.pojoToJson(rule),
-                false,
-                false,
-                NOW,
-                NOW - 1_000L,
-                99L,
-                "previous failure"));
-
-    final InferenceRuleStatus status = repository.get("aged-rule");
-
-    assertEquals(NOW - 1_000L, status.getLastMaterializedAt());
-    assertEquals("previous failure", status.getLastError());
-    assertEquals(99, status.getTripleCount());
-  }
-
-  @Test
   void appendsTrailingSlashWhenBaseUriLacksOne() {
-    final Clock clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC);
-    final InferenceRuleRepository noSlash =
-        new InferenceRuleRepository(ruleDAO, clock, "https://no-slash.example");
-    final InferenceRule rule = rule("r", 10, true);
-    when(ruleDAO.findActive("r")).thenReturn(row(rule, false));
+    repository.upsert(RULE, rule(RULE, 10));
 
     assertEquals(
-        "https://no-slash.example/graph/inferred/r", noSlash.get("r").getGraphUri().toString());
+        "https://metadata.example/graph/inferred/" + RULE,
+        repository.get(RULE).getGraphUri().toString());
   }
 
   @Test
   void doesNotDoubleTrailingSlashWhenBaseUriAlreadyHasOne() {
-    final Clock clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC);
     final InferenceRuleRepository withSlash =
-        new InferenceRuleRepository(ruleDAO, clock, "https://with-slash.example/");
-    final InferenceRule rule = rule("r", 10, true);
-    when(ruleDAO.findActive("r")).thenReturn(row(rule, false));
+        new InferenceRuleRepository(ruleDAO, CLOCK, "https://with-slash.example/");
+    withSlash.upsert(RULE, rule(RULE, 10));
 
     assertEquals(
-        "https://with-slash.example/graph/inferred/r", withSlash.get("r").getGraphUri().toString());
+        "https://with-slash.example/graph/inferred/" + RULE,
+        withSlash.get(RULE).getGraphUri().toString());
   }
 
   @Test
   void rejectsNullBaseUriAtConstruction() {
-    final Clock clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC);
-
     assertThrows(
-        NullPointerException.class, () -> new InferenceRuleRepository(ruleDAO, clock, null));
+        NullPointerException.class, () -> new InferenceRuleRepository(ruleDAO, CLOCK, null));
   }
 
-  private static RdfInferenceRuleRow materializedRow(
-      final InferenceRule rule, final long lastMaterializedAt, final long tripleCount) {
-    return new RdfInferenceRuleRow(
-        rule.getName(),
-        JsonUtils.pojoToJson(rule),
-        false,
-        false,
-        NOW,
-        lastMaterializedAt,
-        tripleCount,
-        null);
+  private void storeRule(final InferenceRule rule) {
+    ruleDAO.insertIfAbsent(rule.getName(), JsonUtils.pojoToJson(rule), false, NOW);
   }
 
-  private static RdfInferenceRuleRow failedRow(final InferenceRule rule, final String error) {
-    return new RdfInferenceRuleRow(
-        rule.getName(), JsonUtils.pojoToJson(rule), false, true, NOW, null, 0L, error);
+  private RuleSnapshot snapshot(final String name) {
+    return repository.listForRun().stream()
+        .filter(snapshot -> name.equals(snapshot.name()))
+        .findFirst()
+        .orElseThrow();
   }
 
   private static List<String> names(final List<InferenceRuleStatus> statuses) {
     return statuses.stream().map(status -> status.getRule().getName()).toList();
   }
 
-  private static InferenceRuleStatus status(final InferenceRule rule, final boolean dirty) {
-    return new InferenceRuleStatus().withRule(rule).withDirty(dirty);
-  }
-
-  private static RdfInferenceRuleRow row(final InferenceRule rule, final boolean dirty) {
-    return row(rule, dirty, false);
-  }
-
-  private static RdfInferenceRuleRow row(
-      final InferenceRule rule, final boolean dirty, final boolean systemRule) {
-    return new RdfInferenceRuleRow(
-        rule.getName(), JsonUtils.pojoToJson(rule), systemRule, dirty, NOW, null, 0L, null);
-  }
-
-  private static InferenceRule rule(final String name, final int priority, final boolean enabled) {
+  private static InferenceRule rule(final String name, final int priority) {
     return new InferenceRule()
         .withName(name)
+        .withRuleType(InferenceRule.RuleType.CONSTRUCT)
         .withPriority(priority)
-        .withEnabled(enabled)
+        .withEnabled(true)
         .withRuleBody("CONSTRUCT { ?s <urn:inferred> ?o } WHERE { ?s <urn:source> ?o }");
   }
 }

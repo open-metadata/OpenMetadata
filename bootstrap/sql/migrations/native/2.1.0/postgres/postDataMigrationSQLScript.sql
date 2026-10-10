@@ -469,3 +469,13 @@ SET json = (json::jsonb - 'status') || jsonb_build_object(
   END)
 WHERE jsonSchema = 'contextMemory'
   AND json::jsonb -> 'status' IS NOT NULL;
+
+-- transitive-lineage-closure stores every ancestor/descendant pair, which grows quadratically with
+-- lineage depth, so it now ships disabled. Turn off rows that pre-release builds seeded as enabled.
+UPDATE rdf_inference_rule
+SET json = jsonb_set(json, '{enabled}', 'false'::jsonb),
+    dirty = TRUE,
+    dirtyVersion = dirtyVersion + 1
+WHERE name = 'transitive-lineage-closure'
+  AND systemRule = TRUE
+  AND json ->> 'enabled' = 'true';

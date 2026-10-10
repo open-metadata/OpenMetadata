@@ -15,300 +15,282 @@ package org.openmetadata.service.rdf.inference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.ServiceUnavailableException;
-import java.net.URI;
+import jakarta.ws.rs.WebApplicationException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationResult;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
-import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
-import org.openmetadata.service.rdf.RdfRepository;
 
 class InferenceMaterializerTest {
   private static final Clock CLOCK =
       Clock.fixed(Instant.ofEpochMilli(1_750_000_000_000L), ZoneOffset.UTC);
+  private static final String BASE_URI = "https://open-metadata.org/";
+  private static final String COPY_A_TO_B = "copy-a-to-b";
+  private static final String COPY_B_TO_C = "copy-b-to-c";
+  private static final String REACHABILITY = "reachability";
+
+  private final UnionDefaultGraphStore store = new UnionDefaultGraphStore();
+  private final InMemoryInferenceRuleDAO ruleDAO = new InMemoryInferenceRuleDAO();
+  private final InMemoryInferenceRunLock runLock = new InMemoryInferenceRunLock();
+  private final InferenceRuleRepository rules =
+      new InferenceRuleRepository(ruleDAO, CLOCK, BASE_URI);
+
+  @BeforeEach
+  void retireStarterRules() {
+    InferenceRuleStarterPack.load().forEach(rule -> rules.get(rule.getName()));
+    InferenceRuleStarterPack.load().forEach(rule -> ruleDAO.retire(rule.getName()));
+  }
 
   @Test
-  void materializesDirtyRulesWithoutReadingTriplesIntoTheJvm() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    final InferenceRuleStatus dirty = status(true, 0L);
-    final InferenceRuleStatus clean = status(false, 3L);
-    when(rdfRepository.isEnabled()).thenReturn(true);
-    when(rdfRepository.getConfig()).thenReturn(configuration());
-    when(rdfRepository.getGraphTripleCount(dirty.getGraphUri().toString())).thenReturn(3L);
-    when(ruleRepository.listForMaterialization(false, null)).thenReturn(List.of(dirty));
-    when(ruleRepository.recordMaterialized("test-rule", CLOCK.millis(), 3L)).thenReturn(clean);
+  void rulesConvergeEvenWhenADependentRuleRunsFirst() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 200));
+    rules.upsert(COPY_B_TO_C, copyRule(COPY_B_TO_C, "b", "c", 100));
+    store.assertFact("urn:x", "urn:a", "urn:y");
+
+    final InferenceMaterializationResult result = materializer().materialize(false, null);
+
+    assertEquals(2, result.getSuccessfulRules());
+    assertTrue(store.contains(graph(COPY_B_TO_C), "urn:x", "urn:c", "urn:y"));
+  }
+
+  @Test
+  void recursiveRuleReachesItsFixedPoint() {
+    rules.upsert(REACHABILITY, reachabilityRule());
+    chain("urn:n1", "urn:n2", "urn:n3", "urn:n4", "urn:n5");
+
+    final InferenceMaterializationResult result = materializer().materialize(false, null);
+
+    assertEquals(10, status(result, REACHABILITY).getTripleCount());
+    assertTrue(store.contains(graph(REACHABILITY), "urn:n1", "urn:reach", "urn:n5"));
+  }
+
+  @Test
+  void deletingAPremiseRetractsEverythingDerivedFromIt() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 200));
+    rules.upsert(COPY_B_TO_C, copyRule(COPY_B_TO_C, "b", "c", 100));
+    store.assertFact("urn:x", "urn:a", "urn:y");
+    materializer().materialize(false, null);
+
+    store.retractFact("urn:x", "urn:a", "urn:y");
+    rules.markAllDirty();
+    materializer().materialize(false, null);
+
+    assertEquals(0, store.tripleCount(graph(COPY_A_TO_B)));
+    assertEquals(0, store.tripleCount(graph(COPY_B_TO_C)));
+  }
+
+  @Test
+  void runThatDoesNotConvergeFailsAndStaysDirty() {
+    rules.upsert(REACHABILITY, reachabilityRule());
+    chain("urn:n1", "urn:n2", "urn:n3", "urn:n4", "urn:n5");
 
     final InferenceMaterializationResult result =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK).materialize(false, null);
+        new InferenceMaterializer(store, rules, runLock, CLOCK, 2).materialize(false, null);
 
-    assertEquals(1, result.getSuccessfulRules());
-    assertEquals(0, result.getFailedRules());
-    assertEquals(3, result.getProcessedRules().getFirst().getTripleCount());
-    verify(rdfRepository, never()).executeSparqlQuery(anyString(), anyString());
-    verify(rdfRepository, never()).executeSparqlQueryDirect(anyString(), anyString());
-  }
-
-  @Test
-  void clearsDisabledRulesWithoutExecutingTheirConstructQuery() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    final InferenceRuleStatus disabled = status(true, 5L);
-    disabled.getRule().setEnabled(false);
-    final InferenceRuleStatus clean = status(false, 0L);
-    clean.getRule().setEnabled(false);
-    when(rdfRepository.isEnabled()).thenReturn(true);
-    when(rdfRepository.getConfig()).thenReturn(configuration());
-    when(ruleRepository.listForMaterialization(false, null)).thenReturn(List.of(disabled));
-    when(ruleRepository.recordMaterialized("test-rule", CLOCK.millis(), 0L)).thenReturn(clean);
-
-    final InferenceMaterializationResult result =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK).materialize(false, null);
-
-    assertEquals(1, result.getSuccessfulRules());
-    assertEquals(0, result.getProcessedRules().getFirst().getTripleCount());
-    verify(rdfRepository, times(1)).executeInferenceMaterializationUpdate(anyString());
-    verify(rdfRepository, never()).getGraphTripleCount(anyString());
-  }
-
-  @Test
-  void materializeThrowsServiceUnavailableWhenStoreDisabled() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    when(rdfRepository.isEnabled()).thenReturn(false);
-    when(rdfRepository.getConfig()).thenReturn(configuration());
-    final InferenceMaterializer materializer =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK);
-
-    assertThrows(ServiceUnavailableException.class, () -> materializer.materialize(false, null));
-    verify(ruleRepository, never()).listForMaterialization(anyBoolean(), anyString());
-    verify(rdfRepository, never()).executeInferenceMaterializationUpdate(anyString());
-  }
-
-  @Test
-  void materializeThrowsServiceUnavailableWhenMaterializedInferenceFlagIsNull() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    when(rdfRepository.isEnabled()).thenReturn(true);
-    when(rdfRepository.getConfig())
-        .thenReturn(configuration().withMaterializedInferenceEnabled(null));
-    final InferenceMaterializer materializer =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK);
-
-    assertThrows(ServiceUnavailableException.class, () -> materializer.materialize(false, null));
-    verify(rdfRepository, never()).executeInferenceMaterializationUpdate(anyString());
-  }
-
-  @Test
-  void materializeThrowsServiceUnavailableWhenMaterializedInferenceFlagIsFalse() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    when(rdfRepository.isEnabled()).thenReturn(true);
-    when(rdfRepository.getConfig())
-        .thenReturn(configuration().withMaterializedInferenceEnabled(false));
-    final InferenceMaterializer materializer =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK);
-
-    assertThrows(ServiceUnavailableException.class, () -> materializer.materialize(false, null));
-    verify(rdfRepository, never()).executeInferenceMaterializationUpdate(anyString());
-  }
-
-  @Test
-  void materializeThrowsServiceUnavailableWhenStorageIsNotFuseki() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    when(rdfRepository.isEnabled()).thenReturn(true);
-    when(rdfRepository.getConfig())
-        .thenReturn(configuration().withStorageType(RdfConfiguration.StorageType.QLEVER));
-    final InferenceMaterializer materializer =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK);
-
-    assertThrows(ServiceUnavailableException.class, () -> materializer.materialize(false, null));
-    verify(rdfRepository, never()).executeInferenceMaterializationUpdate(anyString());
-  }
-
-  @Test
-  void clearThrowsServiceUnavailableWhenStoreDisabled() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    when(rdfRepository.isEnabled()).thenReturn(false);
-    when(rdfRepository.getConfig()).thenReturn(configuration());
-    final InferenceMaterializer materializer =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK);
-
-    assertThrows(
-        ServiceUnavailableException.class,
-        () -> materializer.clear("https://open-metadata.org/graph/inferred/test-rule"));
-    verify(rdfRepository, never()).executeInferenceMaterializationUpdate(anyString());
-  }
-
-  @Test
-  void clearExecutesUpdateWhenAvailable() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    when(rdfRepository.isEnabled()).thenReturn(true);
-    when(rdfRepository.getConfig()).thenReturn(configuration());
-
-    new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK)
-        .clear("https://open-metadata.org/graph/inferred/test-rule");
-
-    verify(rdfRepository, times(1)).executeInferenceMaterializationUpdate(anyString());
-  }
-
-  @Test
-  void ruleFailureIsCountedAndRecordedWithRuleNameAndExceptionMessage() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    final InferenceRuleStatus target = namedStatus("broken-rule", true);
-    when(rdfRepository.isEnabled()).thenReturn(true);
-    when(rdfRepository.getConfig()).thenReturn(configuration());
-    when(ruleRepository.listForMaterialization(false, null)).thenReturn(List.of(target));
-    when(rdfRepository.getGraphTripleCount(target.getGraphUri().toString()))
-        .thenThrow(new RuntimeException("triple count boom"));
-    when(ruleRepository.recordFailure(eq("broken-rule"), anyString()))
-        .thenReturn(namedStatus("broken-rule", true));
-
-    final InferenceMaterializationResult result =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK).materialize(false, null);
-
-    assertEquals(0, result.getSuccessfulRules());
+    final InferenceRuleStatus reachability = status(result, REACHABILITY);
     assertEquals(1, result.getFailedRules());
-    final ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-    verify(ruleRepository).recordFailure(eq("broken-rule"), messageCaptor.capture());
-    assertTrue(messageCaptor.getValue().contains("broken-rule"));
-    assertTrue(messageCaptor.getValue().contains("triple count boom"));
-    verify(ruleRepository, never()).recordMaterialized(eq("broken-rule"), anyLong(), anyLong());
+    assertTrue(reachability.getLastError().contains("fixed point"), reachability.getLastError());
+    assertTrue(reachability.getDirty());
   }
 
   @Test
-  void oneRuleFailureDoesNotClearOrAbortRemainingRules() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    final InferenceRuleStatus good = namedStatus("good-rule", true);
-    final InferenceRuleStatus bad = namedStatus("bad-rule", true);
-    when(rdfRepository.isEnabled()).thenReturn(true);
-    when(rdfRepository.getConfig()).thenReturn(configuration());
-    when(ruleRepository.listForMaterialization(false, null)).thenReturn(List.of(bad, good));
-    doAnswer(
-            invocation -> {
-              final String update = invocation.getArgument(0);
-              if (update.contains("bad-rule")) {
-                throw new RuntimeException("bad boom");
-              }
-              return null;
-            })
-        .when(rdfRepository)
-        .executeInferenceMaterializationUpdate(anyString());
-    when(rdfRepository.getGraphTripleCount(good.getGraphUri().toString())).thenReturn(7L);
-    when(ruleRepository.recordMaterialized("good-rule", CLOCK.millis(), 7L))
-        .thenReturn(namedStatus("good-rule", false));
-    when(ruleRepository.recordFailure(eq("bad-rule"), anyString()))
-        .thenReturn(namedStatus("bad-rule", true));
+  void changesArrivingDuringARunLeaveRulesDirty() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
+    store.assertFact("urn:x", "urn:a", "urn:y");
+    store.afterNextUpdate(rules::markAllDirty);
 
-    final InferenceMaterializationResult result =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK).materialize(false, null);
+    final InferenceMaterializationResult result = materializer().materialize(false, null);
 
+    final InferenceRuleStatus copy = status(result, COPY_A_TO_B);
     assertEquals(1, result.getSuccessfulRules());
-    assertEquals(1, result.getFailedRules());
+    assertTrue(copy.getDirty());
+    assertEquals(CLOCK.millis(), copy.getLastMaterializedAt());
+  }
+
+  @Test
+  void cleanRulesRunAgainOnlyWhenForced() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
+    materializer().materialize(false, null);
+    final int updatesAfterFirstRun = store.updateCount();
+
+    final InferenceMaterializationResult skipped = materializer().materialize(false, null);
+    final InferenceMaterializationResult forced = materializer().materialize(true, null);
+
+    assertTrue(skipped.getProcessedRules().isEmpty());
+    assertEquals(1, forced.getSuccessfulRules());
+    assertTrue(store.updateCount() > updatesAfterFirstRun);
+  }
+
+  @Test
+  void disabledRulesAreClearedWithoutBeingEvaluated() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100).withEnabled(false));
+    store.assertFact("urn:x", "urn:a", "urn:y");
+    store.addToGraph(graph(COPY_A_TO_B), "urn:stale", "urn:b", "urn:fact");
+
+    final InferenceMaterializationResult result = materializer().materialize(false, null);
+
+    assertEquals(0, store.tripleCount(graph(COPY_A_TO_B)));
+    assertEquals(0, status(result, COPY_A_TO_B).getTripleCount());
+    assertFalse(status(result, COPY_A_TO_B).getDirty());
+  }
+
+  @Test
+  void requestingOneRuleStillComputesTheRulesItDependsOn() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 200));
+    rules.upsert(COPY_B_TO_C, copyRule(COPY_B_TO_C, "b", "c", 100));
+    store.assertFact("urn:x", "urn:a", "urn:y");
+
+    final InferenceMaterializationResult result = materializer().materialize(false, COPY_B_TO_C);
+
     assertEquals(2, result.getProcessedRules().size());
-    verify(ruleRepository, times(1)).recordMaterialized("good-rule", CLOCK.millis(), 7L);
-    verify(ruleRepository, times(1)).recordFailure(eq("bad-rule"), anyString());
-    final ArgumentCaptor<String> updates = ArgumentCaptor.forClass(String.class);
-    verify(rdfRepository, times(2)).executeInferenceMaterializationUpdate(updates.capture());
-    assertTrue(updates.getAllValues().getFirst().contains("bad-rule"));
-    assertFalse(updates.getAllValues().getFirst().contains("good-rule"));
-    assertTrue(updates.getAllValues().getLast().contains("good-rule"));
-    assertFalse(updates.getAllValues().getLast().contains("bad-rule"));
+    assertTrue(store.contains(graph(COPY_B_TO_C), "urn:x", "urn:c", "urn:y"));
   }
 
   @Test
-  void materializeWithUnknownRequestedRuleThrowsNotFoundBeforeAnyUpdate() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    when(rdfRepository.isEnabled()).thenReturn(true);
-    when(rdfRepository.getConfig()).thenReturn(configuration());
-    doThrow(new NotFoundException("Inference rule 'ghost' was not found"))
-        .when(ruleRepository)
-        .get("ghost");
-    final InferenceMaterializer materializer =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK);
+  void aFailingRuleFailsTheWholeRunAndNamesTheRule() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 200));
+    rules.upsert(COPY_B_TO_C, copyRule(COPY_B_TO_C, "b", "c", 100));
+    store.failUpdatesContaining("<urn:c>");
 
-    assertThrows(NotFoundException.class, () -> materializer.materialize(false, "ghost"));
-    verify(ruleRepository, never()).listForMaterialization(anyBoolean(), anyString());
-    verify(rdfRepository, never()).executeInferenceMaterializationUpdate(anyString());
+    final InferenceMaterializationResult result = materializer().materialize(false, null);
+
+    assertEquals(2, result.getFailedRules());
+    assertTrue(status(result, COPY_B_TO_C).getLastError().contains(COPY_B_TO_C));
+    assertTrue(status(result, COPY_B_TO_C).getLastError().contains("Fuseki rejected the update"));
+    assertTrue(status(result, COPY_A_TO_B).getDirty());
+    assertFalse(runLock.isHeld());
   }
 
   @Test
-  void emptyTargetListReturnsZeroAndRunsNoClearOrUpdate() {
-    final RdfRepository rdfRepository = mock(RdfRepository.class);
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    when(rdfRepository.isEnabled()).thenReturn(true);
-    when(rdfRepository.getConfig()).thenReturn(configuration());
-    when(ruleRepository.listForMaterialization(false, null)).thenReturn(List.of());
+  void aRunThatLosesItsLockToAnotherRunFails() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
+    store.afterNextUpdate(runLock::holdForAnotherRun);
 
-    final InferenceMaterializationResult result =
-        new InferenceMaterializer(rdfRepository, ruleRepository, CLOCK).materialize(false, null);
+    final InferenceMaterializationResult result = materializer().materialize(false, null);
 
-    assertEquals(0, result.getSuccessfulRules());
-    assertEquals(0, result.getFailedRules());
-    assertTrue(result.getProcessedRules().isEmpty());
-    verify(rdfRepository, never()).executeInferenceMaterializationUpdate(anyString());
-    verify(rdfRepository, never()).getGraphTripleCount(anyString());
+    assertEquals(1, result.getFailedRules());
+    assertTrue(status(result, COPY_A_TO_B).getLastError().contains("took over"));
+    assertTrue(runLock.isHeld(), "The run must not release a lock another run now holds");
   }
 
-  private static InferenceRuleStatus namedStatus(final String name, final boolean dirty) {
-    final InferenceRule rule =
-        new InferenceRule()
-            .withName(name)
-            .withEnabled(true)
-            .withRuleBody("CONSTRUCT { ?s <urn:inferred> ?o } WHERE { ?s <urn:source> ?o }");
-    return new InferenceRuleStatus()
-        .withRule(rule)
-        .withGraphUri(URI.create("https://open-metadata.org/graph/inferred/" + name))
-        .withDirty(dirty)
-        .withSystemRule(false)
-        .withTripleCount(0);
+  @Test
+  void aRunWhoseUpdateOutcomeIsUnknownKeepsTheLockUntilItExpires() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
+    store.timeOutUpdatesContaining("INSERT");
+
+    final InferenceMaterializationResult result = materializer().materialize(false, null);
+
+    assertEquals(1, result.getFailedRules());
+    assertTrue(runLock.isHeld(), "Fuseki may still be applying the update the run gave up on");
+    final WebApplicationException next =
+        assertThrows(WebApplicationException.class, () -> materializer().materialize(true, null));
+    assertEquals(409, next.getResponse().getStatus());
   }
 
-  private static InferenceRuleStatus status(final boolean dirty, final long tripleCount) {
-    final InferenceRule rule =
-        new InferenceRule()
-            .withName("test-rule")
-            .withEnabled(true)
-            .withRuleBody("CONSTRUCT { ?s <urn:inferred> ?o } WHERE { ?s <urn:source> ?o }");
-    return new InferenceRuleStatus()
-        .withRule(rule)
-        .withGraphUri(URI.create("https://open-metadata.org/graph/inferred/test-rule"))
-        .withDirty(dirty)
-        .withSystemRule(false)
-        .withTripleCount(Math.toIntExact(tripleCount));
+  @Test
+  void theLockIsKeptAliveWhileTheRunWaitsOnFuseki() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
+    final List<Boolean> keptAliveDuringUpdate = new ArrayList<>();
+    store.afterNextUpdate(() -> keptAliveDuringUpdate.add(runLock.isKeptAlive()));
+
+    materializer().materialize(false, null);
+
+    assertEquals(List.of(true), keptAliveDuringUpdate);
+    assertFalse(runLock.isKeptAlive());
   }
 
-  private static RdfConfiguration configuration() {
-    return new RdfConfiguration()
-        .withEnabled(true)
-        .withStorageType(RdfConfiguration.StorageType.FUSEKI)
-        .withMaterializedInferenceEnabled(true);
+  @Test
+  void anotherRunInProgressIsRejectedWithoutTouchingTheStore() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
+    runLock.holdForAnotherRun();
+
+    final WebApplicationException exception =
+        assertThrows(WebApplicationException.class, () -> materializer().materialize(false, null));
+
+    assertEquals(409, exception.getResponse().getStatus());
+    assertEquals(0, store.updateCount());
+  }
+
+  @Test
+  void unavailableStoreIsRejected() {
+    store.makeUnavailable();
+
+    assertThrows(ServiceUnavailableException.class, () -> materializer().materialize(true, null));
+  }
+
+  @Test
+  void unknownRequestedRuleIsReportedAsMissing() {
+    assertThrows(NotFoundException.class, () -> materializer().materialize(false, "missing-rule"));
+  }
+
+  @Test
+  void lockIsReleasedAfterASuccessfulRun() {
+    rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
+
+    materializer().materialize(false, null);
+
+    assertFalse(runLock.isHeld());
+    assertNull(status(materializer().materialize(true, null), COPY_A_TO_B).getLastError());
+  }
+
+  private InferenceMaterializer materializer() {
+    return new InferenceMaterializer(store, rules, runLock, CLOCK);
+  }
+
+  private void chain(final String... nodes) {
+    for (int index = 1; index < nodes.length; index++) {
+      store.assertFact(nodes[index - 1], "urn:edge", nodes[index]);
+    }
+  }
+
+  private static InferenceRuleStatus status(
+      final InferenceMaterializationResult result, final String ruleName) {
+    final List<InferenceRuleStatus> matches =
+        result.getProcessedRules().stream()
+            .filter(status -> ruleName.equals(status.getRule().getName()))
+            .toList();
+    assertEquals(1, matches.size(), "Expected one processed status for " + ruleName);
+    return matches.getFirst();
+  }
+
+  private static String graph(final String ruleName) {
+    return BASE_URI + "graph/inferred/" + ruleName;
+  }
+
+  private static InferenceRule copyRule(
+      final String name, final String from, final String to, final int priority) {
+    return rule(
+        name,
+        "CONSTRUCT { ?s <urn:%s> ?o } WHERE { ?s <urn:%s> ?o }".formatted(to, from),
+        priority);
+  }
+
+  private static InferenceRule reachabilityRule() {
+    return rule(
+        REACHABILITY,
+        "CONSTRUCT { ?x <urn:reach> ?z } WHERE "
+            + "{ { ?x <urn:edge> ?z } UNION { ?x <urn:reach> ?y . ?y <urn:edge> ?z } }",
+        100);
+  }
+
+  private static InferenceRule rule(final String name, final String body, final int priority) {
+    return new InferenceRule()
+        .withName(name)
+        .withRuleType(InferenceRule.RuleType.CONSTRUCT)
+        .withRuleBody(body)
+        .withPriority(priority)
+        .withEnabled(true);
   }
 }
