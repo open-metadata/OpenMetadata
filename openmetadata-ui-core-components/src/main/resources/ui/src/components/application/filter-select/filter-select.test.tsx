@@ -862,10 +862,10 @@ describe('FilterSelect', () => {
     expect(onChange).not.toHaveBeenCalledWith([]);
   });
 
-  it('shows a Clear footer on a clearable single select that closes it', () => {
+  it('shows a Clear footer on a radio single select that closes it', () => {
     const onOpenChange = vi.fn();
     const { onChange } = renderFilter({
-      clearable: true,
+      showRadio: true,
       onOpenChange,
       selectionMode: 'single',
       selectedValues: ['bigquery'],
@@ -922,5 +922,32 @@ describe('FilterSelect', () => {
     expect(
       screen.getByRole('button', { name: 'Edit' }).parentElement
     ).toHaveClass('tw:flex', 'tw:w-full');
+  });
+
+  it('keeps the built-in trigger when the custom trigger is null', () => {
+    renderFilter({ isOpen: undefined, trigger: null, triggerVariant: 'input' });
+
+    expect(screen.getByTestId('search-dropdown-Service')).toBeInTheDocument();
+  });
+
+  it('names the built-in trigger by an external label and its value', () => {
+    render(
+      <>
+        <span id="field-label">Field value</span>
+        <FilterSelect
+          aria-labelledby="field-label"
+          label="Service"
+          options={OPTIONS}
+          selectedValues={['bigquery']}
+          selectionMode="single"
+          triggerVariant="input"
+          onChange={vi.fn()}
+        />
+      </>
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Field value BigQuery' })
+    ).toBeInTheDocument();
   });
 });

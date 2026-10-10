@@ -51,10 +51,8 @@ const CertificationWidget = () => {
       await onUpdate(updatedEntity);
     } catch {
       // The page-level updater already toasts before rethrowing, so toasting
-      // here would duplicate it. Swallow rather than rethrow so Certification's
-      // post-await cleanup runs and the popover doesn't stay stuck loading.
-    } finally {
-      setIsEditing(false);
+      // here would duplicate it. Swallow rather than rethrow: nothing above
+      // catches it, and the picker has already closed itself.
     }
   };
 

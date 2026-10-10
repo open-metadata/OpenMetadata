@@ -30,6 +30,7 @@ import { borderAfter } from '@/utils/tailwindClasses';
 import { ChevronDown, ChevronUp, XClose } from '../../../icons';
 import {
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -67,6 +68,7 @@ export const TriggerButton = ({
   icon,
   bordered,
   isDisabled,
+  labelledBy,
   size = 'sm',
 }: {
   hasSelection: boolean;
@@ -81,8 +83,12 @@ export const TriggerButton = ({
   icon?: FC<{ className?: string }>;
   bordered?: boolean;
   isDisabled?: boolean;
+  /** Id of an external label; the trigger's own text still names the value. */
+  labelledBy?: string;
   size?: 'sm' | 'md';
 }) => {
+  const textId = useId();
+  const ariaLabelledBy = labelledBy ? `${labelledBy} ${textId}` : undefined;
   const countBadge =
     count !== undefined && count > 0 ? (
       <TriggerCountBadge count={count} />
@@ -91,6 +97,7 @@ export const TriggerButton = ({
   if (variant === 'button') {
     return (
       <Button
+        aria-labelledby={ariaLabelledBy}
         className={cx(
           'tw:whitespace-nowrap',
           // The borderless trigger hugs its label like the legacy quick
@@ -106,7 +113,9 @@ export const TriggerButton = ({
         iconTrailing={isOpen ? ChevronUp : ChevronDown}
         isDisabled={isDisabled}
         size={bordered ? 'md' : 'sm'}>
-        <span data-testid={`search-dropdown-${label}`}>{text}</span>
+        <span data-testid={`search-dropdown-${label}`} id={textId}>
+          {text}
+        </span>
         {countBadge}
       </Button>
     );
@@ -115,6 +124,7 @@ export const TriggerButton = ({
   if (variant === 'input') {
     return (
       <AriaButton
+        aria-labelledby={ariaLabelledBy}
         className={cx(
           // Sized and outlined like the core Select, so it stands as tall as a
           // Select, Input or Button of the same size: an outline, unlike a
@@ -133,7 +143,8 @@ export const TriggerButton = ({
             'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
             hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
           )}
-          data-testid={`search-dropdown-${label}`}>
+          data-testid={`search-dropdown-${label}`}
+          id={textId}>
           {hasSelection ? text : placeholder ?? text}
         </span>
         {countBadge}
@@ -149,6 +160,7 @@ export const TriggerButton = ({
 
   return (
     <AriaButton
+      aria-labelledby={ariaLabelledBy}
       className={cx(
         'tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-surface tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:text-secondary tw:shadow-xs-skeuomorphic tw:outline-brand',
         borderAfter,
@@ -157,7 +169,9 @@ export const TriggerButton = ({
       )}
       data-testid={testId}
       isDisabled={isDisabled}>
-      <span data-testid={`search-dropdown-${label}`}>{text}</span>
+      <span data-testid={`search-dropdown-${label}`} id={textId}>
+        {text}
+      </span>
       {countBadge}
       <ChevronDown
         className={cx(
@@ -354,7 +368,6 @@ const FilterSelect = ({
   onChange,
   bordered,
   className,
-  clearable,
   commitMode = 'immediate',
   'data-testid': testId,
   emptyState,
@@ -380,6 +393,7 @@ const FilterSelect = ({
   typography = 'medium',
   onOpenChange,
   onSearch,
+  'aria-labelledby': ariaLabelledBy,
 }: FilterSelectProps) => {
   const { t } = useCoreTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -396,24 +410,26 @@ const FilterSelect = ({
   const isStaged = commitMode === 'staged';
   const isChips =
     isMulti && triggerVariant === 'input' && triggerDisplay === 'chips';
+  const hasCustomTrigger = trigger !== undefined && trigger !== null;
 
-  // The built-in trigger sits in a `display: contents` wrapper, which has no
-  // box to measure, so placement measures the element itself.
-  const placementAnchorRef = useRef<HTMLElement | null>(null);
+  // What the popover hangs off; undefined leaves it on MenuTrigger's button.
+  const anchorRef = isChips
+    ? chipsFieldRef
+    : hasCustomTrigger
+    ? triggerWrapRef
+    : undefined;
+  // Placement measures that element. MenuTrigger's button sits in a
+  // `display: contents` wrapper with no box of its own, so take the button.
+  const placementRef = useRef<HTMLElement | null>(null);
   useLayoutEffect(() => {
-    if (isChips) {
-      placementAnchorRef.current = chipsFieldRef.current;
-    } else if (trigger === undefined) {
-      placementAnchorRef.current = triggerWrapRef.current
-        ?.firstElementChild as HTMLElement | null;
-    } else {
-      placementAnchorRef.current = triggerWrapRef.current;
-    }
-  });
+    placementRef.current =
+      anchorRef?.current ??
+      (triggerWrapRef.current?.firstElementChild as HTMLElement | null);
+  }, [isOpen, anchorRef]);
   // Left-aligned to the trigger, right-aligned when it would overflow the
   // viewport — the same rule as TreeSelect.
   const { placement } = useDropdownPlacement(
-    placementAnchorRef,
+    placementRef,
     isOpen,
     DROPDOWN_CHROME_WIDTH
   );
@@ -720,7 +736,7 @@ const FilterSelect = ({
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it gets a quiet footer instead:
   // what is selected, and a way to drop it all without closing the menu.
-  const showStatusFooter = (isMulti || Boolean(clearable)) && !isStaged;
+  const showStatusFooter = (isMulti || isRadio) && !isStaged;
   const showSelectAllRow =
     isMulti && Boolean(showSelectAll) && displayedOptions.length > 0;
   // The null row is a synthetic filter, not a search result: an unmatched
@@ -731,7 +747,14 @@ const FilterSelect = ({
 
   const content = (
     <>
-      {trigger === undefined ? (
+      {hasCustomTrigger ? (
+        <span
+          className={cx('tw:inline-flex tw:max-w-full', className)}
+          ref={triggerWrapRef}
+          onClickCapture={() => handleOpenChange(!isOpen)}>
+          {trigger}
+        </span>
+      ) : (
         <span className="tw:contents" ref={triggerWrapRef}>
           {isChips ? (
             <ChipsField
@@ -760,6 +783,7 @@ const FilterSelect = ({
               isDisabled={isDisabled}
               isOpen={isOpen}
               label={label}
+              labelledBy={ariaLabelledBy}
               placeholder={placeholder}
               size={size}
               testId={testId}
@@ -767,13 +791,6 @@ const FilterSelect = ({
               variant={triggerVariant}
             />
           )}
-        </span>
-      ) : (
-        <span
-          className={cx('tw:inline-flex tw:max-w-full', className)}
-          ref={triggerWrapRef}
-          onClickCapture={() => handleOpenChange(!isOpen)}>
-          {trigger}
         </span>
       )}
       <Dropdown.Popover
@@ -790,6 +807,7 @@ const FilterSelect = ({
         // hidden covers the same frame.
         className={(state) =>
           cx(
+            // DROPDOWN_CHROME_WIDTH mirrors this width for placement.
             'tw:w-80',
             state.isExiting && 'tw:hidden tw:animate-none',
             popoverClassName
@@ -800,21 +818,15 @@ const FilterSelect = ({
         style={popoverStyle}
         // A custom trigger has no MenuTrigger around it, so the popover takes
         // its open state directly.
-        {...(trigger !== undefined && {
+        {...(hasCustomTrigger && {
           isOpen,
           onOpenChange: handleOpenChange,
         })}
-        triggerRef={
-          isChips
-            ? chipsFieldRef
-            : trigger !== undefined
-            ? triggerWrapRef
-            : undefined
-        }>
+        triggerRef={anchorRef}>
         <div className="tw:contents" ref={popoverContentRef}>
           {searchable && (
             <DropdownSearchField
-              autoFocus={trigger !== undefined}
+              autoFocus={hasCustomTrigger}
               inputDataTestId="search-input"
               isDisabled={!isOpen}
               placeholder={t('label.search')}
@@ -933,12 +945,12 @@ const FilterSelect = ({
 
   // A custom trigger stays outside MenuTrigger: its press responder would
   // otherwise bind to the first react-aria button inside the caller's trigger.
-  return trigger === undefined ? (
+  return hasCustomTrigger ? (
+    content
+  ) : (
     <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
       {content}
     </Dropdown.Root>
-  ) : (
-    content
   );
 };
 

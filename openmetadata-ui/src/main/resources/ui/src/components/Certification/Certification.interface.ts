@@ -16,7 +16,7 @@ import { SelectablePopoverProps } from '../common/AnchoredPopover/AnchoredPopove
 
 export interface CertificationProps {
   permission: boolean;
-  onCertificationUpdate?: (certification?: Tag) => Promise<void>;
+  onCertificationUpdate?: (certification?: Tag) => void | Promise<void>;
   onClose?: () => void;
   currentCertificate?: string;
   popoverProps?: SelectablePopoverProps;
@@ -25,6 +25,8 @@ export interface CertificationProps {
   isDisabled?: boolean;
   /** Test id of the form-field trigger. */
   'data-testid'?: string;
+  /** Labels the form-field trigger, e.g. by the form's visible label. */
+  'aria-labelledby'?: string;
   /** Classes for the trigger, e.g. to fill a grid cell. */
   className?: string;
 }

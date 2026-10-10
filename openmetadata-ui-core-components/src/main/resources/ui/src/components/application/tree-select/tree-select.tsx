@@ -60,8 +60,8 @@ import {
 const LOAD_MORE_SUFFIX = '__more';
 /** Row id of the root listing's load-more item. Null byte: no node can collide. */
 const ROOT_LOAD_MORE_ID = '\u0000root__more';
-/** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
 
+/** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
 export const DROPDOWN_CHROME_WIDTH = 320;
 /** Matches react-aria's default overlay `containerPadding`. */
 const VIEWPORT_PADDING = 12;

@@ -12,10 +12,14 @@
  */
 import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { isNil } from 'lodash';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
-import { CERTIFICATION_CATEGORY } from '../../constants/constants';
+import {
+  CERTIFICATION_CATEGORY,
+  PAGE_SIZE_LARGE,
+} from '../../constants/constants';
 import { Tag } from '../../generated/entity/classification/tag';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -32,19 +36,8 @@ const Icon = lazy(() =>
   }))
 );
 
-const ICON_SIZE = 18;
-const CERTIFICATION_ORDER: Record<string, number> = {
-  Gold: 0,
-  Silver: 1,
-  Bronze: 2,
-};
-
-const byCertificationOrder = (a: Tag, b: Tag) =>
-  (CERTIFICATION_ORDER[getEntityName(a)] ?? 3) -
-  (CERTIFICATION_ORDER[getEntityName(b)] ?? 3);
-
 const renderCertificationIcon = (certification: Tag) => {
-  const fallback = <CertificationIcon height={ICON_SIZE} width={ICON_SIZE} />;
+  const fallback = <CertificationIcon height={18} width={18} />;
   const iconURL = certification.style?.iconURL;
 
   return iconURL ? (
@@ -53,7 +46,7 @@ const renderCertificationIcon = (certification: Tag) => {
         alt={getEntityName(certification)}
         fallback={fallback}
         iconValue={iconURL}
-        size={ICON_SIZE}
+        size={18}
       />
     </Suspense>
   ) : (
@@ -69,6 +62,7 @@ const Certification = ({
   onClose,
   isDisabled,
   'data-testid': testId,
+  'aria-labelledby': ariaLabelledBy,
   className,
 }: CertificationProps) => {
   const { t } = useTranslation();
@@ -76,7 +70,9 @@ const Certification = ({
   const [isLoading, setIsLoading] = useState(false);
   const [certifications, setCertifications] = useState<Tag[]>([]);
   const isOpen = popoverProps?.open ?? isPopupOpen;
-  const isFormField = children === undefined;
+  const isFormField = isNil(children);
+  // A pick or clear closes the picker itself; only a dismissal calls onClose.
+  const isCommitRef = useRef(false);
 
   const fetchCertifications = async () => {
     setIsLoading(true);
@@ -89,14 +85,22 @@ const Certification = ({
       do {
         const { data, paging } = await getTags({
           parent: CERTIFICATION_CATEGORY,
-          limit: 1000,
-          disabled: false,
+          limit: PAGE_SIZE_LARGE,
           after,
+          disabled: false,
         });
         all.push(...data);
-        after = paging?.after;
+        after = paging.after;
       } while (after);
-      setCertifications(all.sort(byCertificationOrder));
+
+      // Sort certifications with Gold, Silver, Bronze first
+      const order: Record<string, number> = { Gold: 0, Silver: 1, Bronze: 2 };
+      setCertifications(
+        all.sort(
+          (a, b) =>
+            (order[getEntityName(a)] ?? 3) - (order[getEntityName(b)] ?? 3)
+        )
+      );
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -128,12 +132,14 @@ const Certification = ({
   const handleOpenChange = (open: boolean) => {
     setIsPopupOpen(open);
     popoverProps?.onOpenChange?.(open);
-    if (!open) {
+    if (!open && !isCommitRef.current) {
       onClose?.();
     }
+    isCommitRef.current = false;
   };
 
   const handleChange = async ([value]: string[]) => {
+    isCommitRef.current = true;
     await onCertificationUpdate?.(
       certifications.find((cert) => cert.fullyQualifiedName === value)
     );
@@ -141,10 +147,10 @@ const Certification = ({
 
   return (
     <FilterSelect
-      clearable
       hideCounts
       searchable
       showRadio
+      aria-labelledby={ariaLabelledBy}
       className={className}
       data-testid={testId}
       emptyState={t('label.no-entity-available', {

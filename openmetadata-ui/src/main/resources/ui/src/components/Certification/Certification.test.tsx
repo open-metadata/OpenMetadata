@@ -66,7 +66,7 @@ const defaultProps = {
 
 const FETCH_PARAMS = {
   parent: 'Certification',
-  limit: 1000,
+  limit: 50,
   disabled: false,
 };
 
@@ -228,5 +228,15 @@ describe('Certification', () => {
     await screen.findByTestId('Certification.Silver');
 
     expect(mockGetTags).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not report a pick as a dismissal to onClose', async () => {
+    render(<Certification {...defaultProps} />);
+
+    fireEvent.click(await screen.findByTestId('Certification.Silver'));
+
+    await waitFor(() => expect(mockOnCertificationUpdate).toHaveBeenCalled());
+
+    expect(mockOnClose).not.toHaveBeenCalled();
   });
 });

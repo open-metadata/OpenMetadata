@@ -13,7 +13,7 @@
 
 import { Input, Label, Select } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { TIER_CATEGORY } from '../../../../constants/constants';
@@ -59,6 +59,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
 }) => {
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();
+  const fieldValueLabelId = useId();
   const [formData, setFormData] = useState({
     displayName: '',
     description: '',
@@ -252,13 +253,14 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
     if (formData.fieldName === FieldOptions.CERTIFICATION) {
       return (
         <div className="tw:flex tw:flex-col tw:gap-1.5">
-          <Label>{t('label.field-value')}</Label>
+          <Label id={fieldValueLabelId}>{t('label.field-value')}</Label>
           <Certification
             permission
+            aria-labelledby={fieldValueLabelId}
             currentCertificate={formData.fieldValue}
             data-testid="field-value-select"
             isDisabled={isFormDisabled}
-            onCertificationUpdate={async (tag) =>
+            onCertificationUpdate={(tag) =>
               updateFormData('fieldValue', tag?.fullyQualifiedName ?? '')
             }
           />

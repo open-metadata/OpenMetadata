@@ -64,11 +64,6 @@ export interface FilterSelectProps {
   size?: 'sm' | 'md';
   /** Classes for the trigger — the built-in one, or the wrapper of a custom one. */
   className?: string;
-  /**
-   * Single select: a footer with the selection count and a Clear action, as
-   * immediate multi select always shows.
-   */
-  clearable?: boolean;
   commitMode?: FilterSelectCommitMode;
   'data-testid'?: string;
   emptyState?: ReactNode;
@@ -97,7 +92,8 @@ export interface FilterSelectProps {
   selectionMode?: FilterSelectSelectionMode;
   /**
    * Single select: mark rows with a radio instead of the brand-tinted selected
-   * row. The selected row can then only be cleared through the footer.
+   * row, plus a footer with the selection count and a Clear action. A picked
+   * radio row can't be unpicked by clicking it, so the footer is how it clears.
    */
   showRadio?: boolean;
   /**
@@ -114,9 +110,11 @@ export interface FilterSelectProps {
   /**
    * Caller-supplied trigger (an edit button, a value pill, …) used in place of
    * the built-in one; the popover anchors to it. It is not a menu trigger:
-   * clicking it opens the popover.
+   * clicking it opens the popover. `null` or `undefined` keeps the built-in one.
    */
   trigger?: ReactNode;
+  /** Labels the built-in trigger, e.g. by a form field's visible label. */
+  'aria-labelledby'?: string;
   /** Multi-selection echo on the input-variant trigger; default 'count'. */
   triggerDisplay?: FilterSelectTriggerDisplay;
   /** Leading icon on the button-variant trigger. */

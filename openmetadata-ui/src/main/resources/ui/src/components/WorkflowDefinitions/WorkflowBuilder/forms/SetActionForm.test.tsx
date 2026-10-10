@@ -206,7 +206,11 @@ describe('workflow certification value', () => {
     const onSave = jest.fn();
     render(form(['table'], onSave, certificationNode));
 
-    const trigger = await screen.findByRole('button', { name: 'Gold' });
+    // Named by the form's "Field value" label, then by the selected value.
+    // jsdom applies no CSS, so it also reads the label's hidden required "*".
+    const trigger = await screen.findByRole('button', {
+      name: /^label\.field-value( \*)? Gold$/,
+    });
     fireEvent.click(trigger);
     fireEvent.click(await screen.findByTestId('Certification.Silver'));
     fireEvent.click(screen.getByTestId('save-node-configuration-button'));
