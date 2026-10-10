@@ -75,6 +75,15 @@ const mockResourceWithMultipleCategories: LearningResource = {
   categories: ['Discovery', 'Administration', 'DataGovernance', 'DataQuality'],
 };
 
+const mockResourceWithLongDescription: LearningResource = {
+  ...mockVideoResource,
+  id: 'long-desc-resource-1',
+  name: 'TestLongDescription',
+  displayName: 'Test Long Description',
+  description:
+    'This is a very long description that exceeds the one hundred character threshold to trigger the view more button display logic in the card',
+};
+
 describe('LearningResourceCard', () => {
   it('should render card with resource display name', () => {
     render(<LearningResourceCard resource={mockVideoResource} />);
@@ -220,6 +229,173 @@ describe('LearningResourceCard', () => {
     );
 
     expect(card).toHaveAttribute('data-clickable', 'true');
+  });
+
+  it('should have role button and tabIndex when onClick is provided', () => {
+    render(
+      <LearningResourceCard resource={mockVideoResource} onClick={jest.fn()} />
+    );
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockVideoResource.name}`
+    );
+
+    expect(card).toHaveAttribute('role', 'button');
+    expect(card).toHaveAttribute('tabindex', '0');
+  });
+
+  it('should not have role button or tabIndex when onClick is not provided', () => {
+    render(<LearningResourceCard resource={mockVideoResource} />);
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockVideoResource.name}`
+    );
+
+    expect(card).not.toHaveAttribute('role');
+    expect(card).not.toHaveAttribute('tabindex');
+  });
+
+  it('should have aria-label with resource display name when onClick is provided', () => {
+    render(
+      <LearningResourceCard resource={mockVideoResource} onClick={jest.fn()} />
+    );
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockVideoResource.name}`
+    );
+
+    expect(card).toHaveAttribute('aria-label', 'Test Video Resource');
+  });
+
+  it('should use resource name for aria-label when displayName is not provided', () => {
+    render(
+      <LearningResourceCard
+        resource={{ ...mockVideoResource, displayName: undefined }}
+        onClick={jest.fn()}
+      />
+    );
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockVideoResource.name}`
+    );
+
+    expect(card).toHaveAttribute('aria-label', 'TestVideoResource');
+  });
+
+  it('should not have aria-label when onClick is not provided', () => {
+    render(<LearningResourceCard resource={mockVideoResource} />);
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockVideoResource.name}`
+    );
+
+    expect(card).not.toHaveAttribute('aria-label');
+  });
+
+  it('should call onClick when Enter key is pressed', () => {
+    const mockOnClick = jest.fn();
+    render(
+      <LearningResourceCard
+        resource={mockVideoResource}
+        onClick={mockOnClick}
+      />
+    );
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockVideoResource.name}`
+    );
+    fireEvent.keyDown(card, { key: 'Enter' });
+
+    expect(mockOnClick).toHaveBeenCalledWith(mockVideoResource);
+  });
+
+  it('should call onClick when Space key is pressed', () => {
+    const mockOnClick = jest.fn();
+    render(
+      <LearningResourceCard
+        resource={mockVideoResource}
+        onClick={mockOnClick}
+      />
+    );
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockVideoResource.name}`
+    );
+    fireEvent.keyDown(card, { key: ' ' });
+
+    expect(mockOnClick).toHaveBeenCalledWith(mockVideoResource);
+  });
+
+  it('should call onClick when Enter is pressed for short-description card without View More button', () => {
+    const mockOnClick = jest.fn();
+    render(
+      <LearningResourceCard
+        resource={mockVideoResource}
+        onClick={mockOnClick}
+      />
+    );
+
+    expect(screen.queryByText('View More')).not.toBeInTheDocument();
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockVideoResource.name}`
+    );
+    fireEvent.keyDown(card, { key: 'Enter' });
+
+    expect(mockOnClick).toHaveBeenCalledWith(mockVideoResource);
+  });
+
+  it('should call onClick when Enter is pressed for long-description card with View More button', () => {
+    const mockOnClick = jest.fn();
+    render(
+      <LearningResourceCard
+        resource={mockResourceWithLongDescription}
+        onClick={mockOnClick}
+      />
+    );
+
+    expect(screen.getByText('View More')).toBeInTheDocument();
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockResourceWithLongDescription.name}`
+    );
+    fireEvent.keyDown(card, { key: 'Enter' });
+
+    expect(mockOnClick).toHaveBeenCalledWith(mockResourceWithLongDescription);
+  });
+
+  it('should call onClick when Space is pressed for long-description card with View More button', () => {
+    const mockOnClick = jest.fn();
+    render(
+      <LearningResourceCard
+        resource={mockResourceWithLongDescription}
+        onClick={mockOnClick}
+      />
+    );
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockResourceWithLongDescription.name}`
+    );
+    fireEvent.keyDown(card, { key: ' ' });
+
+    expect(mockOnClick).toHaveBeenCalledWith(mockResourceWithLongDescription);
+  });
+
+  it('should not call onClick when other keys are pressed', () => {
+    const mockOnClick = jest.fn();
+    render(
+      <LearningResourceCard
+        resource={mockVideoResource}
+        onClick={mockOnClick}
+      />
+    );
+
+    const card = screen.getByTestId(
+      `learning-resource-card-${mockVideoResource.name}`
+    );
+    fireEvent.keyDown(card, { key: 'ArrowDown' });
+
+    expect(mockOnClick).not.toHaveBeenCalled();
   });
 
   it('should show only first 2 categories and +N for remaining in card view', () => {
