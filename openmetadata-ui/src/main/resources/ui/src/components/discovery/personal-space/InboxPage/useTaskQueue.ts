@@ -307,14 +307,6 @@ export const useTaskQueue = ({
     (loaded: Task[]) => !isClientNarrowed || loaded.length < scanLimit,
     [isClientNarrowed, scanLimit]
   );
-  const handleScanFurther = useCallback(
-    () =>
-      setScanRaise((raise) => ({
-        key: scanKey,
-        extra: (raise.key === scanKey ? raise.extra : 0) + MAX_NARROWED_SCAN,
-      })),
-    [scanKey]
-  );
 
   const {
     items: tasks,
@@ -330,6 +322,18 @@ export const useTaskQueue = ({
     [TASK_LIST_QUERY_KEY, scopeKey, status, titleSearch.text],
     fetchPage,
     canLoadMore
+  );
+
+  // Measured from what is loaded, not from the last cap: tasks paged in before
+  // the narrowing already exceed it, and a fixed step would leave the click
+  // dead until the cap overtook them.
+  const handleScanFurther = useCallback(
+    () =>
+      setScanRaise((raise) => ({
+        key: scanKey,
+        extra: Math.max(raise.key === scanKey ? raise.extra : 0, tasks.length),
+      })),
+    [scanKey, tasks.length]
   );
 
   useEffect(() => {

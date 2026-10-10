@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, renderHook } from '@testing-library/react';
+import { Task } from '../../../../generated/entity/tasks/task';
 import {
   TaskListScope,
   useTaskQueue,
@@ -23,6 +24,8 @@ const mockListVisibleTasks = jest
   .mockResolvedValue({ data: [], paging: {} });
 let capturedFetchPage: (after?: string) => unknown;
 let capturedQueryKey: unknown[];
+let capturedCanLoadMore: ((loaded: Task[]) => boolean) | undefined;
+let loadedTasks: Task[] = [];
 let capturedCountQueries: { queryKey: unknown[]; queryFn: () => unknown }[];
 
 jest.mock('@tanstack/react-query', () => ({
@@ -45,16 +48,18 @@ jest.mock('./useCurrentUserIds', () => ({
 jest.mock('./useInboxInfiniteList', () => ({
   useInboxInfiniteList: (
     queryKey: unknown[],
-    fetchPage: (after?: string) => unknown
+    fetchPage: (after?: string) => unknown,
+    canLoadMore?: (loaded: Task[]) => boolean
   ) => {
     capturedQueryKey = queryKey;
     capturedFetchPage = fetchPage;
+    capturedCanLoadMore = canLoadMore;
 
     return {
-      items: [],
+      items: loadedTasks,
       isLoading: false,
       isLoadingMore: false,
-      hasMore: false,
+      hasMore: loadedTasks.length > 0,
       total: 0,
       scrollRef: { current: null },
       sentinelRef: { current: null },
@@ -80,9 +85,13 @@ const ENTITY: TaskListScope = {
   aboutEntity: 'svc.db.schema.table',
 };
 
+const tasksOf = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({ id: `t${index}` } as Task));
+
 describe('useTaskQueue', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    loadedTasks = [];
   });
 
   it("lists the viewer's visible tasks by default", () => {
@@ -158,6 +167,43 @@ describe('useTaskQueue', () => {
     rerender({ status: 'closed' });
 
     expect(result.current.status).toBe('closed');
+  });
+
+  // A narrowed list stops at a bounded scan; "Load more" scans one more.
+  it('raises the scan cap by one scan when the cap stopped the list', () => {
+    loadedTasks = tasksOf(200);
+    const { result } = renderHook(() => useTaskQueue());
+
+    act(() => result.current.setTypeFilter(['Incident']));
+
+    expect(capturedCanLoadMore?.(loadedTasks)).toBe(false);
+
+    act(() => result.current.handleScanFurther());
+
+    expect(capturedCanLoadMore?.(tasksOf(399))).toBe(true);
+    expect(capturedCanLoadMore?.(tasksOf(400))).toBe(false);
+  });
+
+  // Tasks paged in before the narrowing can exceed the cap many times over;
+  // one click must still scan further, not raise a cap still below them.
+  it('raises the scan cap past tasks loaded before the narrowing in one click', () => {
+    loadedTasks = tasksOf(1000);
+    const { result, rerender } = renderHook(() => useTaskQueue());
+
+    act(() => result.current.setTypeFilter(['Incident']));
+
+    expect(capturedCanLoadMore?.(loadedTasks)).toBe(false);
+
+    act(() => result.current.handleScanFurther());
+
+    expect(capturedCanLoadMore?.(loadedTasks)).toBe(true);
+    expect(capturedCanLoadMore?.(tasksOf(1200))).toBe(false);
+
+    loadedTasks = tasksOf(1200);
+    rerender();
+    act(() => result.current.handleScanFurther());
+
+    expect(capturedCanLoadMore?.(loadedTasks)).toBe(true);
   });
 });
 
