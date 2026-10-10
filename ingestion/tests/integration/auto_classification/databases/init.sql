@@ -31,3 +31,24 @@ VALUES
     ('943242e2-eb30-48c7-9e1e-9f57911ca28a', '999-595-6195', 'akash@gmail.com', 'James', '2220 Coit Rd', '5105-1051-0510-5100', 1760000000172, 'v1', '2018-01-28', 2004),
     ('c27259a1-162b-4460-8864-6472f33fa076', '999-056-4418', 'mary@gmail.com', 'Jennifer', '7 Southside Dr', '5328-7101-2269-1668', 1760000000180, 'V1', '2018-01-29', 2005),
     ('d2abde12-37a0-4e7d-9554-1c8bee659e1d', '999-329-1099', 'chirag@gmail.com', 'Robert', '2929 S 25th Ave', '4801-8451-4627-0484', 1760000000198, 'v4', '2018-01-31', 2006);
+
+CREATE TABLE identifier_en (
+    iban VARCHAR(80),
+    uen VARCHAR(30),
+    abn VARCHAR(30),
+    acn VARCHAR(30),
+    sg_nric VARCHAR(30),
+    sg_nric_typo VARCHAR(30),
+    sku VARCHAR(30),
+    ticket_id VARCHAR(30),
+    shipment_ref VARCHAR(80)
+);
+INSERT INTO identifier_en VALUES
+    ('gb82 west 1234 5698 7654 32', 't15lp0010d', '51-824-753-556', '004-085-616', 'S1234567D', 'S1234567E',
+     'S1234567D', '004-085-616', 'gb82 west 1234 5698 7654 32');
+
+CREATE TABLE identifier_es (nif VARCHAR(30), nie VARCHAR(30));
+INSERT INTO identifier_es VALUES ('12345678z', 'x1234567l');
+
+CREATE TABLE identifier_it (partita_iva VARCHAR(30));
+INSERT INTO identifier_it VALUES ('IT 12345678903');

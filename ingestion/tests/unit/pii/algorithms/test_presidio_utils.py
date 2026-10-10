@@ -11,11 +11,17 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from presidio_analyzer import EntityRecognizer, RecognizerResult
+from presidio_analyzer import EntityRecognizer, RecognizerResult, predefined_recognizers
 from presidio_analyzer.nlp_engine import NlpArtifacts
 
+from metadata.generated.schema.type.classificationLanguages import ClassificationLanguage
+from metadata.generated.schema.type.predefinedRecognizer import Name, PredefinedRecognizer
+from metadata.generated.schema.type.recognizer import Recognizer, RecognizerConfig
+from metadata.pii.algorithms.presidio_recognizer_factory import PresidioRecognizerFactory
 from metadata.pii.algorithms.presidio_utils import (
     MIN_SCORE_FOR_ENHANCEMENT,
+    PrefixedItVatRecognizer,
+    _get_all_pattern_recognizers,
     apply_confidence_threshold,
     build_analyzer_engine,
     context_matches,
@@ -505,3 +511,250 @@ class TestDecorateRecognizer:
         composed = decorate_recognizer()
 
         assert callable(composed)
+
+
+# NRIC/FIN values, including F2601815M, are synthetic checksum fixtures, not issued identities.
+def configured(name: Name, language: ClassificationLanguage, context: list[str] | None = None):
+    recognizer = PresidioRecognizerFactory.create_recognizer(
+        Recognizer(
+            name=f"test_{name.value}",
+            recognizerConfig=RecognizerConfig(
+                root=PredefinedRecognizer(
+                    type="predefined",
+                    name=name,
+                    supportedLanguage=language,
+                    context=context,
+                )
+            ),
+        )
+    )
+    assert recognizer is not None
+    return recognizer
+
+
+@pytest.mark.parametrize("value", ["S1234567D", "T1234567J", "F2601815M", "G1234567X", "m7654321j"])
+def test_valid_fin_checksum_keeps_pattern_score_without_context(value):
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.en, context=["nric"])
+    text = f"sku: {value}; done"
+    results = recognizer.analyze(text, recognizer.supported_entities)
+    assert [(result.entity_type, result.score, text[result.start : result.end]) for result in results] == [
+        ("SG_NRIC_FIN", 0.5, value)
+    ]
+
+
+@pytest.mark.parametrize(
+    "name,language,value",
+    [
+        (Name.IbanRecognizer, ClassificationLanguage.en, "GB82 WEST 1234 5698 7654 32"),
+        (Name.EsNifRecognizer, ClassificationLanguage.es, "12345678Z"),
+        (Name.EsNieRecognizer, ClassificationLanguage.es, "X1234567L"),
+        (Name.SgUenRecognizer, ClassificationLanguage.en, "T15LP0010D"),
+        (Name.AuAbnRecognizer, ClassificationLanguage.en, "51 824 753 556"),
+        (Name.AuAcnRecognizer, ClassificationLanguage.en, "004 085 616"),
+        (Name.SgFinRecognizer, ClassificationLanguage.en, "T1234567J"),
+        (Name.SgFinRecognizer, ClassificationLanguage.en, "F1234567N"),
+        (Name.SgFinRecognizer, ClassificationLanguage.en, "G1234567X"),
+        (Name.SgFinRecognizer, ClassificationLanguage.en, "M1234567K"),
+    ],
+)
+def test_canonical_and_other_prefixes(name, language, value):
+    recognizer = configured(name, language)
+    assert [
+        value[result.start : result.end] for result in recognizer.analyze(value, recognizer.supported_entities)
+    ] == [value]
+
+
+@pytest.mark.parametrize(
+    "prefix,valid,wrong", [("S", "D", "E"), ("T", "J", "Z"), ("F", "N", "M"), ("G", "X", "W"), ("M", "K", "X")]
+)
+def test_nric_prefix_specific_checksum(prefix, valid, wrong):
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.en)
+    assert len(recognizer.analyze(f"{prefix}1234567{valid}", recognizer.supported_entities)) == 1
+    assert recognizer.analyze(f"{prefix}1234567{wrong}", recognizer.supported_entities) == []
+
+
+@pytest.mark.parametrize(
+    "digits,check_letter",
+    [
+        ("0000000", "J"),
+        ("0000001", "I"),
+        ("0000002", "G"),
+        ("0000003", "E"),
+        ("0000004", "C"),
+        ("0000005", "A"),
+        ("0000006", "Z"),
+        ("0000007", "H"),
+        ("0000008", "F"),
+        ("0000009", "D"),
+        ("0000027", "B"),
+    ],
+)
+def test_nric_s_series_all_checksum_remainders(digits, check_letter):
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.en)
+    value = f"S{digits}{check_letter}"
+    assert len(recognizer.analyze(value, recognizer.supported_entities)) == 1
+    assert recognizer.analyze(f"S{digits}X", recognizer.supported_entities) == []
+
+
+def test_repeated_identifiers_return_distinct_original_spans():
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.en)
+    value = "S1234567D"
+    text = f"{value}; {value}"
+    assert [(result.start, result.end) for result in recognizer.analyze(text, recognizer.supported_entities)] == [
+        (0, len(value)),
+        (len(value) + 2, len(text)),
+    ]
+
+
+def test_iban_in_prose_preserves_complete_span_and_next_candidate():
+    recognizer = configured(Name.IbanRecognizer, ClassificationLanguage.en)
+    text = "Deposit GB82 WEST 1234 5698 7654 32 today; DE89370400440532013000 tomorrow."
+    assert [text[result.start : result.end] for result in recognizer.analyze(text, recognizer.supported_entities)] == [
+        "GB82 WEST 1234 5698 7654 32",
+        "DE89370400440532013000",
+    ]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "GB 82 WEST 1234 5698 7654 32",
+        "GB-82-WEST-1234-5698-7654-32",
+    ],
+)
+def test_iban_existing_country_separator_forms(value):
+    recognizer = configured(Name.IbanRecognizer, ClassificationLanguage.en)
+    assert [
+        value[result.start : result.end] for result in recognizer.analyze(value, recognizer.supported_entities)
+    ] == [value]
+
+
+@pytest.mark.parametrize(
+    "name,expected_language",
+    [
+        (Name.EsNifRecognizer, "en"),
+        (Name.EsNieRecognizer, "en"),
+        (Name.ItVatCodeRecognizer, "en"),
+        (Name.SgFinRecognizer, "en"),
+    ],
+)
+def test_omitted_language_uses_schema_default(name, expected_language):
+    recognizer = PresidioRecognizerFactory.create_recognizer(
+        Recognizer(
+            name=f"default_{name.value}",
+            recognizerConfig=RecognizerConfig(root=PredefinedRecognizer(type="predefined", name=name)),
+        )
+    )
+    assert recognizer is not None
+    assert recognizer.supported_language == expected_language
+
+
+def test_legacy_registry_uses_the_validated_fin_adapter():
+    recognizer = next(rec for rec in _get_all_pattern_recognizers() if rec.name == "ValidatedSgFinRecognizer")
+    assert recognizer.analyze("S1234567E", recognizer.supported_entities) == []
+    assert len(recognizer.analyze("S1234567D", recognizer.supported_entities)) == 1
+
+
+@pytest.mark.parametrize(
+    "name,language,value,score",
+    [
+        (Name.IbanRecognizer, ClassificationLanguage.en, "gb82 west 1234 5698 7654 32", 0.5),
+        (Name.EsNifRecognizer, ClassificationLanguage.es, "12345678z", 0.5),
+        (Name.EsNieRecognizer, ClassificationLanguage.es, "x1234567l", 0.5),
+        (Name.SgUenRecognizer, ClassificationLanguage.en, "t15lp0010d", 0.3),
+        (Name.AuAbnRecognizer, ClassificationLanguage.en, "51-824-753-556", 0.3),
+        (Name.AuAcnRecognizer, ClassificationLanguage.en, "004-085-616", 0.3),
+        (Name.ItVatCodeRecognizer, ClassificationLanguage.it, "IT12345678903", 1.0),
+    ],
+)
+def test_identifier_variants_preserve_span_and_require_context(name, language, value, score):
+    recognizer = configured(name, language)
+    text = f"value: {value}; done"
+    results = recognizer.analyze(text, recognizer.supported_entities)
+    assert [(text[result.start : result.end], result.score) for result in results] == [(value, score)]
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [
+        (Name.IbanRecognizer, "GB82 WEST 1234 5698 7654 32"),
+        (Name.EsNifRecognizer, "12345678Z"),
+        (Name.EsNieRecognizer, "X1234567L"),
+        (Name.SgUenRecognizer, "T15LP0010D"),
+        (Name.AuAbnRecognizer, "51 824 753 556"),
+        (Name.AuAbnRecognizer, "51824753556"),
+        (Name.AuAcnRecognizer, "004 085 616"),
+        (Name.AuAcnRecognizer, "004085616"),
+        (Name.ItVatCodeRecognizer, "12345678903"),
+        (Name.ItVatCodeRecognizer, "IT 12345678903"),
+    ],
+)
+def test_canonical_identifier_scores_and_spans_match_upstream(name, value):
+    upstream = getattr(predefined_recognizers, name.value)()
+    adapted = configured(name, ClassificationLanguage.en)
+    expected = upstream.analyze(value, upstream.supported_entities)
+    actual = adapted.analyze(value, adapted.supported_entities)
+    assert [(r.start, r.end, r.score) for r in actual] == [(r.start, r.end, r.score) for r in expected]
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [
+        (Name.IbanRecognizer, "gb83 west 1234 5698 7654 32"),
+        (Name.EsNifRecognizer, "12345678a"),
+        (Name.EsNieRecognizer, "x1234567a"),
+        (Name.SgUenRecognizer, "t15lp0010x"),
+        (Name.AuAbnRecognizer, "51-824-753-557"),
+        (Name.AuAcnRecognizer, "004-085-617"),
+        (Name.ItVatCodeRecognizer, "IT12345678904"),
+        (Name.ItVatCodeRecognizer, "IT00000000000"),
+        (Name.SgFinRecognizer, "A1234567D"),
+        (Name.SgFinRecognizer, "M7654321M"),
+        (Name.EsNifRecognizer, "12345678\u017f"),
+        (Name.EsNieRecognizer, "X1234567\u212a"),
+        (Name.SgUenRecognizer, "\u017f15LP0010D"),
+        (Name.SgFinRecognizer, "\u017f1234567D"),
+        (Name.SgFinRecognizer, "S1234567\u212a"),
+        (Name.ItVatCodeRecognizer, "İT12345678903"),
+    ],
+)
+def test_invalid_identifier_checksums_and_unicode_lookalikes_are_rejected(name, value):
+    recognizer = configured(name, ClassificationLanguage.en)
+    assert recognizer.analyze(value, recognizer.supported_entities) == []
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [(Name.AuAbnRecognizer, "51-824-753-556"), (Name.AuAcnRecognizer, "004-085-616")],
+)
+@pytest.mark.parametrize("enclosure", ["X{}", "{}9", "_{}", "{}-", "9 {}", "{} - 9", "9 _ {}", "{} 9"])
+def test_new_hyphenated_forms_reject_larger_tokens_and_numeric_runs(name, value, enclosure):
+    recognizer = configured(name, ClassificationLanguage.en)
+    assert recognizer.analyze(enclosure.format(value), recognizer.supported_entities) == []
+
+
+@pytest.mark.parametrize(
+    "name,text,value",
+    [
+        (Name.AuAbnRecognizer, "ABN 51 824 753 556 - Acme Pty Ltd", "51 824 753 556"),
+        (Name.AuAbnRecognizer, "ABN 51-824-753-556 - Acme Pty Ltd", "51-824-753-556"),
+        (Name.AuAcnRecognizer, "ACN 004-085-616 _ Acme Pty Ltd", "004-085-616"),
+        (Name.IbanRecognizer, "GB82 WEST 1234 5698 7654 32 - Barclays", "GB82 WEST 1234 5698 7654 32"),
+        (Name.IbanRecognizer, "gb82 west 1234 5698 7654 32 - Barclays", "gb82 west 1234 5698 7654 32"),
+        (Name.ItVatCodeRecognizer, "I paid it 12345678903", "12345678903"),
+    ],
+)
+def test_identifier_in_prose_preserves_upstream_punctuation_handling(name, text, value):
+    recognizer = configured(name, ClassificationLanguage.en)
+    assert [text[r.start : r.end] for r in recognizer.analyze(text, recognizer.supported_entities)] == [value]
+
+
+def test_identifier_factory_preserves_configured_language_and_context():
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.es, context=["custom_identifier"])
+    assert recognizer.supported_language == "es"
+    assert recognizer.context == ["custom_identifier"]
+    assert recognizer.name == "ValidatedSgFinRecognizer"
+
+
+def test_vat_validator_rejects_unicode_prefix_before_normalizing():
+    assert PrefixedItVatRecognizer().validate_result("\u0130T12345678903") is False

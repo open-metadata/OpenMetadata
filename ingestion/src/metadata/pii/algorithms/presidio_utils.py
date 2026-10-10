@@ -34,11 +34,19 @@ from presidio_analyzer import (
 )
 from presidio_analyzer.nlp_engine import NlpArtifacts, SpacyNlpEngine
 from presidio_analyzer.predefined_recognizers import (
+    AuAbnRecognizer,
+    AuAcnRecognizer,
     AuTfnRecognizer,
     CreditCardRecognizer,
     DateRecognizer,
+    EsNieRecognizer,
+    EsNifRecognizer,
+    IbanRecognizer,
     InAadhaarRecognizer,
+    ItVatCodeRecognizer,
     NhsRecognizer,
+    SgFinRecognizer,
+    SgUenRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
 )
@@ -358,6 +366,192 @@ def date_recognizer(
     context: list[str] | None = None,
 ) -> ValidatedDateRecognizer:
     return ValidatedDateRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    IbanRecognizer
+)
+def iban_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> IbanRecognizer:
+    return IbanRecognizer(
+        supported_language=supported_language,
+        context=context or IbanRecognizer.CONTEXT,
+        regex_flags=re.DOTALL | re.MULTILINE | re.IGNORECASE,
+    )
+
+
+class CaseInsensitiveEsNifRecognizer(EsNifRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        # Reject Unicode case-folding lookalikes before normalizing the checksum input.
+        if not pattern_text.isascii() or not super().validate_result(pattern_text.upper()):
+            return False
+        return True if pattern_text.isupper() else None
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    EsNifRecognizer
+)
+def es_nif_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> CaseInsensitiveEsNifRecognizer:
+    return CaseInsensitiveEsNifRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class CaseInsensitiveEsNieRecognizer(EsNieRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        # Reject Unicode case-folding lookalikes before normalizing the checksum input.
+        if not pattern_text.isascii() or not super().validate_result(pattern_text.upper()):
+            return False
+        return True if pattern_text.isupper() else None
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    EsNieRecognizer
+)
+def es_nie_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> CaseInsensitiveEsNieRecognizer:
+    return CaseInsensitiveEsNieRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class CaseInsensitiveSgUenRecognizer(SgUenRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:
+        # Reject Unicode case-folding lookalikes before normalizing the checksum input.
+        if not pattern_text.isascii() or not super().validate_result(pattern_text.upper()):
+            return False
+        return True if pattern_text.isupper() else None
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    SgUenRecognizer
+)
+def sg_uen_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> CaseInsensitiveSgUenRecognizer:
+    return CaseInsensitiveSgUenRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class SeparatorTolerantAuAbnRecognizer(AuAbnRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        if not super().validate_result(pattern_text):
+            return False
+        # Newly accepted hyphenated codes need column context, not just a checksum.
+        return None if "-" in pattern_text else True
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    AuAbnRecognizer
+)
+def au_abn_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> SeparatorTolerantAuAbnRecognizer:
+    return SeparatorTolerantAuAbnRecognizer(
+        patterns=[*AuAbnRecognizer.PATTERNS, *patterns.au_abn_hyphenated],
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class SeparatorTolerantAuAcnRecognizer(AuAcnRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
+        if not super().validate_result(pattern_text):
+            return False
+        # Newly accepted hyphenated codes need column context, not just a checksum.
+        return None if "-" in pattern_text else True
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    AuAcnRecognizer
+)
+def au_acn_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> SeparatorTolerantAuAcnRecognizer:
+    return SeparatorTolerantAuAcnRecognizer(
+        patterns=[*AuAcnRecognizer.PATTERNS, *patterns.au_acn_hyphenated],
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+class PrefixedItVatRecognizer(ItVatCodeRecognizer):
+    def validate_result(self, pattern_text: str) -> bool:
+        if not pattern_text.isascii():
+            return False
+        return super().validate_result(pattern_text.upper().removeprefix("IT"))
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    ItVatCodeRecognizer
+)
+def it_vat_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> PrefixedItVatRecognizer:
+    return PrefixedItVatRecognizer(
+        patterns=[*ItVatCodeRecognizer.PATTERNS, *patterns.it_vat_prefixed],
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+_FIN_CHECKSUMS = {
+    "S": (0, "JZIHGFEDCBA"),
+    "T": (4, "JZIHGFEDCBA"),
+    "F": (0, "XWUTRQPNMLK"),
+    "G": (4, "XWUTRQPNMLK"),
+    "M": (3, "XWUTRQPNJLK"),
+}
+
+
+class ValidatedSgFinRecognizer(SgFinRecognizer):
+    def validate_result(self, pattern_text: str) -> bool | None:
+        value = pattern_text.upper()
+        # The inherited weak pattern also admits unsupported prefixes and Unicode lookalikes.
+        if not pattern_text.isascii() or not re.fullmatch(r"[STFGM][0-9]{7}[A-Z]", value):
+            return False
+        offset, letters = _FIN_CHECKSUMS[value[0]]
+        weighted = sum(int(digit) * weight for digit, weight in zip(value[1:8], (2, 7, 6, 5, 4, 3, 2), strict=True))
+        if value[-1] != letters[(weighted + offset) % 11]:
+            return False
+        # Checksum validity rejects typos; column context must still raise the pattern score.
+        return None
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    SgFinRecognizer
+)
+def sg_fin_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedSgFinRecognizer:
+    return ValidatedSgFinRecognizer(
         supported_language=supported_language,
         context=context,
     )
