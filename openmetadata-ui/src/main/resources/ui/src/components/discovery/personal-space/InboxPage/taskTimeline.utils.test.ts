@@ -287,6 +287,27 @@ describe('buildTaskTimeline', () => {
       });
     });
 
+    // An Assigned record with no details at all — as when the sole assignee
+    // has since been deleted — must not keep the "{{assignee}}"-interpolating
+    // text and leave the sentence dangling on "to ".
+    it('says reassigned when the record has no assignee at all', () => {
+      const [assigned] = buildTaskTimeline(incident, {
+        incidentStatuses: [
+          {
+            id: 's7',
+            testCaseResolutionStatusType:
+              TestCaseResolutionStatusTypes.Assigned,
+            updatedBy: teddy,
+            timestamp: 700,
+          },
+        ] as unknown as TestCaseResolutionStatus[],
+      });
+
+      expect(assigned).toMatchObject({
+        textKey: 'message.task-event-incident-reassigned',
+      });
+    });
+
     it('drops the guessed untimed assignment', () => {
       expect(
         events().some(
