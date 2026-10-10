@@ -15,8 +15,8 @@ import {
   ClockCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Avatar, Button, Card, Collapse, Space } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { Avatar, Button, Card, Collapse } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -40,7 +40,12 @@ const AppInstallVerifyCard = ({
 
   return (
     <div className="flex-center flex-col">
-      <Space className="p-t-lg">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal p-t-lg"
+        gap={2}
+        itemClassName="layout-space-item">
         <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         <Divider
           dashed
@@ -60,14 +65,19 @@ const AppInstallVerifyCard = ({
           }
           size={100}
         />
-      </Space>
+      </Box>
       <Typography as="h5" className="m-t-md" size="text-md" weight="semibold">
         {t('label.authorize-app', {
           app: getEntityName(appData),
         })}
       </Typography>
       <Card className="w-500 m-t-md">
-        <Space size={12}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={3}
+          itemClassName="layout-space-item">
           <UserPopOverCard
             profileWidth={32}
             userName={currentUser?.name ?? ''}
@@ -97,7 +107,7 @@ const AppInstallVerifyCard = ({
               })}
             </Typography>
           </div>
-        </Space>
+        </Box>
 
         <Collapse ghost className="w-full m-t-md" expandIconPosition="end">
           <Collapse.Panel
@@ -125,20 +135,30 @@ const AppInstallVerifyCard = ({
       </Card>
       <Card className="w-500 m-t-md">
         <div className="d-flex items-center justify-between">
-          <Space size={8}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <UserOutlined />
             <Typography className="text-xs" color="secondary">
               {t('label.developed-by-developer', {
                 developer: appData?.developer,
               })}
             </Typography>
-          </Space>
-          <Space size={8}>
+          </Box>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <ClockCircleOutlined />
             <Typography className="text-xs" color="secondary">
               {`${t('label.updated')} ${getRelativeTime(appData?.updatedAt)}`}
             </Typography>
-          </Space>
+          </Box>
         </div>
       </Card>
     </div>

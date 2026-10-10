@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf.inference;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
@@ -23,6 +24,7 @@ import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
 import org.apache.jena.update.UpdateAction;
 import org.apache.jena.util.iterator.ExtendedIterator;
+import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 
 /**
  * In-memory stand-in for the Fuseki dataset: SPARQL Update runs for real, and the default graph is
@@ -36,6 +38,7 @@ final class UnionDefaultGraphStore implements InferenceGraphStore {
   private final List<String> updates = new ArrayList<>();
   private Runnable afterNextUpdate = () -> {};
   private String failingUpdateFragment;
+  private String timingOutUpdateFragment;
   private boolean available = true;
 
   UnionDefaultGraphStore() {
@@ -51,6 +54,12 @@ final class UnionDefaultGraphStore implements InferenceGraphStore {
   public void update(final String sparqlUpdate) {
     if (failingUpdateFragment != null && sparqlUpdate.contains(failingUpdateFragment)) {
       throw new IllegalStateException("Fuseki rejected the update");
+    }
+    if (timingOutUpdateFragment != null && sparqlUpdate.contains(timingOutUpdateFragment)) {
+      throw new RuntimeException(
+          "Failed to execute SPARQL update",
+          new RdfWriteOutcomeUnknownException(
+              "executeSparqlUpdate", new TimeoutException("request timed out")));
     }
     UpdateAction.parseExecute(sparqlUpdate, dataset);
     updates.add(sparqlUpdate);
@@ -93,6 +102,11 @@ final class UnionDefaultGraphStore implements InferenceGraphStore {
 
   void failUpdatesContaining(final String fragment) {
     failingUpdateFragment = fragment;
+  }
+
+  /** OM gave up waiting, as at its request timeout, so Fuseki may or may not apply the update. */
+  void timeOutUpdatesContaining(final String fragment) {
+    timingOutUpdateFragment = fragment;
   }
 
   void makeUnavailable() {

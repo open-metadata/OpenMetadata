@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { SuggestionProps } from '@tiptap/suggestion';
-import { Space } from 'antd';
+
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
@@ -105,25 +105,36 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
     }));
 
     return (
-      <Space
-        className="suggestion-menu-wrapper"
-        direction="vertical"
-        id="mention-viewport">
+      <Box
+        inline
+        align="stretch"
+        className="layout-space suggestion-menu-wrapper"
+        direction="col"
+        gap={2}
+        id="mention-viewport"
+        itemClassName="layout-space-item">
         {items.map((item, index) => (
-          <Space
-            className={classNames('w-full cursor-pointer mention-item', {
-              'bg-grey-2': index === selectedIndex,
-            })}
+          <Box
+            inline
+            align="center"
+            className={`layout-space layout-space-horizontal ${classNames(
+              'w-full cursor-pointer mention-item',
+              {
+                'bg-grey-2': index === selectedIndex,
+              }
+            )}`}
+            gap={2}
             id={`mention-item-${item.id}`}
+            itemClassName="layout-space-item"
             key={item.id}
             onClick={() => selectItem(index)}>
             <ProfilePicture name={item.name} width="20" />
             <Typography as="article" className="truncate w-max-200">
               {item.label}
             </Typography>
-          </Space>
+          </Box>
         ))}
-      </Space>
+      </Box>
     );
   }
 );

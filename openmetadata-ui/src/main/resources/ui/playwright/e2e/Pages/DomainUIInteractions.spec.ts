@@ -31,6 +31,7 @@ import {
   fillDeleteConfirmationIfPresent,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { fillStyleIconUrl } from '../../utils/glossaryForm';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
@@ -309,10 +310,12 @@ test.describe('Domain Style Editing', () => {
         page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
       ).toBeVisible();
 
-      // Fill icon URL input (data-testid="icon-url")
-      await page.getByTestId('icon-url').fill('https://example.com/icon.png');
+      await fillStyleIconUrl(
+        page,
+        page.getByTestId('icon-color-modal'),
+        'https://example.com/icon.png'
+      );
 
-      // Click Save button (Ant Design Modal uses getByRole for OK button)
       const patchRes = page.waitForResponse('/api/v1/domains/*');
       await page.getByRole('button', { name: 'Save' }).click();
       await patchRes;

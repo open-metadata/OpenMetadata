@@ -23,6 +23,7 @@ import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationRes
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.inference.InferenceRuleRepository.RuleSnapshot;
+import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 
 /**
  * Materializes the rule bundle inside Fuseki as one fixed point per run. A run empties every rule
@@ -48,6 +49,10 @@ public final class InferenceMaterializer {
   private static final String RUN_FAILED = "Inference run failed: %s";
   private static final String LEASE_LOST =
       "Another inference run took over the materialization lock, so this run stopped";
+  private static final String LEASE_KEPT =
+      "Keeping the inference materialization lock of run {} until it expires: Fuseki may still be"
+          + " applying an update whose outcome is unknown, and the next run must not clear the rule"
+          + " graphs underneath it";
 
   private final InferenceGraphStore store;
   private final InferenceRuleRepository rules;
@@ -119,6 +124,9 @@ public final class InferenceMaterializer {
       outcome = new RunOutcome(recordSuccess(snapshots), 0);
     } catch (RuntimeException exception) {
       LOG.error("Inference materialization run failed", exception);
+      if (RdfWriteOutcomeUnknownException.isPresent(exception)) {
+        lease.keepUntilExpiry();
+      }
       final List<InferenceRuleStatus> failed = recordFailure(snapshots, exception);
       outcome = new RunOutcome(failed, failed.size());
     }
@@ -224,11 +232,26 @@ public final class InferenceMaterializer {
     return status.getGraphUri().toString();
   }
 
+  /**
+   * Renewed in the background while held, and also before each update so a run stops as soon as
+   * another one has taken it over.
+   */
   private final class Lease implements AutoCloseable {
     private final String runId;
+    private final Runnable stopHeartbeat;
+    private boolean keepUntilExpiry;
 
     private Lease(final String runId) {
       this.runId = runId;
+      this.stopHeartbeat = runLock.keepAlive(runId);
+    }
+
+    /**
+     * OM stops waiting for an update at its request timeout, but Fuseki keeps applying it until its
+     * own update timeout, which is shorter than the lease.
+     */
+    private void keepUntilExpiry() {
+      keepUntilExpiry = true;
     }
 
     private void renew() {
@@ -239,7 +262,12 @@ public final class InferenceMaterializer {
 
     @Override
     public void close() {
-      runLock.release(runId);
+      stopHeartbeat.run();
+      if (keepUntilExpiry) {
+        LOG.warn(LEASE_KEPT, runId);
+      } else {
+        runLock.release(runId);
+      }
     }
   }
 

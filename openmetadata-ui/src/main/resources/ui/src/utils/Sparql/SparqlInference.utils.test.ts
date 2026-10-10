@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { getAvailableSparqlInferences } from './SparqlInference.utils';
+import {
+  getAvailableSparqlInferences,
+  resolveSparqlInference,
+} from './SparqlInference.utils';
 
 describe('getAvailableSparqlInferences', () => {
   it('always offers queries without inference', () => {
@@ -35,5 +38,17 @@ describe('getAvailableSparqlInferences', () => {
 
   it('ignores levels the playground cannot request', () => {
     expect(getAvailableSparqlInferences(['NONE', 'UNKNOWN'])).toEqual(['none']);
+  });
+});
+
+describe('resolveSparqlInference', () => {
+  it('keeps a level the server offers', () => {
+    expect(resolveSparqlInference('custom', ['none', 'custom'])).toBe('custom');
+  });
+
+  it('falls back to no inference for a level the server no longer offers', () => {
+    expect(resolveSparqlInference('rdfs', ['none', 'custom'])).toBe('none');
+    expect(resolveSparqlInference('owl', ['none'])).toBe('none');
+    expect(resolveSparqlInference('custom', ['none'])).toBe('none');
   });
 });

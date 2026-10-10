@@ -12,7 +12,7 @@
  */
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toString } from 'lodash';
@@ -224,7 +224,13 @@ function DatabaseVersionPage() {
             <div
               className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
               data-testid="entity-right-panel">
-              <Space className="w-full" direction="vertical" size="large">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -243,7 +249,7 @@ function DatabaseVersionPage() {
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
+              </Box>
             </div>
           </Box>
         ),

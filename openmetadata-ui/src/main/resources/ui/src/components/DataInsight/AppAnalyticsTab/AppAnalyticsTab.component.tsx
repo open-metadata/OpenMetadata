@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
 import DailyActiveUsersChart from '../DailyActiveUsersChart';
 import PageViewsByEntitiesChart from '../PageViewsByEntitiesChart';
@@ -21,26 +23,26 @@ const AppAnalyticsTab = () => {
   const { chartFilter, selectedDaysFilter } = useDataInsightProvider();
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid className="layout-row layout-grid" style={getLayoutGutter(16, 16)}>
+      <Grid.Item className="layout-column" span={24}>
         <TopViewEntities chartFilter={chartFilter} />
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <PageViewsByEntitiesChart
           chartFilter={chartFilter}
           selectedDays={selectedDaysFilter}
         />
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <DailyActiveUsersChart
           chartFilter={chartFilter}
           selectedDays={selectedDaysFilter}
         />
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <TopActiveUsers chartFilter={chartFilter} />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

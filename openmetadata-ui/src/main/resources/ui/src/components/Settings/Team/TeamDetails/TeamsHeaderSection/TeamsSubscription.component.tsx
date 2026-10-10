@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal, Select, Space, Tooltip } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Modal, Select, Tooltip } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -77,7 +77,7 @@ const TeamsSubscription = ({
         return (
           <div className="d-flex gap-2">
             <Typography
-              className="font-medium text-sm text-secondary-new "
+              className="font-medium text-sm text-secondary-new"
               data-testid="subscription-no-data">
               {t('label.none')}
             </Typography>
@@ -136,10 +136,12 @@ const TeamsSubscription = ({
   );
 
   return (
-    <Space
+    <Box
       align="start"
-      className="teams-subscription-container d-flex flex-col gap-2"
-      data-testid="teams-subscription">
+      className="layout-space layout-space-horizontal teams-subscription-container d-flex flex-col"
+      data-testid="teams-subscription"
+      gap={2}
+      itemClassName="layout-space-item">
       <div className="d-flex gap-1 items-center teams-subscription-label-container">
         <Typography className="right-panel-label text-sm font-medium subscription-label">
           {`${t('label.subscription')}`}
@@ -250,7 +252,7 @@ const TeamsSubscription = ({
           </Modal>
         </Button>
       )}
-    </Space>
+    </Box>
   );
 };
 

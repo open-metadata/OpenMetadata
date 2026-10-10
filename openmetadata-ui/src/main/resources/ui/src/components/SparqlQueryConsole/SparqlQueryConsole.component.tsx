@@ -39,7 +39,10 @@ import {
   SparqlPlaygroundInference,
   SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
-import { getAvailableSparqlInferences } from '../../utils/Sparql/SparqlInference.utils';
+import {
+  getAvailableSparqlInferences,
+  resolveSparqlInference,
+} from '../../utils/Sparql/SparqlInference.utils';
 import { getTermDisplayText } from '../../utils/Sparql/SparqlTerm.utils';
 import { generateUUID } from '../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -660,6 +663,12 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     [availableInferences]
   );
 
+  // Derived rather than clamped on load, so a level loaded before the RDF status arrives is kept.
+  const effectiveInference = useMemo(
+    () => resolveSparqlInference(inference, availableInferences),
+    [inference, availableInferences]
+  );
+
   const handleRun = useCallback(async () => {
     if (!query.trim()) {
       setErrorMessage(t('message.sparql-empty-query-error'));
@@ -670,7 +679,11 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     setErrorMessage(null);
     setResult(null);
     try {
-      const r = await runSparqlQuery({ query, format, inference });
+      const r = await runSparqlQuery({
+        query,
+        format,
+        inference: effectiveInference,
+      });
       setResult(r);
     } catch (e) {
       const axiosResponseData = isAxiosError(e) ? e.response?.data : undefined;
@@ -684,7 +697,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     } finally {
       setRunning(false);
     }
-  }, [query, format, inference, t]);
+  }, [query, format, effectiveInference, t]);
 
   const handleSaveCurrent = useCallback(() => {
     setSaveTarget('personal');
@@ -716,7 +729,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
       name,
       query,
       format,
-      inference,
+      inference: effectiveInference,
       savedAt: Date.now(),
     };
     const saved =
@@ -733,8 +746,8 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     }
   }, [
     activeTemplateId,
+    effectiveInference,
     format,
-    inference,
     query,
     saveName,
     saveTarget,
@@ -821,7 +834,7 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
           <QueryToolbarActions
             activeTemplateId={activeTemplateId}
             format={format}
-            inference={inference}
+            inference={effectiveInference}
             inferenceOptions={inferenceOptions}
             isAdminUser={isAdminUser}
             running={running}
