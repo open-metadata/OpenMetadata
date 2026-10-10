@@ -20,11 +20,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -36,6 +38,7 @@ import org.junit.jupiter.api.parallel.Resources;
 import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationResult;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.rdf.RdfReindexRunLock;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.inference.InferenceGraphStore;
@@ -47,8 +50,9 @@ import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 
 /**
  * Two OpenMetadata servers sharing one database and one Fuseki dataset, each with its own
- * materializer, against the real lock and rule tables on MySQL and Postgres. Each test uses its own
- * lock key, so the server's scheduled run cannot hold the lease these servers contend for.
+ * materializer, against the real lock and rule tables on MySQL and Postgres. The two servers contend
+ * for a lock key of their own, while each test holds the real one, so the server's scheduled
+ * RdfInferenceApp run stops instead of clearing dirty flags or rule graphs underneath the test.
  */
 @Tag("rdf")
 @EnabledIfSystemProperty(named = "enableRdf", matches = "true")
@@ -58,12 +62,16 @@ import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 public class RdfInferenceMultiServerIT {
   private static final String SERVER_A = "server-a";
   private static final String SERVER_B = "server-b";
+  private static final Duration SCHEDULED_RUN_WAIT =
+      Duration.ofMillis(RdfReindexRunLock.EXPIRY_MS).plusMinutes(1);
 
   private RdfReindexLockDAO locks;
   private InferenceRuleRepository rules;
   private InferenceGraphStore fuseki;
   private String lockKey;
   private String ruleName;
+  private InferenceRunLock scheduledRuns;
+  private String guardRunId;
 
   @BeforeEach
   void connect() {
@@ -74,6 +82,7 @@ public class RdfInferenceMultiServerIT {
             Entity.getCollectionDAO().rdfInferenceRuleDAO(), Clock.systemUTC(), rdf.getBaseUri());
     fuseki = InferenceGraphStore.forRepository(rdf);
     assertTrue(fuseki.isAvailable(), "The RDF lane runs Fuseki with materialized inference");
+    holdOffScheduledRuns();
     lockKey = "RdfInferenceMultiServerIT-" + UUID.randomUUID();
     ruleName = "multi-server-" + UUID.randomUUID().toString().substring(0, 8);
     rules.upsert(ruleName, ruleMatchingNothing());
@@ -81,9 +90,13 @@ public class RdfInferenceMultiServerIT {
 
   @AfterEach
   void cleanUp() {
-    locks.delete(lockKey);
-    rules.delete(ruleName);
-    materializer(SERVER_A, fuseki).materialize(true, null);
+    try {
+      locks.delete(lockKey);
+      rules.delete(ruleName);
+      materializer(SERVER_A, fuseki).materialize(true, null);
+    } finally {
+      scheduledRuns.release(guardRunId);
+    }
   }
 
   @Test
@@ -140,6 +153,18 @@ public class RdfInferenceMultiServerIT {
     final long expired = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
     locks.updateHeartbeat(lockKey, lease.jobId(), expired, expired);
     assertEquals(0, materializer(SERVER_B, fuseki).materialize(true, null).getFailedRules());
+  }
+
+  /** Waits out a scheduled run already in progress, then keeps the next one from starting. */
+  private void holdOffScheduledRuns() {
+    scheduledRuns =
+        InferenceRunLock.forCluster(
+            locks, InferenceRunLock.MATERIALIZATION_LOCK_KEY, "RdfInferenceMultiServerIT");
+    guardRunId = UUID.randomUUID().toString();
+    Awaitility.await("the scheduled inference run to finish")
+        .atMost(SCHEDULED_RUN_WAIT)
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> scheduledRuns.tryAcquire(guardRunId));
   }
 
   private InferenceMaterializer materializer(

@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
  * recomputing, so a second run interleaving with it would erase facts the first one just derived.
  */
 public interface InferenceRunLock {
+  String MATERIALIZATION_LOCK_KEY = "RDF_INFERENCE_MATERIALIZATION_LOCK";
+
   boolean tryAcquire(String runId);
 
   /** Extends the lease, or returns false once it expired and another run took it over. */
@@ -44,9 +46,7 @@ public interface InferenceRunLock {
   /** The cluster-wide lease, held in the same lock table the RDF reindex uses. */
   static InferenceRunLock forCluster(final RdfReindexLockDAO locks) {
     return forCluster(
-        locks,
-        "RDF_INFERENCE_MATERIALIZATION_LOCK",
-        ServerIdentityResolver.getInstance().getServerId());
+        locks, MATERIALIZATION_LOCK_KEY, ServerIdentityResolver.getInstance().getServerId());
   }
 
   static InferenceRunLock forCluster(
