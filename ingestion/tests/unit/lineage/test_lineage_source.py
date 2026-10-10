@@ -412,6 +412,63 @@ class TestViewLineage(unittest.TestCase):
             # Verify the filtered view was logged
             self.lineage_source.status.filter.assert_called_once()
 
+    def test_view_lineage_producer_schema_filter_quoted_name(self):
+        """
+        A schema whose name contains a dot is stored in the FQN as a quoted
+        identifier, e.g. '"folder.sub"'.  filter_by_schema must receive the
+        unquoted name 'folder.sub' so that user patterns such as r'^folder\\.sub$'
+        actually match.  Regression for #34365.
+        """
+        from metadata.generated.schema.type.filterPattern import FilterPattern
+
+        mock_views = [
+            TableView(
+                table_name="my_view",
+                db_name="db",
+                schema_name='"folder.sub"',  # quoted FQN segment
+                view_def="CREATE VIEW my_view AS SELECT 1",
+            ),
+        ]
+        self.mock_metadata.yield_es_view_def = Mock(return_value=iter(mock_views))
+
+        # includes pattern for the unquoted name — must match and yield the view
+        includes_pattern = FilterPattern(includes=[r"^folder\.sub$"])
+        self.lineage_source.source_config.schemaFilterPattern = includes_pattern
+        self.lineage_source.source_config.databaseFilterPattern = None
+        self.lineage_source.source_config.tableFilterPattern = None
+
+        views = list(self.lineage_source.view_lineage_producer())
+        self.assertEqual(len(views), 1, "View with quoted schema should pass an includes filter on the unquoted name")
+
+        # excludes pattern for the unquoted name — must match and filter out the view
+        excludes_pattern = FilterPattern(excludes=[r"^folder\.sub$"])
+        self.lineage_source.source_config.schemaFilterPattern = excludes_pattern
+        self.mock_metadata.yield_es_view_def = Mock(return_value=iter(mock_views))
+
+        views = list(self.lineage_source.view_lineage_producer())
+        self.assertEqual(len(views), 0, "View with quoted schema should be filtered out by an excludes pattern on the unquoted name")
+
+    def test_view_lineage_producer_unquoted_schema_unaffected(self):
+        """
+        Plain schema names without dots must continue to work unchanged after
+        applying fqn.unquote_name (no quotes to strip).
+        """
+        mock_views = [
+            TableView(
+                table_name="my_view",
+                db_name="db",
+                schema_name="plain_schema",
+                view_def="CREATE VIEW my_view AS SELECT 1",
+            ),
+        ]
+        self.mock_metadata.yield_es_view_def = Mock(return_value=iter(mock_views))
+        self.lineage_source.source_config.schemaFilterPattern = None
+        self.lineage_source.source_config.databaseFilterPattern = None
+        self.lineage_source.source_config.tableFilterPattern = None
+
+        views = list(self.lineage_source.view_lineage_producer())
+        self.assertEqual(len(views), 1)
+
 
 class TestProcessingMethods(unittest.TestCase):
     """Tests for processing and chunking methods"""
