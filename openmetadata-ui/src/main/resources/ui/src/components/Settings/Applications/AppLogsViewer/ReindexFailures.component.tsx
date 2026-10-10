@@ -248,8 +248,8 @@ const ReindexFailures = ({
                   aria-label={t('label.filter-by-entity-type')}
                   className="tw:w-50"
                   items={entityTypeItems}
-                  selectedKey={entityTypeFilter ?? ALL_ENTITY_TYPES_KEY}
-                  onSelectionChange={(key) =>
+                  value={entityTypeFilter ?? ALL_ENTITY_TYPES_KEY}
+                  onChange={(key) =>
                     handleEntityTypeChange(
                       key && key !== ALL_ENTITY_TYPES_KEY
                         ? String(key)

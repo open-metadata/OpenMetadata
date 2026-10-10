@@ -41,11 +41,11 @@ const CRUMB_APP = 'marketplace-app';
 const VIEW_INSTALL = 'install';
 const VIEW_MARKETPLACE = 'marketplace';
 const VIEW_MARKETPLACE_DETAIL = 'marketplace-detail';
-const MARKETPLACE_VIEWS: ApplicationsView['type'][] = [
+const MARKETPLACE_VIEWS: ReadonlySet<ApplicationsView['type']> = new Set([
   VIEW_MARKETPLACE,
   VIEW_MARKETPLACE_DETAIL,
   VIEW_INSTALL,
-];
+]);
 
 interface ApplicationsPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
@@ -70,7 +70,7 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
   const handleHeaderChange = useCallback(
     ({ crumb, ...header }: ApplicationsHeader) => {
       const appsLabel = t('label.application-plural');
-      const isMarketplaceView = MARKETPLACE_VIEWS.includes(view.type);
+      const isMarketplaceView = MARKETPLACE_VIEWS.has(view.type);
 
       const breadcrumbs: BreadcrumbItemType[] = [
         { id: 'settings', label: t('label.setting-plural') },
@@ -119,7 +119,7 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
 
   const content = (() => {
     // The marketplace and install flow are admin-only, as on the legacy routes.
-    if (MARKETPLACE_VIEWS.includes(view.type) && !isAdminUser) {
+    if (MARKETPLACE_VIEWS.has(view.type) && !isAdminUser) {
       return (
         <Box className="tw:relative tw:min-h-90 tw:mx-8">
           <EmptyPlaceholder

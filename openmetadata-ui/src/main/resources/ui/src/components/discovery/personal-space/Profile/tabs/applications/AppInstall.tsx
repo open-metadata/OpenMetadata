@@ -287,7 +287,7 @@ const AppInstall: FC<AppInstallProps> = ({
   }, [fqn, t]);
 
   useEffect(() => {
-    fetchAppDetails();
+    void fetchAppDetails();
   }, [fetchAppDetails]);
 
   useEffect(() => {
@@ -375,7 +375,7 @@ const AppInstall: FC<AppInstallProps> = ({
     setAppConfiguration(formData);
     setIngestionRunner(runner);
     if (isLastStep) {
-      install(formData, runner);
+      void install(formData, runner);
     } else {
       goNext();
     }
@@ -427,7 +427,7 @@ const AppInstall: FC<AppInstallProps> = ({
                 isLoading={isSaving}
                 nextLabel={nextLabel}
                 onBack={goBack}
-                onNext={() => (isLastStep ? install() : goNext())}
+                onNext={() => (isLastStep ? void install() : goNext())}
               />
             }
           />
@@ -468,7 +468,7 @@ const AppInstall: FC<AppInstallProps> = ({
               isNextDisabled={!isScheduleValid}
               nextLabel={t('label.install')}
               onBack={goBack}
-              onNext={() => install(appConfiguration, ingestionRunner)}
+              onNext={() => void install(appConfiguration, ingestionRunner)}
             />
           </Box>
         );

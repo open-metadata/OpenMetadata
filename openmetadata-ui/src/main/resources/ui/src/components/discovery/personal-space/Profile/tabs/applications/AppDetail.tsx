@@ -241,7 +241,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   }, [fqn, t]);
 
   useEffect(() => {
-    fetchAppDetails();
+    void fetchAppDetails();
   }, [fetchAppDetails]);
 
   const patchApp = async (updated: App, entity: string) => {
@@ -332,7 +332,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
           action: t('label.deploy'),
         })
       );
-      fetchAppDetails();
+      void fetchAppDetails();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

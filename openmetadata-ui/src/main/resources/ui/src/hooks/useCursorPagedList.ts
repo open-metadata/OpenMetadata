@@ -69,13 +69,13 @@ export const useCursorPagedList = <T>(
 
   useEffect(() => {
     setPage(1);
-    load();
+    void load();
   }, [load]);
 
   const onPageChange = (nextPage: number) => {
     const cursorType = nextPage > page ? 'after' : 'before';
     setPage(nextPage);
-    load({ [cursorType]: paging[cursorType] });
+    void load({ [cursorType]: paging[cursorType] });
   };
 
   return {

@@ -215,7 +215,7 @@ const MarketplaceAppDetail: FC<MarketplaceAppDetailProps> = ({
   }, [fqn]);
 
   useEffect(() => {
-    fetchAppDetails();
+    void fetchAppDetails();
   }, [fetchAppDetails]);
 
   const blockedReason = appData
