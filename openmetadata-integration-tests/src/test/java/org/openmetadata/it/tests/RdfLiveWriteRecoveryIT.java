@@ -318,6 +318,73 @@ public class RdfLiveWriteRecoveryIT {
 
   @ParameterizedTest
   @EnumSource(RdfTestDatabase.Backend.class)
+  void theWatermarkPassesAWriteOnlyOnceItIsApplied(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue(insert(1));
+      final long first = fixture.primary.enqueuedWatermark();
+      fixture.other.enqueue(insert(2));
+      final long second = fixture.other.enqueuedWatermark();
+      assertTrue(first < second);
+
+      assertFalse(
+          fixture.primary.processNext(
+              payload -> {
+                throw new IllegalStateException("Fuseki temporarily unavailable");
+              }));
+      assertTrue(fixture.other.acknowledgedWatermark() < first);
+
+      fixture.clock.advance(1000);
+      assertTrue(fixture.other.processNext(fixture::apply));
+      final long afterFirst = fixture.primary.acknowledgedWatermark();
+      assertTrue(first <= afterFirst && afterFirst < second);
+
+      assertTrue(fixture.primary.processNext(fixture::apply));
+      assertEquals(second, fixture.newStore().acknowledgedWatermark());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aWriteOutsideTheQueueTakesTheNextIdWithoutAnythingToDeliver(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue(insert(1));
+      final long queued = fixture.primary.enqueuedWatermark();
+
+      final long untracked = fixture.other.recordUntrackedWrite();
+
+      assertTrue(untracked > queued);
+      assertEquals(untracked, fixture.primary.enqueuedWatermark());
+      assertEquals(1, fixture.primary.pendingWrites());
+      assertTrue(fixture.primary.acknowledgedWatermark() < queued);
+      assertTrue(fixture.primary.processNext(fixture::apply));
+      assertFalse(fixture.primary.processNext(fixture::apply));
+      assertEquals(untracked, fixture.other.acknowledgedWatermark());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aDeadLetteredWriteMovesTheWatermarkOnAndLeavesTheGraphDegraded(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      fixture.primary.enqueue("malformed");
+      final long malformed = fixture.primary.enqueuedWatermark();
+      fixture.primary.enqueue(insert(1));
+      for (int attempt = 1; attempt < 10; attempt++) {
+        assertFalse(fixture.primary.processNext(fixture::apply));
+        fixture.clock.advance(60_000);
+      }
+
+      assertTrue(fixture.primary.processNext(fixture::apply));
+
+      assertTrue(fixture.other.acknowledgedWatermark() >= malformed);
+      assertTrue(fixture.other.isDegraded());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
   void anExhaustedWriteCannotBeReplayedAfterALaterDelete(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       final UUID id = UUID.randomUUID();

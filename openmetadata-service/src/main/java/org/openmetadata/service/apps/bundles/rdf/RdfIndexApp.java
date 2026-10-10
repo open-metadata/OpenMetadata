@@ -44,6 +44,7 @@ import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -200,6 +201,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       getApp().setAppConfiguration(jsonAppConfig);
     }
 
+    boolean writesServingGraph = false;
     try {
       initialProjectionFailureVersion = RdfProjectionHealth.failureVersion();
       jobData.setRdfBuildDataset(null);
@@ -233,10 +235,16 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
       if (buildDataset != null) {
         prepareBuildDataset(indexingRepository, buildDataset);
-      } else if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
-        LOG.info("Clearing existing RDF data");
-        markIncompleteDuringInPlaceRebuild();
-        clearRdfData();
+      } else {
+        // An in-place run rewrites the serving graph outside the live-write queue, so reasoning
+        // results computed before it, or while it runs, must not pass for current afterwards.
+        writesServingGraph = true;
+        RdfUpdater.recordUntrackedWrite();
+        if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
+          LOG.info("Clearing existing RDF data");
+          markIncompleteDuringInPlaceRebuild();
+          clearRdfData();
+        }
       }
 
       updateJobStatus(EventPublisherJob.Status.RUNNING);
@@ -265,6 +273,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
         handleJobFailure(ex);
       }
     } finally {
+      if (writesServingGraph) {
+        RdfUpdater.recordUntrackedWrite();
+      }
       clearAutoTuneOverride();
       sendUpdates(jobExecutionContext, true);
     }
