@@ -58,7 +58,7 @@ import {
 } from './profileNavConfig';
 
 describe('profileNavConfig', () => {
-  it('exposes exactly the 7 built-in nav items in order', () => {
+  it('exposes exactly the 8 built-in nav items in order', () => {
     expect(PROFILE_NAV_ITEMS.map((i) => i.id)).toEqual([
       'profile',
       'permissions',
@@ -84,7 +84,7 @@ describe('profileNavConfig', () => {
       expect(typeof item.render).toBe('function');
     });
 
-    expect(ids.size).toBe(7);
+    expect(ids.size).toBe(8);
   });
 
   it('places access-control under administration group, not credentials', () => {
