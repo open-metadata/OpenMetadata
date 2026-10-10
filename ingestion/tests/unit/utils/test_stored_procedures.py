@@ -14,7 +14,26 @@ Test Stored Procedures Utils
 
 import time
 
+import pytest
+
 from metadata.utils.stored_procedures import get_procedure_name_from_call
+
+
+@pytest.mark.parametrize(
+    "query_text,expected",
+    [
+        ("-- reference\nSELECT 'CALL nightly_load()'", None),
+        ("/* reference */ SELECT 'BEGIN schema.proc(); END;'", None),
+        ("SELECT 'CALL old_daily_refresh()'; CALL nightly_load()", "nightly_load"),
+        ("SELECT 'escaped ''CALL old()'''; CALL nightly_load()", "nightly_load"),
+        ("SELECT $$CALL old()$$; CALL nightly_load()", "nightly_load"),
+        ("SELECT $body$BEGIN old(); END;$body$; CALL nightly_load()", "nightly_load"),
+        ("CALL/* prior CALL legacy() */nightly_load()", "nightly_load"),
+        ('/* prior */ CALL db."My Schema"."My Proc"(\'has -- inside\')', "my proc"),
+    ],
+)
+def test_get_procedure_name_ignores_sql_literals(query_text, expected):
+    assert get_procedure_name_from_call(query_text) == expected
 
 
 class TestStoredProcedures:

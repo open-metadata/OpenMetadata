@@ -14,7 +14,8 @@ Stored Procedures Utilities
 
 import re
 
-import sqlparse
+from sqlparse import tokens
+from sqlparse.lexer import tokenize
 
 from metadata.utils.logger import utils_logger
 
@@ -70,24 +71,18 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
     We'll return the lowered procedure name
     """
 
-    # Strip SQL comments before matching so a `CALL`/`BEGIN` that lives inside a
-    # `-- ...` or `/* ... */` comment (a commented-out prior invocation, or a
-    # reference annotation on a non-procedure query) is not mistaken for the real
-    # statement. `re.search` returns the leftmost match, and engine query-history
-    # text carries comments through verbatim (see the `NOT LIKE '/* ... */%%'`
-    # filters in the Snowflake/Oracle/Redshift lineage queries), so without this
-    # step the commented name would win. The profiler's DML path
-    # (`_normalize_dml_sql`) strips comments for the same reason; `sqlparse` is a
-    # SQL-aware tokenizer, so it preserves quoted identifiers (backtick and
-    # `"..."` forms) and string literals that a naive regex would corrupt.
-    #
-    # Guard the call: `sqlparse.format` tokenizes the whole query, which is far
-    # costlier than the bounded `NAME_PATTERN` regex, and most query-history rows
-    # carry no comments at all. When no comment marker is present the strip is a
-    # no-op, so skipping it keeps the comment-free hot path at the original speed
-    # (see `test_get_procedure_name_stays_linear_on_large_non_procedure_sql`).
-    if "--" in query_text or "/*" in query_text:
-        query_text = sqlparse.format(query_text, strip_comments=True)
+    # Comments and literal values can mention invocations that never executed.
+    # Tokenize without grouping so large query-history statements stay linear,
+    # while quoted identifiers and whitespace between name segments survive.
+    if any(marker in query_text for marker in ("--", "/*", "'", "$")):
+        query_text = "".join(
+            " "
+            if token_type in tokens.Comment
+            or token_type in tokens.Literal.String.Single
+            or token_type == tokens.Literal
+            else value
+            for token_type, value in tokenize(query_text)
+        )
 
     res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else 0)
     if not res:
