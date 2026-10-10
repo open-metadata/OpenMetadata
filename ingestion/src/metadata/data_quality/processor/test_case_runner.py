@@ -215,7 +215,9 @@ class TestCaseRunner(Processor):
         Args:
             test_cases_to_update (List[TestCaseDefinition]): list of test case definitions
         """
-        definitions_by_name = {definition.name: definition for definition in test_cases_to_update}
+        definitions_by_name: dict[str, TestCaseDefinition] = {}
+        for definition in test_cases_to_update:
+            definitions_by_name.setdefault(definition.name, definition)
         updated: list[TestCase] = []
         for test_case in test_cases:
             definition = definitions_by_name.get(test_case.name.root)

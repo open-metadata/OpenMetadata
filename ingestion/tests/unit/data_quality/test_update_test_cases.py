@@ -148,6 +148,18 @@ def test_mixed_success_and_failure_keeps_original_on_none():
     assert patch_fn.call_count == 5
 
 
+def test_duplicate_cli_names_keep_the_first_definition():
+    test_cases = [_make_test_case("A", "OLD_A")]
+    definitions = [_make_definition("A", "FIRST_A"), _make_definition("A", "LAST_A")]
+    runner, patch_fn = _make_runner()
+
+    result = runner._update_test_cases(definitions, test_cases, TABLE_FQN)
+
+    assert _values(result) == ["FIRST_A"]
+    assert _values(test_cases) == ["OLD_A"]
+    assert patch_fn.call_count == 1
+
+
 def test_patch_called_with_correct_arguments_per_definition():
     """Each PATCH receives the definition's params, ``computePassedFailedRowCount``
     and an entity link built from the table FQN plus the definition's column
