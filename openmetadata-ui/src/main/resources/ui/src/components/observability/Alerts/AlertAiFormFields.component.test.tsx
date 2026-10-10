@@ -1605,6 +1605,113 @@ describe('AlertAi form field components', () => {
     );
   });
 
+  describe('view-mode section visibility when descriptors are unavailable', () => {
+    const viewValue = {
+      ...baseValue,
+      input: {
+        actions: [{ effect: Effect.Include, name: 'testResultTrigger' }],
+        filters: [{ effect: Effect.Include, name: 'domainList' }],
+      },
+      resources: ['table'],
+    } as ModifiedCreateEventSubscription;
+    const domainFilterRule: EventFilterRule = {
+      condition: '',
+      effect: Effect.Include,
+      name: 'domainList',
+    };
+    const testResultTriggerRule: EventFilterRule = {
+      condition: '',
+      effect: Effect.Include,
+      name: 'testResultTrigger',
+    };
+
+    it('renders configured filters and triggers in view mode when both catalog and capabilities are unavailable (regression)', () => {
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          filterResources={[]}
+          supportedFilters={undefined}
+          supportedTriggers={undefined}
+          value={viewValue}
+        />
+      );
+
+      expect(
+        screen.getByTestId('label.filter-plural-section')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('label.trigger-section')).toBeInTheDocument();
+      expect(screen.getByTestId('filters-0')).toBeInTheDocument();
+      expect(screen.getByTestId('actions-0')).toBeInTheDocument();
+    });
+
+    it('renders configured rules in view mode when the catalog failed but capabilities supplied a list (contrast)', () => {
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          filterResources={[]}
+          supportedFilters={[domainFilterRule]}
+          supportedTriggers={[testResultTriggerRule]}
+          value={viewValue}
+        />
+      );
+
+      expect(
+        screen.getByTestId('label.filter-plural-section')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('label.trigger-section')).toBeInTheDocument();
+    });
+
+    it('renders configured rules in view mode when the catalog resolved but capabilities are unavailable (contrast)', () => {
+      render(
+        <AlertAiFormFields
+          isViewOnly
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          filterResources={[
+            {
+              name: 'table',
+              supportedActions: [testResultTriggerRule],
+              supportedFilters: [domainFilterRule],
+            },
+          ]}
+          supportedFilters={undefined}
+          supportedTriggers={undefined}
+          value={viewValue}
+        />
+      );
+
+      expect(
+        screen.getByTestId('label.filter-plural-section')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('label.trigger-section')).toBeInTheDocument();
+    });
+
+    it('hides configured rules in edit mode when both catalog and capabilities are unavailable (contrast)', () => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          filterResources={[]}
+          supportedFilters={undefined}
+          supportedTriggers={undefined}
+          value={viewValue}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('label.filter-plural-section')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('label.trigger-section')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it('submits editable forms and skips submit in view mode', async () => {
     const onSubmit = jest.fn();
     const validValue = {
