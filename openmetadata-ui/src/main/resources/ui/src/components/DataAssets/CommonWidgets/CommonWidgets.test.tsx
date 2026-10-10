@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
 } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { renderWithQueryClient as render } from '../../../test/unit/test-utils';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { CommonWidgets } from './CommonWidgets';

@@ -1144,6 +1144,22 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void disabledGlossaryTagPropagationDoesNotWriteToSearch() {
+    ChangeDescription changes =
+        changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_TAGS).withNewValue("[]")),
+            List.of(),
+            List.of(new FieldChange().withName(Entity.FIELD_TAGS).withOldValue("[]")));
+    try (MockedStatic<SettingsCache> settings = mockStatic(SettingsCache.class)) {
+      settings.when(SettingsCache::isGlossaryTagPropagationEnabled).thenReturn(false);
+
+      repository.propagateGlossaryTags(Entity.GLOSSARY_TERM, "Glossary.Term", changes);
+
+      verify(searchClient, never()).updateChildren(anyString(), any(Pair.class), any(Pair.class));
+    }
+  }
+
+  @Test
   void propagateGlossaryTagsMarksPropagatedTagsAsDerived() {
     TagLabel tagLabel =
         new TagLabel()

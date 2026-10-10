@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -308,6 +309,16 @@ public class TagLabelUtil {
    * @throws RuntimeException if derived tags cannot be fetched
    */
   public static List<TagLabel> addDerivedTags(List<TagLabel> tagLabels) {
+    List<TagLabel> tags = getTagsForValidation(tagLabels);
+    if (!nullOrEmpty(tags) && !SettingsCache.isGlossaryTagPropagationEnabled()) {
+      // Suppressed tags must still be compatible when propagation is re-enabled.
+      checkMutuallyExclusive(tags);
+      tags.removeIf(tag -> tag.getLabelType() == TagLabel.LabelType.DERIVED);
+    }
+    return tags;
+  }
+
+  private static List<TagLabel> getTagsForValidation(List<TagLabel> tagLabels) {
     if (nullOrEmpty(tagLabels)) {
       return tagLabels;
     }
@@ -331,11 +342,20 @@ public class TagLabelUtil {
 
   /** Add derived tags using a single batch query. Falls back to non-derived tags on failure. */
   public static List<TagLabel> addDerivedTagsGracefully(List<TagLabel> tagLabels) {
+    return nullOrEmpty(tagLabels)
+        ? tagLabels
+        : addDerivedTagsGracefully(tagLabels, SettingsCache.isGlossaryTagPropagationEnabled());
+  }
+
+  /** Use the caller's preference snapshot so a toggle during a load cannot change its cache variant. */
+  public static List<TagLabel> addDerivedTagsGracefully(
+      List<TagLabel> tagLabels, boolean propagationEnabled) {
     if (nullOrEmpty(tagLabels)) {
       return tagLabels;
     }
     try {
-      Map<String, List<TagLabel>> derivedTagsMap = batchFetchDerivedTags(tagLabels);
+      Map<String, List<TagLabel>> derivedTagsMap =
+          batchFetchDerivedTags(tagLabels, propagationEnabled);
       return addDerivedTagsWithPreFetched(tagLabels, derivedTagsMap);
     } catch (Exception ex) {
       LOG.warn(
@@ -350,8 +370,7 @@ public class TagLabelUtil {
   }
 
   private static List<TagLabel> getDerivedTags(TagLabel tagLabel) {
-    if (tagLabel.getSource()
-        == TagLabel.TagSource.GLOSSARY) { // Related tags are only supported for Glossary
+    if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
       List<TagLabel> derivedTags =
           Entity.getCollectionDAO().tagUsageDAO().getTags(tagLabel.getTagFQN());
       derivedTags.forEach(tag -> tag.setLabelType(TagLabel.LabelType.DERIVED));
@@ -362,7 +381,14 @@ public class TagLabelUtil {
 
   /** Batch fetch derived tags for all glossary terms in the list. Returns map of termFQNHash → derived tags. */
   public static Map<String, List<TagLabel>> batchFetchDerivedTags(List<TagLabel> tagLabels) {
-    if (nullOrEmpty(tagLabels)) {
+    return nullOrEmpty(tagLabels)
+        ? Collections.emptyMap()
+        : batchFetchDerivedTags(tagLabels, SettingsCache.isGlossaryTagPropagationEnabled());
+  }
+
+  private static Map<String, List<TagLabel>> batchFetchDerivedTags(
+      List<TagLabel> tagLabels, boolean propagationEnabled) {
+    if (!propagationEnabled) {
       return Collections.emptyMap();
     }
 
@@ -391,7 +417,7 @@ public class TagLabelUtil {
     return result;
   }
 
-  /** Add derived tags using a pre-fetched map to avoid per-tag DB lookups. */
+  /** Merge the result of batchFetchDerivedTags, which already reflects the propagation preference. */
   public static List<TagLabel> addDerivedTagsWithPreFetched(
       List<TagLabel> tagLabels, Map<String, List<TagLabel>> derivedTagsMap) {
     if (nullOrEmpty(tagLabels)) {
@@ -526,7 +552,7 @@ public class TagLabelUtil {
     List<TagLabel> parentTags = filteredTags.remove(assetFqnHash);
 
     if (parentTags != null) {
-      List<TagLabel> tempList = new ArrayList<>(addDerivedTags(parentTags));
+      List<TagLabel> tempList = new ArrayList<>(getTagsForValidation(parentTags));
       tempList.addAll(glossaryTags);
       try {
         checkMutuallyExclusive(getUniqueTags(tempList));
@@ -546,7 +572,8 @@ public class TagLabelUtil {
       // Check SubFields Tags
       Set<TagLabel> subFieldTags =
           filteredTags.values().stream().flatMap(List::stream).collect(Collectors.toSet());
-      List<TagLabel> tempList = new ArrayList<>(addDerivedTags(subFieldTags.stream().toList()));
+      List<TagLabel> tempList =
+          new ArrayList<>(getTagsForValidation(subFieldTags.stream().toList()));
       tempList.addAll(glossaryTags);
       try {
         checkMutuallyExclusive(getUniqueTags(tempList));

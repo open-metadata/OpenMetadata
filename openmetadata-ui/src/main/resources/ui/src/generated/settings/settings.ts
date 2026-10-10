@@ -39,6 +39,7 @@ export enum SettingType {
     EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
+    GlossarySettings = "glossarySettings",
     GlossaryTermRelationSettings = "glossaryTermRelationSettings",
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
@@ -111,6 +112,8 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
+ *
+ * Catalog-wide preferences for glossary terms.
  *
  * Administrator-managed SPARQL query templates available across the installation.
  *
@@ -713,6 +716,11 @@ export interface PipelineServiceClientConfiguration {
      * List of configured glossary term relation types.
      */
     relationTypes?: GlossaryTermRelationType[];
+    /**
+     * Apply classification tags from glossary terms to their associated assets. Changes to
+     * existing search results require reindexing.
+     */
+    enableTagPropagation?: boolean;
     /**
      * Installation query templates visible to SPARQL console users.
      */

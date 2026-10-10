@@ -17,6 +17,7 @@ import {
   Dataflow02,
   DataQuality,
   FileCheck02,
+  GlossaryTerm,
   HeartRounded,
   Link01,
   Lock01,
@@ -34,6 +35,12 @@ import type { PlatformSettingsPage } from './PlatformSettings.types';
 export const PLATFORM_SETTINGS_HASH_TAB = 'platform-settings';
 
 export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
+  {
+    id: 'glossary',
+    icon: GlossaryTerm,
+    titleKey: 'label.glossary',
+    descriptionKey: 'message.glossary-tag-propagation-description',
+  },
   {
     id: 'theme',
     icon: Customize,

@@ -21,12 +21,13 @@ public class CachedTagUsageDao {
   /**
    * Write-through cache: Store tags
    */
-  public void putTags(String entityType, UUID entityId, String tagsJson) {
+  public void putTags(
+      String entityType, UUID entityId, String tagsJson, boolean propagationEnabled) {
     if (tagsJson == null || tagsJson.isEmpty() || EntityCacheBypass.isSkipped()) {
       return;
     }
 
-    String cacheKey = keys.tags(entityType, entityId);
+    String cacheKey = cacheKey(entityType, entityId, propagationEnabled);
     try {
       cache.set(cacheKey, tagsJson, Duration.ofSeconds(config.entityTtlSeconds));
       LOG.debug("Write-through cached tags for: {} -> {}", entityType, entityId);
@@ -39,24 +40,34 @@ public class CachedTagUsageDao {
     if (EntityCacheBypass.isSkipped()) {
       return;
     }
-    String cacheKey = keys.tags(entityType, entityId);
-    cache.del(cacheKey);
+    cache.del(
+        keys.tags(entityType, entityId),
+        cacheKey(entityType, entityId, true),
+        cacheKey(entityType, entityId, false));
     LOG.debug("Invalidated cache for Tags: {} -> {}", entityType, entityId);
   }
 
   /**
    * Get tags from cache
    */
-  public List<TagLabel> getTags(String entityType, UUID entityId) {
+  public List<TagLabel> getTags(String entityType, UUID entityId, boolean propagationEnabled) {
     if (EntityCacheBypass.isSkipped()) {
       return null;
     }
-    String cacheKey = keys.tags(entityType, entityId);
+    String cacheKey = cacheKey(entityType, entityId, propagationEnabled);
     Optional<String> cached = cache.get(cacheKey);
     if (cached.isEmpty()) {
       LOG.debug("Cache miss for Tags: {} -> {}", entityType, entityId);
       return null;
     }
     return JsonUtils.readObjects(cached.get(), TagLabel.class);
+  }
+
+  public void invalidateAll() {
+    cache.scanDelete(keys.ns + ":tags:*");
+  }
+
+  private String cacheKey(String entityType, UUID entityId, boolean propagationEnabled) {
+    return keys.tags(entityType, entityId) + ":" + propagationEnabled;
   }
 }
