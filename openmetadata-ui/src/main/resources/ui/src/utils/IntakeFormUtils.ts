@@ -117,7 +117,7 @@ export const computeFieldRows = ({
 
     return {
       path,
-      label: cp.displayName ?? cp.name ?? path,
+      label: cp.displayName || cp.name || path,
       kind: FieldKind.CustomProperty,
       included: Boolean(existing),
       required: Boolean(existing?.required),

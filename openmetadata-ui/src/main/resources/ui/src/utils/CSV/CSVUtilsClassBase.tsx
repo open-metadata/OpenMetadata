@@ -1710,7 +1710,7 @@ const InlineCustomPropertiesEditor = ({
               ) : (
                 customProperties.map((customProperty) => {
                   const propertyLabel =
-                    customProperty.displayName ??
+                    customProperty.displayName ||
                     startCase(customProperty.name);
 
                   return (
