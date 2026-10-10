@@ -195,7 +195,8 @@ public class TableRepository extends EntityRepository<Table> {
     fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndSetTableProfilerConfigs);
     fieldFetchers.put("joins", this::fetchAndSetJoins);
     fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
-    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTableTags);
+    fieldFetchers.put(COLUMN_FIELD, this::fetchAndSetColumnTags);
     fieldFetchers.put("pipelineObservability", this::fetchAndSetPipelineObservability);
   }
 
@@ -208,7 +209,7 @@ public class TableRepository extends EntityRepository<Table> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), table.getId())
               : table.getUsageSummary());
     }
-    if (fields.contains(COLUMN_FIELD) && fields.contains(FIELD_TAGS)) {
+    if (fields.contains(COLUMN_FIELD)) {
       populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
     }
     table.setJoins(fields.contains("joins") ? getJoins(table) : table.getJoins());
@@ -233,8 +234,6 @@ public class TableRepository extends EntityRepository<Table> {
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
 
-    // Column tags come from tag_usage, not table JSON — fetched via fetchAndSetColumnTags when tags
-    // requested
     entities.forEach(table -> clearFieldsInternal(table, fields));
   }
 
@@ -279,7 +278,7 @@ public class TableRepository extends EntityRepository<Table> {
     metadataLoader.loadMetrics(tables, fields.contains(COLUMN_FIELD));
   }
 
-  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
+  private void fetchAndSetTableTags(List<Table> tables, Fields fields) {
     if (!fields.contains(FIELD_TAGS) || tables == null || tables.isEmpty()) {
       return;
     }
@@ -290,7 +289,9 @@ public class TableRepository extends EntityRepository<Table> {
           addDerivedTagsGracefully(
               tagsMap.getOrDefault(table.getFullyQualifiedName(), Collections.emptyList())));
     }
+  }
 
+  private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
     if (fields.contains(COLUMN_FIELD)) {
       bulkPopulateEntityFieldTags(tables, Table::getColumns);
     }
