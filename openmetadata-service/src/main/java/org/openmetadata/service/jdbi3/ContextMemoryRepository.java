@@ -371,7 +371,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
               .filter(r -> !Entity.DOMAIN.equals(r.getType()))
               .toList();
     }
-    return nullOrEmpty(refs) ? null : refs.getFirst();
+    // Deleting an anchor removes its edge; retaining the stored subject lets maintenance expire it.
+    return nullOrEmpty(refs) ? entity.getPrimaryEntity() : refs.getFirst();
   }
 
   /** The entities among {@code candidateIds} that anchor at least one memory, with their type. */
@@ -514,9 +515,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public void prepare(ContextMemory entity, boolean update) {
     requireWritableByWriter(entity, update);
     if (entity.getPrimaryEntity() != null) {
-      EntityReference primaryEntity =
-          Entity.getEntityReference(entity.getPrimaryEntity(), Include.NON_DELETED);
-      entity.setPrimaryEntity(primaryEntity);
+      entity.setPrimaryEntity(resolvePrimaryEntity(entity, update));
     }
     if (entity.getSourceEntity() == null && entity.getSourceFile() != null) {
       entity.setSourceEntity(entity.getSourceFile());
@@ -542,6 +541,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     setCreatorAsDefaultOwner(entity, update);
     prepareLifecycle(entity, update);
     inheritAnchorDomains(entity, update);
+  }
+
+  private EntityReference resolvePrimaryEntity(ContextMemory memory, boolean update) {
+    try {
+      return Entity.getEntityReference(memory.getPrimaryEntity(), Include.NON_DELETED);
+    } catch (EntityNotFoundException missing) {
+      if (!update || memory.getId() == null || !dao.exists(dao.getTableName(), memory.getId())) {
+        throw missing;
+      }
+      ContextMemory stored = dao.findEntityById(memory.getId(), Include.ALL);
+      if (!sameAnchor(memory.getPrimaryEntity(), stored.getPrimaryEntity())) {
+        throw missing;
+      }
+      return stored.getPrimaryEntity();
+    }
   }
 
   /**
@@ -654,7 +668,16 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   @Override
   public void storeEntity(ContextMemory entity, boolean update) {
-    store(entity, update);
+    if (update) {
+      daoCollection
+          .contextMemoryDAO()
+          .updatePreservingUsage(
+              entity.getId(), entity.getFullyQualifiedName(), serializeForStorage(entity));
+      invalidate(entity);
+    } else {
+      entity.setLastContentUpdatedAt(entity.getUpdatedAt());
+      store(entity, false);
+    }
   }
 
   @Override
@@ -746,9 +769,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   public class ContextMemoryUpdater extends EntityUpdater {
+    private final ContextMemory contentSnapshot;
+
     public ContextMemoryUpdater(
         ContextMemory original, ContextMemory updated, Operation operation) {
       super(original, updated, operation);
+      contentSnapshot = JsonUtils.deepCopy(original, ContextMemory.class);
       // Consolidated edits still need distinct timestamps for conditional lifecycle writes.
       if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
         updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
@@ -836,9 +862,25 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.CONTEXT_MEMORY,
           original.getId());
       updateSourceEntityRelationship();
+      updateContentClock();
 
       // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
       // version history so routine retrieval does not churn the entity version.
+    }
+
+    private void updateContentClock() {
+      Long previousContentTime =
+          contentSnapshot.getLastContentUpdatedAt() == null
+              ? contentSnapshot.getUpdatedAt()
+              : contentSnapshot.getLastContentUpdatedAt();
+      updated.setLastContentUpdatedAt(
+          contentChanged(contentSnapshot, updated)
+              ? Math.max(updated.getUpdatedAt(), previousContentTime + 1)
+              : previousContentTime);
+      recordChange(
+          "lastContentUpdatedAt",
+          original.getLastContentUpdatedAt(),
+          updated.getLastContentUpdatedAt());
     }
 
     /**
@@ -935,6 +977,24 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.CONTEXT_MEMORY,
           original.getId());
     }
+  }
+
+  private static boolean sameAnchor(EntityReference first, EntityReference second) {
+    return first == null || second == null
+        ? first == second
+        : EntityUtil.entityReferenceMatch.test(first, second);
+  }
+
+  private static boolean contentChanged(ContextMemory before, ContextMemory after) {
+    return !Objects.equals(before.getTitle(), after.getTitle())
+        || !Objects.equals(before.getDescription(), after.getDescription())
+        || !Objects.equals(before.getSummary(), after.getSummary())
+        || !Objects.equals(before.getQuestion(), after.getQuestion())
+        || !Objects.equals(before.getAnswer(), after.getAnswer())
+        || !Objects.equals(before.getMemoryType(), after.getMemoryType())
+        || !Objects.equals(before.getMemoryScope(), after.getMemoryScope())
+        || !Objects.equals(before.getMachineRepresentation(), after.getMachineRepresentation())
+        || !sameAnchor(before.getPrimaryEntity(), after.getPrimaryEntity());
   }
 
   private static boolean extractionManagedFieldChanged(

@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -41,6 +44,7 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
  * What a user who is neither an admin nor a bot may write into a memory now that every user may
@@ -50,6 +54,112 @@ import org.openmetadata.service.Entity;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class ContextMemoryWriteAccessIT {
+
+  @Test
+  void reviewAndPinWritesCannotMakeOldContentNewer(TestNamespace ns) {
+    ContextMemoryService memories = adminMemories();
+    ContextMemory created = memories.create(preference(ns, "content-clock"));
+    assertEquals(created.getUpdatedAt(), contentTime(created));
+    ContextMemory pinned =
+        memories.patch(
+            created.getId(),
+            JsonUtils.readValue(
+                "[{\"op\":\"add\",\"path\":\"/pinned\",\"value\":true}]", JsonNode.class));
+    assertEquals(contentTime(created), contentTime(pinned));
+    ContextMemory reviewed =
+        memories.patch(
+            created.getId(),
+            JsonUtils.readValue(
+                "[{\"op\":\"add\",\"path\":\"/lastReviewedAt\",\"value\":2000000000000}]",
+                JsonNode.class));
+    assertEquals(contentTime(created), contentTime(reviewed));
+    ContextMemory edited =
+        memories.patch(
+            created.getId(),
+            JsonUtils.readValue(
+                "[{\"op\":\"replace\",\"path\":\"/answer\",\"value\":\"Changed content\"}]",
+                JsonNode.class));
+    assertTrue(contentTime(edited) > contentTime(created));
+    ContextMemory unpinned =
+        memories.patch(
+            created.getId(),
+            JsonUtils.readValue(
+                "[{\"op\":\"replace\",\"path\":\"/pinned\",\"value\":false}]", JsonNode.class));
+    assertEquals(contentTime(edited), contentTime(unpinned));
+  }
+
+  @Test
+  void aGuardedLifecycleWritePreservesInterveningUsage(TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "usage-race"));
+    CollectionDAO collection = Entity.getDao();
+    var dao = collection.contextMemoryDAO();
+    ContextMemory snapshot = dao.findEntityById(created.getId());
+    ContextMemory usage =
+        JsonUtils.deepCopy(snapshot, ContextMemory.class)
+            .withUsageCount(7)
+            .withLastUsedAt(1700000000000L);
+    assertEquals(
+        1,
+        dao.updateWithVersion(
+            dao.getTableName(),
+            dao.getNameHashColumn(),
+            created.getFullyQualifiedName(),
+            created.getId().toString(),
+            JsonUtils.pojoToJson(usage),
+            snapshot.getVersion().toString()));
+    snapshot.setLastReviewedAt(1800000000000L);
+    assertEquals(
+        1,
+        dao.updateWithVersionAndTimestamp(
+            created.getId(),
+            created.getFullyQualifiedName(),
+            JsonUtils.pojoToJson(snapshot),
+            created.getVersion().toString(),
+            created.getUpdatedAt()));
+    ContextMemory stored = dao.findEntityById(created.getId());
+    assertEquals(7, stored.getUsageCount());
+    assertEquals(1700000000000L, stored.getLastUsedAt());
+    assertEquals(1800000000000L, stored.getLastReviewedAt());
+  }
+
+  @Test
+  void atomicUsageKeepsConcurrentCountsAndMetadata(TestNamespace ns) {
+    ContextMemory created = adminMemories().create(preference(ns, "atomic-usage"));
+    CollectionDAO collection = Entity.getDao();
+    var dao = collection.contextMemoryDAO();
+    ContextMemory snapshot = dao.findEntityById(created.getId());
+    try (var workers = Executors.newFixedThreadPool(4)) {
+      CompletableFuture.allOf(
+              IntStream.range(0, 32)
+                  .mapToObj(
+                      index ->
+                          CompletableFuture.runAsync(
+                              () ->
+                                  assertEquals(
+                                      1, dao.recordUsage(created.getId(), 1700000000000L + index)),
+                              workers))
+                  .toArray(CompletableFuture[]::new))
+          .join();
+    }
+    snapshot.setAnswer("Changed while retrieval records usage");
+    assertEquals(
+        1,
+        dao.updatePreservingUsage(
+            created.getId(), created.getFullyQualifiedName(), JsonUtils.pojoToJson(snapshot)));
+    assertEquals(1, dao.recordUsage(created.getId(), 1600000000000L));
+    ContextMemory stored = dao.findEntityById(created.getId());
+    assertEquals(33, stored.getUsageCount());
+    assertEquals(1700000000031L, stored.getLastUsedAt());
+    assertEquals(snapshot.getAnswer(), stored.getAnswer());
+    assertEquals(created.getVersion(), stored.getVersion());
+    assertEquals(created.getUpdatedAt(), stored.getUpdatedAt());
+  }
+
+  private static long contentTime(ContextMemory memory) {
+    return JsonUtils.readValue(JsonUtils.pojoToJson(memory), JsonNode.class)
+        .path("lastContentUpdatedAt")
+        .asLong(-1L);
+  }
 
   @Test
   void aUserCannotPlantAPreferenceInSomeoneElsesAgent(TestNamespace ns) {
