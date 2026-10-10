@@ -36,6 +36,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -278,6 +279,15 @@ public class SubjectCache {
     USER_CONTEXT_CACHE.invalidateAll();
     // The policy caches are derived from the team graph, so they have to be dropped together.
     TeamHierarchyResolver.invalidateAll();
+    // The search-side RBAC query cache is keyed by the user's team/role membership, so any
+    // membership or policy change must drop those cached queries as well, otherwise
+    // access-controlled search/browse keeps reflecting stale membership until the TTL (#33137).
+    // Routed through the SearchClient abstraction so the active backend (Elastic or OpenSearch)
+    // is the one that invalidates: Elasticsearch has no RBAC query cache, so its impl is a no-op.
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    if (searchRepository != null && searchRepository.getSearchClient() != null) {
+      searchRepository.getSearchClient().invalidateRbacCache();
+    }
   }
 
   public static User getUserContext(String userName) {

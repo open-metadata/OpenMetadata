@@ -491,6 +491,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void invalidateRbacCache() {
+    OpenSearchSearchManager.invalidateRbacCache();
+  }
+
+  @Override
   public void invalidateLineageCache(String fqn) {
     if (lineageGraphBuilder == null) {
       return;
