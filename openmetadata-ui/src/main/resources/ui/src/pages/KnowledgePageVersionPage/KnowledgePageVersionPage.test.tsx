@@ -68,6 +68,9 @@ jest.mock(
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="box">{children}</div>
+  ),
   Skeleton: () => <div data-testid="skeleton" />,
   SkeletonParagraph: () => <div data-testid="skeleton-paragraph" />,
 }));
