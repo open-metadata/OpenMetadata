@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormProps, Input, Modal } from 'antd';
-import { FC } from 'react';
+import {
+  Button,
+  Dialog,
+  Input,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import { FC, FormEvent, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface LinkData {
   href: string;
@@ -36,38 +43,55 @@ const LinkModal: FC<LinkModalProps> = ({
   onCancel,
   getContainer,
 }) => {
-  const handleSubmit: FormProps<LinkData>['onFinish'] = (values) => {
-    onSave(values);
+  const { t } = useTranslation();
+  const [href, setHref] = useState(data.href);
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    onSave({ href });
   };
 
   return (
-    <Modal
-      className="block-editor-link-modal"
-      getContainer={getContainer}
-      maskClosable={false}
-      okButtonProps={{
-        htmlType: 'submit',
-        id: 'link-form',
-        form: 'link-form',
-      }}
-      okText="Save"
-      open={isOpen}
-      title={data.href ? 'Edit link' : 'Add link'}
-      onCancel={onCancel}>
-      <Form
-        data-testid="link-form"
-        id="link-form"
-        initialValues={{ ...data }}
-        layout="vertical"
-        onFinish={handleSubmit}>
-        <Form.Item label="Link" name="href">
-          <Input
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the link input when the modal opens
-            autoFocus
-          />
-        </Form.Item>
-      </Form>
-    </Modal>
+    <ModalOverlay
+      UNSTABLE_portalContainer={getContainer?.()}
+      isDismissable={false}
+      isOpen={isOpen}
+      // Above antd modals/drawers (z-index 1000) that may host the editor.
+      style={{ zIndex: 'var(--om-z-modal)' }}
+      onOpenChange={(open) => !open && onCancel()}>
+      <Modal className="block-editor-link-modal">
+        <Dialog
+          showCloseButton
+          title={data.href ? 'Edit link' : 'Add link'}
+          width={520}
+          onClose={onCancel}>
+          <Dialog.Content>
+            <form
+              data-testid="link-form"
+              id="link-form"
+              onSubmit={handleSubmit}>
+              <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the link input when the modal opens
+                autoFocus
+                id="href"
+                label="Link"
+                name="href"
+                value={href ?? ''}
+                onChange={setHref}
+              />
+            </form>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button color="primary" form="link-form" type="submit">
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

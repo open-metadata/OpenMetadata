@@ -41,7 +41,11 @@ export interface CreatedTask {
 
 const TASK_TAB_SELECTOR = '[data-testid="task-tab"]';
 const TASK_PANEL_SELECTOR = '#task-panel';
-const VISIBLE_TASK_MODAL_SELECTOR = '.ant-modal-wrap:visible';
+// Menu and combobox popovers are role="dialog" too; they carry data-trigger,
+// modal dialogs do not. Without the exclusion an open caret menu makes the
+// selector match two elements and every strict locator built on it throws.
+const VISIBLE_TASK_MODAL_SELECTOR =
+  '[role="dialog"]:not([data-trigger]):visible';
 
 const logTaskDebug = (...messages: Array<string | number | boolean>) => {
   if (process.env.PW_TASK_DEBUG) {
@@ -64,7 +68,7 @@ const selectTagSuggestion = async ({
   tagTestId: string;
 }) => {
   const tagSelector = root.locator('[data-testid="tag-selector"]');
-  const tagsInput = tagSelector.locator('.ant-select-selection-search-input');
+  const tagsInput = tagSelector.getByRole('combobox');
   const tagOption = page.getByTestId(tagTestId);
   const tagSearchResponse = page
     .waitForResponse(
@@ -93,8 +97,36 @@ const selectTagSuggestion = async ({
   await expect(tagOption).toBeVisible({ timeout: 5000 });
   logTaskDebug('selectTagSuggestion:optionVisible', tagTestId);
   await tagOption.click();
-  await page.keyboard.press('Escape');
+  // The multi-select schedules a re-open (~150ms) while its input still has
+  // focus, which would undo an Escape sent right after the pick. Moving focus
+  // away is what closes it for good, but it has to land inside the modal: a
+  // click on the body (or a bare blur()) makes the dialog's focus containment
+  // hand focus back to the input, and focus re-opens the menu.
+  const containingDialog = page.locator(VISIBLE_TASK_MODAL_SELECTOR).filter({
+    has: page.getByTestId('tag-selector'),
+  });
+  if (await containingDialog.count()) {
+    // The open menu aria-hides the title, so locate its test ID.
+    await containingDialog.getByTestId('dialog-title').click();
+  } else {
+    await clickOutside(page);
+  }
+  await expect(tagsInput).toHaveAttribute('aria-expanded', 'false');
   logTaskDebug('selectTagSuggestion:done', tagTestId);
+};
+
+// The dialog is visible before its body has mounted, so a one-shot isVisible()
+// on the comment field races the mount and silently skips the required comment.
+const fillModalComment = async (modal: Locator, comment: string) => {
+  const commentInput = modal.locator('textarea').last();
+  const hasCommentField = await commentInput
+    .waitFor({ state: 'visible', timeout: 3000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (hasCommentField) {
+    await commentInput.fill(comment);
+  }
 };
 
 const clickDropdownMenuItem = async ({
@@ -214,7 +246,9 @@ export const openTaskForm = async (page: Page, route: string) => {
 };
 
 export const selectAssignee = async (page: Page, assigneeName: string) => {
-  const assigneeInput = page.locator('[data-testid="select-assignee"] input');
+  const assigneeInput = page
+    .getByTestId('select-assignee')
+    .getByRole('combobox');
   const assigneeOption = page.getByTestId(assigneeName);
   const assigneeSearchResponse = page
     .waitForResponse(
@@ -662,10 +696,7 @@ export const closeTaskFromDetails = async (page: Page) => {
     .catch(() => undefined);
 
   if (await visibleModal.isVisible().catch(() => false)) {
-    const commentInput = visibleModal.locator('textarea').last();
-    if (await commentInput.isVisible().catch(() => false)) {
-      await commentInput.fill('Rejected by Playwright');
-    }
+    await fillModalComment(visibleModal, 'Rejected by Playwright');
 
     const rejectButton = visibleModal.getByRole('button', {
       name: /reject|decline|close/i,
@@ -711,10 +742,7 @@ export const approveTaskFromDetails = async (page: Page) => {
       .catch(() => undefined);
 
     if (await visibleTaskModal.isVisible().catch(() => false)) {
-      const commentInput = visibleTaskModal.locator('textarea').last();
-      if (await commentInput.isVisible().catch(() => false)) {
-        await commentInput.fill('Approved by Playwright');
-      }
+      await fillModalComment(visibleTaskModal, 'Approved by Playwright');
 
       const confirmButton = visibleTaskModal
         .getByRole('button', { name: /approve|accept|ok|save/i })

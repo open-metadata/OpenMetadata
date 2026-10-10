@@ -307,7 +307,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           placeholder={placeholder}
           onMouseDown={editorSlots.current?.onMouseDown}
         />
-        <EditorSlots editor={editor} menuType={menuType} ref={editorSlots} />
+        <EditorSlots
+          editable={editable}
+          editor={editor}
+          menuType={menuType}
+          ref={editorSlots}
+        />
       </div>
     );
   }

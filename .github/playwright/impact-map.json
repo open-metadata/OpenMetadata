@@ -741,6 +741,23 @@
       ]
     },
     {
+      "_comment": "The certification picker renders on entity headers, the Domain/Data Product certification widget, the bulk-edit grid's certification cell and the workflow Set Action form; KeyDownStopPropagationWrapper wraps the grid's popover cell editors. The generated map routed none of them, so a change ran the full suite.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Certification/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CertificationWidget/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/KeyDownStopPropagationWrapper/**"
+      ],
+      "projects": ["chromium", "ImportExport", "SystemCertificationTags"],
+      "specs": [
+        "playwright/e2e/Features/CertificationDropdown.spec.ts",
+        "playwright/e2e/Features/SystemCertificationTags.spec.ts",
+        "playwright/e2e/Pages/Entity.spec.ts",
+        "playwright/e2e/Features/DomainTierCertificationVoting.spec.ts",
+        "playwright/e2e/Features/BulkEditEntity.spec.ts",
+        "playwright/e2e/Features/BulkImport.spec.ts"
+      ]
+    },
+    {
       "_comment": "Column bulk operations and column sorting exercise the ColumnBulkOperations page and columnAPI; keeps ColumnBulkOperationsTagsGlossary tied to both this and the Tag mapping above.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/ColumnBulkOperations/**",

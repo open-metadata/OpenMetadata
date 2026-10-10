@@ -44,6 +44,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const AccordionItemContext = ActualReact.createContext(undefined);
 
   return {
+    Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
+      <span>{children}</span>
+    )),
+    useFieldDoc: jest.fn(() => ({})),
     Accordion: jest.fn(({ children }: { children: React.ReactNode }) => {
       const [expandedItem, setExpandedItem] = ActualReact.useState(
         undefined as string | undefined

@@ -5,12 +5,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import java.io.ByteArrayOutputStream;
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -31,13 +29,6 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.jena.query.Query;
-import org.apache.jena.query.QueryExecution;
-import org.apache.jena.query.QueryExecutionFactory;
-import org.apache.jena.query.QueryFactory;
-import org.apache.jena.query.ResultSet;
-import org.apache.jena.query.ResultSetFormatter;
-import org.apache.jena.rdf.model.InfModel;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
@@ -62,8 +53,6 @@ import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.inference.InferenceRuleRepository;
-import org.openmetadata.service.rdf.reasoning.InferenceEngine;
-import org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
@@ -104,9 +93,8 @@ public class RdfRepository {
   static final int DEFAULT_BULK_ENTITY_BATCH_SIZE = 100;
   static final int DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE = 100;
   static final int DEFAULT_BULK_LINEAGE_EDGE_BATCH_SIZE = 50;
-  static final int DEFAULT_MAX_IN_MEMORY_INFERENCE_TRIPLES = 100_000;
-  private static final int INFERENCE_MODEL_CACHE_MAX_SIZE = 2;
-  private static final long INFERENCE_MODEL_CACHE_TTL_SECONDS = 60L;
+  private static final String NO_INFERENCE_LEVEL = "none";
+  private static final String CUSTOM_INFERENCE_LEVEL = "custom";
   private static final String OPEN_METADATA_ONTOLOGY_NAMESPACE =
       "https://open-metadata.org/ontology/";
   private static final Pattern RELATION_TYPE_NAME_PATTERN = Pattern.compile("[a-zA-Z][a-zA-Z0-9]*");
@@ -175,11 +163,6 @@ public class RdfRepository {
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
           .expireAfterWrite(Duration.ofSeconds(TRUNCATED_GRAPH_CACHE_TTL_SECONDS))
           .build();
-  private final Cache<InferenceCacheKey, InfModel> inferenceModelCache =
-      Caffeine.newBuilder()
-          .maximumSize(INFERENCE_MODEL_CACHE_MAX_SIZE)
-          .expireAfterWrite(Duration.ofSeconds(INFERENCE_MODEL_CACHE_TTL_SECONDS))
-          .build();
   private static RdfRepository INSTANCE;
 
   /**
@@ -221,6 +204,7 @@ public class RdfRepository {
       this.translator =
           new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
+      warnAboutIgnoredInferenceSettings(config);
 
       loadOntologies();
     } else {
@@ -229,6 +213,16 @@ public class RdfRepository {
       this.materializationStorageService = null;
       this.translator = null;
       LOG.info("RDF Repository disabled");
+    }
+  }
+
+  private static void warnAboutIgnoredInferenceSettings(final RdfConfiguration rdfConfiguration) {
+    if (Boolean.TRUE.equals(rdfConfiguration.getInferenceEnabled())
+        || Boolean.TRUE.equals(rdfConfiguration.getCacheInferredTriples())) {
+      LOG.warn(
+          "rdf.inferenceEnabled, defaultInferenceLevel, cacheInferredTriples and "
+              + "maxInMemoryInferenceTriples are ignored: OpenMetadata no longer runs reasoners in "
+              + "its own process. Enable materializedInferenceEnabled to query custom rules.");
     }
   }
 
@@ -273,11 +267,6 @@ public class RdfRepository {
   static int resolveBulkRelationshipSourceBatchSize(RdfConfiguration config) {
     return positiveInt(
         config.getBulkRelationshipSourceBatchSize(), DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE);
-  }
-
-  static int resolveMaxInMemoryInferenceTriples(RdfConfiguration config) {
-    return positiveInt(
-        config.getMaxInMemoryInferenceTriples(), DEFAULT_MAX_IN_MEMORY_INFERENCE_TRIPLES);
   }
 
   static int resolveBulkLineageEdgeBatchSize(RdfConfiguration config) {
@@ -1600,23 +1589,9 @@ public class RdfRepository {
   }
 
   public String executeSparqlQuery(String query, String format) {
-    if (!isEnabled()) {
-      throw new IllegalStateException("RDF not enabled");
-    }
-
-    // Check if inference is enabled by default in configuration
-    if (isInferenceEnabledByDefault()) {
-      String defaultLevel = getDefaultInferenceLevel();
-      return executeSparqlQueryWithInference(query, format, defaultLevel);
-    }
-
-    return storageService.executeSparqlQuery(query, format);
+    return executeSparqlQueryDirect(query, format);
   }
 
-  /**
-   * Execute SPARQL query without inference, regardless of configuration. Use this for internal
-   * queries where inference overhead is not needed.
-   */
   public String executeSparqlQueryDirect(String query, String format) {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF not enabled");
@@ -1624,15 +1599,13 @@ public class RdfRepository {
     return storageService.executeSparqlQuery(query, format);
   }
 
-  public boolean isInferenceEnabledByDefault() {
-    return config.getInferenceEnabled() != null && config.getInferenceEnabled();
-  }
-
-  public String getDefaultInferenceLevel() {
-    if (config.getDefaultInferenceLevel() != null) {
-      return config.getDefaultInferenceLevel().value();
-    }
-    return "NONE";
+  /**
+   * Whether custom inference rules are materialized into named graphs inside the triplestore, the
+   * only form of inference OpenMetadata answers. Static so status reporting needs no repository.
+   */
+  public static boolean supportsMaterializedInference(final RdfConfiguration rdfConfiguration) {
+    return Boolean.TRUE.equals(rdfConfiguration.getMaterializedInferenceEnabled())
+        && rdfConfiguration.getStorageType() == RdfConfiguration.StorageType.FUSEKI;
   }
 
   public RdfConfiguration getConfig() {
@@ -1646,12 +1619,6 @@ public class RdfRepository {
 
   public List<Map<String, String>> executeSparqlQueryDirectAsJson(String query) {
     String result = executeSparqlQueryDirect(query, "json");
-    return parseSparqlJsonResults(result);
-  }
-
-  public List<Map<String, String>> executeSparqlQueryWithInferenceAsJson(
-      String query, String inferenceLevel) {
-    String result = executeSparqlQueryWithInference(query, "json", inferenceLevel);
     return parseSparqlJsonResults(result);
   }
 
@@ -1679,24 +1646,20 @@ public class RdfRepository {
     return results;
   }
 
-  public String executeSparqlQueryWithInference(
-      String query, String format, String inferenceLevel) {
-    return executeSparqlQueryWithInferenceResult(query, format, inferenceLevel).results();
-  }
-
+  /**
+   * Runs a query at an inference level. Only materialized custom rules are available: their
+   * named graphs are part of the store's union graph, so the query runs unchanged. OpenMetadata
+   * never builds an inference model in its own heap; other levels report they are unavailable.
+   */
   public InferenceQueryResult executeSparqlQueryWithInferenceResult(
       final String query, final String format, final String inferenceLevel) {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF not enabled");
     }
-
-    final InferenceQueryResult result;
+    requireAvailableInference(inferenceLevel);
+    final String results;
     try {
-      final ReasoningLevel level = reasoningLevel(inferenceLevel);
-      result =
-          usesDirectMaterializedQuery(level)
-              ? directInferenceResult(query, format)
-              : executeLegacyInference(query, format, inferenceLevel, level);
+      results = storageService.executeSparqlQuery(query, format);
     } catch (UnsupportedRdfSerializationException exception) {
       // The caller asked for a format the result cannot be written in: a 400, not a server fault.
       throw exception;
@@ -1704,178 +1667,26 @@ public class RdfRepository {
       LOG.error("Error executing SPARQL query with inference", exception);
       throw new IllegalStateException("Failed to execute query with inference", exception);
     }
-    return result;
-  }
-
-  private boolean usesDirectMaterializedQuery(final ReasoningLevel level) {
-    return level == ReasoningLevel.NONE
-        || (level == ReasoningLevel.CUSTOM
-            && Boolean.TRUE.equals(config.getMaterializedInferenceEnabled()));
-  }
-
-  private InferenceQueryResult executeLegacyInference(
-      final String query,
-      final String format,
-      final String inferenceLevel,
-      final ReasoningLevel level) {
-    final long tripleCount = storageService.getTripleCount();
-    final int limit = resolveMaxInMemoryInferenceTriples(config);
-    final InferenceQueryResult result =
-        tripleCount > limit
-            ? limitedInferenceResult(query, format, tripleCount, limit)
-            : inMemoryInferenceResult(query, format, inferenceLevel, level, tripleCount);
-    return result;
-  }
-
-  private InferenceQueryResult limitedInferenceResult(
-      final String query, final String format, final long tripleCount, final int limit) {
-    final String warning =
-        "Inference was skipped because the RDF store contains %,d triples, exceeding the in-memory limit of %,d"
-            .formatted(tripleCount, limit);
-    LOG.warn("{}; executing the SPARQL query directly", warning);
-    return new InferenceQueryResult(executeSparqlQueryDirect(query, format), warning);
-  }
-
-  private InferenceQueryResult inMemoryInferenceResult(
-      final String query,
-      final String format,
-      final String inferenceLevel,
-      final ReasoningLevel level,
-      final long tripleCount) {
-    LOG.info(
-        "Executing SPARQL query with {} inference over {} triples", inferenceLevel, tripleCount);
-    final boolean isCacheEnabled = Boolean.TRUE.equals(config.getCacheInferredTriples());
-    final InfModel inferenceModel = inferenceModel(level, tripleCount, isCacheEnabled);
-    final String results = queryInferenceModel(query, format, inferenceModel, isCacheEnabled);
     return new InferenceQueryResult(results, null);
   }
 
-  private String queryInferenceModel(
-      final String query,
-      final String format,
-      final InfModel inferenceModel,
-      final boolean isCacheEnabled) {
-    final String results;
-    try {
-      results = executeThreadSafeInferenceQuery(query, format, inferenceModel, isCacheEnabled);
-    } finally {
-      if (!isCacheEnabled) {
-        inferenceModel.close();
-      }
-    }
-    return results;
-  }
-
-  private String executeThreadSafeInferenceQuery(
-      final String query,
-      final String format,
-      final InfModel inferenceModel,
-      final boolean isCacheEnabled) {
-    final String results;
-    if (isCacheEnabled) {
-      synchronized (inferenceModel) {
-        results = executeInferenceQuery(query, format, inferenceModel);
-      }
-    } else {
-      results = executeInferenceQuery(query, format, inferenceModel);
-    }
-    return results;
-  }
-
-  private InferenceQueryResult directInferenceResult(final String query, final String format) {
-    return new InferenceQueryResult(executeSparqlQueryDirect(query, format), null);
-  }
-
-  private ReasoningLevel reasoningLevel(String inferenceLevel) {
-    if (inferenceLevel == null) {
-      return ReasoningLevel.NONE;
-    }
-    return switch (inferenceLevel.toLowerCase(Locale.ROOT)) {
-      case "rdfs" -> ReasoningLevel.RDFS;
-      case "owl" -> ReasoningLevel.OWL_LITE;
-      case "custom" -> ReasoningLevel.CUSTOM;
-      default -> ReasoningLevel.NONE;
-    };
-  }
-
-  private InfModel inferenceModel(ReasoningLevel level, long tripleCount, boolean cacheEnabled) {
-    if (!cacheEnabled) {
-      return buildInferenceModel(level);
-    }
-    return inferenceModelCache.get(
-        new InferenceCacheKey(level, tripleCount), ignored -> buildInferenceModel(level));
-  }
-
-  private InfModel buildInferenceModel(ReasoningLevel level) {
-    String allDataQuery = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }";
-    String allData = storageService.executeSparqlQuery(allDataQuery, "text/turtle");
-    Model baseModel = ModelFactory.createDefaultModel();
-    if (!nullOrEmpty(allData)) {
-      baseModel.read(new StringReader(allData), null, "TURTLE");
-    }
-
-    Model ontologyModel = ModelFactory.createDefaultModel();
-    String ontologyQuery =
-        "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <https://open-metadata.org/graph/ontology> { ?s ?p ?o } }";
-    String ontologyData = storageService.executeSparqlQuery(ontologyQuery, "text/turtle");
-    if (!nullOrEmpty(ontologyData)) {
-      ontologyModel.read(new StringReader(ontologyData), null, "TURTLE");
-    }
-    return new InferenceEngine(level).createInferenceModel(baseModel, ontologyModel);
-  }
-
-  private String executeInferenceQuery(String query, String format, InfModel infModel) {
-    Query jenaQuery = QueryFactory.create(query);
-    try (QueryExecution queryExecution = QueryExecutionFactory.create(jenaQuery, infModel);
-        ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-      if (jenaQuery.isSelectType()) {
-        writeSelectResults(queryExecution.execSelect(), format, output);
-      } else if (jenaQuery.isConstructType()) {
-        RdfGraphSerializer.write(output, queryExecution.execConstruct(), graphFormat(format));
-      } else if (jenaQuery.isAskType()) {
-        output.write(
-            ("{\"head\":{},\"boolean\":" + queryExecution.execAsk() + "}")
-                .getBytes(StandardCharsets.UTF_8));
-      } else if (jenaQuery.isDescribeType()) {
-        RdfGraphSerializer.write(output, queryExecution.execDescribe(), graphFormat(format));
-      }
-      return output.toString(StandardCharsets.UTF_8);
-    } catch (IOException e) {
-      throw new IllegalStateException("Failed to serialize inference query results", e);
+  private void requireAvailableInference(final String inferenceLevel) {
+    final String level =
+        inferenceLevel == null ? NO_INFERENCE_LEVEL : inferenceLevel.toLowerCase(Locale.ROOT);
+    if (!isAvailableInferenceLevel(level)) {
+      throw new ServiceUnavailableException(
+          ("SPARQL inference level '%s' is not available. OpenMetadata does not run reasoners in "
+                  + "its own process; use '%s', or '%s' with materialized inference enabled.")
+              .formatted(level, NO_INFERENCE_LEVEL, CUSTOM_INFERENCE_LEVEL));
     }
   }
 
-  private void writeSelectResults(ResultSet results, String format, ByteArrayOutputStream output) {
-    if (format.contains("json")) {
-      ResultSetFormatter.outputAsJSON(output, results);
-    } else if (format.contains("xml")) {
-      ResultSetFormatter.outputAsXML(output, results);
-    } else if (format.contains("csv")) {
-      ResultSetFormatter.outputAsCSV(output, results);
-    } else if (format.contains("tsv")) {
-      ResultSetFormatter.outputAsTSV(output, results);
-    }
+  private boolean isAvailableInferenceLevel(final String level) {
+    return NO_INFERENCE_LEVEL.equals(level)
+        || (CUSTOM_INFERENCE_LEVEL.equals(level) && supportsMaterializedInference(config));
   }
 
   public record InferenceQueryResult(String results, String warning) {}
-
-  private record InferenceCacheKey(ReasoningLevel level, long tripleCount) {}
-
-  /**
-   * Resolves a CONSTRUCT/DESCRIBE serialization, keeping the long-standing Turtle fallback for a
-   * format string this endpoint does not recognise (callers pass SELECT media types here too).
-   */
-  private static RdfSerializationFormat graphFormat(String requestedFormat) {
-    RdfSerializationFormat format;
-    try {
-      format =
-          RdfSerializationFormat.parseOrDefault(requestedFormat, RdfSerializationFormat.TURTLE);
-    } catch (IllegalArgumentException exception) {
-      LOG.debug("Unrecognised RDF serialization '{}'; falling back to Turtle", requestedFormat);
-      format = RdfSerializationFormat.TURTLE;
-    }
-    return format;
-  }
 
   public String getEntityGraph(
       UUID entityId,
@@ -4349,8 +4160,6 @@ public class RdfRepository {
   }
 
   public void close() {
-    new HashSet<>(inferenceModelCache.asMap().values()).forEach(InfModel::close);
-    inferenceModelCache.invalidateAll();
     if (storageService != null) {
       storageService.close();
     }

@@ -187,6 +187,12 @@
       "default": 10,
       "minimum": 1,
       "maximum": 1000
+    },
+    "maxSchemaInferenceDepth": {
+      "$ref": "../type/schemaInferenceLimits.json#/definitions/maxSchemaInferenceDepth"
+    },
+    "maxChildrenPerColumn": {
+      "$ref": "../type/schemaInferenceLimits.json#/definitions/maxChildrenPerColumn"
     }
   },
   "additionalProperties": false

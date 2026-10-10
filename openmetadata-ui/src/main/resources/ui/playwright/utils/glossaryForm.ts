@@ -316,7 +316,7 @@ export const selectRelatedTermsInGlossaryTermForm = async (
   }
 };
 
-/** Picks an icon; re-clicking the trigger closes the popover so it can't cover Save. */
+/** Picks an icon; selecting one closes the popover so it can't cover Save. */
 export const selectStyleIcon = async (
   page: Page,
   form: Locator,
@@ -331,15 +331,14 @@ export const fillStyleIconUrl = async (
   form: Locator,
   iconUrl: string
 ) => {
-  const trigger = form.getByTestId('icon-picker-btn');
-
-  await trigger.click();
+  await form.getByTestId('icon-picker-btn').click();
   await page.getByRole('tab', { name: 'URL' }).click();
 
   const urlInput = page.getByRole('textbox', { name: 'Icon URL' });
   await urlInput.fill(iconUrl);
 
-  await trigger.click();
+  // The popover's underlay covers the trigger, so dismiss with Escape.
+  await page.keyboard.press('Escape');
   await expect(urlInput).not.toBeVisible();
 };
 

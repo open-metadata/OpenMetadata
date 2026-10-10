@@ -90,7 +90,7 @@ public final class RdfGraphService {
     String query =
         buildLineageQuery(
             request.entityId(), entityType, request.direction(), repository.getBaseUri());
-    return repository.executeSparqlQueryWithInference(query, SPARQL_JSON, "custom");
+    return repository.executeSparqlQueryDirect(query, SPARQL_JSON);
   }
 
   public String glossaryGraph(GlossaryGraphRequest request) throws IOException {

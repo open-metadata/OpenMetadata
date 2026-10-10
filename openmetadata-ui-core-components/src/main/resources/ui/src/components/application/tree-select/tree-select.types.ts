@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import type { FC, ReactNode } from 'react';
+import type { Placement } from 'react-aria';
 
 export interface TreeSelectNode<T = unknown> {
   id: string;
@@ -179,6 +180,11 @@ export interface TreeSelectProps<T = unknown> {
   commitMode?: TreeSelectCommitMode;
   /** Gap between trigger and dropdown, in px. @default 8 */
   offset?: number;
+  /**
+   * Fixed dropdown placement, e.g. `right top` beside a menu row. Omit to keep
+   * the default: below the trigger, mirrored right when there is no room.
+   */
+  placement?: Placement;
   /** Controls the dropdown; omit to let the component own its open state. */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;

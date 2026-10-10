@@ -10,38 +10,54 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ProgressBarBase,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   chartColor,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Progress, Tooltip } from 'antd';
-import { toNumber } from 'lodash';
-import React from 'react';
+import {
+  AlertTriangle,
+  CheckCircle,
+  InfoCircle,
+} from '@openmetadata/ui-core-components/icons';
+import { clamp, toNumber } from 'lodash';
+import React, { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CheckIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
 import { KpiTargetType } from '../../../../../generated/api/dataInsight/kpi/createKpiRequest';
 import { UIKpiResult } from '../../../../../interface/data-insight.interface';
 import { getKpiResultFeedback } from '../../../../../utils/DataInsightUtils';
 import { getDaysRemaining } from '../../../../../utils/date-time/DateTimeUtils';
-import './kpi-legend.less';
 
 interface KPILegendProps {
   kpiLatestResultsRecord: Record<string, UIKpiResult>;
   isFullSize: boolean;
 }
 
+// ProgressBarBase does not clamp, so >100% or a zero target would shift the bar.
+const getProgressPercent = (current: number, target: number) =>
+  clamp((current / target) * 100 || 0, 0, 100);
+
+const GOAL_CHIP_CLASS =
+  'tw:min-w-0 tw:w-fit tw:shrink tw:rounded-lg tw:px-2 tw:py-1 tw:text-[10px]';
+
 const GoalCompleted = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="goal-completed-container">
-      <CheckIcon />
-      <Typography className="goal-status-text">
+    <Box
+      align="center"
+      className={`${GOAL_CHIP_CLASS} tw:bg-utility-success-50 tw:text-utility-success-700`}
+      gap={1}>
+      <CheckCircle className="tw:size-3 tw:shrink-0" />
+      <Typography className="tw:truncate tw:text-[10px] tw:text-utility-success-700">
         {t('label.goal-completed')}
       </Typography>
-    </div>
+    </Box>
   );
 };
 
@@ -49,12 +65,15 @@ const GoalMissed = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="goal-missed-container">
-      <WarningOutlined />
-      <Typography className="goal-status-text">
+    <Box
+      align="center"
+      className={`${GOAL_CHIP_CLASS} tw:bg-utility-warning-50 tw:text-utility-warning-700`}
+      gap={1}>
+      <AlertTriangle className="tw:size-3 tw:shrink-0" />
+      <Typography className="tw:truncate tw:text-[10px] tw:text-utility-warning-700">
         {t('label.goal-missed')}
       </Typography>
-    </div>
+    </Box>
   );
 };
 
@@ -67,7 +86,10 @@ const KPILegend: React.FC<KPILegendProps> = ({
   const entries = Object.entries(kpiLatestResultsRecord);
 
   return (
-    <div className="w-full h-full kpi-legend d-flex flex-column p-sm">
+    <Box
+      className="kpi-legend tw:h-full tw:max-h-87.5 tw:w-full tw:overflow-y-auto tw:rounded-xl tw:border tw:border-secondary tw:p-3"
+      direction="col"
+      gap={2}>
       {entries.map(([key, resultData], index) => {
         const color = chartColor(palette, index);
         const daysLeft = getDaysRemaining(resultData.endDate);
@@ -78,7 +100,6 @@ const KPILegend: React.FC<KPILegendProps> = ({
         const current = toNumber(targetResult?.value);
         const target = toNumber(resultData.target);
 
-        const currentProgress = (current / target) * 100;
         const suffix = isPercentage ? '%' : '';
 
         const isTargetMet = targetResult.targetMet;
@@ -91,7 +112,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
           centerContent = <GoalMissed />;
         } else {
           centerContent = (
-            <Typography className="text-xss font-semibold kpi-legend-days-left text-center">
+            <Typography className="tw:text-center tw:text-[10px] tw:font-medium tw:text-tertiary">
               {daysLeft <= 0 ? 0 : daysLeft}{' '}
               {t('label.days-left').toUpperCase()}
             </Typography>
@@ -100,10 +121,20 @@ const KPILegend: React.FC<KPILegendProps> = ({
 
         if (isFullSize) {
           return (
-            <div className="kpi-full-legend" key={key}>
-              <div className="kpi-legend-header">
+            <Box
+              className="kpi-full-legend tw:mb-2 tw:w-full tw:min-w-0 tw:rounded-xl tw:border tw:border-tertiary tw:bg-secondary_subtle tw:p-2"
+              direction="col"
+              gap={1}
+              key={key}
+              // Series colour comes from the chart palette at runtime.
+              style={{ '--kpi-series-color': color } as CSSProperties}>
+              <Box
+                align="center"
+                className="tw:min-w-0"
+                gap={2}
+                justify="between">
                 <Typography
-                  className="kpi-legend-title"
+                  className="tw:min-w-0 tw:flex-1 tw:text-xs tw:leading-tight tw:font-normal tw:text-secondary"
                   ellipsis={{ tooltip: true }}>
                   {resultData.displayName}
                 </Typography>
@@ -112,56 +143,65 @@ const KPILegend: React.FC<KPILegendProps> = ({
                   <Tooltip
                     placement="bottom"
                     title={getKpiResultFeedback(daysLeft, Boolean(isTargetMet))}
-                    trigger="hover">
-                    <InfoCircleOutlined className="kpi-legend-info-icon" />
+                    triggerClassName="tw:flex">
+                    <InfoCircle className="tw:size-3 tw:text-fg-quaternary" />
                   </Tooltip>
                 ) : null}
-              </div>
+              </Box>
 
-              <Progress
-                percent={Number(currentProgress)}
-                showInfo={false}
-                size="small"
-                strokeColor={color}
-                strokeWidth={4}
+              <ProgressBarBase
+                className="tw:h-1 tw:bg-quaternary"
+                progressClassName="tw:bg-(--kpi-series-color)"
+                value={getProgressPercent(current, target)}
               />
 
-              <div className="kpi-legend-bottom-row">
-                <div className="kpi-legend-value-section">
-                  <Typography className="text-xss kpi-legend-value">
-                    {current.toFixed(0)}
-                    {suffix}
-                  </Typography>
-                </div>
-                <div className="kpi-legend-center-section">{centerContent}</div>
-                <div className="kpi-legend-value-section">
-                  <Typography className="text-xss kpi-legend-value">
-                    {target.toFixed(0)}
-                    {suffix}
-                  </Typography>
-                </div>
-              </div>
-            </div>
+              <Box
+                align="center"
+                className="tw:min-w-0"
+                gap={1}
+                justify="between">
+                <Typography className="tw:shrink-0 tw:text-[10px] tw:text-tertiary">
+                  {current.toFixed(0)}
+                  {suffix}
+                </Typography>
+                <Box
+                  align="center"
+                  className="tw:min-w-0 tw:flex-1"
+                  justify="center">
+                  {centerContent}
+                </Box>
+                <Typography className="tw:shrink-0 tw:text-[10px] tw:text-tertiary">
+                  {target.toFixed(0)}
+                  {suffix}
+                </Typography>
+              </Box>
+            </Box>
           );
         }
 
         // Compact Mode
         return (
-          <div className="legend-item p-sm d-flex items-center justify-center gap-1 text-xs flex-wrap ">
+          <Box
+            align="center"
+            className="legend-item tw:p-3 tw:text-xs"
+            gap={1}
+            justify="center"
+            key={key}
+            wrap="wrap">
             <span
-              className="legend-dot h-3 w-3 m-r-xss"
+              className="legend-dot tw:mr-1 tw:inline-block tw:size-3 tw:shrink-0 tw:rounded-full"
               style={{ backgroundColor: color }}
             />
-            <Typography className="text-xs font-semibold" weight="semibold">
+            <Typography size="text-xs" weight="semibold">
               {`${resultData.displayName}:`}
             </Typography>
-            <Typography className="text-xs font-normal" color="secondary">
+            <Typography color="secondary" size="text-xs">
               {daysLeft <= 0 ? 0 : daysLeft} {t('label.days-left')}
             </Typography>
-          </div>
+          </Box>
         );
       })}
-    </div>
+    </Box>
   );
 };
 

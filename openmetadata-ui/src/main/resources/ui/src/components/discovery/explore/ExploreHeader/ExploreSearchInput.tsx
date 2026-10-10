@@ -46,6 +46,8 @@ export interface ExploreSearchInputProps {
   placeholder?: string;
   /** Popover body. Defaults to Explore's entity suggestions. */
   suggestions?: ReactNode;
+  /** Render a read-only preview (e.g. the persona customize view). */
+  isDisabled?: boolean;
   searchContainerRef: RefObject<HTMLFormElement>;
   onSearchChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -167,6 +169,7 @@ export const ExploreSearchInput = ({
   searchCriteria,
   placeholder,
   suggestions,
+  isDisabled = false,
   searchContainerRef,
   onSearchChange,
   onSubmit,
@@ -222,6 +225,7 @@ export const ExploreSearchInput = ({
                       : NLP_TOGGLE_INACTIVE_CLASS
                   }`}
                   data-testid="explore-nlp-toggle"
+                  disabled={isDisabled}
                   type="button"
                   onClick={onNLPToggle}>
                   {isNLPActive ? (
@@ -245,6 +249,7 @@ export const ExploreSearchInput = ({
             icon={Search}
             iconClassName="tw:size-4 tw:text-utility-brand-600"
             inputClassName={INPUT_CLASS}
+            isDisabled={isDisabled}
             placeholder={placeholderText}
             value={searchValue}
             wrapperClassName={INPUT_WRAPPER_CLASS}

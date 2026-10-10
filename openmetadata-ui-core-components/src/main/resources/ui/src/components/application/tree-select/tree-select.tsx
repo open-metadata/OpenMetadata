@@ -60,8 +60,9 @@ import {
 const LOAD_MORE_SUFFIX = '__more';
 /** Row id of the root listing's load-more item. Null byte: no node can collide. */
 const ROOT_LOAD_MORE_ID = '\u0000root__more';
+
 /** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
-const DROPDOWN_CHROME_WIDTH = 320;
+export const DROPDOWN_CHROME_WIDTH = 320;
 /** Matches react-aria's default overlay `containerPadding`. */
 const VIEWPORT_PADDING = 12;
 
@@ -69,7 +70,7 @@ type DropdownPlacement = 'bottom left' | 'bottom right';
 
 // Left edge of the trigger, mirrored right when there is no room on screen.
 // Width is measured: `--trigger-width` is unset for a bare Popover + triggerRef.
-const useDropdownPlacement = (
+export const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   width?: number
@@ -243,6 +244,7 @@ export const TreeSelect = <T = unknown,>({
   showSelectAll = false,
   commitMode = 'immediate',
   offset,
+  placement,
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
@@ -286,7 +288,7 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
-  const { placement, triggerWidth } = useDropdownPlacement(
+  const { placement: autoPlacement, triggerWidth } = useDropdownPlacement(
     triggerRef,
     isOpen,
     usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
@@ -1012,7 +1014,7 @@ export const TreeSelect = <T = unknown,>({
       data-react-aria-top-layer="true"
       isOpen={isOpen}
       offset={offset}
-      placement={placement}
+      placement={placement ?? autoPlacement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
       // The input variant matches its trigger; measured, not `--trigger-width`.

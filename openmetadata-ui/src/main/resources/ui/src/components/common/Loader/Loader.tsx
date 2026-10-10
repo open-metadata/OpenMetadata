@@ -21,6 +21,7 @@ type Props = {
   className?: string;
   fullScreen?: boolean;
   style?: CSSProperties;
+  dataTestId?: string;
 };
 
 const Loader: FunctionComponent<Props> = ({
@@ -29,6 +30,7 @@ const Loader: FunctionComponent<Props> = ({
   className = '',
   fullScreen = false,
   style,
+  dataTestId = 'loader',
 }: Props): JSX.Element => {
   let classes = 'loader';
   switch (size) {
@@ -67,7 +69,7 @@ const Loader: FunctionComponent<Props> = ({
       <div className="h-min-100 flex-center" data-testid="full-screen-loader">
         <div
           className={classNames(classes, className)}
-          data-testid="loader"
+          data-testid={dataTestId}
           style={style}
         />
       </div>
@@ -77,7 +79,7 @@ const Loader: FunctionComponent<Props> = ({
   return (
     <div
       className={classNames(classes, className)}
-      data-testid="loader"
+      data-testid={dataTestId}
       style={style}
     />
   );

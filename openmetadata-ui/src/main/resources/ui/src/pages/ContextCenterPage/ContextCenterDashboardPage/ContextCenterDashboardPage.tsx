@@ -416,7 +416,7 @@ const ContextCenterDashboardPage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:bg-canvas tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
       <DocumentTitle title={t('label.context-center')} />
       <PageLayout
@@ -602,7 +602,7 @@ const ContextCenterDashboardPage: FC = () => {
                     {recentlyViewedItems.map((item) => (
                       <Box
                         align="center"
-                        className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                        className="tw:cursor-pointer tw:rounded tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
                         gap={2}
                         key={item.id}
                         role="button"
@@ -671,7 +671,7 @@ const ContextCenterDashboardPage: FC = () => {
                     {mostCitedItems.map((item) => (
                       <Box
                         align="center"
-                        className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                        className="tw:cursor-pointer tw:rounded tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
                         gap={2}
                         key={item.id}
                         role="button"

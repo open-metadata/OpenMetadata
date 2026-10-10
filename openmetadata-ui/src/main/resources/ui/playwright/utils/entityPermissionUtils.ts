@@ -288,7 +288,7 @@ export const testCommonOperations = async (
     if (await certLocator.isVisible()) {
       await certLocator.click();
       await expect(
-        testUserPage.getByTestId('certification-cards')
+        testUserPage.getByTestId('drop-down-menu')
       ).not.toBeVisible();
     }
   }
