@@ -1149,4 +1149,85 @@ class LineageRepositoryTest {
         .deleteLineageBySourcePipeline(
             entityId, LineageDetails.Source.OPEN_LINEAGE.value(), Relationship.UPSTREAM.ordinal());
   }
+
+  @Test
+  void testGetLineageEdgeRecord_DelegatesToGetRecordWithUpstreamRelation() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    CollectionDAO.EntityRelationshipObject record =
+        CollectionDAO.EntityRelationshipObject.builder()
+            .fromId(fromId.toString())
+            .toId(toId.toString())
+            .fromEntity("table")
+            .toEntity("table")
+            .relation(Relationship.UPSTREAM.ordinal())
+            .json("{\"sqlQuery\":\"select 1\"}")
+            .build();
+    when(relationshipDAO.getRecord(fromId, toId, Relationship.UPSTREAM.ordinal()))
+        .thenReturn(record);
+
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    LineageRepository lineageRepository = new LineageRepository();
+    CollectionDAO.EntityRelationshipObject result =
+        lineageRepository.getLineageEdgeRecord(fromId, toId);
+
+    verify(relationshipDAO).getRecord(fromId, toId, Relationship.UPSTREAM.ordinal());
+    assertSame(record, result);
+  }
+
+  @Test
+  void testGetLineageEdgeRecord_ReturnsNullWhenNoRowExists() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    when(relationshipDAO.getRecord(fromId, toId, Relationship.UPSTREAM.ordinal())).thenReturn(null);
+
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    LineageRepository lineageRepository = new LineageRepository();
+    CollectionDAO.EntityRelationshipObject result =
+        lineageRepository.getLineageEdgeRecord(fromId, toId);
+
+    assertNull(result, "a missing relationship row must surface as null, not an exception");
+  }
+
+  @Test
+  void testGetLineageEdgeRecord_ReturnsRecordWithEntityTypes() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    CollectionDAO.EntityRelationshipObject record =
+        CollectionDAO.EntityRelationshipObject.builder()
+            .fromId(fromId.toString())
+            .toId(toId.toString())
+            .fromEntity("table")
+            .toEntity("dashboard")
+            .relation(Relationship.UPSTREAM.ordinal())
+            .json("{}")
+            .build();
+    when(relationshipDAO.getRecord(fromId, toId, Relationship.UPSTREAM.ordinal()))
+        .thenReturn(record);
+
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    LineageRepository lineageRepository = new LineageRepository();
+    CollectionDAO.EntityRelationshipObject result =
+        lineageRepository.getLineageEdgeRecord(fromId, toId);
+
+    assertEquals("table", result.getFromEntity());
+    assertEquals("dashboard", result.getToEntity());
+    assertEquals(fromId.toString(), result.getFromId());
+    assertEquals(toId.toString(), result.getToId());
+  }
 }
