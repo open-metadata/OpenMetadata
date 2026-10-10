@@ -15,8 +15,9 @@ import { Select } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Key, useMemo } from 'react';
 import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import CoreTreeSelectWidget from './CoreTreeSelectWidget';
 
-const CoreSelectWidget = ({
+const CoreEnumSelectWidget = ({
   id,
   value,
   disabled,
@@ -79,12 +80,23 @@ const CoreSelectWidget = ({
         onChange(optionValueMap.get(String(key)));
       }}>
       {(item) => (
-        <Select.Item id={item.id} key={item.id} textValue={item.label}>
+        <Select.Item
+          data-testid={`select-option-${item.id}`}
+          id={item.id}
+          key={item.id}
+          textValue={item.label}>
           {item.label}
         </Select.Item>
       )}
     </Select>
   );
 };
+
+const CoreSelectWidget = (props: WidgetProps) =>
+  props.schema.uiFieldType === 'treeSelect' ? (
+    <CoreTreeSelectWidget {...props} />
+  ) : (
+    <CoreEnumSelectWidget {...props} />
+  );
 
 export default CoreSelectWidget;

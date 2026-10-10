@@ -13,6 +13,7 @@
 
 import { Button, HintText, Label } from '@openmetadata/ui-core-components';
 import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
+import { getDefaultRegistry } from '@rjsf/core';
 import { FieldProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -120,7 +121,7 @@ const ArrayValueChip = ({
   );
 };
 
-const CoreArrayField = (props: FieldProps) => {
+const CoreTagArrayField = (props: FieldProps) => {
   const {
     idSchema,
     formData,
@@ -260,6 +261,18 @@ const CoreArrayField = (props: FieldProps) => {
       <ArrayFieldError isInvalid={isInvalid} rawErrors={rawErrors} />
     </div>
   );
+};
+
+// A `treeSelect` array is an enum multi-select, not free-form tags: RJSF's own
+// ArrayField hands those to SelectWidget, which renders the tree.
+const CoreArrayField = (props: FieldProps) => {
+  if (props.schema.uiFieldType !== 'treeSelect') {
+    return <CoreTagArrayField {...props} />;
+  }
+
+  const { ArrayField: RjsfArrayField } = getDefaultRegistry().fields;
+
+  return <RjsfArrayField {...props} />;
 };
 
 export default CoreArrayField;

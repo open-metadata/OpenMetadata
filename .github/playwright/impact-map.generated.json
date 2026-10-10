@@ -9401,6 +9401,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilderV1/widgets/CoreTreeSelectWidget.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/SearchIndexApplication.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/GlossaryTermsSection/GlossaryTermsSection.tsx"
       ],
       "specs": [

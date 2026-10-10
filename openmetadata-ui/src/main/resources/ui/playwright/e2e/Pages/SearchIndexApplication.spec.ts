@@ -310,45 +310,30 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.fill('#root\\/batchSize', '100');
 
-      await page.getByTestId('tree-select-widget').click();
+      const entitiesField = page.getByTestId('tree-select-widget');
+      await entitiesField.click();
 
-      // Bring table option to view in dropdown via searching for it
-      await page
-        .getByTestId('tree-select-widget')
-        .getByRole('combobox')
-        .fill('Table');
+      const entitiesTree = page.getByTestId('tree-select-widget-popover');
+      await expect(entitiesTree.getByTestId('tree-node-all')).toBeVisible();
 
-      // Exact: the entity list is server-driven now, and rc-tree-select filters on the node value
-      // (treeNodeFilterProp defaults to 'value'), so typing "Table" also leaves `tableColumn` —
-      // rendered as "Table Column" — visible. A substring getByTitle would match both and break
-      // strict mode.
-      const tableTitle = page
-        .getByRole('tree')
-        .getByTitle('Table', { exact: true });
+      // The entity list is server-driven, so bring Table into view by searching. Nodes are keyed
+      // by enum value, so `tree-node-table` cannot also match `tableColumn` ("Table Column").
+      await entitiesField.getByRole('textbox').fill('table');
 
-      // Wait for the filtered tree result to render
-      await tableTitle.waitFor({ state: 'visible' });
+      const tableNode = entitiesTree.getByTestId('tree-node-table');
+      const tableCheckbox = entitiesTree.getByTestId('checkbox-table');
+      await expect(tableNode).toBeVisible();
 
       // Uncheck Table only if it is currently checked
-      const isTableChecked = await tableTitle.evaluate((el) => {
-        let node = el.parentElement;
-        while (node) {
-          if (node.getAttribute('role') === 'treeitem') {
-            return node.getAttribute('aria-checked') === 'true';
-          }
-          node = node.parentElement;
-        }
-
-        return false;
-      });
-
-      if (isTableChecked) {
-        await tableTitle.click();
+      if ((await tableCheckbox.getAttribute('data-selected')) === 'true') {
+        await tableNode.click();
       }
+
+      await expect(tableCheckbox).not.toHaveAttribute('data-selected', 'true');
 
       // Need an outside click to close the dropdown
       await clickOutside(page);
-      await page.locator('[for="root/searchIndexMappingLanguage"]').click();
+      await expect(entitiesTree).toBeHidden();
 
       await page
         .getByTestId('select-widget-root/searchIndexMappingLanguage')
