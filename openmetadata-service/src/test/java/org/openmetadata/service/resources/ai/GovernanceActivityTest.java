@@ -17,6 +17,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -79,7 +80,80 @@ class GovernanceActivityTest {
     }
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  void editWhilePendingReturnsOriginalSubmissionNotMostRecentEdit() {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("llmmodel", Entity.LLM_MODEL);
+    LLMModel current = model(LLMModel.GovernanceStatus.APPROVED, 3000L, "alice");
+    LLMModel pendingLatestEdit = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2500L, "carol");
+    LLMModel pendingMidEdit = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2200L, "bob");
+    LLMModel pendingOriginal = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2000L, "dave");
+
+    List<AIGovernanceActivityEvent> events =
+        eventsFromHistory(current, pendingLatestEdit, pendingMidEdit, pendingOriginal);
+
+    AIGovernanceActivityEvent submission = event(events, "SubmittedForReview");
+    assertEquals(2000L, submission.getAt(), "should return the original submission timestamp");
+    assertEquals("dave", submission.getWho(), "should return the original submitter");
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void rejectThenResubmitReturnsResubmissionThatLedToApproval() {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("llmmodel", Entity.LLM_MODEL);
+    LLMModel current = model(LLMModel.GovernanceStatus.APPROVED, 3000L, "alice");
+    LLMModel resubmission = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2200L, "bob");
+    LLMModel rejected = model(LLMModel.GovernanceStatus.REJECTED, 2100L, "reviewer");
+    LLMModel firstSubmission = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2000L, "dave");
+
+    List<AIGovernanceActivityEvent> events =
+        eventsFromHistory(current, resubmission, rejected, firstSubmission);
+
+    AIGovernanceActivityEvent submission = event(events, "SubmittedForReview");
+    assertEquals(2200L, submission.getAt(), "should return the resubmission timestamp");
+    assertEquals("bob", submission.getWho(), "should return the resubmission submitter");
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void resubmitThenEditWhilePendingReturnsResubmissionNotEdit() {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("llmmodel", Entity.LLM_MODEL);
+    LLMModel current = model(LLMModel.GovernanceStatus.APPROVED, 3000L, "alice");
+    LLMModel editWhilePending = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2500L, "carol");
+    LLMModel resubmission = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2200L, "bob");
+    LLMModel rejected = model(LLMModel.GovernanceStatus.REJECTED, 2100L, "reviewer");
+    LLMModel firstSubmission = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2000L, "dave");
+
+    List<AIGovernanceActivityEvent> events =
+        eventsFromHistory(current, editWhilePending, resubmission, rejected, firstSubmission);
+
+    AIGovernanceActivityEvent submission = event(events, "SubmittedForReview");
+    assertEquals(2200L, submission.getAt(), "should return the resubmission timestamp");
+    assertEquals("bob", submission.getWho(), "should return the resubmission submitter");
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void reapprovedModelReturnsLatestSubmissionTransition() {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("llmmodel", Entity.LLM_MODEL);
+    LLMModel current = model(LLMModel.GovernanceStatus.APPROVED, 3000L, "alice");
+    LLMModel secondSubmission = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2500L, "bob");
+    LLMModel priorApproval = model(LLMModel.GovernanceStatus.APPROVED, 2200L, "alice");
+    LLMModel firstSubmission = model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2000L, "dave");
+
+    List<AIGovernanceActivityEvent> events =
+        eventsFromHistory(current, secondSubmission, priorApproval, firstSubmission);
+
+    AIGovernanceActivityEvent submission = event(events, "SubmittedForReview");
+    assertEquals(2500L, submission.getAt());
+    assertEquals("bob", submission.getWho());
+  }
+
   private LLMModel model(LLMModel.GovernanceStatus status, long updatedAt) {
+    return model(status, updatedAt, "alice");
+  }
+
+  private LLMModel model(LLMModel.GovernanceStatus status, long updatedAt, String updatedBy) {
     return new LLMModel()
         .withId(UUID.randomUUID())
         .withName("claimsCopilot")
@@ -87,7 +161,26 @@ class GovernanceActivityTest {
         .withFullyQualifiedName("claimsCopilot")
         .withGovernanceStatus(status)
         .withUpdatedAt(updatedAt)
-        .withUpdatedBy("alice");
+        .withUpdatedBy(updatedBy);
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<AIGovernanceActivityEvent> eventsFromHistory(
+      LLMModel current, LLMModel... olderVersions) {
+    UUID id = current.getId();
+    List<Object> versions = new ArrayList<>();
+    versions.add(JsonUtils.pojoToJson(current));
+    for (LLMModel version : olderVersions) {
+      version.withId(id);
+      versions.add(JsonUtils.pojoToJson(version));
+    }
+    EntityRepository<LLMModel> repository = mock(EntityRepository.class);
+    EntityHistory history = new EntityHistory().withVersions(versions);
+    when(repository.listVersions(id)).thenReturn(history);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.LLM_MODEL)).thenReturn(repository);
+      return GovernanceActivity.eventsFor(current);
+    }
   }
 
   private List<String> eventTypes(List<AIGovernanceActivityEvent> events) {
