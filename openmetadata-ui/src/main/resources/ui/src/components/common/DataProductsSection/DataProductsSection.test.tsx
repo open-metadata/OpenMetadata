@@ -129,7 +129,10 @@ jest.mock(
           children?: React.ReactNode;
         }) => (
           <>
-            {children}
+            {/* Like FilterSelect, the trigger toggles the picker. */}
+            <span onClickCapture={() => onOpenChange?.(!isOpen)}>
+              {children}
+            </span>
             {isOpen && (
               <div data-testid="data-products-select-list">
                 <button
@@ -280,6 +283,18 @@ describe('DataProductsSection', () => {
   });
 
   describe('Edit Mode', () => {
+    it('closes the picker when the edit button is pressed again, saving nothing', () => {
+      render(<DataProductsSection {...defaultProps} />);
+
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+
+      expect(
+        screen.queryByTestId('data-products-select-list')
+      ).not.toBeInTheDocument();
+      expect(defaultProps.onDataProductsUpdate).not.toHaveBeenCalled();
+    });
+
     it('enters edit mode and shows select list', () => {
       render(<DataProductsSection {...defaultProps} />);
 

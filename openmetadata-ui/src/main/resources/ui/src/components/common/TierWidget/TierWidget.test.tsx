@@ -18,6 +18,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -187,6 +188,46 @@ describe('TierWidget permissions', () => {
     render(<TierWidget />);
 
     expect(screen.queryByTestId('add-tier')).not.toBeInTheDocument();
+  });
+});
+
+describe('TierWidget add', () => {
+  beforeEach(() => {
+    mockUseGenericContextResult.isVersionView = false;
+    mockUseGenericContextResult.permissions = {
+      EditTier: true,
+    } as unknown as OperationPermission;
+  });
+
+  it('opens the picker from the add button without a built-in trigger', async () => {
+    render(<TierWidget />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('add-tier'));
+    });
+
+    expect(await screen.findByTestId('Tier.Tier3')).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('tier')).queryByRole('button', {
+        name: 'label.tier',
+      })
+    ).not.toBeInTheDocument();
+  });
+
+  it('closes the picker when the add button is pressed again', async () => {
+    render(<TierWidget />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('add-tier'));
+    });
+    await screen.findByTestId('Tier.Tier3');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('add-tier'));
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('Tier.Tier3')).not.toBeInTheDocument()
+    );
   });
 });
 

@@ -189,13 +189,13 @@ const DataProductsContainer = ({
       return null;
     }
 
+    // The picker owns the toggle; a button onClick would reopen it after a close.
     const actionButton = isEmpty(dataProducts) ? (
       <WidgetPlusButton
         data-testid="add-data-product"
         title={t('label.add-entity', {
           entity: t('label.data-product-plural'),
         })}
-        onClick={handleAddClick}
       />
     ) : (
       <WidgetEditButton
@@ -203,7 +203,6 @@ const DataProductsContainer = ({
         title={t('label.edit-entity', {
           entity: t('label.data-product-plural'),
         })}
-        onClick={handleAddClick}
       />
     );
 

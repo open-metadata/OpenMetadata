@@ -20,6 +20,7 @@ import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { getTags } from '../../../rest/tagAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './tier-card.style.less';
@@ -139,9 +140,12 @@ const TierCard = ({
       isOpen={isOpen}
       label={t('label.tier')}
       options={options}
+      // A current tier missing from the list (e.g. disabled) still reads by name.
+      resolveMissingLabel={getNameFromFQN}
       selectedValues={currentTier ? [currentTier] : []}
       selectionMode="single"
-      trigger={children}
+      // Never the built-in trigger: without children it would render a stray "Tier" button.
+      trigger={children ?? <span />}
       onChange={handleChange}
       onOpenChange={handleOpenChange}
     />

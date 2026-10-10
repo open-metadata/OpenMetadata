@@ -58,7 +58,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     displayData: displayDataProducts,
     setDisplayData: setDisplayDataProducts,
     setIsLoading,
-    setPopoverOpen,
     startEditing,
     cancelEditing,
     completeEditing,
@@ -82,10 +81,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       return prev;
     });
   }, [activeDomains]);
-
-  const handleEditClick = () => {
-    startEditing();
-  };
 
   const fetchAPI = useCallback(
     async (searchValue: string, page = 1) => {
@@ -156,12 +151,9 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     ]
   );
 
-  const handlePopoverOpenChange = (open: boolean) => {
-    setPopoverOpen(open);
-    if (!open) {
-      cancelEditing();
-    }
-  };
+  // The picker owns the toggle; a button onClick would reopen it after a close.
+  const handlePopoverOpenChange = (open: boolean) =>
+    open ? startEditing() : cancelEditing();
 
   const emptyContent = useMemo(() => {
     if (isLoading) {
@@ -259,7 +251,6 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
         title={t('label.edit-entity', {
           entity: t('label.data-product-plural'),
         })}
-        onClick={handleEditClick}
       />
     </DataProductsSelectList>
   );

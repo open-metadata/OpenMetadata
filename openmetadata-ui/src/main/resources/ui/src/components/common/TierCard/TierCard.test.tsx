@@ -112,6 +112,15 @@ describe('TierCard', () => {
     expect(screen.queryByTestId('Tier.Tier1-expand')).not.toBeInTheDocument();
   });
 
+  it('shows a current tier missing from the list by name, not FQN', async () => {
+    render(<TierCard {...mockProps} currentTier="Tier.Tier9" />);
+
+    const row = await screen.findByTestId('Tier.Tier9');
+
+    expect(row).toHaveTextContent('Tier9');
+    expect(row).not.toHaveTextContent('Tier.Tier9');
+  });
+
   it('saves the picked tier at once', async () => {
     render(<TierCard {...mockProps} />);
 

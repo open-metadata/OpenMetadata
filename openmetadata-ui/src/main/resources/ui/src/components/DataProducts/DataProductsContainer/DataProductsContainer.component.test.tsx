@@ -40,13 +40,16 @@ jest.mock('../DataProductsSelectList/DataProductsSelectList', () => ({
         children,
         fetchOptions,
         isOpen,
+        onOpenChange,
       }: {
         children?: React.ReactNode;
         fetchOptions?: (searchText: string, page?: number) => void;
         isOpen?: boolean;
+        onOpenChange?: (open: boolean) => void;
       }) => (
         <>
-          {children}
+          {/* Like FilterSelect, the trigger toggles the picker. */}
+          <span onClickCapture={() => onOpenChange?.(!isOpen)}>{children}</span>
           {isOpen && (
             <button
               data-testid="dps-fetch"
@@ -103,6 +106,19 @@ const defaultProps = {
 describe('DataProductsContainer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('closes the picker when its button is pressed again, saving nothing', () => {
+    render(<DataProductsContainer {...defaultProps} />);
+
+    fireEvent.click(screen.getByTestId('add-data-product'));
+
+    expect(screen.getByTestId('dps-fetch')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('add-data-product'));
+
+    expect(screen.queryByTestId('dps-fetch')).not.toBeInTheDocument();
+    expect(defaultProps.onSave).not.toHaveBeenCalled();
   });
 
   it('scopes the fetch to active domains by default (rule enabled)', async () => {
