@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal, Space } from 'antd';
+import {
+  Box,
+  Skeleton,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -320,7 +325,12 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           dragAndDropHooks={dragAndDropHooks}
           expandable={expandableConfig}
           extraTableFilters={
-            <Space align="center">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <span className="tw:inline-flex tw:items-center">
                 <Toggle
                   data-testid="show-deleted"
@@ -338,7 +348,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
                   {t('label.add-entity', { entity: t('label.team') })}
                 </Button>
               )}
-            </Space>
+            </Box>
           }
           loading={isTableLoading || isTeamBasicDataLoading || isSearchLoading}
           locale={{

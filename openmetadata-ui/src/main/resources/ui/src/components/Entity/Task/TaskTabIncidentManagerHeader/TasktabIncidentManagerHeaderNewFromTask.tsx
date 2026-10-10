@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Owner, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Steps } from 'antd';
+import { Box, Grid, Owner, Typography } from '@openmetadata/ui-core-components';
+import { Steps } from 'antd';
 import { isEmpty, isUndefined, last, toLower } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,7 @@ import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { TEST_CASE_STATUS } from '../../../../constants/TestSuite.constant';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { Task } from '../../../../rest/tasksAPI';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -114,8 +115,11 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
     TestCaseResolutionStatusTypes.Resolved;
 
   return (
-    <Row data-testid="incident-manager-task-header-container" gutter={[8, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      data-testid="incident-manager-task-header-container"
+      style={{ ...getLayoutGutter(8, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <div className="task-resolution-steps-container">
           <Steps
             className="task-resolution-steps w-full"
@@ -126,9 +130,14 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
             size="small"
           />
         </div>
-      </Col>
-      <Col span={24}>
-        <Space className="justify-between w-full">
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal justify-between w-full"
+          gap={2}
+          itemClassName="layout-space-item">
           <div className="gap-2 flex-center">
             <Typography color="secondary">
               {`${t('label.assignee')}: `}
@@ -149,10 +158,15 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
               NO_DATA_PLACEHOLDER
             )}
           </div>
-        </Space>
-      </Col>
-      <Col span={24}>
-        <Space className="justify-between w-full">
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal justify-between w-full"
+          gap={2}
+          itemClassName="layout-space-item">
           <div className="gap-2 flex-center">
             <Typography color="secondary">
               {`${t('label.severity')}: `}
@@ -168,10 +182,10 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
                 ?.testCaseFailureReason ?? NO_DATA_PLACEHOLDER}
             </div>
           )}
-        </Space>
-      </Col>
+        </Box>
+      </Grid.Item>
       {isResolved && (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Typography color="secondary">
             {`${t('label.failure-comment')}: `}
           </Typography>
@@ -181,9 +195,9 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
                 ?.testCaseFailureComment ?? ''
             }
           />
-        </Col>
+        </Grid.Item>
       )}
-    </Row>
+    </Grid>
   );
 };
 

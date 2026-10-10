@@ -13,7 +13,13 @@
 
 import { expect, Locator, Page } from '@playwright/test';
 import { setDomain } from '../../../utils/domainPicker';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import {
+  classificationTagPickerRow,
+  isClassificationTagSelected,
+  openClassificationTagPicker,
+  searchClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import {
   applyGlossaryPicker,
   glossaryPickerRow,
@@ -68,10 +74,8 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly markdownEditor: Locator;
   private readonly saveButton: Locator;
   private readonly updateButton: Locator;
-  private readonly selectableList: Locator;
   private readonly descriptionSection: Locator;
-  private readonly searchBar: Locator;
-  private readonly tagSearchBar: Locator;
+  private readonly applyTagPickerButton: Locator;
   private readonly domainList: Locator;
   private readonly tagListContainer: Locator;
   private readonly tierListContainer: Locator;
@@ -117,12 +121,10 @@ export class OverviewPageObject extends RightPanelBase {
     );
     this.saveButton = this.page.getByTestId('save');
     this.updateButton = this.page.getByTestId('selectable-list-update-btn');
-    this.selectableList = this.page.getByTestId('selectable-list');
     this.descriptionSection = this.getSummaryPanel().locator(
       '.description-section'
     );
-    this.searchBar = this.page.getByTestId('search-bar-container');
-    this.tagSearchBar = this.searchBar.getByTestId('tag-select-search-bar');
+    this.applyTagPickerButton = this.page.getByTestId('update-btn');
     this.domainList = this.page.locator('.domains-content');
     this.tagListContainer = this.page.locator('.tags-section');
     this.tierListContainer = this.page.getByTestId('cards');
@@ -216,40 +218,22 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async editTags(tagName: string): Promise<OverviewPageObject> {
-    // Use dispatchEvent to avoid Playwright's internal scroll-into-view on click().
-    // Scrolling the panel container triggers a React re-render that detaches the icon,
-    // causing Playwright to retry the scroll → re-render → infinite loop under load.
-    await this.editTagsIcon.waitFor({ state: 'visible' });
-    await this.editTagsIcon.dispatchEvent('click');
+    await openClassificationTagPicker(this.page, this.editTagsIcon);
 
-    // Wait for the tag selection modal to be visible
-    await this.selectableList.waitFor({ state: 'visible' });
+    const tagItem = await searchClassificationTagPicker(this.page, tagName);
+    await expect(tagItem).toBeVisible();
 
-    // Use semantic search bar selector
-    await this.tagSearchBar.fill(tagName);
-
-    await waitForAllLoadersToDisappear(this.selectableList);
-
-    // Target the .selectable-list-item button, which carries the
-    // 'active' CSS class when the tag is already selected.
-    const tagItem = this.selectableList
-      .locator('.selectable-list-item')
-      .filter({ hasText: tagName });
-    await tagItem.waitFor({ state: 'visible' });
-
-    // Only click if not already active — in parallel test runs another test may have added
-    // this tag already. Clicking an already-active item would deselect (remove) it.
-    // Use dispatchEvent to avoid scroll-triggered re-renders.
-    const isAlreadySelected = await tagItem.evaluate((el) =>
-      el.classList.contains('active')
-    );
-    if (!isAlreadySelected) {
-      await tagItem.dispatchEvent('click');
+    // A parallel test may have added it already; clicking would deselect it.
+    const alreadySelected = await isClassificationTagSelected(tagItem);
+    if (!alreadySelected) {
+      await tagItem.click();
     }
 
-    await this.updateButton.waitFor({ state: 'visible' });
-    const tagPatchPromise = this.waitForPatchResponse();
-    await this.updateButton.click();
+    // Applying an unchanged selection sends no request, so nothing to await.
+    const tagPatchPromise = alreadySelected
+      ? undefined
+      : this.waitForPatchResponse();
+    await this.applyTagPickerButton.click();
     await tagPatchPromise;
 
     // After update the popover closes; rely on tag list container assertions
@@ -499,26 +483,19 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async removeTag(tagDisplayNames: string[]): Promise<OverviewPageObject> {
-    await this.editTagsIcon.click();
-    await this.selectableList.waitFor({ state: 'visible' });
-    await waitForAllLoadersToDisappear(this.selectableList);
+    await openClassificationTagPicker(this.page, this.editTagsIcon);
 
     for (const tagName of tagDisplayNames) {
-      const tagOption = this.selectableList
-        .locator('.selectable-list-item')
-        .filter({ hasText: tagName });
-      await tagOption.waitFor({ state: 'visible' });
-      // Only click if it's currently active (selected)
-      const isActive = await tagOption.evaluate((el) =>
-        el.classList.contains('active')
-      );
-      if (isActive) {
+      const tagOption = await searchClassificationTagPicker(this.page, tagName);
+      await expect(tagOption).toBeVisible();
+
+      if (await isClassificationTagSelected(tagOption)) {
         await tagOption.click();
       }
     }
 
     const patchPromise = this.waitForPatchResponse();
-    await this.updateButton.click();
+    await this.applyTagPickerButton.click();
     await patchPromise;
 
     return this;
@@ -659,29 +636,21 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns Locator of the deleted item (should not be visible)
    */
   async verifyDeletedTagNotVisible(tagName: string): Promise<Locator> {
-    await this.editTagsIcon.click();
-    await this.selectableList.waitFor({ state: 'visible' });
-    await waitForAllLoadersToDisappear(this.selectableList);
+    await openClassificationTagPicker(this.page, this.editTagsIcon);
 
     const searchResponsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('index=tag')
     );
-
-    await this.tagSearchBar.fill(tagName);
+    await this.page
+      .getByTestId('classification-tag-picker-search')
+      .fill(tagName);
     const searchResponse = await searchResponsePromise;
     expect(searchResponse.status()).toBe(200);
 
-    await waitForAllLoadersToDisappear(this.selectableList);
-
-    // Scope to the tag selection dropdown, not the whole page: a page-wide match
-    // also hits the entity's still-assigned tag chip in the panel, whose removal
-    // after the tag hard-delete is eventually consistent and independent of this
-    // search-backed dropdown — the deleted-entity flake.
-    return this.selectableList
-      .locator('.selectable-list-item')
-      .filter({ hasText: tagName });
+    // Scoped to the picker; a page-wide match also hits the assigned chip.
+    return classificationTagPickerRow(this.page, tagName);
   }
 
   /**

@@ -1,0 +1,398 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Divider,
+  Dropdown,
+  Grid,
+  RadioButton,
+  RadioGroup,
+  Select,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { isEmpty, isEqual, omit } from 'lodash';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { Header, ListBoxSection } from 'react-aria-components';
+import { useTranslation } from 'react-i18next';
+import {
+  DEFAULT_LANDING_PAGE,
+  DEFAULT_PAGE_VIEW_MODE,
+  LANDING_PAGE_SECTIONS,
+  PAGE_VIEW_MODE_LABEL_KEYS,
+  ViewModePage,
+  VIEW_MODE_PAGES,
+} from '../../../../../../../constants/platform/personaAppLayout.constants';
+import {
+  AppMode,
+  DefaultViewModes,
+  PageViewMode,
+  PersonaPreferences,
+} from '../../../../../../../generated/type/personaPreferences';
+import {
+  getPersonaPreferences,
+  resolvePersonaLandingPage,
+  updatePersonaAppLayout,
+} from '../../../../../../../utils/CustomizePage/PersonaPage.utils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../../utils/ToastUtils';
+import { CustomizeEditorProps } from './customizeEditor.types';
+import { savePersonaDocument } from './customizeEditor.utils';
+
+const NO_DEFAULT_VALUE = 'null';
+
+const APP_MODE_OPTIONS = [
+  {
+    value: NO_DEFAULT_VALUE,
+    labelKey: 'label.no-default',
+    hintKey: 'message.app-mode-no-default-hint',
+  },
+  {
+    value: AppMode.Classic,
+    labelKey: 'label.app-mode-classic',
+    hintKey: 'message.app-mode-classic-hint',
+  },
+  {
+    value: AppMode.AI,
+    labelKey: 'label.app-mode-ai',
+    hintKey: 'message.app-mode-ai-hint',
+  },
+];
+
+const PreferenceRow = ({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) => (
+  <Box className="tw:py-5" direction="col">
+    <Grid colGap="6" rowGap="4">
+      <Grid.Item span={8}>
+        <Box className="tw:gap-1.5" direction="col">
+          <Typography
+            as="h2"
+            className="not-prose tw:m-0 tw:text-primary"
+            size="text-sm"
+            weight="semibold">
+            {title}
+          </Typography>
+          <Typography
+            as="p"
+            className="not-prose tw:text-[13px] tw:leading-normal tw:text-tertiary">
+            {description}
+          </Typography>
+        </Box>
+      </Grid.Item>
+      <Grid.Item span={16}>{children}</Grid.Item>
+    </Grid>
+  </Box>
+);
+
+const AppLayoutEditor = ({
+  persona,
+  document,
+  onDocumentSaved,
+  onActionsChange,
+}: CustomizeEditorProps) => {
+  const { t } = useTranslation();
+
+  const persisted = useMemo(
+    () => getPersonaPreferences(document, persona.id),
+    [document, persona.id]
+  );
+  const persistedAppMode = persisted?.appMode ?? NO_DEFAULT_VALUE;
+  const persistedViewModes = useMemo<DefaultViewModes>(
+    () => persisted?.defaultViewModes ?? {},
+    [persisted]
+  );
+  const persistedLandingPage = useMemo(
+    () => resolvePersonaLandingPage(document, persona.id),
+    [document, persona.id]
+  );
+
+  const [selectedMode, setSelectedMode] = useState<string>(persistedAppMode);
+  const [landingPage, setLandingPage] = useState(persistedLandingPage);
+  const [viewModes, setViewModes] = useState(persistedViewModes);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const configuredPages = VIEW_MODE_PAGES.filter(({ page }) => viewModes[page]);
+  const addablePages = VIEW_MODE_PAGES.filter(({ page }) => !viewModes[page]);
+
+  const canSave = useMemo(
+    () =>
+      !(
+        selectedMode === persistedAppMode &&
+        landingPage === persistedLandingPage &&
+        isEqual(viewModes, persistedViewModes)
+      ),
+    [
+      selectedMode,
+      landingPage,
+      viewModes,
+      persistedAppMode,
+      persistedLandingPage,
+      persistedViewModes,
+    ]
+  );
+
+  const setPageViewMode = (page: ViewModePage, view: PageViewMode) =>
+    setViewModes((prev) => ({ ...prev, [page]: view }));
+
+  const removePageViewMode = (page: ViewModePage) =>
+    setViewModes((prev) => omit(prev, page));
+
+  const handleReset = useCallback(() => {
+    setSelectedMode(NO_DEFAULT_VALUE);
+    setLandingPage(DEFAULT_LANDING_PAGE);
+    setViewModes({});
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const preferences = {
+        appMode:
+          selectedMode === NO_DEFAULT_VALUE
+            ? undefined
+            : (selectedMode as AppMode),
+        defaultLandingPage:
+          landingPage === DEFAULT_LANDING_PAGE ? undefined : landingPage,
+        defaultViewModes: isEmpty(viewModes) ? undefined : viewModes,
+      };
+      const saved = await savePersonaDocument(document, (draft) => {
+        draft.data.personaPreferences = updatePersonaAppLayout(
+          (draft.data.personaPreferences ?? []) as PersonaPreferences[],
+          persona,
+          preferences
+        );
+      });
+      onDocumentSaved(saved);
+      showSuccessToast(
+        t('server.update-entity-success', { entity: t('label.app-layout') })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    selectedMode,
+    landingPage,
+    viewModes,
+    document,
+    persona,
+    onDocumentSaved,
+    t,
+  ]);
+
+  useEffect(() => {
+    onActionsChange({
+      onSave: handleSave,
+      onReset: handleReset,
+      canSave,
+      isSaving,
+    });
+  }, [handleSave, handleReset, canSave, isSaving, onActionsChange]);
+
+  return (
+    <Box
+      className="tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-5 tw:divide-y-0.5 tw:divide-secondary"
+      data-testid="app-layout-editor"
+      direction="col"
+      tabIndex={-1}>
+      <PreferenceRow
+        description={t('message.app-mode-description')}
+        title={t('label.app-mode')}>
+        <RadioGroup
+          aria-label={t('label.app-mode')}
+          className="tw:flex-row tw:gap-3"
+          data-testid="app-mode-radio-group"
+          size="md"
+          value={selectedMode}
+          onChange={setSelectedMode}>
+          {APP_MODE_OPTIONS.map((option) => (
+            <RadioButton
+              className={({ isSelected }) =>
+                classNames(
+                  'tw:flex-1 tw:cursor-pointer tw:rounded-xl tw:border tw:p-4 tw:transition-colors',
+                  isSelected
+                    ? 'tw:border-brand tw:bg-brand-primary'
+                    : 'tw:border-secondary'
+                )
+              }
+              data-testid={`app-mode-option-${option.value}`}
+              hint={
+                <Typography
+                  as="span"
+                  className="tw:text-tertiary"
+                  size="text-xs">
+                  {t(option.hintKey)}
+                </Typography>
+              }
+              key={option.value}
+              label={
+                <Typography
+                  as="span"
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="medium">
+                  {t(option.labelKey)}
+                </Typography>
+              }
+              value={option.value}
+            />
+          ))}
+        </RadioGroup>
+      </PreferenceRow>
+
+      <Divider />
+
+      <PreferenceRow
+        description={t('message.default-landing-page-description')}
+        title={t('label.default-landing-page')}>
+        <Select
+          aria-label={t('label.default-landing-page')}
+          data-testid="default-landing-page-select"
+          fontSize="sm"
+          size="md"
+          value={landingPage}
+          onChange={(key) => key && setLandingPage(String(key))}>
+          {LANDING_PAGE_SECTIONS.map((section) => (
+            <ListBoxSection id={section.titleKey} key={section.titleKey}>
+              <Header className="tw:px-3.5 tw:pt-3 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
+                {t(section.titleKey)}
+              </Header>
+              {section.options.map((option) => (
+                <Select.Item
+                  id={option.path}
+                  key={option.path}
+                  label={t(option.labelKey)}
+                  supportingText={option.path}
+                />
+              ))}
+            </ListBoxSection>
+          ))}
+        </Select>
+      </PreferenceRow>
+
+      <Divider />
+
+      <PreferenceRow
+        description={t('message.view-mode-description')}
+        title={t('label.view-mode')}>
+        <Box
+          className="tw:rounded-xl tw:border tw:border-secondary"
+          data-testid="view-mode-pages"
+          direction="col">
+          {configuredPages.map(({ page, labelKey, views }) => (
+            <Box
+              align="center"
+              className="tw:border-b tw:border-secondary tw:px-5 tw:py-3"
+              data-testid={`view-mode-row-${page}`}
+              gap={4}
+              justify="between"
+              key={page}>
+              <Typography
+                as="span"
+                className="tw:text-primary"
+                size="text-sm"
+                weight="medium">
+                {t(labelKey)}
+              </Typography>
+              <Box align="center" gap={3}>
+                <Tabs
+                  className="tw:w-auto"
+                  selectedKey={viewModes[page]}
+                  onSelectionChange={(key) =>
+                    setPageViewMode(page, key as PageViewMode)
+                  }>
+                  <Tabs.List
+                    aria-label={t(labelKey)}
+                    size="sm"
+                    type="button-border">
+                    {views.map((view) => (
+                      <Tabs.Item
+                        data-testid={`view-mode-${page}-${view}`}
+                        id={view}
+                        key={view}>
+                        {t(PAGE_VIEW_MODE_LABEL_KEYS[view])}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                </Tabs>
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid={`remove-view-mode-${page}`}
+                  icon={Trash01}
+                  tooltip={t('label.remove-entity', { entity: t(labelKey) })}
+                  onClick={() => removePageViewMode(page)}
+                />
+              </Box>
+            </Box>
+          ))}
+          <Box className="tw:px-5 tw:py-3">
+            <Dropdown.Root>
+              <Button
+                className="tw:text-[13px] tw:leading-5"
+                color="link-color"
+                data-testid="add-view-mode-page"
+                iconLeading={Plus}
+                isDisabled={isEmpty(addablePages)}
+                size="md">
+                {t('label.add-entity', { entity: t('label.page') })}
+              </Button>
+              <Dropdown.Popover className="tw:w-80" placement="bottom left">
+                <Dropdown.Menu
+                  selectionMode="none"
+                  onAction={(page) =>
+                    setPageViewMode(
+                      page as ViewModePage,
+                      DEFAULT_PAGE_VIEW_MODE
+                    )
+                  }>
+                  <Dropdown.Section>
+                    <Dropdown.SectionHeader className="tw:px-4 tw:pt-2 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
+                      {t('label.select-entity', { entity: t('label.page') })}
+                    </Dropdown.SectionHeader>
+                    {addablePages.map(({ page, labelKey }) => (
+                      <Dropdown.Item
+                        data-testid={`add-view-mode-page-${page}`}
+                        id={page}
+                        key={page}
+                        label={t(labelKey)}
+                        textValue={t(labelKey)}
+                      />
+                    ))}
+                  </Dropdown.Section>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
+          </Box>
+        </Box>
+      </PreferenceRow>
+    </Box>
+  );
+};
+
+export default AppLayoutEditor;

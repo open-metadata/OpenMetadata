@@ -161,7 +161,7 @@ jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () =>
   jest.fn().mockReturnValue(null)
 );
 
-jest.mock('../../Modals/StyleModal/StyleModal.component', () =>
+jest.mock('../../Modals/IconColorModal/IconColorModal', () =>
   jest.fn().mockReturnValue(null)
 );
 

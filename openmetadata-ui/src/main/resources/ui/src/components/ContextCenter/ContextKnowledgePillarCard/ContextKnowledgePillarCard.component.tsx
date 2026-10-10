@@ -51,7 +51,7 @@ function RecentItem({
   return (
     <Box
       align="center"
-      className="tw:py-1.5 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover"
+      className="tw:px-2 tw:py-1.5 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
       gap={2}
       role="button"
       tabIndex={0}

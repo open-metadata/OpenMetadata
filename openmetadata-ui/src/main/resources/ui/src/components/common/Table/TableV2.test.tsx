@@ -26,9 +26,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const Table = ({
     children,
     onSelectionChange,
+    'aria-label': ariaLabel,
   }: {
     children: ReactNode;
     onSelectionChange: (selection: 'all' | Set<string>) => void;
+    'aria-label'?: string;
   }) => {
     const tableContextValue = React.useMemo(
       () => ({ onSelectionChange }),
@@ -42,7 +44,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           onClick={() => onSelectionChange('all')}>
           select all
         </button>
-        <table>{children}</table>
+        <table aria-label={ariaLabel}>{children}</table>
       </TableContext.Provider>
     );
   };
@@ -58,19 +60,25 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const TableRow = ({
     children,
     id,
+    hideSelectionCell,
     ...props
-  }: HTMLAttributes<HTMLTableRowElement> & { id: string }) => {
+  }: HTMLAttributes<HTMLTableRowElement> & {
+    id: string;
+    hideSelectionCell?: boolean;
+  }) => {
     const { onSelectionChange } = React.useContext(TableContext);
 
     return (
       <tr {...props}>
-        <td>
-          <button
-            data-testid={`select-row-${id}`}
-            onClick={() => onSelectionChange(new Set([id]))}>
-            select {id}
-          </button>
-        </td>
+        {!hideSelectionCell && (
+          <td>
+            <button
+              data-testid={`select-row-${id}`}
+              onClick={() => onSelectionChange(new Set([id]))}>
+              select {id}
+            </button>
+          </td>
+        )}
         {children as ReactNode}
       </tr>
     );
@@ -124,6 +132,9 @@ jest.mock('../Loader/Loader', () => () => <div>loading</div>);
 jest.mock('../NextPrevious/NextPrevious', () => () => null);
 jest.mock('../SearchBarComponent/SearchBar.component', () => () => null);
 jest.mock('./DraggableMenu/DraggableMenuItemV2.component', () => () => null);
+jest.mock('./ColumnCustomizeDropdown/ColumnCustomizeDropdown', () => () => (
+  <div data-testid="column-dropdown" />
+));
 
 interface TreeRow {
   id: string;
@@ -234,5 +245,73 @@ describe('TableV2 tree regressions', () => {
 
     expect(wrapper).toHaveClass('tw:border-subtle');
     expect(wrapper).not.toHaveClass('tw:border-utility-gray-200');
+  });
+});
+
+describe('TableV2 extension props', () => {
+  it('hands the customize control to a custom toolbar instead of the default row', () => {
+    render(
+      <TableV2
+        columns={columns}
+        dataSource={[sibling]}
+        defaultVisibleColumns={['value']}
+        pagination={false}
+        renderToolbar={(columnCustomize) => (
+          <div data-testid="custom-toolbar">{columnCustomize}</div>
+        )}
+        rowKey="id"
+        staticVisibleColumns={['name']}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('custom-toolbar')).getByTestId(
+        'column-dropdown'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getAllByTestId('column-dropdown')).toHaveLength(1);
+  });
+
+  it('passes no customize control when column customization is off', () => {
+    const renderToolbar = jest.fn(() => <div data-testid="custom-toolbar" />);
+    render(
+      <TableV2
+        columns={columns}
+        dataSource={[sibling]}
+        pagination={false}
+        renderToolbar={renderToolbar}
+        rowKey="id"
+      />
+    );
+
+    expect(renderToolbar).toHaveBeenLastCalledWith(null);
+    expect(screen.getByTestId('custom-toolbar')).toBeInTheDocument();
+  });
+
+  it('renders full-width rows across every column without a selection cell', () => {
+    render(
+      <TableV2
+        aria-label="Metrics"
+        columns={columns}
+        dataSource={[sibling, { id: 'section', name: '', value: '' }]}
+        fullWidthRowRender={(record) =>
+          record.id === 'section' ? 'Section header' : null
+        }
+        pagination={false}
+        rowKey="id"
+        rowSelection={{}}
+      />
+    );
+
+    const sectionCell = screen.getByText('Section header').closest('td');
+
+    expect(screen.getByRole('table', { name: 'Metrics' })).toBeInTheDocument();
+    expect(sectionCell).toHaveAttribute('colspan', '3');
+    expect(sectionCell?.closest('tr')).toHaveAttribute(
+      'data-row-key',
+      'section'
+    );
+    expect(screen.queryByTestId('select-row-section')).not.toBeInTheDocument();
+    expect(screen.getByTestId('select-row-sibling')).toBeInTheDocument();
   });
 });

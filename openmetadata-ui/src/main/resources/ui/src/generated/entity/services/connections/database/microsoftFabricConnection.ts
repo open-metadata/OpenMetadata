@@ -15,13 +15,14 @@
  */
 export interface MicrosoftFabricConnection {
     /**
+     * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+     * Fabric SQL endpoint.
+     */
+    authType: AuthenticationType;
+    /**
      * Azure Application (client) ID for Service Principal authentication.
      */
-    clientId: string;
-    /**
-     * Azure Application client secret for Service Principal authentication.
-     */
-    clientSecret:         string;
+    clientId:             string;
     connectionArguments?: { [key: string]: any };
     /**
      * Database of the data source. This is the name of your Fabric Warehouse or Lakehouse. This
@@ -73,6 +74,39 @@ export interface MicrosoftFabricConnection {
      * Service Type
      */
     type?: MicrosoftFabricType;
+}
+
+/**
+ * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+ * Fabric SQL endpoint.
+ *
+ * Authenticate the service principal with a client secret of its Microsoft Entra ID
+ * application.
+ *
+ * Authenticate the service principal with an X.509 certificate registered on its Microsoft
+ * Entra ID application.
+ */
+export interface AuthenticationType {
+    /**
+     * Client secret value (not the secret ID) from the application's Certificates & secrets
+     * page in Microsoft Entra ID.
+     */
+    clientSecret?: string;
+    /**
+     * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
+     * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
+     */
+    certificate?: string;
+    /**
+     * PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN
+     * ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding
+     * both the key and the certificate can be supplied in both fields.
+     */
+    privateKey?: string;
+    /**
+     * Passphrase of an encrypted private key. Leave empty when the private key is not encrypted.
+     */
+    privateKeyPassphrase?: string;
 }
 
 /**

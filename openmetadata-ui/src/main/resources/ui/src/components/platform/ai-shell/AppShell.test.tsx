@@ -23,7 +23,7 @@ jest.mock('use-analytics', () => ({
 
 jest.mock('../../AppRouter/withSuspenseFallback', () => ({
   __esModule: true,
-  default: () => () => <div data-testid="personal-space-modal" />,
+  default: () => () => <div data-testid="lazy-overlay" />,
 }));
 
 jest.mock('./Sidebar/Sidebar', () => () => <nav data-testid="sidebar" />);
@@ -67,9 +67,33 @@ describe('AppShell', () => {
     expect(content).toContainElement(screen.getByTestId('route-content'));
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(shell).not.toContainElement(screen.getByTestId('overlay'));
-    expect(shell).not.toContainElement(
-      screen.getByTestId('personal-space-modal')
-    );
+
+    screen
+      .getAllByTestId('lazy-overlay')
+      .forEach((overlay) => expect(shell).not.toContainElement(overlay));
+
+    expect(shell).not.toHaveClass('tw:hidden!');
     expect(mockPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides, but keeps mounted, the shell while a persona fullscreen customize view is open', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/#personas/data-steward/customize/data-assets/Table'
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/my-data']}>
+        <AppShell>
+          <main data-testid="route-content">Route content</main>
+        </AppShell>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('app-shell')).toHaveClass('tw:hidden!');
+    expect(screen.getByTestId('route-content')).toBeInTheDocument();
+
+    window.history.replaceState(null, '', '/');
   });
 });

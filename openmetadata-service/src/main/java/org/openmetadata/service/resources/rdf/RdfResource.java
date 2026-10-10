@@ -131,6 +131,8 @@ public class RdfResource {
   public static final String SPARQL_CSV = "text/csv";
   public static final String SPARQL_TSV = "text/tab-separated-values";
   public static final String INFERENCE_WARNING_HEADER = "X-OpenMetadata-Inference-Warning";
+  private static final String NO_INFERENCE_LEVEL = "NONE";
+  private static final String CUSTOM_INFERENCE_LEVEL = "CUSTOM";
 
   public RdfResource(Authorizer authorizer) {
     this(
@@ -364,10 +366,15 @@ public class RdfResource {
 
   private static RdfInferenceStatus inferenceStatus(
       final RdfRepository repository, final boolean enabled) {
+    final boolean materialized =
+        enabled && RdfRepository.supportsMaterializedInference(repository.getConfig());
     return new RdfInferenceStatus()
-        .withEnabled(enabled && repository.isInferenceEnabledByDefault())
-        .withDefaultLevel(enabled ? repository.getDefaultInferenceLevel() : "NONE")
-        .withAvailableLevels(Set.of("NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"));
+        .withEnabled(materialized)
+        .withDefaultLevel(NO_INFERENCE_LEVEL)
+        .withAvailableLevels(
+            materialized
+                ? Set.of(NO_INFERENCE_LEVEL, CUSTOM_INFERENCE_LEVEL)
+                : Set.of(NO_INFERENCE_LEVEL));
   }
 
   @POST

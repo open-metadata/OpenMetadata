@@ -84,6 +84,32 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testMemoryKindFiltersReachTheKnnFilter() throws Exception {
+    Map<String, List<String>> filters =
+        Map.of(
+            "memoryScope", List.of("UserGlobal"),
+            "memoryType", List.of("Note", "Learning"),
+            "pinned", List.of("false"));
+
+    JsonNode must =
+        MAPPER
+            .readTree(
+                VectorSearchQueryBuilder.build(new float[] {0.1f, 0.2f}, 10, 0, 100, filters, 0.0))
+            .path("query")
+            .path("knn")
+            .path("embedding")
+            .path("filter")
+            .path("bool")
+            .path("must");
+
+    assertTrue(termClauseExists(must, "memoryScope", "UserGlobal"));
+    assertTrue(termClauseExists(must, "pinned", "false"));
+    assertTrue(
+        must.toString().contains("{\"terms\":{\"memoryType\":[\"Note\",\"Learning\"]}}"),
+        must.toString());
+  }
+
+  @Test
   void testMemoryStatusFilterReachesBothVectorEngines() throws Exception {
     Map<String, List<String>> filters =
         Map.of("entityStatus", List.of(EntityStatus.APPROVED.value()));

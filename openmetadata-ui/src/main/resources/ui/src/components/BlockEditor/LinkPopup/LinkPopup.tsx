@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as UnlinkIcon } from '../../../assets/svg/ic-format-unlink.svg';
@@ -31,7 +32,12 @@ const LinkPopup: FC<LinkPopupProps> = ({
   handleUnlink,
 }) => {
   return (
-    <Space className="link-popup">
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal link-popup"
+      gap={2}
+      itemClassName="layout-space-item">
       <Button
         className="p-0"
         data-testid="link-popup-edit"
@@ -55,7 +61,7 @@ const LinkPopup: FC<LinkPopupProps> = ({
         type="text"
         onClick={handleUnlink}
       />
-    </Space>
+    </Box>
   );
 };
 

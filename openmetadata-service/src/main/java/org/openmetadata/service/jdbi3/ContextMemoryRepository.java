@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
@@ -99,6 +100,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Map.of(
               ContextMemoryStatus.UNPROCESSED,
                   Set.of(
+                      ContextMemoryStatus.DRAFT,
                       ContextMemoryStatus.APPROVED,
                       ContextMemoryStatus.DEPRECATED,
                       ContextMemoryStatus.REJECTED,
@@ -108,10 +110,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
               ContextMemoryStatus.DRAFT,
                   Set.of(
                       ContextMemoryStatus.APPROVED,
+                      ContextMemoryStatus.REJECTED,
                       ContextMemoryStatus.ARCHIVED,
                       ContextMemoryStatus.UNPROCESSED),
               ContextMemoryStatus.APPROVED,
                   Set.of(
+                      ContextMemoryStatus.DRAFT,
                       ContextMemoryStatus.ARCHIVED,
                       ContextMemoryStatus.DEPRECATED,
                       ContextMemoryStatus.REJECTED,
@@ -644,6 +648,25 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   @Override
+  protected void storeEntityWithVersion(
+      ContextMemory entity, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    int updatedRows =
+        daoCollection
+            .contextMemoryDAO()
+            .updateWithVersionAndTimestamp(
+                entity.getId(),
+                entity.getFullyQualifiedName(),
+                serializeForStorage(entity),
+                expectedVersion.toString(),
+                expectedUpdatedAt);
+    if (updatedRows == 0) {
+      throw new PreconditionFailedException(
+          "The memory has been modified. Please refresh and retry.");
+    }
+    invalidate(entity);
+  }
+
+  @Override
   public void storeRelationships(ContextMemory entity) {
     // Add-only: addRelationship upserts, so re-running on update is idempotent. Stale-edge
     // cleanup on update is handled in ContextMemoryUpdater via updateFromRelationship(s),
@@ -716,6 +739,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     public ContextMemoryUpdater(
         ContextMemory original, ContextMemory updated, Operation operation) {
       super(original, updated, operation);
+      // Consolidated edits still need distinct timestamps for conditional lifecycle writes.
+      if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
+        updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
+      }
     }
 
     @Override
@@ -837,6 +864,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
     private void updateLifecycle(boolean consolidatingChanges) {
       if (operation == Operation.PUT) {
+        updated.setLastReviewedAt(original.getLastReviewedAt());
         updated.setStatusReason(original.getStatusReason());
         updated.setSupersededBy(original.getSupersededBy());
         updated.setDisputes(original.getDisputes());
@@ -848,6 +876,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
             (reference, field) -> resolveLiveMemory(reference, field, updated.getUpdatedBy()));
       }
       recordChange("statusReason", original.getStatusReason(), updated.getStatusReason());
+      recordChange("lastReviewedAt", original.getLastReviewedAt(), updated.getLastReviewedAt());
       recordChange(
           ContextMemoryLifecycle.FIELD_SUPERSEDED_BY,
           original.getSupersededBy(),

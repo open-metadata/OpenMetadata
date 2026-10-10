@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import fnmatch
 import importlib.util
 import json
@@ -52,6 +53,190 @@ def lane_its() -> set[str]:
 
 def test_impact_map_owns_every_test_and_production_file() -> None:
     assert PLANNER.audit_impact_map(REPO, IMPACT_MAP) == []
+
+
+def test_the_committed_map_owns_every_committed_test_and_production_file() -> None:
+    head_map = json.loads(
+        subprocess.run(
+            ["git", "show", f"HEAD:{PLANNER.IMPACT_MAP}"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    )
+    committed = PLANNER.Repo(REPO_ROOT, head_map, ref="HEAD")
+
+    assert committed.it_classes and committed.it_sources
+    assert PLANNER.audit_impact_map(committed, head_map) == []
+
+
+def test_a_push_is_checked_at_the_commit_it_sends_not_the_working_tree(
+    tmp_path: Path,
+) -> None:
+    def git(*args: str) -> str:
+        isolated = ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"]
+        author = ["-c", "user.name=t", "-c", "user.email=t@t"]
+        return subprocess.run(
+            ["git", *isolated, *author, *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    git("init", "-q")
+    (tmp_path / "map.json").write_text('{"v": 1}')
+    git("add", ".")
+    git("commit", "-qm", "base")
+    base = git("rev-parse", "HEAD")
+    (tmp_path / "svc").mkdir()
+    (tmp_path / "svc/New.java").write_text("class New {}")
+    git("add", ".")
+    git("commit", "-qm", "adds code")
+    # Neither of these is pushed: an unstaged map fix and an untracked scratch file.
+    (tmp_path / "map.json").write_text('{"v": 2}')
+    (tmp_path / "scratch").mkdir()
+    (tmp_path / "scratch/Scratch.java").write_text("class Scratch {}")
+
+    assert PLANNER.branch_changes(tmp_path, base, "HEAD") == (["svc/New.java"], [])
+    assert PLANNER.read_blobs(tmp_path, "HEAD", ["map.json", "gone.txt"]) == {
+        "map.json": '{"v": 1}'
+    }
+    assert PLANNER.committed_files(tmp_path, "HEAD") == ["map.json", "svc/New.java"]
+    changed, _ = PLANNER.branch_changes(tmp_path, base, None)
+    assert {"map.json", "scratch/Scratch.java", "svc/New.java"} <= set(changed)
+
+
+def test_the_pre_pr_hook_checks_the_ref_the_command_sends(tmp_path: Path) -> None:
+    def git(*args: str) -> None:
+        isolated = ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false"]
+        author = ["-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run(
+            ["git", *isolated, *author, *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+
+    # A planner that fails the check it is asked for, so the hook prints which one.
+    planner = tmp_path / ".github/scripts/plan_local_java_tests.py"
+    planner.parent.mkdir(parents=True)
+    planner.write_text('import sys  # "--head"\nprint(*sys.argv[1:])\nsys.exit(1)\n')
+    git("init", "-q", "-b", "work")
+    git("add", ".")
+    git("commit", "-qm", "base")
+    git("branch", "feature")
+    git("update-ref", "refs/remotes/origin/main", "HEAD")
+    git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(tmp_path)}
+    env.pop("CLAUDE_TOOL_INPUT", None)
+
+    def checked(command: str) -> str:
+        hook = subprocess.run(
+            ["bash", str(SCRIPT_PATH.with_name("java_impact_map_hook.sh")), "pre-pr"],
+            input=json.dumps({"tool_input": {"command": command}}),
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert hook.returncode == 2, command
+        return hook.stderr.strip()
+
+    sends = {
+        "git push -o ci.skip origin feature": "feature",
+        "git push --push-option ci.skip origin +feature:other": "feature",
+        "git push origin feature -o ci.skip": "feature",
+        # A bundled option's value is taken for the remote, and the remote's name for the
+        # source; a remote's name is never checked.
+        "git push -fo ci.skip origin feature": "HEAD",
+        "git push": "HEAD",
+        "gh pr create --head someone:feature --title t": "feature",
+    }
+    for command, ref in sends.items():
+        expected = f"--check-branch --base origin/main --head {ref}"
+        assert checked(command) == expected, command
+
+
+def unowning(*paths: str) -> dict:
+    """The impact map with every area source that owns one of `paths` removed."""
+    impact_map = copy.deepcopy(IMPACT_MAP)
+    for area in impact_map["areas"]:
+        area["sources"] = [
+            source
+            for source in area["sources"]
+            if not any(fnmatch.fnmatchcase(path, source) for path in paths)
+        ]
+    return impact_map
+
+
+def test_the_branch_check_blames_the_branch_only_for_what_it_touched() -> None:
+    touched = f"{SERVICE}/apps/bundles/insights/DataInsightsApp.java"
+    untouched = f"{SERVICE}/util/AsciiTable.java"
+    impact_map = unowning(touched, untouched)
+
+    problems = PLANNER.branch_map_problems(REPO, impact_map, impact_map, [touched], [])
+
+    assert len(problems) == 1
+    assert f'add "{SERVICE}/apps/bundles/insights/**"' in problems[0]
+    assert "the code it imports belongs to" in problems[0]
+    assert PLANNER.branch_map_problems(REPO, impact_map, impact_map, [], []) == []
+
+
+def test_the_branch_check_flags_patterns_the_branch_empties_or_adds_dead() -> None:
+    impact_map = copy.deepcopy(IMPACT_MAP)
+    area = impact_map["areas"][0]
+    area["tests"].append("org/openmetadata/it/tests/gone/**")
+    deleted = [f"{IT_TESTS}/gone/GoneIT.java"]
+
+    emptied = PLANNER.branch_map_problems(REPO, impact_map, impact_map, [], deleted)
+    already_dead = PLANNER.branch_map_problems(REPO, impact_map, impact_map, [], [])
+    added = PLANNER.branch_map_problems(REPO, impact_map, IMPACT_MAP, [], [])
+
+    assert len(emptied) == 1 and "this branch deleted what it matched" in emptied[0]
+    assert already_dead == []
+    assert len(added) == 1 and "this branch added it" in added[0]
+
+
+def test_a_map_edit_that_breaks_a_rule_is_the_branch_problem() -> None:
+    impact_map = copy.deepcopy(IMPACT_MAP)
+    area = impact_map["areas"][0]
+    area["tests"].append("TableResourceIT")
+    changed = [PLANNER.IMPACT_MAP]
+    single = "'TableResourceIT' names a single test; match tests by pattern"
+
+    assert PLANNER.branch_map_problems(REPO, impact_map, IMPACT_MAP, changed, []) == [
+        f"area '{area['name']}': {single}"
+    ]
+    assert PLANNER.branch_map_problems(REPO, impact_map, impact_map, changed, []) == []
+
+
+def test_a_written_file_no_area_owns_is_reported_with_where_it_belongs() -> None:
+    stems = {PLANNER.convention_stem(path) for path in REPO.files} - {None}
+    relative, name = next(
+        (relative, name)
+        for relative, name in sorted(REPO.it_classes.items())
+        if relative not in REPO.never_run
+        and relative not in REPO.conditional
+        and not any(PLANNER.stem_matches(stem, name) for stem in stems)
+    )
+    it = f"{REPO.it_root}/{relative}"
+    production = f"{SERVICE}/apps/bundles/insights/DataInsightsApp.java"
+    impact_map = unowning(production)
+    for area in impact_map["areas"]:
+        area["tests"] = [
+            pattern
+            for pattern in area["tests"]
+            if not PLANNER.Planner._it_pattern_matches(relative, name, pattern)
+        ]
+
+    problems = PLANNER.owner_problems(REPO, impact_map, [production, it])
+
+    assert len(problems) == 2
+    assert problems[0].startswith("no area owns 1 file in ")
+    assert problems[1].startswith(f"{name} ({it}): no area owns it")
+    assert PLANNER.owner_problems(REPO, IMPACT_MAP, [production, it]) == []
 
 
 def test_audit_reports_single_tests_unowned_code_and_dead_patterns() -> None:

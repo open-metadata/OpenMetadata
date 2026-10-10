@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Grid } from '@openmetadata/ui-core-components';
 import {
   ArrowUpRight,
   BookOpen01,
   Key01,
   Lock01,
 } from '@openmetadata/ui-core-components/icons';
-import { Col, Row } from 'antd';
+
 import { TFunction } from 'i18next';
 import { first, last, noop, startCase } from 'lodash';
 import {
@@ -964,11 +965,15 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   }
 
   return (
-    <Row
-      className={focusedMode ? 'service-doc-panel-focused' : undefined}
+    <Grid
+      className={`layout-row layout-grid ${
+        focusedMode ? 'service-doc-panel-focused' : undefined
+      }`}
       data-testid="service-requirements">
-      <Col span={24}>{docsPanel}</Col>
-    </Row>
+      <Grid.Item className="layout-column" span={24}>
+        {docsPanel}
+      </Grid.Item>
+    </Grid>
   );
 };
 

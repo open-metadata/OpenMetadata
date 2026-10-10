@@ -126,6 +126,29 @@ them to the run, not only the plan: nothing is saved between the two.
 
 ## Changing the map
 
+Whoever adds code or tests owns them in the map, in the same change, before the PR. No CI job
+checks it; the author's tools do:
+
+- **`--check-owner <files>`** reports which files no area owns, the glob to add and the area
+  that likely owns them (that of the other ITs in an IT's package, or of the code a file
+  imports). A Claude Code hook (`.claude/settings.json`) runs it on every Java or schema file an
+  agent writes, so the agent fixes the map in the same turn.
+- **`--check-branch`** reports what the branch leaves wrong, against `--base`:
+  - code or ITs it adds or edits that no area owns;
+  - patterns its deletions emptied, or that it adds matching nothing;
+  - map rules its edits break.
+
+  Problems already on the base branch aren't the branch's. With `--head <ref>` it checks that
+  commit (its files, its map, its diff), which is what a push sends; without it, the working
+  tree. It runs on the pushed commit before `git push` and `gh pr create` in two places: a
+  Claude Code hook for agents, and the `java-impact-map` pre-push hook for anyone. Uncommitted
+  and untracked files don't count either way. `pre-commit install` installs the pre-push hook
+  next to the commit hooks; re-run it once if you installed before. `make java_affected` prints
+  the same list for the working tree.
+
+The hooks live in `.github/scripts/java_impact_map_hook.sh`. They only run a planner that has
+these checks, and step aside when `python3` is missing.
+
 - New code in an owned directory, and a new IT whose name matches an area's pattern, need no edit.
 - `make java_affected ARGS=--check-map` and the `java-impact-map` harness check report an IT or a
   production file (under `ownedRoots`) no area owns, an area that names a single test, patterns

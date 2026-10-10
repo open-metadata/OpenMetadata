@@ -18,9 +18,12 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { ProjectionState, RDFStatus } from '../../generated/api/rdf/rdfStatus';
 import { Type } from '../../generated/api/rdf/sparqlResponse';
 import {
+  fetchRdfConfig,
   getSavedSparqlQueries,
   getSparqlQueryTemplates,
   replaceSavedSparqlQueries,
@@ -30,6 +33,7 @@ import {
 import SparqlPlayground from './SparqlPlayground.component';
 
 jest.mock('../../rest/rdfAPI', () => ({
+  fetchRdfConfig: jest.fn(),
   getSavedSparqlQueries: jest.fn(),
   getSparqlQueryTemplates: jest.fn(),
   replaceSavedSparqlQueries: jest.fn(),
@@ -80,6 +84,9 @@ jest.mock('../../components/Database/SchemaEditor/SchemaEditor', () => {
 });
 
 const mockRun = runSparqlQuery as jest.MockedFunction<typeof runSparqlQuery>;
+const mockFetchRdfConfig = fetchRdfConfig as jest.MockedFunction<
+  typeof fetchRdfConfig
+>;
 const mockGetSavedQueries = getSavedSparqlQueries as jest.MockedFunction<
   typeof getSavedSparqlQueries
 >;
@@ -90,6 +97,19 @@ const mockReplaceSavedQueries =
   replaceSavedSparqlQueries as jest.MockedFunction<
     typeof replaceSavedSparqlQueries
   >;
+
+const rdfStatus = (availableLevels: string[]): RDFStatus => ({
+  aiEnabled: false,
+  baseUri: 'https://open-metadata.org/',
+  enabled: true,
+  inference: {
+    availableLevels,
+    defaultLevel: 'NONE',
+    enabled: availableLevels.includes('CUSTOM'),
+  },
+  projectionState: ProjectionState.Ready,
+  storageType: 'FUSEKI',
+});
 
 const QUERY_TEMPLATE: SavedSparqlQuery = {
   id: '692cb99a-96fd-4f47-8f28-3d7e471ff001',
@@ -112,6 +132,7 @@ describe('SparqlPlayground', () => {
       new Promise<SavedSparqlQuery[]>(() => undefined)
     );
     mockReplaceSavedQueries.mockImplementation(async (queries) => queries);
+    mockFetchRdfConfig.mockResolvedValue(rdfStatus(['NONE']));
   });
 
   it('renders the heading and the editor', () => {
@@ -268,6 +289,39 @@ describe('SparqlPlayground', () => {
     const editor = screen.getByTestId('schema-editor') as HTMLTextAreaElement;
 
     expect(editor.value).toBe(QUERY_TEMPLATE.query);
+  });
+
+  it('offers only the inference levels the RDF service can answer', async () => {
+    mockFetchRdfConfig.mockResolvedValue(rdfStatus(['NONE', 'CUSTOM']));
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<SparqlPlayground />);
+
+    await user.click(screen.getByRole('button', { name: /label.inference/ }));
+
+    expect(
+      await screen.findByRole('option', { name: 'label.custom' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'label.rdfs' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'label.owl' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers only queries without inference when the RDF status is unavailable', async () => {
+    mockFetchRdfConfig.mockRejectedValue(new Error('RDF status unavailable'));
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<SparqlPlayground />);
+
+    await user.click(screen.getByRole('button', { name: /label.inference/ }));
+
+    expect(
+      await screen.findByRole('option', { name: 'label.none' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'label.custom' })
+    ).not.toBeInTheDocument();
   });
 
   it('inject prefixes adds the canonical PREFIX block when missing', () => {

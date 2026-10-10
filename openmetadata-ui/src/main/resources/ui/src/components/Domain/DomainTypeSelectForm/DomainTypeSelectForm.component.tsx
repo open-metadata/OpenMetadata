@@ -10,68 +10,64 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Row, Select, Space } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+import { Box, Button, Select } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DomainType } from '../../../generated/api/domains/createDomain';
 import { DomainTypeSelectFormProps } from './DomainTypeSelectForm.interface';
+
+const domainTypeItems = Object.values(DomainType).map((value) => ({
+  id: value,
+  label: value,
+}));
 
 const DomainTypeSelectForm = ({
   defaultValue,
   onSubmit,
   onCancel,
 }: DomainTypeSelectFormProps) => {
-  const [form] = useForm();
+  const { t } = useTranslation();
+  const [domainType, setDomainType] = useState(defaultValue);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
-  const domainTypeArray = Object.keys(DomainType).map((key) => ({
-    key,
-    value: DomainType[key as keyof typeof DomainType],
-  }));
+
+  const handleSubmit = () => {
+    setIsSubmitLoading(true);
+    onSubmit(domainType);
+  };
 
   return (
-    <Form
-      form={form}
-      initialValues={{ domainType: defaultValue }}
-      name="domainTypeForm"
-      onFinish={(data) => {
-        setIsSubmitLoading(true);
-        onSubmit(data.domainType);
-      }}>
-      <Row gutter={[0, 8]}>
-        <Col className="gutter-row d-flex justify-end" span={24}>
-          <Space align="center">
-            <Button
-              className="p-x-05"
-              data-testid="cancelAssociatedTag"
-              disabled={isSubmitLoading}
-              icon={<CloseOutlined size={12} />}
-              size="small"
-              onClick={onCancel}
-            />
-            <Button
-              className="p-x-05"
-              data-testid="saveAssociatedTag"
-              htmlType="submit"
-              icon={<CheckOutlined size={12} />}
-              loading={isSubmitLoading}
-              size="small"
-              type="primary"
-            />
-          </Space>
-        </Col>
-
-        <Col className="gutter-row" span={24}>
-          <Form.Item noStyle name="domainType">
-            <Select
-              className="w-full"
-              data-testid="domainType-select"
-              options={domainTypeArray}
-            />
-          </Form.Item>
-        </Col>
-      </Row>
-    </Form>
+    <Box direction="col" gap={2}>
+      <Box gap={2} justify="end">
+        <Button
+          aria-label={t('label.cancel')}
+          color="secondary"
+          data-testid="cancelAssociatedTag"
+          iconLeading={XClose}
+          isDisabled={isSubmitLoading}
+          size="xs"
+          onClick={onCancel}
+        />
+        <Button
+          aria-label={t('label.save')}
+          color="primary"
+          data-testid="saveAssociatedTag"
+          iconLeading={Check}
+          isLoading={isSubmitLoading}
+          size="xs"
+          onClick={handleSubmit}
+        />
+      </Box>
+      <Select
+        aria-label={t('label.domain-type')}
+        data-testid="domainType-select"
+        items={domainTypeItems}
+        size="sm"
+        value={domainType}
+        onChange={(key) => setDomainType(key as string)}>
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select>
+    </Box>
   );
 };
 

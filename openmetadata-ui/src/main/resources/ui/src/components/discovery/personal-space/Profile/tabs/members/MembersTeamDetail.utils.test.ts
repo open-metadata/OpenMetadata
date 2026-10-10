@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Team } from '../../../../../../generated/entity/teams/team';
+import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import {
+  getAvailableTabs,
+  getTabLabel,
   updateTeamsHierarchy,
   withTeamChildrenPlaceholder,
 } from './MembersTeamDetail.utils';
@@ -51,5 +53,37 @@ describe('updateTeamsHierarchy', () => {
     updateTeamsHierarchy(tree, 'missing', [team('x')]);
 
     expect(tree[0].children).toEqual([]);
+  });
+});
+
+describe('getAvailableTabs', () => {
+  it.each([
+    [TeamType.Organization],
+    [TeamType.Group],
+    [TeamType.Department],
+    [undefined],
+  ])('offers custom properties for team type %s', (teamType) => {
+    expect(getAvailableTabs(teamType)).toContain('custom-properties');
+  });
+
+  it('keeps the first tab stable so the default selection is unchanged', () => {
+    expect(getAvailableTabs(TeamType.Organization)[0]).toBe('teams');
+    expect(getAvailableTabs(TeamType.Group)[0]).toBe('users');
+  });
+});
+
+describe('getTabLabel', () => {
+  const t = (key: string) => key;
+
+  it('labels custom properties without a count', () => {
+    const label = getTabLabel('custom-properties', t, {} as Team, 0, 0);
+
+    expect(label).toBe('label.custom-property-plural');
+  });
+
+  it('still counts the native tabs', () => {
+    expect(getTabLabel('roles', t, { defaultRoles: [{}] } as Team, 0, 0)).toBe(
+      'label.role-plural (1)'
+    );
   });
 });

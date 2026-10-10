@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Box, Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
+
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
@@ -60,32 +62,42 @@ function ActivityTagsFeed({ activity }: Readonly<ActivityTagsFeedProps>) {
   }, [activity.oldValue, activity.newValue]);
 
   return (
-    <Row gutter={[8, 8]}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(8, 8) }}>
       {!isEmpty(updatedTags) && (
-        <Col span={24}>
-          <Row align="middle" gutter={[12, 12]} wrap={false}>
-            <Col className="h-4">
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-row"
+            style={{ ...getLayoutGutter(12, 12) }}
+            wrap="nowrap">
+            <Box className="layout-column tw:block h-4">
               <AddIcon height={16} width={16} />
-            </Col>
-            <Col>
+            </Box>
+            <Box className="layout-column tw:block">
               <TagsViewer tags={updatedTags} />
-            </Col>
-          </Row>
-        </Col>
+            </Box>
+          </Box>
+        </Grid.Item>
       )}
       {!isEmpty(previousTags) && (
-        <Col span={24}>
-          <Row align="middle" gutter={[12, 12]} wrap={false}>
-            <Col className="h-4">
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-row"
+            style={{ ...getLayoutGutter(12, 12) }}
+            wrap="nowrap">
+            <Box className="layout-column tw:block h-4">
               <DeletedIcon height={14} width={14} />
-            </Col>
-            <Col>
+            </Box>
+            <Box className="layout-column tw:block">
               <TagsViewer tags={previousTags} />
-            </Col>
-          </Row>
-        </Col>
+            </Box>
+          </Box>
+        </Grid.Item>
       )}
-    </Row>
+    </Grid>
   );
 }
 
