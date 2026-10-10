@@ -20,7 +20,9 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
@@ -28,10 +30,13 @@ import Reactions from '../../../../../components/ActivityFeed/Reactions/Reaction
 import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { ReactionOperation } from '../../../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../../../enums/reactions.enum';
 import { ConversationReply } from '../../../../../generated/entity/feed/conversation';
 import { Access } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
-import { ReactionType } from '../../../../../generated/type/reaction';
+import { Reaction, ReactionType } from '../../../../../generated/type/reaction';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../../../hooks/user-profile/useUserProfile';
 import {
@@ -63,6 +68,33 @@ const canDeleteReply = (
   isAdmin ||
   deleteAccess === Access.Allow ||
   (deleteAccess === Access.ConditionalAllow && isAuthor);
+
+interface ReplyReactionsProps {
+  reactions?: Reaction[];
+  onReactionSelect: (
+    reactionType: ReactionType,
+    operation: ReactionOperation
+  ) => void;
+}
+
+// Apart from the text above; a lone smiley's icon lines up with the text, past
+// the button's inset.
+const ReplyReactions = ({
+  reactions,
+  onReactionSelect,
+}: ReplyReactionsProps) => (
+  <Box
+    className={classNames(
+      'inbox-feed-actions tw:mt-2',
+      isEmpty(reactions) && 'tw:-ml-1.5'
+    )}>
+    <Reactions
+      reactions={reactions ?? []}
+      variant={ReactionsVariant.Pill}
+      onReactionSelect={onReactionSelect}
+    />
+  </Box>
+);
 
 interface ReplyRowProps {
   reply: ConversationReply;
@@ -156,8 +188,10 @@ const ReplyRow = ({
           size="xs"
         />
       </AuthorPopover>
-      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-        <Box align="center" gap={2}>
+      <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
+        {/* The text's height: the hover actions overflow it rather than push
+            the message down. */}
+        <Box align="center" className="tw:h-5" gap={2}>
           <AuthorPopover userName={authorLogin}>
             <Typography size="text-sm" weight="semibold">
               {authorName}
@@ -220,12 +254,10 @@ const ReplyRow = ({
             markdown={getFrontEndFormat(reply.message)}
           />
         )}
-        <Box className="inbox-feed-actions">
-          <Reactions
-            reactions={reply.reactions ?? []}
-            onReactionSelect={handleReaction}
-          />
-        </Box>
+        <ReplyReactions
+          reactions={reply.reactions}
+          onReactionSelect={handleReaction}
+        />
       </Box>
 
       <DeleteModal

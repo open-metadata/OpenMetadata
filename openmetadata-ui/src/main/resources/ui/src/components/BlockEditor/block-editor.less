@@ -553,3 +553,11 @@ body .om-image-node-embed-link-btn-col {
     float: right;
   }
 }
+
+// The trailing-node extension keeps an empty paragraph after a final list,
+// table or code block so the caret has somewhere to go. Read-only, there is no
+// caret, and the empty line only adds a gap below the content.
+.om-block-editor[contenteditable='false']
+  > p:last-child:has(> .ProseMirror-trailingBreak:only-child) {
+  display: none;
+}

@@ -58,7 +58,9 @@ import {
   formatInboxDateTime,
   getActivityChange,
   getActivityEventLabel,
+  getActivityKindType,
   getFeedSortTimestamp,
+  getInboxTabBadge,
   isSameLocalDay,
   isTaskOpen,
   pairFieldChanges,
@@ -194,6 +196,55 @@ describe('inbox.utils', () => {
       ).toBe('message.activity-changed-tier');
     });
 
+    // The card's badge reads the kind the same way as its sentence.
+    it.each([
+      [
+        'a tier carried as tags',
+        activity(
+          ActivityEventType.TagsUpdated,
+          'tags',
+          tags('Tier.Tier2'),
+          tags('Tier.Tier1')
+        ),
+        ActivityEventType.TierUpdated,
+      ],
+      [
+        "a column's tags carried as the asset's",
+        activity(
+          ActivityEventType.TagsUpdated,
+          'columns.email.tags',
+          undefined,
+          tags('PII.Sensitive')
+        ),
+        ActivityEventType.ColumnTagsUpdated,
+      ],
+      [
+        "an asset's tags",
+        activity(
+          ActivityEventType.TagsUpdated,
+          'tags',
+          undefined,
+          tags('PII.Sensitive')
+        ),
+        ActivityEventType.TagsUpdated,
+      ],
+      [
+        "a column's description carried as the asset's",
+        activity(
+          ActivityEventType.DescriptionUpdated,
+          'columns.email.description'
+        ),
+        ActivityEventType.ColumnDescriptionUpdated,
+      ],
+      [
+        'an owner change',
+        activity(ActivityEventType.OwnerUpdated, 'owners'),
+        ActivityEventType.OwnerUpdated,
+      ],
+    ])('reads %s as its kind', (_, event, kind) => {
+      expect(getActivityKindType(event)).toBe(kind);
+    });
+
     it('uses the field name for a generic EntityUpdated', () => {
       expect(
         getActivityEventLabel(
@@ -245,6 +296,18 @@ describe('inbox.utils', () => {
     // never more than the list shows.
     it('marks a floor under the cap with a plus, not as 99+', () => {
       expect(formatInboxCount({ total: 30, isCapped: true })).toBe('30+');
+    });
+  });
+
+  describe('getInboxTabBadge', () => {
+    it('formats a count for the tab', () => {
+      expect(getInboxTabBadge({ total: 128, isCapped: false })).toBe('99+');
+    });
+
+    // A tab with nothing to count shows no badge, not a "0".
+    it('drops the badge when there is nothing to count', () => {
+      expect(getInboxTabBadge({ total: 0, isCapped: false })).toBeUndefined();
+      expect(getInboxTabBadge(undefined)).toBeUndefined();
     });
   });
 

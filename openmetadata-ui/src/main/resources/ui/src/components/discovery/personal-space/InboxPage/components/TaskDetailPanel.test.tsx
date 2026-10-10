@@ -435,14 +435,16 @@ jest.mock('react-i18next', () => ({
 jest.mock('react-router-dom', () => ({
   Link: ({
     children,
+    className,
     to,
     'data-testid': testId,
   }: {
     children?: ReactNode;
+    className?: string;
     to?: string;
     'data-testid'?: string;
   }) => (
-    <a data-testid={testId} href={to}>
+    <a className={className} data-testid={testId} href={to}>
       {children}
     </a>
   ),
@@ -868,6 +870,33 @@ describe('TaskDetailPanel', () => {
     );
   });
 
+  // Clicking the current assignee clears the single-select picker; picking
+  // them again changes nothing. Either way the task stays as it is.
+  it.each([
+    ['picks the same assignee again', 'picker-save'],
+    ['clears the current assignee', 'picker-save-empty'],
+  ])('says who is already assigned when the reassign %s', async (_, button) => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        assignees: [{ id: 'u2', type: 'user', name: 'bob' }],
+        availableTransitions: [
+          { id: 'reassign', label: 'Reassign', targetStageId: 'assigned' },
+        ],
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId(button));
+    });
+
+    expect(mockResolveTask).not.toHaveBeenCalled();
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      'message.already-assigned-to-task'
+    );
+  });
+
   it('collects a comment before firing a requiresComment transition', async () => {
     const onResolved = jest.fn();
     mockGetTaskById.mockResolvedValue({
@@ -1021,6 +1050,8 @@ describe('TaskDetailPanel', () => {
       '/table/svc.db.schema.sales/activity_feed/tasks'
     );
     expect(link).toHaveTextContent('Sales Table');
+    // In the title's own font and colour, not Typography's 14px blue link.
+    expect(link).toHaveClass('tw:[font:inherit]!', 'tw:text-inherit!');
   });
 
   it('highlights the whole trailing token when the asset name has a suffix', async () => {
@@ -1559,6 +1590,207 @@ describe('TaskDetailPanel', () => {
         comment: 'a comment',
         payload: { testCaseFailureReason: 'FalsePositive' },
       });
+    });
+  });
+});
+
+/**
+ * What the panel shows for every task type the Triage queue holds, in every
+ * state its workflow reaches: the type's badge, and, while it waits on the
+ * viewer, the type's own approve and reject wording; once closed, the outcome
+ * and no actions. The server side of these states is covered end to end by
+ * InboxTaskMatrix.spec.ts on the Tag request.
+ */
+describe('TaskDetailPanel task matrix', () => {
+  const VIEWER = { id: 'u-viewer', name: 'viewer' };
+  const LEGACY_TRANSITIONS = [
+    { id: 'approve', label: 'label.approve', resolutionType: 'Approved' },
+    { id: 'reject', label: 'label.reject', resolutionType: 'Rejected' },
+  ];
+
+  const TYPE_CASES = [
+    {
+      type: 'TagUpdate',
+      category: 'MetadataUpdate',
+      badge: 'label.tag-request',
+      approve: 'label.approve-entity',
+      reject: 'label.reject',
+    },
+    {
+      type: 'DescriptionUpdate',
+      category: 'MetadataUpdate',
+      badge: 'label.description',
+      approve: 'label.approve',
+      reject: 'label.reject',
+    },
+    {
+      type: 'OwnershipUpdate',
+      category: 'MetadataUpdate',
+      badge: 'label.ownership',
+      approve: 'label.assign-entity',
+      reject: 'label.dismiss',
+    },
+    {
+      type: 'TierUpdate',
+      category: 'MetadataUpdate',
+      badge: 'label.tier',
+      approve: 'label.approve',
+      reject: 'label.reject',
+    },
+    {
+      type: 'DomainUpdate',
+      category: 'MetadataUpdate',
+      badge: 'label.domain',
+      approve: 'label.approve',
+      reject: 'label.reject',
+    },
+    {
+      type: 'Suggestion',
+      category: 'MetadataUpdate',
+      badge: 'label.suggestion',
+      approve: 'label.approve',
+      reject: 'label.reject',
+    },
+    {
+      type: 'RequestApproval',
+      category: 'Approval',
+      badge: 'label.approval',
+      approve: 'label.approve',
+      reject: 'label.reject',
+    },
+    {
+      type: 'CustomTask',
+      category: 'Custom',
+      badge: 'label.custom-task',
+      approve: 'label.approve',
+      reject: 'label.reject',
+    },
+    {
+      type: 'DataQualityReview',
+      category: 'Review',
+      badge: 'label.data-quality-review',
+      approve: 'label.approve',
+      reject: 'label.reject',
+    },
+    {
+      type: 'PipelineReview',
+      category: 'Review',
+      badge: 'label.pipeline-review',
+      approve: 'label.approve',
+      reject: 'label.reject',
+    },
+    {
+      type: 'GlossaryApproval',
+      category: 'Approval',
+      badge: 'label.glossary',
+      approve: 'label.approve',
+      reject: 'label.reject',
+    },
+  ];
+
+  // Whole text, so `label.approve` cannot pass for `label.approve-entity`.
+  const exactly = (text: string) => new RegExp(`^${text}$`);
+
+  const renderTask = async (task: Record<string, unknown>) => {
+    mockGetTaskById.mockResolvedValue({
+      data: { ...TASK, assignees: [{ ...VIEWER, type: 'user' }], ...task },
+    });
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+  };
+
+  beforeEach(() => {
+    mockCurrentUser = VIEWER;
+  });
+
+  describe.each(TYPE_CASES)(
+    '$type',
+    ({ type, category, badge, approve, reject }) => {
+      it('waits on the viewer with the type’s own actions while open', async () => {
+        await renderTask({
+          type,
+          category,
+          status: 'Open',
+          availableTransitions: LEGACY_TRANSITIONS,
+        });
+
+        expect(screen.getByTestId('task-type-badge')).toHaveTextContent(
+          exactly(badge)
+        );
+        expect(screen.getByTestId('task-status-badge')).toHaveTextContent(
+          exactly('label.pending-approval')
+        );
+        expect(screen.getByTestId('task-approve')).toHaveTextContent(
+          exactly(approve)
+        );
+        expect(screen.getByTestId('task-reject')).toHaveTextContent(
+          exactly(reject)
+        );
+      });
+
+      it.each(['Approved', 'Rejected', 'Cancelled'])(
+        'reads as %s once closed, with nothing left to do',
+        async (status) => {
+          await renderTask({
+            type,
+            category,
+            status,
+            availableTransitions: [],
+          });
+
+          expect(screen.getByTestId('task-type-badge')).toHaveTextContent(
+            exactly(badge)
+          );
+          expect(screen.getByTestId('task-status-badge')).toHaveTextContent(
+            exactly(`label.${status.toLowerCase()}`)
+          );
+          expect(screen.queryByTestId('task-approve')).not.toBeInTheDocument();
+          expect(screen.queryByTestId('task-reject')).not.toBeInTheDocument();
+        }
+      );
+    }
+  );
+
+  // An incident moves through its own transitions, never a generic approve or
+  // reject.
+  describe('IncidentResolution', () => {
+    it.each([
+      { status: 'Open', transitions: ['ack'] },
+      { status: 'InProgress', transitions: ['resolve'] },
+      { status: 'Completed', transitions: [] },
+    ])('offers $transitions while $status', async ({ status, transitions }) => {
+      await renderTask({
+        type: 'IncidentResolution',
+        category: 'Incident',
+        status,
+        availableTransitions: transitions.map((id) => ({
+          id,
+          label: `label.${id}`,
+        })),
+      });
+
+      expect(screen.getByTestId('task-type-badge')).toHaveTextContent(
+        exactly('label.incident')
+      );
+
+      for (const id of transitions) {
+        expect(screen.getByTestId(`task-transition-${id}`)).toBeInTheDocument();
+      }
+
+      expect(screen.queryByTestId('task-approve')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('task-reject')).not.toBeInTheDocument();
+    });
+
+    it('reads as completed once resolved', async () => {
+      await renderTask({
+        type: 'IncidentResolution',
+        category: 'Incident',
+        status: 'Completed',
+        availableTransitions: [],
+      });
+
+      expect(screen.getByTestId('task-status-badge')).toHaveTextContent(
+        exactly('label.completed')
+      );
     });
   });
 });

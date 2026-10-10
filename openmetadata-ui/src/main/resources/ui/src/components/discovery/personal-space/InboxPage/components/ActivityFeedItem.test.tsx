@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { ComponentType, ReactNode, SVGProps } from 'react';
 
 const mockSendReaction = jest.fn();
 const mockWriteInboxReactions = jest.fn();
@@ -76,6 +76,8 @@ jest.mock('../inbox.utils', () => ({
   formatActivityTime: () => '12 min ago',
   getActivityChange: (...args: unknown[]) => mockGetActivityChange(...args),
   getActivityEventLabel: () => 'updated description for',
+  // The kind as sent; how a kind is read is inbox.utils' own test.
+  getActivityKindType: ({ eventType }: { eventType: string }) => eventType,
   getActivityTypeKey: () => 'label.other',
   ACTIVITY_TYPE_OTHER: 'label.other',
   ACTIVITY_CLOCK_FORMAT: 'hh:mm a',
@@ -197,13 +199,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   BadgeWithIcon: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),
+  // Renders an icon component as the core Button does, tagged `data-icon`.
   Button: ({
     children,
     onPress,
+    iconLeading: IconLeading,
     ...props
   }: {
     children?: ReactNode;
     onPress?: () => void;
+    iconLeading?: ComponentType<SVGProps<SVGSVGElement>> | ReactNode;
     'aria-pressed'?: boolean;
     'aria-expanded'?: boolean;
     'data-testid'?: string;
@@ -213,6 +218,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       aria-pressed={props['aria-pressed']}
       data-testid={props['data-testid']}
       onClick={onPress}>
+      {typeof IconLeading === 'function' && (
+        <IconLeading className="icon" data-icon="leading" />
+      )}
       {children}
     </button>
   ),
@@ -232,17 +240,37 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  // Each badge icon names itself, so a test can tell which one a card drew.
+  ...Object.fromEntries(
+    [
+      'ActivityAssetCreated',
+      'ActivityAssetDeleted',
+      'ActivityAssetRestored',
+      'ActivityAssetSoftDeleted',
+      'ActivityAssetUpdated',
+      'ActivityColumnDescriptionUpdated',
+      'ActivityColumnTagsUpdated',
+      'ActivityConversation',
+      'ActivityCustomPropertyUpdated',
+      'ActivityDescriptionUpdated',
+      'ActivityDomainChanged',
+      'ActivityOwnerChanged',
+      'ActivityPipelineStatusChanged',
+      'ActivityTagsUpdated',
+      'ActivityTestCaseStatusChanged',
+      'ActivityTierChanged',
+    ].map((name) => [name, () => <span data-testid={name} />])
+  ),
   ChevronDown: () => <span />,
   ChevronUp: () => <span />,
   Edit05: () => <span />,
   File02: () => <span />,
   Globe01: () => <span />,
   MessageDotsCircle: () => <span />,
-  Plus: () => <span />,
-  RefreshCcw01: () => <span />,
   Tag01: () => <span />,
-  ThumbsUp: () => <span />,
-  Trash01: () => <span />,
+  ThumbsUp: (props: SVGProps<SVGSVGElement>) => (
+    <svg data-testid="thumbs-up-icon" {...props} />
+  ),
   UserCheck01: () => <span />,
 }));
 
@@ -281,6 +309,59 @@ describe('ActivityFeedItem', () => {
     jest.clearAllMocks();
     mockReplies = [];
     mockRepliesCached = false;
+  });
+
+  describe('kind badge', () => {
+    const badgeFor = (eventType: string) => {
+      render(
+        <ActivityFeedItem
+          activity={{ ...baseActivity, eventType } as ActivityEvent}
+        />
+      );
+
+      return screen.getByTestId('activity-kind-badge');
+    };
+
+    it.each([
+      ['EntityCreated', 'ActivityAssetCreated', 'tw:bg-utility-pink-700'],
+      [
+        'EntitySoftDeleted',
+        'ActivityAssetSoftDeleted',
+        'tw:bg-utility-blue-dark-700',
+      ],
+      [
+        'ColumnTagsUpdated',
+        'ActivityColumnTagsUpdated',
+        'tw:bg-utility-purple-600',
+      ],
+      [
+        'PipelineStatusChanged',
+        'ActivityPipelineStatusChanged',
+        'tw:bg-utility-gray-800',
+      ],
+    ])('draws %s with its own icon and fill', (eventType, icon, fill) => {
+      const badge = badgeFor(eventType);
+
+      expect(badge).toHaveClass(fill);
+      expect(within(badge).getByTestId(icon)).toBeInTheDocument();
+    });
+
+    // A newer server may send a type this UI does not know yet.
+    it('reads an unknown event type as a plain update', () => {
+      expect(
+        within(badgeFor('SomethingNew')).getByTestId('ActivityAssetUpdated')
+      ).toBeInTheDocument();
+    });
+
+    it('marks a conversation with the conversation badge', () => {
+      render(<ActivityFeedItem feed={baseFeed} />);
+
+      expect(
+        within(screen.getByTestId('activity-kind-badge')).getByTestId(
+          'ActivityConversation'
+        )
+      ).toBeInTheDocument();
+    });
   });
 
   it('renders actor, action, entity and message', () => {
@@ -479,7 +560,7 @@ describe('ActivityFeedItem', () => {
 
     expect(mockSendReaction).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId('activity-like')).toHaveTextContent(
-      'label.like-with-count'
+      'label.liked-with-count'
     );
     expect(screen.getByTestId('react-btn')).toHaveTextContent('r1');
   });
@@ -564,7 +645,7 @@ describe('ActivityFeedItem', () => {
       'add'
     );
     expect(screen.getByTestId('activity-like')).toHaveTextContent(
-      'label.like-with-count'
+      'label.liked-with-count'
     );
     expect(screen.getByTestId('activity-like')).toHaveAttribute(
       'aria-pressed',
@@ -593,6 +674,40 @@ describe('ActivityFeedItem', () => {
       'remove'
     );
     expect(screen.getByTestId('activity-like')).toHaveTextContent('label.like');
+  });
+
+  // The Button sizes and tints its icon by `data-icon`, so the filled thumb
+  // must keep it, or a liked card's icon grows from 16px to 20px.
+  it('fills the thumb once liked and keeps the icon the Button styles', () => {
+    const liked = {
+      ...baseActivity,
+      reactions: [{ reactionType: 'thumbsUp', user: { id: 'u1' } }],
+    } as unknown as ActivityEvent;
+
+    render(<ActivityFeedItem activity={liked} />);
+
+    const icon = screen.getByTestId('thumbs-up-icon');
+
+    expect(icon).toHaveAttribute('data-icon', 'leading');
+    expect(icon).toHaveAttribute('fill', 'currentColor');
+  });
+
+  // Others' likes are counted; only the viewer's own reads "Liked".
+  it("counts others' likes without marking the card liked", () => {
+    const likedByOthers = {
+      ...baseActivity,
+      reactions: [{ reactionType: 'thumbsUp', user: { id: 'u2' } }],
+    } as unknown as ActivityEvent;
+
+    render(<ActivityFeedItem activity={likedByOthers} />);
+
+    expect(screen.getByTestId('activity-like')).toHaveTextContent(
+      'label.like-with-count'
+    );
+    expect(screen.getByTestId('activity-like')).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
   });
 
   describe('thread', () => {

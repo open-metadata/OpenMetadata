@@ -39,22 +39,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
   Tabs.List = ({ children }: { children?: ReactNode }) => <>{children}</>;
   Tabs.Item = ({
     id,
+    badge,
     children,
   }: {
     id: string;
-    children: (state: { isSelected: boolean }) => ReactNode;
+    badge?: string;
+    children: ReactNode;
   }) => (
     <span data-testid={`tab-${id}`}>
-      {children({ isSelected: id === 'all' })}
+      {children}
+      {badge !== undefined && <span data-testid="tab-count">{badge}</span>}
     </span>
   );
 
   return {
-    Badge: ({ children, color }: { children?: ReactNode; color?: string }) => (
-      <span data-color={color} data-testid="tab-count">
-        {children}
-      </span>
-    ),
     Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Tabs,
     FilterSelect: ({
@@ -143,7 +141,7 @@ describe('ActivityToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith(ActivityFilter.Mentions);
   });
 
-  // Zero reads as no badge; the chosen tab's count is brand-tinted.
+  // Zero reads as no badge.
   it('badges each sub-tab with its count', () => {
     renderToolbar({
       [ActivityFilter.All]: exact(3),
@@ -158,9 +156,7 @@ describe('ActivityToolbar', () => {
     expect(screen.getByTestId('tab-following')).toHaveTextContent(
       /^label.following$/
     );
-    expect(
-      screen.getAllByTestId('tab-count').map((badge) => badge.dataset.color)
-    ).toEqual(['brand', 'gray']);
+    expect(screen.getAllByTestId('tab-count')).toHaveLength(2);
   });
 
   // The lists are capped, so a full page reads as a floor.

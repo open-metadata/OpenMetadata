@@ -14,13 +14,13 @@
 import {
   Badge,
   Box,
+  Button,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { StatTile, TaskStatTilesProps } from '../taskDetail.types';
 import { getTaskStatTiles } from '../taskStatTiles.utils';
 
@@ -35,11 +35,9 @@ const TONE_CLASS: Record<NonNullable<StatTile['tone']>, string> = {
 const TileValue: React.FC<{ tile: StatTile }> = ({ tile }) => {
   if (tile.to) {
     return (
-      <Link
-        className="tw:text-sm tw:text-utility-blue-dark-500 tw:underline!"
-        to={tile.to}>
+      <Button color="link-color" href={tile.to} size="sm">
         {tile.value}
-      </Link>
+      </Button>
     );
   }
   if (tile.badgeColor) {

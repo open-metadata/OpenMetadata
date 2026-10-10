@@ -27,6 +27,7 @@ import {
   TaskStatusBucket,
   TASK_STATUS_BUCKET_LABEL_KEY,
 } from '../taskList.utils';
+import ActivityToolbarMenu from './ActivityToolbarMenu';
 
 /** How the loaded tasks are broken up in the list. */
 export type InboxTaskGrouping = 'none' | 'type';
@@ -71,17 +72,12 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // The trigger shows the chosen option's `textValue` ("Group: Type"); the menu
-  // rows show the bare option.
+  // The trigger reads "Group: Type"; the menu rows show the bare option.
   const groupingOptions = useMemo(
-    () =>
-      [
-        { value: 'type', label: t('label.type') },
-        { value: 'none', label: t('label.none') },
-      ].map((option) => ({
-        ...option,
-        textValue: t('label.group-with-value', { value: option.label }),
-      })),
+    () => [
+      { value: 'type', label: t('label.type') },
+      { value: 'none', label: t('label.none') },
+    ],
     [t]
   );
 
@@ -118,22 +114,21 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
       direction="col">
       <Box align="center" className="tw:justify-between tw:gap-2">
         {statusTabs}
-        {/* A grouping always has a value, so FilterSelect's "active filter"
-            brand tint would be permanent; keep the trigger neutral. */}
-        <FilterSelect
-          className="tw:**:text-tertiary tw:hover:**:text-secondary"
+        {/* A grouping always has a value, so it is a menu, not a filter whose
+            "active" tint would never go away. */}
+        <ActivityToolbarMenu
+          color="tertiary"
           data-testid="inbox-tasks-group-by"
-          label={t('label.group')}
           options={groupingOptions}
-          popoverClassName="tw:w-40"
-          selectedValues={[grouping]}
-          selectionMode="single"
+          size="sm"
+          title={t('label.group-by')}
           triggerIcon={FilterLines}
-          triggerVariant="button"
-          typography="regular"
-          onChange={([value]) =>
-            onGroupingChange((value as InboxTaskGrouping) ?? 'none')
-          }
+          triggerLabel={t('label.group-with-value', {
+            value: groupingOptions.find((option) => option.value === grouping)
+              ?.label,
+          })}
+          value={grouping}
+          onChange={(value) => onGroupingChange(value as InboxTaskGrouping)}
         />
       </Box>
       <Box align="center" className="tw:gap-2">

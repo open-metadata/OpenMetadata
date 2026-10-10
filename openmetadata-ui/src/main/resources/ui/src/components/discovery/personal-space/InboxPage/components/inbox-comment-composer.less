@@ -38,7 +38,9 @@
   }
 
   // The format bar sits in the same box as the text, split by a hairline.
+  // It anchors the emoji picker, which the composer places by its button.
   .ql-toolbar.ql-snow {
+    position: relative;
     padding: 4px 8px;
     border: none;
     border-bottom: 1px solid var(--om-color-border-secondary);
@@ -61,12 +63,20 @@
     }
   }
 
-  .ql-editor,
+  // `.editor-container` matches the FeedEditor's own 100px minimum, which
+  // otherwise wins once the editor holds any text.
+  .editor-container .ql-editor,
   .ql-editor.ql-blank {
     min-height: 44px;
     padding: 12px 48px 12px 14px;
     background-color: transparent;
     border-radius: 10px;
+  }
+
+  // A list starts at the text's edge: the item's own padding holds the
+  // marker, without the list indenting it a second time.
+  .ql-editor ol {
+    padding-left: 0;
   }
 
   // The @/# suggestion list, in the core Dropdown's style: a padded overlay

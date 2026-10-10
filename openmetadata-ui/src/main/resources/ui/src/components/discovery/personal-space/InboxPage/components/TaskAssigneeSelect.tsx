@@ -149,8 +149,6 @@ const TaskAssigneeSelect: React.FC<TaskAssigneeSelectProps> = ({
       // would otherwise sit over the dialog footer.
       multiple={false}
       placeholder={t('label.select-team-member')}
-      // Core allows 320px; that overshoots this short dialog.
-      popoverClassName="tw:max-h-56!"
       ref={containerRef}
       renderTag={renderTag}
       selectedItems={selectedItems}
