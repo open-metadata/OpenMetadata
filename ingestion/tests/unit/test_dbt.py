@@ -2,6 +2,7 @@
 Test dbt
 """
 
+import fnmatch
 import json
 import logging
 import uuid
@@ -2757,6 +2758,7 @@ class DbtUnitTest(TestCase):
             if table_fqn == expected_fqn:
                 table = MagicMock()
                 table.id.root = uuid.uuid4()
+                table.fullyQualifiedName.root = table_fqn
                 return table
             return None
 
@@ -5313,3 +5315,107 @@ class TestDbtMetricGovernanceMetadata:
         ]
         assert len(metric_requests) == 1
         assert metric_requests[0].right.extension is None
+
+
+class TestTableLookupAcrossDatabaseNames:
+    """
+    The manifest database is the name the dbt adapter knows.  With dbt-trino writing into a
+    Trino BigQuery catalog it is the catalog name, while the BigQuery connector ingests the
+    same table under the GCP project id, so the two never match (issue #34633).
+    """
+
+    BQ_MODEL = "bq_svc.my-gcp-project.analytics.stg_customers"
+    BQ_SOURCE = "bq_svc.my-gcp-project.raw.customers"
+
+    @staticmethod
+    def _source(*ingested_fqns, search_across_databases=True):
+        """A DbtSource whose ES answers wildcard FQN queries the way the fieldQuery endpoint does."""
+        source = DbtSource.__new__(DbtSource)
+        source.metadata = MagicMock()
+        source.config = MagicMock()
+        source.config.serviceName = "trino_svc"
+        source.source_config = MagicMock()
+        source.source_config.searchAcrossDatabases = search_across_databases
+        source.source_config.tableFilterPattern = None
+        source.source_config.schemaFilterPattern = None
+        source.source_config.databaseFilterPattern = None
+        tables = [
+            Table(id=uuid.uuid4(), name=ingested.split(".")[-1], columns=[], fullyQualifiedName=ingested)
+            for ingested in ingested_fqns
+        ]
+
+        def _search(*_args, fqn_search_string, **_kwargs):
+            return [
+                table
+                for table in tables
+                if fnmatch.fnmatchcase(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+            ] or None
+
+        source.metadata.es_search_from_fqn.side_effect = _search
+        return source
+
+    @staticmethod
+    def _manifest_node(name, database, schema, resource_type="model", depends_on=()):
+        return SimpleNamespace(
+            name=name,
+            alias=name,
+            database=database,
+            schema_=schema,
+            resource_type=resource_type,
+            package_name="trino_bq",
+            config=SimpleNamespace(materialized="table"),
+            depends_on=SimpleNamespace(nodes=list(depends_on)),
+        )
+
+    def test_table_under_a_catalog_alias_resolves_to_the_ingested_database(self):
+        source = self._source(self.BQ_MODEL, "trino_svc.hive.default.other")
+
+        table = source._get_table_entity("trino_svc.bq_catalog.analytics.stg_customers")
+
+        assert table is not None
+        assert table.fullyQualifiedName.root == self.BQ_MODEL
+
+    def test_schema_and_table_match_ignores_case(self):
+        """Trino lowercases identifiers; BigQuery datasets and tables keep their case."""
+        source = self._source("bq_svc.my-gcp-project.Marts.Orders_Summary")
+
+        table = source._get_table_entity("trino_svc.bq_catalog.marts.orders_summary")
+
+        assert table.fullyQualifiedName.root == "bq_svc.my-gcp-project.Marts.Orders_Summary"
+
+    def test_same_schema_and_table_in_two_databases_stays_unresolved(self):
+        source = self._source(
+            "bq_svc.proj-a.shared.dup_model",
+            "bq_svc.proj-b.shared.dup_model",
+        )
+
+        assert source._get_table_entity("trino_svc.bq_catalog.shared.dup_model") is None
+
+    def test_database_is_not_ignored_without_search_across_databases(self):
+        source = self._source(self.BQ_MODEL, search_across_databases=False)
+
+        assert source._get_table_entity("trino_svc.bq_catalog.analytics.stg_customers") is None
+
+    def test_matching_database_is_preferred_over_the_database_agnostic_match(self):
+        source = self._source(
+            "trino_svc.bq_catalog.analytics.stg_customers",
+            self.BQ_MODEL,
+        )
+
+        table = source._get_table_entity("trino_svc.bq_catalog.analytics.stg_customers")
+
+        assert table.fullyQualifiedName.root == "trino_svc.bq_catalog.analytics.stg_customers"
+
+    def test_upstream_is_recorded_under_the_table_that_was_found(self):
+        """Lineage, dbt tests and exposures all reuse the upstream FQN, so it must be the real one."""
+        parent = self._manifest_node("customers", "bq_catalog", "raw", resource_type="source")
+        parent.source_name = "bq_raw"
+        model = self._manifest_node(
+            "stg_customers", "bq_catalog", "analytics", depends_on=["source.trino_bq.bq_raw.customers"]
+        )
+        source = self._source(self.BQ_SOURCE, self.BQ_MODEL)
+
+        upstream_nodes = source.parse_upstream_nodes_with_names({"source.trino_bq.bq_raw.customers": parent}, model)
+
+        assert [node.fqn for node in upstream_nodes] == [self.BQ_SOURCE]
+        assert upstream_nodes[0].table_id is not None
