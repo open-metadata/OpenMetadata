@@ -89,20 +89,24 @@ function DestinationSelectItem({
   );
 
   const destinationStatusDetails = useMemo(() => {
-    const { type, category, config } = destinationItem;
-    const current = destinationsWithStatus?.find((d) =>
-      isEqual(
-        { type, category, config: normalizeDestinationConfig(config) },
-        {
-          type: d.type,
-          category: d.category,
-          config: normalizeDestinationConfig(d.config),
-        }
-      )
-    );
+    const statusDestination = destinationsWithStatus?.[id];
 
-    return current?.statusDetails;
-  }, [destinationItem, destinationsWithStatus]);
+    if (!statusDestination) {
+      return undefined;
+    }
+    const { type, category, config } = destinationItem;
+
+    return isEqual(
+      { type, category, config: normalizeDestinationConfig(config) },
+      {
+        type: statusDestination.type,
+        category: statusDestination.category,
+        config: normalizeDestinationConfig(statusDestination.config),
+      }
+    )
+      ? statusDestination.statusDetails
+      : undefined;
+  }, [destinationItem, destinationsWithStatus, id]);
 
   const { statusLabel } = useMemo(
     () => getDestinationStatusAlertData(destinationStatusDetails?.status),
