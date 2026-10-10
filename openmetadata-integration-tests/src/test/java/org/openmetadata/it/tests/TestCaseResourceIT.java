@@ -70,12 +70,14 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -3096,6 +3098,126 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertThrows(
         org.openmetadata.sdk.exceptions.OpenMetadataException.class,
         () -> client.testCases().getFailedRowsSample(testCase.getId().toString()));
+  }
+
+  @Test
+  void test_failedRowsSampleAcceptedWhenPassingWithinThreshold(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "within_threshold_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Success, 7L);
+
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample());
+
+    TableData fetchedSample = client.testCases().getFailedRowsSample(testCase.getId().toString());
+    assertEquals(3, fetchedSample.getRows().size());
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWhenPassingWithoutFailedRows(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "clean_pass_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Success, 0L);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWithoutResult(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "no_result_sample");
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWhenPassingWithUnknownFailedRows(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "unknown_failed_rows_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Success, null);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWhenAborted(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "aborted_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Aborted, 7L);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleReplacedAndClearedOnSuccess(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "sample_lifecycle");
+    long timestamp = System.currentTimeMillis();
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(timestamp)
+                .withTestCaseStatus(TestCaseStatus.Failed));
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample());
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(timestamp + 1)
+                .withTestCaseStatus(TestCaseStatus.Success)
+                .withFailedRows(7L));
+    assertEquals(
+        404,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> client.testCases().getFailedRowsSample(testCase.getId().toString()))
+            .getStatusCode());
+
+    TableData replacement =
+        new TableData().withColumns(List.of("id")).withRows(List.of(List.of("4")));
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), replacement);
+    assertEquals(replacement, client.testCases().getFailedRowsSample(testCase.getId().toString()));
+
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(timestamp + 2)
+                .withTestCaseStatus(TestCaseStatus.Success)
+                .withFailedRows(0L));
+    assertEquals(
+        404,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> client.testCases().getFailedRowsSample(testCase.getId().toString()))
+            .getStatusCode());
+  }
+
+  private static void addTestCaseResult(
+      OpenMetadataClient client, TestCase testCase, TestCaseStatus status, Long failedRows) {
+    CreateTestCaseResult result =
+        new CreateTestCaseResult()
+            .withTimestamp(System.currentTimeMillis())
+            .withTestCaseStatus(status)
+            .withFailedRows(failedRows);
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+  }
+
+  private static TableData idSample() {
+    return new TableData()
+        .withColumns(List.of("id"))
+        .withRows(List.of(List.of("1"), List.of("2"), List.of("3")));
   }
 
   @Test

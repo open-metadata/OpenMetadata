@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import React, { Fragment } from 'react';
+import { useParams } from 'react-router-dom';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
-import { getTestCaseFailedSampleData } from '../../../../rest/testAPI';
+import {
+  deleteTestCaseFailedSampleData,
+  getTestCaseFailedSampleData,
+} from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import FailedTestCaseSampleData from './FailedTestCaseSampleData.component';
 
@@ -153,7 +159,11 @@ jest.mock('../../../Database/SampleDataTable/RowData', () => ({
 }));
 
 jest.mock('../../../common/DeleteModal/DeleteModal', () =>
-  jest.fn().mockImplementation(() => <div>DeleteModal</div>)
+  jest
+    .fn()
+    .mockImplementation(({ onDelete }: { onDelete: () => void }) => (
+      <button onClick={onDelete}>Confirm sample deletion</button>
+    ))
 );
 
 const FQN = 'svc.db.schema.table.failing_test_case';
@@ -203,7 +213,9 @@ describe('FailedTestCaseSampleData - observabilityRouterClassBase migration', ()
 describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getTestCaseFailedSampleData as jest.Mock).mockResolvedValue({
+    (checkPermission as jest.Mock).mockReturnValue(true);
+    (useParams as jest.Mock).mockReturnValue({});
+    (getTestCaseFailedSampleData as jest.Mock).mockReset().mockResolvedValue({
       columns: ['c1'],
       rows: [['r1']],
     });
@@ -234,17 +246,196 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
     );
   });
 
-  it('should not fetch the failed-rows sample when the test case is not failed', async () => {
-    const passingTestCase = {
+  it('should fetch the failed-rows sample when the test case passed within its threshold', async () => {
+    const withinThresholdTestCase = {
       ...mockTestCase,
-      testCaseResult: { testCaseStatus: TestCaseStatus.Success },
+      testCaseResult: { testCaseStatus: TestCaseStatus.Success, failedRows: 7 },
     } as TestCase;
 
-    render(<FailedTestCaseSampleData testCaseData={passingTestCase} />);
+    render(<FailedTestCaseSampleData testCaseData={withinThresholdTestCase} />);
 
     await waitFor(() =>
-      expect(getTestCaseFailedSampleData).not.toHaveBeenCalled()
+      expect(getTestCaseFailedSampleData).toHaveBeenCalledWith(mockTestCase.id)
     );
+  });
+
+  it.each([0, undefined])(
+    'should not fetch a passing sample with failedRows=%s',
+    async (failedRows) => {
+      const passingTestCase = {
+        ...mockTestCase,
+        testCaseResult: { testCaseStatus: TestCaseStatus.Success, failedRows },
+      } as TestCase;
+
+      render(<FailedTestCaseSampleData testCaseData={passingTestCase} />);
+
+      await waitFor(() =>
+        expect(getTestCaseFailedSampleData).not.toHaveBeenCalled()
+      );
+    }
+  );
+
+  it('should not expose a passing sample without view permission', () => {
+    (checkPermission as jest.Mock).mockReturnValue(false);
+
+    render(
+      <FailedTestCaseSampleData
+        testCaseData={{
+          ...mockTestCase,
+          testCaseResult: {
+            testCaseStatus: TestCaseStatus.Success,
+            failedRows: 7,
+          },
+        }}
+      />
+    );
+
+    expect(getTestCaseFailedSampleData).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('sample-data-table')).not.toBeInTheDocument();
+  });
+
+  it('should keep version-page sample actions hidden', async () => {
+    (useParams as jest.Mock).mockReturnValue({ version: '1.0' });
+
+    render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
+
+    await screen.findByTestId('sample-data-table');
+
+    expect(screen.queryByTestId('explore-with-query')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('sample-data-manage-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should not fetch samples for an aborted run with failed rows', () => {
+    render(
+      <FailedTestCaseSampleData
+        testCaseData={{
+          ...mockTestCase,
+          testCaseResult: {
+            testCaseStatus: TestCaseStatus.Aborted,
+            failedRows: 7,
+          },
+        }}
+      />
+    );
+
+    expect(getTestCaseFailedSampleData).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('sample-data-table')).not.toBeInTheDocument();
+  });
+
+  it('should remove a passing sample after the user deletes it', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    (deleteTestCaseFailedSampleData as jest.Mock).mockResolvedValueOnce(
+      undefined
+    );
+    render(
+      <FailedTestCaseSampleData
+        testCaseData={{
+          ...mockTestCase,
+          testCaseResult: {
+            testCaseStatus: TestCaseStatus.Success,
+            failedRows: 7,
+          },
+        }}
+      />
+    );
+    await screen.findByTestId('sample-data-table');
+    (getTestCaseFailedSampleData as jest.Mock).mockRejectedValueOnce({
+      response: { status: 404 },
+    });
+
+    await user.click(screen.getByTestId('sample-data-manage-button'));
+    await user.click(await screen.findByRole('menuitem'));
+    await user.click(
+      screen.getByRole('button', { name: 'Confirm sample deletion' })
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('sample-data-table')).not.toBeInTheDocument();
+    });
+
+    expect(deleteTestCaseFailedSampleData).toHaveBeenCalledWith(
+      mockTestCase.id
+    );
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it.each([TestCaseStatus.Failed, TestCaseStatus.Success])(
+    'should replace the sample when a %s run is followed by a passing run with failed rows',
+    async (status) => {
+      const { rerender } = render(
+        <FailedTestCaseSampleData
+          testCaseData={{
+            ...mockTestCase,
+            testCaseResult: {
+              timestamp: 1,
+              testCaseStatus: status,
+              failedRows: 7,
+            },
+          }}
+        />
+      );
+      await screen.findByRole('columnheader', { name: 'c1' });
+      (getTestCaseFailedSampleData as jest.Mock).mockResolvedValueOnce({
+        columns: ['latest_column'],
+        rows: [['latest_row']],
+      });
+
+      rerender(
+        <FailedTestCaseSampleData
+          testCaseData={{
+            ...mockTestCase,
+            testCaseResult: {
+              timestamp: 2,
+              testCaseStatus: TestCaseStatus.Success,
+              failedRows: 7,
+            },
+          }}
+        />
+      );
+
+      await screen.findByRole('columnheader', { name: 'latest_column' });
+
+      expect(screen.queryByRole('columnheader', { name: 'c1' })).toBeNull();
+    }
+  );
+
+  it('should keep loading the latest sample when an older request finishes', async () => {
+    let resolveOld: (value: unknown) => void = (_value) => undefined;
+    let resolveLatest: (value: unknown) => void = (_value) => undefined;
+    (getTestCaseFailedSampleData as jest.Mock)
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (resolveOld = resolve))
+      )
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (resolveLatest = resolve))
+      );
+    const { rerender } = render(
+      <FailedTestCaseSampleData testCaseData={mockTestCase} />
+    );
+    rerender(
+      <FailedTestCaseSampleData
+        testCaseData={{ ...mockTestCase, id: 'tc-2' }}
+      />
+    );
+
+    await act(async () => {
+      resolveOld({ columns: ['old_column'], rows: [['old_row']] });
+    });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('columnheader', { name: 'old_column' })
+    ).toBeNull();
+
+    await act(async () => {
+      resolveLatest({ columns: ['latest_column'], rows: [['latest_row']] });
+    });
+
+    expect(
+      screen.getByRole('columnheader', { name: 'latest_column' })
+    ).toBeInTheDocument();
   });
 
   it('should not fetch when the test case has no result yet', async () => {

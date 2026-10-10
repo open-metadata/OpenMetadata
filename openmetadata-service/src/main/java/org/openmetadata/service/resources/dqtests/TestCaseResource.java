@@ -1126,7 +1126,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                     schema = @Schema(implementation = TestCase.class))),
         @ApiResponse(
             responseCode = "400",
-            description = "Failed rows can only be added to a failed test case.")
+            description =
+                "Failed rows can only be added to a test case whose latest result has failed rows.")
       })
   public TestCase addFailedRowsData(
       @Context UriInfo uriInfo,
@@ -1142,9 +1143,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     repository.setFields(
         testCase, new Fields(Set.of("testCaseResult")), RelationIncludes.fromInclude(ALL));
-    if (testCase.getTestCaseResult() == null
-        || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
-      throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
+    if (!hasFailedRows(testCase.getTestCaseResult())) {
+      throw new IllegalArgumentException(
+          "Failed rows can only be added to a test case whose latest result has failed rows.");
     }
     return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData, validate));
   }
@@ -1569,6 +1570,20 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       joinedStatuses = validStatuses.isEmpty() ? null : String.join(",", validStatuses);
     }
     return joinedStatuses;
+  }
+
+  /**
+   * A test case that passed within its failure threshold still has failed rows the user needs to
+   * inspect, so a Success result with failed rows can hold a sample too. See ADR:2026-10-09-failed-rows-sample-follows-failed-rows-not-status.
+   */
+  private static boolean hasFailedRows(TestCaseResult testCaseResult) {
+    if (testCaseResult == null) {
+      return false;
+    }
+    TestCaseStatus status = testCaseResult.getTestCaseStatus();
+    Long failedRows = testCaseResult.getFailedRows();
+    return status == TestCaseStatus.Failed
+        || (status == TestCaseStatus.Success && failedRows != null && failedRows > 0);
   }
 
   /** Matching is case insensitive, the status is normalized to its canonical enum value. */

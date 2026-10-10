@@ -31,6 +31,7 @@ import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TableData,
+  TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
@@ -68,6 +69,17 @@ type SampleDataColumn = {
 type LocalSampleData = {
   columns: SampleDataColumn[];
   rows: Record<string, SampleDataType>[];
+};
+
+const isFailedRowsSampleExpected = (testCaseResult?: TestCaseResult) => {
+  switch (testCaseResult?.testCaseStatus) {
+    case TestCaseStatus.Failed:
+      return true;
+    case TestCaseStatus.Success:
+      return (testCaseResult.failedRows ?? 0) > 0;
+    default:
+      return false;
+  }
 };
 
 const FailedTestCaseSampleData = ({
@@ -164,10 +176,11 @@ const FailedTestCaseSampleData = ({
   };
 
   // `isStale` guards against a late response overwriting state after the test
-  // case has changed (e.g. status moved away from Failed) while the request was
+  // case or result has changed while the request was
   // in flight — otherwise the resolved response would restore stale rows.
   const fetchFailedTestCaseSampleData = async (isStale?: () => boolean) => {
     if (testCaseData?.id) {
+      setSampleData(undefined);
       setIsLoading(true);
       try {
         const response = await getTestCaseFailedSampleData(testCaseData.id);
@@ -178,8 +191,8 @@ const FailedTestCaseSampleData = ({
         if (!isStale?.()) {
           setSampleData(undefined);
           // A 404 is the backend's expected "no failed-rows sample stored"
-          // response (samples exist only for failing test cases with row-count
-          // computation enabled) — treat it as an empty state, not an error.
+          // response (sampling may be disabled or may have failed) — treat it
+          // as an empty state, not an error.
           // Any other status (e.g. 403/500) is a real failure worth surfacing.
           if (
             (error as AxiosError)?.response?.status !== ClientErrors.NOT_FOUND
@@ -188,7 +201,9 @@ const FailedTestCaseSampleData = ({
           }
         }
       } finally {
-        setIsLoading(false);
+        if (!isStale?.()) {
+          setIsLoading(false);
+        }
       }
     }
   };
@@ -213,20 +228,21 @@ const FailedTestCaseSampleData = ({
     }
   };
 
-  // Failed-rows samples are only ever stored for a failing test case, so the
-  // fetch is pointless (and guaranteed to 404) for any other status. Gating
-  // here avoids the request entirely for passing/aborted/queued test cases.
-  const isTestCaseFailed =
-    testCaseData?.testCaseResult?.testCaseStatus === TestCaseStatus.Failed;
+  // Failed-rows samples are only stored for a run that found failed rows: a
+  // failing run, or a passing run that stayed within its failure threshold.
+  // Any other result is guaranteed to 404, so skip the request entirely.
+  // See ADR:2026-10-09-failed-rows-sample-follows-failed-rows-not-status.
+  const hasFailedRows = isFailedRowsSampleExpected(
+    testCaseData?.testCaseResult
+  );
 
   useEffect(() => {
     let cancelled = false;
-    if (hasViewSampleDataPermission && isTestCaseFailed) {
+    if (hasViewSampleDataPermission && hasFailedRows) {
       fetchFailedTestCaseSampleData(() => cancelled);
     } else {
       // Clear any previously loaded sample so it doesn't linger when the test
-      // case is no longer failing (e.g. a status change on the mounted page),
-      // and reset loading so a non-failed test case shows its empty state
+      // case no longer has failed rows, and reset loading so it shows its empty state
       // immediately instead of waiting on any in-flight request.
       setSampleData(undefined);
       setIsLoading(false);
@@ -235,7 +251,14 @@ const FailedTestCaseSampleData = ({
     return () => {
       cancelled = true;
     };
-  }, [testCaseData?.id, hasViewSampleDataPermission, isTestCaseFailed]);
+  }, [
+    testCaseData?.id,
+    testCaseData?.testCaseResult?.timestamp,
+    testCaseData?.testCaseResult?.testCaseStatus,
+    testCaseData?.testCaseResult?.failedRows,
+    hasViewSampleDataPermission,
+    hasFailedRows,
+  ]);
 
   if (!hasViewSampleDataPermission) {
     return <></>;
