@@ -75,6 +75,10 @@ public class EventSubscriptionResourceIT
   private static final URI LOOPBACK_ENDPOINT =
       URI.create("http://127.0.0.1:8585/api/v1/test/webhook/blocked");
 
+  // NAT64 well-known prefix 64:ff9b::/96 wrapping 10.0.0.1 — an internal address written as an IPv6
+  // literal, which the SSRF guard must see through just as it refuses the bare IPv4.
+  private static final URI NAT64_INTERNAL_ENDPOINT = URI.create("http://[64:ff9b::a00:1]/");
+
   // EventSubscription has special requirements
   {
     supportsEntityStatus = false;
@@ -148,6 +152,31 @@ public class EventSubscriptionResourceIT
             InvalidRequestException.class,
             () -> createEntity(request),
             "A webhook endpoint written as a loopback address should be rejected");
+    assertEquals(400, rejected.getStatusCode());
+  }
+
+  @Test
+  void test_webhookEndpointAsNat64InternalAddress_400(TestNamespace ns) {
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_nat64_internal"))
+            .withDescription("Endpoint written as a NAT64-wrapped internal address")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(
+                List.of(
+                    new SubscriptionDestination()
+                        .withId(UUID.randomUUID())
+                        .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+                        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                        .withConfig(new Webhook().withEndpoint(NAT64_INTERNAL_ENDPOINT))));
+
+    InvalidRequestException rejected =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> createEntity(request),
+            "A webhook endpoint written as a NAT64-wrapped internal address should be rejected");
     assertEquals(400, rejected.getStatusCode());
   }
 
