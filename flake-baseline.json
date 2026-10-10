@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-09T03:28:35Z",
+  "generatedAt": "2026-10-10T03:33:05Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "36683573023",
-      "sourceSha": "857ded977baaf4e0662f28fb32215027964c5a6d",
-      "recordedAt": "2026-09-30T08:28:57Z"
-    },
     {
       "runId": "36808101811",
       "sourceSha": "3bded8388307ee861eda07353ec99d121a085c13",
@@ -53,6 +48,11 @@
       "runId": "37876815560",
       "sourceSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
       "recordedAt": "2026-10-09T03:28:35Z"
+    },
+    {
+      "runId": "38018608325",
+      "sourceSha": "39e7b3e330a5738cba17ee544660efc8730c6627",
+      "recordedAt": "2026-10-10T03:33:05Z"
     }
   ],
   "entries": {
@@ -74,16 +74,6 @@
       "file": "Pages/Lineage/LineageInteraction.spec.ts",
       "title": "Lineage Interactions \u203a Edge Interaction \u203a Verify edge delete button in drawer",
       "lastSeenSha": "170677437861064916f8ac34ceea410bb4ca8273",
-      "hardFailure": false
-    },
-    "chromium :: Features/AIMode/ProfileNotificationTab.spec.ts :: Destination should work properly": {
-      "observations": [
-        "36683573023"
-      ],
-      "project": "chromium",
-      "file": "Features/AIMode/ProfileNotificationTab.spec.ts",
-      "title": "Destination should work properly",
-      "lastSeenSha": "857ded977baaf4e0662f28fb32215027964c5a6d",
       "hardFailure": false
     },
     "chromium :: Features/AIMode/ProfileNotificationTab.spec.ts :: Multiple Filters Alert": {
@@ -126,6 +116,16 @@
       "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
       "hardFailure": false
     },
+    "chromium :: Features/ProfilePlatformSettings.spec.ts :: Profile Platform Settings \u203a learning resources: adds, edits and deletes a resource": {
+      "observations": [
+        "38018608325"
+      ],
+      "project": "chromium",
+      "file": "Features/ProfilePlatformSettings.spec.ts",
+      "title": "Profile Platform Settings \u203a learning resources: adds, edits and deletes a resource",
+      "lastSeenSha": "39e7b3e330a5738cba17ee544660efc8730c6627",
+      "hardFailure": false
+    },
     "chromium :: Features/RestoreEntityInheritedFields.spec.ts :: DashboardDataModel \u203a Validate restore with Inherited domain and data products assigned": {
       "observations": [
         "37406058596"
@@ -134,6 +134,16 @@
       "file": "Features/RestoreEntityInheritedFields.spec.ts",
       "title": "DashboardDataModel \u203a Validate restore with Inherited domain and data products assigned",
       "lastSeenSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
+      "hardFailure": false
+    },
+    "chromium :: Pages/AppStopRunModal.spec.ts :: App Stop Run Modal \u203a should close stop modal when cancel is clicked": {
+      "observations": [
+        "38018608325"
+      ],
+      "project": "chromium",
+      "file": "Pages/AppStopRunModal.spec.ts",
+      "title": "App Stop Run Modal \u203a should close stop modal when cancel is clicked",
+      "lastSeenSha": "39e7b3e330a5738cba17ee544660efc8730c6627",
       "hardFailure": false
     },
     "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Add and update Security and SLA tabs": {
@@ -186,6 +196,16 @@
       "lastSeenSha": "507f5d783c6ca2ee22c76c0eb92b44ff6055cc79",
       "hardFailure": false
     },
+    "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for dashboardDataModel -> dashboard": {
+      "observations": [
+        "38018608325"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/DataAssetLineage.spec.ts",
+      "title": "Column Level Lineage \u203a Column lineage for dashboardDataModel -> dashboard",
+      "lastSeenSha": "39e7b3e330a5738cba17ee544660efc8730c6627",
+      "hardFailure": false
+    },
     "chromium :: Pages/ServiceEntity.spec.ts :: Database Schema \u203a Announcement create, edit & delete": {
       "observations": [
         "37257479217"
@@ -196,16 +216,6 @@
       "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
       "hardFailure": false
     },
-    "chromium :: Pages/ServiceEntity.spec.ts :: Delete Api Service": {
-      "observations": [
-        "36683573023"
-      ],
-      "project": "chromium",
-      "file": "Pages/ServiceEntity.spec.ts",
-      "title": "Delete Api Service",
-      "lastSeenSha": "857ded977baaf4e0662f28fb32215027964c5a6d",
-      "hardFailure": false
-    },
     "chromium :: Pages/Tags.spec.ts :: Verify Owner Add Delete": {
       "observations": [
         "37876815560"
@@ -214,6 +224,16 @@
       "file": "Pages/Tags.spec.ts",
       "title": "Verify Owner Add Delete",
       "lastSeenSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
+      "hardFailure": false
+    },
+    "chromium :: VersionPages/EntityVersionPages.spec.ts :: Entity Version pages \u203a MlModel": {
+      "observations": [
+        "38018608325"
+      ],
+      "project": "chromium",
+      "file": "VersionPages/EntityVersionPages.spec.ts",
+      "title": "Entity Version pages \u203a MlModel",
+      "lastSeenSha": "39e7b3e330a5738cba17ee544660efc8730c6627",
       "hardFailure": false
     }
   },
