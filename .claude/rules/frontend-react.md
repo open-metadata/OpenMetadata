@@ -23,6 +23,9 @@ file. Forms reference `openmetadata-ui/src/main/resources/ui/docs/formutils.md`.
   `.constants.ts`, `.style.less`, `.test.tsx`, `.mock.ts`. Pure logic goes in `*.utils.ts` (no React,
   no JSX) so it is testable without rendering.
   *(Legacy uses `.component.tsx`/`.interface.ts` — don't rename; the suffix marks migration status.)*
+- **Component files hold only the component** (plus its props type). Module-level constants go in a
+  sibling `.constants.ts`, helpers in a sibling `.utils.ts` — or in root `constants/`/`utils/` when
+  shared. Importers then never pull a component module for a value, which avoids import cycles.
 - **No `index.ts` barrel** inside a component folder — `no-internal-barrel-imports` reports it.
 - **Functional components only** — no class components.
 - **State**: `useState` with proper typing; multiple loading states as one object

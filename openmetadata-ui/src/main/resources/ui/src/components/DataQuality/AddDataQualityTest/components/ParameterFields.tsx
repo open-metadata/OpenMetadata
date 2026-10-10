@@ -26,7 +26,12 @@ import {
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { lazy, useEffect, useRef } from 'react';
-import { RegisterOptions, useFieldArray, UseFormReturn } from 'react-hook-form';
+import {
+  RegisterOptions,
+  useFieldArray,
+  UseFormReturn,
+  useWatch,
+} from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/profiler.constant';
 import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
@@ -43,6 +48,8 @@ import {
   DIMENSION_FAILURE_POLICY_PARAM,
   getParamOptionLabelKey,
   getThresholdUnitLabelParts,
+  isMinRowsPerDimensionApplicable,
+  MIN_ROWS_PER_DIMENSION_PARAM,
   THRESHOLD_PARAM,
   THRESHOLD_UNIT_PARAM,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
@@ -249,6 +256,28 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   onlyParams,
 }) => {
   const { t } = useTranslation();
+  const [policyValue, unitValue] = useWatch({
+    control: form.control,
+    name: [
+      `params.${DIMENSION_FAILURE_POLICY_PARAM}`,
+      `params.${THRESHOLD_UNIT_PARAM}`,
+    ] as never,
+  }) as unknown[];
+
+  const isHiddenRollUpParam = (name?: string): boolean => {
+    if (name === DIMENSION_FAILURE_POLICY_PARAM) {
+      return !isDimensionalTest;
+    }
+    if (name === MIN_ROWS_PER_DIMENSION_PARAM) {
+      return !isMinRowsPerDimensionApplicable(
+        isDimensionalTest,
+        policyValue,
+        unitValue
+      );
+    }
+
+    return false;
+  };
 
   const buildRules = (
     data: TestCaseParameterDefinition,
@@ -488,10 +517,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   return (
     <>
       {params?.map((data) => {
-        if (
-          data.name === DIMENSION_FAILURE_POLICY_PARAM &&
-          !isDimensionalTest
-        ) {
+        if (isHiddenRollUpParam(data.name)) {
           return null;
         }
 

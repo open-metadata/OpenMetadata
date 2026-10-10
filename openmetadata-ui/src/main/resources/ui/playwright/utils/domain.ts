@@ -39,7 +39,6 @@ import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import {
-  clickOutside,
   closeFirstPopupAlert,
   fillDescriptionBox,
   getApiContext,
@@ -101,8 +100,10 @@ export const addTierWidget = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  const tierRadioButton = page.getByTestId(`radio-btn-${tier}`);
-  await tierRadioButton.waitFor({ state: 'visible' });
+  const tierRow = page
+    .getByTestId('drop-down-menu')
+    .getByTestId(`Tier.${tier}`);
+  await tierRow.waitFor({ state: 'visible' });
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -110,17 +111,13 @@ export const addTierWidget = async (
       response.request().method() === 'PATCH'
   );
 
-  await tierRadioButton.click();
-
-  const updateButton = page.getByTestId('update-tier-card');
-  await updateButton.waitFor({ state: 'visible' });
-  await updateButton.click();
+  // Picking a tier saves it and closes the picker.
+  await tierRow.click();
 
   const response = await patchRequest;
   expect(response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
@@ -198,13 +195,15 @@ export const removeTierFromWidget = async (page: Page, endpoint: string) => {
       response.url().includes(`/api/v1/${endpoint}`) &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('clear-tier').click();
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('clear-filter-btn')
+    .click();
 
   const response = await patchRequest;
   expect(response.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
 
   await expect(page.getByTestId('add-tier')).toBeVisible();
 };

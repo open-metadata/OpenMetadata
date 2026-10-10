@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../styles/variables.less';
+import type { Theme } from './theme-provider.interface';
 
-.data-product-list-description {
-  .block-editor-wrapper .tiptap.ProseMirror {
-    font-size: var(--om-font-size-xs) !important;
-    margin-bottom: 0;
-    color: @grey-600;
-  }
-}
+export const DEFAULT_THEME: Theme = 'light';
+export const DARK_SCHEME_QUERY = '(prefers-color-scheme: dark)';
+
+export const BRAND_CSS_VAR_KEYWORDS = [
+  'brand',
+  'error',
+  'success',
+  'warning',
+  'info',
+  'blue',
+];

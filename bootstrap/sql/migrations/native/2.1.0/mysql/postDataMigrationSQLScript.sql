@@ -305,6 +305,32 @@ WHERE name IN (
     '"dimensionFailurePolicy"'
   );
 
+-- `minRowsPerDimension` keeps small dimension groups out of the ANY_DIMENSION roll-up under a
+-- PERCENTAGE threshold. Only the row-countable definitions declare it: a percentage of a statistic
+-- is not distorted by group size. These are the definition names, which differ from the seed file
+-- names for columnValueLengthsToBeBetween. Guarded on the parameter being absent, like the above.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'minRowsPerDimension',
+        'displayName', 'Minimum Rows per Dimension',
+        'description', 'Under the `ANY_DIMENSION` policy and a `PERCENTAGE` threshold, a dimension with fewer rows than this is still evaluated and reported, but does not fail the test (defaults to 0: every dimension counts).',
+        'dataType', 'INT',
+        'required', false
+    )
+)
+WHERE name IN (
+    'columnValueLengthsToBeBetween', 'columnValuesToBeBetween', 'columnValuesToBeInSet',
+    'columnValuesToBeNotInSet', 'columnValuesToBeNotNull', 'columnValuesToBeUnique',
+    'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
+  )
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"minRowsPerDimension"'
+  );
+
 -- NUMERIC is a distinct member of the column dataType enum and is what BigQuery, Postgres,
 -- Snowflake and DB2 numeric columns are ingested as, but the numeric system test definitions were
 -- only ever seeded with NUMBER/DECIMAL. The "Add test case" dropdown filters on the column's exact
@@ -500,3 +526,13 @@ SET json = JSON_REMOVE(
   '$.status')
 WHERE jsonSchema = 'contextMemory'
   AND JSON_CONTAINS_PATH(json, 'one', '$.status');
+
+-- transitive-lineage-closure stores every ancestor/descendant pair, which grows quadratically with
+-- lineage depth, so it now ships disabled. Turn off rows that pre-release builds seeded as enabled.
+UPDATE rdf_inference_rule
+SET json = JSON_SET(json, '$.enabled', CAST('false' AS JSON)),
+    dirty = TRUE,
+    dirtyVersion = dirtyVersion + 1
+WHERE name = 'transitive-lineage-closure'
+  AND systemRule = TRUE
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.enabled')) = 'true';

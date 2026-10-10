@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { ThemePreference } from '../../../../../../context/UntitledUIThemeProvider/theme-provider.interface';
+import { languageSelectOptions } from '../../../../../../utils/i18next/i18nextUtil';
 
-.tier-widget-popover {
-  width: 350px !important;
-}
+export const THEME_OPTIONS: { id: ThemePreference; labelKey: string }[] = [
+  { id: 'light', labelKey: 'label.light' },
+  { id: 'dark', labelKey: 'label.dark' },
+  { id: 'system', labelKey: 'label.system' },
+];
+
+export const LANGUAGE_ITEMS = languageSelectOptions.map(({ key, label }) => ({
+  id: key,
+  label,
+}));

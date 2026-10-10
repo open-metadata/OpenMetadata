@@ -167,6 +167,25 @@ CREATE TABLE IF NOT EXISTS rdf_inference_rule (
   KEY rdf_inference_rule_dirty_index (dirty, deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- A materialization run clears a rule's dirty flag only if dirtyVersion still holds the value the
+-- run read, so rule edits and graph writes that land during the run stay pending.
+SET @rdf_inference_rule_dirty_version_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_inference_rule'
+        AND column_name = 'dirtyVersion'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_inference_rule ADD COLUMN dirtyVersion bigint unsigned NOT NULL DEFAULT 0'
+  )
+);
+PREPARE rdf_inference_rule_dirty_version_stmt FROM @rdf_inference_rule_dirty_version_ddl;
+EXECUTE rdf_inference_rule_dirty_version_stmt;
+DEALLOCATE PREPARE rdf_inference_rule_dirty_version_stmt;
+
 ALTER TABLE entity_relationship ADD COLUMN relationshipId varchar(36) DEFAULT NULL;
 
 ALTER TABLE entity_relationship ADD COLUMN relationshipTypeId varchar(36) DEFAULT NULL;

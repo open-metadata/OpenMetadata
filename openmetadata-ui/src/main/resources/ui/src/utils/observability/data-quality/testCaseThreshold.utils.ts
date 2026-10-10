@@ -26,6 +26,8 @@ const OPERATOR_PARAM = 'operator';
 const STRATEGY_PARAM = 'strategy';
 
 export const DIMENSION_FAILURE_POLICY_PARAM = 'dimensionFailurePolicy';
+export const MIN_ROWS_PER_DIMENSION_PARAM = 'minRowsPerDimension';
+const ANY_DIMENSION_POLICY = 'ANY_DIMENSION';
 const MATCH_ENUM_PARAM = 'matchEnum';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
@@ -198,18 +200,49 @@ const DIMENSION_FAILURE_POLICY_LABEL_KEYS: Record<string, string> = {
 };
 
 /**
- * Drops `dimensionFailurePolicy` from the submitted params of a test case that
- * has no dimension columns: it only rolls dimension groups up, and the form
- * hides it there, so a value left over from an earlier selection must not be
- * saved where nobody can see or change it.
+ * Whether `minRowsPerDimension` can change the test case status. Mirrors
+ * ingestion's `get_min_rows_per_dimension`: nothing rolls up under
+ * `OVERALL_ONLY`, and an `ABSOLUTE` threshold compares the same violation
+ * count whatever the group size, so the minimum is ignored in both cases.
  */
-export const omitDimensionFailurePolicy = <T extends object>(
+export const isMinRowsPerDimensionApplicable = (
+  isDimensionalTest: boolean,
+  policy: unknown,
+  unit: unknown
+): boolean =>
+  isDimensionalTest &&
+  unwrapSelectValue(policy) === ANY_DIMENSION_POLICY &&
+  unwrapSelectValue(unit) === ThresholdUnit.Percentage;
+
+/**
+ * Drops the dimension roll-up params the form hides from the submitted
+ * params: both on a test case without dimension columns, and
+ * `minRowsPerDimension` wherever it does not apply. A value left over from an
+ * earlier selection must not be saved where nobody can see or change it.
+ */
+export const omitInapplicableDimensionParams = <T extends object>(
   params: T | undefined,
   isDimensionalTest: boolean
-): T | undefined =>
-  isDimensionalTest || !params
+): T | undefined => {
+  if (!params) {
+    return params;
+  }
+  if (!isDimensionalTest) {
+    return omit(params, [
+      DIMENSION_FAILURE_POLICY_PARAM,
+      MIN_ROWS_PER_DIMENSION_PARAM,
+    ]) as T;
+  }
+  const values = params as Record<string, unknown>;
+
+  return isMinRowsPerDimensionApplicable(
+    true,
+    values[DIMENSION_FAILURE_POLICY_PARAM],
+    values[THRESHOLD_UNIT_PARAM]
+  )
     ? params
-    : (omit(params, DIMENSION_FAILURE_POLICY_PARAM) as T);
+    : (omit(params, MIN_ROWS_PER_DIMENSION_PARAM) as T);
+};
 
 export const getThresholdTestSemantic = (
   definitionName: string | undefined

@@ -52,7 +52,19 @@ class InferenceRuleStarterPackTest {
   }
 
   @Test
-  @DisplayName("load() rules are the expected named starter pack and are all enabled")
+  @DisplayName("Only the all-pairs lineage closure ships disabled")
+  void onlyTheAllPairsLineageClosureShipsDisabled() {
+    final List<String> disabled =
+        InferenceRuleStarterPack.load().stream()
+            .filter(rule -> Boolean.FALSE.equals(rule.getEnabled()))
+            .map(InferenceRule::getName)
+            .toList();
+
+    assertEquals(List.of("transitive-lineage-closure"), disabled);
+  }
+
+  @Test
+  @DisplayName("load() rules are the expected named starter pack")
   void loadReturnsExpectedNamedRules() {
     List<InferenceRule> rules = InferenceRuleStarterPack.load();
 

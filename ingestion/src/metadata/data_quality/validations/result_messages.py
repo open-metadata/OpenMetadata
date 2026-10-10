@@ -368,15 +368,45 @@ def dimension_rollup_sentence(failed_groups: list[str], listed: int = 5) -> str:
         str: e.g. "1 dimension group failed (country=Spain), and the ANY_DIMENSION policy fails
              the test case when any group fails."
     """
-    named = ", ".join(failed_groups[:listed])
-    if len(failed_groups) > listed:
-        named = f"{named} and {len(failed_groups) - listed} more"
-    groups = "dimension group" if len(failed_groups) == 1 else "dimension groups"
-
     return (
-        f"{len(failed_groups)} {groups} failed ({named}), and the ANY_DIMENSION policy fails the "
-        "test case when any group fails."
+        f"{_count_groups(failed_groups)} failed ({_name_groups(failed_groups, listed)}), and the "
+        "ANY_DIMENSION policy fails the test case when any group fails."
     )
+
+
+def excluded_dimensions_sentence(failed_groups: list[str], min_rows: float, listed: int = 5) -> str:
+    """Name the failing groups `minRowsPerDimension` kept out of the `ANY_DIMENSION` roll-up.
+
+    Their own status still says they failed, so without this the test case status contradicts the
+    groups reported under it.
+
+    Args:
+        failed_groups: dimension keys of the failing groups below the minimum, e.g. "country=Spain"
+        min_rows: rows a group needs to take part in the roll-up
+        listed: how many of them to name before summarising the rest
+
+    Returns:
+        str: e.g. "1 dimension group failed with fewer than 30 rows (country=Andorra), below the
+             minRowsPerDimension the ANY_DIMENSION policy rolls up, so it does not fail the test
+             case."
+    """
+    pronoun = "it does" if len(failed_groups) == 1 else "they do"
+    return (
+        f"{_count_groups(failed_groups)} failed with fewer than {min_rows:g} rows "
+        f"({_name_groups(failed_groups, listed)}), below the minRowsPerDimension the ANY_DIMENSION "
+        f"policy rolls up, so {pronoun} not fail the test case."
+    )
+
+
+def _count_groups(groups: list[str]) -> str:
+    return f"{len(groups)} {'dimension group' if len(groups) == 1 else 'dimension groups'}"
+
+
+def _name_groups(groups: list[str], listed: int) -> str:
+    named = ", ".join(groups[:listed])
+    if len(groups) > listed:
+        named = f"{named} and {len(groups) - listed} more"
+    return named
 
 
 def unevaluated_dimensions_sentence(dimension_columns: list[str]) -> str:
