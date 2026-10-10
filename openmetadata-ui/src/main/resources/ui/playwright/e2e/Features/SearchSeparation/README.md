@@ -21,6 +21,7 @@ pass fails and the offending facet is named in the assertion message.
 ```ts
 import { test } from '../../../support/fixtures/base';
 import { MyEntityClass } from '../../../support/entity/MyEntityClass';
+import { MyServiceClass } from '../../../support/entity/service/MyServiceClass';
 import { registerFilterSeparationSuite } from './searchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -28,7 +29,8 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 registerFilterSeparationSuite({
   suiteName: 'MyEntity',
   reindexEntityType: 'myEntity', // matches ENTITY_PATH value
-  entityFactory: () => new MyEntityClass(),
+  // The service facet only isolates this entity if it owns its service.
+  entityFactory: () => new MyEntityClass({ service: new MyServiceClass() }),
 });
 ```
 
