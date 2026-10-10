@@ -176,6 +176,10 @@ CREATE TABLE IF NOT EXISTS rdf_inference_rule (
 CREATE INDEX IF NOT EXISTS rdf_inference_rule_dirty_index
   ON rdf_inference_rule (dirty, deleted);
 
+-- A materialization run clears a rule's dirty flag only if dirtyVersion still holds the value the
+-- run read, so rule edits and graph writes that land during the run stay pending.
+ALTER TABLE rdf_inference_rule ADD COLUMN IF NOT EXISTS dirtyVersion BIGINT NOT NULL DEFAULT 0;
+
 ALTER TABLE entity_relationship
   ADD COLUMN IF NOT EXISTS relationshipId VARCHAR(36),
   ADD COLUMN IF NOT EXISTS relationshipTypeId VARCHAR(36);
@@ -528,6 +532,17 @@ ALTER TABLE announcement_entity DROP COLUMN IF EXISTS status;
 UPDATE announcement_entity
 SET json = json - 'status'
 WHERE json ->> 'status' IS NOT NULL;
+
+-- Reasoning results record the serving dataset they read. Every promotion assigns a new generation,
+-- even when it reuses a physical dataset name, so a result computed before it never passes for
+-- current. Servers assign one on startup to a pointer row created before this column existed.
+ALTER TABLE rdf_active_dataset ADD COLUMN IF NOT EXISTS generation VARCHAR(36);
+
+-- Highest live-write queue ID handed out, kept because processed rows are deleted. Writes to the
+-- serving graph made outside the queue take an ID too, so a reasoning result records how far the
+-- projection had got and is current only while no write has been given a higher ID since.
+ALTER TABLE rdf_projection_health
+  ADD COLUMN IF NOT EXISTS enqueuedWatermark BIGINT NOT NULL DEFAULT 0;
 
 -- A search that pins a memory anchor looks up the edges from the pinned ids into context memories
 -- (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). The existing fromId/relation index

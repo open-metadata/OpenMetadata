@@ -25,7 +25,6 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -152,7 +151,7 @@ public class RdfRepository {
   private final RdfStorageInterface materializationStorageService;
   private final JsonLdTranslator translator;
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
-  private final BiFunction<String, UUID, EntityInterface<?>> projectionEntityLoader;
+  private final RdfProjectionLoaders projectionLoaders;
   private final Cache<String, String> entityGraphCache =
       Caffeine.newBuilder()
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
@@ -181,7 +180,7 @@ public class RdfRepository {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.relationshipTypeResolverSupplier = RdfRepository::configuredRelationshipTypeResolver;
-    this.projectionEntityLoader = RdfRepository::loadProjectionEntity;
+    this.projectionLoaders = RdfProjectionLoaders.defaults();
     if (config.getEnabled() != null && config.getEnabled()) {
       final RdfStorageInterface configuredStorage = RdfStorageFactory.createStorage(config);
       this.datasetManager =
@@ -241,7 +240,7 @@ public class RdfRepository {
         storageService,
         translator,
         relationshipTypeResolverSupplier,
-        RdfRepository::loadProjectionEntity);
+        RdfProjectionLoaders.defaults());
   }
 
   RdfRepository(
@@ -249,7 +248,7 @@ public class RdfRepository {
       final RdfStorageInterface storageService,
       final JsonLdTranslator translator,
       final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier,
-      final BiFunction<String, UUID, EntityInterface<?>> projectionEntityLoader) {
+      final RdfProjectionLoaders projectionLoaders) {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.datasetManager = null;
@@ -257,7 +256,7 @@ public class RdfRepository {
     this.materializationStorageService = storageService;
     this.translator = translator;
     this.relationshipTypeResolverSupplier = relationshipTypeResolverSupplier;
-    this.projectionEntityLoader = projectionEntityLoader;
+    this.projectionLoaders = projectionLoaders;
   }
 
   static int resolveBulkEntityBatchSize(RdfConfiguration config) {
@@ -319,7 +318,7 @@ public class RdfRepository {
             : requireDatasetManager().buildStorage(new BuildTarget(rebuildId, dataset));
     final RdfRepository view =
         new RdfRepository(
-            config, storage, translator, relationshipTypeResolverSupplier, projectionEntityLoader);
+            config, storage, translator, relationshipTypeResolverSupplier, projectionLoaders);
     view.setAppendPayloadBudgetOverride(appendBudget);
     return view;
   }
@@ -482,7 +481,7 @@ public class RdfRepository {
   public void refreshEntity(final String entityType, final UUID entityId) {
     final EntityInterface<?> entity;
     try {
-      entity = projectionEntityLoader.apply(entityType, entityId);
+      entity = projectionLoaders.entityLoader().apply(entityType, entityId);
     } catch (EntityNotFoundException exception) {
       // A queued update can outlive a hard delete. Reconcile that tombstone instead of restoring
       // an obsolete snapshot or leaving an unrecoverable retry at the head of the queue.
@@ -492,14 +491,27 @@ public class RdfRepository {
     createOrUpdate(entity);
   }
 
-  private static EntityInterface<?> loadProjectionEntity(
-      final String entityType, final UUID entityId) {
-    return Entity.getEntity(
-        entityType,
-        entityId,
-        String.join(",", RdfIndexingFields.forEntityType(entityType)),
-        Include.ALL,
-        false);
+  /**
+   * Projects a lineage edge with the details stored for it now, including column lineage, so live
+   * edits and reindexing write the same triples.
+   */
+  public void refreshLineage(final EntityRelationship lineage) {
+    final LineageDetails details =
+        projectionLoaders
+            .lineageDetailsLoader()
+            .load(lineage.getFromId(), lineage.getToId())
+            .orElse(null);
+    try {
+      addLineageWithDetails(
+          lineage.getFromEntity(),
+          lineage.getFromId(),
+          lineage.getToEntity(),
+          lineage.getToId(),
+          details);
+    } catch (RuntimeException exception) {
+      RdfProjectionHealth.markDegraded(exception);
+      throw exception;
+    }
   }
 
   public void createOrUpdate(EntityInterface<?> entity) {
@@ -1239,17 +1251,15 @@ public class RdfRepository {
               model.createResource("https://open-metadata.org/ontology/ColumnLineage"));
 
           if (colLineage.getFromColumns() != null) {
-            Property fromColumnProp =
-                model.createProperty("https://open-metadata.org/ontology/", "fromColumn");
             for (String fromCol : colLineage.getFromColumns()) {
-              colLineageResource.addProperty(fromColumnProp, fromCol);
+              addColumnLineageEndpoint(
+                  model, colLineageResource, ColumnLineageEndpoint.SOURCE, fromCol);
             }
           }
 
           if (colLineage.getToColumn() != null) {
-            colLineageResource.addProperty(
-                model.createProperty("https://open-metadata.org/ontology/", "toColumn"),
-                colLineage.getToColumn());
+            addColumnLineageEndpoint(
+                model, colLineageResource, ColumnLineageEndpoint.TARGET, colLineage.getToColumn());
           }
 
           if (colLineage.getFunction() != null) {
@@ -1312,6 +1322,39 @@ public class RdfRepository {
     }
 
     return model;
+  }
+
+  /**
+   * Column endpoints reference the same column IRIs the table projection mints, so rules can join
+   * column lineage with column tags; the FQN literal keeps string matching possible. Only the table
+   * projection describes the column itself, so deleting a lineage edge never leaves column triples.
+   */
+  private void addColumnLineageEndpoint(
+      final Model model,
+      final Resource columnLineage,
+      final ColumnLineageEndpoint endpoint,
+      final String columnFqn) {
+    final String columnUri = RdfUtils.columnUri(config.getBaseUri().toString(), columnFqn);
+    if (columnUri != null) {
+      columnLineage.addProperty(
+          model.createProperty(OPEN_METADATA_ONTOLOGY_NAMESPACE, endpoint.columnPredicate),
+          model.createResource(columnUri));
+      columnLineage.addProperty(
+          model.createProperty(OPEN_METADATA_ONTOLOGY_NAMESPACE, endpoint.fqnPredicate), columnFqn);
+    }
+  }
+
+  private enum ColumnLineageEndpoint {
+    SOURCE("fromColumn", "fromColumnFqn"),
+    TARGET("toColumn", "toColumnFqn");
+
+    private final String columnPredicate;
+    private final String fqnPredicate;
+
+    ColumnLineageEndpoint(final String columnPredicate, final String fqnPredicate) {
+      this.columnPredicate = columnPredicate;
+      this.fqnPredicate = fqnPredicate;
+    }
   }
 
   public record LineageEdgeData(

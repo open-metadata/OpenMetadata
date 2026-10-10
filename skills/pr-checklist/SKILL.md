@@ -31,7 +31,7 @@ Every PR must address each section below. Skip with an explicit "Not applicable 
 2. **Type of change** — exactly one box checked.
 3. **High-level design** — required for large PRs (new features, refactors, breaking changes, >5 files); skip for small bug fixes.
 4. **Tests** — use cases covered, unit tests + coverage %, backend integration tests, ingestion integration tests, Playwright (UI) tests, manual test steps.
-5. **UI screen recording / screenshots** — required for any UI change.
+5. **UI screen recording** — when creating a PR for a UI feature or feature task with UI impact, run the PR build in Docker with sample data and embed a verified GitHub-hosted video in the description. Use [ui-pr-recording](../ui-pr-recording/SKILL.md); other changes may explain N/A.
 6. **Checklist** — every box either checked or explicitly N/A.
 
 ## Step-by-Step Workflow
@@ -45,7 +45,7 @@ git log origin/main..HEAD --oneline
 ```
 
 Use the diff to classify the PR:
-- **Touches `openmetadata-ui/src/main/resources/ui/`** → UI change (recording required).
+- **Creating a PR for a UI feature or a feature task/subtask with UI impact** → Docker run + recording + GitHub upload required. Use task/issue intent and the diff, not just paths or labels. Standalone fixes, refactors, styling, localization, docs, tests and backend-only changes may explain N/A.
 - **Touches `openmetadata-service/`** + new/changed REST endpoints → backend integration tests required.
 - **Touches Java, a JSON schema, an index mapping, `bootstrap/sql/`, seed data or a pom** → the
   impacted Java tests must pass locally (Step 3). PR CI runs only the unit tests.
@@ -151,18 +151,35 @@ Ask the user (or recall from the conversation): "What did you do by hand to veri
 - Sample input + observed output
 - Negative-path check (error case, permission denial)
 
-### Step 5 — UI screen recording (UI changes only)
+### Step 5 — Docker recording when creating a UI feature/task PR
 
-If the PR touches the UI, the recording is **required**. Tell the user:
-- macOS built-in: `Cmd+Shift+5` → "Record Selected Portion"
-- Save as `.mov`, drag-and-drop into the PR description (GitHub uploads it inline)
-- Include before/after screenshots for visual changes (toolbar, layout, color)
+For a qualifying feature or feature task, use sections 1–3 of
+[ui-pr-recording](../ui-pr-recording/SKILL.md) to build and run the PR in Docker with sample data,
+capture the feature and verify the video. Stop with the local artifact and evidence; do not create
+or edit a PR here. Upload the recording in Step 7, after drafting the body in Step 6. Carry out
+the capture as part of the authorized PR work rather than merely asking the user for a recording.
+Include the recorded SHA, startup/health evidence, sample-data setup and observed outcomes.
+Screenshots are optional additions, not substitutes. Refresh evidence after UI/runtime changes.
 
-If the user can't attach the recording yet, mark the section `TODO: attach recording` and don't open the PR until it's added — or open as draft.
+If capture is blocked, finish independent work and carry the exact blocker into Step 6; any PR
+created in Step 7 must stay draft until the evidence is complete.
+Do not open a non-draft feature PR with a TODO, a local path or an unverified upload. Other changes
+may use an explicit N/A reason. This requirement is part of PR creation; it does not add a separate
+gate to implementation tasks, standalone reviews or routine PR-description updates.
 
 ### Step 6 — Draft the PR body
 
-Fill in `.github/pull_request_template.md` with everything gathered above. Show the user the full draft for review before creating.
+Fill in `.github/pull_request_template.md` with everything gathered above and save the complete
+body to a temporary Markdown file, such as `/tmp/pr-body.md`. For an existing PR, start from its
+current body and preserve uploaded attachment URLs, test results and unrelated content.
+Show the user the full draft for review before creating.
+
+For a verified local recording, include its evidence and a reference on its own paragraph under
+**UI screen recording**, using the same absolute path that Step 7 will pass to `--attach`:
+
+```markdown
+![](/absolute/path/to/recording.mp4)
+```
 
 - **List every test run locally.** CI on the PR no longer runs the integration tests or Playwright,
   so the description is the only record of what ran before review. The Java block names each class
@@ -175,29 +192,53 @@ Fill in `.github/pull_request_template.md` with everything gathered above. Show 
 
 ### Step 7 — Create or update the PR
 
-**New PR** (use a HEREDOC so formatting survives):
+Publish the prepared body here, after Step 6 and once creation/update is authorized. Use the
+existing authorization; do not ask again if the user already authorized the action. Check whether
+the branch already has a PR before creating one, including after a failed upload attempt.
+
+**New UI feature/task PR with a verified recording:** follow section 4 of
+[ui-pr-recording](../ui-pr-recording/SKILL.md) for upload verification and fallbacks. With a CLI
+that supports `--attach`, create the PR and upload the video in the same command:
+
 ```bash
-gh pr create --base main --title "Fixes #<issue>: <short title>" --body "$(cat <<'EOF'
-<filled-in template here>
-EOF
-)"
+gh pr create --base main --title 'Fixes 12345: UI feature' --draft \
+  --body-file /tmp/pr-body.md --attach /absolute/path/to/recording.mp4
+```
+
+Replace the example title and paths. If recording is blocked or the CLI lacks `--attach`, omit
+that flag and keep `--draft`; the body must state the remaining work. Use the recording skill's
+browser fallback when needed. Verify the saved body contains a working GitHub video URL and all
+other creation checks pass before marking the new PR ready.
+
+**Other new PR:**
+
+```bash
+gh pr create --base main --title 'Fixes 12345: Short title' --body-file /tmp/pr-body.md
 ```
 
 **New test-fix PR** (no issue): use a descriptive title and add `--label skip-pr-checks`.
 
-**Update existing PR**:
+**Update existing PR:** re-read its current body immediately before editing and merge any newer
+content into the prepared file, preserving uploaded video URLs. Replace the example PR number:
+
 ```bash
-gh pr edit <number> --body "$(cat <<'EOF'
-<filled-in template here>
-EOF
-)"
+gh pr view 12345 --json body,url,isDraft
+gh pr edit 12345 --body-file /tmp/pr-body.md
 ```
 
-Return the PR URL when done.
+When adding a new recording to an existing PR, include its matching local reference in the body
+file and add `--attach /absolute/path/to/recording.mp4` to `gh pr edit`. Reuse existing GitHub URLs
+for recordings already uploaded; do not replace them with local paths or upload them again.
+After creation or an upload, use the saved GitHub body for later edits, since the local draft may
+still contain the pre-upload path. Read the PR after a nonzero exit before retrying: a partial
+upload can still create or update it. Do not run `gh pr create` again if the PR exists.
+
+Verify the saved description and return the PR URL when done.
 
 ## Quality Gates Before Creating the PR
 
-Refuse to open the PR if any of these are missing — surface them to the user instead:
+Check these before publication. Refuse to open the PR if a required item is missing, except where
+the gate explicitly allows a draft with its remaining work stated:
 
 - [ ] Linked issue exists and is referenced as `Fixes #N`, or the PR is a test fix labelled `skip-pr-checks`
 - [ ] PR title matches `Fixes <issue-number>: <short explanation>` (a test fix gets a descriptive title instead)
@@ -206,7 +247,7 @@ Refuse to open the PR if any of these are missing — surface them to the user i
 - [ ] Tests section lists actual files and coverage numbers (not placeholders)
 - [ ] The description lists every test run locally (the Java block's classes plus every other suite
       run), and links the counterpart Collate PR when there is one
-- [ ] UI changes have a screen recording attached or marked as TODO with the PR opened as draft
+- [ ] When creating a PR for a UI feature or feature task: Docker build/health evidence, sample-data setup and a verified local recording are ready for Step 7; verify the GitHub-hosted video after upload and before marking ready. Incomplete evidence means draft. Other changes may explain N/A.
 - [ ] Java / schema / migration / pom changes: the `local-java-test-results` block reads PASSED (or
       NOT NEEDED) for the current commit — a FAILED block or no block means draft, not ready
 - [ ] Manual test steps are concrete and reproducible
