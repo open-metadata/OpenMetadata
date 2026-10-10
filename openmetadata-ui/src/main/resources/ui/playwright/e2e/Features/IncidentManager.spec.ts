@@ -41,6 +41,7 @@ import { waitForTaskResolveResponse } from '../../utils/task';
 import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
 import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
+import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
 
 let user1: UserClass;
 let user2: UserClass;
@@ -178,7 +179,7 @@ const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
     '[data-testid="edit-assignees"]:visible'
   );
   const reassignModal = page
-    .locator('.ant-modal-wrap:visible')
+    .locator('[role="dialog"]:visible')
     .filter({ hasText: /Re-?assign Task/i });
   const reassignMenuItem = page
     .locator('.task-action-dropdown:visible')
@@ -279,6 +280,9 @@ const reassignIncidentTask = async (
   await expect(assigneeOption).toBeVisible({ timeout: ACTION_TIMEOUT });
 
   await assigneeOption.click();
+  // The open combobox popover aria-hides the rest of the dialog, Save included.
+  await reassignModal.getByTestId('dialog-title').click();
+  await expect(assigneeOption).toBeHidden();
 
   const updateAssignee = waitForTaskResolveResponse(page);
 
@@ -313,8 +317,9 @@ const openIncidentResolveDialog = async (
   const actionTrigger = page.locator(
     '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
   );
+  // Menu popovers are role=dialog too; data-trigger tells them from modals.
   const resolveModal = page.locator(
-    '.ant-modal-wrap:visible .ant-modal-content'
+    '[role="dialog"]:not([data-trigger]):visible'
   );
   const modalTextareas = resolveModal.locator('textarea');
 
@@ -497,6 +502,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await disableAiAppMode(page);
+    await stubUserPreferencesAppMode(page, 'classic');
     await redirectToHomePage(page);
   });
 
@@ -1099,13 +1106,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       testCaseFqn: table1.testCasesResponseData[2]?.['fullyQualifiedName'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
-    const incidentDetailsRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
-    );
-    await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-    await incidentDetailsRes;
-
     const assignmentStartedAt = Date.now();
+    // assignIncident navigates to Incident Manager itself; a second sidebar
+    // click while already there lands on the half-open Observability submenu.
     await assignIncident({
       page,
       testCaseName: assigneeTestCase.testCaseName,
@@ -1132,14 +1135,18 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await afterAction();
     }
 
-    await page.click('[data-testid="select-assignee"] input');
-    const assigneeOption = page.locator(
-      `[data-testid="${assigneeTestCase.username}"]`
-    );
+    await page.getByTestId('select-assignee').click();
     await page
-      .getByTestId('select-assignee')
-      .locator('input')
+      .getByTestId('select-owner-tabs')
+      .getByRole('tab', { name: /Users/ })
+      .click();
+    await page
+      .getByTestId('owner-select-users-search-bar')
       .fill(assigneeTestCase.userDisplayName);
+    const assigneeOption = page
+      .getByTestId('owner-select-users-panel')
+      .getByTestId('owner-option')
+      .filter({ hasText: assigneeTestCase.userDisplayName });
     await expect(assigneeOption).toBeVisible();
 
     const assigneeFilterRes = page.waitForResponse(
@@ -1153,13 +1160,20 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       assigneeTestCase.userDisplayName
     );
 
-    const nonAssigneeFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
+    await expect(page.getByTestId('select-assignee')).toContainText(
+      assigneeTestCase.userDisplayName
     );
+    await page.getByTestId('select-assignee').click();
+    const nonAssigneeFilterRes = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/testCaseIncidentStatus/search/list') &&
+        !url.searchParams.has('assignee')
+      );
+    });
     await page
-      .getByTestId('select-assignee')
-      .getByTestId('autocomplete-selected-item')
-      .getByRole('button')
+      .getByTestId('owner-select-users-panel')
+      .getByTestId('remove-owner')
       .click();
     await nonAssigneeFilterRes;
 
@@ -1167,20 +1181,29 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const statusFilterRes = page.waitForResponse(
       '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseResolutionStatusType=Assigned*'
     );
-    await page.click(`[title="Assigned"]`);
+    await page.getByTestId('drop-down-menu').getByTestId('Assigned').click();
     await statusFilterRes;
 
     await expectIncidentTableRowsToContain(page, 'Assigned');
 
-    const nonStatusFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
-    );
-    await page.getByTestId('status-select').getByLabel('close-circle').click();
+    const nonStatusFilterRes = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/testCaseIncidentStatus/search/list') &&
+        !url.searchParams.has('testCaseResolutionStatusType')
+      );
+    });
+    await page.getByTestId('incident-clear-filters').click();
     await nonStatusFilterRes;
 
     await page.click('[data-testid="test-case-select"]');
-    const testCaseOption = page.locator(`[title="${testCase1}"]`);
-    await page.getByTestId('test-case-select').locator('input').fill(testCase1);
+    const testCaseOption = page
+      .getByTestId('drop-down-menu')
+      .getByTestId(table1.testCasesResponseData[0]?.['fullyQualifiedName']);
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId('search-input')
+      .fill(testCase1);
     await expect(testCaseOption).toBeVisible();
 
     const testCaseFilterRes = page.waitForResponse(
@@ -1196,20 +1219,43 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       page.locator(`[data-testid="test-case-${testCase1}"]`)
     ).toBeVisible();
 
-    const nonTestCaseFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
-    );
-    await page
-      .getByTestId('test-case-select')
-      .getByLabel('close-circle')
-      .click();
+    const nonTestCaseFilterRes = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/testCaseIncidentStatus/search/list') &&
+        !url.searchParams.has('testCaseFQN')
+      );
+    });
+    await page.getByTestId('incident-clear-filters').click();
     await nonTestCaseFilterRes;
 
-    await page.getByTestId('date-picker-menu').click();
-    const timeSeriesFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
+    await page.getByTestId('sort-field-dropdown-trigger').click();
+    const dateFieldResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*dateField=updatedAt*'
     );
-    await page.getByRole('menuitem', { name: 'Yesterday' }).click();
+    await page.getByTestId('drop-down-menu').getByTestId('updatedAt').click();
+    await dateFieldResponse;
+
+    await page
+      .getByRole('group', { name: 'Date Range', exact: true })
+      .getByRole('button')
+      .click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Today', exact: true })
+      .click();
+    const timeSeriesFilterRes = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/testCaseIncidentStatus/search/list') &&
+        url.searchParams.has('startTs') &&
+        url.searchParams.has('endTs')
+      );
+    });
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Apply', exact: true })
+      .click();
     await timeSeriesFilterRes;
 
     for (const testCase of table1.testCasesResponseData) {
@@ -1217,5 +1263,22 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
       ).toBeVisible();
     }
+    const clearFiltersResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/testCaseIncidentStatus/search/list') &&
+        [
+          'assignee',
+          'testCaseFQN',
+          'testCaseResolutionStatusType',
+          'startTs',
+          'endTs',
+          'dateField',
+        ].every((param) => !url.searchParams.has(param))
+      );
+    });
+    await page.getByTestId('incident-clear-filters').click();
+    await clearFiltersResponse;
+    await expect(page.getByTestId('incident-clear-filters')).not.toBeVisible();
   });
 });

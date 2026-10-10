@@ -1,4 +1,5 @@
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
+import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { DotsVertical } from '../../../icons';
@@ -34,6 +35,8 @@ interface DropdownItemProps extends AriaMenuItemProps {
   showCheckbox?: boolean;
   /** Size of that checkbox. */
   checkboxSize?: 'xs' | 'sm';
+  /** If true, shows a radio on the left to indicate single selection state. */
+  showRadio?: boolean;
 }
 
 const DropdownItem = ({
@@ -44,6 +47,7 @@ const DropdownItem = ({
   unstyled,
   showCheckbox,
   checkboxSize = 'sm',
+  showRadio,
   ...props
 }: DropdownItemProps) => {
   if (unstyled) {
@@ -86,6 +90,14 @@ const DropdownItem = ({
               isFocusVisible={state.isFocusVisible}
               isSelected={state.isSelected}
               size={checkboxSize}
+            />
+          )}
+
+          {showRadio && (
+            <RadioButtonBase
+              isDisabled={state.isDisabled}
+              isFocusVisible={state.isFocusVisible}
+              isSelected={state.isSelected}
             />
           )}
 

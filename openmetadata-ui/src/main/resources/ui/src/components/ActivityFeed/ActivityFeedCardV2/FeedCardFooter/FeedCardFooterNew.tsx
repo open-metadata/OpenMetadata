@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { AvatarStack } from '@openmetadata/ui-core-components';
-import { Button, Col, Row } from 'antd';
+import { AvatarStack, Box, Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
+import { PressEvent } from 'react-aria-components';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
@@ -35,6 +36,7 @@ function FeedCardFooterNew({
   isReply = false,
   isForFeedTab = false,
 }: Readonly<FeedCardFooterProps>) {
+  const { t } = useTranslation();
   const { showDrawer, updateReactions } = useActivityFeedProvider();
 
   const postLength = useMemo(
@@ -76,23 +78,37 @@ function FeedCardFooterNew({
     }
   }, [showDrawer, conversation]);
 
+  // The press must keep bubbling: the card container behind this footer
+  // selects the conversation on click, as it did when these were native
+  // buttons.
+  const handleRepliesPress = useCallback(
+    (event: PressEvent) => {
+      event.continuePropagation();
+      if (isForFeedTab) {
+        showReplies();
+      }
+    },
+    [isForFeedTab, showReplies]
+  );
+
   return (
-    <Row align="top" className={classNames({ 'm-y-md': isReply })}>
-      <Col
-        className="footer-container"
+    <Box align="start" className={classNames({ 'm-y-md': isReply })}>
+      <Box
+        className="footer-container tw:w-full"
         data-testid="feed-card-footer"
-        span={24}>
+        direction="col">
         <div>
-          <div className="flex items-center gap-2 w-full rounded-8">
+          <Box align="center" className="w-full rounded-8" gap={2}>
             {postLength > 0 && !isReply && (
               <AvatarStack
                 avatarSize={AVATAR_SIZE}
                 items={repliedUsers.map((user) => (
                   <Button
-                    className="p-0"
+                    noTextPadding
+                    className="p-0 tw:h-10! tw:border tw:border-transparent"
+                    color="tertiary"
                     key={user}
-                    type="text"
-                    onClick={isForFeedTab ? showReplies : undefined}>
+                    onPress={handleRepliesPress}>
                     <UserPopOverCard userName={user}>
                       <ProfilePicture name={user} width="20" />
                     </UserPopOverCard>
@@ -105,21 +121,28 @@ function FeedCardFooterNew({
 
             {!isReply && (
               <Button
-                className="p-0 flex-center"
+                aria-label={t('label.reply')}
+                className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
+                color="tertiary"
                 data-testid="reply-button"
-                type="text"
-                onClick={isForFeedTab ? showReplies : undefined}>
-                <ThreadIcon data-testid="reply-count" height={18} width={18} />
-              </Button>
+                iconLeading={
+                  <ThreadIcon
+                    data-testid="reply-count"
+                    height={18}
+                    width={18}
+                  />
+                }
+                onPress={handleRepliesPress}
+              />
             )}
             <Reactions
               reactions={(reply ?? conversation)?.reactions ?? []}
               onReactionSelect={onReactionUpdate ?? noop}
             />
-          </div>
+          </Box>
         </div>
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 }
 

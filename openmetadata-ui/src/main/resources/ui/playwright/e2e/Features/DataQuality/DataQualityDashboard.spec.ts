@@ -750,8 +750,11 @@ test.describe(
 
       await test.step('Reopen the incident as Acknowledged from the header', async () => {
         await page.click('[data-testid="edit-resolution-icon"]');
-        await page.click('[data-testid="test-case-resolution-status-type"]');
-        await page.click('[title="Ack"]');
+        await page
+          .getByTestId('test-case-resolution-status-type')
+          .getByRole('button')
+          .click();
+        await page.getByRole('option', { name: 'Ack', exact: true }).click();
 
         const reopenResponse = page.waitForResponse(
           (response) =>

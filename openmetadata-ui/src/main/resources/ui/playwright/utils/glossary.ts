@@ -1292,10 +1292,12 @@ export const createDescriptionTaskForGlossary = async (
     );
 
     await expect(
-      page.locator('[data-testid="select-assignee"] input')
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
-    const assigneeField = page.locator('[data-testid="select-assignee"] input');
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
@@ -1342,11 +1344,13 @@ export const createTagTaskForGlossary = async (
     );
 
     await expect(
-      page.locator('[data-testid="select-assignee"] input')
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
     // select assignee
-    const assigneeField = page.locator('[data-testid="select-assignee"] input');
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${value.assignee}**&index=user%2Cteam*`
@@ -1363,9 +1367,7 @@ export const createTagTaskForGlossary = async (
 
   if (addTag) {
     // select tags
-    const suggestTags = page.locator(
-      '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
-    );
+    const suggestTags = page.locator('[data-testid="tag-selector"] input');
     await suggestTags.click();
 
     const querySearchResponse = page.waitForResponse(

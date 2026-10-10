@@ -62,6 +62,7 @@ export interface FilterSelectProps {
    * or `md`, as tall as a Select, Input or Button of that size.
    */
   size?: 'sm' | 'md';
+  /** Classes for the trigger — the built-in one, or the wrapper of a custom one. */
   className?: string;
   commitMode?: FilterSelectCommitMode;
   'data-testid'?: string;
@@ -69,6 +70,8 @@ export interface FilterSelectProps {
   /** Muted helper line rendered under the search box. */
   helperText?: ReactNode;
   hideCounts?: boolean;
+  /** Disables the built-in trigger, e.g. in a read-only form. */
+  isDisabled?: boolean;
   isLoading?: boolean;
   isOpen?: boolean;
   /**
@@ -88,6 +91,12 @@ export interface FilterSelectProps {
   searchable?: boolean;
   selectionMode?: FilterSelectSelectionMode;
   /**
+   * Single select: mark rows with a radio instead of the brand-tinted selected
+   * row, plus a footer with the selection count and a Clear action. A picked
+   * radio row can't be unpicked by clicking it, so the footer is how it clears.
+   */
+  showRadio?: boolean;
+  /**
    * Tri-state header row that toggles every currently displayed value row
    * (the filtered list). The null option is an explicit choice and is not
    * included.
@@ -98,6 +107,14 @@ export interface FilterSelectProps {
    * always render regular.
    */
   typography?: 'regular' | 'medium';
+  /**
+   * Caller-supplied trigger (an edit button, a value pill, …) used in place of
+   * the built-in one; the popover anchors to it. It is not a menu trigger:
+   * clicking it opens the popover. `null` or `undefined` keeps the built-in one.
+   */
+  trigger?: ReactNode;
+  /** Labels the built-in trigger, e.g. by a form field's visible label. */
+  'aria-labelledby'?: string;
   /** Multi-selection echo on the input-variant trigger; default 'count'. */
   triggerDisplay?: FilterSelectTriggerDisplay;
   /** Leading icon on the button-variant trigger. */

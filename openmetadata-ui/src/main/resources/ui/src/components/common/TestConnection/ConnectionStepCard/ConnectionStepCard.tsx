@@ -10,14 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Collapse, Space, Tooltip } from 'antd';
+import {
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+  Button,
+  Divider,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronRight,
+  InfoCircle,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AttentionIcon } from '../../../../assets/svg/attention.svg';
 import { ReactComponent as FailIcon } from '../../../../assets/svg/fail-badge.svg';
@@ -28,8 +37,6 @@ import { TestConnectionStep } from '../../../../generated/entity/services/connec
 import { useClipboard } from '../../../../hooks/useClipBoard';
 import { requiredField } from '../../../../utils/EntityDisplayPureUtils';
 import './connection-step-card.less';
-
-const { Panel } = Collapse;
 
 interface ConnectionStepCardProp {
   testConnectionStep: TestConnectionStep;
@@ -83,46 +90,49 @@ const ConnectionStepStatusBadge = ({
 
   if (success) {
     return (
-      <div className="d-flex gap-2 align-center">
+      <Box align="center" gap={2}>
         <Typography className="success-status">
           {`${t('label.success')}`}
         </Typography>
-        <Icon
-          component={SuccessIcon}
+        <SuccessIcon
           data-testid="success-badge"
-          style={{ fontSize: '20px' }}
+          fill="currentColor"
+          height={20}
+          width={20}
         />
-      </div>
+      </Box>
     );
   }
 
   if (isMandatoryStepsFailing) {
     return (
-      <div className="d-flex gap-2 align-center">
+      <Box align="center" gap={2}>
         <Typography className="failure-status">
           {`${t('label.failed')}`}
         </Typography>
-        <Icon
-          component={FailIcon}
+        <FailIcon
           data-testid="fail-badge"
-          style={{ fontSize: '20px' }}
+          fill="currentColor"
+          height={20}
+          width={20}
         />
-      </div>
+      </Box>
     );
   }
 
   if (isNonMandatoryStepsFailing) {
     return (
-      <div className="d-flex gap-2 align-center">
+      <Box align="center" gap={2}>
         <Typography className="warning-status">
           {`${t('label.attention')}`}
         </Typography>
-        <Icon
-          component={AttentionIcon}
+        <AttentionIcon
           data-testid="warning-badge"
-          style={{ fontSize: '20px' }}
+          fill="currentColor"
+          height={20}
+          width={20}
         />
-      </div>
+      </Box>
     );
   }
 
@@ -154,14 +164,6 @@ const ConnectionStepCard = ({
 
   const { onCopyToClipBoard } = useClipboard(logs ?? '');
 
-  const handleCopyToClipBoard = (
-    event: React.MouseEvent<HTMLButtonElement, MouseEvent>
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onCopyToClipBoard();
-  };
-
   return (
     <div
       className={classNames('connection-step-card', {
@@ -175,8 +177,8 @@ const ConnectionStepCard = ({
           failure: isMandatoryStepsFailing,
           warning: isNonMandatoryStepsFailing,
         })}>
-        <Space className="w-full justify-between">
-          <Space>
+        <Box align="center" className="tw:w-full" gap={2} justify="between">
+          <Box align="center" gap={2}>
             <Typography className="text-body text-600 tw:text-primary">
               {testConnectionStep.mandatory
                 ? requiredField(testConnectionStep.name, true)
@@ -184,11 +186,11 @@ const ConnectionStepCard = ({
             </Typography>
             <Tooltip
               placement="bottom"
-              showArrow={false}
-              title={testConnectionStep.description}>
-              <InfoCircleOutlined />
+              title={testConnectionStep.description}
+              triggerClassName="tw:flex">
+              <InfoCircle className="tw:size-3.5" />
             </Tooltip>
-          </Space>
+          </Box>
           <ConnectionStepStatusBadge
             isMandatoryStepsFailing={isMandatoryStepsFailing}
             isNonMandatoryStepsFailing={isNonMandatoryStepsFailing}
@@ -196,7 +198,7 @@ const ConnectionStepCard = ({
             isTestingConnection={isTestingConnection}
             success={success}
           />
-        </Space>
+        </Box>
       </div>
       {(isMandatoryStepsFailing ||
         isNonMandatoryStepsFailing ||
@@ -208,22 +210,29 @@ const ConnectionStepCard = ({
           {testConnectionStepResult?.errorLog && (
             <>
               <Divider className="connection-step-card-content-divider" />
-              <Collapse ghost>
-                <Panel
-                  className="connection-step-card-content-logs"
-                  data-testid="lazy-log"
-                  extra={
-                    <Tooltip title={t('message.copy-to-clipboard')}>
-                      <Button
-                        className="flex-center bg-white"
-                        data-testid="query-entity-copy-button"
-                        icon={<CopyIcon height={16} width={16} />}
-                        onClick={handleCopyToClipBoard}
-                      />
-                    </Tooltip>
-                  }
-                  header={t('label.show-log-plural')}
-                  key="show-log">
+              <AccordionItem
+                className="connection-step-card-content-logs tw:bg-transparent"
+                data-testid="lazy-log">
+                <Box align="center" gap={3}>
+                  <AccordionHeader
+                    className="tw:min-w-0 tw:flex-1 tw:justify-start tw:p-0 tw:font-normal tw:text-link tw:hover:bg-transparent"
+                    showChevron={false}>
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="tw:size-3 tw:shrink-0 tw:transition-transform tw:group-data-expanded/item:rotate-90"
+                    />
+                    {t('label.show-log-plural')}
+                  </AccordionHeader>
+                  <Button
+                    aria-label={t('message.copy-to-clipboard')}
+                    color="secondary"
+                    data-testid="query-entity-copy-button"
+                    iconLeading={<CopyIcon height={16} width={16} />}
+                    tooltip={t('message.copy-to-clipboard')}
+                    onPress={() => onCopyToClipBoard()}
+                  />
+                </Box>
+                <AccordionPanel className="tw:border-t-0 tw:pt-1 tw:pr-4 tw:pb-0 tw:pl-6">
                   <LazyLog
                     caseInsensitive
                     enableSearch
@@ -232,8 +241,8 @@ const ConnectionStepCard = ({
                     height={300}
                     text={logs}
                   />
-                </Panel>
-              </Collapse>
+                </AccordionPanel>
+              </AccordionItem>
             </>
           )}
         </div>

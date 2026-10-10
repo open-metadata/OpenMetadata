@@ -16,8 +16,8 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Input, Space, Tooltip } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Input, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -157,7 +157,13 @@ const TeamsHeadingLabel = ({
           value={heading}
           onChange={(e) => setHeading(e.target.value)}
         />
-        <Space className="flex-none" data-testid="buttons" size={4}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal flex-none"
+          data-testid="buttons"
+          gap={1}
+          itemClassName="layout-space-item">
           <Button
             className="rounded-4 text-sm p-xss"
             data-testid="cancelAssociatedTag"
@@ -174,7 +180,7 @@ const TeamsHeadingLabel = ({
             onMouseDown={onHeadingSave}>
             <CheckOutlined />
           </Button>
-        </Space>
+        </Box>
       </div>
     ) : (
       <>

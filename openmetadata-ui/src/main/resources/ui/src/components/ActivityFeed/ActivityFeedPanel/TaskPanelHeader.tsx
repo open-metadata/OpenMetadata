@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,8 +45,8 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
 
   return (
     <div className={classNames('feed-panel-header', className)}>
-      <Space className="w-full justify-between">
-        <Space direction="vertical" size={0}>
+      <Box align="center" className="w-full" gap={2} justify="between">
+        <Box direction="col">
           <Typography className="font-semibold text-md">
             {`#${getTaskDisplayId(task.taskId)} `}
             {t(taskTypeLabel)}
@@ -53,8 +56,8 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
               {getEntityName(task.about)}
             </Typography>
           )}
-        </Space>
-        <Space>
+        </Box>
+        <Box align="center" gap={2}>
           <Typography
             className={classNames('task-status-badge', {
               open: isOpen,
@@ -64,15 +67,17 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
             {task.status}
           </Typography>
           {onCancel && (
-            <Button
+            <ButtonUtility
+              aria-label={t('label.close')}
+              color="tertiary"
               data-testid="close-drawer-button"
-              icon={<CloseOutlined />}
-              type="text"
+              icon={XClose}
+              size="xs"
               onClick={onCancel}
             />
           )}
-        </Space>
-      </Space>
+        </Box>
+      </Box>
     </div>
   );
 };

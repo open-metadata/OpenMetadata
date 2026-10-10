@@ -1,7 +1,9 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.time.Duration;
@@ -25,10 +27,13 @@ import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.system.Stats;
+import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
@@ -92,6 +97,34 @@ public class DataContractValidationAppIT {
         "The second run must still check the Data Product's rule the asset breaks");
   }
 
+  @Test
+  void successRunStatsIncludeTheDataProductPhaseTwoMaterialization(TestNamespace ns) {
+    assumeFalse(TestSuiteBootstrap.isK8sEnabled(), "App trigger needs the embedded scheduler");
+
+    assetOfDataProductWithContract(ns, EntityStatus.APPROVED);
+    int existingContracts = SdkClients.adminClient().dataContracts().list().getTotal();
+
+    AppRunRecord run = runApp();
+    assertEquals(AppRunRecord.Status.SUCCESS, run.getStatus(), "run should succeed");
+
+    Stats stats = run.getSuccessContext().getStats();
+    assertNotNull(stats, "success context must carry stats");
+    StepStats jobStats = stats.getJobStats();
+    assertNotNull(jobStats, "stats must carry job stats");
+    int processed = jobStats.getSuccessRecords() + jobStats.getFailedRecords();
+
+    assertTrue(
+        processed >= existingContracts + 1,
+        "SUCCESS stats must include the Phase 2 materialization of the inherited contract (Phase 1"
+            + " validates "
+            + existingContracts
+            + " contracts, so processed must be >= "
+            + (existingContracts + 1)
+            + ", got "
+            + processed
+            + ")");
+  }
+
   /** A table in a Data Product whose contract requires one owner; the table has none. */
   private static Table assetOfDataProductWithContract(TestNamespace ns, EntityStatus status) {
     Domain domain =
@@ -126,7 +159,7 @@ public class DataContractValidationAppIT {
     return SdkClients.adminClient().tables().update(table.getId().toString(), withProduct);
   }
 
-  private static void runApp() {
+  private static AppRunRecord runApp() {
     Awaitility.await("previous " + APP + " run to finish")
         .atMost(RUN_TIMEOUT)
         .pollInterval(Duration.ofSeconds(1))
@@ -150,5 +183,6 @@ public class DataContractValidationAppIT {
         .pollInterval(Duration.ofSeconds(1))
         .ignoreExceptions()
         .until(() -> ReindexHelpers.freshRunIsTerminal(server, APP, triggeredAt));
+    return ReindexHelpers.fetchLatestRun(server, APP);
   }
 }

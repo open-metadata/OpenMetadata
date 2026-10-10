@@ -165,6 +165,12 @@ export * from './application/popover/popover';
 export * from './application/progress-steps/progress-steps';
 export { SlideoutMenu } from './application/slideout-menus/slideout-menu';
 export * from './application/table/table';
+export {
+  GridList,
+  GridListItem,
+  ListLayout,
+  Virtualizer,
+} from 'react-aria-components';
 export * from './application/tabs/tabs';
 export * from './application/toast/toast';
 export * from './application/toast/toast-provider';

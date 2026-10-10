@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { debounce, isEmpty } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
@@ -36,11 +34,13 @@ import { getTags } from '../../../rest/tagAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 
-export interface FetchedOption extends DefaultOptionType {
-  /** Plain name kept alongside the rich antd JSX label for renderer reuse. */
+export type FetchedOption = {
+  label: ReactNode;
+  value?: string;
+  /** Plain name kept alongside the rich JSX label for renderer reuse. */
   name?: string;
   subLabel?: string;
-}
+};
 
 /** The unset marker. It has no dimension entity of its own, so it is spelled out here. */
 const NO_DIMENSION_OPTION: FetchedOption = {
@@ -56,14 +56,14 @@ const withName = (option: { label: string; value: string }): FetchedOption => ({
 });
 
 const optionLabel = (name: string, fqn?: string, testId?: string) => (
-  <Space data-testid={testId ?? fqn} direction="vertical" size={0}>
+  <Box data-testid={testId ?? fqn} direction="col">
     {fqn && (
       <Typography className="text-xs" color="secondary">
         {fqn}
       </Typography>
     )}
     <Typography className="text-sm">{name}</Typography>
-  </Space>
+  </Box>
 );
 
 /**

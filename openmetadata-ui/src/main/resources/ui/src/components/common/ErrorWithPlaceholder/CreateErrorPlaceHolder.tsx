@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
@@ -47,22 +46,15 @@ const CreateErrorPlaceHolder = ({
   }
 
   return (
-    <div
+    <Box
+      align="center"
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm bg-white w-full'
+        'h-full border-default border-radius-sm tw:bg-surface w-full'
       )}
-      data-testid={`create-error-placeholder-${heading}`}>
-      <Box
-        inline
-        align="center"
-        className="layout-space w-full"
-        direction="col"
-        itemClassName="layout-space-item"
-        style={{
-          columnGap: 'var(--om-space-10)',
-          rowGap: 'var(--om-space-10)',
-        }}>
+      data-testid={`create-error-placeholder-${heading}`}
+      justify="center">
+      <Box align="center" className="tw:w-full tw:gap-2.5" direction="col">
         <AddPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
@@ -96,23 +88,18 @@ const CreateErrorPlaceHolder = ({
           )}
 
           {onClick && (
-            <Tooltip
-              placement="top"
-              title={!permission && t('message.admin-only-action')}>
-              <Button
-                ghost
-                className="p-x-lg"
-                data-testid={buttonId ?? 'add-placeholder-button'}
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={onClick}>
-                {t('label.add')}
-              </Button>
-            </Tooltip>
+            <Button
+              color="secondary-brand"
+              data-testid={buttonId ?? 'add-placeholder-button'}
+              iconLeading={Plus}
+              size="sm"
+              onPress={onClick}>
+              {t('label.add')}
+            </Button>
           )}
         </div>
       </Box>
-    </div>
+    </Box>
   );
 };
 

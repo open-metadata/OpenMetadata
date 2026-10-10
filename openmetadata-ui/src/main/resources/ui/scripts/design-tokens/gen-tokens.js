@@ -15,10 +15,9 @@
 /**
  * Regenerates the generated block of `src/styles/tokens.css`.
  *
- * Scans every CSS/LESS file once (without writing) so the token map records
- * which palette / legacy / off-scale / z-index / duration tokens the codebase
- * actually references, then writes the full upstream palette plus exactly those
- * project tokens between the @tokens:generated markers.
+ * Scans CSS/LESS values and token usages in styles and JavaScript/TypeScript,
+ * then writes the full upstream palette plus exactly those project tokens
+ * between the @tokens:generated markers.
  *
  * Run after `token-migrate.js`, or any time raw values change.
  */
@@ -39,7 +38,8 @@ const SKIP_DIRS = new Set([
 ]);
 const BEGIN = '/* @tokens:generated-begin';
 const END = '/* @tokens:generated-end */';
-const OM_USAGE_RE = /var\(\s*(--om-[\w-]+)/g;
+const OM_USAGE_RE =
+  /var\(\s*(--om-[\w-]+)|tw:[\w:!/-]+\((?:[\w-]+:)?(--om-[\w-]+)/g;
 
 function walk(dir, acc) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -48,7 +48,7 @@ function walk(dir, acc) {
       if (!SKIP_DIRS.has(entry.name)) {
         walk(full, acc);
       }
-    } else if (/\.(less|css)$/.test(entry.name)) {
+    } else if (/\.(less|css|tsx?|jsx?)$/.test(entry.name)) {
       acc.push(full);
     }
   }
@@ -82,11 +82,13 @@ function populateRegistry() {
   const usageNames = new Set();
   for (const file of files) {
     const text = fs.readFileSync(file, 'utf8');
-    processText(text, path.relative(STYLES_ROOT, file));
+    if (/\.(less|css)$/.test(file)) {
+      processText(text, path.relative(STYLES_ROOT, file));
+    }
     let m;
     OM_USAGE_RE.lastIndex = 0;
     while ((m = OM_USAGE_RE.exec(text))) {
-      usageNames.add(m[1]);
+      usageNames.add(m[1] || m[2]);
     }
   }
   const legacyValues = loadSidecar();

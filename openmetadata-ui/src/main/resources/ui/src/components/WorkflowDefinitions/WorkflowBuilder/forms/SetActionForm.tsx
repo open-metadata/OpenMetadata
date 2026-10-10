@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 
-import { Input, Select } from '@openmetadata/ui-core-components';
+import { Input, Label, Select } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
-import {
-  CERTIFICATION_CATEGORY,
-  TIER_CATEGORY,
-} from '../../../../constants/constants';
+import { TIER_CATEGORY } from '../../../../constants/constants';
 import {
   FieldOptions,
   FIELD_OPTIONS_DROPDOWN,
@@ -38,6 +35,7 @@ import {
   createNodeConfig,
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
+import Certification from '../../../Certification/Certification.component';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 import TagSelector from '../../../Tag/TagSelector/TagSelector';
 
@@ -61,6 +59,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
 }) => {
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();
+  const fieldValueLabelId = useId();
   const [formData, setFormData] = useState({
     displayName: '',
     description: '',
@@ -69,7 +68,6 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
     actionConditions: '',
   });
   const [fieldOptions, setFieldOptions] = useState<Record<string, string[]>>({
-    certification: [],
     tier: [],
     status: [],
   });
@@ -168,24 +166,6 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
     }
   }, [node]);
 
-  const fetchCertificationOptions = async () => {
-    try {
-      setIsLoadingOptions(true);
-      const response = await getTags({
-        limit: 1000,
-        parent: CERTIFICATION_CATEGORY,
-      });
-      const options = (response.data
-        ?.map((tag) => tag.fullyQualifiedName)
-        .filter(Boolean) || []) as string[];
-      setFieldOptions((prev) => ({ ...prev, certification: options }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoadingOptions(false);
-    }
-  };
-
   const fetchTierOptions = async () => {
     try {
       setIsLoadingOptions(true);
@@ -206,9 +186,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   };
 
   useEffect(() => {
-    if (formData.fieldName === FieldOptions.CERTIFICATION) {
-      fetchCertificationOptions();
-    } else if (formData.fieldName === FieldOptions.TIER) {
+    if (formData.fieldName === FieldOptions.TIER) {
       fetchTierOptions();
     }
   }, [formData.fieldName]);
@@ -218,7 +196,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   };
 
   const isSelectField = (field: string): boolean => {
-    return ['certification', 'tier', 'status'].includes(field);
+    return ['tier', 'status'].includes(field);
   };
 
   const handleSave = () => {
@@ -269,6 +247,24 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
           value={parseFieldValueToTags(formData.fieldValue)}
           onChange={handleTagsChange}
         />
+      );
+    }
+
+    if (formData.fieldName === FieldOptions.CERTIFICATION) {
+      return (
+        <div className="tw:flex tw:flex-col tw:gap-1.5">
+          <Label id={fieldValueLabelId}>{t('label.field-value')}</Label>
+          <Certification
+            permission
+            aria-labelledby={fieldValueLabelId}
+            currentCertificate={formData.fieldValue}
+            data-testid="field-value-select"
+            isDisabled={isFormDisabled}
+            onCertificationUpdate={(tag) =>
+              updateFormData('fieldValue', tag?.fullyQualifiedName ?? '')
+            }
+          />
+        </div>
       );
     }
 

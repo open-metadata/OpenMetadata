@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
@@ -60,32 +60,28 @@ function ActivityTagsFeed({ activity }: Readonly<ActivityTagsFeedProps>) {
   }, [activity.oldValue, activity.newValue]);
 
   return (
-    <Row gutter={[8, 8]}>
+    <Box direction="col" gap={2}>
       {!isEmpty(updatedTags) && (
-        <Col span={24}>
-          <Row align="middle" gutter={[12, 12]} wrap={false}>
-            <Col className="h-4">
-              <AddIcon height={16} width={16} />
-            </Col>
-            <Col>
-              <TagsViewer tags={updatedTags} />
-            </Col>
-          </Row>
-        </Col>
+        <Box align="center" gap={3}>
+          <div className="h-4">
+            <AddIcon height={16} width={16} />
+          </div>
+          <div>
+            <TagsViewer tags={updatedTags} />
+          </div>
+        </Box>
       )}
       {!isEmpty(previousTags) && (
-        <Col span={24}>
-          <Row align="middle" gutter={[12, 12]} wrap={false}>
-            <Col className="h-4">
-              <DeletedIcon height={14} width={14} />
-            </Col>
-            <Col>
-              <TagsViewer tags={previousTags} />
-            </Col>
-          </Row>
-        </Col>
+        <Box align="center" gap={3}>
+          <div className="h-4">
+            <DeletedIcon height={14} width={14} />
+          </div>
+          <div>
+            <TagsViewer tags={previousTags} />
+          </div>
+        </Box>
       )}
-    </Row>
+    </Box>
   );
 }
 

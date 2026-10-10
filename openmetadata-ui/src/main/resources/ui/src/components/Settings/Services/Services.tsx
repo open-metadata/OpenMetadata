@@ -12,12 +12,13 @@
  */
 
 import {
+  Box,
   Button,
   EmptyPlaceholder,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
@@ -555,12 +556,18 @@ const Services = ({ serviceName }: ServicesProps) => {
   };
 
   return (
-    <Row
-      className="justify-center"
+    <Grid
+      className="layout-row layout-grid justify-center"
       data-testid="services-container"
-      gutter={[16, 16]}>
-      <Col span={24}>
-        <Space className="w-full justify-between m-b-lg" data-testid="header">
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-between m-b-lg"
+          data-testid="header"
+          gap={2}
+          itemClassName="layout-space-item">
           <PageHeader
             data={getServicePageHeader()}
             learningPageId={LEARNING_PAGE_IDS.SERVICES}
@@ -592,9 +599,9 @@ const Services = ({ serviceName }: ServicesProps) => {
               )}
             </Tooltip>
           )}
-        </Space>
-      </Col>
-      <Col span={24}>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
           customPaginationProps={customPaginationTableProps}
@@ -617,8 +624,8 @@ const Services = ({ serviceName }: ServicesProps) => {
             onChange: handleTableChange,
           }}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

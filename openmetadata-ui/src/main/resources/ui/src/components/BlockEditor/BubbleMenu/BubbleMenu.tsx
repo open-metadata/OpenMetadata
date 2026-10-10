@@ -10,16 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 import { isNodeSelection, type Editor } from '@tiptap/core';
 import {
   BubbleMenu as CoreBubbleMenu,
   BubbleMenuProps as CoreBubbleMenuProps,
 } from '@tiptap/react';
-import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import { FC, useMemo } from 'react';
+import { FC, MouseEvent, useMemo } from 'react';
 import { ReactComponent as FormatBoldIcon } from '../../../assets/svg/ic-format-bold.svg';
 import { ReactComponent as FormatInlineCodeIcon } from '../../../assets/svg/ic-format-inline-code.svg';
 import { ReactComponent as FormatItalicIcon } from '../../../assets/svg/ic-format-italic.svg';
@@ -133,29 +132,31 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
       shouldShow={handleShouldShow}>
       {menuList.map(
         ({ icon: Icon, ariaLabel, className, command, isActive }) => (
-          <Tooltip key={ariaLabel} title={ariaLabel}>
-            <Button
-              aria-label={ariaLabel}
-              className={classNames('p-0', className, {
-                'is-format-active': isActive(),
-              })}
-              type="text"
-              onMouseDown={(e) => {
-                // To prevent losing focus from editor
-                // The mouseDown event fires before the click event and before focus changes,
-                // so we can intercept it and prevent the default focus behavior.
-                e.preventDefault();
-                command();
-              }}>
-              {isString(Icon) ? (
+          <ButtonUtility
+            aria-label={ariaLabel}
+            className={classNames('p-0 tw:h-8', className, {
+              'is-format-active': isActive(),
+            })}
+            color="tertiary"
+            icon={
+              isString(Icon) ? (
                 <Typography as="article" className="format-label">
                   {Icon}
                 </Typography>
               ) : (
                 <Icon className="d-flex " height={24} width={24} />
-              )}
-            </Button>
-          </Tooltip>
+              )
+            }
+            key={ariaLabel}
+            tooltip={ariaLabel}
+            onMouseDown={(e: MouseEvent) => {
+              // To prevent losing focus from editor
+              // The mouseDown event fires before the click event and before focus changes,
+              // so we can intercept it and prevent the default focus behavior.
+              e.preventDefault();
+              command();
+            }}
+          />
         )
       )}
     </CoreBubbleMenu>

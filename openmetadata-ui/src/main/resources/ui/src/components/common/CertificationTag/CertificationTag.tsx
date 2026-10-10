@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -61,8 +60,9 @@ const CertificationTag = ({
 
     return (
       <Tooltip
+        excludeTriggerFromTabOrder
         title={getTagTooltip(name, certification.tagLabel.description)}
-        trigger="hover">
+        triggerClassName="tw:inline-flex">
         <Link
           className={classNames('d-flex items-center tw:leading-0', {
             'certification-tag-with-name  gap-1': showName,
@@ -73,10 +73,12 @@ const CertificationTag = ({
           {imageItem}
           {showName && (
             <Typography
+              // The outer tooltip already shows the full name; a nested one
+              // would steal its hover.
+              ellipsis
               className={classNames('text-sm font-medium certification-text', {
                 [`${actualName.toLowerCase()}`]: Boolean(actualName),
-              })}
-              ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
+              })}>
               {name}
             </Typography>
           )}

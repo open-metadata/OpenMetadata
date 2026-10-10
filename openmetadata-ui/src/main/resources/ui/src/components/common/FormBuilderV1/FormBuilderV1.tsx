@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
@@ -25,7 +25,10 @@ import LayoutGridField from './fields/LayoutGridField';
 import { FormBuilderV1Props } from './FormBuilderV1.interface';
 import { CoreArrayFieldTemplate } from './templates/CoreArrayFieldTemplate';
 import { CoreFieldErrorTemplate } from './templates/CoreFieldErrorTemplate';
-import { CoreFieldTemplate } from './templates/CoreFieldTemplate';
+import {
+  CoreFieldTemplate,
+  FieldDocsContext,
+} from './templates/CoreFieldTemplate';
 import { CoreObjectFieldTemplate } from './templates/CoreObjectFieldTemplate';
 import { CoreWrapIfAdditionalTemplate } from './templates/CoreWrapIfAdditionalTemplate';
 import CoreCheckboxWidget from './widgets/CoreCheckboxWidget';
@@ -69,6 +72,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       onCancel,
       onSubmit,
       uiSchema,
+      fieldDocs,
       children,
       ...props
     },
@@ -129,52 +133,58 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
     );
 
     return (
-      <Form
-        {...props}
-        focusOnFirstError
-        noHtml5Validate
-        omitExtraData
-        className="rjsf no-header"
-        fields={mergedFields}
-        formData={localFormData}
-        idSeparator="/"
-        ref={ref}
-        schema={schema}
-        showErrorList={false}
-        templates={mergedTemplates}
-        transformErrors={transformErrors}
-        uiSchema={uiSchema}
-        validator={validator}
-        widgets={mergedWidgets}
-        onChange={handleFormChange}
-        onSubmit={onSubmit}>
-        {children}
-        {/* When hideFooter is true, the parent card renders the footer to span full width
-         * and keep the card's bottom border-radius visible during scroll. */}
-        {!hideFooter && (
-          <div className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1">
-            {!hideCancelButton && (
+      <FieldDocsContext.Provider value={fieldDocs}>
+        <Form
+          {...props}
+          focusOnFirstError
+          noHtml5Validate
+          omitExtraData
+          className="rjsf no-header"
+          fields={mergedFields}
+          formData={localFormData}
+          idSeparator="/"
+          ref={ref}
+          schema={schema}
+          showErrorList={false}
+          templates={mergedTemplates}
+          transformErrors={transformErrors}
+          uiSchema={uiSchema}
+          validator={props.validator ?? validator}
+          widgets={mergedWidgets}
+          onChange={handleFormChange}
+          onSubmit={onSubmit}>
+          {children}
+          {/* When hideFooter is true, the parent card renders the footer to span full width
+           * and keep the card's bottom border-radius visible during scroll. */}
+          {!hideFooter && (
+            <Box
+              className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1"
+              direction="row"
+              gap={2}
+              justify="end">
+              {!hideCancelButton && (
+                <Button
+                  color="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={handleCancel}>
+                  {cancelText ?? t('label.cancel')}
+                </Button>
+              )}
               <Button
-                color="secondary"
+                color="primary"
+                data-testid="submit-btn"
+                isDisabled={isSubmitting || isLoading || isSubmitDisabled}
                 size="sm"
-                type="button"
-                onClick={handleCancel}>
-                {cancelText ?? t('label.cancel')}
+                type="submit">
+                {isSubmitting
+                  ? t('label.submitting')
+                  : okText ?? t('label.submit')}
               </Button>
-            )}
-            <Button
-              color="primary"
-              data-testid="submit-btn"
-              isDisabled={isSubmitting || isLoading || isSubmitDisabled}
-              size="sm"
-              type="submit">
-              {isSubmitting
-                ? t('label.submitting')
-                : okText ?? t('label.submit')}
-            </Button>
-          </div>
-        )}
-      </Form>
+            </Box>
+          )}
+        </Form>
+      </FieldDocsContext.Provider>
     );
   }
 );

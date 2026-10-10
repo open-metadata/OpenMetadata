@@ -537,9 +537,9 @@ credentials, and network reachability before increasing retries.
 
 ## Inference
 
-Materialized inference is the production path. Set `RDF_MATERIALIZED_INFERENCE_ENABLED=true`, keep the asserted RDF rebuild current, and schedule `RdfInferenceApp`. Rules write to durable per-rule named graphs in Fuseki and expose dirty state, last materialization time, triple count, and error details through the inference status APIs.
+Materialized inference is the only inference path. Set `RDF_MATERIALIZED_INFERENCE_ENABLED=true`, keep the asserted RDF rebuild current, and schedule `RdfInferenceApp`. Rules write to durable per-rule named graphs in Fuseki and expose dirty state, last materialization time, triple count, and error details through the inference status APIs. SPARQL queries see that output when they request `inferenceLevel=custom`.
 
-Legacy in-process inference is bounded by `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` and refuses to copy a larger store into the OpenMetadata JVM. Keep the default bound unless a measured small deployment has enough heap. Use SPARQL 1.1 property paths for request-specific traversal; they execute inside Fuseki without copying the graph.
+OpenMetadata no longer runs reasoners in its own process. `RDF_INFERENCE_ENABLED`, `RDF_DEFAULT_INFERENCE_LEVEL`, and `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` are ignored, with a startup warning when `RDF_INFERENCE_ENABLED` is set, and SPARQL requests for `rdfs` or `owl` inference return `503`. Use SPARQL 1.1 property paths for request-specific traversal; they execute inside Fuseki without copying the graph.
 The complete-lineage endpoint intentionally does not impose a row limit on its property-path query.
 Size `RDF_REQUEST_TIMEOUT_MS`, Fuseki resources, and client response handling for the largest
 lineage graph operators can request. Semantic search is not an exhaustive traversal: each seed
