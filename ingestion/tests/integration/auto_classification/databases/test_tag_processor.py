@@ -147,7 +147,7 @@ def test_it_returns_the_expected_classifications(
         IsInstance(TagLabel)
         & HasAttributes(
             tagFQN=HasAttributes(root="PII.Sensitive"),
-            reason=Contains("Detected by `ContextAwareNhsRecognizer`", "Patterns matched:"),
+            reason=Contains("Detected by `NhsRecognizer`", "Patterns matched:"),
         ),
     ]
     assert dwh_x10_column.tags == [
@@ -178,7 +178,7 @@ def test_it_returns_the_expected_classifications(
         IsInstance(TagLabel)
         & HasAttributes(
             tagFQN=HasAttributes(root="PII.Sensitive"),
-            reason=Contains("Detected by `SanitizedCreditCardRecognizer`", "Patterns matched:"),
+            reason=Contains("Detected by `CreditCardRecognizer`", "Patterns matched:"),
         ),
     ]
     assert timestamp_column.tags == []
@@ -187,7 +187,7 @@ def test_it_returns_the_expected_classifications(
         IsInstance(TagLabel)
         & HasAttributes(
             tagFQN=HasAttributes(root="PII.NonSensitive"),
-            reason=Contains("Detected by `ValidatedDateRecognizer`", "Patterns matched:"),
+            reason=Contains("Detected by `DateRecognizer`", "Patterns matched:"),
         ),
     ]
     # SpacyRecognizer's DATE_TIME entity flags 4-digit year-like integers regardless of column
