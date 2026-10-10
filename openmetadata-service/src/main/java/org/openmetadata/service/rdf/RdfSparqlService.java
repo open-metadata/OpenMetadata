@@ -77,6 +77,7 @@ public final class RdfSparqlService {
     federationGuard.enforceUpdate(request);
     requireSingleWhereBearingOperation(request);
     repository.executeSparqlUpdate(sparql);
+    RdfUpdater.recordUntrackedWrite();
   }
 
   private static void requireSingleWhereBearingOperation(UpdateRequest request) {
