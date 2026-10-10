@@ -2191,6 +2191,30 @@ public class SystemResourceIT {
   }
 
   @Test
+  void test_callbackPost_treatsASamlTestLoginRelayStateAsATestNeverTheLiveHandler()
+      throws Exception {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Relies on the embedded server's live provider not completing a SAML test login");
+    // /callback is the default SAML ACS URL for new configs, so the IdP POSTs the SAMLResponse
+    // here with RelayState=omtest:<sessionId>. doPost must fork on the marker before the live
+    // handler, exactly as /api/v1/saml/acs does.
+    String callback = serverRoot() + "/callback";
+    String probe = UUID.randomUUID().toString();
+
+    HttpResponse<String> testLogin =
+        postForm(callback, "SAMLResponse=bm90LXNhbWw%3D&RelayState=omtest%3Aunknown-test");
+    assertEquals(200, testLogin.statusCode(), testLogin.body());
+    assertEquals(
+        TestLoginCallbackPage.CONTENT_SECURITY_POLICY,
+        testLogin.headers().firstValue("Content-Security-Policy").orElse(null));
+    assertTrue(
+        testLogin.headers().firstValue("Cache-Control").orElse("").contains("no-store"),
+        "The test login callback page must not be cacheable");
+    assertFalse(testLogin.body().contains(probe), "The page must carry nothing from the request");
+  }
+
+  @Test
   void test_getEntityRulesSettingByType() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
