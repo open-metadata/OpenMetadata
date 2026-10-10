@@ -29,13 +29,21 @@ interface ChangeColumnProps {
   isText: boolean;
 }
 
+// A description reads as the existing text and the one suggested in its place;
+// tags, owners and domains as what was there before and after.
+const COLUMN_TITLE_KEY = {
+  text: { before: 'label.existing', after: 'label.suggested' },
+  values: { before: 'label.before', after: 'label.after' },
+};
+
 // What was there reads recessed on a subtle surface; what replaced it sits on
 // the panel's own surface, its label a step darker. The padding leaves room
 // for the arrow on the rule between them.
 const COLUMN_TONE_CLASS: Record<ChangeTone, { column: string; title: string }> =
   {
     error: {
-      column: 'tw:bg-secondary_subtle tw:pt-3 tw:pr-4.5 tw:pb-3.5 tw:pl-3.5',
+      column:
+        'tw:bg-utility-gray-blue-50 tw:pt-3 tw:pr-4.5 tw:pb-3.5 tw:pl-3.5',
       title: 'tw:text-quaternary',
     },
     success: {
@@ -97,6 +105,7 @@ const ChangeColumn = ({ title, values, tone, isText }: ChangeColumnProps) => (
 const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
   const { t } = useTranslation();
   const { labelKey, before, after, isText } = change;
+  const titleKey = COLUMN_TITLE_KEY[isText ? 'text' : 'values'];
   const hasBoth = before.length > 0 && after.length > 0;
 
   return (
@@ -130,7 +139,7 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
         {before.length > 0 && (
           <ChangeColumn
             isText={isText}
-            title={t('label.before')}
+            title={t(titleKey.before)}
             tone="error"
             values={before}
           />
@@ -148,7 +157,7 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
         {after.length > 0 && (
           <ChangeColumn
             isText={isText}
-            title={t('label.after')}
+            title={t(titleKey.after)}
             tone="success"
             values={after}
           />
