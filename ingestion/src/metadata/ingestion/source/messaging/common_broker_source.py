@@ -44,6 +44,7 @@ from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
 )
+from metadata.ingestion.source.messaging.protobuf_decoder import ProtobufMessageDecoder
 from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
@@ -59,6 +60,7 @@ CONFLUENT_MAGIC_BYTE = 0
 CONFLUENT_HEADER_LENGTH = 5
 
 AVRO_DESERIALIZER_CACHE_SIZE = 100
+PROTOBUF_DECODER_CACHE_SIZE = 100
 
 
 def strip_confluent_framing(record: bytes) -> bytes:
@@ -100,6 +102,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         self.schema_registry_client = self.connection.schema_registry_client
         self.context.processed_schemas = {}
         self._avro_deserializers = LRUCache(maxsize=AVRO_DESERIALIZER_CACHE_SIZE)
+        # Merged Protobuf schema text per topic: the stored schema text lacks its references.
+        self._protobuf_schema_texts: dict[str, str] = {}
+        self._protobuf_decoders = LRUCache(maxsize=PROTOBUF_DECODER_CACHE_SIZE)
         if self.generate_sample_data:
             self.consumer_client = self.connection.consumer_client
 
@@ -146,6 +151,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     schema_text = merge_and_clean_protobuf_schema(
                         self._get_schema_text_with_references(schema=topic_schema)
                     )
+                    if schema_text:
+                        self._protobuf_schema_texts[topic_details.topic_name] = schema_text
                 schema_fields = load_parser_fn(topic_details.topic_name, schema_text)
 
                 topic.messageSchema = Topic(
@@ -295,14 +302,16 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
             else:
                 if messages:
+                    schema_text = self._protobuf_schema_texts.get(topic_name, topic_entity.messageSchema.schemaText)
                     for message in messages:
                         try:
                             value = message.value()
                             sample_data.append(
                                 self.decode_message(
                                     value,
-                                    topic_entity.messageSchema.schemaText,
+                                    schema_text,
                                     topic_entity.messageSchema.schemaType,
+                                    topic_name=topic_name,
                                 )
                             )
                         except Exception as exc:
@@ -316,7 +325,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
             )
 
-    def decode_message(self, record: Any, schema: str, schema_type: SchemaType):
+    def decode_message(self, record: Any, schema: str, schema_type: SchemaType, topic_name: str = ""):
         if not isinstance(record, (bytes, bytearray, memoryview)):
             return str(record)
         if schema_type == SchemaType.Avro:
@@ -333,8 +342,12 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 self._avro_deserializers[schema] = deserializer
             return str(deserializer(bytes(record), None))
         if schema_type == SchemaType.Protobuf:
-            logger.debug("Protobuf deserializing sample data is not supported")
-            return ""
+            # One decoder per schema: compiling it runs protoc.
+            decoder = self._protobuf_decoders.get((topic_name, schema))
+            if decoder is None:
+                decoder = ProtobufMessageDecoder(topic_name, schema)
+                self._protobuf_decoders[(topic_name, schema)] = decoder
+            return decoder(bytes(record))
         # Strict: a binary payload we cannot type (Avro with no registry configured)
         # must be skipped by the caller, not stored as mojibake.
         return strip_confluent_framing(bytes(record)).decode("utf-8")

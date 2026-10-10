@@ -1,7 +1,11 @@
+import json
+
 import pytest
 
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.workflow.metadata import MetadataWorkflow
+
+from .conftest import LOANS_RECORDS  # noqa: TID252
 
 
 def test_ingest_metadata(patch_passwords_for_db_services, run_workflow, ingestion_config, metadata_assertions):
@@ -37,6 +41,30 @@ def test_ingest_protobuf_schema_when_message_name_differs_from_topic(
         ("my_field2", "DOUBLE"),
         ("my_field3", "STRING"),
     ]
+
+
+def test_ingest_protobuf_sample_data(
+    patch_passwords_for_db_services,
+    run_workflow,
+    sample_data_ingestion_config,
+    metadata,
+    db_service,
+    protobuf_topic,
+):
+    run_workflow(MetadataWorkflow, sample_data_ingestion_config)
+
+    topic: Topic = metadata.get_by_name(
+        entity=Topic,
+        fqn=f"{db_service.fullyQualifiedName.root}.{protobuf_topic}",
+        nullable=False,
+    )
+    topic_with_sample_data = metadata.get_topic_sample_data(topic)
+
+    assert topic_with_sample_data is not None
+    assert topic_with_sample_data.sampleData is not None
+    raw_messages = topic_with_sample_data.sampleData.messages
+    assert all(raw_messages), f"Protobuf messages were not decoded: {raw_messages}"
+    assert [json.loads(message) for message in raw_messages] == LOANS_RECORDS
 
 
 @pytest.fixture(
