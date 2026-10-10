@@ -43,9 +43,10 @@ def test_execute_workflow_stops_when_execute_raises():
     RepeatedTimer thread and OM client don't leak and hang the process."""
     workflow = MagicMock()
     workflow.execute.side_effect = RuntimeError("execute boom")
+    config = _make_config()
 
     with pytest.raises(RuntimeError, match="execute boom"):
-        execute_workflow(workflow, _make_config())
+        execute_workflow(workflow, config)
 
     workflow.execute.assert_called_once()
     workflow.stop.assert_called_once()
@@ -64,9 +65,10 @@ def test_execute_workflow_stops_even_if_raise_from_status_raises():
     """Even if raise_from_status raises, stop() must already have run."""
     workflow = MagicMock()
     workflow.raise_from_status.side_effect = RuntimeError("status boom")
+    config = _make_config(raise_on_error=True)
 
     with pytest.raises(RuntimeError, match="status boom"):
-        execute_workflow(workflow, _make_config(raise_on_error=True))
+        execute_workflow(workflow, config)
 
     workflow.stop.assert_called_once()
 
