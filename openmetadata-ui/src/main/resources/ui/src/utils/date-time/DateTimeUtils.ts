@@ -96,9 +96,11 @@ export const getMappedTimeFormat = (
   timeFormat: '12h' | '24h'
 ): string => {
   if (timeFormat === '24h') {
-    // Only convert 12h tokens (h:mm a) to 24h tokens (HH:mm) when 24h is selected
-    return format.replace(/(h{1,2}):mm a/g, (_, h: string) =>
-      h.length === 2 ? 'HH:mm' : 'H:mm'
+    // Handle optional seconds and an optional space before the meridiem token
+    // (e.g., converts "h:mma" to "H:mm" and "hh:mm:ss a" to "HH:mm:ss")
+    return format.replace(
+      /\b(h{1,2})(:mm(?::ss)?)\s?a\b/g,
+      (_, h: string, rest: string) => `${h.length === 2 ? 'HH' : 'H'}${rest}`
     );
   }
 
