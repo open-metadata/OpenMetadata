@@ -26,6 +26,7 @@ import {
   updateGlossarySettings,
 } from '../../../rest/settingConfigAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 
 const QUERY_KEY = ['settings', SettingType.GlossarySettings];
 
@@ -49,6 +50,7 @@ const GlossarySettings = () => {
 
   return (
     <Box className="tw:p-6" data-testid="glossary-settings" direction="col">
+      <DocumentTitle title={t('label.glossary')} />
       <Card>
         <Card.Header title={t('label.glossary')} />
         <Card.Content>
