@@ -172,7 +172,7 @@ const QueryUsedByOtherTable = ({
         labelName: getEntityName(table),
       }));
 
-      setInitialOptions(uniqBy([...selectedValue, ...options], 'labelName'));
+      setInitialOptions(uniqBy([...selectedValue, ...options], 'value'));
     } catch (error) {
       setInitialOptions([]);
     } finally {
