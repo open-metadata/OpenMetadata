@@ -738,6 +738,7 @@
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
@@ -5119,6 +5120,7 @@
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
@@ -5431,6 +5433,7 @@
       "specs": [
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
@@ -7323,6 +7326,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/IncidentManager/IncidentManager.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainIncidentIsolation.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts"
       ]
@@ -9029,7 +9033,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/DatePickerMenu/DatePickerMenu.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/DataInsight.spec.ts"
       ]
