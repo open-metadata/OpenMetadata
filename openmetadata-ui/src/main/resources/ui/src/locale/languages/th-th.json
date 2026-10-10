@@ -3689,6 +3689,7 @@
     "allow-impersonation-help": "Allows this bot to act on behalf of users via the X-Impersonate-User header. Policies control who can be impersonated; by default, admin users and other bots are excluded. This can only be enabled when the bot is created.",
     "allow-user-to-login-via-sso": "อนุญาตให้ผู้ใช้เข้าสู่ระบบผ่าน SSO",
     "already-a-user": "เป็นผู้ใช้แล้วใช่ไหม?",
+    "already-assigned-to-task": "{{name}} ได้รับมอบหมายงานนี้อยู่แล้ว",
     "and-followed-owned-by-name": "และทีมที่คุณติดตามนั้นมีเจ้าของคือ {{userName}}",
     "announcement-action-description": "ตั้งค่าแบนเนอร์เพื่อแจ้งให้ทีมของคุณทราบเกี่ยวกับการบำรุงรักษา, การอัปเดต & การลบที่จะเกิดขึ้น",
     "announcement-created-successfully": "ประกาศถูกสร้างขึ้นสำเร็จ!",

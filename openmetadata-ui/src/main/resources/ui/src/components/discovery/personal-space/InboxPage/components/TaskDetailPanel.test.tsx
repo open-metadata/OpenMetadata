@@ -870,6 +870,33 @@ describe('TaskDetailPanel', () => {
     );
   });
 
+  // Clicking the current assignee clears the single-select picker; picking
+  // them again changes nothing. Either way the task stays as it is.
+  it.each([
+    ['picks the same assignee again', 'picker-save'],
+    ['clears the current assignee', 'picker-save-empty'],
+  ])('says who is already assigned when the reassign %s', async (_, button) => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        assignees: [{ id: 'u2', type: 'user', name: 'bob' }],
+        availableTransitions: [
+          { id: 'reassign', label: 'Reassign', targetStageId: 'assigned' },
+        ],
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId(button));
+    });
+
+    expect(mockResolveTask).not.toHaveBeenCalled();
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      'message.already-assigned-to-task'
+    );
+  });
+
   it('collects a comment before firing a requiresComment transition', async () => {
     const onResolved = jest.fn();
     mockGetTaskById.mockResolvedValue({

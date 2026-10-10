@@ -3689,6 +3689,7 @@
     "allow-impersonation-help": "Allows this bot to act on behalf of users via the X-Impersonate-User header. Policies control who can be impersonated; by default, admin users and other bots are excluded. This can only be enabled when the bot is created.",
     "allow-user-to-login-via-sso": "वापरकर्त्याला SSO द्वारे लॉगिन करण्याची परवानगी द्या",
     "already-a-user": "आधीच वापरकर्ता आहात?",
+    "already-assigned-to-task": "{{name}} आधीच या कार्यासाठी नियुक्त आहे.",
     "and-followed-owned-by-name": "आणि आपण अनुसरण करत असलेली टीम {{userName}} द्वारे मालकीची आहे",
     "announcement-action-description": "आपल्या टीमला आगामी देखभाल, अद्यतने आणि हटविण्याबद्दल माहिती देण्यासाठी बॅनर सेट करा.",
     "announcement-created-successfully": "घोषणा यशस्वीरित्या तयार केली!",
