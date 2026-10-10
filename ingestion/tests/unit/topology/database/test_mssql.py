@@ -28,6 +28,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
@@ -56,6 +57,7 @@ from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_FOREIGN_KEY,
     MSSQL_GET_INDEXED_VIEWS,
+    MSSQL_GET_STORED_PROCEDURES,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
@@ -690,6 +692,119 @@ class TestUpdateMssqlIschemaNames:
         """That index is what makes a view indexed, and nothing else must match."""
         assert "i.type = 1" in MSSQL_GET_INDEXED_VIEWS
         assert "i.is_unique = 1" in MSSQL_GET_INDEXED_VIEWS
+
+
+class TestMssqlClrStoredProcedures:
+    """CLR (assembly) stored procedures -- ``sys.objects.type = 'PC'`` -- have
+    no row in ``sys.sql_modules`` (their definition lives in
+    ``sys.assembly_modules``), so an INNER JOIN to ``sys.sql_modules`` silently
+    drops them from the catalogue. The stored-procedure query must LEFT JOIN
+    ``sys.sql_modules`` so CLR procedures survive with ``definition = NULL`` and
+    ``ROUTINE_BODY = 'EXTERNAL'``, which maps to ``Language.External``.
+
+    Regression guard for the data loss introduced when the 4000-char
+    truncation fix (PR #16002) swapped ``ROUTINE_DEFINITION`` for an INNER JOIN
+    to ``sys.sql_modules``.
+    """
+
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def setup_method(self, _method, test_connection):
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
+        self.mssql = MssqlSource.create(
+            mock_mssql_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+    def _setup_stored_procedure_context(self):
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.mssql.stored_procedure_desc_map = {}
+        self.mssql.encrypted_procedures_cache = {}
+
+    def test_get_stored_procedures_query_keeps_clr_procedures(self):
+        """The stored-procedure query must LEFT JOIN sys.sql_modules so CLR
+        procedures (sys.objects.type='PC', absent from sys.sql_modules) survive
+        with definition=NULL instead of being dropped by an INNER JOIN."""
+        assert "LEFT JOIN sys.sql_modules" in MSSQL_GET_STORED_PROCEDURES
+        # Every JOIN to sys.sql_modules must be a LEFT JOIN. A bare INNER JOIN
+        # would silently drop CLR (type PC) procedures which have no
+        # sys.sql_modules row. "LEFT JOIN sys.sql_modules" also contains the
+        # substring "JOIN sys.sql_modules", so equality proves each join is a
+        # LEFT join rather than an INNER one.
+        all_joins = MSSQL_GET_STORED_PROCEDURES.count("JOIN sys.sql_modules")
+        left_joins = MSSQL_GET_STORED_PROCEDURES.count("LEFT JOIN sys.sql_modules")
+        assert all_joins == left_joins
+
+    def test_get_stored_procedures_yields_clr_row_as_external(self):
+        """A CLR procedure surfaces from INFORMATION_SCHEMA.ROUTINES with
+        ROUTINE_BODY='EXTERNAL' and, thanks to the LEFT JOIN, definition=NULL.
+        The producer must parse and yield that row -- it must not be silently
+        dropped before reaching Python."""
+        self._setup_stored_procedure_context()
+        row = MagicMock()
+        row._asdict.return_value = {
+            "name": "sp_clr_proc",
+            "definition": None,
+            "language": "EXTERNAL",
+            "owner": None,
+        }
+
+        self.mssql.source_config.includeStoredProcedures = True
+        self.mssql.source_config.storedProcedureFilterPattern = None
+
+        mock_engine = MagicMock()
+        self.mssql.engine = mock_engine
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [row]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.mssql.get_stored_procedures())
+
+        assert len(results) == 1
+        assert results[0].name == "sp_clr_proc"
+        assert results[0].language == "EXTERNAL"
+        assert results[0].definition is None
+
+    def test_yield_stored_procedure_external_language_keeps_none_code(self):
+        """A CLR (EXTERNAL) stored procedure carries no T-SQL definition, so its
+        code is None and its language is Language.External -- the now-live
+        EXTERNAL arm of STORED_PROC_LANGUAGE_MAP. A CLR procedure is never
+        encrypted (OBJECTPROPERTY IsEncrypted is only true for T-SQL WITH
+        ENCRYPTION), so the encrypted branch must not substitute a placeholder
+        and code stays None."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = set()
+
+        sp = MssqlStoredProcedure(name="sp_clr_proc", language="EXTERNAL", definition=None)
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureCode.language == Language.External
+        assert results[0].storedProcedureCode.code is None
+
+    def test_yield_stored_procedure_external_language_not_substituted_by_encrypted_cache(self):
+        """An EXTERNAL procedure whose name is not in the encrypted cache keeps
+        code=None. This guards the boundary between the encrypted placeholder
+        path (T-SQL WITH ENCRYPTION) and the CLR path: a CLR procedure must
+        never pick up the encrypted-procedure placeholder."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        # The encrypted cache holds a *different* procedure name.
+        self.mssql.encrypted_procedures_cache[cache_key] = {"sp_encrypted_sql"}
+
+        sp = MssqlStoredProcedure(name="sp_clr_proc", language="EXTERNAL", definition=None)
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureCode.language == Language.External
+        assert results[0].storedProcedureCode.code is None
+        assert results[0].storedProcedureCode.code != (
+            "-- Unable to fetch code as this is an encrypted stored procedure"
+        )
 
 
 class MssqlIdentityColumnTest(TestCase):
