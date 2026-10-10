@@ -11,6 +11,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -30,6 +34,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
+import org.slf4j.LoggerFactory;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Response;
@@ -141,7 +146,7 @@ class OpenSearchVectorServiceTest {
     setField("chunkIndexEnsured", true);
     // Participant: stagedChunkIndex (coordinator-only) stays null; the run-scoped target is
     // latched.
-    setField("participantStagedTarget", "participant_chunk_generation");
+    vectorService.latchParticipantStagedTarget("participant_chunk_generation");
     // Stale null discovery cache, fresh within TTL — must NOT win over the latch.
     setField("cachedSinkTarget", null);
     setField("cachedSinkTargetAt", System.currentTimeMillis());
@@ -170,7 +175,7 @@ class OpenSearchVectorServiceTest {
     when(mockEmbeddingClient.isAvailable()).thenReturn(true);
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
     setField("chunkIndexEnsured", true);
-    setField("participantStagedTarget", "latched_gen");
+    vectorService.latchParticipantStagedTarget("latched_gen");
     // A discovery cache holding a different value that would win if the latch weren't first.
     setField("cachedSinkTarget", "discovered_gen");
     setField("cachedSinkTargetAt", System.currentTimeMillis());
@@ -191,7 +196,7 @@ class OpenSearchVectorServiceTest {
   /**
    * Reproduces the original bug: on a participant JVM with no latch and a stale null discovery
    * cache within TTL, the mirror is skipped (no staged bulk write). The live write still lands in
-   * the live alias target. After the fix this skip is logged at WARN rather than silent, but the
+   * the live alias target. The skip is logged at DEBUG because no recreate may be running, but the
    * data outcome when the latch is absent remains: only the live index receives the chunks.
    */
   @Test
@@ -226,7 +231,7 @@ class OpenSearchVectorServiceTest {
     when(mockEmbeddingClient.isAvailable()).thenReturn(true);
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
     setField("chunkIndexEnsured", true);
-    setField("participantStagedTarget", "stale_latched_gen");
+    vectorService.latchParticipantStagedTarget("stale_latched_gen");
     vectorService.clearParticipantStagedTarget();
     setField("cachedSinkTarget", null);
     setField("cachedSinkTargetAt", System.currentTimeMillis());
@@ -252,7 +257,7 @@ class OpenSearchVectorServiceTest {
     when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
     setField("chunkIndexEnsured", true);
     setField("stagedChunkIndex", "coordinator_gen");
-    setField("participantStagedTarget", "participant_gen");
+    vectorService.latchParticipantStagedTarget("participant_gen");
     mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
 
     vectorService.updateEntityEmbeddings(
@@ -275,6 +280,35 @@ class OpenSearchVectorServiceTest {
         .withQuestion("Should keywords be upper case?")
         .withAnswer("Yes, use upper case keywords.")
         .withEntityStatus(ContextMemoryStatus.APPROVED);
+  }
+
+  @Test
+  void liveUpdateWithoutARecreateDoesNotWarnAboutMissingStagedChunks() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    Logger logger = (Logger) LoggerFactory.getLogger(OpenSearchVectorService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      vectorService.updateEntityEmbeddings(refreshableMemory(), "entityIndex");
+
+      assertEquals(1, capturedBulkTargets().size(), "the live chunk update must still be written");
+      assertTrue(
+          appender.list.stream()
+              .noneMatch(
+                  event ->
+                      event.getLevel().isGreaterOrEqual(Level.WARN)
+                          && event.getFormattedMessage().contains("staged")),
+          "an ordinary live update has no staged generation and must not warn about data loss");
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
   }
 
   private static OpenSearchVectorService.ChunkRefresh refresh(

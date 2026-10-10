@@ -675,7 +675,7 @@ public class OpenSearchVectorService implements VectorIndexService {
    *       JVM-local cache that may hold {@code null} (no un-promoted {@code *_g*} index exists
    *       yet, or a transient probe failure). Reached only before a participant latches (startup
    *       race) or on a JVM with no run context; a {@code null} here is harmless for deletes but
-   *       causes {@link #mirrorToStagedGeneration} to skip the mirror with a warning.
+   *       causes {@link #mirrorToStagedGeneration} to skip the mirror.
    * </ol>
    *
    * <p>Sink writes ({@code writeEntityChunks} / {@code backfillEntityChunks}) do not use this
@@ -1343,10 +1343,7 @@ public class OpenSearchVectorService implements VectorIndexService {
   private void mirrorToStagedGeneration(String parentId, List<Map<String, Object>> chunkDocs) {
     String staged = resolveChunkSinkTarget();
     if (staged == null) {
-      LOG.warn(
-          "Could not resolve a staged chunk target for {} during a recreate; "
-              + "its live chunk update will not be mirrored and may be dropped at promotion",
-          parentId);
+      LOG.debug("No staged chunk generation to mirror the live update for {}", parentId);
       return;
     }
     try {
