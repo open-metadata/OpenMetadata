@@ -66,8 +66,10 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -1091,6 +1093,73 @@ class DistributedJobParticipantTest {
       verify(bulkSink).flushAndAwait(60);
       assertTrue(Thread.currentThread().isInterrupted());
       verify(coordinatorMocked.constructed().get(0)).claimNextPartition(jobId);
+    }
+  }
+
+  /**
+   * A participant JVM latches the run-scoped staged chunk index (carried in the job's staged index
+   * mapping under {@link ReindexContext#STAGED_CHUNK_KEY}) into the vector service before it
+   * streams, and clears it in the finally when the run ends — so live edits handled on this
+   * (non-coordinator) JVM mirror into this run's generation instead of relying on lossy
+   * cluster-state discovery. This wires the OpenSearchVectorService fix end-to-end.
+   */
+  @Test
+  void testProcessJobPartitionsLatchesAndClearsTheParticipantStagedChunkTarget() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    EventPublisherJob config = new EventPublisherJob();
+    config.setEntities(Set.of("table"));
+
+    // The staged index mapping carries the run-scoped chunk generation under the reserved key,
+    // alongside the entity staged indexes — exactly what the coordinator serializes.
+    SearchIndexJob runningJob =
+        SearchIndexJob.builder()
+            .id(jobId)
+            .status(IndexJobStatus.RUNNING)
+            .jobConfiguration(config)
+            .stagedIndexMapping(
+                Map.of(
+                    "table", "table_staged", ReindexContext.STAGED_CHUNK_KEY, "chunk_staged_gen"))
+            .build();
+
+    CollectionDAO.SearchIndexFailureDAO failureDao =
+        mock(CollectionDAO.SearchIndexFailureDAO.class);
+    when(collectionDAO.searchIndexFailureDAO()).thenReturn(failureDao);
+    when(searchRepository.createBulkSink(
+            100, 100, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES))
+        .thenReturn(bulkSink);
+    when(bulkSink.flushAndAwait(60)).thenReturn(true);
+
+    OpenSearchVectorService vectorServiceMock = mock(OpenSearchVectorService.class);
+
+    try (MockedConstruction<DistributedSearchIndexCoordinator> coordinatorMocked =
+            mockConstruction(
+                DistributedSearchIndexCoordinator.class,
+                (mock, context) -> {
+                  when(mock.getJob(eq(jobId))).thenReturn(Optional.of(runningJob));
+                  when(mock.claimNextPartition(eq(jobId))).thenReturn(Optional.empty());
+                  when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PENDING)))
+                      .thenReturn(List.of());
+                  when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PROCESSING)))
+                      .thenReturn(List.of());
+                });
+        MockedStatic<OpenSearchVectorService> vectorStatic =
+            mockStatic(OpenSearchVectorService.class)) {
+      vectorStatic.when(OpenSearchVectorService::getInstance).thenReturn(vectorServiceMock);
+
+      participant =
+          new DistributedJobParticipant(
+              collectionDAO, searchRepository, "test-server-1", testNotifier);
+      setParticipantRunning(true);
+
+      invokeParticipantMethod(
+          "processJobPartitions", new Class<?>[] {SearchIndexJob.class}, runningJob);
+
+      // The run-scoped chunk generation is latched before streaming so live edits handled on this
+      // (non-coordinator) JVM mirror into this run's generation instead of relying on discovery.
+      verify(vectorServiceMock).latchParticipantStagedTarget("chunk_staged_gen");
+      // ...and cleared once the run finishes so a later run cannot mirror into a finished run's
+      // generation (promoted or abandoned).
+      verify(vectorServiceMock).clearParticipantStagedTarget();
     }
   }
 

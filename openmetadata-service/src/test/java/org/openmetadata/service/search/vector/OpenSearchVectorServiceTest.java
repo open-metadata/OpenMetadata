@@ -128,6 +128,145 @@ class OpenSearchVectorServiceTest {
             .anyMatch(body -> body.contains("\"_index\":\"staged_chunk_generation\"")));
   }
 
+  /**
+   * On a participant JVM (stagedChunkIndex is null — only the coordinator sets it), the run-scoped
+   * staged chunk index latched from ReindexContext into participantStagedTarget is what the
+   * live-edit mirror writes to, instead of lossy cluster-state discovery. This is the fix for the
+   * multi-node bug where a stale cached null silently dropped the mirror write.
+   */
+  @Test
+  void liveUpdateOnAParticipantMirrorsIntoTheLatchedStagedTarget() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    // Participant: stagedChunkIndex (coordinator-only) stays null; the run-scoped target is
+    // latched.
+    setField("participantStagedTarget", "participant_chunk_generation");
+    // Stale null discovery cache, fresh within TTL — must NOT win over the latch.
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
+
+    List<String> bulkTargets = capturedBulkTargets();
+    String live = vectorService.getChunkIndexName();
+    assertTrue(bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"" + live + "\"")));
+    assertTrue(
+        bulkTargets.stream()
+            .anyMatch(body -> body.contains("\"_index\":\"participant_chunk_generation\"")));
+  }
+
+  /**
+   * The participant latch shadows the stale-null discovery cache: when both the latch and a
+   * different cached discovery value are present, the latch wins. Without the latch being
+   * consulted first, "discovered_gen" would have been used; confirming the latch wins proves
+   * resolveChunkSinkTarget's resolution order (stagedChunkIndex, then participant latch, then
+   * discovery).
+   */
+  @Test
+  void participantLatchShadowsTheStaleDiscoveryCache() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("participantStagedTarget", "latched_gen");
+    // A discovery cache holding a different value that would win if the latch weren't first.
+    setField("cachedSinkTarget", "discovered_gen");
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
+
+    List<String> bulkTargets = capturedBulkTargets();
+    assertTrue(
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"latched_gen\"")),
+        "mirror must target the latched generation");
+    assertFalse(
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"discovered_gen\"")),
+        "mirror must not target the stale discovery cache value");
+  }
+
+  /**
+   * Reproduces the original bug: on a participant JVM with no latch and a stale null discovery
+   * cache within TTL, the mirror is skipped (no staged bulk write). The live write still lands in
+   * the live alias target. After the fix this skip is logged at WARN rather than silent, but the
+   * data outcome when the latch is absent remains: only the live index receives the chunks.
+   */
+  @Test
+  void liveUpdateSkipsTheMirrorWhenNoStagedTargetResolvesOnAParticipant() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    // No stagedChunkIndex (participant), no participantStagedTarget (not yet latched), and a
+    // discovery cache holding a stale null within TTL — the exact window the bug lives in.
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
+
+    List<String> bulkTargets = capturedBulkTargets();
+    String live = vectorService.getChunkIndexName();
+    // The live write still happens — it just lands in the soon-to-be-removed old generation.
+    assertTrue(bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"" + live + "\"")));
+    // No mirror write: the only bulk target is the live index.
+    assertEquals(1, bulkTargets.size(), "only the live chunk write; the mirror is skipped");
+  }
+
+  /**
+   * clearParticipantStagedTarget drops the latch so a finished run cannot steer subsequent edits
+   * into its generation. After clearing, the participant falls back to discovery (here a stale
+   * null within TTL), and the mirror is skipped — the same behavior as an unlatched participant.
+   */
+  @Test
+  void clearParticipantStagedTargetRemovesTheLatch() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("participantStagedTarget", "stale_latched_gen");
+    vectorService.clearParticipantStagedTarget();
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
+
+    List<String> bulkTargets = capturedBulkTargets();
+    assertFalse(
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"stale_latched_gen\"")),
+        "a cleared latch must not steer the mirror into its generation");
+  }
+
+  /**
+   * The coordinator's stagedChunkIndex takes precedence over the participant latch, so a node
+   * that is both coordinating and would carry a participant latch still mirrors into its own
+   * run-scoped generation (and promotion gating stays anchored on stagedChunkIndex).
+   */
+  @Test
+  void coordinatorStagedChunkIndexTakesPrecedenceOverTheParticipantLatch() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("stagedChunkIndex", "coordinator_gen");
+    setField("participantStagedTarget", "participant_gen");
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED), "entityIndex");
+
+    List<String> bulkTargets = capturedBulkTargets();
+    assertTrue(
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"coordinator_gen\"")),
+        "coordinator's stagedChunkIndex wins");
+    assertFalse(
+        bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"participant_gen\"")),
+        "participant latch must not override the coordinator");
+  }
+
   private static ContextMemory refreshableMemory() {
     return new ContextMemory()
         .withId(UUID.randomUUID())
@@ -179,6 +318,16 @@ class OpenSearchVectorServiceTest {
         .getBody()
         .map(body -> new String(body.bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8))
         .orElse("");
+  }
+
+  private List<String> capturedBulkTargets() throws IOException {
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    return captor.getAllValues().stream()
+        .filter(request -> "/_bulk".equals(request.getEndpoint()))
+        .map(OpenSearchVectorServiceTest::bodyOf)
+        .toList();
   }
 
   @Test
