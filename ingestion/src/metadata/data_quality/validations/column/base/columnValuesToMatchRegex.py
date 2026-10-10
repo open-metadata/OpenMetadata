@@ -148,13 +148,18 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
                 - matched: bool - whether the non-matching values are within the threshold
                 - passed_rows: int - number of values matching the regex
                 - failed_rows: int - number of values not matching the regex
-                - total_rows: int - total row count for reporting
+                - total_rows: int | None - non-null value count used as the report denominator
+                  (matches the verdict), or None when computePassedFailedRowCount is off
         """
         if test_params is None:
             raise ValueError("test_params is required for columnValuesToMatchRegex._evaluate_test_condition")
         match_regex_count = metric_values[Metrics.regexCount.name]
         count = metric_values[Metrics.valuesCount.name]
-        total_rows = metric_values.get(Metrics.rowCount.name)
+        # Report against the same denominator the verdict uses (non-null valuesCount) so the
+        # structured passedRowsPercentage/failedRowsPercentage agree with the verdict and the
+        # passed/failed row counts. Gated on computePassedFailedRowCount: with the flag off (the
+        # default) total_rows stays None and passedRows/failedRows/percentages are not populated.
+        total_rows = count if self.test_case.computePassedFailedRowCount else None
 
         matched = self._apply_row_threshold(count - match_regex_count, count)
         failed_count = count - match_regex_count
