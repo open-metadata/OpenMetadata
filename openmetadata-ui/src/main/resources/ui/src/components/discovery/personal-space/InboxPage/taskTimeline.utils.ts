@@ -261,6 +261,19 @@ const resolveAssignee = (task: Task, assignee?: EntityReference) =>
     ? task.assignees?.find((ref) => ref.id === assignee.id) ?? assignee
     : assignee;
 
+// An Assigned record is the only status that interpolates the assignee into
+// its text. One nobody can name — or one absent entirely, as when a sole
+// assignee has since been deleted — would leave "assigned the incident to"
+// with nothing after it, so the event reads "reassigned" instead. Other record
+// types carry no assignee and keep their own wording.
+const hasNoRenderableAssignee = (
+  status: TestCaseResolutionStatus,
+  assignee?: EntityReference
+): boolean =>
+  status.testCaseResolutionStatusType ===
+    TestCaseResolutionStatusTypes.Assigned &&
+  (!assignee || !assignee.name);
+
 /**
  * An incident's real history: one event per status record — opened,
  * acknowledged, assigned (to whom), resolved — each with who made the change
@@ -278,9 +291,6 @@ const getIncidentStatusEvents = (
     const opened = isOpening ? getIncidentOpenedText(task) : undefined;
     const event = INCIDENT_STATUS_EVENT[status.testCaseResolutionStatusType];
     const assignee = resolveAssignee(task, details?.assignee);
-    // An assignee nobody can name would leave "assigned the incident to" with
-    // nothing after it; say it was reassigned instead.
-    const isUnnamedAssignee = Boolean(assignee) && !assignee?.name;
 
     return {
       kind: 'event',
@@ -293,7 +303,7 @@ const getIncidentStatusEvents = (
       tone: event.tone,
       textKey:
         opened?.textKey ??
-        (isUnnamedAssignee
+        (hasNoRenderableAssignee(status, assignee)
           ? 'message.task-event-incident-reassigned'
           : event.textKey),
       textParams: { ...opened?.textParams, assignee },
