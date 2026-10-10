@@ -594,6 +594,12 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(request, subjectContext);
+  }
+
+  @Override
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return aggregationManager.genericAggregation(query, index, aggregationMetadata);
