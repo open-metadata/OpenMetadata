@@ -160,6 +160,88 @@ class TestStoredProcedures:
 
         assert get_procedure_name_from_call(query_text="SELECT begin_dt\nFROM t\nWHERE y = SALES.LOAD_DIM(1)") is None
 
+    def test_get_procedure_name_ignores_commented_out_call_before_a_real_call(self):
+        """Engine query-history text carries SQL comments through verbatim (the Snowflake,
+        Oracle and Redshift lineage queries carry `NOT LIKE '/* ... */%%'` filters precisely
+        because comments survive in `QUERY_TEXT`/`SQL_FULLTEXT`). `re.search` returns the
+        leftmost match, so a `CALL`/`BEGIN` that lives inside a `-- ...` or `/* ... */` comment
+        would otherwise steal the match from the statement that actually executed, stamping
+        lineage onto the wrong procedure (corrupting) or dropping it when the commented name
+        does not resolve. Regression test for the comment-blind `re.search` introduced in
+        f0995cb (#13121).
+        """
+        # `--` line comment: the commented-out call must not win over the real one.
+        assert (
+            get_procedure_name_from_call(query_text="-- CALL old_daily_refresh();\nCALL nightly_load();")
+            == "nightly_load"
+        )
+
+        assert (
+            get_procedure_name_from_call(query_text="-- call daily_refresh()\nbegin schema.real_proc; end;")
+            == "real_proc"
+        )
+
+        # `/* ... */` block comment: same guarantee, including when the block spans the
+        # `CALL` keyword and its name on the same line.
+        assert (
+            get_procedure_name_from_call(query_text="/* deprecated: CALL legacy_load() */\nCALL nightly_load();")
+            == "nightly_load"
+        )
+
+        # Multi-line block comment ahead of a real call.
+        assert (
+            get_procedure_name_from_call(
+                query_text="/*\n * Replaced by nightly_load.\n * Old: CALL legacy_load()\n */\nCALL nightly_load();"
+            )
+            == "nightly_load"
+        )
+
+        # A mix of both comment styles ahead of the real statement.
+        assert (
+            get_procedure_name_from_call(
+                query_text="-- CALL staging_refresh()\n/* CALL legacy_load() */\nCALL nightly_load();"
+            )
+            == "nightly_load"
+        )
+
+    def test_get_procedure_name_does_not_fabricate_a_procedure_from_a_call_in_a_comment(self):
+        """Oracle's stored-procedure query filters on `UPPER(sql_text) LIKE '%CALL%' OR LIKE
+        '%BEGIN%'`, an unanchored substring match, so a regular query that merely mentions
+        `CALL` in a comment reaches this parser. The commented name must not be extracted and
+        matched against a real StoredProcedure entity, fabricating lineage for a query that is
+        not a procedure call at all."""
+        assert (
+            get_procedure_name_from_call(query_text="-- Reference: CALL nightly_load()\nSELECT * FROM sales_summary")
+            is None
+        )
+
+        assert get_procedure_name_from_call(query_text="/* TODO: CALL backfill_proc() */\nSELECT 1") is None
+
+        # The only `CALL`/`BEGIN` in the text is inside a comment -> nothing to extract.
+        assert get_procedure_name_from_call(query_text="-- CALL nightly_load()") is None
+
+        assert get_procedure_name_from_call(query_text="/* begin schema.proc(); end; */") is None
+
+    def test_get_procedure_name_strips_comments_without_corrupting_quoted_identifiers(self):
+        """`sqlparse` is a SQL-aware tokenizer, so stripping comments must preserve quoted
+        identifiers (backtick and `"..."` forms) and string literals that a naive regex would
+        corrupt. A `--` or `/*` that appears inside a string literal is not a comment and must
+        survive, while a real comment ahead of a quoted-name invocation is still stripped."""
+        # Comment ahead of a quoted-name invocation still allows the quoted name to parse.
+        assert (
+            get_procedure_name_from_call(query_text="-- prior run\nCALL `my-project.my_dataset.my_proc`()") == "my_proc"
+        )
+
+        assert get_procedure_name_from_call(query_text='-- prior\nCALL db."My Schema"."My Proc"(1)') == "my proc"
+
+        assert get_procedure_name_from_call(query_text='-- prior\nCALL "proc.v2"()') == "proc.v2"
+
+        # A `--` / `/*` inside a string literal is part of the argument, not a comment, so the
+        # real procedure name still parses and the literal is left intact.
+        assert get_procedure_name_from_call(query_text="CALL proc('has -- inside')") == "proc"
+
+        assert get_procedure_name_from_call(query_text="CALL schema.proc('a/*b*/c')") == "proc"
+
     def test_get_procedure_name_ignores_identifiers_that_start_with_the_keyword(self):
         """A word boundary before the keyword is not enough. `call_center` and `begin_date` both
         start on a boundary, so `\\bcall` and `\\bbegin` match their prefix, and the rest of the
