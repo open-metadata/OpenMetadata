@@ -113,7 +113,7 @@ export const loadFormFieldDocs = (
   const docs = (async () => {
     try {
       const markdown = await fetchMarkdownFile(
-        `${SupportedLocales.English}/${cacheKey}.md`
+        `${SupportedLocales.English}/${folder}/${formName}.md`
       );
 
       return parseFormFieldDocs(markdown);

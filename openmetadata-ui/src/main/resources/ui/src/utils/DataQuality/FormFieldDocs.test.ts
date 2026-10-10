@@ -134,13 +134,19 @@ describe('loadFormFieldDocs', () => {
     expect(docs.testType).toContain('Choose the type of test');
   });
 
-  it('loads docs from another folder when one is given', async () => {
-    mockFetchMarkdownFile.mockResolvedValueOnce(SAMPLE_MD);
+  it('reads from the given docs folder and caches each folder separately', async () => {
+    mockFetchMarkdownFile.mockResolvedValue(SAMPLE_MD);
 
-    await loadFormFieldDocs('SampleApp', 'Applications');
+    await loadFormFieldDocs('SampleFormG', 'SSO');
+    await loadFormFieldDocs('SampleFormG');
 
-    expect(mockFetchMarkdownFile).toHaveBeenCalledWith(
-      'en-US/Applications/SampleApp.md'
+    expect(mockFetchMarkdownFile).toHaveBeenNthCalledWith(
+      1,
+      'en-US/SSO/SampleFormG.md'
+    );
+    expect(mockFetchMarkdownFile).toHaveBeenNthCalledWith(
+      2,
+      'en-US/OpenMetadata/SampleFormG.md'
     );
   });
 
