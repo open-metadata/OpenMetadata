@@ -169,6 +169,22 @@ public class ContextMemoryWriteAccessIT {
     assertEquals(false, setPinnedAs(editor, visible.getId(), false).getPinned());
   }
 
+  @Test
+  void editAllCannotReadPrivateDottedMemoryThroughPut(TestNamespace ns) {
+    ContextMemoryService owner = memoriesAs(createUser(ns, null));
+    CreateContextMemory privateRequest = preference(ns, "private.for.edits");
+    ContextMemory hidden = owner.create(privateRequest);
+    ContextMemoryService editor = memoriesAs(createUser(ns, allowMemoryEdits(ns)));
+
+    assertThrows(ForbiddenException.class, () -> editor.put(privateRequest));
+    assertEquals(hidden.getVersion(), owner.get(hidden.getId().toString()).getVersion());
+    assertEquals(hidden.getId(), owner.put(privateRequest).getId());
+
+    CreateContextMemory visibleRequest = entityMemory(ns, "visible.for.edits");
+    ContextMemory visible = editor.put(visibleRequest);
+    assertEquals(visible.getId(), editor.put(visibleRequest).getId());
+  }
+
   private static ContextMemory setPinnedAs(User user, UUID id, boolean pinned) {
     OpenMetadataClient client =
         SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});

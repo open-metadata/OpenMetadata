@@ -604,7 +604,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Valid CreateContextMemory create) {
     ContextMemory memory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    ContextMemory existing = repository.findByNameOrNull(memory.getName(), Include.ALL);
+    repository.setFullyQualifiedName(memory);
+    ContextMemory existing =
+        repository.findByNameOrNull(memory.getFullyQualifiedName(), Include.ALL);
     if (existing != null) {
       enforceCurrentVisibility(securityContext, existing.getId());
     }
