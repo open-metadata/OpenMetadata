@@ -646,12 +646,18 @@ test.describe(
           page.getByTestId('resource-type-select'),
           page.getByRole('option', { name: 'Video', exact: true })
         );
+        // chooseSelectOption, not fill-then-click: the form panel scrolls, and
+        // the scroll Playwright makes before clicking an option closes an open
+        // react-aria popover, leaving the click waiting on a detached option.
         for (const [testId, option] of [
           ['categories-select', 'Discovery'],
           ['contexts-select', 'Glossary'],
         ]) {
-          await page.getByTestId(testId).locator('input').fill(option);
-          await page.getByRole('option', { name: option, exact: true }).click();
+          await chooseSelectOption(
+            page.getByTestId(testId),
+            page.getByRole('option', { name: option, exact: true })
+          );
+          await expect(page.getByTestId(testId)).toContainText(option);
         }
         await fillField(
           page,

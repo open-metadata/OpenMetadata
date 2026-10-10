@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
@@ -153,16 +152,20 @@ const DataProductsWidget = ({
       <div className="entity-list-body">
         <div className="data-products-widget-grid">
           {dataProducts.slice(0, PAGE_SIZE_BASE).map((dataProduct) => (
-            <Button
-              className={classNames('data-product-card', {
-                'data-product-card-full': isFullSize,
-                'p-0': !isFullSize,
-              })}
+            <button
+              className={classNames(
+                'data-product-card tw:bg-surface tw:text-secondary tw:transition-colors tw:duration-300',
+                {
+                  'data-product-card-full': isFullSize,
+                  'p-0': !isFullSize,
+                }
+              )}
               data-testid={`data-product-card-${dataProduct.id}`}
               key={dataProduct.id}
+              type="button"
               onClick={() => handleDataProductClick(dataProduct)}>
               {isFullSize ? (
-                <div className="d-flex gap-2">
+                <Box gap={2}>
                   <div
                     className="data-product-card-full-icon"
                     data-testid="data-product-icon-container"
@@ -188,10 +191,10 @@ const DataProductsWidget = ({
                       </span>
                     </div>
                   </div>
-                </div>
+                </Box>
               ) : (
-                <div
-                  className="d-flex data-product-card-bar"
+                <Box
+                  className="data-product-card-bar"
                   style={{ borderLeftColor: dataProduct.style?.color }}>
                   <div className="data-product-card-content">
                     <span className="data-product-card-title">
@@ -216,9 +219,9 @@ const DataProductsWidget = ({
                       {assetsCounts[dataProduct.fullyQualifiedName ?? ''] ?? 0}
                     </span>
                   </div>
-                </div>
+                </Box>
               )}
-            </Button>
+            </button>
           ))}
         </div>
       </div>

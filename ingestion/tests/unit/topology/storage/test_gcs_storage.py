@@ -298,7 +298,9 @@ class StorageUnitTest(TestCase):
             ),
         ]
         self.object_store_source.extract_column_definitions = (
-            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None: columns
+            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None, limits=None, report=None: (
+                columns
+            )
         )
 
         entity_ref = EntityReference(id=uuid.uuid4(), type="container")

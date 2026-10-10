@@ -19,7 +19,6 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationResult;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
-import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.RdfRepository;
 
@@ -107,11 +106,8 @@ public final class InferenceMaterializer {
   }
 
   private void requireAvailable() {
-    final RdfConfiguration config = rdfRepository.getConfig();
-    final boolean isFuseki = config.getStorageType() == RdfConfiguration.StorageType.FUSEKI;
     if (!rdfRepository.isEnabled()
-        || !Boolean.TRUE.equals(config.getMaterializedInferenceEnabled())
-        || !isFuseki) {
+        || !RdfRepository.supportsMaterializedInference(rdfRepository.getConfig())) {
       throw new ServiceUnavailableException(
           "Fuseki materialized inference is not enabled for this server");
     }

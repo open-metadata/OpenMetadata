@@ -228,6 +228,11 @@ describe('TableCard theme roles', () => {
       'tw:bg-surface',
       'tw:outline-subtle'
     );
+    // Drawn inside the card: an outer outline is clipped by any scrolling
+    // parent the card sits flush against (e.g. the top of a modal body).
+    expect(screen.getByTestId('table-card')).toHaveClass(
+      'tw:-outline-offset-1'
+    );
     expect(header).toHaveClass('tw:bg-surface', 'tw:border-subtle');
   });
 });

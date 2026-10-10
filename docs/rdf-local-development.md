@@ -224,9 +224,9 @@ rdf:
 | `RDF_REMOTE_USERNAME` | Fuseki admin username | `admin` |
 | `RDF_REMOTE_PASSWORD` | Fuseki admin password | `admin` |
 | `RDF_DATASET` | Fuseki dataset name | `openmetadata` |
-| `RDF_INFERENCE_ENABLED` | Enable in-process full-graph inference | `false` |
-| `RDF_DEFAULT_INFERENCE_LEVEL` | Default inference selection | `NONE` |
-| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Legacy in-process safety limit | `100000` |
+| `RDF_INFERENCE_ENABLED` | Deprecated and ignored; OpenMetadata no longer runs reasoners in-process | `false` |
+| `RDF_DEFAULT_INFERENCE_LEVEL` | Deprecated and ignored | `NONE` |
+| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Deprecated and ignored | `100000` |
 | `RDF_MATERIALIZED_INFERENCE_ENABLED` | Enable durable per-rule inference graphs | `false` |
 | `RDF_SHACL_VALIDATION_MODE` | Import validation policy | `REPORT` |
 | `RDF_DEREFERENCEABLE_IRIS` | Enable authenticated LOD redirects | `false` |

@@ -490,6 +490,25 @@ public interface WorkflowDocStoreDAOs {
   }
 
   interface ContextMemoryDAO extends EntityDAO<ContextMemory> {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_memory SET json = :json, nameHash = :nameHash "
+                + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
+                + "AND JSON_EXTRACT(json, '$.updatedAt') = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_memory SET json = :json::jsonb, nameHash = :nameHash "
+                + "WHERE id = :id AND json->>'version' = :version "
+                + "AND (json->>'updatedAt')::bigint = :updatedAt",
+        connectionType = POSTGRES)
+    int updateWithVersionAndTimestamp(
+        @BindUUID("id") UUID id,
+        @BindFQN("nameHash") String fullyQualifiedName,
+        @BindJson("json") String json,
+        @Bind("version") String version,
+        @Bind("updatedAt") Long updatedAt);
+
     @Override
     default String getTableName() {
       return "context_memory";

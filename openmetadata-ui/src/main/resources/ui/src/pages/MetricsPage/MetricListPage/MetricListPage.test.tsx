@@ -51,6 +51,33 @@ jest.mock('../../../components/common/DocumentTitle/DocumentTitle', () => ({
   },
 }));
 
+jest.mock(
+  '../../../components/common/Table/ColumnCustomizeDropdown/ColumnCustomizeDropdown',
+  () =>
+    ({
+      columnDropdownSelections,
+      dropdownColumnList,
+      onSelect,
+    }: {
+      columnDropdownSelections: string[];
+      dropdownColumnList: Array<{ label: string; value: string }>;
+      onSelect: (key: string, selected: boolean) => void;
+    }) =>
+      (
+        <div data-testid="column-dropdown">
+          {dropdownColumnList.map(({ label, value }) => (
+            <button
+              key={value}
+              onClick={() =>
+                onSelect(value, !columnDropdownSelections.includes(value))
+              }>
+              {label}
+            </button>
+          ))}
+        </div>
+      )
+);
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const React = jest.requireActual('react');
   const SelectionContext = React.createContext({
@@ -159,8 +186,22 @@ jest.mock('@openmetadata/ui-core-components', () => {
       {label ?? children}
     </th>
   );
-  Table.Body = ({ children }: { children: React.ReactNode }) => (
-    <tbody>{children}</tbody>
+  Table.Body = ({
+    children,
+    renderEmptyState,
+  }: {
+    children: React.ReactNode[];
+    renderEmptyState?: () => React.ReactNode;
+  }) => (
+    <tbody>
+      {React.Children.count(children) === 0 && renderEmptyState ? (
+        <tr>
+          <td>{renderEmptyState()}</td>
+        </tr>
+      ) : (
+        children
+      )}
+    </tbody>
   );
   const TableRow = ({
     children,
@@ -384,6 +425,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       isOpen: boolean;
     }) => (isOpen ? <>{children}</> : null),
     Skeleton: () => <div data-testid="skeleton" />,
+    Dot: () => <span data-testid="dot" />,
     Table,
     FeaturedIcon: ({
       children,
@@ -566,12 +608,12 @@ describe('MetricListPage', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('columnheader', { name: 'label.metric' })
-    ).toHaveAttribute('data-uses-label', 'true');
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('columnheader', {
         name: 'label.glossary-term-plural',
       })
-    ).toHaveAttribute('data-uses-label', 'true');
+    ).toBeInTheDocument();
     expect(screen.getByText('AL')).toHaveAttribute('data-avatar-size', 'xs');
     expect(screen.getByTestId('metric-icon-metric-1')).toBeInTheDocument();
     expect(screen.queryByText(/preview/i)).not.toBeInTheDocument();
@@ -611,9 +653,15 @@ describe('MetricListPage', () => {
     expect(screen.getByText('label.day')).toHaveClass(
       'tw:font-mono',
       'tw:uppercase',
-      'tw:tracking-wide',
-      'tw:text-xs',
-      'tw:font-semibold'
+      'tw:tracking-wide'
+    );
+    expect(screen.getByText('label.day')).toHaveAttribute(
+      'data-size',
+      'text-xs'
+    );
+    expect(screen.getByText('label.day')).toHaveAttribute(
+      'data-weight',
+      'semibold'
     );
   });
 
@@ -932,10 +980,7 @@ describe('MetricListPage', () => {
     const groupRowElement = groupToggle.closest('tr');
     const groupCell = groupToggle.closest('td');
 
-    expect(groupRowElement).toHaveAttribute(
-      'data-testid',
-      'metric-group-row-group-1'
-    );
+    expect(groupRowElement).toHaveAttribute('data-row-key', 'group:group-1');
     expect(groupRowElement?.querySelectorAll('td')).toHaveLength(1);
     expect(groupCell).toHaveAttribute('colspan', '7');
     expect(groupCell).toHaveTextContent(
@@ -1052,14 +1097,27 @@ describe('MetricListPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('persists customizable columns', async () => {
+  it('hides a column from the TableV2 customize menu in the metrics toolbar', async () => {
     renderPage();
     await screen.findByText('net_sales');
+
+    expect(
+      within(screen.getByTestId('metric-list-toolbar')).getByTestId(
+        'column-dropdown'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'label.health' })
+    ).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole('button', { name: 'label.health' }));
 
     expect(
-      JSON.parse(localStorage.getItem('metricsList.columnPrefs.v2') ?? '[]')
-    ).not.toContain('health');
+      screen.queryByRole('columnheader', { name: 'label.health' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('metric-health-metric-1')
+    ).not.toBeInTheDocument();
   });
 
   it('uses normal top-level pagination and clears selection between pages', async () => {

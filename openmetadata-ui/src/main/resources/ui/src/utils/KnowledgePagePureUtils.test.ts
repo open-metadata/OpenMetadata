@@ -15,7 +15,9 @@ import {
   PageType,
 } from '../interface/knowledge-center.interface';
 import {
+  getPageAllChildren,
   getUpdatePageHierarchy,
+  getUpdatePageHierarchyForDelete,
   remapSubtreeFqn,
   updateTreeData,
 } from './KnowledgePagePureUtils';
@@ -172,5 +174,89 @@ describe('remapSubtreeFqn', () => {
 
     expect(result[0].fullyQualifiedName).toBe('newParent.leaf');
     expect(result[0].children).toBeUndefined();
+  });
+});
+
+describe('getPageAllChildren', () => {
+  it('flattens every descendant depth-first, not just direct children', () => {
+    const grandchild = buildPage('parent.child.grandchild');
+    const child = buildPage('parent.child', {
+      childrenCount: 1,
+      children: [grandchild],
+    });
+
+    const result = getPageAllChildren([child]);
+
+    expect(result.map((p) => p.fullyQualifiedName)).toEqual([
+      'parent.child',
+      'parent.child.grandchild',
+    ]);
+  });
+
+  it('returns an empty list for no pages', () => {
+    expect(getPageAllChildren()).toEqual([]);
+  });
+});
+
+describe('getUpdatePageHierarchyForDelete', () => {
+  it('removes the deleted node from the root level', () => {
+    const pages = [buildPage('a'), buildPage('b')];
+
+    const result = getUpdatePageHierarchyForDelete('a', pages);
+
+    expect(result.map((p) => p.fullyQualifiedName)).toEqual(['b']);
+  });
+
+  it('removes a nested node without touching its siblings', () => {
+    const parent = buildPage('parent', {
+      childrenCount: 2,
+      children: [buildPage('parent.keep'), buildPage('parent.drop')],
+    });
+
+    const result = getUpdatePageHierarchyForDelete('parent.drop', [parent]);
+
+    expect(result[0].children?.map((c) => c.fullyQualifiedName)).toEqual([
+      'parent.keep',
+    ]);
+  });
+
+  it('drops the deleted node together with its whole subtree', () => {
+    const parent = buildPage('parent', {
+      childrenCount: 1,
+      children: [
+        buildPage('parent.drop', {
+          childrenCount: 1,
+          children: [buildPage('parent.drop.child')],
+        }),
+      ],
+    });
+
+    const result = getUpdatePageHierarchyForDelete('parent.drop', [parent]);
+
+    expect(result[0].children).toEqual([]);
+  });
+
+  it('does not mutate the hierarchy passed in', () => {
+    const pages = [buildPage('a'), buildPage('b')];
+
+    getUpdatePageHierarchyForDelete('a', pages);
+
+    expect(pages.map((p) => p.fullyQualifiedName)).toEqual(['a', 'b']);
+  });
+
+  it('leaves the hierarchy unchanged when the FQN is not present', () => {
+    const pages = [buildPage('a')];
+
+    const result = getUpdatePageHierarchyForDelete('missing', pages);
+
+    expect(result.map((p) => p.fullyQualifiedName)).toEqual(['a']);
+  });
+
+  it('removes the deleted node even when it is followed by a sibling', () => {
+    const pages = [buildPage('a'), buildPage('drop'), buildPage('b')];
+
+    const result = getUpdatePageHierarchyForDelete('drop', pages);
+
+    expect(result.map((p) => p.fullyQualifiedName)).toEqual(['a', 'b']);
   });
 });
