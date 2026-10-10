@@ -59,6 +59,7 @@ const CoreEnumSelectWidget = ({
       data-testid={id ? `select-widget-${id}` : undefined}
       fontSize="sm"
       hint={getWidgetHint({ rawErrors, schema, options })}
+      id={id}
       isDisabled={disabled || readonly}
       isInvalid={!!rawErrors?.length}
       isRequired={required}
