@@ -482,6 +482,59 @@ describe('NodeChildren Component', () => {
       expect(screen.getByTestId('column-column1')).toBeInTheDocument();
       expect(screen.queryByTestId('column-column3')).not.toBeInTheDocument();
     });
+
+    it('should search all columns when no column with lineage matches', () => {
+      const columnsMap = new Map();
+      columnsMap.set(mockNode.id, new Set(['test.fqn.column1']));
+      mockLineageStoreState.columnsHavingLineage = columnsMap;
+
+      render(
+        <NodeChildren
+          isChildrenListExpanded
+          isOnlyShowColumnsWithLineageFilterActive
+          isConnectable={false}
+          node={mockNode}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('search-column-input'), {
+        target: { value: 'column2' },
+      });
+
+      expect(screen.getByTestId('column-column2')).toBeInTheDocument();
+      expect(screen.queryByTestId('column-column1')).not.toBeInTheDocument();
+    });
+
+    it('should keep the search applied when the lineage filter is toggled', () => {
+      const columnsMap = new Map();
+      columnsMap.set(mockNode.id, new Set(['test.fqn.column1']));
+      mockLineageStoreState.columnsHavingLineage = columnsMap;
+
+      const { rerender } = render(
+        <NodeChildren
+          isChildrenListExpanded
+          isConnectable={false}
+          isOnlyShowColumnsWithLineageFilterActive={false}
+          node={mockNode}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('search-column-input'), {
+        target: { value: 'column2' },
+      });
+
+      rerender(
+        <NodeChildren
+          isChildrenListExpanded
+          isOnlyShowColumnsWithLineageFilterActive
+          isConnectable={false}
+          node={mockNode}
+        />
+      );
+
+      expect(screen.getByTestId('column-column2')).toBeInTheDocument();
+      expect(screen.queryByTestId('column-column1')).not.toBeInTheDocument();
+    });
   });
 
   describe('Data Observability', () => {

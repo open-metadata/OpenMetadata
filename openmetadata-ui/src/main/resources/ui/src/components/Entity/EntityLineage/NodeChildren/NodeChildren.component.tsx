@@ -13,7 +13,7 @@
 import { Input } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { isEqual, isUndefined } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -58,7 +58,6 @@ const NodeChildren = ({
   } = useLineageStore();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
-  const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -98,43 +97,28 @@ const NodeChildren = ({
     return currentNodeColumnsWithLineage;
   }, [currentNodeColumnsWithLineage]);
 
-  const handleSearchChange = useCallback(
-    (searchQuery: string) => {
-      setSearchValue(searchQuery);
-      const currentNodeColumnsToSearch =
-        isOnlyShowColumnsWithLineageFilterActive
-          ? stableColumnsWithLineage
-          : entityChildren;
-
-      if (searchQuery.trim() === '') {
-        setFilteredColumns(currentNodeColumnsToSearch);
-      } else {
-        const currentNodeMatchedColumns = currentNodeColumnsToSearch.filter(
-          (column) =>
-            getEntityName(column)
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase())
-        );
-        setFilteredColumns(currentNodeMatchedColumns);
-      }
-    },
-    [
-      entityChildren,
-      stableColumnsWithLineage,
-      isOnlyShowColumnsWithLineageFilterActive,
-    ]
-  );
-
-  useEffect(() => {
-    if (!isEmpty(entityChildren)) {
-      if (isOnlyShowColumnsWithLineageFilterActive) {
-        setFilteredColumns(stableColumnsWithLineage);
-      } else {
-        setFilteredColumns(entityChildren);
-      }
+  const filteredColumns = useMemo(() => {
+    const columnsToSearch = isOnlyShowColumnsWithLineageFilterActive
+      ? stableColumnsWithLineage
+      : entityChildren;
+    const query = searchValue.trim().toLowerCase();
+    if (!query) {
+      return columnsToSearch;
     }
+    const findMatches = (columns: EntityChildren) =>
+      columns.filter((column) =>
+        getEntityName(column).toLowerCase().includes(query)
+      );
+    const matches = findMatches(columnsToSearch);
+
+    // With the lineage filter on, a column without lineage would be
+    // unfindable, so fall back to searching every column of the node.
+    return matches.length === 0 && isOnlyShowColumnsWithLineageFilterActive
+      ? findMatches(entityChildren)
+      : matches;
   }, [
     entityChildren,
+    searchValue,
     stableColumnsWithLineage,
     isOnlyShowColumnsWithLineageFilterActive,
   ]);
@@ -194,7 +178,7 @@ const NodeChildren = ({
               entity: childrenHeading,
             })}
             value={searchValue}
-            onChange={handleSearchChange}
+            onChange={setSearchValue}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
           />
 
