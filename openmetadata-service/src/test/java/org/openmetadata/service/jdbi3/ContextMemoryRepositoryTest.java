@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -21,6 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -38,12 +40,16 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 
 /**
  * ContextMemory is indexed whatever its {@code shareConfig.visibility}; privacy is enforced at
@@ -73,6 +79,37 @@ class ContextMemoryRepositoryTest {
   @AfterEach
   void tearDown() {
     Entity.cleanup();
+  }
+
+  @Test
+  void conditionalMemoryWritesPassBothVersionAndTimestampToTheDatabase() {
+    ContextMemory memory = memory(MemoryVisibility.ENTITY).withVersion(0.3).withUpdatedAt(102L);
+    CollectionDAO.ContextMemoryDAO memoryDao = daoCollection.contextMemoryDAO();
+    when(memoryDao.updateWithVersionAndTimestamp(any(), any(), any(), eq("0.2"), eq(101L)))
+        .thenReturn(0);
+
+    assertThrows(
+        PreconditionFailedException.class,
+        () -> repository.storeEntityWithVersion(memory, true, 0.2, 101L));
+    verify(memoryDao)
+        .updateWithVersionAndTimestamp(eq(memory.getId()), any(), any(), eq("0.2"), eq(101L));
+  }
+
+  @Test
+  void consolidatedEditsCannotReuseThePreviousModificationTimestamp() {
+    ContextMemory original =
+        memory(MemoryVisibility.ENTITY)
+            .withUpdatedBy("admin")
+            .withVersion(0.2)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
+            .withUpdatedAt(101L);
+    ContextMemory updated =
+        JsonUtils.deepCopy(original, ContextMemory.class).withAnswer("Corrected claim");
+
+    repository.getUpdater(original, updated, EntityRepository.Operation.PATCH, ChangeSource.MANUAL);
+
+    assertEquals(102L, updated.getUpdatedAt());
+    assertEquals(original.getVersion(), updated.getVersion());
   }
 
   @ParameterizedTest
