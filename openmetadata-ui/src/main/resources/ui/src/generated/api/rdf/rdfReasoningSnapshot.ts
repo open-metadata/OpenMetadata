@@ -42,11 +42,13 @@ export interface RDFReasoningSnapshot {
  * OpenMetadata sets it when it serves an answer. The store leaves it out: it cannot see
  * live writes that are enqueued but not yet applied.
  *
- * CURRENT when the dataset generation still serves, the source revision covers every
- * enqueued live write, the ontology and rule digests match, and projection health is not
- * degraded. STALE after a tracked change since capture. UNKNOWN after a write the
- * live-write queue did not track, or while projection health is degraded. Independent of
- * job state: a SUCCEEDED refresh can publish a snapshot that is already STALE.
+ * UNKNOWN while projection health is degraded, for example after a dead-lettered write or a
+ * write outside the queue that could not be recorded: the graph may be missing writes, and
+ * a refresh cannot repair it. Otherwise CURRENT when the dataset generation still serves,
+ * the source revision covers every enqueued live write (writes outside the queue take a
+ * queue ID too), and the ontology and rule digests match; STALE when any of these no longer
+ * holds. Independent of job state: a SUCCEEDED refresh can publish a snapshot that is
+ * already STALE.
  */
 export enum Freshness {
     Current = "CURRENT",
