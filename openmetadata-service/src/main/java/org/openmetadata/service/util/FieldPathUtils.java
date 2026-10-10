@@ -22,6 +22,7 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -269,11 +270,32 @@ public class FieldPathUtils {
    *
    * <p>The registry is consulted before the plain reflective getter so that a container segment on
    * a registry type always means what the registry says it means. Falling back to the getter only
-   * serves entity types the registry does not cover, for example a dashboard's charts.
+   * serves entity types the registry does not cover.
+   *
+   * <p>The reflective fallback refuses a list whose elements are {@link EntityReference}. An
+   * EntityReference is a projection of a separate entity (e.g. a dashboard's charts reference a
+   * Chart), not an editable child POJO: mutating it in memory, diffing the parent, and patching the
+   * parent is silently reverted by the parent repository's {@code prepare()}, which rebuilds the
+   * references from the persisted child entities. Returning null here surfaces the no-op as a
+   * visible failure instead of reporting success while doing nothing.
    */
   private static List<?> resolveContainerList(EntityInterface<?> entity, String container) {
     List<?> fromRegistry = ChildFieldResolver.containerListFor(entity, container);
-    return fromRegistry != null ? fromRegistry : getFieldList(entity, container);
+    if (fromRegistry != null) {
+      return fromRegistry;
+    }
+    List<?> reflective = getFieldList(entity, container);
+    if (reflective != null
+        && !reflective.isEmpty()
+        && reflective.get(0) instanceof EntityReference) {
+      LOG.warn(
+          "[FieldPathUtils] '{}' resolves to an EntityReference list on {}; "
+              + "child must be patched directly, not through the parent",
+          container,
+          entity.getClass().getSimpleName());
+      return null;
+    }
+    return reflective;
   }
 
   /**
