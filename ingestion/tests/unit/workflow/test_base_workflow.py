@@ -11,6 +11,7 @@
 """Validate the logic and status handling of the base workflow."""
 
 import json
+import logging
 import uuid
 from collections.abc import Iterable
 from types import SimpleNamespace
@@ -57,6 +58,10 @@ from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.steps import Source as WorkflowSource
 from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.utils.streamable_logger import (
+    StreamableLogHandler,
+    StreamableLogHandlerManager,
+)
 from metadata.workflow.ingestion import IngestionWorkflow
 
 
@@ -607,6 +612,8 @@ class TestWorkflowExecuteTeardown:
             mock_build.assert_called_once()
             mock_stop.assert_called_once()
             mock_cleanup.assert_called_once()
+            assert workflow._timer is not None
+            assert not workflow._timer.thread.is_alive()
 
     def test_empty_error_string_does_not_break_execute_or_leak_teardown(self):
         """
@@ -623,6 +630,35 @@ class TestWorkflowExecuteTeardown:
             workflow.execute()
 
         mock_stop.assert_called_once()
+        assert workflow._timer is not None
+        assert not workflow._timer.thread.is_alive()
+
+
+def test_streamable_handler_is_released_when_client_close_raises():
+    workflow = OkWorkflow(config=config)
+    handler = StreamableLogHandler(
+        metadata=workflow.metadata,
+        pipeline_fqn="test-service.test-pipeline",
+        run_id=uuid.uuid4(),
+        enable_streaming=False,
+    )
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    StreamableLogHandlerManager.set_handler(handler)
+
+    try:
+        with (
+            patch.object(workflow.metadata, "close", side_effect=RuntimeError("client close failed")),
+            pytest.raises(RuntimeError, match="client close failed"),
+        ):
+            workflow.execute()
+
+        assert StreamableLogHandlerManager.get_handler() is None
+        assert handler not in root_logger.handlers
+        assert workflow._timer is not None
+        assert not workflow._timer.thread.is_alive()
+    finally:
+        StreamableLogHandlerManager.cleanup()
 
 
 @pytest.mark.parametrize(

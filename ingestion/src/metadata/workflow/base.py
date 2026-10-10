@@ -361,9 +361,11 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 # otherwise the non-daemon `RepeatedTimer` thread, the OM
                 # client, and step resources would leak and hang the process
                 # at shutdown.
-                self.stop()
-                # Must run after every other emitter so the tail is captured.
-                cleanup_streamable_logging()
+                try:
+                    self.stop()
+                finally:
+                    # Must run after every other emitter so the tail is captured.
+                    cleanup_streamable_logging()
 
     @property
     def run_id(self) -> str:
