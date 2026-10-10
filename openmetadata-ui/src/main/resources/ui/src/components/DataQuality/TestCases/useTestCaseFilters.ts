@@ -10,9 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormProps } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
-import { DefaultOptionType } from 'antd/lib/select';
 import { entries, isEmpty, isEqual, isUndefined, uniq, values } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useMemo, useState } from 'react';
@@ -44,7 +41,7 @@ const DEFAULT_SELECTED_FILTERS = [
 
 // The dimension filter is deliberately absent: dimensions are entities, so its options are
 // fetched alongside the other async ones in useTestCaseFilterOptions rather than hard-coded.
-const STATIC_OPTIONS: Record<string, DefaultOptionType[]> = {
+const STATIC_OPTIONS: Record<string, FetchedOption[]> = {
   [TEST_CASE_FILTERS.platform]: TEST_CASE_PLATFORM_OPTION,
   [TEST_CASE_FILTERS.type]: TEST_CASE_TYPE_OPTION,
   [TEST_CASE_FILTERS.status]: TEST_CASE_STATUS_FILTER_OPTIONS,
@@ -83,7 +80,17 @@ const getControlType = (key: string): FilterControlType => {
   return controlType;
 };
 
+/**
+ * The slice of the classic page's antd form instance these hooks drive. Typed
+ * structurally so the hooks stay antd-free; the AI page renders no form.
+ */
+export interface TestCaseFilterForm {
+  setFieldsValue(values: Record<string, unknown>): void;
+  resetFields(): void;
+}
+
 export interface UseTestCaseFiltersProps {
+  form?: TestCaseFilterForm;
   getInitialOptions: (key: string, isLengthCheck?: boolean) => void;
   isOptionsLoading: boolean;
   asyncOptionsByKey: Record<string, FetchedOption[]>;
@@ -91,13 +98,14 @@ export interface UseTestCaseFiltersProps {
 }
 
 /**
- * Owns the FILTERS concern: the URL-backed params, the selected-filter set, the
- * antd form, every handler that mutates them and the filter-agnostic
+ * Owns the FILTERS concern: the URL-backed params, the selected-filter set, every
+ * handler that mutates them and the filter-agnostic
  * {@link FilterDescriptor} builder co-located with that state. The async option
  * lists, their loading flag and the search fetchers are injected from
  * {@link useTestCaseFilterOptions}. The URL parse/stringify stays hand-rolled.
  */
 export const useTestCaseFilters = ({
+  form,
   getInitialOptions,
   isOptionsLoading,
   asyncOptionsByKey,
@@ -105,7 +113,6 @@ export const useTestCaseFilters = ({
 }: UseTestCaseFiltersProps) => {
   const navigate = useNavigate();
   const location = useCustomLocation();
-  const [form] = useForm();
 
   const params = useMemo(() => {
     const search = location.search;
@@ -147,13 +154,12 @@ export const useTestCaseFilters = ({
     [navigate, params]
   );
 
-  const handleFilterChange: FormProps<TestCaseSearchParams>['onValuesChange'] =
-    (value?: TestCaseSearchParams) => {
-      if (!isUndefined(value)) {
-        const [data] = Object.entries(value);
-        handleSearchParam(data[0] as keyof TestCaseSearchParams, data[1]);
-      }
-    };
+  const handleFilterChange = (value?: TestCaseSearchParams) => {
+    if (!isUndefined(value)) {
+      const [data] = Object.entries(value);
+      handleSearchParam(data[0] as keyof TestCaseSearchParams, data[1]);
+    }
+  };
 
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => {
@@ -161,7 +167,7 @@ export const useTestCaseFilters = ({
         const updatedValue = prevSelected.filter(
           (selected) => selected !== key
         );
-        form.setFieldsValue({ [key]: undefined });
+        form?.setFieldsValue({ [key]: undefined });
 
         return updatedValue;
       }
@@ -181,15 +187,15 @@ export const useTestCaseFilters = ({
     []
   );
 
-  const toPlainOptions = (options: DefaultOptionType[]): FilterOptionData[] =>
+  const toPlainOptions = (options: FetchedOption[]): FilterOptionData[] =>
     options.map((option) => ({
       value: String(option.value),
       label:
-        (option as FetchedOption).name ??
+        option.name ??
         (typeof option.label === 'string'
           ? option.label
           : String(option.value)),
-      subLabel: (option as FetchedOption).subLabel,
+      subLabel: option.subLabel,
     }));
 
   const filters = useMemo<FilterDescriptor[]>(() => {
@@ -231,7 +237,7 @@ export const useTestCaseFilters = ({
 
   const clearAll = useCallback(() => {
     setSelectedFilter(DEFAULT_SELECTED_FILTERS);
-    form.resetFields();
+    form?.resetFields();
     navigate({
       search: QueryString.stringify(searchValue ? { searchValue } : {}, {
         arrayFormat: 'brackets',
@@ -244,7 +250,6 @@ export const useTestCaseFilters = ({
     searchValue,
     selectedFilter,
     setSelectedFilter,
-    form,
     handleMenuClick,
     handleSearchParam,
     handleFilterChange,

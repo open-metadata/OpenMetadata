@@ -25,9 +25,9 @@ import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClas
 import AddToBundleSuiteModal from './AddToBundleSuiteModal.component';
 import { AddToBundleSuiteModalProps } from './AddToBundleSuiteModal.interface';
 
-type MockSelectProps = {
-  onChange?: (value: string | undefined) => void;
-  onSearch?: (value: string) => void;
+type MockComboBoxProps = {
+  onInputChange?: (value: string) => void;
+  onSelectionChange?: (key: string | null) => void;
   'data-testid'?: string;
 };
 
@@ -75,24 +75,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Select: ({ onChange, onSearch, 'data-testid': testId }: MockSelectProps) => (
-    <div>
-      <input
-        aria-label="Search"
-        data-testid={testId}
-        onChange={(e) => onSearch?.(e.target.value)}
-      />
-      <button
-        data-testid={`${testId}-option`}
-        onClick={() => onChange?.('suite-1')}>
-        select-option
-      </button>
-    </div>
-  ),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => {
   const MockDialogContent = ({ children }: { children: React.ReactNode }) => (
     <div data-testid="dialog-content">{children}</div>
@@ -126,7 +108,35 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }
   );
 
+  const MockSelect = Object.assign(() => null, {
+    ComboBox: ({
+      onInputChange,
+      onSelectionChange,
+      'data-testid': testId,
+    }: MockComboBoxProps) => (
+      <div>
+        <input
+          aria-label="Search"
+          data-testid={testId}
+          onChange={(e) => onInputChange?.(e.target.value)}
+        />
+        <button
+          data-testid={`${testId}-option`}
+          onClick={() => onSelectionChange?.('suite-1')}>
+          select-option
+        </button>
+        <button
+          data-testid={`${testId}-clear`}
+          onClick={() => onSelectionChange?.(null)}>
+          clear-option
+        </button>
+      </div>
+    ),
+    Item: () => null,
+  });
+
   return {
+    Select: MockSelect,
     Button: ({
       children,
       onPress,
@@ -298,6 +308,18 @@ describe('AddToBundleSuiteModal', () => {
     expect(mockOnAddedToExisting).toHaveBeenCalled();
     expect(mockOnCancel).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalled();
+  });
+
+  it('should disable add button again once the selection is cleared', async () => {
+    render(<AddToBundleSuiteModal {...mockProps} />);
+
+    fireEvent.click(await screen.findByTestId('bundle-suite-select-option'));
+
+    expect(screen.getByTestId('add-button')).not.toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('bundle-suite-select-clear'));
+
+    expect(screen.getByTestId('add-button')).toBeDisabled();
   });
 
   it('should search bundle suites on input', async () => {

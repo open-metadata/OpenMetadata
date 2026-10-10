@@ -812,7 +812,7 @@
   },
   "playwright/utils/taskWorkflow.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     },
     "playwright/no-wait-for-selector": {
       "count": 1

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
-
 import classNames from 'classnames';
 import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -83,15 +82,22 @@ interface ActivityFeedActionsProps {
 const resolveActionVisibility = (
   isAuthor: boolean,
   isAdmin: boolean,
+  canReply: boolean,
   canEdit?: boolean,
   canDelete?: boolean
 ) => {
   const canManage = isAuthor || isAdmin;
+  const showDelete = canDelete ?? canManage;
+  const showEdit = canEdit ?? canManage;
 
   return {
-    canManage,
-    showDelete: canDelete ?? canManage,
-    showEdit: canEdit ?? canManage,
+    showReply: canReply,
+    showResolve: canReply && canManage,
+    showDelete,
+    showEdit,
+    // antd's Space rendered nothing without children; keep an empty, bordered
+    // bar from appearing on hover when the user may not act on this post.
+    hasActions: canReply || showEdit || showDelete,
   };
 };
 
@@ -176,12 +182,14 @@ const ActivityFeedActions = ({
     }
   };
 
-  const { canManage, showEdit, showDelete } = resolveActionVisibility(
-    isAuthor,
-    Boolean(currentUser?.isAdmin),
-    canEdit,
-    canDelete
-  );
+  const { showReply, showResolve, showEdit, showDelete, hasActions } =
+    resolveActionVisibility(
+      isAuthor,
+      Boolean(currentUser?.isAdmin),
+      !isReply && Boolean(conversation),
+      canEdit,
+      canDelete
+    );
 
   const handleResolvedChange = () => {
     if (!conversation || isReply || !conversationId) {
@@ -198,69 +206,66 @@ const ActivityFeedActions = ({
 
   return (
     <>
-      <Box
-        inline
-        align="center"
-        aria-label={t('label.action-plural')}
-        className={`layout-space layout-space-horizontal ${classNames(
-          'feed-actions',
-          className
-        )}`}
-        data-testid="feed-actions"
-        dir={dir}
-        gap={3}
-        itemClassName="layout-space-item"
-        role="group">
-        {!isReply && conversation && (
-          <ButtonUtility
-            className="toolbar-button"
-            color="tertiary"
-            data-testid="add-reply"
-            icon={IconReply}
-            size="xs"
-            tooltip={t('label.reply')}
-            onClick={onReply}
-          />
-        )}
+      {hasActions && (
+        <Box
+          align="center"
+          aria-label={t('label.action-plural')}
+          className={classNames('feed-actions', className)}
+          data-testid="feed-actions"
+          dir={dir}
+          gap={3}
+          role="group">
+          {showReply && (
+            <ButtonUtility
+              className="toolbar-button"
+              color="tertiary"
+              data-testid="add-reply"
+              icon={IconReply}
+              size="xs"
+              tooltip={t('label.reply')}
+              onClick={onReply}
+            />
+          )}
 
-        {!isReply && conversation && canManage && (
-          <ButtonUtility
-            className="toolbar-button"
-            color="tertiary"
-            data-testid="toggle-resolved"
-            icon={ResolveIcon}
-            size="xs"
-            tooltip={
-              conversation.resolved ? t('label.open') : t('label.resolve')
-            }
-            onClick={handleResolvedChange}
-          />
-        )}
+          {showResolve && (
+            <ButtonUtility
+              className="toolbar-button"
+              color="tertiary"
+              data-testid="toggle-resolved"
+              icon={ResolveIcon}
+              size="xs"
+              tooltip={
+                conversation?.resolved ? t('label.open') : t('label.resolve')
+              }
+              onClick={handleResolvedChange}
+            />
+          )}
 
-        {showEdit && (
-          <ButtonUtility
-            className="toolbar-button"
-            color="tertiary"
-            data-testid="edit-message"
-            icon={IconEdit}
-            size="xs"
-            tooltip={t('label.edit')}
-            onClick={onEditPost}
-          />
-        )}
+          {showEdit && (
+            <ButtonUtility
+              className="toolbar-button"
+              color="tertiary"
+              data-testid="edit-message"
+              icon={IconEdit}
+              size="xs"
+              tooltip={t('label.edit')}
+              onClick={onEditPost}
+            />
+          )}
 
-        {showDelete && (
-          <ButtonUtility
-            className="toolbar-button"
-            color="tertiary"
-            data-testid="delete-message"
-            icon={DeleteIcon}
-            size="xs"
-            tooltip={t('label.delete')}
-            onClick={() => setShowDeleteDialog(true)}
-          />
-        )}
-      </Box>
+          {showDelete && (
+            <ButtonUtility
+              className="toolbar-button"
+              color="tertiary"
+              data-testid="delete-message"
+              icon={DeleteIcon}
+              size="xs"
+              tooltip={t('label.delete')}
+              onClick={() => setShowDeleteDialog(true)}
+            />
+          )}
+        </Box>
+      )}
       <ConfirmationModal
         bodyText={t('message.confirm-delete-message')}
         cancelText={t('label.cancel')}

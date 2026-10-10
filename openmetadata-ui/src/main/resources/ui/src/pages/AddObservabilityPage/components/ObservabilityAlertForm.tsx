@@ -21,10 +21,8 @@ import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  ModifiedCreateEventSubscription,
-  ObservabilityAlertFormProps,
-} from '../AddObservabilityPage.interface';
+import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
+import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
 import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
 
 function ObservabilityAlertForm({
@@ -47,6 +45,7 @@ function ObservabilityAlertForm({
   templates,
 }: Readonly<ObservabilityAlertFormProps>) {
   const { t } = useTranslation();
+  const values = Form.useWatch<ModifiedCreateEventSubscription>([], form);
 
   return (
     <Grid
@@ -115,6 +114,7 @@ function ObservabilityAlertForm({
                       key={name}
                       templateResourcePermission={templateResourcePermission}
                       templates={templates}
+                      values={values}
                     />
                   )
                 )}

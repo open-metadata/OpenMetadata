@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Box } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Box, Button } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 import './inline-edit.less';
 import { InlineEditProps } from './InlineEdit.interface';
 
@@ -27,6 +27,7 @@ const InlineEdit = ({
   cancelButtonProps,
   saveButtonProps,
 }: InlineEditProps) => {
+  const { t } = useTranslation();
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -34,45 +35,40 @@ const InlineEdit = ({
     }
   };
 
-  // Editing actions must not toggle the parent user/team collapsible panel.
+  const isVertical = direction === 'vertical';
+
   return (
     <Box
-      inline
-      align={direction === 'vertical' ? 'stretch' : 'center'}
-      className={`layout-space ${
-        direction === 'horizontal' ? 'layout-space-horizontal' : ''
-      } ${classNames(className, 'inline-edit-container')}`}
+      align={isVertical ? undefined : 'center'}
+      className={classNames(className, 'inline-edit-container')}
       data-testid="inline-edit-container"
-      direction={direction === 'vertical' ? 'col' : 'row'}
+      direction={isVertical ? 'col' : 'row'}
       gap={2}
-      itemClassName="layout-space-item"
+      // Used onClick to stop click propagation event anywhere in the component to parent
+      // TeamDetailsV1 and User.component collapsible panel.
       onClick={(e) => e.stopPropagation()}
       onKeyDown={handleKeyDown}>
       {children}
 
-      <Box
-        inline
-        align="center"
-        className="layout-space layout-space-horizontal w-full justify-end"
-        data-testid="buttons"
-        gap={1}
-        itemClassName="layout-space-item">
+      <Box data-testid="buttons" gap={1} justify="end">
         <Button
+          aria-label={t('label.cancel')}
+          color="primary"
           data-testid="inline-cancel-btn"
-          disabled={isLoading}
-          icon={<CloseOutlined />}
-          size="small"
-          type="primary"
-          onClick={onCancel}
+          iconLeading={XClose}
+          isDisabled={isLoading}
+          size="xs"
+          onPress={onCancel}
           {...cancelButtonProps}
         />
         <Button
+          aria-label={t('label.save')}
+          color="primary"
           data-testid="inline-save-btn"
-          icon={<CheckOutlined />}
-          loading={isLoading}
-          size="small"
-          type="primary"
-          onClick={onSave}
+          iconLeading={Check}
+          isLoading={isLoading}
+          size="xs"
+          onPress={onSave}
           {...saveButtonProps}
         />
       </Box>

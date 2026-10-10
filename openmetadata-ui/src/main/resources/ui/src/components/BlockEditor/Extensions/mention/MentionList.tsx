@@ -12,7 +12,6 @@
  */
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { SuggestionProps } from '@tiptap/suggestion';
-
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
@@ -107,25 +106,19 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
     return (
       <Box
         inline
-        align="stretch"
-        className="layout-space suggestion-menu-wrapper"
+        className="suggestion-menu-wrapper"
         direction="col"
         gap={2}
-        id="mention-viewport"
-        itemClassName="layout-space-item">
+        id="mention-viewport">
         {items.map((item, index) => (
           <Box
             inline
             align="center"
-            className={`layout-space layout-space-horizontal ${classNames(
-              'w-full cursor-pointer mention-item',
-              {
-                'bg-grey-2': index === selectedIndex,
-              }
-            )}`}
+            className={classNames('w-full cursor-pointer mention-item', {
+              'bg-grey-2': index === selectedIndex,
+            })}
             gap={2}
             id={`mention-item-${item.id}`}
-            itemClassName="layout-space-item"
             key={item.id}
             onClick={() => selectItem(index)}>
             <ProfilePicture name={item.name} width="20" />

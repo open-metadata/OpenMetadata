@@ -221,16 +221,16 @@ test.describe('Column Bulk Operations - Tags & Glossary Select in Drawer', () =>
       await searchRes;
     });
 
-    await test.step('Option renders inside the drawer top layer', async () => {
-      // Before the fix this option portaled to document.body, outside the
-      // drawer — so scoping the locator to the drawer would not find it.
+    await test.step('Option renders above the drawer', async () => {
+      // The core listbox is a react-aria popover nested in the drawer's modal,
+      // so it portals to the body yet stays interactive above the drawer.
       await expect(
-        drawer.getByTestId(`tag-${CLASSIFICATION_TAG_FQN}`)
+        page.getByTestId(`tag-${CLASSIFICATION_TAG_FQN}`)
       ).toBeVisible();
     });
 
     await test.step('Clicking the option selects the tag', async () => {
-      await drawer.getByTestId(`tag-${CLASSIFICATION_TAG_FQN}`).click();
+      await page.getByTestId(`tag-${CLASSIFICATION_TAG_FQN}`).click();
 
       await expect(
         tagsField.locator('[data-testid^="selected-tag-"]')

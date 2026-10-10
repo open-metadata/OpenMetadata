@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import {
+  Box,
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isArray, startCase } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +28,6 @@ import {
   PipelineStatus,
   StepSummary,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
@@ -35,30 +40,26 @@ import { IngestionRunDetailsModalProps } from './IngestionRunDetailsModal.interf
 
 const renderFailuresRow = (record: StepSummary) =>
   record.failures ? (
-    <Grid
-      className="layout-row layout-grid"
-      style={{ ...getLayoutGutter(16, 16) }}>
+    <Box direction="col" gap={4}>
       {record.failures.map((failure) => (
-        <Grid.Item className="layout-column" key={failure.name} span={24}>
-          <ConnectionStepCard
-            isTestingConnection={false}
-            key={failure.name}
-            testConnectionStep={{
-              name: failure.name,
-              mandatory: false,
-              description: failure.error,
-            }}
-            testConnectionStepResult={{
-              name: failure.name,
-              passed: false,
-              mandatory: false,
-              message: failure.error,
-              errorLog: failure.stackTrace,
-            }}
-          />
-        </Grid.Item>
+        <ConnectionStepCard
+          isTestingConnection={false}
+          key={failure.name}
+          testConnectionStep={{
+            name: failure.name,
+            mandatory: false,
+            description: failure.error,
+          }}
+          testConnectionStepResult={{
+            name: failure.name,
+            passed: false,
+            mandatory: false,
+            message: failure.error,
+            errorLog: failure.stackTrace,
+          }}
+        />
       ))}
-    </Grid>
+    </Box>
   ) : undefined;
 
 function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
@@ -108,10 +109,9 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
         render: (failures: StepSummary['failures'], record: StepSummary) =>
           (failures?.length ?? 0) > 0 ? (
             <Button
+              color="link-color"
               data-testid={`log-${record.name}`}
-              size="small"
-              type="link"
-              onClick={() => setExpandedKeys([record.name])}>
+              onPress={() => setExpandedKeys([record.name])}>
               {t('label.log-plural')}
             </Button>
           ) : (
@@ -134,34 +134,41 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
   );
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      open
-      closable={false}
-      maskClosable={false}
-      okButtonProps={{ style: { display: 'none' } }}
-      title={t('message.run-status-at-timestamp', {
-        status: startCase(
-          (pipelineStatus as PipelineStatus)?.pipelineState ??
-            (pipelineStatus as AppRunRecord)?.status
-        ),
-        timestamp: formatDateTime(pipelineStatus?.timestamp),
-      })}
-      width="80%"
-      onCancel={handleCancel}>
-      <Table
-        columns={columns}
-        dataSource={
-          isArray(pipelineStatus?.status) ? pipelineStatus?.status : []
-        }
-        expandable={expandable}
-        indentSize={0}
-        pagination={false}
-        rowKey="name"
-        size="small"
-      />
-    </Modal>
+    <ModalOverlay
+      isOpen
+      isDismissable={false}
+      onOpenChange={(isOpen) => !isOpen && handleCancel()}>
+      <Modal>
+        <Dialog
+          panelClassName="tw:max-w-[80vw]!"
+          title={t('message.run-status-at-timestamp', {
+            status: startCase(
+              (pipelineStatus as PipelineStatus)?.pipelineState ??
+                (pipelineStatus as AppRunRecord)?.status
+            ),
+            timestamp: formatDateTime(pipelineStatus?.timestamp),
+          })}>
+          <Dialog.Content>
+            <Table
+              columns={columns}
+              dataSource={
+                isArray(pipelineStatus?.status) ? pipelineStatus?.status : []
+              }
+              expandable={expandable}
+              indentSize={0}
+              pagination={false}
+              rowKey="name"
+              size="small"
+            />
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" onPress={handleCancel}>
+              {t('label.cancel')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 }
 
