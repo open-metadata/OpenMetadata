@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
-import { Box } from '@openmetadata/ui-core-components';
-import { Button, Modal, Tooltip } from 'antd';
-import classNames from 'classnames';
+
+import { Box, Tooltip, ButtonUtility, Button as CoreButton } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Button, Modal } from 'antd';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -270,20 +270,17 @@ export const UserTab = ({
             className="layout-space layout-space-horizontal w-full justify-center remove-icon"
             gap={2}
             itemClassName="layout-space-item">
-            <Tooltip
-              placement="left"
-              title={
+            <Tooltip arrow placement="left" title={
                 editUserPermission
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
               }>
-              <Button
+              <ButtonUtility
+                color="tertiary"
                 data-testid="remove-user-btn"
-                disabled={!editUserPermission}
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
+                icon={IconRemove}
+                isDisabled={!editUserPermission}
+                size="sm"
                 onClick={() => handleRemoveClick(record.id)}
               />
             </Tooltip>
@@ -394,18 +391,15 @@ export const UserTab = ({
               includeBot
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
-              <Tooltip placement="topRight" title={addUserButtonTitle}>
-                <Button
-                  ghost
-                  className={classNames({
-                    'p-x-lg': editUserPermission && !isTeamDeleted,
-                  })}
+              <Tooltip arrow placement="top right" title={addUserButtonTitle}>
+                <CoreButton
+                  color="secondary"
                   data-testid="add-new-user"
-                  disabled={!editUserPermission || isTeamDeleted}
-                  icon={<PlusOutlined />}
-                  type="primary">
+                  iconLeading={Plus}
+                  isDisabled={!editUserPermission || isTeamDeleted}
+                  size="sm">
                   {t('label.add')}
-                </Button>
+                </CoreButton>
               </Tooltip>
             </UserSelectableList>
             {!isTeamDeleted && (

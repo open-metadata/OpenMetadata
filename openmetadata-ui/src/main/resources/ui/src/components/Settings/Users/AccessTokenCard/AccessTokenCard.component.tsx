@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Tooltip } from 'antd';
+import { Typography, Tooltip } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -347,7 +347,7 @@ const AccessTokenCard: FC<MockProps> = ({
   }
 
   if (disabled) {
-    return <Tooltip title="Upgrade to use this feature">{tokenCard}</Tooltip>;
+    return <Tooltip arrow excludeTriggerFromTabOrder title="Upgrade to use this feature" triggerClassName="tw:inline-flex">{tokenCard}</Tooltip>;
   }
 
   return tokenCard;

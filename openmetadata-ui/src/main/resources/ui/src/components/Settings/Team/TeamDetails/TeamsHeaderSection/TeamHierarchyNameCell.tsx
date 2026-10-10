@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { FC, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
@@ -72,7 +72,7 @@ export const TeamHierarchyNameCell: FC<TeamHierarchyNameCellProps> = ({
   return (
     <span className="teams-hierarchy-team-name-cell">
       {isTruncated ? (
-        <Tooltip placement="topLeft" title={displayName}>
+        <Tooltip arrow excludeTriggerFromTabOrder placement="top left" title={displayName} triggerClassName="tw:inline-flex">
           <span className="teams-hierarchy-team-name-tooltip-trigger">
             {link}
           </span>

@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button as CoreButton,
-  Dropdown,
-  Grid,
-  Label,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Button, Select, Tooltip } from 'antd';
+import { Button as CoreButton, Dropdown, Grid, Label, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -29,13 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  INITIAL_PAGING_VALUE,
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
+import { INITIAL_PAGING_VALUE, NO_DATA_PLACEHOLDER, PAGE_SIZE_LARGE } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
   HIGHLIGHTED_ROW_SELECTOR,
@@ -709,23 +697,15 @@ const SchemaTable = () => {
             </div>
             <div className="d-flex items-center">
               {editDisplayNamePermission && (
-                <Tooltip placement="top" title={t('label.edit')}>
-                  <Button
-                    className="cursor-pointer hover-cell-icon flex-center"
+                <Tooltip arrow placement="top" title={t('label.edit')}>
+                  <ButtonUtility
+                    className="hover-cell-icon"
+                    color="tertiary"
                     data-testid="edit-displayName-button"
-                    style={{
-                      color: DE_ACTIVE_COLOR,
-                      padding: 0,
-                      border: 'none',
-                      background: 'transparent',
-                      width: '24px',
-                      height: '24px',
-                    }}
-                    onClick={() => handleEditDisplayNameClick(record)}>
-                    <IconEdit
-                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                    />
-                  </Button>
+                    icon={IconEdit}
+                    size="xs"
+                    onClick={() => handleEditDisplayNameClick(record)}
+                  />
                 </Tooltip>
               )}
               {record.fullyQualifiedName && (

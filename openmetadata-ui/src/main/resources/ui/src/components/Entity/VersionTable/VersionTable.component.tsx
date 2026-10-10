@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -251,13 +251,12 @@ function VersionTable<T extends Column | SearchIndexField>({
         width: 200,
         render: (dataTypeDisplay: T['dataTypeDisplay']) => {
           return dataTypeDisplay ? (
-            <Tooltip
-              title={
+            <Tooltip arrow excludeTriggerFromTabOrder title={
                 <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
                   textVariant="white"
                 />
-              }>
+              } triggerClassName="tw:inline-flex">
               <div className="cursor-pointer">
                 <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}

@@ -12,8 +12,8 @@
  */
 
 import { LeftOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Alert, Button, Carousel, Tooltip } from 'antd';
+import { Box, Grid, Typography, Tooltip, Button as CoreButton } from '@openmetadata/ui-core-components';
+import { Alert, Button, Carousel } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -167,16 +167,16 @@ const MarketPlaceAppDetails = () => {
         <div className="flex-center m-t-md">
           <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         </div>
-        <Tooltip placement="top" title={tooltipTitle} trigger="hover">
-          <Button
-            block
-            className="m-t-md"
+        <Tooltip arrow isDisabled={!tooltipTitle} placement="top" title={tooltipTitle}>
+          <CoreButton
+            className="tw:w-full m-t-md"
+            color="primary"
             data-testid="install-application"
-            disabled={isInstalled || isAppDisabled}
-            type="primary"
-            onClick={installApp}>
+            isDisabled={isInstalled || isAppDisabled}
+            size="md"
+            onPress={installApp}>
             {t('label.install')}
-          </Button>
+          </CoreButton>
         </Tooltip>
 
         {isAppDisabled && (

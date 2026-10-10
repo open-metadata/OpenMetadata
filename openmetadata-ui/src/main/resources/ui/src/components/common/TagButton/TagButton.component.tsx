@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { VersionStatus } from '../../../utils/EntityVersionUtils.interface';
@@ -54,7 +54,7 @@ const TagButton: React.FC<TagButtonProps> = ({
           onClick?.();
         }
       }}>
-      <Tooltip placement="bottomLeft" title={tooltip}>
+      <Tooltip arrow excludeTriggerFromTabOrder placement="bottom left" title={tooltip} triggerClassName="tw:inline-flex">
         <div className="d-flex items-center">
           {icon && <span className="m-r-xss flex-center">{icon}</span>}
           <span className="text-xs font-medium">{label}</span>

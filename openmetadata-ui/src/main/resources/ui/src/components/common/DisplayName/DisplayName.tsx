@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';
@@ -98,17 +98,13 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
 
         <div className="d-flex items-center">
           {hasEditPermission ? (
-            <Tooltip placement="top" title={t('label.edit')}>
-              <Button
-                ghost
-                className="hover-cell-icon flex-center"
+            <Tooltip arrow placement="top" title={t('label.edit')}>
+              <ButtonUtility
+                className="hover-cell-icon"
+                color="tertiary"
                 data-testid="edit-displayName-button"
-                icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
-                style={{
-                  width: '24px',
-                  height: '24px',
-                }}
-                type="text"
+                icon={IconEdit}
+                size="xs"
                 onClick={() => setIsDisplayNameEditing(true)}
               />
             </Tooltip>

@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Typography, Tooltip } from '@openmetadata/ui-core-components';
 import { render } from '@testing-library/react';
-import { Tooltip } from 'antd';
 import React from 'react';
 import { EntityType } from '../enums/entity.enum';
 import {

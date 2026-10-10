@@ -15,25 +15,15 @@ import {
   CloseOutlined,
   InfoCircleOutlined,
 } from '@ant-design/icons';
-import {
-  Box,
-  Divider,
-  Owner,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Tooltip } from 'antd';
+import { Box, Divider, Owner, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Button, Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  GRAYED_OUT_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../../constants/constants';
+import { GRAYED_OUT_COLOR, NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
@@ -190,22 +180,14 @@ const TeamsInfo = ({
             'label.email'
           )}`}</Typography>
           {hasEditPermission && (
-            <Tooltip
-              title={t('label.edit-entity', {
+            <Tooltip arrow title={t('label.edit-entity', {
                 entity: t('label.email'),
               })}>
-              <Button
-                className="flex-center teams-info-email-edit-button p-0"
+              <ButtonUtility
+                color="secondary"
                 data-testid="edit-email"
-                icon={
-                  <EditIcon
-                    color={DE_ACTIVE_COLOR}
-                    {...ICON_DIMENSION}
-                    width="12px"
-                  />
-                }
-                size="small"
-                type="text"
+                icon={EditIcon}
+                size="xs"
                 onClick={(e) => {
                   // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                   e.stopPropagation();
@@ -313,29 +295,21 @@ const TeamsInfo = ({
               {`${t('label.type')}`}
             </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
-              <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.team-type'),
-                })}>
-                <Button
-                  className="flex-center edit-team-type-icon p-0"
-                  data-testid="edit-team-type-icon"
-                  icon={
-                    <EditIcon
-                      color={DE_ACTIVE_COLOR}
-                      {...ICON_DIMENSION}
-                      width={12}
-                    />
-                  }
-                  size="small"
-                  type="text"
-                  onClick={(e) => {
-                    // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
-                    e.stopPropagation();
-                    setShowTypeSelector(true);
-                  }}
-                />
-              </Tooltip>
+              <Tooltip arrow title={t('label.edit-entity', {
+                entity: t('label.team-type'),
+              })}>
+              <ButtonUtility
+                color="secondary"
+                data-testid="edit-team-type-icon"
+                icon={EditIcon}
+                size="xs"
+                onClick={(e: MouseEvent) => {
+                  // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
+                  e.stopPropagation();
+                  setShowTypeSelector(true);
+                }}
+              />
+            </Tooltip>
             )}
           </div>
 
@@ -482,9 +456,7 @@ const TeamsInfo = ({
           className="text-primary d-flex items-center"
           weight="medium">
           {t('label.total-user-plural')}
-          <Tooltip
-            destroyTooltipOnHide
-            title={t('message.team-distinct-user-description')}>
+          <Tooltip arrow excludeTriggerFromTabOrder title={t('message.team-distinct-user-description')} triggerClassName="tw:inline-flex">
             <InfoCircleOutlined
               className="m-x-xss"
               data-testid="helper-icon"

@@ -11,14 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  EmptyPlaceholder,
-  Grid,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Box, Button, EmptyPlaceholder, Grid, Typography, Tooltip, Button as CoreButton } from '@openmetadata/ui-core-components';
 import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
@@ -575,26 +568,25 @@ const Services = ({ serviceName }: ServicesProps) => {
           {isFetchingStatus ? (
             <ButtonSkeleton size="default" />
           ) : (
-            <Tooltip
-              placement="left"
-              title={
+            <Tooltip arrow excludeTriggerFromTabOrder placement="left" title={
                 addServicePermission
                   ? t('label.add-entity', {
                       entity: t('label.service'),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
-              }>
+              } triggerClassName="tw:inline-flex">
               {addServicePermission && (
                 <LimitWrapper resource="dataAssets">
-                  <Button
+                  <CoreButton
                     className="m-b-xs"
+                    color="primary"
                     data-testid="add-service-button"
-                    type="primary"
-                    onClick={handleAddServiceClick}>
+                    size="sm"
+                    onPress={handleAddServiceClick}>
                     {t('label.add-new-entity', {
                       entity: t('label.service'),
                     })}
-                  </Button>
+                  </CoreButton>
                 </LimitWrapper>
               )}
             </Tooltip>

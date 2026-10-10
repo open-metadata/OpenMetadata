@@ -12,8 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Box, Tooltip } from '@openmetadata/ui-core-components';
 import { DataNode } from 'antd/lib/tree';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
 import React from 'react';
@@ -215,10 +214,7 @@ export const getTreeData = (
           <Box className="layout-column tw:block">
             <div className="execution-node-container">
               {value.map((status: ViewDataInterface) => (
-                <Tooltip
-                  key={`${status.timestamp}-${status.executionStatus}`}
-                  placement="top"
-                  title={
+                <Tooltip key={`${status.timestamp}-${status.executionStatus}`} arrow excludeTriggerFromTabOrder placement="top" title={
                     <Box
                       inline
                       align="stretch"
@@ -246,7 +242,7 @@ export const getTreeData = (
                         </div>
                       )}
                     </Box>
-                  }>
+                  } triggerClassName="tw:inline-flex">
                   <Icon
                     alt="result"
                     className="align-middle"

@@ -25,7 +25,11 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
 
   const actual = {};
-  for (const file of Object.values(suppressions)) {
+  // src/ entries belong to the antd ratchet in eslint-rules/openmetadata-antd.test.mjs.
+  const playwrightFiles = Object.entries(suppressions)
+    .filter(([path]) => path.startsWith('playwright/'))
+    .map(([, file]) => file);
+  for (const file of playwrightFiles) {
     for (const [ruleId, entry] of Object.entries(file)) {
       actual[ruleId] = (actual[ruleId] ?? 0) + entry.count;
     }

@@ -12,8 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Badge, Box, Typography, Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -164,12 +163,7 @@ export const tagRender = (customTagProps: CustomTagProps) => {
       size="sm"
       type="color"
       onMouseDown={onPreventMouseDown}>
-      <Tooltip
-        className="cursor-pointer"
-        mouseEnterDelay={1.5}
-        placement="topLeft"
-        title={getTagTooltip(label as string)}
-        trigger="hover">
+      <Tooltip arrow delay={1500} excludeTriggerFromTabOrder placement="top left" title={getTagTooltip(label as string)} triggerClassName="tw:inline-flex cursor-pointer">
         <Typography
           as="p"
           className="m-0 d-inline-block break-all whitespace-normal">

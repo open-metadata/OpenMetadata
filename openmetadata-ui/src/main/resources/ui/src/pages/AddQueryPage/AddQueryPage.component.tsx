@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Tooltip } from 'antd';
+import { Box, Typography, Tooltip, Button as CoreButton } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
@@ -295,20 +295,16 @@ const AddQueryPage = () => {
                       onClick={handleCancelClick}>
                       {t('label.cancel')}
                     </Button>
-                    <Tooltip
-                      placement="top"
-                      title={
-                        !permissions.query?.Create &&
-                        t(NO_PERMISSION_FOR_ACTION)
-                      }>
-                      <Button
+                    <Tooltip arrow isDisabled={permissions.query?.Create} placement="top" title={t(NO_PERMISSION_FOR_ACTION)}>
+                      <CoreButton
+                        color="primary"
                         data-testid="save-btn"
-                        disabled={!permissions.query?.Create}
-                        htmlType="submit"
-                        loading={isSaving}
-                        type="primary">
+                        isDisabled={!permissions.query?.Create}
+                        isLoading={isSaving}
+                        size="sm"
+                        type="submit">
                         {t('label.save')}
-                      </Button>
+                      </CoreButton>
                     </Tooltip>
                   </Box>
                 </Form.Item>

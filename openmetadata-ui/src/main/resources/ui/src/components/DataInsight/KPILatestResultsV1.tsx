@@ -12,13 +12,13 @@
  */
 
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Box, Grid, Typography, Tooltip } from '@openmetadata/ui-core-components';
 import {
   chartColor,
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Progress, Tooltip } from 'antd';
+import { Progress } from 'antd';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -120,13 +120,10 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                     {resultData.displayName ?? name}
                   </Typography>
                   {daysLeft <= 0 || isTargetMet ? (
-                    <Tooltip
-                      placement="bottom"
-                      title={getKpiResultFeedback(
+                    <Tooltip arrow excludeTriggerFromTabOrder placement="bottom" title={getKpiResultFeedback(
                         daysLeft,
                         Boolean(isTargetMet)
-                      )}
-                      trigger="hover">
+                      )} triggerClassName="tw:inline-flex">
                       <InfoCircleOutlined style={{ fontSize: '14px' }} />
                     </Tooltip>
                   ) : null}

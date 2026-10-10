@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Tooltip } from 'antd';
+import { Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Modal } from 'antd';
 import { isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -95,16 +96,14 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
       render: (_: string, record: User) => {
         return (
           onRemoveUser && (
-            <Tooltip
-              title={t('label.remove-entity', {
+            <Tooltip arrow title={t('label.remove-entity', {
                 entity: t('label.user'),
               })}>
-              <Button
+              <ButtonUtility
+                color="tertiary"
                 data-testid="remove-user-btn"
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
+                icon={IconRemove}
+                size="sm"
                 onClick={() => handleRemoveButtonClick(record)}
               />
             </Tooltip>

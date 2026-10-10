@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Tooltip } from 'antd';
+import { Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,13 +82,13 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           )}>
           {isRightPanelCollapsed && (
             <Card className="reflex-card card-padding-0">
-              <Tooltip placement="right" title={t('label.expand')}>
-                <Button
-                  className="mr-2 header-collapse-button"
+              <Tooltip arrow placement="right" title={t('label.expand')}>
+                <ButtonUtility
+                  className="mr-2"
+                  color="tertiary"
                   data-testid="sidebar-toggle"
-                  icon={<SidebarCollapsedIcon height={20} width={20} />}
-                  size="middle"
-                  type="text"
+                  icon={SidebarCollapsedIcon}
+                  size="sm"
                   onClick={handleCollapse}
                 />
               </Tooltip>

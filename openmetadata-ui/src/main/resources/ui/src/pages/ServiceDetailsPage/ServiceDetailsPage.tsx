@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Box, Tabs, Tooltip, Button } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';
@@ -1800,8 +1800,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <ServiceSectionCard
           actions={
             <>
-              <Tooltip
-                title={
+              <Tooltip arrow title={
                   flags.canEditAll
                     ? t('label.edit-entity', {
                         entity: t('label.connection'),
@@ -1809,11 +1808,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
                     : t('message.no-permission-for-action')
                 }>
                 <Button
-                  ghost
+                  color="secondary"
                   data-testid="edit-connection-button"
-                  disabled={!flags.canEditAll}
-                  type="primary"
-                  onClick={goToEditConnection}>
+                  isDisabled={!flags.canEditAll}
+                  size="sm"
+                  onPress={goToEditConnection}>
                   {t('label.edit-entity', {
                     entity: t('label.connection'),
                   })}
