@@ -15,7 +15,7 @@
     <description>Official Java SDK for OpenMetadata API - Stripe-style implementation</description>
 
     <properties>
-        <okhttp.version>4.12.0</okhttp.version>
+        <okhttp.version>5.5.0</okhttp.version>
         <junit.version>6.1.3</junit.version>
         <junit-platform.version>${org.junit.platform.version}</junit-platform.version>
         <mockito.version>5.5.0</mockito.version>
