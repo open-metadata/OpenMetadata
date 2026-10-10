@@ -831,6 +831,7 @@ const FilterSelect = ({
   }, [isOpen]);
 
   // Scroll doesn't bubble, so the capture listener sees the menu's own scroll.
+  // Loads the next page 40px before the end: ADR:2026-10-10-data-product-picker-pages-50-and-loads-near-the-end
   const handleMenuScroll = (event: UIEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     const isNearEnd =
