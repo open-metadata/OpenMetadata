@@ -472,9 +472,9 @@ const FilterSelect = ({
 
   const isMulti = selectionMode === 'multiple';
   const hasAnyDetails = options.some((option) => option.details !== undefined);
-  // Rows whose details are open; each opening starts from the selection.
-  const [expandedValues, setExpandedValues] = useState<Set<string>>(
-    () => new Set()
+  // Rows the user expanded or collapsed; any other row opens with its selection.
+  const [toggledRows, setToggledRows] = useState<Map<string, boolean>>(
+    () => new Map()
   );
   const isRadio = !isMulti && Boolean(showRadio);
   const isStaged = commitMode === 'staged';
@@ -605,11 +605,18 @@ const FilterSelect = ({
   }, [selectedValuesKey]);
 
   useEffect(() => {
-    if (isOpen) {
-      setExpandedValues(new Set(selectedValues));
+    if (!isOpen) {
+      setToggledRows(new Map());
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  const isRowExpanded = (value: string, toggled = toggledRows) =>
+    toggled.get(value) ?? selectedValues.includes(value);
+
+  const toggleExpanded = (value: string, expand?: boolean) =>
+    setToggledRows((prev) =>
+      new Map(prev).set(value, expand ?? !isRowExpanded(value, prev))
+    );
 
   // MenuItem takes no key handlers, so ArrowRight / ArrowLeft are read here
   // off whichever row holds focus.
@@ -623,18 +630,6 @@ const FilterSelect = ({
       toggleExpanded(value, event.key === 'ArrowRight');
     }
   };
-
-  const toggleExpanded = (value: string, expand?: boolean) =>
-    setExpandedValues((prev) => {
-      const next = new Set(prev);
-      if (expand ?? !next.has(value)) {
-        next.add(value);
-      } else {
-        next.delete(value);
-      }
-
-      return next;
-    });
 
   const handleOpenChange = (open: boolean) => {
     setInternalOpen(open);
@@ -1010,7 +1005,7 @@ const FilterSelect = ({
               {displayedOptions.map((option) => (
                 <OptionRow
                   hideCounts={hideCounts}
-                  isExpanded={expandedValues.has(option.value)}
+                  isExpanded={isRowExpanded(option.value)}
                   key={option.value}
                   option={option}
                   showCheckbox={isMulti}

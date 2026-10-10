@@ -100,6 +100,18 @@ describe('TierCard', () => {
     expect(mockOnUpdate).not.toHaveBeenCalled();
   });
 
+  it('shows a tier with no details as its summary, without a chevron', async () => {
+    mockGetTags.mockResolvedValueOnce({
+      data: [{ ...mockTierData[0], description: 'Critical data' }],
+    });
+    render(<TierCard {...mockProps} />);
+
+    const row = await screen.findByTestId('Tier.Tier1');
+
+    expect(within(row).getByText('Critical data')).toBeInTheDocument();
+    expect(screen.queryByTestId('Tier.Tier1-expand')).not.toBeInTheDocument();
+  });
+
   it('saves the picked tier at once', async () => {
     render(<TierCard {...mockProps} />);
 

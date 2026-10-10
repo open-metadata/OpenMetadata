@@ -1012,6 +1012,19 @@ describe('FilterSelect', () => {
       expect(screen.queryByText('Important datasets')).not.toBeInTheDocument();
     });
 
+    it('collapses the selected row from its chevron', () => {
+      renderFilter({
+        options: TIERS,
+        selectedValues: ['t1'],
+        selectionMode: 'single',
+        showRadio: true,
+      });
+
+      fireEvent.click(screen.getByTestId('t1-expand'));
+
+      expect(screen.queryByText('Critical metrics')).not.toBeInTheDocument();
+    });
+
     it('expands and collapses the focused row with the arrow keys', () => {
       renderFilter({
         options: TIERS,

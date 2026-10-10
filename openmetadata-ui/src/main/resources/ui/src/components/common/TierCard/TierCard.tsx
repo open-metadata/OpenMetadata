@@ -14,9 +14,9 @@
 import { FilterSelect } from '@openmetadata/ui-core-components';
 import { Tag01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isNil } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { getTags } from '../../../rest/tagAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -47,7 +47,7 @@ const TierCard = ({
     try {
       const { data } = await getTags({
         parent: 'Tier',
-        limit: 50,
+        limit: PAGE_SIZE_LARGE,
         disabled: false,
       });
       setTiers(data ?? []);
@@ -69,17 +69,18 @@ const TierCard = ({
     }
   }, [isOpen]);
 
-  // A tier's description is a summary line, then its details.
+  // A tier's description is a summary line, then (after a blank line) its details.
   const options = useMemo(
     () =>
       tiers.map((tier) => {
         const name = getEntityName(tier);
-        const summary = tier.description
-          .substring(0, tier.description.indexOf('\n\n'))
-          .replace(/\*/g, '');
-        const details = tier.description.substring(
-          tier.description.indexOf('\n\n') + 1
-        );
+        const description = tier.description ?? '';
+        const splitAt = description.indexOf('\n\n');
+        const hasDetails = splitAt !== -1;
+        const summary = (
+          hasDetails ? description.slice(0, splitAt) : description
+        ).replace(/\*/g, '');
+        const details = hasDetails ? description.slice(splitAt).trim() : '';
 
         return {
           value: tier.fullyQualifiedName ?? '',
@@ -92,18 +93,20 @@ const TierCard = ({
                 style={{ color: tier.style?.color }}>
                 {name}
               </span>
-              <span className="tw:text-xs tw:whitespace-normal tw:text-tertiary">
-                {summary}
-              </span>
+              {summary && (
+                <span className="tw:text-xs tw:whitespace-normal tw:text-tertiary">
+                  {summary}
+                </span>
+              )}
             </span>
           ),
-          details: (
+          details: details ? (
             <RichTextEditorPreviewerV1
               className="tier-card-description"
               enableSeeMoreVariant={false}
               markdown={details}
             />
-          ),
+          ) : undefined,
         };
       }),
     [tiers]
@@ -138,7 +141,7 @@ const TierCard = ({
       options={options}
       selectedValues={currentTier ? [currentTier] : []}
       selectionMode="single"
-      trigger={isNil(children) ? null : children}
+      trigger={children}
       onChange={handleChange}
       onOpenChange={handleOpenChange}
     />

@@ -12,10 +12,9 @@
  */
 import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { debounce } from 'lodash';
+import { compact, debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -70,6 +69,9 @@ const DataProductsSelectList = ({
         setSearchText(search);
       } catch (error) {
         if (generation === searchGeneration.current) {
+          // Rows from the previous search must not read as this one's results.
+          setOptions([]);
+          setTotal(0);
           showErrorToast(error as AxiosError);
         }
       } finally {
@@ -101,6 +103,7 @@ const DataProductsSelectList = ({
 
   useEffect(() => {
     if (isOpen) {
+      knownDataProducts.current.clear();
       beginSearch('', true);
     }
 
@@ -186,18 +189,9 @@ const DataProductsSelectList = ({
     return dataProduct ? getEntityName(dataProduct) : fqn;
   };
 
+  // Every value is a selected product or a row seen while open, so each resolves.
   const handleChange = (fqns: string[]) => {
-    void onSubmit(
-      fqns.map(
-        (fqn) =>
-          findDataProduct(fqn) ??
-          ({
-            fullyQualifiedName: fqn,
-            name: fqn,
-            type: EntityType.DATA_PRODUCT,
-          } as unknown as DataProduct)
-      )
-    );
+    void onSubmit(compact(fqns.map(findDataProduct)));
   };
 
   return (

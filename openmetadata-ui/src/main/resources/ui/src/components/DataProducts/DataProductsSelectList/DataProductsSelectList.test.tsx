@@ -18,8 +18,13 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { DataProductSelectOption } from './DataProductSelectList.interface';
 import DataProductsSelectList from './DataProductsSelectList';
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 const option = (name: string, domain = 'Sales'): DataProductSelectOption => ({
   label: name,
@@ -101,6 +106,23 @@ describe('DataProductsSelectList', () => {
         expect.objectContaining({ id: 'dp1-id', fullyQualifiedName: 'dp1' }),
       ])
     );
+  });
+
+  it('drops the previous results when a search fails', async () => {
+    const fetchOptions = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [option('dp1')], paging: { total: 1 } })
+      .mockRejectedValueOnce(new Error('search failed'));
+    renderPicker({ fetchOptions, debounceTimeout: 0 });
+
+    await screen.findByTestId('dp1');
+    fireEvent.change(screen.getByTestId('search-input'), {
+      target: { value: 'dp' },
+    });
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+
+    expect(screen.queryByTestId('dp1')).not.toBeInTheDocument();
   });
 
   it('requests the next page once, however many scroll events arrive', async () => {
