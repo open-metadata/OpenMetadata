@@ -1173,6 +1173,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return String.join(",", parentFields);
   }
 
+  protected static ApiStatus deriveBulkOperationStatus(
+      int numberOfRowsPassed, int numberOfRowsProcessed) {
+    if (numberOfRowsPassed == numberOfRowsProcessed) {
+      return ApiStatus.SUCCESS;
+    } else if (numberOfRowsPassed > 0) {
+      return ApiStatus.PARTIAL_SUCCESS;
+    } else {
+      return ApiStatus.FAILURE;
+    }
+  }
+
   public final T getForInheritance(UUID id, Fields fields, Include include) {
     T entity = find(id, include);
     List<CollectionDAO.EntityRelationshipObject> inheritanceRelations =
