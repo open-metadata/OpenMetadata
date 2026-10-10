@@ -754,6 +754,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Relationship.APPLIED_TO,
           Entity.CONTEXT_MEMORY,
           original.getId());
+      // Partial PUTs omit relationship-derived fields during reconciliation. Preserve those
+      // links, while allowing an explicit PATCH removal or empty list to clear them.
+      if (operation == Operation.PUT && updated.getRelatedEntities() == null) {
+        updated.setRelatedEntities(original.getRelatedEntities());
+      }
       updateFromRelationships(
           FIELD_RELATED_ENTITIES,
           Entity.CONTEXT_MEMORY,

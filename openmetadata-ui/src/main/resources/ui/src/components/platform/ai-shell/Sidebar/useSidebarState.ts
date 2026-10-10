@@ -11,31 +11,15 @@
  *  limitations under the License.
  */
 
-import { useCallback, useRef, useState } from 'react';
-
-export const SIDEBAR_COLLAPSED_STORAGE_KEY = 'aiShell.sidebar.mainCollapsed';
-
-const readPersisted = (key: string): boolean | null => {
-  try {
-    const stored = localStorage.getItem(key);
-
-    return stored === null ? null : stored === 'true';
-  } catch {
-    return null;
-  }
-};
-
-const persist = (key: string, value: boolean): void => {
-  try {
-    localStorage.setItem(key, String(value));
-  } catch {
-    // ignore storage errors (e.g. private mode quota)
-  }
-};
-
-// Top-level main-nav collapse preference, defaulting to expanded.
-const readTopLevelDefault = (): boolean =>
-  readPersisted(SIDEBAR_COLLAPSED_STORAGE_KEY) ?? false;
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  SIDEBAR_COLLAPSED_EVENT,
+  SIDEBAR_COLLAPSED_STORAGE_KEY,
+} from './appModeSidebar.constants';
+import {
+  persistSidebarPreference,
+  readCompactSidebarPreference,
+} from './sidebarPreference.utils';
 
 /**
  * Main-nav collapse state, with context-dependent precedence:
@@ -59,8 +43,21 @@ export const useMainCollapse = (
   inSubModeRef.current = inSubMode;
 
   // Persisted preference, meaningful only at the top level.
-  const [topLevelCollapsed, setTopLevelCollapsed] =
-    useState<boolean>(readTopLevelDefault);
+  const [topLevelCollapsed, setTopLevelCollapsed] = useState<boolean>(
+    readCompactSidebarPreference
+  );
+
+  useEffect(() => {
+    const onPreferenceChange = (event: Event) =>
+      setTopLevelCollapsed(Boolean((event as CustomEvent<boolean>).detail));
+    globalThis.addEventListener(SIDEBAR_COLLAPSED_EVENT, onPreferenceChange);
+
+    return () =>
+      globalThis.removeEventListener(
+        SIDEBAR_COLLAPSED_EVENT,
+        onPreferenceChange
+      );
+  }, []);
 
   // Transient main-nav expand *inside* a sub-context — never persisted.
   const [subExpanded, setSubExpanded] = useState(false);
@@ -96,7 +93,7 @@ export const useMainCollapse = (
     }
     setTopLevelCollapsed((prev) => {
       const next = !prev;
-      persist(SIDEBAR_COLLAPSED_STORAGE_KEY, next);
+      persistSidebarPreference(SIDEBAR_COLLAPSED_STORAGE_KEY, next);
 
       return next;
     });
@@ -109,7 +106,7 @@ export const useMainCollapse = (
       return;
     }
     setTopLevelCollapsed(value);
-    persist(SIDEBAR_COLLAPSED_STORAGE_KEY, value);
+    persistSidebarPreference(SIDEBAR_COLLAPSED_STORAGE_KEY, value);
   }, []);
 
   return [collapsed, toggle, set] as const;
