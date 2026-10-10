@@ -478,6 +478,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeAssetsOperation(securityContext, request.getAssets(), MetadataOperation.EDIT_DOMAINS);
     return Response.ok()
         .entity(
             repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()))
@@ -510,6 +511,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeAssetsOperation(securityContext, request.getAssets(), MetadataOperation.EDIT_DOMAINS);
     return Response.ok()
         .entity(
             repository.bulkRemoveAssets(

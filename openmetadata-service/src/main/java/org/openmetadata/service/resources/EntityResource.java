@@ -105,6 +105,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.UpdatedDomainsResourceContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.BulkAssetsOperationResponse;
@@ -115,6 +116,7 @@ import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -645,6 +647,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         getResourceContextByName(
             entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeDomainChange(
+        securityContext,
+        resourceContext,
+        appliedPutDomains(securityContext, resourceContext, entity));
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
@@ -676,10 +682,97 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    authorizeDomainChange(
+        securityContext,
+        resourceContext,
+        appliedPutDomains(securityContext, resourceContext, entity));
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  /**
+   * Authorizes the domains an update moves the asset <i>into</i>. A null {@code updatedDomains}
+   * means the request leaves the assignment alone.
+   *
+   * <p>An update is authorized against the stored entity, so a reassignment would otherwise be
+   * judged only against the domain the asset is leaving. A user whose grant is conditioned on {@code
+   * hasDomain()} could then move assets into domains they do not hold, and an asset carrying no
+   * domain at all — for which {@code hasDomain()} deliberately returns true — could be moved
+   * anywhere.
+   */
+  private void authorizeDomainChange(
+      SecurityContext securityContext,
+      ResourceContextInterface resourceContext,
+      List<EntityReference> updatedDomains) {
+    if (updatedDomains == null || !domainsChanged(resourceContext.getDomains(), updatedDomains)) {
+      return;
+    }
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.EDIT_DOMAINS),
+          new UpdatedDomainsResourceContext(resourceContext, updatedDomains));
+    } catch (AuthorizationException e) {
+      throw domainChangeDenied(securityContext, updatedDomains, e);
+    }
+  }
+
+  /**
+   * Authorizes {@code operation} against each asset's own policy context.
+   *
+   * <p>{@link #authorizeBulkAssetsPermission} checks the resource <i>type</i>, which cannot serve a
+   * domain-scoped grant: a conditional rule resolves to CONDITIONAL_ALLOW there, so the holder of a
+   * {@code hasDomain()} grant would be refused every asset, including the ones they may edit.
+   * Evaluating per asset also refuses an asset sitting in someone else's domain, which is the point
+   * — otherwise a domain's asset picker pulls assets out of domains the caller has no rights over.
+   */
+  protected void authorizeAssetsOperation(
+      SecurityContext securityContext, List<EntityReference> assets, MetadataOperation operation) {
+    for (EntityReference asset : listOrEmpty(assets)) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(asset.getType(), operation),
+          new ResourceContext<>(asset.getType(), asset.getId(), asset.getFullyQualifiedName()));
+    }
+  }
+
+  /** Names the domains the caller was reaching for, which the generic denial does not. */
+  private static AuthorizationException domainChangeDenied(
+      SecurityContext securityContext,
+      List<EntityReference> targetDomains,
+      AuthorizationException cause) {
+    return new AuthorizationException(
+        CatalogExceptionMessage.domainPermissionNotAllowed(
+            securityContext.getUserPrincipal().getName(),
+            targetDomains,
+            List.of(MetadataOperation.EDIT_DOMAINS)),
+        cause);
+  }
+
+  /**
+   * Domains a PUT actually applies, or null when the stored assignment survives it. Mirrors {@code
+   * EntityRepository.EntityUpdater.updateDomains}: a PUT carrying no domains keeps the stored ones,
+   * and a bot's PUT never overwrites a non-empty assignment.
+   */
+  private List<EntityReference> appliedPutDomains(
+      SecurityContext securityContext, ResourceContextInterface resourceContext, T entity) {
+    if (nullOrEmpty(entity.getDomains())) {
+      return null;
+    }
+    boolean botCannotOverwrite =
+        getSubjectContext(securityContext).isBot() && !nullOrEmpty(resourceContext.getDomains());
+    return botCannotOverwrite ? null : entity.getDomains();
+  }
+
+  private static boolean domainsChanged(
+      List<EntityReference> stored, List<EntityReference> updated) {
+    return !domainIds(stored).equals(domainIds(updated));
+  }
+
+  private static Set<UUID> domainIds(List<EntityReference> domains) {
+    return listOrEmpty(domains).stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   /** Deprecated: use method with changeContext
@@ -714,10 +807,11 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ChangeSource changeSource,
       String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(
-        securityContext,
-        operationContext,
-        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+    ResourceContextInterface resourceContext =
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeDomainChange(
+        securityContext, resourceContext, JsonPatchUtils.getPatchedDomains(resourceContext, patch));
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
@@ -746,6 +840,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       UUID id,
       JsonPatch patch) {
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    ResourceContextInterface resourceContext =
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH);
+    authorizeDomainChange(
+        securityContext, resourceContext, JsonPatchUtils.getPatchedDomains(resourceContext, patch));
     String ifMatchHeader =
         org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
@@ -787,10 +885,11 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ChangeSource changeSource,
       String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(
-        securityContext,
-        operationContext,
-        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
+    ResourceContextInterface resourceContext =
+        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeDomainChange(
+        securityContext, resourceContext, JsonPatchUtils.getPatchedDomains(resourceContext, patch));
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
