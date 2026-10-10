@@ -12,6 +12,15 @@ planner CI uses — so the local selection never drifts from the CI one.
 
 Unknown flags (``--workers=2``, ``--headed``, ...) are forwarded to
 ``npx playwright test``.
+
+Before running, the plan is checked with ``playwright test --list``. A spec
+whose project depends on a whole test project (IntakeForm and
+SystemCertificationTags depend on ``chromium``) would make Playwright run that
+project in full, i.e. the entire suite. Such specs are reported with a warning
+and run in a second ``--no-deps`` pass, as CI shards them; if the main pass
+would still expand, the planner refuses to run instead of silently running
+the full suite. An empty plan never runs (a bare ``npx playwright test`` is the
+full suite).
 """
 
 from __future__ import annotations
@@ -25,6 +34,8 @@ import shlex
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -38,6 +49,11 @@ RESULTS_MARKDOWN = "playwright/output/local-pr-results.md"
 BLOCK_START = "<!-- local-playwright-results:start -->"
 BLOCK_END = "<!-- local-playwright-results:end -->"
 PLAYWRIGHT_HEADING = "#### Playwright (UI) tests"
+# Setup/teardown projects ride along with every run; they are not "extra" specs.
+# Mirrors FIXTURE_TEST_MATCH in playwright.config.ts
+# (ADR:2026-10-10-local-playwright-planner-isolates-dependency-expanding-specs).
+FIXTURE_FILE = re.compile(r"(?:\.(?:setup|teardown)\.ts|dataInsightApp\.ts)$")
+LIST_WORKERS = 6
 
 _SELECTOR_SPEC = importlib.util.spec_from_file_location(
     "select_playwright_tests", SELECTOR_PATH
@@ -190,7 +206,134 @@ def playwright_command(specs: list[str], extra_args: list[str]) -> list[str]:
     return ["npx", "playwright", "test", *specs, *extra_args]
 
 
-def print_plan(plan: LocalPlan, command: list[str]) -> None:
+def playwright_env() -> dict[str, str]:
+    # Every CI lane sets PLAYWRIGHT_IS_OSS; without it auth.setup.ts calls the
+    # Collate-only ingestionRunners API and fails before any spec runs.
+    env = {**os.environ}
+    env.setdefault("PLAYWRIGHT_IS_OSS", "true")
+    return env
+
+
+@dataclass
+class Listing:
+    """What ``npx playwright test --list <specs>`` would run."""
+
+    # Spec file -> the projects its tests run in.
+    projects: dict[str, set[str]]
+    # Projects with a narrow testMatch (IntakeForm, DataAssetRulesDisabled, ...):
+    # the only ones configured with dependencies on other test projects.
+    dedicated: set[str] = field(default_factory=set)
+
+
+def list_run(ui_root: Path, specs: list[str]) -> Listing:
+    """Resolve the specs a run would execute, without starting a browser.
+
+    Playwright runs a dependency project in full, so a spec whose project
+    depends on ``chromium`` drags in the whole chromium suite.
+    """
+    result = subprocess.run(
+        ["npx", "playwright", "test", "--list", "--reporter=json", *specs],
+        cwd=ui_root,
+        env=playwright_env(),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    start = result.stdout.find("{")
+    if result.returncode != 0 or start < 0:
+        sys.exit(
+            "`npx playwright test --list` failed, so the plan cannot be checked "
+            f"for dependency expansion:\n{result.stderr or result.stdout}"
+        )
+    report = json.loads(result.stdout[start:])
+    test_dir = Path(report["config"]["rootDir"])
+    projects: dict[str, set[str]] = {}
+
+    def collect(suite: dict[str, Any], names: set[str]) -> None:
+        for spec in suite.get("specs", []):
+            names.update(test["projectName"] for test in spec.get("tests", []))
+        for child in suite.get("suites", []):
+            collect(child, names)
+
+    # Only top-level suites: nested ones report the helper that declared the
+    # tests (e.g. SearchSeparationSuite.ts), not the spec file that ran them.
+    for suite in report.get("suites", []):
+        names = projects.setdefault(
+            _relative_spec(suite["file"], test_dir, ui_root), set()
+        )
+        collect(suite, names)
+    # ADR:2026-10-10-local-playwright-planner-isolates-dependency-expanding-specs
+    dedicated = {
+        project["name"]
+        for project in report["config"].get("projects", [])
+        if "*.@(spec|test)" not in " ".join(project.get("testMatch", []))
+    }
+    return Listing(projects, dedicated)
+
+
+def unplanned_files(listing: Listing, plan_specs: list[str]) -> set[str]:
+    return {
+        path
+        for path in listing.projects
+        if path not in plan_specs and not FIXTURE_FILE.search(path)
+    }
+
+
+def split_dependency_expanders(
+    specs: list[str], list_specs: Callable[[list[str]], Listing]
+) -> tuple[list[str], list[str], int]:
+    """Split ``specs`` into (main run, run with --no-deps, unplanned file count).
+
+    CI gives the dependency-heavy projects (IntakeForm, SystemCertificationTags)
+    their own shard, where they depend only on auth. Locally they share one
+    command with everything else, so Playwright would run their ``chromium``
+    dependency in full: the whole suite instead of the plan.
+    """
+    if not specs:
+        return [], [], 0
+    listing = list_specs(specs)
+    extra = unplanned_files(listing, specs)
+    if not extra:
+        return specs, [], 0
+    candidates = [
+        spec for spec in specs if listing.projects.get(spec, set()) & listing.dedicated
+    ]
+    with ThreadPoolExecutor(LIST_WORKERS) as pool:
+        grows = list(
+            pool.map(
+                lambda spec: bool(unplanned_files(list_specs([spec]), specs)),
+                candidates,
+            )
+        )
+    isolated = [spec for spec, expands in zip(candidates, grows) if expands]
+    main_specs = [spec for spec in specs if spec not in isolated]
+    if main_specs and unplanned_files(list_specs(main_specs), specs):
+        sys.exit(
+            "Refusing to run: the planned specs still pull in unplanned spec files "
+            "(the full suite) after isolating dependency-heavy projects. Check the "
+            "project dependencies in playwright.config.ts."
+        )
+    return main_specs, isolated, len(extra)
+
+
+def print_full_suite_warning(isolated: list[str], extra_count: int) -> None:
+    bar = "!" * 78
+    print(bar)
+    print(
+        f"WARNING: as one command, these specs would also run {extra_count} unplanned spec "
+        "files — their Playwright project depends on a whole test project (e.g. chromium), "
+        "which Playwright always runs in full:"
+    )
+    for spec in isolated:
+        print(f"  {spec}")
+    print(
+        "They run in a second pass with --no-deps (auth from the first pass), the way CI "
+        "shards them."
+    )
+    print(bar + "\n")
+
+
+def print_plan(plan: LocalPlan, commands: list[list[str]]) -> None:
     print(f"Changed files vs base: {len(plan.changed_files)}")
     print(f"Playwright specs to run locally: {len(plan.specs)}\n")
     for reason in ("changed", "impact-mapped", "canary", "smoke"):
@@ -214,7 +357,9 @@ def print_plan(plan: LocalPlan, command: list[str]) -> None:
             print(f"  {path}")
         print()
     print("Run with:")
-    print(f"  cd {UI_ROOT} && {shlex.join(command)}")
+    print(f"  cd {UI_ROOT}")
+    for command in commands:
+        print(f"  {shlex.join(command)}")
     print("Or run and record results for the PR description:")
     print('  make playwright_affected_run ARGS="--update-pr"')
 
@@ -260,11 +405,24 @@ def _relative_spec(file_path: str, test_dir: Path, ui_root: Path) -> str:
         return file_path
 
 
+def merge_reports(first: dict[str, Any], second: dict[str, Any]) -> dict[str, Any]:
+    stats = {**first.get("stats", {})}
+    stats["duration"] = float(stats.get("duration", 0)) + float(
+        second.get("stats", {}).get("duration", 0)
+    )
+    return {
+        **first,
+        "suites": [*first.get("suites", []), *second.get("suites", [])],
+        "errors": [*first.get("errors", []), *second.get("errors", [])],
+        "stats": stats,
+    }
+
+
 def render_block(
     plan: LocalPlan,
     per_file: dict[str, dict[str, int]],
     report: dict[str, Any],
-    command: list[str],
+    commands: list[list[str]],
     commit: str,
     base: str,
     dirty: bool,
@@ -324,7 +482,8 @@ def render_block(
         "<details><summary>Command</summary>",
         "",
         "```bash",
-        f"cd {UI_ROOT} && {shlex.join(command)}",
+        f"cd {UI_ROOT}",
+        *[shlex.join(command) for command in commands],
         "```",
         "",
         "</details>",
@@ -424,36 +583,65 @@ def main(argv: list[str] | None = None) -> int:
         changed_files = collect_changed_files(repo_root, args.base)
 
     plan = build_plan(repo_root, changed_files)
-    command = playwright_command(plan.specs, extra_args)
+    if not plan.specs:
+        # A bare `npx playwright test` is the full suite, never a plan.
+        print("No Playwright specs selected for this diff; nothing to run.")
+        return 0
+
+    main_specs, isolated, extra_count = split_dependency_expanders(
+        plan.specs, lambda specs: list_run(ui_root, specs)
+    )
+    commands = []
+    if main_specs:
+        commands.append(playwright_command(main_specs, extra_args))
+    elif isolated:
+        # The isolated pass skips dependencies, so sign in first.
+        commands.append(playwright_command(["--project=setup"], extra_args))
+    if isolated:
+        commands.append(playwright_command(isolated, ["--no-deps", *extra_args]))
 
     if args.json:
-        print(json.dumps({**plan.to_json(), "command": command}, indent=2))
+        print(
+            json.dumps(
+                {**plan.to_json(), "isolatedSpecs": isolated, "commands": commands},
+                indent=2,
+            )
+        )
         return 0
-    print_plan(plan, command)
+    if isolated:
+        print_full_suite_warning(isolated, extra_count)
+    print_plan(plan, commands)
     if not args.run:
         return 0
 
     results_path = ui_root / RESULTS_JSON
-    results_path.unlink(missing_ok=True)
-    print(f"\n$ {shlex.join(command)}\n", flush=True)
-    # Every CI lane sets PLAYWRIGHT_IS_OSS; without it auth.setup.ts calls the
-    # Collate-only ingestionRunners API and fails before any spec runs.
-    env = {**os.environ}
-    env.setdefault("PLAYWRIGHT_IS_OSS", "true")
-    exit_code = subprocess.run(command, cwd=ui_root, env=env, check=False).returncode
-    if not results_path.exists():
-        print(
-            f"Playwright did not write {RESULTS_JSON}; no results block produced.",
-            file=sys.stderr,
+    report: dict[str, Any] | None = None
+    exit_code = 0
+    for command in commands:
+        results_path.unlink(missing_ok=True)
+        print(f"\n$ {shlex.join(command)}\n", flush=True)
+        exit_code = (
+            subprocess.run(
+                command, cwd=ui_root, env=playwright_env(), check=False
+            ).returncode
+            or exit_code
         )
-        return exit_code or 1
+        if not results_path.exists():
+            print(
+                f"Playwright did not write {RESULTS_JSON}; no results block produced.",
+                file=sys.stderr,
+            )
+            return exit_code or 1
+        current = json.loads(results_path.read_text(encoding="utf-8"))
+        report = current if report is None else merge_reports(report, current)
 
-    report = json.loads(results_path.read_text(encoding="utf-8"))
+    assert report is not None
+    results_path.write_text(json.dumps(report), encoding="utf-8")
     block = render_block(
         plan,
         summarize_results(report, ui_root),
         report,
-        command,
+        commands,
         commit=git(repo_root, "rev-parse", "HEAD"),
         base=args.base,
         dirty=bool(git(repo_root, "status", "--porcelain")),
