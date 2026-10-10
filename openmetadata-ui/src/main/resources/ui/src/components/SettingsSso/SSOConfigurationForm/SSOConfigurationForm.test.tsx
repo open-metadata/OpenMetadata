@@ -635,6 +635,27 @@ describe('SSOConfigurationForm', () => {
       return view;
     };
 
+    it('should leave the label, description and errors of an enum select to the field template', async () => {
+      await selectNewLdapConfiguration();
+
+      const select = screen.getByTestId(
+        'select-widget-root/authenticationConfiguration/ldapConfiguration/truststoreConfigType'
+      );
+
+      expect(screen.getAllByText('Trust Store Config Type')).toHaveLength(1);
+      // The template's <label htmlFor> and specs find the select by its field id.
+      expect(
+        document.getElementById(
+          'root/authenticationConfiguration/ldapConfiguration/truststoreConfigType'
+        )
+      ).toBe(within(select).getByRole('button'));
+      expect(
+        within(select).queryByText(
+          'Truststore Type e.g. TrustAll, HostName, JVMDefault, CustomTrustStore.'
+        )
+      ).not.toBeInTheDocument();
+    });
+
     const signInThroughTestLogin = async () => {
       fireEvent.click(screen.getByTestId('test-login-sso-configuration'));
       const form = await screen.findByTestId('sso-test-login-credentials-form');

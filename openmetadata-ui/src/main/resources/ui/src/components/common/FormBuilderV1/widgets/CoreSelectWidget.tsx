@@ -14,9 +14,10 @@
 import { Select } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Key, useMemo } from 'react';
+import CoreTreeSelectWidget from './CoreTreeSelectWidget';
 import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
 
-const CoreSelectWidget = ({
+const CoreEnumSelectWidget = ({
   id,
   value,
   disabled,
@@ -58,6 +59,7 @@ const CoreSelectWidget = ({
       data-testid={id ? `select-widget-${id}` : undefined}
       fontSize="sm"
       hint={getWidgetHint({ rawErrors, schema, options })}
+      id={id}
       isDisabled={disabled || readonly}
       isInvalid={!!rawErrors?.length}
       isRequired={required}
@@ -79,12 +81,23 @@ const CoreSelectWidget = ({
         onChange(optionValueMap.get(String(key)));
       }}>
       {(item) => (
-        <Select.Item id={item.id} key={item.id} textValue={item.label}>
+        <Select.Item
+          data-testid={`select-option-${item.id}`}
+          id={item.id}
+          key={item.id}
+          textValue={item.label}>
           {item.label}
         </Select.Item>
       )}
     </Select>
   );
 };
+
+const CoreSelectWidget = (props: WidgetProps) =>
+  props.schema.uiFieldType === 'treeSelect' ? (
+    <CoreTreeSelectWidget {...props} />
+  ) : (
+    <CoreEnumSelectWidget {...props} />
+  );
 
 export default CoreSelectWidget;

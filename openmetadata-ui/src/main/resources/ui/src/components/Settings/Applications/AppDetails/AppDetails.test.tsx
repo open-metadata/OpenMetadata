@@ -120,7 +120,7 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn().mockImplementation(() => mockShowSuccessToast()),
 }));
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   jest
     .fn()
     .mockImplementation(({ onSubmit }) => (

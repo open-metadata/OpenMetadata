@@ -12,7 +12,6 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-import validator from '@rjsf/validator-ajv8';
 import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
@@ -32,7 +31,6 @@ import {
 } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
-import { ServiceCategory } from '../../../../enums/service.enum';
 import { AppType } from '../../../../generated/entity/applications/app';
 import {
   AppRunRecord,
@@ -57,7 +55,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -184,29 +182,38 @@ const AppRunsHistory = forwardRef(
       [expandedRowKeys, isExternalApp, appData, openLogs]
     );
 
-    const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
-      if (record.isSynthetic) {
-        return true;
-      }
+    const showLogAction = useCallback(
+      (record: AppRunRecordWithId): boolean => {
+        if (record.isSynthetic) {
+          return true;
+        }
 
-      if (appData?.appType === AppType.External) {
+        if (isExternalApp) {
+          return false;
+        }
+
+        if (
+          record.status === Status.Success &&
+          isNull(record?.successContext)
+        ) {
+          return true;
+        }
+
         return false;
-      }
+      },
+      [isExternalApp]
+    );
 
-      if (record.status === Status.Success && isNull(record?.successContext)) {
-        return true;
-      }
-
-      return false;
-    }, []);
-
-    const showAppRunConfig = (record: AppRunRecordWithId) => {
-      if (!jsonSchema) {
-        return;
-      }
-      setShowConfigModal(true);
-      setAppRunRecordConfig(record.config ?? {});
-    };
+    const showAppRunConfig = useCallback(
+      (record: AppRunRecordWithId) => {
+        if (!jsonSchema) {
+          return;
+        }
+        setShowConfigModal(true);
+        setAppRunRecordConfig(record.config ?? {});
+      },
+      [jsonSchema]
+    );
 
     const getActionButton = useCallback(
       (record: AppRunRecordWithId) => {
@@ -254,7 +261,14 @@ const AppRunsHistory = forwardRef(
           </>
         );
       },
-      [showLogAction, appData, isExternalApp, handleRowExpandable]
+      [
+        showLogAction,
+        appData,
+        handleRowExpandable,
+        jsonSchema,
+        showAppRunConfig,
+        t,
+      ]
     );
 
     const tableColumn: ColumnsType<AppRunRecordWithId> = useMemo(
@@ -350,14 +364,7 @@ const AppRunsHistory = forwardRef(
           render: (_, record) => getActionButton(record),
         },
       ],
-      [
-        appData,
-        formatDateTime,
-        handleRowExpandable,
-        getStatusTypeForApplication,
-        showLogAction,
-        getActionButton,
-      ]
+      [getActionButton, isExternalApp, t]
     );
 
     const fetchAppHistory = useCallback(
@@ -404,7 +411,7 @@ const AppRunsHistory = forwardRef(
           setIsLoading(false);
         }
       },
-      [fqn, pageSize, maxRecords, appData]
+      [fqn, pageSize, maxRecords, isExternalApp, handlePagingChange]
     );
 
     const handleAppHistoryPageChange = ({
@@ -443,7 +450,7 @@ const AppRunsHistory = forwardRef(
 
     useEffect(() => {
       fetchAppHistory();
-    }, [fqn, pageSize]);
+    }, [fetchAppHistory]);
 
     useEffect(() => {
       if (socket) {
@@ -578,20 +585,13 @@ const AppRunsHistory = forwardRef(
           }
           width={800}>
           {jsonSchema && (
-            <FormBuilder
-              capitalizeOptionLabel
-              hideCancelButton
+            <FormBuilderV1
+              hideFooter
               readonly
-              useSelectWidget
-              cancelText={t('label.back')}
               formData={appRunRecordConfig}
               isLoading={false}
-              okText={t('label.submit')}
               schema={jsonSchema}
-              serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
               uiSchema={UiSchema}
-              validator={validator}
-              onCancel={noop}
               onSubmit={noop}
             />
           )}

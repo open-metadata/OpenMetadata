@@ -99,7 +99,7 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../components/common/FormBuilder/FormBuilder', () =>
+jest.mock('../../components/common/FormBuilderV1/FormBuilderV1', () =>
   jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
     <div>
       FormBuilder

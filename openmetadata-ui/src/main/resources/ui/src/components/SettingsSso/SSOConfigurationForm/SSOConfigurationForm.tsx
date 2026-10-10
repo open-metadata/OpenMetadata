@@ -21,7 +21,7 @@ import {
   X,
 } from '@openmetadata/ui-core-components/icons';
 import Form from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, WidgetProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Button, Card, Upload } from 'antd';
 import classNames from 'classnames';
@@ -39,7 +39,7 @@ import {
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
-import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
+import CoreSelectWidget from '../../common/FormBuilderV1/widgets/CoreSelectWidget';
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -106,8 +106,20 @@ const MetadataUploadStatusCard = ({
   );
 };
 
+// SSOFieldTemplate draws the label, description and errors around the widget,
+// so the select renders only its control.
+const SsoSelectWidget = (props: WidgetProps) => (
+  <CoreSelectWidget
+    {...props}
+    hideLabel
+    options={{ ...props.options, help: undefined }}
+    rawErrors={undefined}
+    schema={{ ...props.schema, description: undefined }}
+  />
+);
+
 const widgets = {
-  SelectWidget: SelectWidget,
+  SelectWidget: SsoSelectWidget,
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
