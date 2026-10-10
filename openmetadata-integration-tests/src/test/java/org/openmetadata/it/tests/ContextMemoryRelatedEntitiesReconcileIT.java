@@ -3,12 +3,17 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.List;
 import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -50,6 +55,7 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
  * edge must survive.
  */
 @ExtendWith(TestNamespaceExtension.class)
+@Execution(ExecutionMode.CONCURRENT)
 class ContextMemoryRelatedEntitiesReconcileIT {
 
   private static final String FILE_PATH = "v1/contextCenter/drive/files";
@@ -80,6 +86,45 @@ class ContextMemoryRelatedEntitiesReconcileIT {
             .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
             .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY)),
         ContextMemory.class);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void patchCanExplicitlyClearRelatedEntities(
+      List<EntityReference> relatedEntities, TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    String variant = relatedEntities == null ? "removed" : "empty";
+    ContextFile source = createFile(rest, ns.prefix("patch-source-" + variant));
+    ContextFile related = createFile(rest, ns.prefix("patch-related-" + variant));
+    ContextMemory memory = createExtractedMemory(rest, ns.prefix("patch-pill-" + variant), source);
+    ContextMemory before =
+        rest.getById(
+            MEMORY_PATH, memory.getId(), "relatedEntities,sourceEntity", ContextMemory.class);
+    ContextMemory withRelated = JsonUtils.deepCopy(before, ContextMemory.class);
+    withRelated.setRelatedEntities(List.of(related.getEntityReference()));
+    rest.patch(
+        MEMORY_PATH,
+        memory.getId(),
+        JsonUtils.pojoToJson(before),
+        withRelated,
+        ContextMemory.class);
+
+    before =
+        rest.getById(
+            MEMORY_PATH, memory.getId(), "relatedEntities,sourceEntity", ContextMemory.class);
+    assertEquals(1, before.getRelatedEntities().size());
+    ContextMemory cleared = JsonUtils.deepCopy(before, ContextMemory.class);
+    cleared.setRelatedEntities(relatedEntities);
+    rest.patch(
+        MEMORY_PATH, memory.getId(), JsonUtils.pojoToJson(before), cleared, ContextMemory.class);
+
+    ContextMemory after =
+        rest.getById(
+            MEMORY_PATH, memory.getId(), "relatedEntities,sourceEntity", ContextMemory.class);
+    assertTrue(
+        nullOrEmpty(after.getRelatedEntities()),
+        "an explicit PATCH must remove the RELATED_TO edge");
+    assertEquals(source.getId(), after.getSourceEntity().getId());
   }
 
   @Test

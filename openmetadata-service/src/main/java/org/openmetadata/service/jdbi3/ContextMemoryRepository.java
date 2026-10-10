@@ -754,13 +754,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Relationship.APPLIED_TO,
           Entity.CONTEXT_MEMORY,
           original.getId());
-      // Preserve the stored relatedEntities when an update omits it. relatedEntities is a
-      // relationship-derived field that a partial fetch leaves null (e.g. the reconciler loads
-      // the memory via listExtractedMemories which fetches only primaryEntity,sourceEntity), and
-      // a null here would otherwise be coerced to an empty list by listOrEmpty and delete every
-      // RELATED_TO edge on the next content-changing reconcile. A genuine edit supplies a non-null
-      // list, so this guard does not fire.
-      if (updated.getRelatedEntities() == null) {
+      // Partial PUTs omit relationship-derived fields during reconciliation. Preserve those
+      // links, while allowing an explicit PATCH removal or empty list to clear them.
+      if (operation == Operation.PUT && updated.getRelatedEntities() == null) {
         updated.setRelatedEntities(original.getRelatedEntities());
       }
       updateFromRelationships(
