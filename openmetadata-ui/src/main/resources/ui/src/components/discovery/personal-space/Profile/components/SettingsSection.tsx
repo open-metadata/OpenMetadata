@@ -58,7 +58,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
       {title}
     </Typography>
     <Box
-      className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
+      className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface"
       direction="col">
       {children}
     </Box>
