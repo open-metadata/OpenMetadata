@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Spin } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
+import Loader from '../../common/Loader/Loader';
 import './video-player.less';
 
 interface VideoPlayerProps {
@@ -107,7 +107,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
       <div className="video-player-container">
         {isLoading && (
           <div className="video-player-loading">
-            <Spin size="large" />
+            <Loader />
           </div>
         )}
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- lifecycle, not interaction */}

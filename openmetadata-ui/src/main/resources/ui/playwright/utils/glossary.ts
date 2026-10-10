@@ -1367,9 +1367,7 @@ export const createTagTaskForGlossary = async (
 
   if (addTag) {
     // select tags
-    const suggestTags = page.locator(
-      '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
-    );
+    const suggestTags = page.locator('[data-testid="tag-selector"] input');
     await suggestTags.click();
 
     const querySearchResponse = page.waitForResponse(

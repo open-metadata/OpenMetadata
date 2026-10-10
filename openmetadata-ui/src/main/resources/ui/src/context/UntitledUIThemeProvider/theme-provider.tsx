@@ -19,50 +19,22 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { DARK_SCHEME_QUERY, DEFAULT_THEME } from './theme-provider.constants';
 import {
   BrandColors,
   Theme,
   ThemeContextType,
+  ThemePreference,
 } from './theme-provider.interface';
+import {
+  applyBrandCssVars,
+  applyThemeToRoot,
+  clearBrandCssVars,
+  getStoredTheme,
+  resolveTheme,
+} from './theme-provider.utils';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-const DEFAULT_THEME: Theme = 'light';
-
-const getStoredTheme = (storageKey: string): Theme | null => {
-  try {
-    if (typeof globalThis.localStorage === 'undefined') {
-      return null;
-    }
-
-    const savedTheme = localStorage.getItem(storageKey) as Theme | null;
-
-    if (savedTheme === 'light' || savedTheme === 'dark') {
-      return savedTheme;
-    }
-
-    localStorage.removeItem(storageKey);
-  } catch {
-    // Privacy restrictions can block storage access; treat that as no preference.
-  }
-
-  return null;
-};
-
-const applyThemeToRoot = (theme: Theme, darkModeClass: string) => {
-  if (typeof globalThis.document === 'undefined') {
-    return;
-  }
-
-  const root = globalThis.document.documentElement;
-  const shouldUseDarkMode = theme === 'dark';
-
-  if (root.classList.contains(darkModeClass) !== shouldUseDarkMode) {
-    root.classList.toggle(darkModeClass, shouldUseDarkMode);
-  }
-  if (root.style.colorScheme !== theme) {
-    root.style.colorScheme = theme;
-  }
-};
 
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
@@ -89,185 +61,6 @@ interface ThemeProviderProps {
   storageKey?: string;
 }
 
-/**
- * Overrides the compiled Tailwind CSS variables (--tw-* prefix) for brand colors.
- *
- * Because core-components uses `prefix(tw)` in Tailwind v4, all theme tokens are
- * compiled into static `--tw-*` CSS variables (e.g. `--tw-background-color-brand-solid`).
- * Utility classes like `tw:bg-brand-solid` reference these `--tw-*` vars at runtime,
- * so we override them directly to update the brand color system-wide.
- *
- * Mapping:
- *   primaryColor  → brand-600 (solid bg, fg-brand-primary, borders)
- *   hoverColor    → brand-100 (light bg tints)
- *   selectedColor → brand-700 (solid hover, selected state)
- *   errorColor    → error-600 (solid bg, fg-error-primary, borders)
- *   successColor  → success-600 (solid bg, fg-success-primary)
- *   warningColor  → warning-600 (solid bg, fg-warning-primary)
- *   infoColor     → blue-600 (utility-blue-600, maps to UntitledUI's blue/tertiary palette)
- */
-const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
-  const {
-    primaryColor,
-    hoverColor,
-    selectedColor,
-    errorColor,
-    successColor,
-    warningColor,
-    infoColor,
-  } = colors;
-
-  if (primaryColor) {
-    root.style.setProperty('--tw-color-brand-600', primaryColor);
-    root.style.setProperty('--tw-color-utility-brand-600', primaryColor);
-    root.style.setProperty('--tw-color-utility-brand-600_alt', primaryColor);
-    root.style.setProperty('--tw-color-fg-brand-primary', primaryColor);
-    root.style.setProperty('--tw-color-fg-brand-primary_alt', primaryColor);
-    root.style.setProperty(
-      '--tw-color-fg-brand-secondary_hover',
-      hoverColor ?? primaryColor
-    );
-    root.style.setProperty('--tw-color-bg-brand-solid', primaryColor);
-    root.style.setProperty('--tw-color-border-brand_alt', primaryColor);
-    root.style.setProperty('--tw-color-text-brand-tertiary', primaryColor);
-    root.style.setProperty('--tw-color-text-brand-tertiary_alt', primaryColor);
-    root.style.setProperty('--tw-color-icon-fg-brand', primaryColor);
-    root.style.setProperty(
-      '--tw-color-featured-icon-light-fg-brand',
-      primaryColor
-    );
-    root.style.setProperty('--tw-color-slider-handle-border', primaryColor);
-    root.style.setProperty('--tw-background-color-brand-solid', primaryColor);
-    root.style.setProperty(
-      '--tw-background-color-border-brand_alt',
-      primaryColor
-    );
-    root.style.setProperty('--tw-text-color-brand-tertiary', primaryColor);
-    root.style.setProperty('--tw-text-color-brand-tertiary_alt', primaryColor);
-    root.style.setProperty('--tw-border-color-brand_alt', primaryColor);
-    root.style.setProperty('--tw-border-color-brand-solid', primaryColor);
-    root.style.setProperty('--tw-ring-color-brand-solid', primaryColor);
-    root.style.setProperty('--tw-ring-color-brand_alt', primaryColor);
-    root.style.setProperty('--tw-ring-color-bg-brand-solid', primaryColor);
-    root.style.setProperty('--tw-outline-color-brand-solid', primaryColor);
-    // Borders are drawn with `outline` now, so each themed ring colour needs an outline
-    // counterpart or the border ignores custom branding. `bg-brand-solid` needs no entry:
-    // `tw:outline-bg-brand-solid` resolves to `--tw-color-bg-brand-solid`, set above.
-    root.style.setProperty('--tw-outline-color-brand_alt', primaryColor);
-  }
-
-  if (selectedColor) {
-    root.style.setProperty('--tw-color-brand-700', selectedColor);
-    root.style.setProperty('--tw-color-utility-brand-700', selectedColor);
-    root.style.setProperty('--tw-color-utility-brand-700_alt', selectedColor);
-    root.style.setProperty('--tw-color-bg-brand-solid_hover', selectedColor);
-    root.style.setProperty('--tw-color-bg-brand-section_subtle', selectedColor);
-    root.style.setProperty('--tw-color-fg-brand-secondary', selectedColor);
-    root.style.setProperty('--tw-color-fg-brand-secondary_alt', selectedColor);
-    root.style.setProperty('--tw-color-text-brand-secondary', selectedColor);
-    root.style.setProperty('--tw-color-border-brand', selectedColor);
-    root.style.setProperty(
-      '--tw-background-color-brand-solid_hover',
-      selectedColor
-    );
-    root.style.setProperty(
-      '--tw-background-color-brand-section_subtle',
-      selectedColor
-    );
-    root.style.setProperty('--tw-background-color-border-brand', selectedColor);
-    root.style.setProperty('--tw-text-color-brand-secondary', selectedColor);
-    root.style.setProperty('--tw-border-color-brand', selectedColor);
-    root.style.setProperty(
-      '--tw-border-color-brand-solid_hover',
-      selectedColor
-    );
-    root.style.setProperty('--tw-ring-color-brand', selectedColor);
-    root.style.setProperty('--tw-ring-color-brand-solid_hover', selectedColor);
-    root.style.setProperty('--tw-outline-color-brand', selectedColor);
-    root.style.setProperty(
-      '--tw-outline-color-brand-solid_hover',
-      selectedColor
-    );
-  }
-
-  if (hoverColor) {
-    root.style.setProperty('--tw-color-brand-100', hoverColor);
-    root.style.setProperty('--tw-color-utility-brand-100', hoverColor);
-    root.style.setProperty('--tw-color-utility-brand-100_alt', hoverColor);
-    root.style.setProperty('--tw-color-bg-brand-secondary', hoverColor);
-    root.style.setProperty('--tw-background-color-brand-secondary', hoverColor);
-  }
-
-  if (errorColor) {
-    root.style.setProperty('--tw-color-error-600', errorColor);
-    root.style.setProperty('--tw-color-utility-error-600', errorColor);
-    root.style.setProperty('--tw-color-fg-error-primary', errorColor);
-    root.style.setProperty('--tw-color-bg-error-solid', errorColor);
-    root.style.setProperty('--tw-color-text-error-primary', errorColor);
-    root.style.setProperty('--tw-background-color-error-solid', errorColor);
-    root.style.setProperty('--tw-text-color-error-primary', errorColor);
-    root.style.setProperty(
-      '--tw-color-featured-icon-light-fg-error',
-      errorColor
-    );
-  }
-
-  if (successColor) {
-    root.style.setProperty('--tw-color-success-600', successColor);
-    root.style.setProperty('--tw-color-utility-success-600', successColor);
-    root.style.setProperty('--tw-color-fg-success-primary', successColor);
-    root.style.setProperty('--tw-color-bg-success-solid', successColor);
-    root.style.setProperty('--tw-color-text-success-primary', successColor);
-    root.style.setProperty('--tw-background-color-success-solid', successColor);
-    root.style.setProperty('--tw-text-color-success-primary', successColor);
-    root.style.setProperty(
-      '--tw-color-featured-icon-light-fg-success',
-      successColor
-    );
-  }
-
-  if (warningColor) {
-    root.style.setProperty('--tw-color-warning-600', warningColor);
-    root.style.setProperty('--tw-color-utility-warning-600', warningColor);
-    root.style.setProperty('--tw-color-fg-warning-primary', warningColor);
-    root.style.setProperty('--tw-color-bg-warning-solid', warningColor);
-    root.style.setProperty('--tw-color-text-warning-primary', warningColor);
-    root.style.setProperty('--tw-background-color-warning-solid', warningColor);
-    root.style.setProperty('--tw-text-color-warning-primary', warningColor);
-    root.style.setProperty(
-      '--tw-color-featured-icon-light-fg-warning',
-      warningColor
-    );
-  }
-
-  if (infoColor) {
-    root.style.setProperty('--tw-color-blue-600', infoColor);
-    root.style.setProperty('--tw-color-utility-blue-600', infoColor);
-    root.style.setProperty('--tw-color-utility-blue-600_alt', infoColor);
-  }
-};
-
-const BRAND_CSS_VAR_KEYWORDS = [
-  'brand',
-  'error',
-  'success',
-  'warning',
-  'info',
-  'blue',
-];
-
-const clearBrandCssVars = (root: HTMLElement) => {
-  const allSet = Array.from(root.style);
-
-  allSet
-    .filter(
-      (p) =>
-        p.startsWith('--tw-') &&
-        BRAND_CSS_VAR_KEYWORDS.some((keyword) => p.includes(keyword))
-    )
-    .forEach((property) => root.style.removeProperty(property));
-};
-
 export const ThemeProvider = ({
   children,
   brandColors,
@@ -283,8 +76,11 @@ export const ThemeProvider = ({
     warningColor,
     infoColor,
   } = brandColors ?? {};
+  const [themePreference, setThemePreference] = useState<ThemePreference>(
+    () => getStoredTheme(storageKey) ?? DEFAULT_THEME
+  );
   const [theme, setThemeState] = useState<Theme>(() => {
-    const initialTheme = getStoredTheme(storageKey) ?? DEFAULT_THEME;
+    const initialTheme = resolveTheme(themePreference);
 
     // This render-phase write is deliberate: canvas consumers resolve CSS tokens
     // before effects run, and applyThemeToRoot skips DOM writes when already synced.
@@ -294,21 +90,42 @@ export const ThemeProvider = ({
   });
 
   const setTheme = useCallback(
-    (nextTheme: Theme) => {
+    (nextPreference: ThemePreference) => {
       try {
-        if (typeof globalThis.localStorage !== 'undefined') {
-          localStorage.setItem(storageKey, nextTheme);
+        if (globalThis.localStorage !== undefined) {
+          localStorage.setItem(storageKey, nextPreference);
         }
       } catch {
         // Persistence failure must not block theme changes for the current session.
       }
+      const nextTheme = resolveTheme(nextPreference);
       // Canvas consumers resolve CSS tokens during the context update, so the
       // cascade must already represent the next theme when they render.
       applyThemeToRoot(nextTheme, darkModeClass);
+      setThemePreference(nextPreference);
       setThemeState(nextTheme);
     },
     [darkModeClass, storageKey]
   );
+
+  // Following the system: re-theme live when the OS colour scheme changes.
+  useEffect(() => {
+    if (
+      themePreference !== 'system' ||
+      typeof globalThis.matchMedia !== 'function'
+    ) {
+      return undefined;
+    }
+    const query = globalThis.matchMedia(DARK_SCHEME_QUERY);
+    const onChange = () => {
+      const nextTheme = resolveTheme('system');
+      applyThemeToRoot(nextTheme, darkModeClass);
+      setThemeState(nextTheme);
+    };
+    query.addEventListener?.('change', onChange);
+
+    return () => query.removeEventListener?.('change', onChange);
+  }, [darkModeClass, themePreference]);
 
   useEffect(() => {
     applyThemeToRoot(theme, darkModeClass);
@@ -347,8 +164,8 @@ export const ThemeProvider = ({
   ]);
 
   const values = useMemo(
-    () => ({ theme, brandColors, setTheme }),
-    [theme, brandColors, setTheme]
+    () => ({ theme, themePreference, brandColors, setTheme }),
+    [theme, themePreference, brandColors, setTheme]
   );
 
   return (

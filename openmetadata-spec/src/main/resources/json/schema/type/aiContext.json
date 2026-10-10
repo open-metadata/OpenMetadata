@@ -74,6 +74,13 @@
                 },
                 "description": {
                     "type": "string"
+                },
+                "glossaryTerms": {
+                    "description": "Approved, caller-visible glossary definitions bound to this field, rather than to the whole asset.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/knowledgeItem"
+                    }
                 }
             },
             "additionalProperties": false
@@ -414,10 +421,127 @@
             },
             "additionalProperties": false
         },
+        "conceptBinding": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.ConceptBinding",
+            "description": "One asset or column that realizes a glossary term or supplies a metric. Profiles and samples are permission checked and PII masked.",
+            "properties": {
+                "assetFqn": {
+                    "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                },
+                "assetType": {
+                    "type": "string"
+                },
+                "column": {
+                    "description": "Fully qualified column name. Absent for an asset-level binding.",
+                    "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                },
+                "dataType": {
+                    "type": "string"
+                },
+                "rowCount": {
+                    "description": "Latest profiled row count of the bound table, repeated on each of its bindings. Present only for tables whose data profile the caller may view.",
+                    "type": "number"
+                },
+                "profile": {
+                    "$ref": "#/definitions/columnProfileSummary"
+                },
+                "sampleValues": {
+                    "description": "Up to ten stored sample values for this column, available only with VIEW_SAMPLE_DATA and existing PII masking. These are representative samples, not the complete value set.",
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": {}
+                }
+            },
+            "required": ["assetFqn", "assetType"],
+            "additionalProperties": false
+        },
+        "conceptEvidence": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.ConceptEvidence",
+            "description": "A caller-visible, non-deleted saved Query linked by id through the concept's source memories.",
+            "properties": {
+                "id": {
+                    "$ref": "basic.json#/definitions/uuid"
+                },
+                "fullyQualifiedName": {
+                    "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                },
+                "query": {
+                    "type": "string"
+                },
+                "queryTruncated": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "lastRunAt": {
+                    "$ref": "basic.json#/definitions/timestamp"
+                },
+                "lastRunStatus": {
+                    "description": "Last execution status, only when recorded by the query provider. Absence means unknown, not successful.",
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "conceptContext": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.ConceptContext",
+            "description": "A business concept's definition and its physical bindings, related metrics and saved-query evidence. Counts include only caller-visible bindings, including those omitted by the response caps.",
+            "properties": {
+                "definition": {
+                    "type": "string"
+                },
+                "synonyms": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                },
+                "relatedTerms": {
+                    "type": "array",
+                    "items": { "$ref": "termRelation.json" }
+                },
+                "attributes": {
+                    "description": "Declared ontology attributes, including their units and ENUM values.",
+                    "type": "array",
+                    "items": { "$ref": "ontologyAttribute.json" }
+                },
+                "bindings": {
+                    "type": "array",
+                    "maxItems": 250,
+                    "items": { "$ref": "#/definitions/conceptBinding" }
+                },
+                "totalAssets": {
+                    "description": "Number of caller-visible assets with bindings, before the ten-asset cap. Counting stops after 500 candidate assets, so the value is a lower bound when that scan cap is reached.",
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "totalBindings": {
+                    "description": "Number of caller-visible asset and column bindings, before the per-asset and asset-count caps. A lower bound when the 500-candidate scan cap is reached.",
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "truncated": {
+                    "description": "True when bindings were omitted by the ten-asset or 25-bindings-per-asset cap, or when the 500-candidate scan cap stopped counting early.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "metrics": {
+                    "description": "Applied or related metrics with their expressions, sharing the envelope's knowledge budget.",
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/knowledgeItem" }
+                },
+                "evidence": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": { "$ref": "#/definitions/conceptEvidence" }
+                }
+            },
+            "additionalProperties": false
+        },
         "assetContext": {
             "type": "object",
             "javaType": "org.openmetadata.schema.type.aicontext.AssetContext",
-            "description": "Type-specific structural context. Exactly one sub-context is populated, selected by the asset's entity type. New asset types are added as new optional sub-contexts here without breaking existing consumers.",
+            "description": "Type-specific structural context, selected by the asset's entity type. Metrics carry both their generic expression/source-assets context and conceptContext. New asset types are added as optional sub-contexts without breaking existing consumers.",
             "properties": {
                 "table": {
                     "$ref": "#/definitions/tableContext"
@@ -433,6 +557,9 @@
                 },
                 "generic": {
                     "$ref": "#/definitions/genericAssetContext"
+                },
+                "conceptContext": {
+                    "$ref": "#/definitions/conceptContext"
                 }
             },
             "additionalProperties": false
@@ -512,7 +639,7 @@
             }
         },
         "glossaryTerms": {
-            "description": "Approved glossary terms attached to the asset (asset-level and field/column-level).",
+            "description": "Approved glossary terms attached to the asset itself. Column-level definitions are preserved on each fieldContext.glossaryTerms.",
             "type": "array",
             "items": {
                 "$ref": "#/definitions/knowledgeItem"

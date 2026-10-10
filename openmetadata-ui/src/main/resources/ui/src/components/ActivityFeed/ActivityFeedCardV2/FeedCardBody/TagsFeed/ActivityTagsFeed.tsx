@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Grid } from '@openmetadata/ui-core-components';
-import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
-
+import { Box } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { ReactComponent as AddIcon } from '../../../../../assets/svg/added-icon.svg';
@@ -62,42 +60,28 @@ function ActivityTagsFeed({ activity }: Readonly<ActivityTagsFeedProps>) {
   }, [activity.oldValue, activity.newValue]);
 
   return (
-    <Grid
-      className="layout-row layout-grid"
-      style={{ ...getLayoutGutter(8, 8) }}>
+    <Box direction="col" gap={2}>
       {!isEmpty(updatedTags) && (
-        <Grid.Item className="layout-column" span={24}>
-          <Box
-            align="center"
-            className="layout-row"
-            style={{ ...getLayoutGutter(12, 12) }}
-            wrap="nowrap">
-            <Box className="layout-column tw:block h-4">
-              <AddIcon height={16} width={16} />
-            </Box>
-            <Box className="layout-column tw:block">
-              <TagsViewer tags={updatedTags} />
-            </Box>
-          </Box>
-        </Grid.Item>
+        <Box align="center" gap={3}>
+          <div className="h-4">
+            <AddIcon height={16} width={16} />
+          </div>
+          <div>
+            <TagsViewer tags={updatedTags} />
+          </div>
+        </Box>
       )}
       {!isEmpty(previousTags) && (
-        <Grid.Item className="layout-column" span={24}>
-          <Box
-            align="center"
-            className="layout-row"
-            style={{ ...getLayoutGutter(12, 12) }}
-            wrap="nowrap">
-            <Box className="layout-column tw:block h-4">
-              <DeletedIcon height={14} width={14} />
-            </Box>
-            <Box className="layout-column tw:block">
-              <TagsViewer tags={previousTags} />
-            </Box>
-          </Box>
-        </Grid.Item>
+        <Box align="center" gap={3}>
+          <div className="h-4">
+            <DeletedIcon height={14} width={14} />
+          </div>
+          <div>
+            <TagsViewer tags={previousTags} />
+          </div>
+        </Box>
       )}
-    </Grid>
+    </Box>
   );
 }
 

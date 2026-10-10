@@ -95,6 +95,7 @@ const DialogHeader = ({ title, children, className }: DialogHeaderProps) => (
     {title && (
       <Heading
         className="tw:text-md tw:font-semibold tw:text-primary"
+        data-testid="dialog-title"
         slot="title">
         {title}
       </Heading>

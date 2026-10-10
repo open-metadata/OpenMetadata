@@ -43,15 +43,20 @@ jest.mock('../../Certification/Certification.component', () =>
     .fn()
     .mockImplementation(
       ({
+        children,
         onCertificationUpdate,
       }: {
+        children?: React.ReactNode;
         onCertificationUpdate?: (tag?: Tag) => Promise<void>;
       }) => (
-        <button
-          data-testid="trigger-cert-update"
-          onClick={() => onCertificationUpdate?.({} as Tag)}>
-          Save
-        </button>
+        <>
+          {children}
+          <button
+            data-testid="trigger-cert-update"
+            onClick={() => onCertificationUpdate?.({} as Tag)}>
+            Save
+          </button>
+        </>
       )
     )
 );
@@ -134,6 +139,7 @@ describe('CertificationWidget failed save', () => {
   beforeEach(() => {
     mockOnUpdate.mockReset();
     (showErrorToast as jest.Mock).mockClear();
+    mockUseGenericContextResult.isVersionView = false;
     mockUseGenericContextResult.permissions = {
       EditCertification: true,
     } as unknown as OperationPermission;

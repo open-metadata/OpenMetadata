@@ -10,13 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { CheckOutlined } from '@ant-design/icons';
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal } from 'antd';
+import {
+  Box,
+  Button,
+  Dialog,
+  Divider,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
@@ -96,31 +103,34 @@ const CustomiseHomeModal = ({
     }
   }, [onHomePage]);
 
-  const handleSelectWidget = (id: string) => {
-    const widget = widgets.find((w) => w.id === id);
-    if (!widget) {
-      return;
-    }
-    const isAlreadyAdded = addedWidgetsList?.some(
-      (addedWidgetId) =>
-        addedWidgetId.startsWith(widget.fullyQualifiedName ?? '') &&
-        !addedWidgetId.includes(LandingPageWidgetKeys.CURATED_ASSETS)
-    );
+  const handleSelectWidget = useCallback(
+    (id: string) => {
+      const widget = widgets.find((w) => w.id === id);
+      if (!widget) {
+        return;
+      }
+      const isAlreadyAdded = addedWidgetsList?.some(
+        (addedWidgetId) =>
+          addedWidgetId.startsWith(widget.fullyQualifiedName ?? '') &&
+          !addedWidgetId.includes(LandingPageWidgetKeys.CURATED_ASSETS)
+      );
 
-    if (isAlreadyAdded) {
-      return;
-    }
+      if (isAlreadyAdded) {
+        return;
+      }
 
-    setSelectedWidgets((prev) => {
-      const newSelection = prev.includes(id)
-        ? prev.filter((w) => w !== id)
-        : [...prev, id];
+      setSelectedWidgets((prev) => {
+        const newSelection = prev.includes(id)
+          ? prev.filter((w) => w !== id)
+          : [...prev, id];
 
-      return newSelection;
-    });
-  };
+        return newSelection;
+      });
+    },
+    [widgets, addedWidgetsList]
+  );
 
-  const handleSidebarClick = (key: string) => {
+  const handleSidebarClick = useCallback((key: string) => {
     if (
       [
         CustomiseHomeModalSelectedKey.HEADER_THEME,
@@ -136,7 +146,7 @@ const CustomiseHomeModal = ({
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
-  };
+  }, []);
 
   const customiseOptions = useMemo(() => {
     return [
@@ -176,6 +186,7 @@ const CustomiseHomeModal = ({
     selectedWidgets,
     widgets,
     handleSelectWidget,
+    t,
   ]);
 
   const sidebarItems = useMemo(() => {
@@ -220,8 +231,15 @@ const CustomiseHomeModal = ({
             <div
               className={classNames(
                 'sidebar-option text-md font-medium border-radius-xs cursor-pointer d-flex flex-wrap items-center',
-                isWidgetItem ? 'sidebar-widget-item' : '',
-                selectedKey === item.key ? 'active' : '',
+                isWidgetItem
+                  ? 'sidebar-widget-item tw:hover:bg-primary_hover'
+                  : '',
+                selectedKey === item.key
+                  ? 'active tw:bg-brand-primary tw:text-brand-primary'
+                  : '',
+                isWidgetItem && selectedKey !== item.key
+                  ? 'tw:text-tertiary'
+                  : '',
                 isSelectedWidget ? 'selected' : ''
               )}
               data-testid={`sidebar-option-${item.key}`}
@@ -234,13 +252,13 @@ const CustomiseHomeModal = ({
               )}>
               <span>{startCase(item.label)}</span>
               {isAllWidgetsTab && (
-                <span className="widget-count text-xs border-radius-md m-l-sm">
+                <span className="widget-count tw:bg-brand-primary tw:text-brand-primary text-xs border-radius-md m-l-sm">
                   {widgets.length}
                 </span>
               )}
               {isSelectedWidget && (
                 <span className="selected-widget-icon">
-                  <CheckOutlined />
+                  <Check />
                 </span>
               )}
             </div>
@@ -248,7 +266,13 @@ const CustomiseHomeModal = ({
         })}
       </div>
     );
-  }, [sidebarItems, selectedKey, handleSidebarClick, selectedWidgets]);
+  }, [
+    sidebarItems,
+    selectedKey,
+    handleSidebarClick,
+    selectedWidgets,
+    widgets.length,
+  ]);
 
   const handleApply = async () => {
     try {
@@ -288,64 +312,70 @@ const CustomiseHomeModal = ({
     return colorChanged || widgetsSelected;
   }, [selectedColor, currentBackgroundColor, selectedWidgets]);
 
+  const title = t('label.customize-entity', { entity: t('label.home') });
+
   return (
-    <Modal
-      centered
-      className="customise-home-modal"
-      footer={null}
-      open={open}
-      title={
-        <div className="customise-home-modal-header p-box d-flex items-center gap-3">
-          <Icon className="add-icon" component={AddIcon} />
-          <Typography className="text-xl font-semibold text-white">
-            {t('label.customize-entity', {
-              entity: t('label.home'),
-            })}
-          </Typography>
-        </div>
-      }
-      width={1800}
-      onCancel={onClose}>
-      <Box
-        className="layout-row customise-home-modal-body d-flex gap-1"
-        wrap="wrap">
-        <Box className="layout-column tw:block sidebar p-box sticky top-0 self-start">
-          {sidebarOptions}
-        </Box>
-        <Divider className="h-auto self-stretch" orientation="vertical" />
-        <Box className="layout-column tw:block content p-box">
-          {selectedKey === CustomiseHomeModalSelectedKey.ALL_WIDGETS &&
-          isFetchingWidgets ? (
-            <div className="d-flex justify-center items-center h-100">
-              <Loader />
+    <ModalOverlay
+      isDismissable
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          aria-label={title}
+          data-testid="customise-home-modal"
+          dividers="scroll"
+          panelClassName="customise-home-modal"
+          width={1800}
+          onClose={onClose}>
+          <Box
+            align="center"
+            className="customise-home-modal-header p-box"
+            gap={3}>
+            <AddIcon className="add-icon tw:size-8" />
+            <Typography className="text-white" size="text-xl" weight="semibold">
+              {title}
+            </Typography>
+          </Box>
+          {/* Fixed height: the sidebar and content columns scroll on their own. */}
+          <Dialog.Content className="customise-home-modal-body tw:h-[70vh] tw:max-h-none tw:flex-row tw:gap-1 tw:p-0 tw:sm:px-0">
+            <div className="sidebar p-box tw:overflow-y-auto">
+              {sidebarOptions}
             </div>
-          ) : (
-            selectedComponent
-          )}
-        </Box>
-      </Box>
-      <Box
-        className="layout-row customise-home-modal-footer p-box d-flex justify-end gap-3 bg-white sticky bottom-0"
-        wrap="wrap">
-        <Box className="layout-column d-flex items-center gap-4">
-          <Button
-            className="cancel-btn border-radius-xs font-medium text-md bg-white"
-            data-testid="cancel-btn"
-            onClick={onClose}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            className="apply-btn border-radius-xs font-semibold text-white text-md"
-            data-testid="apply-btn"
-            disabled={!hasChanges}
-            loading={isLoading}
-            type="primary"
-            onClick={handleApply}>
-            {t('label.apply')}
-          </Button>
-        </Box>
-      </Box>
-    </Modal>
+            <Divider
+              className="tw:h-auto tw:self-stretch"
+              orientation="vertical"
+            />
+            <div className="content p-box tw:overflow-y-auto" ref={contentRef}>
+              {selectedKey === CustomiseHomeModalSelectedKey.ALL_WIDGETS &&
+              isFetchingWidgets ? (
+                <Box align="center" className="tw:h-full" justify="center">
+                  <Loader />
+                </Box>
+              ) : (
+                selectedComponent
+              )}
+            </div>
+          </Dialog.Content>
+          <Dialog.Footer className="tw:mt-0">
+            <Button
+              color="secondary"
+              data-testid="cancel-btn"
+              onPress={onClose}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="apply-btn"
+              isDisabled={!hasChanges}
+              isLoading={isLoading}
+              onPress={handleApply}>
+              {t('label.apply')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 
