@@ -292,7 +292,10 @@ test.describe('Curated Assets Widget', () => {
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('index=all') &&
-        response.url().includes('true')
+        // The saved rule's clause, not an incidental `=true` parameter: the
+        // old widget always sent `fetch_source=true`, the card that replaced
+        // it sends no boolean parameter at all.
+        response.url().includes('%22deleted%22')
     );
 
     await page.locator('[data-testid="saveButton"]').click();
@@ -723,10 +726,11 @@ test.describe('Curated Assets Widget', () => {
       personaName: persona.responseData.name,
     });
 
-    // Save without creating any widget configuration
+    // Save without creating any widget configuration. Wait for the layout to
+    // persist before leaving: navigating away mid-request drops the save, and
+    // the live page then renders whatever layout the previous test left.
     await expect(page.locator('[data-testid="save-button"]')).toBeEnabled();
-
-    await page.locator('[data-testid="save-button"]').click();
+    await saveCustomizeLayoutPage(page);
 
     await redirectToHomePage(page);
 
@@ -738,7 +742,10 @@ test.describe('Curated Assets Widget', () => {
     await expect(
       curatedAssetsWidget.getByTestId('widget-empty-state')
     ).toBeHidden();
-    await expect(curatedAssetsWidget.getByText('Rule')).toBeVisible();
+    // Exact: the empty state below it reads "No assets match this rule yet".
+    await expect(
+      curatedAssetsWidget.getByText('Rule', { exact: true })
+    ).toBeVisible();
 
     await navigateToCustomizeLandingPage(page, {
       personaName: persona.responseData.name,

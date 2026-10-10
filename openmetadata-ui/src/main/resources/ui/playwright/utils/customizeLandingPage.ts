@@ -237,8 +237,10 @@ export const removeAndCheckWidget = async (
   // Removal is a button in the card header now, not an item behind an antd
   // overflow menu -- topic cards carry no `more-options-button` at all, so
   // main's switch to `getByRole('menuitem', { name: 'Remove' })` has nothing
-  // left to target here.
-  await widget.getByTestId(`remove-widget-${widgetKey}`).click();
+  // left to target here. The button is keyed by the layout key, which for a
+  // picker-added widget carries a `uniqueId` suffix the base key lacks, so
+  // match it by prefix inside the cell.
+  await widget.locator(`[data-testid^="remove-widget-${widgetKey}"]`).click();
 
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
@@ -508,12 +510,23 @@ export const addCuratedAssetPlaceholder = async ({
     personaName,
   });
 
+  // The default layout ships an unconfigured Curated Assets card, and every
+  // copy carries the same base-key test id, so adding a second one would make
+  // each lookup of the widget ambiguous. Start from a layout without it, once
+  // the editor grid has painted so an unmounted card is not read as absent.
+  await expect(
+    page.locator('[data-testid^="KnowledgePanel."]')
+  ).not.toHaveCount(0);
+  if ((await page.getByTestId(CURATED_ASSETS_WIDGET_KEY).count()) > 0) {
+    await removeAndCheckWidget(page, { widgetKey: CURATED_ASSETS_WIDGET_KEY });
+  }
+
   await openAddCustomizeWidgetModal(page);
   await waitForAllLoadersToDisappear(page);
 
   await page
     .getByRole('dialog', { name: 'Customize Home' })
-    .getByTestId('KnowledgePanel.CuratedAssets')
+    .getByTestId(CURATED_ASSETS_WIDGET_KEY)
     .click();
 
   await page.locator('[data-testid="apply-btn"]').click();
