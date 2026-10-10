@@ -2239,6 +2239,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
+    // Back-fill certification for warmer-seeded entries. The bundle warmer caches
+    // tagsLoaded=true but certificationLoaded=false and strips the Certification.* tag, deferring
+    // cert to the lazy read path; when tags come from cache the full tag-fetch above is skipped,
+    // so without this the cache entry never upgrades and getCertification() repeats its
+    // getCertTagsInternalBatch query (plus a per-hit Redis SET) on every hit indefinitely. This
+    // fires once on the first warmer-seeded hit only — matching the warmer's documented "one
+    // getCertTagsInternalBatch query until the bundle cache back-fills it" contract — after
+    // which buildBundleDto flips certificationLoaded=true and later hits take the fast path.
+    if (supportsCertification
+        && readPlan.shouldLoadTags()
+        && tagsFilledFromCache
+        && !certificationFilledFromCache) {
+      try (var ignored = phase("readBundleFetchCertificationOnly")) {
+        fetchAndPutCertificationOnly(entity, bundle);
+      }
+    }
+
     if (readPlan.shouldLoadVotes()) {
       Votes votes;
       try (var ignored = phase("readBundleFetchVotes")) {
@@ -6577,6 +6594,31 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (supportsCertification) {
       bundle.putCertification(entity.getId(), certification);
     }
+  }
+
+  /**
+   * Lean, cert-only variant of {@link #fetchAndPutTagsWithCertification} used to back-fill the
+   * certification slot of a warmer-seeded {@link ReadBundle} entry whose tags were served from
+   * cache. Issues the single {@code getCertTagsInternalBatch} query the warmer javadoc budgets and
+   * stores the result (or an explicit null) via {@link ReadBundle#putCertification} so {@link
+   * #buildBundleDto} can mark {@code certificationLoaded=true} on the write-back.
+   */
+  private void fetchAndPutCertificationOnly(EntityInterface entity, ReadBundle bundle) {
+    String certClassification = getCertificationClassification();
+    AssetCertification certification = null;
+    if (certClassification != null) {
+      List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> certTags =
+          daoCollection
+              .tagUsageDAO()
+              .getCertTagsInternalBatch(
+                  TagLabel.TagSource.CLASSIFICATION.ordinal(),
+                  List.of(entity.getFullyQualifiedName()),
+                  FullyQualifiedName.buildHash(certClassification) + ".%");
+      if (!nullOrEmpty(certTags)) {
+        certification = buildCertificationFromCertTag(certTags.get(0).toTagLabel());
+      }
+    }
+    bundle.putCertification(entity.getId(), certification);
   }
 
   private static AssetCertification buildCertificationFromCertTag(TagLabel tagLabel) {
