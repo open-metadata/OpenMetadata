@@ -32,6 +32,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
+import type { Destination } from '../../../generated/events/eventSubscription';
 import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
 import type { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
@@ -43,6 +44,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from './DestinationFormItem.constants';
 import { DestinationFormItemProps } from './DestinationFormItem.interface';
 import {
+  alignDestinationsWithTestStatus,
   getTestableExternalDestinations,
   hasExternalDestination,
 } from './DestinationFormItem.utils';
@@ -60,7 +62,7 @@ function DestinationFormItem({
   });
 
   const [destinationsWithStatus, setDestinationsWithStatus] =
-    useState<ModifiedDestination[]>();
+    useState<(Destination | undefined)[]>();
   const [isDestinationStatusLoading, setIsDestinationStatusLoading] =
     useState(false);
   // Nested header/query-param arrays can remount a destination row. Keeping
@@ -124,8 +126,9 @@ function DestinationFormItem({
   const handleTestDestinationClick = useCallback(async () => {
     try {
       setIsDestinationStatusLoading(true);
+      const formattedDestinations = getFormattedDestinations(destinations);
       const externalDestinations = getTestableExternalDestinations(
-        getFormattedDestinations(destinations)
+        formattedDestinations
       );
       if (isEmpty(externalDestinations)) {
         setDestinationsWithStatus(undefined);
@@ -137,10 +140,10 @@ function DestinationFormItem({
         destinations: externalDestinations,
       });
       setDestinationsWithStatus(
-        getDestinationsWithTestStatus(
-          externalDestinations,
-          results
-        ) as ModifiedDestination[]
+        alignDestinationsWithTestStatus(
+          formattedDestinations,
+          getDestinationsWithTestStatus(externalDestinations, results)
+        )
       );
     } catch (e) {
       showErrorToast(e as AxiosError);

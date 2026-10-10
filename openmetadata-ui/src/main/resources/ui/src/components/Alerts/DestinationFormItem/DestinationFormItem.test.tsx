@@ -24,6 +24,7 @@ import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
 import {
   SubscriptionCategory,
   SubscriptionType,
+  type Destination,
 } from '../../../generated/events/eventSubscription';
 import {
   AlertSelection,
@@ -32,6 +33,7 @@ import {
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DestinationFormItem from './DestinationFormItem.component';
+import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem';
 
 jest.mock('../../../rest/alertsAPI', () => ({
   testAlertDestination: jest.fn(),
@@ -44,6 +46,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
 const mockGetFormattedDestinations = jest.fn();
 
 jest.mock('../../../utils/Alerts/AlertsUtilPure', () => ({
+  ...jest.requireActual('../../../utils/Alerts/AlertsUtilPure'),
   getFormattedDestinations: (...args: unknown[]) =>
     mockGetFormattedDestinations(...args),
 }));
@@ -495,6 +498,62 @@ describe('DestinationFormItem', () => {
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
     });
+  });
+
+  it('aligns test status to form row order so duplicates keep distinct statuses and internal rows stay empty', async () => {
+    const duplicateFormatted = {
+      category: SubscriptionCategory.External,
+      type: SubscriptionType.Slack,
+      config: { endpoint: 'https://hooks.slack.com' },
+    };
+    mockGetFormattedDestinations.mockReturnValue([
+      { category: SubscriptionCategory.Owners, type: SubscriptionType.Email },
+      duplicateFormatted,
+      duplicateFormatted,
+    ]);
+    (testAlertDestination as jest.Mock).mockResolvedValue([
+      { statusDetails: { status: 'Success', statusCode: 200 } },
+      { statusDetails: { status: 'Failed', statusCode: 500 } },
+    ]);
+
+    renderWithForm(<DestinationFormItem />, {
+      resources: ['container'],
+      destinations: [
+        {
+          destinationType: SubscriptionCategory.Owners,
+          category: SubscriptionCategory.Owners,
+          type: SubscriptionType.Email,
+        },
+        {
+          destinationType: SubscriptionType.Slack,
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Slack,
+          config: { endpoint: 'https://hooks.slack.com' },
+        },
+        {
+          destinationType: SubscriptionType.Slack,
+          category: SubscriptionCategory.External,
+          type: SubscriptionType.Slack,
+          config: { endpoint: 'https://hooks.slack.com' },
+        },
+      ],
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-destination-button'));
+    });
+
+    await waitFor(() => expect(testAlertDestination).toHaveBeenCalled());
+
+    const calls = (DestinationSelectItem as unknown as jest.Mock).mock.calls;
+    const aligned = calls[calls.length - 1][0].destinationsWithStatus as Array<
+      Destination | undefined
+    >;
+
+    expect(aligned).toHaveLength(3);
+    expect(aligned[0]).toBeUndefined();
+    expect(aligned[1]?.statusDetails?.status).toBe('Success');
+    expect(aligned[2]?.statusDetails?.status).toBe('Failed');
   });
 
   it('hides add and test buttons in view mode', () => {

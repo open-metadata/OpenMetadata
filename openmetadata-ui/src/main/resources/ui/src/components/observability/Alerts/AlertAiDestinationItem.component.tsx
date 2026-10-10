@@ -89,19 +89,24 @@ const AlertAiDestinationItem = ({
       getValidationPath('destinations', name, 'downstreamDepth')
     ];
   const destinationStatusDetails = useMemo(() => {
+    const statusDestination = destinationsWithStatus?.[name];
+
+    if (!statusDestination) {
+      return undefined;
+    }
     const { category, config, type } = destination;
 
-    return destinationsWithStatus?.find((statusDestination) =>
-      isEqual(
-        { category, config: omitBy(config, isUndefined), type },
-        {
-          category: statusDestination.category,
-          config: normalizeDestinationConfig(statusDestination.config),
-          type: statusDestination.type,
-        }
-      )
-    )?.statusDetails;
-  }, [destination, destinationsWithStatus]);
+    return isEqual(
+      { category, config: omitBy(config, isUndefined), type },
+      {
+        category: statusDestination.category,
+        config: normalizeDestinationConfig(statusDestination.config),
+        type: statusDestination.type,
+      }
+    )
+      ? statusDestination.statusDetails
+      : undefined;
+  }, [destination, destinationsWithStatus, name]);
   const isSuccessStatus = destinationStatusDetails?.status === 'Success';
   const destinationStatusLabel = isSuccessStatus
     ? t('label.success')
