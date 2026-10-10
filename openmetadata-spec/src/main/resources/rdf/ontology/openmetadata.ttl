@@ -3221,6 +3221,10 @@ om:lastModifiedBy a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "lastModifiedBy" .
 
+om:lastReviewedAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lastReviewedAt" .
+
 om:lastUsedAt a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "lastUsedAt" .

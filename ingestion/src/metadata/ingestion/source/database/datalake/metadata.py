@@ -74,6 +74,7 @@ from metadata.utils.datalake.datalake_utils import (
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.schema_inference import InferenceLimits, InferenceReport
 
 if TYPE_CHECKING:
     from metadata.ingestion.connections.connection import BaseConnection
@@ -94,6 +95,7 @@ class DatalakeSource(DatabaseServiceSource):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
+        self.inference_limits = InferenceLimits.from_source_config(self.source_config)
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self._connection = create_connection(self.service_connection)
@@ -283,8 +285,16 @@ class DatalakeSource(DatabaseServiceSource):
             )
             if data_frame:
                 data_frame = next(data_frame)
-                column_parser = DataFrameColumnParser.create(data_frame, table_extension, raw_data=raw_data)
+                inference_report = InferenceReport()
+                column_parser = DataFrameColumnParser.create(
+                    data_frame,
+                    table_extension,
+                    raw_data=raw_data,
+                    limits=self.inference_limits,
+                    report=inference_report,
+                )
                 columns = column_parser.get_columns()
+                inference_report.emit(self.status, f"{schema_name}/{table_name}", self.inference_limits)
             else:
                 # If no data_frame (due to unsupported type), ignore
                 columns = None

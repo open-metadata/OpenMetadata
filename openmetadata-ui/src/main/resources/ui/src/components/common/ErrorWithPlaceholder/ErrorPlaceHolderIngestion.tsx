@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import classNames from 'classnames';
 
 import { useMemo } from 'react';
@@ -64,16 +64,18 @@ const ErrorPlaceHolderIngestion = ({
               </p>
             </>
           ) : (
-            <Space
+            <Box
+              inline
               align="center"
-              className="justify-center w-full"
-              direction="vertical"
-              size={16}>
+              className="layout-space justify-center w-full"
+              direction="col"
+              gap={4}
+              itemClassName="layout-space-item">
               <IconCollateSupport height={100} width={100} />
               <Typography as="article">
                 {t('message.pipeline-scheduler-message')}
               </Typography>
-            </Space>
+            </Box>
           )}
         </Card>
       </div>

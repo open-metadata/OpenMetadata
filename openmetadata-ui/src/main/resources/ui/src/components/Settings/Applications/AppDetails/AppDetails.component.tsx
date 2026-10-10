@@ -20,7 +20,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Button, Space, Tooltip } from 'antd';
+import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -619,7 +619,14 @@ const AppDetails = () => {
             href={appData?.developerUrl}
             rel="noopener noreferrer"
             target="_blank">
-            <Space>{t('label.visit-developer-website')}</Space>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              {t('label.visit-developer-website')}
+            </Box>
           </a>
         </Typography>
       </div>
@@ -691,7 +698,12 @@ const AppDetails = () => {
       </Box>
       <Box direction="col">
         <div>
-          <Space className="app-details-header w-full" size={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal app-details-header w-full"
+            gap={6}
+            itemClassName="layout-space-item">
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
@@ -699,28 +711,38 @@ const AppDetails = () => {
               {renderRuntimeDisabledBadge()}
 
               <div className="d-flex items-center flex-wrap gap-6">
-                <Space size={8}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <ClockCircleOutlined />
                   <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
                     )}`}
                   </Typography>
-                </Space>
+                </Box>
 
-                <Space size={8}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <UserOutlined />
                   <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,
                     })}
                   </Typography>
-                </Space>
+                </Box>
 
                 {renderDeveloperUrl()}
               </div>
             </div>
-          </Space>
+          </Box>
         </div>
         <div>{renderAppDetailsBody()}</div>
       </Box>

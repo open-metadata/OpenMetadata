@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Select, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -323,8 +323,18 @@ const SampleDataTable: FC<SampleDataProps> = ({
       })}
       data-testid="sample-data"
       id="sampleDataDetails">
-      <Space className="m-y-xss justify-between w-full">
-        <Space>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-y-xss justify-between w-full"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           <Typography color="secondary">{t('label.row-limit')}:</Typography>
           <Select
             className="w-28"
@@ -340,7 +350,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
               </Select.Option>
             ))}
           </Select>
-        </Space>
+        </Box>
         <ManageMenu
           data-testid="sample-data-manage-button"
           isOpen={showActions}
@@ -350,7 +360,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
           })}
           onOpenChange={setShowActions}
         />
-      </Space>
+      </Box>
 
       <TableComponent
         columns={sampleData?.columns}

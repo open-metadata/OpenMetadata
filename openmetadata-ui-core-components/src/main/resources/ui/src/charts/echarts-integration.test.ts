@@ -19,6 +19,7 @@ import {
   GridComponent,
   LegendComponent,
   MarkLineComponent,
+  MarkPointComponent,
   TooltipComponent,
   VisualMapComponent,
 } from 'echarts/components';
@@ -34,7 +35,7 @@ import { applyZoomWindow } from './options/common';
 import { buildGeoMapOption } from './options/geo';
 import { buildPieOption } from './options/pie';
 import { REPLACE_MERGE_KEYS } from './options/merge';
-import { LIGHT_CHART_THEME } from './theme';
+import { DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
 import type { CartesianBuildInput, ChartOption, GeoJson } from './types';
 
 // These run the builders against a real (server-side) ECharts instance with
@@ -48,6 +49,7 @@ echarts.use([
   LegendComponent,
   DataZoomComponent,
   MarkLineComponent,
+  MarkPointComponent,
   AriaComponent,
   MapChart,
   PieChart,
@@ -106,6 +108,38 @@ const modelOf = (chart: echarts.ECharts) => chart.getOption() as Model;
 
 afterEach(() => {
   charts.splice(0).forEach((chart) => chart.dispose());
+});
+
+describe('the selection ring on a real chart', () => {
+  const ringed = (day?: string) =>
+    buildLineOption(
+      input({
+        series: [
+          {
+            key: 'a',
+            name: 'A',
+            pointStyle: (row) => ({ selected: row.day === day }),
+          },
+        ],
+      }),
+      LIGHT_CHART_THEME
+    );
+  const ringsIn = (chart: echarts.ECharts) =>
+    chart.renderToSVGString().match(/stroke-opacity="0\.3"/g)?.length ?? 0;
+
+  it('moves with the selection and goes when it is cleared', () => {
+    const chart = mount(ringed('d3'));
+
+    expect(ringsIn(chart)).toBe(1);
+
+    chart.setOption(ringed('d7'), MERGE);
+
+    expect(ringsIn(chart)).toBe(1);
+
+    chart.setOption(ringed(), MERGE);
+
+    expect(ringsIn(chart)).toBe(0);
+  });
 });
 
 describe('reference lines on a real chart', () => {
@@ -367,6 +401,53 @@ describe('pie on a real chart', () => {
   });
 });
 
+describe('neutral pie hover on a real chart', () => {
+  it.each([LIGHT_CHART_THEME, DARK_CHART_THEME])(
+    'keeps neutral slices grey while expanding in dark mode: $isDark',
+    (theme) => {
+      const chart = mount(
+        buildPieOption(
+          {
+            ariaLabel: 'Coverage',
+            innerRadius: 40,
+            outerRadius: 54,
+            legend: { show: false },
+            data: [{ name: 'Uncovered', value: 378, status: 'neutral' }],
+            option: { animation: false },
+          },
+          theme
+        )
+      );
+      const slice = chart
+        .getZr()
+        .storage.getDisplayList()
+        .find((element) => element.type === 'sector');
+
+      if (!slice) {
+        throw new Error('Expected a rendered pie slice');
+      }
+
+      const restingWidth = slice.getBoundingRect().width;
+      const fill = () =>
+        chart.renderToSVGString().match(/<path[^>]*fill="([^"]+)"/)?.[1];
+
+      expect(fill()).toBe(theme.palette.status.neutral);
+      chart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: 0 });
+      // SSR has no automatic frame to apply the hover state.
+      chart.getZr().animation.update();
+
+      expect(slice.getBoundingRect().width).toBeGreaterThan(restingWidth);
+      expect(fill()).toBe(theme.palette.status.neutral);
+
+      chart.dispatchAction({ type: 'downplay', seriesIndex: 0, dataIndex: 0 });
+      chart.getZr().animation.update();
+
+      expect(fill()).toBe(theme.palette.status.neutral);
+      expect(slice.getBoundingRect().width).toBe(restingWidth);
+    }
+  );
+});
+
 describe('category value axis on a real chart', () => {
   it('draws string values as categories', () => {
     const chart = mount(
@@ -525,5 +606,30 @@ describe('band series on a real chart', () => {
 
     expect(span.get(stacked, 0)).toBe(2);
     expect(span.get(stacked, 1)).toBe(4);
+  });
+});
+
+describe('axis labels on a real chart', () => {
+  const PALE_LINE = '#e9eaeb';
+  // The fill of the label that reads `text`.
+  const labelFill = (chart: echarts.ECharts, text: string) =>
+    chart
+      .renderToSVGString()
+      .match(new RegExp(`<text[^>]*fill="([^"]+)"[^>]*>${text}</text>`))?.[1];
+
+  it('keep their own colour when the caller themes the axis line', () => {
+    const chart = mount(
+      buildLineOption(
+        input({
+          xAxis: { axisLine: { lineStyle: { color: PALE_LINE } } },
+          yAxis: { axisLine: { show: true, lineStyle: { color: PALE_LINE } } },
+        }),
+        LIGHT_CHART_THEME
+      )
+    );
+
+    expect(labelFill(chart, 'd0')).toBeDefined();
+    expect(labelFill(chart, 'd0')).not.toBe(PALE_LINE);
+    expect(labelFill(chart, '0')).not.toBe(PALE_LINE);
   });
 });

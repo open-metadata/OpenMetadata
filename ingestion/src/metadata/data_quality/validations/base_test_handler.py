@@ -607,12 +607,20 @@ class BaseTestValidator(ABC):
             )
             return FailureThreshold()
 
+        return FailureThreshold(value=threshold, unit=self.get_threshold_unit())
+
+    def get_threshold_unit(self) -> ThresholdUnit:
+        """Parse `thresholdUnit`, falling back to ABSOLUTE when it is unset or unknown
+
+        Readable on its own for the tests whose `threshold` is not a failure tolerance, and so
+        cannot go through `get_failure_threshold()`.
+        """
         raw_unit = self.get_test_case_param_value(
-            param_values, THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
+            self.test_case.parameterValues or [], THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
         )
         unit_value = raw_unit if isinstance(raw_unit, str) else ThresholdUnit.ABSOLUTE.value
         try:
-            unit = ThresholdUnit(unit_value.upper())
+            return ThresholdUnit(unit_value.upper())
         except ValueError:
             logger.warning(
                 "Unknown %s '%s' for %s. Reading the threshold as %s.",
@@ -621,9 +629,7 @@ class BaseTestValidator(ABC):
                 self.test_case.fullyQualifiedName,
                 ThresholdUnit.ABSOLUTE.value,
             )
-            unit = ThresholdUnit.ABSOLUTE
-
-        return FailureThreshold(value=threshold, unit=unit)
+            return ThresholdUnit.ABSOLUTE
 
     def _needs_row_count(self) -> bool:
         """Whether the total row count has to be computed

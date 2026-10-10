@@ -274,6 +274,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   });
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Owner: () => <div data-testid="owners-section">Owners Section</div>,
     Button: ({ children, onPress, onClick, ...rest }: any) => (
       <button onClick={onPress ?? onClick} {...rest}>

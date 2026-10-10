@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Space } from 'antd';
+import {
+  Box,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { split } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,8 +61,8 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
           onClick={onClose}
         />
       }>
-      <Row className="p-md welcome-screen-full-height">
-        <Col className="flex-center" span={12}>
+      <Grid className="layout-row layout-grid p-md welcome-screen-full-height">
+        <Grid.Item className="layout-column flex-center" span={12}>
           <img
             alt="welcome screen"
             className="welcome-screen-img"
@@ -65,9 +70,15 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
             loading="lazy"
             src={welcomeScreenImg}
           />
-        </Col>
-        <Col span={12}>
-          <Space className="m-y-xlg" direction="vertical">
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Box
+            inline
+            align="stretch"
+            className="layout-space m-y-xlg"
+            direction="col"
+            gap={2}
+            itemClassName="layout-space-item">
             <div>
               <Typography
                 as="p"
@@ -93,9 +104,9 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
               </Typography>
               <LineArrowRight className="text-primary" height={14} width={18} />
             </Link>
-          </Space>
-        </Col>
-      </Row>
+          </Box>
+        </Grid.Item>
+      </Grid>
     </Card>
   );
 };

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider } from '@openmetadata/ui-core-components';
-import { Col, Form, Row } from 'antd';
+import { Box, Divider } from '@openmetadata/ui-core-components';
+import { Form } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -167,46 +167,54 @@ function AlertConfigDetails({
           ...modifiedAlertData,
           resources: modifiedAlertData?.filteringRules?.resources,
         }}>
-        <Row justify="center">
-          <Col span={24}>
+        <Box className="layout-row" justify="center" wrap="wrap">
+          <Box
+            className="layout-column tw:block"
+            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
             <AlertFormSourceItem isViewMode />
-          </Col>
+          </Box>
           {!isEmpty(modifiedAlertData.input?.filters) && (
             <>
-              <Col>
+              <Box className="layout-column tw:block">
                 <Divider
                   dashed
                   className="tw:mx-2 tw:h-6 tw:border-r"
                   orientation="vertical"
                 />
-              </Col>
-              <Col span={24}>
+              </Box>
+              <Box
+                className="layout-column tw:block"
+                style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                 <ObservabilityFormFiltersItem isViewMode />
-              </Col>
+              </Box>
             </>
           )}
           {!isEmpty(modifiedAlertData.input?.actions) && (
             <>
-              <Col>
+              <Box className="layout-column tw:block">
                 <Divider
                   dashed
                   className="tw:mx-2 tw:h-6 tw:border-r"
                   orientation="vertical"
                 />
-              </Col>
-              <Col span={24}>
+              </Box>
+              <Box
+                className="layout-column tw:block"
+                style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                 <ObservabilityFormTriggerItem isViewMode />
-              </Col>
+              </Box>
             </>
           )}
-          <Col>
+          <Box className="layout-column tw:block">
             <Divider
               dashed
               className="tw:mx-2 tw:h-6 tw:border-r"
               orientation="vertical"
             />
-          </Col>
-          <Col span={24}>
+          </Box>
+          <Box
+            className="layout-column tw:block"
+            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
             <DestinationFormItemFormBridge
               isViewMode
               renderValidationField={(validate) => (
@@ -226,19 +234,21 @@ function AlertConfigDetails({
                 );
               }}
             />
-          </Col>
+          </Box>
           {!isEmpty(extraFormWidgets) && (
             <>
               {Object.entries(extraFormWidgets).map(([name, Widget]) => (
                 <Fragment key={name}>
-                  <Col>
+                  <Box className="layout-column tw:block">
                     <Divider
                       dashed
                       className="tw:mx-2 tw:h-6 tw:border-r"
                       orientation="vertical"
                     />
-                  </Col>
-                  <Col span={24}>
+                  </Box>
+                  <Box
+                    className="layout-column tw:block"
+                    style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                     <Widget
                       isViewMode
                       alertDetails={modifiedAlertData}
@@ -247,12 +257,12 @@ function AlertConfigDetails({
                       templateResourcePermission={templateResourcePermission}
                       templates={templates}
                     />
-                  </Col>
+                  </Box>
                 </Fragment>
               ))}
             </>
           )}
-        </Row>
+        </Box>
       </Form>
     </AlertSelectionProvider>
   );

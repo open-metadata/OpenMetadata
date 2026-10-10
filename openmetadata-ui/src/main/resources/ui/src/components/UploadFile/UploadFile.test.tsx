@@ -16,10 +16,6 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import UploadFile from './UploadFile';
 import { UploadFileProps } from './UploadFile.interface';
 
-jest.mock('../../assets/svg/ic-drag-drop.svg', () => ({
-  ReactComponent: () => <div data-testid="import-icon">ImportIcon</div>,
-}));
-
 jest.mock('../common/Loader/Loader', () => {
   return jest.fn(() => <div data-testid="loader">Loading...</div>);
 });
@@ -42,7 +38,13 @@ describe('UploadFile Component', () => {
     render(<UploadFile {...defaultProps} />);
 
     expect(screen.getByTestId('upload-file-widget')).toBeInTheDocument();
-    expect(screen.getByTestId('import-icon')).toBeInTheDocument();
+
+    const uploadIcon = screen.getByRole('button').querySelector('svg');
+
+    expect(uploadIcon).toHaveClass('tw:text-fg-quaternary');
+    expect(uploadIcon).toHaveAttribute('stroke', 'currentColor');
+    expect(uploadIcon).toHaveAttribute('width', '86');
+    expect(uploadIcon).toHaveAttribute('height', '86');
     expect(
       await screen.findByText(/message.drag-and-drop-or-browse-csv-files-here/)
     ).toBeInTheDocument();
