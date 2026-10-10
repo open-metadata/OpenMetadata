@@ -103,6 +103,10 @@ public class DistributedIndexingStrategy {
 
     int partitionSize = jobData.getPartitionSize() != null ? jobData.getPartitionSize() : 10000;
     distributedExecutor = new DistributedSearchIndexExecutor(collectionDAO, partitionSize);
+    // A stop that landed before this executor existed had nothing to stop yet; hand it on.
+    if (stopped.get()) {
+      distributedExecutor.stop();
+    }
     distributedExecutor.performStartupRecovery();
 
     distributedExecutor.addListener(listeners);
