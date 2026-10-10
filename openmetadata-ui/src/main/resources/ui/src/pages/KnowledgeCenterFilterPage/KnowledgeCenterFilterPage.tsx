@@ -148,11 +148,19 @@ const KnowledgeCenterFilterPage = () => {
     fetchPermission();
   }, []);
 
+  // The filter identity (entityId/entityType) is read from the query string via
+  // useLocationSearch, so a same-path navigation to a different entity re-renders
+  // this instance without remounting it (notably under KeepAliveRoutes in AI app
+  // mode, which caches by path and ignores the query string). Reset the listing
+  // and paging state and refetch whenever the entity changes so stale articles
+  // from the previous entity are never shown.
   useEffect(() => {
     if (hasViewPermission) {
+      setKnowledgePages([]);
+      setPaging({ total: 0 });
       fetchKnowledgePages();
     }
-  }, [hasViewPermission]);
+  }, [hasViewPermission, entityId, entityType]);
 
   /**
    * Handle infinite scrolling
