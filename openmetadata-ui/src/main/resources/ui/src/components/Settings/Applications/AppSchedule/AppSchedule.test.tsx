@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import {
   AppType,
+  ScheduleTimeline,
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/tests/testSuite';
@@ -247,5 +248,26 @@ describe('AppSchedule component', () => {
 
     expect(screen.queryByRole('button', { name: 'label.edit' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'label.run-now' })).toBeNull();
+  });
+
+  it('does not refetch the pipeline when only the schedule changes', async () => {
+    mockGetIngestionPipelineByFqn.mockClear();
+    const { rerender } = render(<AppSchedule {...mockProps2} />);
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(mockGetIngestionPipelineByFqn).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <AppSchedule
+        {...mockProps2}
+        appData={{
+          ...mockProps2.appData,
+          appSchedule: { scheduleTimeline: ScheduleTimeline.None },
+        }}
+      />
+    );
+
+    expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    expect(mockGetIngestionPipelineByFqn).toHaveBeenCalledTimes(1);
   });
 });

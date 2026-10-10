@@ -171,16 +171,21 @@ const AppSchedule = ({
       (feature) => feature.name === 'app'
     ) ?? {};
 
+  // Keyed on the two fields it reads, not the whole app: a schedule save
+  // replaces appData, and refetching then would flash the loader over the
+  // open schedule dialog and remount the runs history. Deploy still re-checks,
+  // because it reloads the app and remounts this tab.
+  const { appType } = appData;
+  const firstPipeline = appData.pipelines?.[0];
+  const pipelineFqn = firstPipeline
+    ? firstPipeline.fullyQualifiedName ?? ''
+    : undefined;
+
   const fetchPipelineDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      if (
-        appData.appType === AppType.External &&
-        appData.pipelines &&
-        appData.pipelines.length > 0
-      ) {
-        const fqn = appData.pipelines[0].fullyQualifiedName ?? '';
-        const pipelineData = await getIngestionPipelineByFqn(fqn);
+      if (appType === AppType.External && pipelineFqn !== undefined) {
+        const pipelineData = await getIngestionPipelineByFqn(pipelineFqn);
 
         setIsPipelineDeployed(pipelineData.deployed ?? false);
       } else {
@@ -191,7 +196,7 @@ const AppSchedule = ({
     } finally {
       setIsLoading(false);
     }
-  }, [appData]);
+  }, [appType, pipelineFqn]);
 
   const [cronString, setCronString] = useState<string>('');
 
@@ -293,7 +298,6 @@ const AppSchedule = ({
     };
   }, [appData.name, appData.appType, pipelineSchedules]);
 
-  // Re-checks the deployed state whenever the app changes (e.g. after a deploy).
   useEffect(() => {
     fetchPipelineDetails();
   }, [fetchPipelineDetails]);
