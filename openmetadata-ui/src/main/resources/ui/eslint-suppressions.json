@@ -938,11 +938,6 @@
       "count": 4
     }
   },
-  "src/components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/components/DataContract/AddDataContract/AddDataContract.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 3
@@ -1193,11 +1188,6 @@
       "count": 2
     }
   },
-  "src/components/Database/TableQueries/QueryCardExtraOption/QueryCardExtraOption.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/Database/TableQueries/QueryUsedByOtherTable/QueryUsedByOtherTable.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
@@ -1285,7 +1275,7 @@
   },
   "src/components/GlobalSearchBar/GlobalSearchBar.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 3
     }
   },
   "src/components/KnowledgeCenter/KnowledgePageVersion/KnowledgePageVersion.tsx": {
@@ -1553,11 +1543,6 @@
       "count": 5
     }
   },
-  "src/components/Settings/Bot/BotListV1/BotListV1.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/components/Settings/CustomProperty/AddCustomProperty/AddCustomProperty.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 3
@@ -1613,24 +1598,14 @@
       "count": 3
     }
   },
-  "src/components/Settings/Team/TeamDetails/RolesAndPoliciesList.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/components/Settings/Team/TeamDetails/TeamDetailsV1.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 5
+      "count": 4
     }
   },
   "src/components/Settings/Team/TeamDetails/TeamHierarchy.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 2
-    }
-  },
-  "src/components/Settings/Team/TeamDetails/TeamsHeaderSection/TeamHierarchyNameCell.test.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
     }
   },
   "src/components/Settings/Team/TeamDetails/TeamsHeaderSection/TeamsHeadingLabel.component.tsx": {
@@ -1650,7 +1625,7 @@
   },
   "src/components/Settings/Team/TeamDetails/UserTab/UserTab.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 2
     }
   },
   "src/components/Settings/Team/TeamsSelectable/TeamsSelectable.tsx": {
@@ -1710,7 +1685,7 @@
   },
   "src/components/Settings/Users/UsersTab/UsersTabs.component.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/SettingsSso/ProviderSelector/ProviderSelector.tsx": {
@@ -1778,11 +1753,6 @@
       "count": 2
     }
   },
-  "src/components/common/CopyLinkButton/CopyLinkButton.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
   "src/components/common/CustomUnitSelect/CustomUnitSelect.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 4
@@ -1796,11 +1766,6 @@
   "src/components/common/DatePickerMenu/DatePickerMenu.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 4
-    }
-  },
-  "src/components/common/DisplayName/DisplayName.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
     }
   },
   "src/components/common/DomainSelectableTree/DomainSelectableTree.interface.ts": {
@@ -1850,7 +1815,7 @@
   },
   "src/components/common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget.tsx": {
@@ -1910,7 +1875,7 @@
   },
   "src/components/common/ResizablePanels/ResizablePanels.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/common/RichTextEditor/TaskDescriptionPreviewer.tsx": {
@@ -1935,7 +1900,7 @@
   },
   "src/components/common/SliderWithInput/SliderWithInput.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 4
+      "count": 2
     }
   },
   "src/components/common/StatusAction/StatusAction.tsx": {
@@ -1979,11 +1944,6 @@
     }
   },
   "src/components/common/ToggleExpandButton/ToggleExpandButton.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/common/UserSelectableList/UserSelectableList.component.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
     }
@@ -2050,7 +2010,7 @@
   },
   "src/pages/AlertDetailsPage/components/AlertDetailsContent.tsx": {
     "openmetadata-antd/no-antd-import": {
-      "count": 3
+      "count": 2
     }
   },
   "src/pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage.tsx": {
@@ -2123,11 +2083,6 @@
       "count": 1
     }
   },
-  "src/pages/DataInsightPage/KPIList.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/pages/DataQuality/DataQualityPage.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
@@ -2174,11 +2129,6 @@
     }
   },
   "src/pages/NotificationListPage/NotificationListPage.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/pages/ObservabilityAlertsPage/components/ObservabilityAlertActions.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
     }
@@ -2243,11 +2193,6 @@
       "count": 4
     }
   },
-  "src/pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailsList.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/pages/PoliciesPage/PoliciesListPage/PoliciesListPage.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
@@ -2283,11 +2228,6 @@
       "count": 4
     }
   },
-  "src/pages/RolesPage/RolesDetailPage/RolesDetailPageList.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
-    }
-  },
   "src/pages/RolesPage/RolesListPage/RolesListPage.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
@@ -2296,11 +2236,6 @@
   "src/pages/SearchSettingsPage/SearchSettingsPage.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 4
-    }
-  },
-  "src/pages/ServiceDetailsPage/ServiceDetailsPage.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
     }
   },
   "src/pages/SettingsNavigationPage/SettingsNavigationPage.test.tsx": {

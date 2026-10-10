@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Tooltip, ButtonUtility, Button as CoreButton } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button as CoreButton,
+  ButtonUtility,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Modal } from 'antd';
 import { isEmpty, orderBy } from 'lodash';
@@ -270,7 +275,10 @@ export const UserTab = ({
             className="layout-space layout-space-horizontal w-full justify-center remove-icon"
             gap={2}
             itemClassName="layout-space-item">
-            <Tooltip arrow placement="left" title={
+            <Tooltip
+              arrow
+              placement="left"
+              title={
                 editUserPermission
                   ? t('label.remove')
                   : t('message.no-permission-for-action')

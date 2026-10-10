@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
 
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -44,7 +43,10 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
   );
 
   return (
-    <Tooltip arrow placement="top" title={
+    <Tooltip
+      arrow
+      placement="top"
+      title={
         hasCopied
           ? t('message.link-copy-to-clipboard')
           : t('label.copy-item', { item: t('label.url-uppercase') })

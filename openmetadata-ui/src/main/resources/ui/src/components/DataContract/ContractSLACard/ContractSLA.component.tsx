@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Box, Divider, Grid, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Divider,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   FailedTests,
   MinusCircle,
@@ -225,9 +231,13 @@ const ContractSLA: React.FC<{
   }
 
   const inheritedIcon = contract.sla?.inherited ? (
-    <Tooltip arrow excludeTriggerFromTabOrder title={t('label.inherited-entity', {
+    <Tooltip
+      arrow
+      excludeTriggerFromTabOrder
+      title={t('label.inherited-entity', {
         entity: t('label.service-level-agreement'),
-      })} triggerClassName="tw:inline-flex">
+      })}
+      triggerClassName="tw:inline-flex">
       <InheritIcon className="inherit-icon cursor-pointer" width={14} />
     </Tooltip>
   ) : null;

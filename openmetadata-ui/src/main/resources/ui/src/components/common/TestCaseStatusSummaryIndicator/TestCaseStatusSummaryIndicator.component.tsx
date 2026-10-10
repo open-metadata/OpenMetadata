@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { omit, startCase } from 'lodash';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -48,7 +48,12 @@ const TestCaseStatusSummaryIndicator = ({
       {Object.entries(
         omit(testCaseStatusCounts, ['entityLink', 'total', 'queued'])
       ).map((test) => (
-        <Tooltip key={test[0]} arrow excludeTriggerFromTabOrder title={startCase(test[0])} triggerClassName="tw:inline-flex">
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          key={test[0]}
+          title={startCase(test[0])}
+          triggerClassName="tw:inline-flex">
           <Link data-testid={test[0]} to={redirectPath}>
             <TestIndicator type={test[0]} value={test[1]} />
           </Link>

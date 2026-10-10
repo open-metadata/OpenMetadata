@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Skeleton,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -68,7 +73,12 @@ function ObservabilityAlertActions({
   return (
     <div className="d-flex items-center">
       {alertPermission.edit && (
-        <Tooltip arrow excludeTriggerFromTabOrder placement="bottom" title={t('label.edit')} triggerClassName="tw:inline-flex">
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          placement="bottom"
+          title={t('label.edit')}
+          triggerClassName="tw:inline-flex">
           {onEditAlert ? (
             editButton
           ) : (

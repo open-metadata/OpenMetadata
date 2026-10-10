@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
@@ -81,7 +81,12 @@ const DimensionalityHeatmap = ({
         <div className="dimensionality-heatmap__labels-column tw:shrink-0">
           <div className="dimensionality-heatmap__header-corner" />
           {heatmapData.map((row) => (
-            <Tooltip key={row.dimensionValue} arrow excludeTriggerFromTabOrder title={row.dimensionValue} triggerClassName="tw:flex">
+            <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
+              key={row.dimensionValue}
+              title={row.dimensionValue}
+              triggerClassName="tw:flex">
               <div className="dimensionality-heatmap__dimension-label tw:cursor-default">
                 {row.dimensionValue}
               </div>
@@ -119,7 +124,13 @@ const DimensionalityHeatmap = ({
                 className="dimensionality-heatmap__data-row tw:flex"
                 key={`row-${row.dimensionValue}`}>
                 {row.cells.map((cell) => (
-                  <Tooltip key={`${cell.dimensionValue}-${cell.date}`} excludeTriggerFromTabOrder containerClassName="tw:bg-transparent tw:p-0 tw:shadow-none" placement="top" title={<HeatmapCellTooltip cell={cell} />} triggerClassName="tw:inline-flex">
+                  <Tooltip
+                    excludeTriggerFromTabOrder
+                    containerClassName="tw:bg-transparent tw:p-0 tw:shadow-none"
+                    key={`${cell.dimensionValue}-${cell.date}`}
+                    placement="top"
+                    title={<HeatmapCellTooltip cell={cell} />}
+                    triggerClassName="tw:inline-flex">
                     <div
                       aria-label={`${cell.dimensionValue}, ${getDateLabel(
                         cell.date

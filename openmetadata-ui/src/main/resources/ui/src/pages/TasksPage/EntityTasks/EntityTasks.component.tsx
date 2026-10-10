@@ -82,11 +82,15 @@ const EntityTasks = ({
     const hasData = !isEmpty(data.field);
 
     return (
-      <Tooltip arrow excludeTriggerFromTabOrder title={
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={
           hasData
             ? t(ENTITY_TASKS_TOOLTIP[entityTaskType].update)
             : t(ENTITY_TASKS_TOOLTIP[entityTaskType].request)
-        } triggerClassName="tw:inline-flex">
+        }
+        triggerClassName="tw:inline-flex">
         <IconRequest
           className="table-action-icon hover-cell-icon"
           data-testid="task-element"

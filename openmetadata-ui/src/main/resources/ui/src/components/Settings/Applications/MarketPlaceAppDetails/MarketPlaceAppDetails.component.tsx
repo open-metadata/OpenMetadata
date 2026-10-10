@@ -12,7 +12,13 @@
  */
 
 import { LeftOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography, Tooltip, Button as CoreButton } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button as CoreButton,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Alert, Button, Carousel } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
@@ -167,7 +173,11 @@ const MarketPlaceAppDetails = () => {
         <div className="flex-center m-t-md">
           <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         </div>
-        <Tooltip arrow isDisabled={!tooltipTitle} placement="top" title={tooltipTitle}>
+        <Tooltip
+          arrow
+          isDisabled={!tooltipTitle}
+          placement="top"
+          title={tooltipTitle}>
           <CoreButton
             className="tw:w-full m-t-md"
             color="primary"

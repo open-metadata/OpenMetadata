@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Dropdown,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Radio } from 'antd';
 import { isEmpty, orderBy } from 'lodash';
 import {
@@ -270,7 +275,11 @@ export const UserProfileIcon = () => {
           />
         )}
         <div className="name-persona-container">
-          <Tooltip arrow excludeTriggerFromTabOrder title={getEntityName(currentUser)} triggerClassName="tw:inline-flex">
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            title={getEntityName(currentUser)}
+            triggerClassName="tw:inline-flex">
             <Typography
               className="name-persona-text font-semibold"
               data-testid="nav-user-name">

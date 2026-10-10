@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Drawer, Select } from 'antd';
 import { AxiosError } from 'axios';
 import {
@@ -201,7 +206,12 @@ const ReindexFailures = ({
         width: 400,
         render: (text: string) =>
           text ? (
-            <Tooltip arrow excludeTriggerFromTabOrder placement="top left" title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>} triggerClassName="tw:inline-flex">
+            <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
+              placement="top left"
+              title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}
+              triggerClassName="tw:inline-flex">
               <ErrorMessage text={text} />
             </Tooltip>
           ) : (

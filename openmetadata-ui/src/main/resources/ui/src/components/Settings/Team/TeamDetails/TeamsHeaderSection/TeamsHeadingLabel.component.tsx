@@ -16,7 +16,12 @@ import {
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Box, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Button, Input } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -115,7 +120,10 @@ const TeamsHeadingLabel = ({
 
     const canEditHeading = hasAccess || isCurrentTeamOwner;
     const editHeadingButton = canEditHeading && !currentTeam.deleted && (
-      <Tooltip arrow placement="right" title={
+      <Tooltip
+        arrow
+        placement="right"
+        title={
           hasEditDisplayNamePermission
             ? t('label.edit-entity', {
                 entity: t('label.display-name'),

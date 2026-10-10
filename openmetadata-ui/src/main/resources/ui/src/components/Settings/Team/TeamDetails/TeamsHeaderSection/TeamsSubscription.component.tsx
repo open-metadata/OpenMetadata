@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Button, Form, Input, Modal, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
@@ -143,7 +148,9 @@ const TeamsSubscription = ({
           {`${t('label.subscription')}`}
         </Typography>
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
-          <Tooltip arrow title={t('label.edit-entity', {
+          <Tooltip
+            arrow
+            title={t('label.edit-entity', {
               entity: t('label.subscription'),
             })}>
             <ButtonUtility
@@ -160,7 +167,9 @@ const TeamsSubscription = ({
           </Tooltip>
         )}
         {isEmpty(subscription) && hasEditPermission && (
-          <Tooltip arrow title={t('label.edit-entity', {
+          <Tooltip
+            arrow
+            title={t('label.edit-entity', {
               entity: t('label.subscription'),
             })}>
             <ButtonUtility

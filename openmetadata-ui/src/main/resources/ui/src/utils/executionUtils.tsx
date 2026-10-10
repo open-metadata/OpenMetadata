@@ -214,7 +214,12 @@ export const getTreeData = (
           <Box className="layout-column tw:block">
             <div className="execution-node-container">
               {value.map((status: ViewDataInterface) => (
-                <Tooltip key={`${status.timestamp}-${status.executionStatus}`} arrow excludeTriggerFromTabOrder placement="top" title={
+                <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
+                  key={`${status.timestamp}-${status.executionStatus}`}
+                  placement="top"
+                  title={
                     <Box
                       inline
                       align="stretch"
@@ -242,7 +247,8 @@ export const getTreeData = (
                         </div>
                       )}
                     </Box>
-                  } triggerClassName="tw:inline-flex">
+                  }
+                  triggerClassName="tw:inline-flex">
                   <Icon
                     alt="result"
                     className="align-middle"

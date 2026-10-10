@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,7 +82,9 @@ const RolesDetailPageList = ({
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip arrow title={
+            <Tooltip
+              arrow
+              title={
                 hasAccess
                   ? t('label.remove')
                   : t('message.no-permission-for-action')

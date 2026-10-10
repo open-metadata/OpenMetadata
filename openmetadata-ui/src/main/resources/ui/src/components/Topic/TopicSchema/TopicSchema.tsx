@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, ButtonGroup, ButtonGroupItem, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  ButtonGroup,
+  ButtonGroupItem,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -295,7 +302,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       <div
         className="d-inline-flex gap-1 hover-icon-group vertical-align-inherit flex-column items-start"
         style={{ maxWidth: '80%' }}>
-        <Tooltip arrow excludeTriggerFromTabOrder title={getEntityName(record)} triggerClassName="tw:inline-flex">
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          title={getEntityName(record)}
+          triggerClassName="tw:inline-flex">
           <span className="break-word">
             {isVersionView ? (
               <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />

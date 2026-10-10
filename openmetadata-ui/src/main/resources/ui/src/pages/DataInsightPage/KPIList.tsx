@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -149,7 +153,10 @@ const KPIList = () => {
         render: (_, record) => {
           return (
             <div className="d-flex items-center">
-              <Tooltip arrow placement="left" title={
+              <Tooltip
+                arrow
+                placement="left"
+                title={
                   isAdminUser
                     ? t('label.edit')
                     : t('message.no-permission-for-action')
@@ -163,7 +170,10 @@ const KPIList = () => {
                   onClick={() => navigate(getKpiPath(record.name))}
                 />
               </Tooltip>
-              <Tooltip arrow placement="left" title={
+              <Tooltip
+                arrow
+                placement="left"
+                title={
                   isAdminUser
                     ? t('label.delete')
                     : t('message.no-permission-for-action')

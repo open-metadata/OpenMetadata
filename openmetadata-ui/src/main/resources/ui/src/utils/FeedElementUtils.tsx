@@ -33,9 +33,13 @@ export const getFieldThreadElement = (
   );
 
   return (
-    <Tooltip arrow excludeTriggerFromTabOrder title={t('label.list-entity', {
+    <Tooltip
+      arrow
+      excludeTriggerFromTabOrder
+      title={t('label.list-entity', {
         entity: t('label.conversation'),
-      })} triggerClassName="tw:inline-flex">
+      })}
+      triggerClassName="tw:inline-flex">
       <IconComments
         className="table-action-icon hover-cell-icon"
         data-testid="field-thread"

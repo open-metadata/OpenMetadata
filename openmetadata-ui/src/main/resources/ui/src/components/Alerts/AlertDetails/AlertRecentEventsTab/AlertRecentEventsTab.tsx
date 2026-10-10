@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Dropdown, EmptyPlaceholder, Grid, Skeleton, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Dropdown,
+  EmptyPlaceholder,
+  Grid,
+  Skeleton,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Bell01 } from '@openmetadata/ui-core-components/icons';
 import { Collapse } from 'antd';
 import { AxiosError } from 'axios';
@@ -206,13 +215,21 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                           wrap="wrap">
                           <Box className="layout-column tw:block">
                             {/* Display icon for the status of the alert event */}
-                            <Tooltip arrow excludeTriggerFromTabOrder title={startCase(typedEvent.status)} triggerClassName="tw:inline-flex flex-center">
+                            <Tooltip
+                              arrow
+                              excludeTriggerFromTabOrder
+                              title={startCase(typedEvent.status)}
+                              triggerClassName="tw:inline-flex flex-center">
                               {getAlertStatusIcon(typedEvent.status)}{' '}
                             </Tooltip>
                           </Box>
                           <Box className="layout-column tw:block">
                             {/* Display icon for the asset the change event is related to */}
-                            <Tooltip arrow excludeTriggerFromTabOrder title={startCase(changeEventData.entityType)} triggerClassName="tw:inline-flex flex-center">
+                            <Tooltip
+                              arrow
+                              excludeTriggerFromTabOrder
+                              title={startCase(changeEventData.entityType)}
+                              triggerClassName="tw:inline-flex flex-center">
                               {searchClassBase.getEntityIcon(
                                 changeEventData.entityType ?? '',
                                 'h-4 w-4'

@@ -17,7 +17,12 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Tabs, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import { Button } from 'antd';
@@ -594,7 +599,11 @@ const AppDetails = () => {
     }
 
     return (
-      <Tooltip arrow excludeTriggerFromTabOrder title={runtimeDisabledReason} triggerClassName="tw:inline-flex">
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={runtimeDisabledReason}
+        triggerClassName="tw:inline-flex">
         <div
           className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
           data-testid="runtime-disabled-badge">

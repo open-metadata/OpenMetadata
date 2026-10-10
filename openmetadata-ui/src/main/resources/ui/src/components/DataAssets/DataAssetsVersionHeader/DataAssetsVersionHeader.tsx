@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Divider, Grid, Owner, Tooltip, Button } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Divider,
+  Grid,
+  Owner,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 
 import { get } from 'lodash';
 import { useMemo } from 'react';

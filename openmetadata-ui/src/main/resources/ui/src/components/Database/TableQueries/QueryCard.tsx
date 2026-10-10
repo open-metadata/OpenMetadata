@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Grid, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import { Button } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
@@ -194,11 +201,19 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const renderExpandIcon = () =>
     isExpanded ? (
-      <Tooltip arrow excludeTriggerFromTabOrder title={t('label.exit-fit-to-screen')} triggerClassName="tw:inline-flex">
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={t('label.exit-fit-to-screen')}
+        triggerClassName="tw:inline-flex">
         <ExitFullScreen height={16} width={16} />
       </Tooltip>
     ) : (
-      <Tooltip arrow excludeTriggerFromTabOrder title={t('label.fit-to-screen')} triggerClassName="tw:inline-flex">
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={t('label.fit-to-screen')}
+        triggerClassName="tw:inline-flex">
         <FullScreen height={16} width={16} />
       </Tooltip>
     );

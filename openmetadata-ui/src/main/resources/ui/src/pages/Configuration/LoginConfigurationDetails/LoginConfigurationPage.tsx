@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
@@ -116,7 +121,12 @@ const LoginConfigurationPage = () => {
             <Grid.Item className="layout-column" span={24}>
               <Typography className="m-0" color="secondary">
                 {t('label.max-login-fail-attempt-plural')}
-                <Tooltip arrow excludeTriggerFromTabOrder placement="top" title={t('message.login-fail-attempt-message')} triggerClassName="tw:inline-flex">
+                <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
+                  placement="top"
+                  title={t('message.login-fail-attempt-message')}
+                  triggerClassName="tw:inline-flex">
                   <InfoCircleOutlined
                     className="m-x-xss"
                     data-testid="max-login-fail-attampts-url-info"
@@ -137,7 +147,12 @@ const LoginConfigurationPage = () => {
             <Grid.Item className="layout-column" span={24}>
               <Typography className="m-0" color="secondary">
                 {t('label.access-block-time')}
-                <Tooltip arrow excludeTriggerFromTabOrder placement="top" title={t('message.access-block-time-message')} triggerClassName="tw:inline-flex">
+                <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
+                  placement="top"
+                  title={t('message.access-block-time-message')}
+                  triggerClassName="tw:inline-flex">
                   <InfoCircleOutlined
                     className="m-x-xss"
                     data-testid="access-block-time-info"
@@ -158,7 +173,12 @@ const LoginConfigurationPage = () => {
             <Grid.Item className="layout-column" span={24}>
               <Typography className="m-0" color="secondary">
                 {t('label.jwt-token-expiry-time')}
-                <Tooltip arrow excludeTriggerFromTabOrder placement="top" title={t('message.jwt-token-expiry-time-message')} triggerClassName="tw:inline-flex">
+                <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
+                  placement="top"
+                  title={t('message.jwt-token-expiry-time-message')}
+                  triggerClassName="tw:inline-flex">
                   <InfoCircleOutlined
                     className="m-x-xss"
                     data-testid="jwt-token-expiry-time-info"

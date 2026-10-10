@@ -12,7 +12,12 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Grid, SkeletonParagraph, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Grid,
+  SkeletonParagraph,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -77,7 +82,12 @@ function AlertDiagnosticInfoTab() {
                     <Typography className="m-0" color="secondary">
                       {`${item.key}:`}
                     </Typography>
-                    <Tooltip arrow excludeTriggerFromTabOrder placement="bottom" title={item.description} triggerClassName="tw:inline-flex">
+                    <Tooltip
+                      arrow
+                      excludeTriggerFromTabOrder
+                      placement="bottom"
+                      title={item.description}
+                      triggerClassName="tw:inline-flex">
                       <InfoCircleOutlined
                         className="info-icon"
                         style={{ color: GRAYED_OUT_COLOR }}

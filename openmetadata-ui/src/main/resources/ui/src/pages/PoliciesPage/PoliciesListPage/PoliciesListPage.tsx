@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Grid, Popover, PopoverTrigger, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  ButtonUtility,
+  Grid,
+  Popover,
+  PopoverTrigger,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
@@ -158,7 +166,12 @@ const PoliciesListPage = () => {
                     {getEntityName(role)}
                   </Link>
                 ) : (
-                  <Tooltip key={uniqueId()} arrow excludeTriggerFromTabOrder title={t(NO_PERMISSION_TO_VIEW)} triggerClassName="tw:inline-flex">
+                  <Tooltip
+                    arrow
+                    excludeTriggerFromTabOrder
+                    key={uniqueId()}
+                    title={t(NO_PERMISSION_TO_VIEW)}
+                    triggerClassName="tw:inline-flex">
                     {getEntityName(role)}
                   </Tooltip>
                 )
@@ -195,7 +208,12 @@ const PoliciesListPage = () => {
                             {getEntityName(role)}
                           </Link>
                         ) : (
-                          <Tooltip key={uniqueId()} arrow excludeTriggerFromTabOrder title={t(NO_PERMISSION_TO_VIEW)} triggerClassName="tw:inline-flex">
+                          <Tooltip
+                            arrow
+                            excludeTriggerFromTabOrder
+                            key={uniqueId()}
+                            title={t(NO_PERMISSION_TO_VIEW)}
+                            triggerClassName="tw:inline-flex">
                             {getEntityName(role)}
                           </Tooltip>
                         )
@@ -218,7 +236,10 @@ const PoliciesListPage = () => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip arrow placement="left" title={
+            <Tooltip
+              arrow
+              placement="left"
+              title={
                 deletePolicyPermission
                   ? t('label.delete-entity', {
                       entity: t('label.policy'),

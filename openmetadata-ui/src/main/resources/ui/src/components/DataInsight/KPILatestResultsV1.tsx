@@ -12,7 +12,12 @@
  */
 
 import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   chartColor,
   hexToRgba,
@@ -120,10 +125,15 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                     {resultData.displayName ?? name}
                   </Typography>
                   {daysLeft <= 0 || isTargetMet ? (
-                    <Tooltip arrow excludeTriggerFromTabOrder placement="bottom" title={getKpiResultFeedback(
+                    <Tooltip
+                      arrow
+                      excludeTriggerFromTabOrder
+                      placement="bottom"
+                      title={getKpiResultFeedback(
                         daysLeft,
                         Boolean(isTargetMet)
-                      )} triggerClassName="tw:inline-flex">
+                      )}
+                      triggerClassName="tw:inline-flex">
                       <InfoCircleOutlined style={{ fontSize: '14px' }} />
                     </Tooltip>
                   ) : null}

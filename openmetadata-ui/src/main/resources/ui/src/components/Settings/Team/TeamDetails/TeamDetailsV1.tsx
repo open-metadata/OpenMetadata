@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Tabs, ToggleBase, Typography, Tooltip, Button as CoreButton } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button as CoreButton,
+  Grid,
+  Tabs,
+  ToggleBase,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Avatar, Button, Modal } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -843,7 +851,10 @@ const TeamDetailsV1 = ({
           }),
           type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
           button: (
-            <Tooltip arrow placement="bottom right" title={
+            <Tooltip
+              arrow
+              placement="bottom right"
+              title={
                 isTeamDeleted
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.role') })
@@ -912,7 +923,10 @@ const TeamDetailsV1 = ({
           }),
           type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
           button: (
-            <Tooltip arrow placement="bottom right" title={
+            <Tooltip
+              arrow
+              placement="bottom right"
+              title={
                 isTeamDeleted
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.policy') })

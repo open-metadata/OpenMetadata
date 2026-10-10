@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { PAGE_SIZE_MEDIUM, TEXT_GREY_MUTED } from '../../../constants/constants';
+import {
+  PAGE_SIZE_MEDIUM,
+  TEXT_GREY_MUTED,
+} from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -169,7 +172,11 @@ export const UserSelectableList = ({
     (item: EntityReference) => (
       <div className="d-flex items-center gap-2">
         {botUserIds.current.has(item.id) && (
-          <Tooltip arrow excludeTriggerFromTabOrder title={t('label.bot')} triggerClassName="tw:inline-flex">
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            title={t('label.bot')}
+            triggerClassName="tw:inline-flex">
             <BotIcon
               aria-label={t('label.bot')}
               color={TEXT_GREY_MUTED}
@@ -219,7 +226,11 @@ export const UserSelectableList = ({
       placement={popoverProps?.placement ?? 'bottom end'}
       onOpenChange={handleOpenChange}>
       {children ?? (
-        <Tooltip arrow isDisabled={hasPermission} placement="top right" title={t(NO_PERMISSION_FOR_ACTION)}>
+        <Tooltip
+          arrow
+          isDisabled={hasPermission}
+          placement="top right"
+          title={t(NO_PERMISSION_FOR_ACTION)}>
           <ButtonUtility
             color="tertiary"
             data-testid="add-user"

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { InputNumber, Slider } from 'antd';
 import { useTranslation } from 'react-i18next';

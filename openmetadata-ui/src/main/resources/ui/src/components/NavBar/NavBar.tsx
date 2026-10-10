@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button as CoreButton, Dropdown, Popover, PopoverTrigger, Tooltip as CoreTooltip, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Button as CoreButton,
+  ButtonUtility,
+  Dropdown,
+  Popover,
+  PopoverTrigger,
+  Tooltip as CoreTooltip,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { Alert, Badge, Button, InputRef } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
@@ -591,7 +599,9 @@ const NavBar = () => {
                 color="tertiary"
                 data-testid="sidebar-toggle"
                 icon={
-                  isSidebarCollapsed ? SidebarCollapsedIcon : SidebarExpandedIcon
+                  isSidebarCollapsed
+                    ? SidebarCollapsedIcon
+                    : SidebarExpandedIcon
                 }
                 size="sm"
                 onClick={() =>

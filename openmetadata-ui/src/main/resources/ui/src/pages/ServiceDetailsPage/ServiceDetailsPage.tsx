@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs, Tooltip, Button } from '@openmetadata/ui-core-components';
+import { Box, Button, Tabs, Tooltip } from '@openmetadata/ui-core-components';
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -1800,7 +1800,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <ServiceSectionCard
           actions={
             <>
-              <Tooltip arrow title={
+              <Tooltip
+                arrow
+                title={
                   flags.canEditAll
                     ? t('label.edit-entity', {
                         entity: t('label.connection'),

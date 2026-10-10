@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Divider, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Divider,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';

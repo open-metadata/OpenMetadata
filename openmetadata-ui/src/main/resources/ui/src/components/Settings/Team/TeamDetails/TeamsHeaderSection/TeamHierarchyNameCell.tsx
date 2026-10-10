@@ -72,7 +72,12 @@ export const TeamHierarchyNameCell: FC<TeamHierarchyNameCellProps> = ({
   return (
     <span className="teams-hierarchy-team-name-cell">
       {isTruncated ? (
-        <Tooltip arrow excludeTriggerFromTabOrder placement="top left" title={displayName} triggerClassName="tw:inline-flex">
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          placement="top left"
+          title={displayName}
+          triggerClassName="tw:inline-flex">
           <span className="teams-hierarchy-team-name-tooltip-trigger">
             {link}
           </span>

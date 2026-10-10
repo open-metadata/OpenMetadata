@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, Skeleton, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Grid,
+  Skeleton,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
@@ -297,7 +303,12 @@ const NotificationListPage = () => {
           return (
             <div className="d-flex items-center">
               {alertPermission.edit && (
-                <Tooltip arrow excludeTriggerFromTabOrder placement="bottom" title={t('label.edit')} triggerClassName="tw:inline-flex">
+                <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
+                  placement="bottom"
+                  title={t('label.edit')}
+                  triggerClassName="tw:inline-flex">
                   <Link to={getNotificationAlertsEditPath(fullyQualifiedName)}>
                     <ButtonUtility
                       color="tertiary"

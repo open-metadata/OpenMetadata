@@ -15,7 +15,12 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { Divider, Grid, Skeleton, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Divider,
+  Grid,
+  Skeleton,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { AlertProps, Checkbox, Select } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
@@ -263,7 +268,12 @@ export const getSupportedFilterOptions = (
 ) =>
   supportedFilters?.map((func) => ({
     label: (
-      <Tooltip arrow delay={800} excludeTriggerFromTabOrder title={getEntityName(func)} triggerClassName="tw:inline-flex">
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        delay={800}
+        title={getEntityName(func)}
+        triggerClassName="tw:inline-flex">
         <span data-testid={`${getEntityName(func)}-filter-option`}>
           {getEntityName(func)}
         </span>

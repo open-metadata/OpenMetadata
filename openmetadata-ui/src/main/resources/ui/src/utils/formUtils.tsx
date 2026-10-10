@@ -29,11 +29,11 @@ import {
   Select,
 } from 'antd';
 import { RuleObject } from 'antd/lib/form';
-import type { Placement } from 'react-aria';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, startCase, toString } from 'lodash';
 import { ComponentProps, Fragment, ReactNode } from 'react';
+import type { Placement } from 'react-aria';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Grid, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Select } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
@@ -150,7 +155,10 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
         />
 
         <div className="workflow-array-field-divider" />
-        <Tooltip arrow placement="top" title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
+        <Tooltip
+          arrow
+          placement="top"
+          title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
           <ButtonUtility
             color="tertiary"
             icon={CopyLeft}

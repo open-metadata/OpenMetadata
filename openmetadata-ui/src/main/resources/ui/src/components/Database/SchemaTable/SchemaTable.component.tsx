@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button as CoreButton, Dropdown, Grid, Label, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Button as CoreButton,
+  ButtonUtility,
+  Dropdown,
+  Grid,
+  Label,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -23,7 +31,11 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
-import { INITIAL_PAGING_VALUE, NO_DATA_PLACEHOLDER, PAGE_SIZE_LARGE } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
   HIGHLIGHTED_ROW_SELECTOR,

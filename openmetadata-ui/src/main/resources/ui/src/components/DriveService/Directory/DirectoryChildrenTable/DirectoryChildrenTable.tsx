@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
 import { toLower } from 'lodash';
 import { useMemo } from 'react';
@@ -63,7 +67,11 @@ function DirectoryChildrenTable() {
         key: 'type',
         sorter: getColumnSorter<EntityReference, 'type'>('type'),
         render: (type, record) => (
-          <Tooltip arrow excludeTriggerFromTabOrder title={toLower(type)} triggerClassName="tw:block tw:min-w-0">
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            title={toLower(type)}
+            triggerClassName="tw:block tw:min-w-0">
             <Typography ellipsis className="cursor-pointer tw:text-primary">
               {type ?? record.type}
             </Typography>

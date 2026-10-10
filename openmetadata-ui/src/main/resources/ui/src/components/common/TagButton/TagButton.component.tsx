@@ -54,7 +54,12 @@ const TagButton: React.FC<TagButtonProps> = ({
           onClick?.();
         }
       }}>
-      <Tooltip arrow excludeTriggerFromTabOrder placement="bottom left" title={tooltip} triggerClassName="tw:inline-flex">
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        placement="bottom left"
+        title={tooltip}
+        triggerClassName="tw:inline-flex">
         <div className="d-flex items-center">
           {icon && <span className="m-r-xss flex-center">{icon}</span>}
           <span className="text-xs font-medium">{label}</span>

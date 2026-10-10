@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import { Grid, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { Button, Card, Form, InputNumber, Select, TimePicker } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
@@ -314,7 +314,13 @@ export const ContractSLAFormTab: React.FC<{
                           <Select.Option
                             data-testid={`timezone-item-${item.label}`}
                             key={item.value}>
-                            <Tooltip arrow excludeTriggerFromTabOrder title={item.label} triggerClassName="tw:inline-flex">{item.label}</Tooltip>
+                            <Tooltip
+                              arrow
+                              excludeTriggerFromTabOrder
+                              title={item.label}
+                              triggerClassName="tw:inline-flex">
+                              {item.label}
+                            </Tooltip>
                           </Select.Option>
                         ))}
                       </Select>

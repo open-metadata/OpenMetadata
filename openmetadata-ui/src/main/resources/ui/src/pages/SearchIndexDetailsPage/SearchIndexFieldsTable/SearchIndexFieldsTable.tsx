@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
   cloneDeep,
   groupBy,
@@ -255,7 +255,11 @@ const SearchIndexFieldsTable = ({
           {shouldShowPlainText ? (
             toLower(displayValue)
           ) : (
-            <Tooltip arrow excludeTriggerFromTabOrder title={toLower(displayValue)} triggerClassName="tw:block tw:min-w-0">
+            <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
+              title={toLower(displayValue)}
+              triggerClassName="tw:block tw:min-w-0">
               <Typography ellipsis className="cursor-pointer">
                 {highlightSearchArrayElement(displayValue, searchText)}
               </Typography>

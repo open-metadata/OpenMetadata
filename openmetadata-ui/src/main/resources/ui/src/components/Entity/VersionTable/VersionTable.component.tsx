@@ -251,12 +251,16 @@ function VersionTable<T extends Column | SearchIndexField>({
         width: 200,
         render: (dataTypeDisplay: T['dataTypeDisplay']) => {
           return dataTypeDisplay ? (
-            <Tooltip arrow excludeTriggerFromTabOrder title={
+            <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
+              title={
                 <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
                   textVariant="white"
                 />
-              } triggerClassName="tw:inline-flex">
+              }
+              triggerClassName="tw:inline-flex">
               <div className="cursor-pointer">
                 <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}

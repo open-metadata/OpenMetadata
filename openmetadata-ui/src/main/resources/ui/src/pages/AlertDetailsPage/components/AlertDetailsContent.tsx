@@ -12,7 +12,15 @@
  */
 
 import { SyncOutlined } from '@ant-design/icons';
-import { Box, Owner, Skeleton, Tabs, Tooltip, Button, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Owner,
+  Skeleton,
+  Tabs,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { Card } from 'antd';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -132,7 +140,9 @@ function AlertDetailsContent({
                 className="layout-space layout-space-horizontal"
                 gap={2}
                 itemClassName="layout-space-item">
-                <Tooltip arrow title={t('label.sync-alert-offset', {
+                <Tooltip
+                  arrow
+                  title={t('label.sync-alert-offset', {
                     entity: t('label.alert'),
                   })}>
                   <Button
@@ -146,7 +156,9 @@ function AlertDetailsContent({
                 </Tooltip>
                 {editPermission &&
                   alertDetails?.provider !== ProviderType.System && (
-                    <Tooltip arrow title={t('label.edit-entity', {
+                    <Tooltip
+                      arrow
+                      title={t('label.edit-entity', {
                         entity: t('label.alert'),
                       })}>
                       <ButtonUtility
@@ -160,7 +172,9 @@ function AlertDetailsContent({
                   )}
                 {deletePermission &&
                   alertDetails?.provider !== ProviderType.System && (
-                    <Tooltip arrow title={t('label.delete-entity', {
+                    <Tooltip
+                      arrow
+                      title={t('label.delete-entity', {
                         entity: t('label.alert'),
                       })}>
                       <ButtonUtility

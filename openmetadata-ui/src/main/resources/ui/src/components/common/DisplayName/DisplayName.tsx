@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
@@ -18,7 +22,6 @@ import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';

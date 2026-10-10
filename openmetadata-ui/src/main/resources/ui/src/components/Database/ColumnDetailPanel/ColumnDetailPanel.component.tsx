@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
@@ -873,7 +878,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <Tooltip arrow excludeTriggerFromTabOrder placement="bottom" title={getDataTypeDisplay(activeColumn)} triggerClassName="tw:inline-flex">
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        placement="bottom"
+        title={getDataTypeDisplay(activeColumn)}
+        triggerClassName="tw:inline-flex">
         <div
           className="tw:max-w-60 tw:flex tw:items-center tw:justify-center tw:overflow-hidden
                   tw:text-ellipsis data-type-chip
@@ -917,7 +927,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               </div>
               <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
                 <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
-                  <Tooltip arrow delay={500} excludeTriggerFromTabOrder placement="top left" title={getEntityName(activeColumn)} triggerClassName="tw:block tw:min-w-0">
+                  <Tooltip
+                    arrow
+                    excludeTriggerFromTabOrder
+                    delay={500}
+                    placement="top left"
+                    title={getEntityName(activeColumn)}
+                    triggerClassName="tw:block tw:min-w-0">
                     <Typography
                       ellipsis
                       className="entity-title-link"

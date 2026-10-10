@@ -11,8 +11,22 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Typography, Tooltip, Button as CoreButton } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Input, InputNumber, Select, Slider } from 'antd';
+import {
+  Box,
+  Button as CoreButton,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Form,
+  FormProps,
+  Input,
+  InputNumber,
+  Select,
+  Slider,
+} from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';

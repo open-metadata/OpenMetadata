@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Divider, SelectPopover, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Divider,
+  SelectPopover,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { Input, Select } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
@@ -218,7 +223,9 @@ export const GlobalSearchBar = () => {
 
     return (
       <>
-        <Tooltip arrow title={
+        <Tooltip
+          arrow
+          title={
             isNLPActive
               ? t('message.natural-language-search-active')
               : t('label.use-natural-language-search')

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Toggle, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Grid,
+  Toggle,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
@@ -329,7 +335,10 @@ const UserListPageV1 = () => {
             gap={2}
             itemClassName="layout-space-item">
             {showRestore && (
-              <Tooltip arrow placement={isAdminUser ? 'bottom' : 'left'} title={
+              <Tooltip
+                arrow
+                placement={isAdminUser ? 'bottom' : 'left'}
+                title={
                   isAdminUser
                     ? t('label.restore-entity', {
                         entity: t('label.user'),
@@ -349,7 +358,10 @@ const UserListPageV1 = () => {
                 />
               </Tooltip>
             )}
-            <Tooltip arrow placement={isAdminUser ? 'bottom' : 'left'} title={
+            <Tooltip
+              arrow
+              placement={isAdminUser ? 'bottom' : 'left'}
+              title={
                 isAdminUser
                   ? t('label.delete-entity', {
                       entity: t('label.user'),

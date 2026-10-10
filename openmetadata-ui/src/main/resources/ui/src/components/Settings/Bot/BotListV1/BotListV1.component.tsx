@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Toggle, Typography, Tooltip, ButtonUtility, Button } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Grid,
+  Toggle,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 
 import { AxiosError } from 'axios';
@@ -486,7 +494,13 @@ const BotListV1 = ({
             onChange={handleShowDeletedBots}
           />
 
-          <Tooltip arrow excludeTriggerFromTabOrder isDisabled={isAdminUser} placement="top left" title={t('message.admin-only-action')} triggerClassName={classNames('tw:inline-flex', {
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            isDisabled={isAdminUser}
+            placement="top left"
+            title={t('message.admin-only-action')}
+            triggerClassName={classNames('tw:inline-flex', {
               'tw:cursor-not-allowed tw:*:pointer-events-none': !isAdminUser,
             })}>
             <LimitWrapper resource="bot">
