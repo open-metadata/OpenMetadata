@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Box,
-  Grid,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Box, Grid, Toggle, Typography, Tooltip, ButtonUtility, Button } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -328,18 +323,13 @@ const BotListV1 = ({
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
-            <Tooltip placement="topRight" title={title}>
-              <Button
+            <Tooltip arrow placement="top right" title={title}>
+              <ButtonUtility
+                color="tertiary"
                 data-testid={`bot-delete-${record.name}`}
-                disabled={isDisabled}
-                icon={
-                  <Icon
-                    className="align-middle"
-                    component={IconDelete}
-                    style={{ fontSize: '16px' }}
-                  />
-                }
-                type="text"
+                icon={IconDelete}
+                isDisabled={isDisabled}
+                size="sm"
                 onClick={() => setSelectedUser(record)}
               />
             </Tooltip>
@@ -496,15 +486,16 @@ const BotListV1 = ({
             onChange={handleShowDeletedBots}
           />
 
-          <Tooltip
-            placement="topLeft"
-            title={!isAdminUser && t('message.admin-only-action')}>
+          <Tooltip arrow excludeTriggerFromTabOrder isDisabled={isAdminUser} placement="top left" title={t('message.admin-only-action')} triggerClassName={classNames('tw:inline-flex', {
+              'tw:cursor-not-allowed tw:*:pointer-events-none': !isAdminUser,
+            })}>
             <LimitWrapper resource="bot">
               <Button
+                color="primary"
                 data-testid="add-bot"
-                disabled={!isAdminUser}
-                type="primary"
-                onClick={handleAddBotClick}>
+                isDisabled={!isAdminUser}
+                size="sm"
+                onPress={handleAddBotClick}>
                 {addBotLabel}
               </Button>
             </LimitWrapper>

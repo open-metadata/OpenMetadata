@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip } from 'antd';
+import { Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
@@ -43,28 +44,20 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
   );
 
   return (
-    <Tooltip
-      placement="top"
-      title={
+    <Tooltip arrow placement="top" title={
         hasCopied
           ? t('message.link-copy-to-clipboard')
           : t('label.copy-item', { item: t('label.url-uppercase') })
       }>
-      <Button
-        className="cursor-pointer hover-cell-icon flex-center"
+      <ButtonUtility
+        className="hover-cell-icon"
+        color="tertiary"
         data-testid={testId}
-        disabled={!fieldFqn}
-        style={{
-          color: DE_ACTIVE_COLOR,
-          padding: 0,
-          border: 'none',
-          background: 'transparent',
-          width: '24px',
-          height: '24px',
-        }}
-        onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}>
-        <ShareIcon style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
-      </Button>
+        icon={ShareIcon}
+        isDisabled={!fieldFqn}
+        size="xs"
+        onClick={() => fieldFqn && handleCopyFieldLink(fieldFqn)}
+      />
     </Tooltip>
   );
 };

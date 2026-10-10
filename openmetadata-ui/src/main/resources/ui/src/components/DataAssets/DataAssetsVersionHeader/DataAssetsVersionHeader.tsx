@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Box,
-  Divider,
-  Grid,
-  Owner,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Box, Divider, Grid, Owner, Tooltip, Button } from '@openmetadata/ui-core-components';
+
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -153,13 +146,14 @@ function DataAssetsVersionHeader({
         style={{ maxWidth: '12.5%', flex: '0 0 12.5%' }}>
         <Box className="layout-row" justify="end" wrap="wrap">
           <Box className="layout-column tw:block">
-            <Tooltip title={t('label.exit-version-history')}>
+            <Tooltip arrow title={t('label.exit-version-history')}>
               <Button
-                className="w-16 p-0"
+                color="secondary"
                 data-testid="version-button"
-                icon={<Icon component={VersionIcon} />}
-                onClick={onVersionClick}>
-                <Typography>{version}</Typography>
+                iconLeading={VersionIcon}
+                size="sm"
+                onPress={onVersionClick}>
+                {version}
               </Button>
             </Tooltip>
           </Box>

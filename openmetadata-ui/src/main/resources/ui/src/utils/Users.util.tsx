@@ -11,14 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  Popover,
-  PopoverTrigger,
-  Skeleton,
-} from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Badge, Box, Popover, PopoverTrigger, Skeleton, Tooltip } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { Button as AriaButton } from 'react-aria-components';
 import { Link } from 'react-router-dom';
@@ -58,7 +51,7 @@ export const commonUserDetailColumns = (
         gap={1}
         itemClassName="layout-space-item">
         {record.isBot && (
-          <Tooltip title={t('label.bot')}>
+          <Tooltip arrow excludeTriggerFromTabOrder title={t('label.bot')} triggerClassName="tw:inline-flex">
             <BotIcon
               aria-label={t('label.bot')}
               color={TEXT_GREY_MUTED}

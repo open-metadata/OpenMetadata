@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  Grid,
-  Popover,
-  PopoverTrigger,
-} from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Badge, Box, Grid, Popover, PopoverTrigger, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -164,7 +158,7 @@ const PoliciesListPage = () => {
                     {getEntityName(role)}
                   </Link>
                 ) : (
-                  <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
+                  <Tooltip key={uniqueId()} arrow excludeTriggerFromTabOrder title={t(NO_PERMISSION_TO_VIEW)} triggerClassName="tw:inline-flex">
                     {getEntityName(role)}
                   </Tooltip>
                 )
@@ -201,9 +195,7 @@ const PoliciesListPage = () => {
                             {getEntityName(role)}
                           </Link>
                         ) : (
-                          <Tooltip
-                            key={uniqueId()}
-                            title={t(NO_PERMISSION_TO_VIEW)}>
+                          <Tooltip key={uniqueId()} arrow excludeTriggerFromTabOrder title={t(NO_PERMISSION_TO_VIEW)} triggerClassName="tw:inline-flex">
                             {getEntityName(role)}
                           </Tooltip>
                         )
@@ -226,20 +218,19 @@ const PoliciesListPage = () => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip
-              placement="left"
-              title={
+            <Tooltip arrow placement="left" title={
                 deletePolicyPermission
                   ? t('label.delete-entity', {
                       entity: t('label.policy'),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
               }>
-              <Button
+              <ButtonUtility
+                color="tertiary"
                 data-testid={`delete-action-${getEntityName(record)}`}
-                disabled={!deletePolicyPermission}
-                icon={<IconDelete name={t('label.delete')} width="16px" />}
-                type="text"
+                icon={IconDelete}
+                isDisabled={!deletePolicyPermission}
+                size="sm"
                 onClick={() => setSelectedPolicy(record)}
               />
             </Tooltip>

@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography, Tooltip } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
-import { Tooltip } from 'antd';
 import { toLower } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,14 +63,7 @@ function DirectoryChildrenTable() {
         key: 'type',
         sorter: getColumnSorter<EntityReference, 'type'>('type'),
         render: (type, record) => (
-          <Tooltip
-            destroyTooltipOnHide
-            overlayInnerStyle={{
-              maxWidth: '420px',
-              overflowWrap: 'break-word',
-              textAlign: 'center',
-            }}
-            title={toLower(type)}>
+          <Tooltip arrow excludeTriggerFromTabOrder title={toLower(type)} triggerClassName="tw:block tw:min-w-0">
             <Typography ellipsis className="cursor-pointer tw:text-primary">
               {type ?? record.type}
             </Typography>

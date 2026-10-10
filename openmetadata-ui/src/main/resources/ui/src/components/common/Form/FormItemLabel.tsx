@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { Badge, Tooltip } from 'antd';
+import { Badge } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { GRAYED_OUT_COLOR } from '../../../constants/constants';
@@ -25,9 +26,6 @@ const FormItemLabel = ({
   helperText,
   helperTextType = HelperTextType.Tooltip,
   showHelperText = true,
-  align,
-  overlayInnerStyle,
-  overlayClassName,
   placement = 'top',
   isBeta = false,
   labelClassName,
@@ -46,13 +44,7 @@ const FormItemLabel = ({
       {helperTextType === HelperTextType.Tooltip &&
         helperText &&
         showHelperText && (
-          <Tooltip
-            destroyTooltipOnHide
-            align={align}
-            overlayClassName={overlayClassName}
-            overlayInnerStyle={overlayInnerStyle}
-            placement={placement}
-            title={helperText}>
+          <Tooltip arrow excludeTriggerFromTabOrder placement={placement} title={helperText} triggerClassName="tw:inline-flex">
             <InfoCircleOutlined
               className="m-l-xs"
               data-testid="helper-icon"

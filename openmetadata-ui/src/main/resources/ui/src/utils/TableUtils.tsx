@@ -12,8 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Box, Typography, Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -158,11 +157,7 @@ export const getConstraintIcon = ({
   const dataTestId = config.dataTestId;
 
   return (
-    <Tooltip
-      className={classNames(className)}
-      placement="bottom"
-      title={title}
-      trigger="hover">
+    <Tooltip arrow excludeTriggerFromTabOrder placement="bottom" title={title} triggerClassName={classNames('tw:inline-flex', className)}>
       <Icon
         alt={title}
         className={classNames({

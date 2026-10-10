@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Box, Grid, Typography, Tooltip } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -116,10 +116,7 @@ const LoginConfigurationPage = () => {
             <Grid.Item className="layout-column" span={24}>
               <Typography className="m-0" color="secondary">
                 {t('label.max-login-fail-attempt-plural')}
-                <Tooltip
-                  placement="top"
-                  title={t('message.login-fail-attempt-message')}
-                  trigger="hover">
+                <Tooltip arrow excludeTriggerFromTabOrder placement="top" title={t('message.login-fail-attempt-message')} triggerClassName="tw:inline-flex">
                   <InfoCircleOutlined
                     className="m-x-xss"
                     data-testid="max-login-fail-attampts-url-info"
@@ -140,10 +137,7 @@ const LoginConfigurationPage = () => {
             <Grid.Item className="layout-column" span={24}>
               <Typography className="m-0" color="secondary">
                 {t('label.access-block-time')}
-                <Tooltip
-                  placement="top"
-                  title={t('message.access-block-time-message')}
-                  trigger="hover">
+                <Tooltip arrow excludeTriggerFromTabOrder placement="top" title={t('message.access-block-time-message')} triggerClassName="tw:inline-flex">
                   <InfoCircleOutlined
                     className="m-x-xss"
                     data-testid="access-block-time-info"
@@ -164,10 +158,7 @@ const LoginConfigurationPage = () => {
             <Grid.Item className="layout-column" span={24}>
               <Typography className="m-0" color="secondary">
                 {t('label.jwt-token-expiry-time')}
-                <Tooltip
-                  placement="top"
-                  title={t('message.jwt-token-expiry-time-message')}
-                  trigger="hover">
+                <Tooltip arrow excludeTriggerFromTabOrder placement="top" title={t('message.jwt-token-expiry-time-message')} triggerClassName="tw:inline-flex">
                   <InfoCircleOutlined
                     className="m-x-xss"
                     data-testid="jwt-token-expiry-time-info"

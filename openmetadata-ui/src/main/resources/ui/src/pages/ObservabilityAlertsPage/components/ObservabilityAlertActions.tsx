@@ -11,17 +11,14 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Skeleton, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { ProviderType } from '../../../generated/events/eventSubscription';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { ObservabilityAlertActionsProps } from '../ObservabilityAlertsPage.interface';
@@ -51,11 +48,11 @@ function ObservabilityAlertActions({
   }
 
   const editButton = (
-    <Button
-      className="flex flex-center"
+    <ButtonUtility
+      color="tertiary"
       data-testid={`alert-edit-${record.name}`}
-      icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
-      type="text"
+      icon={EditIcon}
+      size="sm"
       onClick={
         onEditAlert
           ? (event) => {
@@ -71,7 +68,7 @@ function ObservabilityAlertActions({
   return (
     <div className="d-flex items-center">
       {alertPermission.edit && (
-        <Tooltip placement="bottom" title={t('label.edit')}>
+        <Tooltip arrow excludeTriggerFromTabOrder placement="bottom" title={t('label.edit')} triggerClassName="tw:inline-flex">
           {onEditAlert ? (
             editButton
           ) : (
@@ -85,13 +82,13 @@ function ObservabilityAlertActions({
         </Tooltip>
       )}
       {alertPermission.delete && (
-        <Tooltip placement="bottom" title={t('label.delete')}>
-          <Button
-            className="flex flex-center"
+        <Tooltip arrow placement="bottom" title={t('label.delete')}>
+          <ButtonUtility
+            color="tertiary"
             data-testid={`alert-delete-${record.name}`}
-            disabled={record.provider === ProviderType.System}
-            icon={<DeleteIcon height={16} width={16} />}
-            type="text"
+            icon={DeleteIcon}
+            isDisabled={record.provider === ProviderType.System}
+            size="sm"
             onClick={() => onSelectAlert(record)}
           />
         </Tooltip>

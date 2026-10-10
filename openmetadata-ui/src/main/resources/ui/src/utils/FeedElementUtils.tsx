@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -33,12 +33,9 @@ export const getFieldThreadElement = (
   );
 
   return (
-    <Tooltip
-      destroyTooltipOnHide
-      overlayClassName="ant-popover-request-description"
-      title={t('label.list-entity', {
+    <Tooltip arrow excludeTriggerFromTabOrder title={t('label.list-entity', {
         entity: t('label.conversation'),
-      })}>
+      })} triggerClassName="tw:inline-flex">
       <IconComments
         className="table-action-icon hover-cell-icon"
         data-testid="field-thread"

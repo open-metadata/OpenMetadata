@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Box, Typography, Tooltip } from '@openmetadata/ui-core-components';
 import { isEmpty, map } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -123,10 +122,7 @@ const TableConstraints = ({
                   </Typography>
                   <div data-testid="referred-column-name-fqn">
                     {map(referredColumns, (referredColumn) => (
-                      <Tooltip
-                        placement="top"
-                        title={referredColumn}
-                        trigger="hover">
+                      <Tooltip arrow excludeTriggerFromTabOrder placement="top" title={referredColumn} triggerClassName="tw:inline-flex">
                         <Link
                           className="no-underline"
                           to={entityUtilClassBase.getEntityLink(

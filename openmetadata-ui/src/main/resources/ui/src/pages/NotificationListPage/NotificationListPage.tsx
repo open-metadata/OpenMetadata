@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+import { Grid, Skeleton, Typography, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,10 +27,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
@@ -300,26 +297,26 @@ const NotificationListPage = () => {
           return (
             <div className="d-flex items-center">
               {alertPermission.edit && (
-                <Tooltip placement="bottom" title={t('label.edit')}>
+                <Tooltip arrow excludeTriggerFromTabOrder placement="bottom" title={t('label.edit')} triggerClassName="tw:inline-flex">
                   <Link to={getNotificationAlertsEditPath(fullyQualifiedName)}>
-                    <Button
-                      className="flex flex-center"
+                    <ButtonUtility
+                      color="tertiary"
                       data-testid={`alert-edit-${record.name}`}
-                      disabled={record.provider === ProviderType.System}
-                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                      type="text"
+                      icon={EditIcon}
+                      isDisabled={record.provider === ProviderType.System}
+                      size="sm"
                     />
                   </Link>
                 </Tooltip>
               )}
               {alertPermission.delete && (
-                <Tooltip placement="bottom" title={t('label.delete')}>
-                  <Button
-                    className="flex flex-center"
+                <Tooltip arrow placement="bottom" title={t('label.delete')}>
+                  <ButtonUtility
+                    color="tertiary"
                     data-testid={`alert-delete-${record.name}`}
-                    disabled={record.provider === ProviderType.System}
-                    icon={<DeleteIcon height={16} />}
-                    type="text"
+                    icon={DeleteIcon}
+                    isDisabled={record.provider === ProviderType.System}
+                    size="sm"
                     onClick={() => setSelectedAlert(record)}
                   />
                 </Tooltip>

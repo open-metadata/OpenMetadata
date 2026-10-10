@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Box } from '@openmetadata/ui-core-components';
-import { Button, InputNumber, Slider, Tooltip } from 'antd';
+import { Box, Tooltip, ButtonUtility } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
+import { InputNumber, Slider } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { percentageFormatter } from '../../../utils/ChartUtils';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
@@ -56,14 +56,14 @@ const SliderWithInput = ({
             value={value}
             onChange={onChange}
           />
-          <Tooltip title={t('label.clear')}>
-            <Button
-              className="p-0"
+          <Tooltip arrow title={t('label.clear')}>
+            <ButtonUtility
+              color="tertiary"
               data-testid="clear-slider-input"
-              type="text"
-              onClick={() => onChange(null)}>
-              <CloseOutlined />
-            </Button>
+              icon={XClose}
+              size="xs"
+              onClick={() => onChange(null)}
+            />
           </Tooltip>
         </div>
       </Box>
