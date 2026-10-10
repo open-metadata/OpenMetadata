@@ -98,7 +98,7 @@ index, so only the entry point is listed here. A comment citing `ADR:<date>-<slu
 | Doc | Purpose | Read when | Modified | Freshness |
 |---|---|---|---|---|
 | `ingestion/docs/design/ingestion-diagnostics.md` | DEBUG-gated ingestion diagnostics subsystem (operation registry, watchdog, heartbeat, memory tracker, HTTP introspection, stage backpressure, signal dumps) | Understand why/how the diagnostics subsystem works before instrumenting ingestion hangs/OOMs | 2026-05-20 | CURRENT ⚠⁴ |
-| `bootstrap/MIGRATION_SYSTEM.md` | Hybrid DB-migration architecture — Flyway→native→extension execution order, `SERVER_CHANGE_LOG` tracking, file layout (Flyway *parsers* only, not the Flyway runner) | Before adding/debugging a migration under `bootstrap/sql/migrations/`, or reasoning about ordering / tracking tables / MySQL+Postgres dual paths | 2025-10-28 | CURRENT ⚠⁵ |
+| `bootstrap/MIGRATION_SYSTEM.md` | Hybrid DB-migration architecture — one version-sorted execution order (Flyway `0.0.x` first, native before extension on equal versions), `SERVER_CHANGE_LOG` tracking, file layout (Flyway *parsers* only, not the Flyway runner) | Before adding/debugging a migration under `bootstrap/sql/migrations/`, or reasoning about ordering / tracking tables / MySQL+Postgres dual paths | 2026-10-09 | CURRENT ⚠⁵ |
 
 ## Caveats (verification notes)
 
