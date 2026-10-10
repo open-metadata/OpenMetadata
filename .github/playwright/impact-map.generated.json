@@ -1727,6 +1727,7 @@
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/Permission.spec.ts",
         "playwright/e2e/Features/Permissions/EntityPermissions.spec.ts",
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/RecentlyViewed.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
