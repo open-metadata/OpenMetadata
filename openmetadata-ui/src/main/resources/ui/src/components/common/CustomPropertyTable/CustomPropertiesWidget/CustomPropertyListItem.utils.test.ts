@@ -81,6 +81,28 @@ describe('getPropertyValueSummary', () => {
     );
   });
 
+  it('renders the defined bound of a one-bound interval as plain text', () => {
+    expect(summarize('timeInterval', JSON.parse('{"start": 100}'))).toBe('100');
+    expect(summarize('timeInterval', { end: 2 * HOUR_MS })).toBe(
+      String(2 * HOUR_MS)
+    );
+  });
+
+  it('does not throw and ignores a null bound instead of rendering "0 minutes"', () => {
+    expect(() =>
+      summarize('timeInterval', { start: 100, end: null })
+    ).not.toThrow();
+    expect(summarize('timeInterval', { start: 100, end: null })).toBe('100');
+    expect(summarize('timeInterval', { start: null, end: 2 * HOUR_MS })).toBe(
+      String(2 * HOUR_MS)
+    );
+  });
+
+  it('returns an empty string when neither bound is finite', () => {
+    expect(summarize('timeInterval', {})).toBe('');
+    expect(summarize('timeInterval', { start: null, end: null })).toBe('');
+  });
+
   it('prefers the display text of a hyperlink and falls back to its url', () => {
     expect(
       summarize('hyperlink-cp', {
