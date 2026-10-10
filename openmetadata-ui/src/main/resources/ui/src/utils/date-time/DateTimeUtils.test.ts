@@ -833,10 +833,10 @@ describe('DateTimeUtils', () => {
         expected: DATE_TIME_12_HOUR_FORMAT,
       },
       {
-        name: 'does not incorrectly map 12h format with seconds',
+        name: 'correctly maps 12h format with seconds to 24h',
         input: 'hh:mm:ss a',
         timeFormat: '24h' as const,
-        expected: 'hh:mm:ss a',
+        expected: 'HH:mm:ss',
       },
       {
         name: 'does not incorrectly map 24h format with seconds (HH:mm:ss)',
