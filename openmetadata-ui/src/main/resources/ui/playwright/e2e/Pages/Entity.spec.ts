@@ -64,6 +64,7 @@ import {
   removeOwner,
   removeOwnersFromList,
   removeTagsFromChildren,
+  searchClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { pickEntityMatrix } from '../../utils/entityMatrix';
@@ -495,25 +496,16 @@ pickEntityMatrix(
           });
 
           // Add tag via panel
-          const editButton = panelContainer.getByTestId('edit-icon-tags');
-          await editButton.click();
-
-          await page
-            .locator('[data-testid="selectable-list"]')
-            .waitFor({ state: 'visible' });
-
-          const searchTag = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag*'
+          await openClassificationTagPicker(
+            page,
+            panelContainer.getByTestId('edit-icon-tags')
           );
-          await page
-            .locator('[data-testid="tag-select-search-bar"]')
-            .fill('PersonalData.SpecialCategory');
-          await searchTag;
 
-          const tagOption = page
-            .locator('.selectable-list-item')
-            .filter({ hasText: 'SpecialCategory' });
-          await tagOption.waitFor({ state: 'visible' });
+          const tagOption = await searchClassificationTagPicker(
+            page,
+            'PersonalData.SpecialCategory'
+          );
+          await expect(tagOption).toBeVisible();
           await tagOption.click();
 
           const updateResponse = page.waitForResponse(
@@ -521,7 +513,7 @@ pickEntityMatrix(
               response.url().includes('/api/v1/columns/name/') ||
               response.url().includes(`/api/v1/${entity.endpoint}/`)
           );
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await updateResponse;
           await waitForAllLoadersToDisappear(page);
 
@@ -548,20 +540,24 @@ pickEntityMatrix(
             columnNameTestId,
             entityType: entity.type as EntityType,
           });
-          await cleanupPanelContainer.getByTestId('edit-icon-tags').click();
+          await openClassificationTagPicker(
+            page,
+            cleanupPanelContainer.getByTestId('edit-icon-tags')
+          );
 
-          // Wait for selectable list to be visible and ready
-          await page
-            .locator('[data-testid="selectable-list"]')
-            .waitFor({ state: 'visible' });
+          const cleanupTagOption = await searchClassificationTagPicker(
+            page,
+            'PersonalData.SpecialCategory'
+          );
+          await expect(cleanupTagOption).toBeVisible();
+          await cleanupTagOption.click();
 
-          await page.getByTestId('clear-all-button').click();
           const removeResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
               response.url().includes(`/api/v1/${entity.endpoint}/`)
           );
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await removeResponse;
           await waitForAllLoadersToDisappear(page);
 
@@ -629,35 +625,15 @@ pickEntityMatrix(
           ).toBeVisible();
 
           // Step 2: Add a classification tag (should preserve glossary term)
-          const editTagsButton = panelContainer.locator(
-            '[data-testid="edit-icon-tags"]'
+          await openClassificationTagPicker(
+            page,
+            panelContainer.getByTestId('edit-icon-tags')
           );
-          await expect(editTagsButton).toBeVisible();
-          await editTagsButton.click();
 
-          // Wait for selectable list to be visible and ready
-          await expect(
-            page.locator('[data-testid="selectable-list"]')
-          ).toBeVisible();
-
-          const tagSearchBar = page.locator(
-            '[data-testid="tag-select-search-bar"]'
+          const tagOption = await searchClassificationTagPicker(
+            page,
+            'PII.Sensitive'
           );
-          await expect(tagSearchBar).toBeVisible();
-
-          const searchTag = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag*'
-          );
-          await tagSearchBar.fill('PII.Sensitive');
-          await searchTag;
-
-          // Wait for loader to disappear after search
-          await waitForAllLoadersToDisappear(page);
-
-          // Wait for tag option to be visible before clicking
-          const tagOption = page
-            .locator('.selectable-list-item')
-            .filter({ has: page.getByText('Sensitive', { exact: true }) });
           await expect(tagOption).toBeVisible();
           await tagOption.click();
 
@@ -667,9 +643,7 @@ pickEntityMatrix(
               response.url().includes('/api/v1/columns/name/') ||
               response.url().includes(`/api/v1/${entity.endpoint}/`)
           );
-          const tagUpdateButton = page.getByRole('button', {
-            name: 'Update',
-          });
+          const tagUpdateButton = page.getByTestId('update-btn');
           await expect(tagUpdateButton).toBeVisible();
           await expect(tagUpdateButton).toBeEnabled();
           await tagUpdateButton.click();
@@ -734,30 +708,24 @@ pickEntityMatrix(
           await waitForAllLoadersToDisappear(page);
 
           // Remove tag
-          await cleanupPanel.getByTestId('edit-icon-tags').click();
-          await page
-            .locator('[data-testid="selectable-list"]')
-            .waitFor({ state: 'visible' });
-
-          const searchTagCleanup2 = page.waitForResponse(
-            '/api/v1/search/query?q=*index=tag*'
+          await openClassificationTagPicker(
+            page,
+            cleanupPanel.getByTestId('edit-icon-tags')
           );
-          await page
-            .locator('[data-testid="tag-select-search-bar"]')
-            .fill('PII.Sensitive');
-          await searchTagCleanup2;
-          await waitForAllLoadersToDisappear(page);
 
-          await page
-            .locator('.selectable-list-item')
-            .filter({ has: page.getByText('Sensitive', { exact: true }) })
-            .click();
+          const cleanupTagOption = await searchClassificationTagPicker(
+            page,
+            'PII.Sensitive'
+          );
+          await expect(cleanupTagOption).toBeVisible();
+          await cleanupTagOption.click();
+
           const tagCleanupResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
               response.url().includes(`/api/v1/${entity.endpoint}/`)
           );
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await tagCleanupResponse;
           await waitForAllLoadersToDisappear(page);
 

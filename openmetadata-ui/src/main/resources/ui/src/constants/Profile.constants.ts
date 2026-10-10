@@ -22,6 +22,7 @@ export const PROFILE_NAV_ID_LIST = [
   'my-connections',
   'access-control',
   'bots',
+  'personas',
   'custom-properties',
   'notification',
   'members',

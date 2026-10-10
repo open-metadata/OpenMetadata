@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.service.governance.EntityLifecycle;
@@ -47,6 +48,14 @@ class ContextMemoryStatusTransitionTest {
     assertTrue(MEMORY.allows(ContextMemoryStatus.REJECTED, ContextMemoryStatus.UNPROCESSED));
   }
 
+  @Test
+  void unprocessedConflictsCanAwaitAHumanDecisionAsDraft() {
+    assertTrue(MEMORY.allows(ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT));
+    assertTrue(MEMORY.allows(ContextMemoryStatus.DRAFT, ContextMemoryStatus.APPROVED));
+    assertTrue(MEMORY.allows(ContextMemoryStatus.DRAFT, ContextMemoryStatus.REJECTED));
+    assertTrue(MEMORY.allows(ContextMemoryStatus.DRAFT, ContextMemoryStatus.UNPROCESSED));
+  }
+
   private static final EntityLifecycle<ContextMemoryStatus> MEMORY =
       ContextMemoryRepository.LIFECYCLE;
 
@@ -78,9 +87,17 @@ class ContextMemoryStatusTransitionTest {
   }
 
   @Test
-  void memoryNeverGoesBackToDraft() {
-    assertFalse(MEMORY.allows(ContextMemoryStatus.APPROVED, ContextMemoryStatus.DRAFT));
-    assertFalse(MEMORY.allows(ContextMemoryStatus.ARCHIVED, ContextMemoryStatus.DRAFT));
+  void anApprovedMemoryCanReturnToReview() {
+    // Revalidation sends an Approved memory a newer one may contradict to a person, not a guess.
+    assertTrue(MEMORY.allows(ContextMemoryStatus.APPROVED, ContextMemoryStatus.DRAFT));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"ARCHIVED", "DEPRECATED", "INVALIDATED", "REJECTED", "SUPERSEDED"})
+  void retiredMemoriesNeverGoBackToDraft(ContextMemoryStatus retired) {
+    assertFalse(MEMORY.allows(retired, ContextMemoryStatus.DRAFT));
   }
 
   @Test
