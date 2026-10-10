@@ -257,4 +257,123 @@ describe('PipelineAction', () => {
       mockPipelineActionsProps.handleEnableDisableIngestion
     ).toHaveBeenCalledWith(mockPipelineActionsProps.pipeline.id);
   });
+
+  it('should disable the resume button while a toggle is in-flight and re-enable it after completion', async () => {
+    let resolveToggle: () => void = () => undefined;
+    const handleEnableDisableIngestion = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveToggle = resolve;
+        })
+    );
+
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          handleEnableDisableIngestion={handleEnableDisableIngestion}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.getByTestId('resume-button')).not.toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('resume-button'));
+
+    // The button is disabled while the toggle is in-flight so a second click
+    // cannot fire a redundant flip of the non-idempotent toggle endpoint.
+    expect(handleEnableDisableIngestion).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('resume-button')).toBeDisabled();
+
+    await act(async () => {
+      resolveToggle();
+    });
+
+    expect(screen.getByTestId('resume-button')).not.toBeDisabled();
+    expect(handleEnableDisableIngestion).toHaveBeenCalledTimes(1);
+  });
+
+  it('should disable the pause button while a toggle is in-flight and re-enable it after completion', async () => {
+    let resolveToggle: () => void = () => undefined;
+    const handleEnableDisableIngestion = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveToggle = resolve;
+        })
+    );
+
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          handleEnableDisableIngestion={handleEnableDisableIngestion}
+          pipeline={{ ...mockPipelineActionsProps.pipeline, enabled: true }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.getByTestId('pause-button')).not.toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('pause-button'));
+
+    expect(handleEnableDisableIngestion).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('pause-button')).toBeDisabled();
+
+    await act(async () => {
+      resolveToggle();
+    });
+
+    expect(screen.getByTestId('pause-button')).not.toBeDisabled();
+    expect(handleEnableDisableIngestion).toHaveBeenCalledTimes(1);
+  });
+
+  it('should re-enable controls and allow a subsequent toggle once the in-flight one completes', async () => {
+    let resolveToggle: () => void = () => undefined;
+    const handleEnableDisableIngestion = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveToggle = resolve;
+        })
+    );
+
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          handleEnableDisableIngestion={handleEnableDisableIngestion}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    // First toggle fires and disables the control while in-flight.
+    fireEvent.click(screen.getByTestId('resume-button'));
+
+    expect(handleEnableDisableIngestion).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('resume-button')).toBeDisabled();
+
+    // Once the first toggle completes the control unblocks and a fresh toggle
+    // is accepted (no permanent lock-up regression from the in-flight gate).
+    await act(async () => {
+      resolveToggle();
+    });
+
+    expect(screen.getByTestId('resume-button')).not.toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('resume-button'));
+
+    expect(handleEnableDisableIngestion).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveToggle();
+    });
+  });
 });
