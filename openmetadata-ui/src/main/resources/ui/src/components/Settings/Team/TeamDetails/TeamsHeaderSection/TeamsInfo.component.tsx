@@ -148,6 +148,7 @@ const TeamsInfo = ({
       const updatedData: Team = {
         ...currentTeam,
         profile: {
+          ...currentTeam.profile,
           subscription: isEmpty(data)
             ? undefined
             : {
