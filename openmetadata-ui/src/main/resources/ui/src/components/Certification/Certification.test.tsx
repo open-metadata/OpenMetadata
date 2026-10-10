@@ -188,4 +188,25 @@ describe('Certification', () => {
     ).toBeInTheDocument();
     expect(mockGetTags).toHaveBeenCalledWith(FETCH_PARAMS);
   });
+
+  it('should list certifications from every page', async () => {
+    mockGetTags
+      .mockResolvedValueOnce({
+        data: [mockCertifications[0]],
+        paging: { total: 2, after: 'page-2' },
+      })
+      .mockResolvedValueOnce({
+        data: [mockCertifications[1]],
+        paging: { total: 2 },
+      });
+
+    render(<Certification {...defaultProps} />);
+
+    expect(await screen.findByTestId('Certification.Gold')).toBeInTheDocument();
+    expect(screen.getByTestId('Certification.Bronze')).toBeInTheDocument();
+    expect(mockGetTags).toHaveBeenLastCalledWith({
+      ...FETCH_PARAMS,
+      after: 'page-2',
+    });
+  });
 });

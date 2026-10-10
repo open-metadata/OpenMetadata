@@ -81,14 +81,22 @@ const Certification = ({
   const fetchCertifications = async () => {
     setIsLoading(true);
     try {
-      // ponytail: one page of 1000, as SetActionForm; page it if a catalog
-      // ever defines more certifications than that.
-      const { data } = await getTags({
-        parent: CERTIFICATION_CATEGORY,
-        limit: 1000,
-        disabled: false,
-      });
-      setCertifications([...data].sort(byCertificationOrder));
+      // Every page: the list is searched locally, so a certification past the
+      // first page would never be offered. Cursor pages are sequential by
+      // nature, and a real catalog fits in one.
+      const all: Tag[] = [];
+      let after: string | undefined;
+      do {
+        const { data, paging } = await getTags({
+          parent: CERTIFICATION_CATEGORY,
+          limit: 1000,
+          disabled: false,
+          after,
+        });
+        all.push(...data);
+        after = paging?.after;
+      } while (after);
+      setCertifications(all.sort(byCertificationOrder));
     } catch (err) {
       showErrorToast(
         err as AxiosError,
