@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { compare } from 'fast-json-patch';
 import {
+  ContractSLA,
   DataContract,
   MaxLatencyUnit,
   RefreshFrequencyUnit,
@@ -429,6 +431,198 @@ describe('ContractSLAFormTab', () => {
 
       expect(screen.getByTestId('retention-period-input')).toBeInTheDocument();
       expect(screen.getByTestId('retention-unit-select')).toBeInTheDocument();
+    });
+  });
+
+  // Regression coverage for the `>= 0` guard that admitted `null` (because
+  // `null >= 0` is `true` in JavaScript). Clearing an antd InputNumber emits
+  // `null`; the guard must now drop the SLA sub-object instead of emitting
+  // `{ ..., value: null }` (which corrupted contracts via PATCH `replace` ops).
+  describe('Cleared numeric value guards (null-input regression)', () => {
+    const slaButtonProps = {
+      nextLabel: 'Next',
+      prevLabel: 'Prev',
+      isNextVisible: true,
+    };
+
+    const getLastSla = (onChangeMock: jest.Mock): ContractSLA | undefined =>
+      onChangeMock.mock.calls[onChangeMock.mock.calls.length - 1]?.[0]?.sla;
+
+    const renderWithSla = (onChange: jest.Mock) =>
+      render(
+        <ContractSLAFormTab
+          buttonProps={slaButtonProps}
+          initialValues={mockContract}
+          onChange={onChange}
+          onPrev={jest.fn()}
+        />
+      );
+
+    const getSpinbutton = (name: RegExp) =>
+      screen.getByRole('spinbutton', { name }) as HTMLInputElement;
+
+    const clearField = async (name: RegExp) => {
+      await act(async () => {
+        fireEvent.change(getSpinbutton(name), { target: { value: '' } });
+      });
+    };
+
+    const setField = async (name: RegExp, value: string) => {
+      await act(async () => {
+        fireEvent.change(getSpinbutton(name), { target: { value } });
+      });
+    };
+
+    // Predicate shared by the JSON-patch safety tests: true when a patch op
+    // replaces an SLA numeric property with `null` (the corruption shape).
+    const isNullNumericReplacer = (op: {
+      op: string;
+      path: string;
+      value?: unknown;
+    }): boolean =>
+      op.op === 'replace' &&
+      op.value === null &&
+      /^\/sla\/(maxLatency\/value|refreshFrequency\/interval|retention\/period)$/.test(
+        op.path
+      );
+
+    it('omits maxLatency (not { value: null }) when the value is cleared but unit remains', async () => {
+      const onChange = jest.fn();
+      renderWithSla(onChange);
+
+      // Confirms pre-fill happened, so clearing the value leaves the unit selected
+      // (the exact sequence that exposed the `null >= 0` coercion bug).
+      expect(getSpinbutton(/label.value/i).value).toBe('2');
+
+      await clearField(/label.value/i);
+
+      const sla = getLastSla(onChange);
+
+      expect(sla).toBeDefined();
+      expect(sla?.maxLatency).toBeUndefined();
+      expect(JSON.stringify(sla)).not.toContain('null');
+    });
+
+    it('omits refreshFrequency (not { interval: null }) when the interval is cleared but unit remains', async () => {
+      const onChange = jest.fn();
+      renderWithSla(onChange);
+
+      expect(getSpinbutton(/label.interval/i).value).toBe('1');
+
+      await clearField(/label.interval/i);
+
+      const sla = getLastSla(onChange);
+
+      expect(sla).toBeDefined();
+      expect(sla?.refreshFrequency).toBeUndefined();
+      expect(JSON.stringify(sla)).not.toContain('null');
+    });
+
+    it('omits retention (not { period: null }) when the period is cleared but unit remains', async () => {
+      const onChange = jest.fn();
+      renderWithSla(onChange);
+
+      expect(getSpinbutton(/label.period/i).value).toBe('30');
+
+      await clearField(/label.period/i);
+
+      const sla = getLastSla(onChange);
+
+      expect(sla).toBeDefined();
+      expect(sla?.retention).toBeUndefined();
+      expect(JSON.stringify(sla)).not.toContain('null');
+    });
+
+    it('still emits maxLatency when value is 0 (zero stays a valid value)', async () => {
+      const onChange = jest.fn();
+      renderWithSla(onChange);
+
+      await setField(/label.value/i, '0');
+
+      const sla = getLastSla(onChange);
+
+      expect(sla?.maxLatency).toEqual({ unit: MaxLatencyUnit.Hour, value: 0 });
+    });
+
+    it('still emits refreshFrequency when interval is 0', async () => {
+      const onChange = jest.fn();
+      renderWithSla(onChange);
+
+      await setField(/label.interval/i, '0');
+
+      const sla = getLastSla(onChange);
+
+      expect(sla?.refreshFrequency).toEqual({
+        interval: 0,
+        unit: RefreshFrequencyUnit.Day,
+      });
+    });
+
+    it('still emits retention when period is 0', async () => {
+      const onChange = jest.fn();
+      renderWithSla(onChange);
+
+      await setField(/label.period/i, '0');
+
+      const sla = getLastSla(onChange);
+
+      expect(sla?.retention).toEqual({ period: 0, unit: RetentionUnit.Day });
+    });
+
+    it('omits maxLatency when a negative value is entered (>= 0 guard still rejects negatives)', async () => {
+      const onChange = jest.fn();
+      renderWithSla(onChange);
+
+      await setField(/label.value/i, '-5');
+
+      const sla = getLastSla(onChange);
+
+      expect(sla?.maxLatency).toBeUndefined();
+    });
+
+    it('maxLatency clear yields a safe JSON patch (remove, not replace:null) via fast-json-patch compare', async () => {
+      const onChange = jest.fn();
+      renderWithSla(onChange);
+
+      await clearField(/label.value/i);
+
+      const sla = getLastSla(onChange);
+      // Reproduces AddDataContract.handleSave's `compare(filteredContract, {...formValues})`
+      // against the stored SLA, the exact pipeline that produced the corrupting
+      // `{op:'replace','/sla/maxLatency/value',value:null}` op on HEAD.
+      const patch = compare({ sla: mockContract.sla }, { sla });
+
+      expect(patch.find(isNullNumericReplacer)).toBeUndefined();
+      expect(patch).toContainEqual({ op: 'remove', path: '/sla/maxLatency' });
+    });
+
+    it('refreshFrequency clear yields a safe JSON patch (remove, not replace:null) via fast-json-patch compare', async () => {
+      const onChange = jest.fn();
+      renderWithSla(onChange);
+
+      await clearField(/label.interval/i);
+
+      const sla = getLastSla(onChange);
+      const patch = compare({ sla: mockContract.sla }, { sla });
+
+      expect(patch.find(isNullNumericReplacer)).toBeUndefined();
+      expect(patch).toContainEqual({
+        op: 'remove',
+        path: '/sla/refreshFrequency',
+      });
+    });
+
+    it('retention clear yields a safe JSON patch (remove, not replace:null) via fast-json-patch compare', async () => {
+      const onChange = jest.fn();
+      renderWithSla(onChange);
+
+      await clearField(/label.period/i);
+
+      const sla = getLastSla(onChange);
+      const patch = compare({ sla: mockContract.sla }, { sla });
+
+      expect(patch.find(isNullNumericReplacer)).toBeUndefined();
+      expect(patch).toContainEqual({ op: 'remove', path: '/sla/retention' });
     });
   });
 });

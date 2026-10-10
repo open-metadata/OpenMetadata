@@ -46,6 +46,12 @@ import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-sla-form-tab.less';
 
+// antd `InputNumber` (rc-input-number) emits `null` when cleared, and
+// `null >= 0` is `true` in JS (null coerces to 0). Check `!= null` first so a
+// cleared field drops its SLA sub-object instead of emitting `{ value: null }`.
+const isNonNegativeNumeric = (value: number | null | undefined): boolean =>
+  value != null && value >= 0;
+
 export const ContractSLAFormTab: React.FC<{
   onChange: (data: Partial<DataContract>) => void;
   onPrev: () => void;
@@ -105,7 +111,10 @@ export const ContractSLAFormTab: React.FC<{
       slaData.columnName = values.columnName;
     }
 
-    if (values.max_latency_unit && values.max_latency_value >= 0) {
+    if (
+      values.max_latency_unit &&
+      isNonNegativeNumeric(values.max_latency_value)
+    ) {
       slaData.maxLatency = {
         unit: values.max_latency_unit,
         value: values.max_latency_value,
@@ -113,7 +122,7 @@ export const ContractSLAFormTab: React.FC<{
     }
 
     if (
-      values.refresh_frequency_interval >= 0 &&
+      isNonNegativeNumeric(values.refresh_frequency_interval) &&
       values.refresh_frequency_unit
     ) {
       slaData.refreshFrequency = {
@@ -122,7 +131,10 @@ export const ContractSLAFormTab: React.FC<{
       };
     }
 
-    if (values.retention_period >= 0 && values.retention_unit) {
+    if (
+      isNonNegativeNumeric(values.retention_period) &&
+      values.retention_unit
+    ) {
       slaData.retention = {
         period: values.retention_period,
         unit: values.retention_unit,
