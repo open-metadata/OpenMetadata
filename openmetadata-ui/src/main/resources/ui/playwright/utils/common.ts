@@ -714,45 +714,37 @@ export const assignDataProduct = async (
     .getByTestId(action === 'Add' ? 'add-data-product' : 'edit-button')
     .click();
 
+  const picker = page.getByTestId('drop-down-menu');
+  await expect(picker).toBeVisible();
+
   for (const dataProduct of dataProducts) {
-    const tagLocator = page.getByTestId(
-      `tag-${dataProduct.fullyQualifiedName}`
-    );
+    const row = picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
 
     await expect(async () => {
-      // Match any Data Product search response. The dropdown filters by the
+      // Match any Data Product search response. The picker filters by the
       // asset's domain only when the "Data Product Domain Validation" rule is
       // enabled; when it is disabled the query carries no domain, so we cannot
-      // key the wait on the domain name. The tag visibility check below is the
+      // key the wait on the domain name. The row visibility check below is the
       // real synchronization guard.
       const searchDataProduct = page.waitForResponse((response) =>
         response.url().includes('/api/v1/search/query')
       );
-      await page.locator('[data-testid="data-product-selector"] input').clear();
-      await page
-        .locator('[data-testid="data-product-selector"] input')
-        .fill(dataProduct.displayName);
+      await picker.getByTestId('search-input').clear();
+      await picker.getByTestId('search-input').fill(dataProduct.displayName);
       await searchDataProduct;
-      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
+      await expect(row).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
 
-    await tagLocator.click();
+    await row.click();
   }
 
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
+  await expect(picker.getByTestId('update-btn')).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await picker.getByTestId('update-btn').click();
   await patchReq;
 
   if (pollForInheritance) {
@@ -804,40 +796,28 @@ export const removeDataProduct = async (
     .getByTestId('edit-button')
     .click();
 
-  await waitForAllLoadersToDisappear(page);
+  const picker = page.getByTestId('drop-down-menu');
+  await expect(picker).toBeVisible();
 
-  await page
-    .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
-    .getByTestId('remove-tags')
-    .locator('svg')
-    .click();
+  // Search it up, since the selection may sit past the first page, then
+  // uncheck it.
+  const searchDataProduct = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/search/query')
+  );
+  await picker.getByTestId('search-input').fill(dataProduct.displayName);
+  await searchDataProduct;
+  await picker.getByTestId(dataProduct.fullyQualifiedName ?? '').click();
 
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
+  await expect(picker.getByTestId('update-btn')).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await picker.getByTestId('update-btn').click();
   await patchReq;
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .locator('[data-icon="loading"]')
-    .waitFor({ state: 'detached' });
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).not.toBeVisible();
+  await expect(picker).not.toBeVisible();
 
   await expect(
     page
@@ -1844,7 +1824,8 @@ export const searchDataProductOptions = async (
   } finally {
     await afterAction();
   }
-  const input = page.locator('[data-testid="data-product-selector"] input');
+  const picker = page.getByTestId('drop-down-menu');
+  const input = picker.getByTestId('search-input');
   if ((await input.inputValue()) === dataProduct.displayName) {
     await input.clear();
   }
@@ -1861,9 +1842,7 @@ export const searchDataProductOptions = async (
   await input.fill(dataProduct.displayName);
   expect((await responsePromise).status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
-  return page
-    .locator('.ant-select-dropdown:visible')
-    .getByTestId('tag-' + dataProduct.fullyQualifiedName);
+  return picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
 };
 
 export const waitForAntdModalToSettle = async (page: Page) => {

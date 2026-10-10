@@ -165,8 +165,7 @@ for (const selection of ['click', 'keyboard']) {
           useEffect(() => { fetch('/api/v1/tags?parent=Tier').then(() => setReady(true)); }, []);
           return createPortal(<section role="dialog" aria-label="Edit tier">
             <button autoFocus>Cancel</button>
-            {ready ? <><label data-testid="radio-btn-Tier1"><input type="radio" name="tier" />Tier1</label>
-              <button data-testid="update-tier-card" onClick={() => onRowChange({ ...row, tier: 'Tier1' }, true)}>Save</button></>
+            {ready ? <div data-testid="drop-down-menu"><button data-testid="Tier.Tier1" onClick={() => onRowChange({ ...row, tier: 'Tier1' }, true)}>Tier1</button></div>
               : <span role="status">Loading tiers</span>}
           </section>, document.body);
         }

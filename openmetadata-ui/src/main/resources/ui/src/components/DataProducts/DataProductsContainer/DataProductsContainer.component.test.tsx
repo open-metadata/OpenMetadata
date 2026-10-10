@@ -37,15 +37,24 @@ jest.mock('../DataProductsSelectList/DataProductsSelectList', () => ({
     .fn()
     .mockImplementation(
       ({
+        children,
         fetchOptions,
+        isOpen,
       }: {
+        children?: React.ReactNode;
         fetchOptions?: (searchText: string, page?: number) => void;
+        isOpen?: boolean;
       }) => (
-        <button
-          data-testid="dps-fetch"
-          onClick={() => fetchOptions?.('term', 2)}>
-          Fetch
-        </button>
+        <>
+          {children}
+          {isOpen && (
+            <button
+              data-testid="dps-fetch"
+              onClick={() => fetchOptions?.('term', 2)}>
+              Fetch
+            </button>
+          )}
+        </>
       )
     ),
 }));
@@ -110,7 +119,8 @@ describe('DataProductsContainer', () => {
       expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
         'term',
         ['domainA'],
-        2
+        2,
+        50
       );
     });
   });
@@ -134,7 +144,8 @@ describe('DataProductsContainer', () => {
       expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
         'term',
         [],
-        2
+        2,
+        50
       );
     });
   });

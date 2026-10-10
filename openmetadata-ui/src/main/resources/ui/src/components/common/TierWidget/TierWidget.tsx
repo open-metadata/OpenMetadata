@@ -31,7 +31,6 @@ import {
   WidgetPlusButton,
 } from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
-import './TierWidget.less';
 const TierWidget = () => {
   const {
     data: entity,
@@ -106,9 +105,7 @@ const TierWidget = () => {
   const content = (
     <TierCard
       currentTier={tier?.tagFQN}
-      footerActionButtonsClassName="p-x-md"
       open={isEditing}
-      tierCardClassName="tier-widget-popover"
       updateTier={handleTierUpdate}
       onClose={() => setIsEditing(false)}
       onOpenChange={(visible: boolean) => {

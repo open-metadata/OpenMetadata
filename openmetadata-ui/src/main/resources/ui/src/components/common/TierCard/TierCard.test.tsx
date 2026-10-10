@@ -18,22 +18,23 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import TierCard from './TierCard';
 
 const mockTierData = [
   {
-    id: 'e4ec1760-79c0-4afc-a0eb-c3da339aa750',
+    id: 'tier-1',
     name: 'Tier1',
     fullyQualifiedName: 'Tier.Tier1',
     description:
-      '**Critical Source of Truth business data assets of an organization**',
-    version: 0.1,
-    updatedAt: 1665646906357,
-    updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/tags/Tier/Tier1',
-    deprecated: false,
-    deleted: false,
+      '**Critical Source of Truth business data assets**\n\n- Used in critical metrics',
+  },
+  {
+    id: 'tier-2',
+    name: 'Tier2',
+    fullyQualifiedName: 'Tier.Tier2',
+    description: '**Important business datasets**\n\n- Used in product metrics',
   },
 ];
 
@@ -41,10 +42,11 @@ const mockGetTags = jest
   .fn()
   .mockImplementation(() => Promise.resolve({ data: mockTierData }));
 const mockOnUpdate = jest.fn();
-const mockShowErrorToast = jest.fn();
+const mockOnClose = jest.fn();
 const mockProps = {
-  currentTier: 'currentTier',
+  currentTier: 'Tier.Tier1',
   updateTier: mockOnUpdate,
+  onClose: mockOnClose,
   children: <div>Child</div>,
   open: true,
 };
@@ -53,134 +55,98 @@ jest.mock('../../../rest/tagAPI', () => ({
   getTags: jest.fn().mockImplementation((...args) => mockGetTags(...args)),
 }));
 
-jest.mock('../Loader/Loader', () => {
-  return jest.fn().mockReturnValue(<div>Loader</div>);
-});
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
-jest.mock('../../../utils/ToastUtils', () => {
-  return jest.fn().mockImplementation(() => mockShowErrorToast());
-});
+jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest
+    .fn()
+    .mockImplementation(({ markdown }: { markdown: string }) => (
+      <div>{markdown}</div>
+    ))
+);
 
-jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () => {
-  return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
-});
-
-describe('Test TierCard Component', () => {
-  it('Component should have card', async () => {
-    await act(async () => {
-      render(<TierCard {...mockProps} />);
-    });
-
-    expect(mockGetTags).toHaveBeenCalled();
-
-    expect(await screen.findByTestId('cards')).toBeInTheDocument();
+describe('TierCard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should call the mockOnUpdate when click on radio button', async () => {
-    await act(async () => {
-      render(<TierCard {...mockProps} />);
+  it('lists each tier with its summary, the current one selected', async () => {
+    render(<TierCard {...mockProps} />);
+
+    const row = await screen.findByTestId('Tier.Tier1');
+
+    expect(within(row).getByText('Tier1')).toBeInTheDocument();
+    expect(
+      within(row).getByText('Critical Source of Truth business data assets')
+    ).toBeInTheDocument();
+    expect(row).toHaveAttribute('aria-checked', 'true');
+    expect(mockGetTags).toHaveBeenCalledWith({
+      parent: 'Tier',
+      limit: 50,
+      disabled: false,
     });
-
-    const radioButton = await screen.findByTestId('radio-btn-Tier1');
-
-    expect(radioButton).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(radioButton);
-    });
-
-    expect(screen.getByRole('radio', { name: /Tier1/ })).toBeChecked();
-
-    const updateTierCard = await screen.findByTestId('update-tier-card');
-
-    expect(updateTierCard).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(updateTierCard);
-    });
-
-    expect(mockOnUpdate).toHaveBeenCalledWith(mockTierData[0]);
   });
 
-  it('should call the mockOnUpdate when click on Clear button', async () => {
+  it('expands a tier details from its chevron without picking it', async () => {
+    render(<TierCard {...mockProps} />);
+
+    fireEvent.click(await screen.findByTestId('Tier.Tier2-expand'));
+
+    expect(screen.getByTestId('Tier.Tier2-details')).toHaveTextContent(
+      'Used in product metrics'
+    );
+    expect(mockOnUpdate).not.toHaveBeenCalled();
+  });
+
+  it('saves the picked tier at once', async () => {
+    render(<TierCard {...mockProps} />);
+
+    const row = await screen.findByTestId('Tier.Tier2');
     await act(async () => {
-      render(<TierCard {...mockProps} />);
+      fireEvent.click(row);
     });
 
-    const clearTier = await screen.findByTestId('clear-tier');
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ fullyQualifiedName: 'Tier.Tier2' })
+    );
+    expect(mockOnClose).not.toHaveBeenCalled();
+  });
 
-    expect(clearTier).toBeInTheDocument();
+  it('clears the tier from the footer', async () => {
+    render(<TierCard {...mockProps} />);
 
+    await screen.findByTestId('Tier.Tier1');
     await act(async () => {
-      fireEvent.click(clearTier);
+      fireEvent.click(screen.getByTestId('clear-filter-btn'));
     });
 
     expect(mockOnUpdate).toHaveBeenCalledWith(undefined);
   });
 
-  it('should open from a pressable trigger and close on Escape', async () => {
+  it('calls onClose when dismissed with Escape', async () => {
+    render(<TierCard {...mockProps} />);
+
+    await screen.findByTestId('Tier.Tier1');
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens from its trigger when not controlled', async () => {
     render(
-      <TierCard currentTier="currentTier" updateTier={mockOnUpdate}>
+      <TierCard currentTier="" updateTier={mockOnUpdate}>
         <Button data-testid="edit-tier">Edit</Button>
       </TierCard>
     );
 
-    const trigger = screen.getByTestId('edit-tier');
+    expect(screen.queryByTestId('Tier.Tier1')).not.toBeInTheDocument();
 
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByTestId('cards')).not.toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(trigger);
-    });
-
-    expect(await screen.findByTestId('cards')).toBeInTheDocument();
-    expect(trigger).toHaveAttribute('aria-expanded', 'true');
-
-    await act(async () => {
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
-    });
+    fireEvent.click(screen.getByTestId('edit-tier'));
 
     await waitFor(() =>
-      expect(screen.queryByTestId('cards')).not.toBeInTheDocument()
-    );
-
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('should leave controlled open state to the caller', async () => {
-    const onOpenChange = jest.fn();
-
-    await act(async () => {
-      render(
-        <TierCard {...mockProps} onOpenChange={onOpenChange}>
-          <div data-testid="anchor">Anchor</div>
-        </TierCard>
-      );
-    });
-
-    await act(async () => {
-      fireEvent.pointerDown(screen.getByTestId('anchor'));
-      fireEvent.pointerUp(screen.getByTestId('anchor'));
-    });
-
-    expect(onOpenChange).not.toHaveBeenCalled();
-
-    await act(async () => {
-      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
-    });
-
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(screen.getByTestId('cards')).toBeInTheDocument();
-  });
-
-  it('should request only enabled tiers by passing disabled false', async () => {
-    await act(async () => {
-      render(<TierCard {...mockProps} />);
-    });
-
-    expect(mockGetTags).toHaveBeenCalledWith(
-      expect.objectContaining({ parent: 'Tier', disabled: false })
+      expect(screen.getByTestId('Tier.Tier1')).toBeInTheDocument()
     );
   });
 });

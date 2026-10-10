@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SelectProps } from 'antd';
+import { ReactNode } from 'react';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 
 export type DataProductSelectOption = {
@@ -19,13 +20,9 @@ export type DataProductSelectOption = {
   value: DataProduct;
 };
 
-export interface DataProductsSelectListProps extends SelectProps {
-  mode?: 'multiple';
-  placeholder?: string;
-  debounceTimeout?: number;
-  defaultValue?: string[];
-  onSubmit?: (newValue: DataProduct[]) => Promise<void>;
-  onCancel?: () => void;
+export interface DataProductsSelectListProps {
+  /** The asset's data products; checked when the picker opens. */
+  selectedDataProducts: EntityReference[];
   fetchOptions: (
     search: string,
     page: number
@@ -33,8 +30,12 @@ export interface DataProductsSelectListProps extends SelectProps {
     data: DataProductSelectOption[];
     paging: Paging;
   }>;
-}
-
-export interface DataProductsSelectRef {
-  getSelectValue: () => DataProduct[];
+  multiple?: boolean;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Called on Apply with the full selection. */
+  onSubmit: (dataProducts: DataProduct[]) => Promise<void> | void;
+  /** The button the picker opens from. */
+  children: ReactNode;
+  debounceTimeout?: number;
 }

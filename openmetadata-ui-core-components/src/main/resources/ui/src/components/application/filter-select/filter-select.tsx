@@ -27,7 +27,13 @@ import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { ChevronDown, ChevronUp, XClose } from '../../../icons';
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  RefreshCw01,
+  XClose,
+} from '../../../icons';
 import {
   useEffect,
   useId,
@@ -36,8 +42,12 @@ import {
   useRef,
   useState,
   type FC,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type RefObject,
+  type UIEvent,
 } from 'react';
 import { Button as AriaButton, type Selection } from 'react-aria-components';
 import type {
@@ -269,6 +279,8 @@ const OptionRow = ({
   showCheckbox,
   showRadio,
   isNullOption,
+  isExpanded,
+  onToggleExpand,
 }: {
   option: FilterSelectOption;
   hideCounts?: boolean;
@@ -276,12 +288,25 @@ const OptionRow = ({
   showRadio?: boolean;
   /** The pinned "No <X>" row, which the design mutes relative to real options. */
   isNullOption?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: (expand?: boolean) => void;
 }) => {
   const iconComponent = isReactComponent(option.icon)
     ? (option.icon as FC<{ className?: string }>)
     : undefined;
   const iconNode = iconComponent ? undefined : (option.icon as ReactNode);
   const hasIndicator = showCheckbox || Boolean(showRadio);
+  const hasDetails = option.details !== undefined;
+
+  // Pressing the chevron or the details must not select the row underneath.
+  const stopRowPress = {
+    onClick: (event: ReactMouseEvent) => event.stopPropagation(),
+    onMouseDown: (event: ReactMouseEvent) => event.stopPropagation(),
+    onMouseUp: (event: ReactMouseEvent) => event.stopPropagation(),
+    onPointerDown: (event: ReactPointerEvent) => event.stopPropagation(),
+    // A menu item also selects on pointer up (press-drag-release).
+    onPointerUp: (event: ReactPointerEvent) => event.stopPropagation(),
+  };
 
   return (
     <Dropdown.Item
@@ -298,7 +323,9 @@ const OptionRow = ({
               : 'tw:[&>div]:bg-transparent!'),
           !hasIndicator &&
             state.isSelected &&
-            'tw:[&_svg]:text-fg-brand-secondary_alt!'
+            'tw:[&_svg]:text-fg-brand-secondary_alt!',
+          // A multi-line row keeps its indicator on the first line.
+          hasDetails && 'tw:[&>div]:items-start'
         )
       }
       data-testid={option.value}
@@ -307,47 +334,83 @@ const OptionRow = ({
       showCheckbox={showCheckbox}
       showRadio={showRadio}
       textValue={optionText(option)}>
-      {(state) => (
-        <span
-          className={cx(
-            'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
-            // Real options read at full strength whether or not they are
-            // selected; only the pinned null row is muted. Plain single select
-            // has no indicator, so its selected row goes brand instead.
-            !hasIndicator && state.isSelected
-              ? 'tw:text-brand-secondary'
-              : isNullOption
-              ? 'tw:text-secondary'
-              : 'tw:text-primary'
-          )}>
-          {iconNode !== undefined && (
-            <span aria-hidden="true" className="tw:flex tw:shrink-0">
-              {iconNode}
-            </span>
-          )}
-          <Typography
-            className="not-prose tw:grow tw:truncate"
-            title={optionText(option)}>
-            {option.label}
-          </Typography>
-          {!hideCounts && option.count !== undefined && (
+      {(state) => {
+        const row = (
+          <span
+            className={cx(
+              'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
+              // Real options read at full strength whether or not they are
+              // selected; only the pinned null row is muted. Plain single select
+              // has no indicator, so its selected row goes brand instead.
+              !hasIndicator && state.isSelected
+                ? 'tw:text-brand-secondary'
+                : isNullOption
+                ? 'tw:text-secondary'
+                : 'tw:text-primary'
+            )}>
+            {iconNode !== undefined && (
+              <span aria-hidden="true" className="tw:flex tw:shrink-0">
+                {iconNode}
+              </span>
+            )}
             <Typography
-              className={cx(
-                'not-prose tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:tabular-nums',
-                !hasIndicator && state.isSelected
-                  ? 'tw:border-utility-brand-200 tw:text-brand-secondary'
-                  : 'tw:border-secondary',
-                hasIndicator && state.isSelected && 'tw:text-tertiary',
-                !state.isSelected && 'tw:text-placeholder'
-              )}
-              data-testid="filter-count"
-              size="text-xs"
-              weight="regular">
-              {option.count.toLocaleString()}
+              className="not-prose tw:grow tw:truncate"
+              title={optionText(option)}>
+              {option.label}
             </Typography>
-          )}
-        </span>
-      )}
+            {!hideCounts && option.count !== undefined && (
+              <Typography
+                className={cx(
+                  'not-prose tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:tabular-nums',
+                  !hasIndicator && state.isSelected
+                    ? 'tw:border-utility-brand-200 tw:text-brand-secondary'
+                    : 'tw:border-secondary',
+                  hasIndicator && state.isSelected && 'tw:text-tertiary',
+                  !state.isSelected && 'tw:text-placeholder'
+                )}
+                data-testid="filter-count"
+                size="text-xs"
+                weight="regular">
+                {option.count.toLocaleString()}
+              </Typography>
+            )}
+            {hasDetails && (
+              <span
+                aria-hidden="true"
+                className="tw:flex tw:size-5 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded tw:text-fg-quaternary tw:hover:bg-tertiary"
+                data-testid={`${option.value}-expand`}
+                {...stopRowPress}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleExpand?.();
+                }}>
+                <ChevronRight
+                  className={cx(
+                    'tw:size-4 tw:transition-transform tw:duration-150',
+                    isExpanded && 'tw:rotate-90'
+                  )}
+                />
+              </span>
+            )}
+          </span>
+        );
+
+        return hasDetails ? (
+          <span className="tw:flex tw:w-full tw:min-w-0 tw:flex-col">
+            {row}
+            {isExpanded && (
+              <span
+                className="tw:block tw:cursor-default tw:pt-1.5 tw:pr-7 tw:text-xs tw:text-secondary"
+                data-testid={`${option.value}-details`}
+                {...stopRowPress}>
+                {option.details}
+              </span>
+            )}
+          </span>
+        ) : (
+          row
+        );
+      }}
     </Dropdown.Item>
   );
 };
@@ -393,6 +456,8 @@ const FilterSelect = ({
   typography = 'medium',
   onOpenChange,
   onSearch,
+  onLoadMore,
+  isLoadingMore,
   'aria-labelledby': ariaLabelledBy,
 }: FilterSelectProps) => {
   const { t } = useCoreTranslation();
@@ -406,6 +471,11 @@ const FilterSelect = ({
   const popoverContentRef = useRef<HTMLDivElement>(null);
 
   const isMulti = selectionMode === 'multiple';
+  const hasAnyDetails = options.some((option) => option.details !== undefined);
+  // Rows whose details are open; each opening starts from the selection.
+  const [expandedValues, setExpandedValues] = useState<Set<string>>(
+    () => new Set()
+  );
   const isRadio = !isMulti && Boolean(showRadio);
   const isStaged = commitMode === 'staged';
   const isChips =
@@ -533,6 +603,38 @@ const FilterSelect = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedValuesKey]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setExpandedValues(new Set(selectedValues));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // MenuItem takes no key handlers, so ArrowRight / ArrowLeft are read here
+  // off whichever row holds focus.
+  const handleDetailsKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const isExpandKey = event.key === 'ArrowRight' || event.key === 'ArrowLeft';
+    const row = (event.target as HTMLElement).closest?.('[role^="menuitem"]');
+    // FilterSelect sets each row's test id to its option value.
+    const value = row?.getAttribute('data-testid');
+    const option = options.find((item) => item.value === value);
+    if (isExpandKey && value && option?.details !== undefined) {
+      toggleExpanded(value, event.key === 'ArrowRight');
+    }
+  };
+
+  const toggleExpanded = (value: string, expand?: boolean) =>
+    setExpandedValues((prev) => {
+      const next = new Set(prev);
+      if (expand ?? !next.has(value)) {
+        next.add(value);
+      } else {
+        next.delete(value);
+      }
+
+      return next;
+    });
 
   const handleOpenChange = (open: boolean) => {
     setInternalOpen(open);
@@ -733,6 +835,16 @@ const FilterSelect = ({
     };
   }, [isOpen]);
 
+  // Scroll doesn't bubble, so the capture listener sees the menu's own scroll.
+  const handleMenuScroll = (event: UIEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const isNearEnd =
+      target.scrollTop + target.clientHeight >= target.scrollHeight - 40;
+    if (target.getAttribute('role') === 'menu' && isNearEnd) {
+      onLoadMore?.();
+    }
+  };
+
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it gets a quiet footer instead:
   // what is selected, and a way to drop it all without closing the menu.
@@ -823,7 +935,11 @@ const FilterSelect = ({
           onOpenChange: handleOpenChange,
         })}
         triggerRef={anchorRef}>
-        <div className="tw:contents" ref={popoverContentRef}>
+        <div
+          className="tw:contents"
+          ref={popoverContentRef}
+          onKeyDownCapture={hasAnyDetails ? handleDetailsKeyDown : undefined}
+          onScrollCapture={onLoadMore && handleMenuScroll}>
           {searchable && (
             <DropdownSearchField
               autoFocus={hasCustomTrigger}
@@ -894,13 +1010,29 @@ const FilterSelect = ({
               {displayedOptions.map((option) => (
                 <OptionRow
                   hideCounts={hideCounts}
+                  isExpanded={expandedValues.has(option.value)}
                   key={option.value}
                   option={option}
                   showCheckbox={isMulti}
                   showRadio={isRadio}
+                  onToggleExpand={(expand) =>
+                    toggleExpanded(option.value, expand)
+                  }
                 />
               ))}
             </Dropdown.Menu>
+          )}
+
+          {isLoadingMore && (
+            <div
+              aria-label={t('label.loading')}
+              className="tw:flex tw:justify-center tw:py-2"
+              role="status">
+              <RefreshCw01
+                aria-hidden="true"
+                className="tw:size-4 tw:animate-spin tw:text-fg-quaternary"
+              />
+            </div>
           )}
 
           {isEmpty && (

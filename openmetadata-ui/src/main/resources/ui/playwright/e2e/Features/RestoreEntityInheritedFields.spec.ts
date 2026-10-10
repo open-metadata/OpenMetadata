@@ -149,20 +149,14 @@ const selectDataProductsFromKnowledgePanel = async (
     await tagLocator.click();
   }
 
-  await expect(
-    page
-      .getByTestId('data-product-dropdown-actions')
-      .getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
+  const apply = page.getByTestId('drop-down-menu').getByTestId('update-btn');
+  await expect(apply).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page
-    .getByTestId('data-product-dropdown-actions')
-    .getByTestId('saveAssociatedTag')
-    .click();
+  await apply.click();
   await patchReq;
 };
 

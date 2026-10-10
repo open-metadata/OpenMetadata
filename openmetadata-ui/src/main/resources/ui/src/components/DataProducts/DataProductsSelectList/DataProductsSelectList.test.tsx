@@ -11,123 +11,128 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { DataProductSelectOption } from './DataProductSelectList.interface';
 import DataProductsSelectList from './DataProductsSelectList';
 
-const option = (name: string): DataProductSelectOption => ({
+const option = (name: string, domain = 'Sales'): DataProductSelectOption => ({
   label: name,
   value: {
-    id: name,
+    id: `${name}-id`,
     name,
     displayName: name,
     fullyQualifiedName: name,
     description: '',
+    domains: [{ id: 'd-1', name: domain, type: 'domain' }],
   },
 });
-const response = (name: string) => ({
-  data: [option(name)],
-  paging: { total: 3 },
-});
 
-beforeEach(() => jest.useFakeTimers());
+const renderPicker = (
+  props: Partial<React.ComponentProps<typeof DataProductsSelectList>> = {}
+) => {
+  const onSubmit = jest.fn();
+  const fetchOptions = jest
+    .fn()
+    .mockResolvedValue({ data: [option('dp1')], paging: { total: 1 } });
 
-afterEach(() => {
-  jest.clearAllTimers();
-  jest.useRealTimers();
-});
-
-it('refreshes the active query when the fetch function changes', async () => {
-  let completeOld!: (value: ReturnType<typeof response>) => void;
-  const oldResponse = new Promise<ReturnType<typeof response>>((resolve) => {
-    completeOld = resolve;
-  });
-  const { container, rerender } = render(
-    <DataProductsSelectList fetchOptions={() => oldResponse} />
+  render(
+    <DataProductsSelectList
+      isOpen
+      fetchOptions={fetchOptions}
+      selectedDataProducts={[]}
+      onOpenChange={jest.fn()}
+      onSubmit={onSubmit}
+      {...props}>
+      <button type="button">Edit</button>
+    </DataProductsSelectList>
   );
-  await act(async () => {
-    fireEvent.focus(screen.getByRole('combobox'));
+
+  return { fetchOptions, onSubmit };
+};
+
+describe('DataProductsSelectList', () => {
+  it('shows each data product with its domain underneath', async () => {
+    const { fetchOptions } = renderPicker();
+
+    const row = await screen.findByTestId('dp1');
+
+    expect(within(row).getByText('dp1')).toBeInTheDocument();
+    expect(within(row).getByText('Sales')).toBeInTheDocument();
+    expect(fetchOptions).toHaveBeenCalledWith('', 1);
   });
-  const selector = container.querySelector('.ant-select-selector');
-  if (!selector) {
-    throw new Error('Data product selector is missing');
-  }
-  fireEvent.mouseDown(selector);
-  await act(async () => {
-    rerender(
-      <DataProductsSelectList
-        fetchOptions={() => Promise.resolve(response('New scope'))}
-      />
+
+  it('loads the next page when the list is scrolled to its end', async () => {
+    const fetchOptions = jest
+      .fn()
+      .mockImplementation(async (_search: string, page: number) =>
+        page === 1
+          ? { data: [option('dp1')], paging: { total: 2 } }
+          : { data: [option('dp2')], paging: { total: 2 } }
+      );
+    renderPicker({ fetchOptions });
+
+    await screen.findByTestId('dp1');
+    const menu = screen.getByRole('menu');
+    Object.defineProperties(menu, {
+      scrollHeight: { configurable: true, value: 400 },
+      clientHeight: { configurable: true, value: 200 },
+    });
+    menu.scrollTop = 200;
+    fireEvent.scroll(menu);
+
+    expect(await screen.findByTestId('dp2')).toBeInTheDocument();
+    expect(fetchOptions).toHaveBeenLastCalledWith('', 2);
+  });
+
+  it('submits the picked data products on Apply', async () => {
+    const { onSubmit } = renderPicker();
+
+    fireEvent.click(await screen.findByTestId('dp1'));
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 'dp1-id', fullyQualifiedName: 'dp1' }),
+      ])
     );
   });
 
-  expect(screen.getByTestId('tag-New scope')).toBeInTheDocument();
-
-  await act(async () => {
-    completeOld(response('Old scope'));
-  });
-
-  expect(screen.queryByTestId('tag-Old scope')).not.toBeInTheDocument();
-  expect(screen.getByTestId('tag-New scope')).toBeInTheDocument();
-});
-
-for (const lateResponse of ['initial-search', 'pagination']) {
-  it(
-    'keeps current results when an older ' + lateResponse + ' completes',
-    async () => {
-      let completeOld!: (value: ReturnType<typeof response>) => void;
-      const older = new Promise<ReturnType<typeof response>>((resolve) => {
-        completeOld = resolve;
-      });
-      const fetchOptions = jest.fn((query: string, page: number) => {
-        if (query === 'fresh') {
-          return Promise.resolve(response('Fresh product'));
-        }
-        if (lateResponse === 'initial-search' || page > 1) {
-          return older;
-        }
-
-        return Promise.resolve(response('Initial product'));
-      });
-      const { container } = render(
-        <DataProductsSelectList
-          debounceTimeout={10}
-          fetchOptions={fetchOptions}
-        />
+  it('requests the next page once, however many scroll events arrive', async () => {
+    let finishPage2!: (value: unknown) => void;
+    const fetchOptions = jest
+      .fn()
+      .mockImplementation((_search: string, page: number) =>
+        page === 1
+          ? Promise.resolve({ data: [option('dp1')], paging: { total: 2 } })
+          : new Promise((resolve) => {
+              finishPage2 = resolve;
+            })
       );
-      const input = screen.getByRole('combobox');
-      await act(async () => {
-        fireEvent.focus(input);
-      });
-      const selector = container.querySelector('.ant-select-selector');
-      if (!selector) {
-        throw new Error('Data product selector is missing');
-      }
-      fireEvent.mouseDown(selector);
-      if (lateResponse === 'pagination') {
-        await act(async () => {
-          const list = document.querySelector('.rc-virtual-list-holder');
-          if (!list) {
-            throw new Error('Data product dropdown is missing');
-          }
-          fireEvent.scroll(list);
-        });
+    renderPicker({ fetchOptions });
 
-        expect(fetchOptions).toHaveBeenCalledWith('', 2);
-      }
-      fireEvent.change(input, { target: { value: 'fresh' } });
-      await act(async () => {
-        jest.advanceTimersByTime(10);
-      });
+    await screen.findByTestId('dp1');
+    const menu = screen.getByRole('menu');
+    Object.defineProperties(menu, {
+      scrollHeight: { configurable: true, value: 400 },
+      clientHeight: { configurable: true, value: 200 },
+    });
+    menu.scrollTop = 200;
+    fireEvent.scroll(menu);
+    fireEvent.scroll(menu);
+    fireEvent.scroll(menu);
 
-      expect(screen.getByTestId('tag-Fresh product')).toBeInTheDocument();
+    expect(
+      fetchOptions.mock.calls.filter(([, page]) => page === 2)
+    ).toHaveLength(1);
 
-      await act(async () => {
-        completeOld(response('Stale product'));
-      });
+    finishPage2({ data: [option('dp2')], paging: { total: 2 } });
 
-      expect(screen.getByTestId('tag-Fresh product')).toBeInTheDocument();
-      expect(screen.queryByTestId('tag-Stale product')).not.toBeInTheDocument();
-    }
-  );
-}
+    expect(await screen.findByTestId('dp2')).toBeInTheDocument();
+  });
+});

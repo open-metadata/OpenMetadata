@@ -281,7 +281,9 @@ export const testCommonOperations = async (
     const tierLocator = testUserPage.getByTestId('Tier');
     if (await tierLocator.isVisible()) {
       await tierLocator.click();
-      await expect(testUserPage.getByTestId('cards')).not.toBeVisible();
+      await expect(
+        testUserPage.getByTestId('drop-down-menu')
+      ).not.toBeVisible();
     }
 
     const certLocator = testUserPage.getByTestId('certification-value');

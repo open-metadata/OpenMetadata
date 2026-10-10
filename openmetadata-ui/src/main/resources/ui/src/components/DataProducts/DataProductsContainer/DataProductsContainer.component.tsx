@@ -18,11 +18,14 @@ import {
 } from '@openmetadata/ui-core-components';
 
 import { isEmpty } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
@@ -75,7 +78,12 @@ const DataProductsContainer = ({
         ? activeDomains?.map((domain) => domain.fullyQualifiedName ?? '') ?? []
         : [];
 
-      return fetchDataProductsElasticSearch(searchText, domainFQNs, page);
+      return fetchDataProductsElasticSearch(
+        searchText,
+        domainFQNs,
+        page,
+        PAGE_SIZE_LARGE
+      );
     },
     [activeDomains, requireDomainForDataProduct]
   );
@@ -107,25 +115,18 @@ const DataProductsContainer = ({
     setIsEditMode(false);
   };
 
-  const handleCancel = () => {
-    setIsEditMode(false);
-  };
-
-  const autoCompleteFormSelectContainer = useMemo(() => {
-    return (
-      <DataProductsSelectList
-        open
-        defaultValue={(dataProducts ?? []).map(
-          (item) => item.fullyQualifiedName ?? ''
-        )}
-        fetchOptions={fetchAPI}
-        mode={multiple ? 'multiple' : undefined}
-        placeholder={t('label.data-product-plural')}
-        onCancel={handleCancel}
-        onSubmit={handleSave}
-      />
-    );
-  }, [handleCancel, handleSave, dataProducts, fetchAPI, multiple, t]);
+  // Opens from the add/edit button, like the glossary and tag pickers.
+  const withPicker = (trigger: ReactNode) => (
+    <DataProductsSelectList
+      fetchOptions={fetchAPI}
+      isOpen={isEditMode}
+      multiple={multiple}
+      selectedDataProducts={dataProducts ?? []}
+      onOpenChange={setIsEditMode}
+      onSubmit={handleSave}>
+      {trigger}
+    </DataProductsSelectList>
+  );
 
   const showAddTagButton = useMemo(
     () => hasPermission && !domainMissing && isEmpty(dataProducts),
@@ -188,6 +189,24 @@ const DataProductsContainer = ({
       return null;
     }
 
+    const actionButton = isEmpty(dataProducts) ? (
+      <WidgetPlusButton
+        data-testid="add-data-product"
+        title={t('label.add-entity', {
+          entity: t('label.data-product-plural'),
+        })}
+        onClick={handleAddClick}
+      />
+    ) : (
+      <WidgetEditButton
+        data-testid="edit-button"
+        title={t('label.edit-entity', {
+          entity: t('label.data-product-plural'),
+        })}
+        onClick={handleAddClick}
+      />
+    );
+
     return (
       <Box
         inline
@@ -195,32 +214,29 @@ const DataProductsContainer = ({
         className="layout-space layout-space-horizontal"
         gap={4}
         itemClassName="layout-space-item">
-        {hasPermission && isEmpty(dataProducts) && (
-          <WidgetPlusButton
-            data-testid="add-data-product"
-            disabled={domainMissing}
-            title={
-              domainMissing
-                ? t('message.select-domain-to-add-data-product')
-                : t('label.add-entity', {
-                    entity: t('label.data-product-plural'),
-                  })
-            }
-            onClick={domainMissing ? undefined : handleAddClick}
-          />
-        )}
-        {hasPermission && !domainMissing && !isEmpty(dataProducts) && (
-          <WidgetEditButton
-            data-testid="edit-button"
-            title={t('label.edit-entity', {
-              entity: t('label.data-product-plural'),
-            })}
-            onClick={handleAddClick}
-          />
-        )}
+        {hasPermission &&
+          (domainMissing
+            ? isEmpty(dataProducts) && (
+                <WidgetPlusButton
+                  disabled
+                  data-testid="add-data-product"
+                  title={t('message.select-domain-to-add-data-product')}
+                />
+              )
+            : withPicker(actionButton))}
       </Box>
     );
-  }, [showHeader, dataProducts, hasPermission, domainMissing, t]);
+  }, [
+    showHeader,
+    dataProducts,
+    hasPermission,
+    domainMissing,
+    isEditMode,
+    fetchAPI,
+    multiple,
+    onSave,
+    t,
+  ]);
 
   const addTagButton = useMemo(
     () =>
@@ -239,10 +255,6 @@ const DataProductsContainer = ({
   );
 
   const renderer = useMemo(() => {
-    if (isEditMode) {
-      return autoCompleteFormSelectContainer;
-    }
-
     if (newLook && isEmpty(renderDataProducts)) {
       return null;
     }
@@ -255,13 +267,7 @@ const DataProductsContainer = ({
         </Box>
       </Box>
     );
-  }, [
-    newLook,
-    isEditMode,
-    addTagButton,
-    renderDataProducts,
-    autoCompleteFormSelectContainer,
-  ]);
+  }, [newLook, addTagButton, renderDataProducts]);
 
   if (newLook) {
     return (

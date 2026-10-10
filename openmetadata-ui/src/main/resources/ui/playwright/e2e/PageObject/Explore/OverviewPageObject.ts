@@ -79,7 +79,6 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly domainList: Locator;
   private readonly tagListContainer: Locator;
   private readonly tierListContainer: Locator;
-  private readonly updateTierButton: Locator;
   private readonly tierList: Locator;
   private readonly glossaryTermListContainer: Locator;
   private readonly userSearchBar: Locator;
@@ -127,8 +126,7 @@ export class OverviewPageObject extends RightPanelBase {
     this.applyTagPickerButton = this.page.getByTestId('update-btn');
     this.domainList = this.page.locator('.domains-content');
     this.tagListContainer = this.page.locator('.tags-section');
-    this.tierListContainer = this.page.getByTestId('cards');
-    this.updateTierButton = this.page.getByTestId('update-tier-card');
+    this.tierListContainer = this.page.getByTestId('drop-down-menu');
     this.tierList = this.getSummaryPanel().getByTestId('Tier');
     this.glossaryTermListContainer =
       this.page.getByTestId('glossary-container');
@@ -153,7 +151,8 @@ export class OverviewPageObject extends RightPanelBase {
       'owner-select-teams-search-bar'
     );
     this.listItem = this.page.locator('.selectable-list-item');
-    this.clearTierButton = this.tierListContainer.getByTestId('clear-tier');
+    this.clearTierButton =
+      this.tierListContainer.getByTestId('clear-filter-btn');
     this.tagsSection = this.container.locator('.tags-section, [class*="tags"]');
     this.tierSection = this.container.locator('.tier-section, [class*="tier"]');
     this.domainsSection = this.container.locator(
@@ -279,24 +278,21 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async assignTier(tierName: string): Promise<OverviewPageObject> {
-    await this.editTierIcon.click();
-
-    // Wait for the tier selection popover
-    await this.tierListContainer.waitFor({ state: 'visible' });
+    // A panel scroll closes the picker; the click's scroll-into-view can land just after it opens.
+    await expect(async () => {
+      await this.editTierIcon.click();
+      await expect(this.tierListContainer).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
 
     await waitForAllLoadersToDisappear(this.tierListContainer);
 
-    // Find and click the tier radio button
-    const tierRadioButton = this.tierListContainer.getByTestId(
-      `radio-btn-${tierName}`
-    );
-    await tierRadioButton.scrollIntoViewIfNeeded();
-    await tierRadioButton.waitFor({ state: 'visible' });
-    await tierRadioButton.click();
+    const tierRow = this.tierListContainer.getByTestId(`Tier.${tierName}`);
+    await tierRow.scrollIntoViewIfNeeded();
+    await tierRow.waitFor({ state: 'visible' });
 
-    await this.updateTierButton.waitFor({ state: 'visible' });
+    // Picking a tier saves it and closes the picker.
     const tierPatchPromise = this.waitForPatchResponse();
-    await this.updateTierButton.click();
+    await tierRow.click();
     await tierPatchPromise;
 
     await this.tierList.waitFor({ state: 'visible' });
@@ -537,10 +533,12 @@ export class OverviewPageObject extends RightPanelBase {
   async removeTier(): Promise<OverviewPageObject> {
     await this.editTierIcon.scrollIntoViewIfNeeded();
     await this.editTierIcon.waitFor({ state: 'visible' });
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await this.editTierIcon.click({ force: true });
-
-    await this.tierListContainer.waitFor({ state: 'visible' });
+    // A panel scroll closes the picker; the click's scroll-into-view can land just after it opens.
+    await expect(async () => {
+      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+      await this.editTierIcon.click({ force: true });
+      await expect(this.tierListContainer).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
     await this.clearTierButton.waitFor({ state: 'visible' });
 
     const patchPromise = this.waitForPatchResponse();

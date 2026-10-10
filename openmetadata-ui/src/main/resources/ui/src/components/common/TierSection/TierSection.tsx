@@ -137,9 +137,7 @@ const TierSection: React.FC<TierSectionProps> = ({
     () => (
       <TierCard
         currentTier={displayTier?.tagFQN}
-        footerActionButtonsClassName="tier-card-footer-action-buttons"
         open={popoverOpen}
-        tierCardClassName="tier-card-popover"
         updateTier={handleTierSelection}
         onClose={() => {
           handleCancel();
