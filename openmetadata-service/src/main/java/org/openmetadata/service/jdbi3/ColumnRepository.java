@@ -15,8 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
-import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
+import static org.openmetadata.service.events.ChangeEventHandler.entityChangeEvent;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 
 import jakarta.json.JsonPatch;
@@ -352,10 +351,7 @@ public class ColumnRepository {
 
   private void triggerParentChangeEvent(Object parent, String user) {
     ChangeEvent changeEvent =
-        createChangeEventForEntity(user, EventType.ENTITY_UPDATED, (EntityInterface<?>) parent);
-    Object entity = changeEvent.getEntity();
-    changeEvent = copyChangeEvent(changeEvent);
-    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+        entityChangeEvent(user, EventType.ENTITY_UPDATED, (EntityInterface<?>) parent);
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 

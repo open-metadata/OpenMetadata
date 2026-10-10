@@ -64,8 +64,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Permission;
-import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -99,6 +97,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PagePermissionsResolver;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -1080,51 +1079,13 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   }
 
   /**
-   * Authorizes a bulk asset tag/glossary operation: the caller must hold {@code operation} on every
-   * target asset's entity type, otherwise the whole request is rejected. Admins and bots are
-   * exempt. This is the shared permission gate for the bulk asset endpoints (classification tags on
-   * {@link org.openmetadata.service.resources.tags.TagResource}, glossary terms on
-   * GlossaryTermResource); it only validates permissions and performs no business logic.
+   * Adds this entity (a tag) to the assets in the request, in the background. Each asset is
+   * authorized and saved as its own PATCH; an asset the caller may not edit is reported as a failed
+   * row.
    */
-  protected void authorizeBulkAssetsPermission(
-      SecurityContext securityContext, List<EntityReference> assets, MetadataOperation operation) {
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    String user = subjectContext.user().getName();
-
-    Set<String> editPermissibleResources =
-        authorizer.listPermissions(securityContext, user).stream()
-            .filter(
-                permission ->
-                    permission.getPermissions().stream()
-                        .anyMatch(
-                            perm ->
-                                operation.equals(perm.getOperation())
-                                    && Permission.Access.ALLOW.equals(perm.getAccess())))
-            .map(ResourcePermission::getResource)
-            .collect(Collectors.toSet());
-
-    // Validate if all entity types in the request are in the permissible resources
-    List<String> unauthorizedEntityTypes =
-        assets.stream()
-            .map(EntityReference::getType)
-            .filter(entityType -> !editPermissibleResources.contains(entityType))
-            .distinct()
-            .toList();
-
-    if (!unauthorizedEntityTypes.isEmpty()
-        && !subjectContext.isAdmin()
-        && !subjectContext.isBot()) {
-      throw new AuthorizationException(
-          CatalogExceptionMessage.resourcePermissionNotAllowed(
-              user, List.of(operation), unauthorizedEntityTypes));
-    }
-  }
-
   public Response bulkAddToAssetsAsync(
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
-    authorizeBulkAssetsPermission(
-        securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
-
+    PatchRequester requester = PatchRequester.fromRequest(securityContext, authorizer);
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
         .executeDatabaseTask(
@@ -1134,7 +1095,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                 () -> {
                   try {
                     BulkOperationResult result =
-                        repository.bulkAddAndValidateTagsToAssets(entityId, request);
+                        repository.bulkAddAndValidateTagsToAssets(entityId, request, requester);
                     WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
                         jobId, securityContext, result);
                   } catch (Exception e) {
@@ -1150,10 +1111,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
+  /** Removes this entity (a tag) from the assets in the request, as {@link #bulkAddToAssetsAsync}. */
   public Response bulkRemoveFromAssetsAsync(
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
-    authorizeBulkAssetsPermission(
-        securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
+    PatchRequester requester = PatchRequester.fromRequest(securityContext, authorizer);
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
         .executeDatabaseTask(
@@ -1163,7 +1124,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                 () -> {
                   try {
                     BulkOperationResult result =
-                        repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
+                        repository.bulkRemoveAndValidateTagsToAssets(entityId, request, requester);
                     WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
                         jobId, securityContext, result);
                   } catch (Exception e) {

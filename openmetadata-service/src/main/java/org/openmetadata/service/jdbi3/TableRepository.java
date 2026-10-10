@@ -29,6 +29,7 @@ import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TABLE_COLUMN;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
@@ -1811,14 +1812,19 @@ public class TableRepository extends EntityRepository<Table> {
   public List<PropagationDescriptor> getSearchPropagationDescriptors() {
     List<PropagationDescriptor> descriptors =
         new ArrayList<>(super.getSearchPropagationDescriptors());
+    // A column entry carries only its own tags and no data products: ColumnSearchIndex builds it,
+    // and propagation racing that build is how table tags leaked onto columns.
+    // ADR:2026-10-08-column-entries-carry-only-their-own-tags
     descriptors.add(
         new PropagationDescriptor(
-            FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+                FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null)
+            .skipping(TABLE_COLUMN));
     descriptors.add(
         new PropagationDescriptor(
-            FIELD_DATA_PRODUCTS,
-            PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
-            null));
+                FIELD_DATA_PRODUCTS,
+                PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST,
+                null)
+            .skipping(TABLE_COLUMN));
     // Required so SearchRepository.requiresPropagation opens the gate on a cert-only PATCH;
     // the actual cascade onto child docs (test_case, test_case_result, test_case_resolution_status,
     // test_suite, column) is handled by SearchRepository.cascadeCertificationToChildren, not by

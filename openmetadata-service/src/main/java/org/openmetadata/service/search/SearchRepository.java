@@ -2745,23 +2745,61 @@ public class SearchRepository {
       EntityInterface<?> entity)
       throws IOException {
     if (changeDescription != null && !nullOrEmpty(indexMapping.getChildAliases())) {
-      Pair<String, Map<String, Object>> updates =
-          getInheritedFieldChanges(changeDescription, entity, entityType);
-      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
-        if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+      if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+        Pair<String, Map<String, Object>> updates =
+            getInheritedFieldChanges(changeDescription, entity, entityType, descriptor -> true);
+        if (!nullOrEmpty(updates.getKey())) {
           propagateToDomainChildren(entityId, indexMapping, updates);
-        } else {
-          String parentFieldName = resolveParentFieldName(entityType);
-          Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
-          List<String> entityChildren =
-              filterChildAliasesByCapability(
-                  indexMapping, capability -> capability == null || !capability.isTimeSeries());
-          if (!nullOrEmpty(entityChildren)) {
-            searchClient.updateChildren(entityChildren, parentMatch, updates);
-          }
         }
+      } else {
+        propagateToEntityChildren(entityType, entityId, changeDescription, indexMapping, entity);
       }
     }
+  }
+
+  // A child index gets only the fields whose descriptor reaches it, so the children a descriptor
+  // skips are updated by a request of their own.
+  private void propagateToEntityChildren(
+      String entityType,
+      String entityId,
+      ChangeDescription changeDescription,
+      IndexMapping indexMapping,
+      EntityInterface<?> entity)
+      throws IOException {
+    Pair<String, String> parentMatch =
+        new ImmutablePair<>(resolveParentFieldName(entityType), entityId);
+    for (Map.Entry<Set<String>, List<String>> group :
+        childAliasesBySkippedFields(entityType, indexMapping).entrySet()) {
+      Set<String> skippedFields = group.getKey();
+      Pair<String, Map<String, Object>> updates =
+          getInheritedFieldChanges(
+              changeDescription,
+              entity,
+              entityType,
+              descriptor -> !skippedFields.contains(descriptor.fieldName()));
+      if (!nullOrEmpty(updates.getKey())) {
+        searchClient.updateChildren(withClusterAlias(group.getValue()), parentMatch, updates);
+      }
+    }
+  }
+
+  // The entity's non-time-series child aliases, grouped by the propagated fields that skip them.
+  private Map<Set<String>, List<String>> childAliasesBySkippedFields(
+      String entityType, IndexMapping indexMapping) {
+    List<PropagationDescriptor> descriptors =
+        Entity.getEntityRepository(entityType).getSearchPropagationDescriptors();
+    Map<Set<String>, List<String>> groups = new LinkedHashMap<>();
+    for (String alias :
+        childAliasesWithCapability(
+            indexMapping, capability -> capability == null || !capability.isTimeSeries())) {
+      Set<String> skippedFields =
+          descriptors.stream()
+              .filter(descriptor -> !descriptor.reaches(alias))
+              .map(PropagationDescriptor::fieldName)
+              .collect(Collectors.toSet());
+      groups.computeIfAbsent(skippedFields, fields -> new ArrayList<>()).add(alias);
+    }
+    return groups;
   }
 
   /**
@@ -2777,21 +2815,24 @@ public class SearchRepository {
   }
 
   private List<String> clusterChildAliasesOf(IndexMapping indexMapping) {
-    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
-    return childAliasesOf(indexMapping).stream()
-        .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
-        .toList();
+    return withClusterAlias(childAliasesOf(indexMapping));
   }
 
   private List<String> filterChildAliasesByCapability(
       IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
-    List<String> childAliases = childAliasesOf(indexMapping);
-    if (nullOrEmpty(childAliases)) {
-      return List.of();
-    }
-    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
-    return childAliases.stream()
+    return withClusterAlias(childAliasesWithCapability(indexMapping, includeCapability));
+  }
+
+  private List<String> childAliasesWithCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    return childAliasesOf(indexMapping).stream()
         .filter(alias -> includeCapability.test(EntityIndexCapabilityRegistry.get(alias)))
+        .toList();
+  }
+
+  private List<String> withClusterAlias(List<String> aliases) {
+    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
+    return aliases.stream()
         .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
         .toList();
   }
@@ -3242,7 +3283,10 @@ public class SearchRepository {
   }
 
   private Pair<String, Map<String, Object>> getInheritedFieldChanges(
-      ChangeDescription changeDescription, EntityInterface<?> entity, String entityType) {
+      ChangeDescription changeDescription,
+      EntityInterface<?> entity,
+      String entityType,
+      Predicate<PropagationDescriptor> reachesChildren) {
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldData = new HashMap<>();
 
@@ -3250,6 +3294,7 @@ public class SearchRepository {
       EntityRepository<?> repo = Entity.getEntityRepository(entityType);
       Map<String, PropagationDescriptor> descriptorMap =
           repo.getSearchPropagationDescriptors().stream()
+              .filter(reachesChildren)
               .collect(Collectors.toMap(PropagationDescriptor::fieldName, Function.identity()));
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         PropagationDescriptor desc = descriptorMap.get(field.getName());
