@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,25 +11,12 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../../../styles/variables.less';
+/** The sub-views rendered inside the Personas settings panel. */
+export type PersonaView =
+  | { type: 'landing' }
+  | { type: 'add' }
+  | { type: 'detail'; fqn: string; name: string }
+  | { type: 'customize'; fqn: string; name: string; category: string };
 
-.widget-card {
-  &.selected {
-    border: 2px solid @blue-9;
-  }
-
-  .check-box {
-    position: absolute;
-    top: @size-xs;
-    right: @size-xs;
-    border: 1px solid @border-light;
-
-    .check-icon {
-      color: @blue-9;
-      font-size: @size-lg;
-      svg {
-        fill: none;
-      }
-    }
-  }
-}
+/** Detail-page tabs, selected via the `?tab=` hash param. */
+export type PersonaDetailTab = 'customize-ui' | 'users';
