@@ -1169,11 +1169,18 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       return;
     }
     // Direct assets were just migrated to the data product's new domains. Reconcile each against
-    // its own (updated) explicit domains, and hand those domains down as the inherited set for its
+    // its own (updated) effective domains, and hand those domains down as the inherited set for its
     // subtree. Detached assets are reindexed once at the end (a single batched search write) rather
     // than one call per asset, which matters when a mass-detach touches many descendants.
     List<EntityReference> reindexQueue = new ArrayList<>();
-    Map<UUID, Set<UUID>> directDomains = batchFetchDomainIds(refIds(assets));
+    Map<UUID, Set<UUID>> explicitDomains = batchFetchDomainIds(refIds(assets));
+    // An asset with no explicit DOMAIN HAS asset edge may still carry a domain inherited from its
+    // containment parent — the read path resolves this via inheritDomains, and bulk-add never
+    // writes a DOMAIN edge for such assets. Such an asset is NOT "left with no domains", so resolve
+    // its effective (explicit-or-inherited) set before reconciling. Otherwise the detach policy
+    // fires on an inheriting direct asset and propagates an empty set down its whole subtree,
+    // silently detaching unrelated data products.
+    Map<UUID, Set<UUID>> directDomains = resolveEffectiveDomains(assets, explicitDomains);
     reconcileConflicts(assets, directDomains, reindexQueue);
     reconcileInheritingDescendants(assets, directDomains, reindexQueue);
     if (searchRepository != null && !reindexQueue.isEmpty()) {
@@ -1333,6 +1340,44 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         daoCollection
             .relationshipDAO()
             .findFromBatch(assetIds, Relationship.HAS.ordinal(), DOMAIN, NON_DELETED));
+  }
+
+  /**
+   * Resolve each asset's effective domains: keep explicit domains where present, and for assets
+   * with no explicit {@code DOMAIN HAS asset} edge resolve the inherited set through the same
+   * read-time path ({@link Entity#getEntitiesForInheritance}, which runs {@code inheritDomains}
+   * against the containment parent chain). Mirrors what {@code validateDataProductDomainMatch} and
+   * a {@code GET ?fields=domains} see, so the detach policy's "left with no domains" test matches
+   * the rule's view of the asset: an inheriting asset with a non-empty parent domain is NOT
+   * domain-less and must not be detached. {@code getEntitiesForInheritance} resolves a single
+   * entity type, so mixed-type direct assets are grouped per type.
+   */
+  private Map<UUID, Set<UUID>> resolveEffectiveDomains(
+      List<EntityReference> assets, Map<UUID, Set<UUID>> explicit) {
+    List<EntityReference> needInherited =
+        assets.stream()
+            .filter(a -> explicit.getOrDefault(a.getId(), Set.of()).isEmpty())
+            .collect(Collectors.toList());
+    if (needInherited.isEmpty()) {
+      return explicit;
+    }
+    Map<UUID, Set<UUID>> result = new HashMap<>(explicit);
+    Map<String, List<EntityReference>> byType =
+        needInherited.stream().collect(Collectors.groupingBy(EntityReference::getType));
+    for (List<EntityReference> sameTypeRefs : byType.values()) {
+      List<? extends EntityInterface<?>> hydrated =
+          Entity.getEntitiesForInheritance(sameTypeRefs, FIELD_DOMAINS, NON_DELETED);
+      for (EntityInterface<?> entity : hydrated) {
+        Set<UUID> effective =
+            nullOrEmpty(entity.getDomains())
+                ? Set.of()
+                : entity.getDomains().stream()
+                    .map(EntityReference::getId)
+                    .collect(Collectors.toSet());
+        result.put(entity.getId(), effective);
+      }
+    }
+    return result;
   }
 
   private Map<UUID, Set<UUID>> batchFetchDataProductDomainIds(List<String> dataProductIds) {
