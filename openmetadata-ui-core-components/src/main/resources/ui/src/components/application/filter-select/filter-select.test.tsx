@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -18,6 +19,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { FilterSelect } from './filter-select';
 import type { FilterSelectProps } from './filter-select.types';
@@ -74,6 +76,24 @@ const renderFilter = (props: Partial<FilterSelectProps> = {}) => {
   );
 
   return { onChange };
+};
+
+// react-aria fires onSelectionChange('all') for ⌘/Ctrl+A on a focused menu
+// row; drive the same native keydown the browser would.
+const selectAllByKeyboard = (focusRow = 'snowflake') => {
+  const menu = screen.getByRole('menu');
+  screen.getByTestId(focusRow).focus();
+
+  act(() =>
+    menu.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'a',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      })
+    )
+  );
 };
 
 describe('FilterSelect', () => {
@@ -231,6 +251,108 @@ describe('FilterSelect', () => {
     fireEvent.click(screen.getByLabelText('Select all'));
 
     expect(onChange).toHaveBeenCalledWith(['bigquery', 'redshift']);
+  });
+
+  it('keyboard select-all (Ctrl+A) selects displayed rows, not the null option', () => {
+    const { onChange } = renderFilter({
+      showSelectAll: true,
+      nullOption: { value: 'OM_NULL_FIELD', label: 'No Service' },
+    });
+
+    selectAllByKeyboard();
+
+    expect(onChange).toHaveBeenCalledWith([
+      'snowflake',
+      'bigquery',
+      'redshift',
+    ]);
+  });
+
+  it('keyboard select-all and the checkbox select-all commit the same set', () => {
+    const changes: string[][] = [];
+    const Controlled = () => {
+      const [selected, setSelected] = useState<string[]>([]);
+
+      return (
+        <FilterSelect
+          isOpen
+          showSelectAll
+          label="Service"
+          nullOption={{ value: 'OM_NULL_FIELD', label: 'No Service' }}
+          options={OPTIONS}
+          selectedValues={selected}
+          onChange={(v) => {
+            changes.push(v);
+            setSelected(v);
+          }}
+        />
+      );
+    };
+    render(<Controlled />);
+
+    // ⌘A from a menu row excludes the null option, matching the checkbox.
+    selectAllByKeyboard();
+    expect(changes.at(-1)).toEqual(['snowflake', 'bigquery', 'redshift']);
+
+    // Deselecting via the checkbox now clears every displayed row too — the
+    // keyboard path no longer commits a wider set that strands the null.
+    fireEvent.click(screen.getByLabelText('Select all'));
+    expect(changes.at(-1)).toEqual([]);
+  });
+
+  it('keyboard select-all merges displayed rows with selections hidden by the search', () => {
+    const changes: string[][] = [];
+    const Controlled = () => {
+      const [selected, setSelected] = useState<string[]>(['snowflake']);
+
+      return (
+        <FilterSelect
+          isOpen
+          searchable
+          showSelectAll
+          label="Service"
+          nullOption={{ value: 'OM_NULL_FIELD', label: 'No Service' }}
+          options={OPTIONS}
+          selectedValues={selected}
+          onChange={(v) => {
+            changes.push(v);
+            setSelected(v);
+          }}
+        />
+      );
+    };
+    render(<Controlled />);
+
+    fireEvent.change(screen.getByPlaceholderText('Search'), {
+      target: { value: 'big' },
+    });
+
+    // 'bigquery' is the only displayed row; 'snowflake' is filtered out, so it
+    // is retained via ...current, and the null (hidden by the search) is still
+    // excluded — matching the checkbox scope.
+    selectAllByKeyboard('bigquery');
+    expect(changes.at(-1)).toEqual(['snowflake', 'bigquery']);
+  });
+
+  it('ignores keyboard select-all while the search box has focus', () => {
+    const { onChange } = renderFilter({
+      searchable: true,
+      showSelectAll: true,
+    });
+
+    screen.getByPlaceholderText('Search').focus();
+    act(() =>
+      screen.getByRole('menu').dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'a',
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    );
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('filters locally when no onSearch is given', () => {
