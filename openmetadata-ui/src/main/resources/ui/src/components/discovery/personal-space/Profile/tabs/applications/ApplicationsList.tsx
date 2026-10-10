@@ -139,7 +139,7 @@ const ApplicationsList: FC<ApplicationsViewProps> = ({
   }, [isAdminUser, onHeaderChange, onNavigate, showDisabled, t]);
 
   return (
-    <Box className="tw:px-8 tw:pb-8" direction="col" gap={4}>
+    <Box className="tw:px-8 tw:pt-4 tw:pb-8 tw:flex-1" direction="col" gap={4}>
       <Typography
         className="tw:text-secondary tw:uppercase"
         size="text-xs"
@@ -150,7 +150,7 @@ const ApplicationsList: FC<ApplicationsViewProps> = ({
       </Typography>
 
       {!isLoading && apps.length === 0 ? (
-        <Box className="tw:relative tw:min-h-90">
+        <Box className="tw:relative tw:flex-1 tw:min-h-90">
           <EmptyPlaceholder
             data-testid="no-applications"
             description={

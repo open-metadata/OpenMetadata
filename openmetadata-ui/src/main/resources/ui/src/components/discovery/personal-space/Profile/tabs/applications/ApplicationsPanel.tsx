@@ -121,7 +121,7 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
     // The marketplace and install flow are admin-only, as on the legacy routes.
     if (MARKETPLACE_VIEWS.has(view.type) && !isAdminUser) {
       return (
-        <Box className="tw:relative tw:min-h-90 tw:mx-8">
+        <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
           <EmptyPlaceholder
             data-testid="app-no-permission"
             icon={Lock01}
@@ -156,6 +156,7 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
           direction="col">
           {/* Keyed so switching apps remounts the view and drops stale state. */}
           <Box
+            className="tw:min-h-0 tw:flex-1"
             direction="col"
             key={`${view.type}-${'fqn' in view ? view.fqn : ''}`}>
             {content}

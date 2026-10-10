@@ -312,7 +312,7 @@ const MarketplaceAppDetail: FC<MarketplaceAppDetailProps> = ({
 
   if (!appData) {
     return (
-      <Box className="tw:relative tw:min-h-90 tw:mx-8">
+      <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
         <EmptyPlaceholder
           data-testid="app-not-found"
           description={fqn}

@@ -543,7 +543,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
 
   if (isLoading) {
     return (
-      <Box className="tw:px-8 tw:pb-8" direction="col" gap={4}>
+      <Box className="tw:px-8 tw:pt-4 tw:pb-8" direction="col" gap={4}>
         <Skeleton height={40} variant="rounded" width="100%" />
         <Skeleton height={240} variant="rounded" width="100%" />
       </Box>
@@ -552,7 +552,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
 
   if (!appData) {
     return (
-      <Box className="tw:relative tw:min-h-90 tw:mx-8">
+      <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
         <EmptyPlaceholder
           data-testid="app-not-found"
           description={fqn}
@@ -578,7 +578,10 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   };
 
   return (
-    <Box className="tw:px-8 tw:pb-8" data-testid="app-detail" direction="col">
+    <Box
+      className="tw:px-8 tw:pt-4 tw:pb-8"
+      data-testid="app-detail"
+      direction="col">
       {PluginDetails ? (
         <PluginDetails />
       ) : (
