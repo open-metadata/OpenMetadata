@@ -54,7 +54,7 @@ test.describe.serial('Certification Dropdown', () => {
       await openCertificationDropdown(page);
 
       await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+        page.getByTestId(tag.responseData.fullyQualifiedName)
       ).toBeVisible();
 
       await closeCertificationDropdown(page);
@@ -82,15 +82,11 @@ test.describe.serial('Certification Dropdown', () => {
       await openCertificationDropdown(page);
 
       await expect(
-        page.getByTestId(
-          `radio-btn-${disabledTag.responseData.fullyQualifiedName}`
-        )
+        page.getByTestId(disabledTag.responseData.fullyQualifiedName)
       ).not.toBeVisible();
 
       await expect(
-        page.getByTestId(
-          `radio-btn-${enabledTag.responseData.fullyQualifiedName}`
-        )
+        page.getByTestId(enabledTag.responseData.fullyQualifiedName)
       ).toBeVisible();
 
       await closeCertificationDropdown(page);
@@ -116,7 +112,7 @@ test.describe.serial('Certification Dropdown', () => {
       await openCertificationDropdown(page);
 
       await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+        page.getByTestId(tag.responseData.fullyQualifiedName)
       ).not.toBeVisible();
 
       await closeCertificationDropdown(page);
@@ -128,7 +124,7 @@ test.describe.serial('Certification Dropdown', () => {
       await openCertificationDropdown(page);
 
       await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+        page.getByTestId(tag.responseData.fullyQualifiedName)
       ).toBeVisible();
 
       await closeCertificationDropdown(page);
@@ -159,21 +155,15 @@ test.describe.serial('Certification Dropdown', () => {
       await openCertificationDropdown(page);
 
       await expect(
-        page.getByTestId(
-          `radio-btn-${disabledTag1.responseData.fullyQualifiedName}`
-        )
+        page.getByTestId(disabledTag1.responseData.fullyQualifiedName)
       ).not.toBeVisible();
 
       await expect(
-        page.getByTestId(
-          `radio-btn-${disabledTag2.responseData.fullyQualifiedName}`
-        )
+        page.getByTestId(disabledTag2.responseData.fullyQualifiedName)
       ).not.toBeVisible();
 
       await expect(
-        page.getByTestId(
-          `radio-btn-${enabledTag.responseData.fullyQualifiedName}`
-        )
+        page.getByTestId(enabledTag.responseData.fullyQualifiedName)
       ).toBeVisible();
 
       await closeCertificationDropdown(page);

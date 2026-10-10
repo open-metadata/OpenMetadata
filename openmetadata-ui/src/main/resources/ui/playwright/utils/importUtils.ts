@@ -683,15 +683,16 @@ export const fillCertificationDetails = async (
   certification: string,
   _isBulkEdit?: boolean
 ) => {
-  const radioTestId = `radio-btn-${certification}`;
-  await openRadioCardEditor(
+  const option = page.getByTestId('drop-down-menu').getByTestId(certification);
+  await openActiveCellPopover(
     page,
-    radioTestId,
+    option,
     '/api/v1/tags?parent=Certification*'
   );
 
-  await page.getByTestId(radioTestId).click();
-  await clickRadioCardUpdate(page, 'update-certification');
+  // Picking a row commits it and closes the editor.
+  await option.click();
+  await option.waitFor({ state: 'detached' });
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
