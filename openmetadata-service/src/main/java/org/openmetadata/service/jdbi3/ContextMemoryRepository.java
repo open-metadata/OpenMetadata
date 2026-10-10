@@ -44,6 +44,7 @@ import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
 import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -68,12 +69,18 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public static final String FIELD_RELATED_ENTITIES = "relatedEntities";
   static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
   public static final String FIELD_SOURCE_FILE = "sourceFile";
-  static final String FIELD_SOURCE_ENTITY = "sourceEntity";
+  public static final String FIELD_SOURCE_ENTITY = "sourceEntity";
+  public static final String FIELD_ROOT_MEMORY = "rootMemory";
+  public static final String FIELD_PARENT_MEMORY = "parentMemory";
   private static final String PATCH_FIELDS =
       FIELD_PRIMARY_ENTITY
           + ","
           + FIELD_RELATED_ENTITIES
-          + ",rootMemory,parentMemory,"
+          + ","
+          + FIELD_ROOT_MEMORY
+          + ","
+          + FIELD_PARENT_MEMORY
+          + ","
           + FIELD_SOURCE_FILE
           + ","
           + FIELD_SOURCE_ENTITY;
@@ -81,7 +88,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       FIELD_PRIMARY_ENTITY
           + ","
           + FIELD_RELATED_ENTITIES
-          + ",rootMemory,parentMemory,"
+          + ","
+          + FIELD_ROOT_MEMORY
+          + ","
+          + FIELD_PARENT_MEMORY
+          + ","
           + FIELD_SOURCE_FILE
           + ","
           + FIELD_SOURCE_ENTITY;
@@ -360,7 +371,33 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
               .filter(r -> !Entity.DOMAIN.equals(r.getType()))
               .toList();
     }
-    return nullOrEmpty(refs) ? null : refs.getFirst();
+    // Deleting an anchor removes its edge; retaining the stored subject lets maintenance expire it.
+    return nullOrEmpty(refs) ? entity.getPrimaryEntity() : refs.getFirst();
+  }
+
+  /** The entities among {@code candidateIds} that anchor at least one memory, with their type. */
+  public List<EntityReference> findAnchors(List<UUID> candidateIds) {
+    List<EntityReference> anchors = List.of();
+    if (!nullOrEmpty(candidateIds)) {
+      anchors =
+          daoCollection
+              .relationshipDAO()
+              .findMemoryAnchorEdges(
+                  candidateIds.stream().map(UUID::toString).toList(),
+                  List.of(Relationship.APPLIED_TO.ordinal(), Relationship.HAS.ordinal()))
+              .stream()
+              .filter(ContextMemoryRepository::isAnchorEdge)
+              .map(edge -> new EntityReference().withId(edge.fromId()).withType(edge.fromEntity()))
+              .distinct()
+              .toList();
+    }
+    return anchors;
+  }
+
+  /** The edge {@link #getPrimaryEntity} reads: APPLIED_TO, or the older HAS from a non-domain. */
+  private static boolean isAnchorEdge(CollectionDAO.MemoryAnchorEdge edge) {
+    return edge.relation() == Relationship.APPLIED_TO.ordinal()
+        || !Entity.DOMAIN.equals(edge.fromEntity());
   }
 
   private List<EntityReference> getRelatedEntities(ContextMemory entity) {
@@ -476,10 +513,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   @Override
   public void prepare(ContextMemory entity, boolean update) {
+    requireWritableByWriter(entity, update);
     if (entity.getPrimaryEntity() != null) {
-      EntityReference primaryEntity =
-          Entity.getEntityReference(entity.getPrimaryEntity(), Include.NON_DELETED);
-      entity.setPrimaryEntity(primaryEntity);
+      entity.setPrimaryEntity(resolvePrimaryEntity(entity, update));
     }
     if (entity.getSourceEntity() == null && entity.getSourceFile() != null) {
       entity.setSourceEntity(entity.getSourceFile());
@@ -505,6 +541,39 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     setCreatorAsDefaultOwner(entity, update);
     prepareLifecycle(entity, update);
     inheritAnchorDomains(entity, update);
+  }
+
+  private EntityReference resolvePrimaryEntity(ContextMemory memory, boolean update) {
+    try {
+      return Entity.getEntityReference(memory.getPrimaryEntity(), Include.NON_DELETED);
+    } catch (EntityNotFoundException missing) {
+      if (!update || memory.getId() == null || !dao.exists(dao.getTableName(), memory.getId())) {
+        throw missing;
+      }
+      ContextMemory stored = dao.findEntityById(memory.getId(), Include.ALL);
+      if (!sameAnchor(memory.getPrimaryEntity(), stored.getPrimaryEntity())) {
+        throw missing;
+      }
+      return stored.getPrimaryEntity();
+    }
+  }
+
+  /**
+   * Checked before any reference is resolved, so that a writer who may not write for others learns
+   * nothing about an entity they cannot view, not even whether it exists.
+   */
+  private static void requireWritableByWriter(ContextMemory memory, boolean update) {
+    String writer = memory.getUpdatedBy();
+    ContextMemoryWriteAccess.requireWriter(writer);
+    if (!ContextMemoryWriteAccess.isPrivilegedWriter(writer)) {
+      ContextMemoryWriteAccess.requireViewableReferences(memory, writer);
+      if (!update) {
+        ContextMemoryWriteAccess.requireSourceTypeAllowed(null, memory.getSourceType());
+        ContextMemoryWriteAccess.requireOwnedByWriter(
+            memory.getOwners(),
+            Entity.getEntityReferenceByName(Entity.USER, writer, Include.NON_DELETED));
+      }
+    }
   }
 
   private void validateNotSelfReference(ContextMemory entity, UUID referencedId, String field) {
@@ -599,7 +668,16 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   @Override
   public void storeEntity(ContextMemory entity, boolean update) {
-    store(entity, update);
+    if (update) {
+      daoCollection
+          .contextMemoryDAO()
+          .updatePreservingUsage(
+              entity.getId(), entity.getFullyQualifiedName(), serializeForStorage(entity));
+      invalidate(entity);
+    } else {
+      entity.setLastContentUpdatedAt(entity.getUpdatedAt());
+      store(entity, false);
+    }
   }
 
   @Override
@@ -691,9 +769,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   public class ContextMemoryUpdater extends EntityUpdater {
+    private final ContextMemory contentSnapshot;
+
     public ContextMemoryUpdater(
         ContextMemory original, ContextMemory updated, Operation operation) {
       super(original, updated, operation);
+      contentSnapshot = JsonUtils.deepCopy(original, ContextMemory.class);
       // Consolidated edits still need distinct timestamps for conditional lifecycle writes.
       if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
         updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
@@ -717,6 +798,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      requireOwnersChangedByPrivilegedWriter();
+      requireSourceTypeChangedByPrivilegedWriter();
       flipToManualOnUserEdit();
       recordChange("title", original.getTitle(), updated.getTitle());
       recordChange("summary", original.getSummary(), updated.getSummary());
@@ -784,9 +867,25 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.CONTEXT_MEMORY,
           original.getId());
       updateSourceEntityRelationship();
+      updateContentClock();
 
       // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
       // version history so routine retrieval does not churn the entity version.
+    }
+
+    private void updateContentClock() {
+      Long previousContentTime =
+          contentSnapshot.getLastContentUpdatedAt() == null
+              ? contentSnapshot.getUpdatedAt()
+              : contentSnapshot.getLastContentUpdatedAt();
+      updated.setLastContentUpdatedAt(
+          contentChanged(contentSnapshot, updated)
+              ? Math.max(updated.getUpdatedAt(), previousContentTime + 1)
+              : previousContentTime);
+      recordChange(
+          "lastContentUpdatedAt",
+          original.getLastContentUpdatedAt(),
+          updated.getLastContentUpdatedAt());
     }
 
     /**
@@ -800,10 +899,31 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     private void flipToManualOnUserEdit() {
       if (operation == Operation.PATCH
           && updated.getSourceType() == original.getSourceType()
-          && isAutomatedSource(original.getSourceType())
+          && ContextMemoryWriteAccess.isAutomatedSource(original.getSourceType())
           && extractionManagedFieldChanged()) {
         updated.setSourceType(ContextMemorySourceType.MANUAL);
       }
+    }
+
+    /**
+     * Runs in the transaction that stored the new owners, so refusing here also undoes them. Only
+     * admins and bots reassign a memory: ownership decides whose agent the memory speaks to.
+     */
+    private void requireOwnersChangedByPrivilegedWriter() {
+      if (!isPrivilegedUpdatingUser()) {
+        ContextMemoryWriteAccess.requireOwnersUnchanged(original.getOwners(), updated.getOwners());
+      }
+    }
+
+    private void requireSourceTypeChangedByPrivilegedWriter() {
+      if (!isPrivilegedUpdatingUser()) {
+        ContextMemoryWriteAccess.requireSourceTypeAllowed(
+            original.getSourceType(), updated.getSourceType());
+      }
+    }
+
+    private boolean isPrivilegedUpdatingUser() {
+      return Boolean.TRUE.equals(updatingUser.getIsAdmin()) || updatedByBot();
     }
 
     /** True when a PATCH edited a field the extraction reconciler would otherwise overwrite. */
@@ -864,9 +984,22 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
   }
 
-  private static boolean isAutomatedSource(ContextMemorySourceType type) {
-    return type == ContextMemorySourceType.FILE_EXTRACTION
-        || type == ContextMemorySourceType.PAGE_EXTRACTION;
+  private static boolean sameAnchor(EntityReference first, EntityReference second) {
+    return first == null || second == null
+        ? first == second
+        : EntityUtil.entityReferenceMatch.test(first, second);
+  }
+
+  private static boolean contentChanged(ContextMemory before, ContextMemory after) {
+    return !Objects.equals(before.getTitle(), after.getTitle())
+        || !Objects.equals(before.getDescription(), after.getDescription())
+        || !Objects.equals(before.getSummary(), after.getSummary())
+        || !Objects.equals(before.getQuestion(), after.getQuestion())
+        || !Objects.equals(before.getAnswer(), after.getAnswer())
+        || !Objects.equals(before.getMemoryType(), after.getMemoryType())
+        || !Objects.equals(before.getMemoryScope(), after.getMemoryScope())
+        || !Objects.equals(before.getMachineRepresentation(), after.getMachineRepresentation())
+        || !sameAnchor(before.getPrimaryEntity(), after.getPrimaryEntity());
   }
 
   private static boolean extractionManagedFieldChanged(

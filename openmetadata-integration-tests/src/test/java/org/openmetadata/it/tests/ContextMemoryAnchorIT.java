@@ -9,7 +9,9 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -51,6 +53,7 @@ import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
+import org.openmetadata.sdk.services.search.SearchAPI;
 import org.openmetadata.service.Entity;
 
 /** A memory anchored to an asset takes the asset's governance: its domain on create, its readers on read. */
@@ -181,6 +184,101 @@ public class ContextMemoryAnchorIT {
             .contains(anchored.getId().toString()));
   }
 
+  /**
+   * A search that pins the anchor it asks about returns that anchor's memories to its readers,
+   * exactly as REST does (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). Free text that
+   * pins nothing keeps the conservative rule above.
+   */
+  @Test
+  void aSearchPinnedToAnAnchor_agreesWithRestOnItsMemories(TestNamespace ns) {
+    Table anchor = ShortStackFactory.table(ns);
+    String query = "pinnedanchor" + UUID.randomUUID().toString().substring(0, 8);
+    ContextMemory shown =
+        adminMemories()
+            .create(
+                entityMemory(ns, "pinned-shown")
+                    .withQuestion(query)
+                    .withPrimaryEntity(ref(Entity.TABLE, anchor.getId())));
+    ContextMemory privateOne =
+        adminMemories()
+            .create(
+                privateMemory(ns, "pinned-private")
+                    .withQuestion(query)
+                    .withPrimaryEntity(ref(Entity.TABLE, anchor.getId())));
+    User reader = createUser(ns, null, null);
+    User blocked = createUser(ns, denyTableView(ns), null);
+    String pinned = pinnedTo(anchor.getId());
+    ListParams byAnchor =
+        new ListParams().setLimit(100).addFilter("primaryEntityId", anchor.getId().toString());
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    Set.of(shown.getId(), privateOne.getId()),
+                    searchHits(SdkClients.adminClient(), query, pinned)));
+
+    assertEquals(List.of(shown.getId()), ids(memoriesAs(reader).list(byAnchor)));
+    assertEquals(Set.of(shown.getId()), searchHits(clientOf(reader), query, pinned));
+    assertTrue(ids(memoriesAs(blocked).list(byAnchor)).isEmpty());
+    assertTrue(searchHits(clientOf(blocked), query, pinned).isEmpty());
+    assertEquals(1, countedHits(clientOf(reader), query, pinned), "counts agree with the hits");
+    assertEquals(0, countedHits(clientOf(blocked), query, pinned));
+    assertTrue(
+        searchHits(clientOf(reader), query, null).isEmpty(),
+        "free text that pins no anchor keeps anchored memories owner-only");
+  }
+
+  /** A file anchor is read by the file's own sharing too, in a pinned search as in REST. */
+  @Test
+  void aSearchPinnedToAPrivateFile_showsItsMemoriesToTheFileOwnerOnly(TestNamespace ns) {
+    User fileOwner = createUser(ns, null, null);
+    ContextFile file = privateFileOwnedBy(ns, fileOwner);
+    String query = "privatefile" + UUID.randomUUID().toString().substring(0, 8);
+    ContextMemory memory =
+        adminMemories()
+            .create(
+                entityMemory(ns, "private-file-pinned")
+                    .withQuestion(query)
+                    .withPrimaryEntity(file.getEntityReference()));
+    String pinned = pinnedTo(file.getId());
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    Set.of(memory.getId()), searchHits(SdkClients.adminClient(), query, pinned)));
+
+    assertEquals(Set.of(memory.getId()), searchHits(clientOf(fileOwner), query, pinned));
+    assertTrue(searchHits(clientOf(createUser(ns, null, null)), query, pinned).isEmpty());
+  }
+
+  @Test
+  void theContextCenterListingFilteredByAnAsset_showsItsReadersItsMemories(TestNamespace ns) {
+    Table anchor = ShortStackFactory.table(ns);
+    ContextMemory anchored =
+        adminMemories()
+            .create(
+                entityMemory(ns, "listed-by-asset")
+                    .withPrimaryEntity(ref(Entity.TABLE, anchor.getId())));
+    ListParams byAsset =
+        new ListParams().setLimit(100).addQueryParam("assets", anchor.getId().toString());
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertTrue(ids(adminMemories().list(byAsset)).contains(anchored.getId())));
+
+    assertEquals(
+        List.of(anchored.getId()), ids(memoriesAs(createUser(ns, null, null)).list(byAsset)));
+    assertTrue(ids(memoriesAs(createUser(ns, denyTableView(ns), null)).list(byAsset)).isEmpty());
+  }
+
   @Test
   void fileExtractedMemoriesRemainAnchoredInSearch(TestNamespace ns) {
     ContextFile file =
@@ -214,21 +312,7 @@ public class ContextMemoryAnchorIT {
   @Test
   void aPrivateFileHidesItsAnchoredMemoryFromOtherReaders(TestNamespace ns) {
     User fileOwner = createUser(ns, null, null);
-    ContextFile file =
-        ns.trackRoot(
-            Entity.CONTEXT_FILE,
-            SdkClients.adminClient()
-                .contextFiles()
-                .create(
-                    new CreateContextFile()
-                        .withName(ns.prefix("private-source"))
-                        .withOwners(List.of(ref(Entity.USER, fileOwner.getId())))));
-    SdkClients.adminClient()
-        .contextFiles()
-        .patch(
-            file.getId(),
-            JsonUtils.readTree(
-                "[{\"op\":\"add\",\"path\":\"/shareConfig\",\"value\":{\"visibility\":\"Private\"}}]"));
+    ContextFile file = privateFileOwnedBy(ns, fileOwner);
     ContextMemory memory =
         adminMemories()
             .create(
@@ -333,6 +417,25 @@ public class ContextMemoryAnchorIT {
     assertEquals(List.of(visible.getId()), idsAcrossPages(reader, anchor));
   }
 
+  private static ContextFile privateFileOwnedBy(TestNamespace ns, User owner) {
+    ContextFile file =
+        ns.trackRoot(
+            Entity.CONTEXT_FILE,
+            SdkClients.adminClient()
+                .contextFiles()
+                .create(
+                    new CreateContextFile()
+                        .withName(ns.prefix("private-source"))
+                        .withOwners(List.of(ref(Entity.USER, owner.getId())))));
+    SdkClients.adminClient()
+        .contextFiles()
+        .patch(
+            file.getId(),
+            JsonUtils.readTree(
+                "[{\"op\":\"add\",\"path\":\"/shareConfig\",\"value\":{\"visibility\":\"Private\"}}]"));
+    return file;
+  }
+
   private static CreateContextMemory privateMemory(TestNamespace ns, String name) {
     return entityMemory(ns, name)
         .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
@@ -378,9 +481,45 @@ public class ContextMemoryAnchorIT {
   }
 
   private static ContextMemoryService memoriesAs(User user) {
-    OpenMetadataClient client =
-        SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
-    return new ContextMemoryService(client.getHttpClient());
+    return new ContextMemoryService(clientOf(user).getHttpClient());
+  }
+
+  private static OpenMetadataClient clientOf(User user) {
+    return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
+  }
+
+  private static String pinnedTo(UUID anchorId) {
+    return "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"primaryEntity.id\":\""
+        + anchorId
+        + "\"}}]}}}";
+  }
+
+  /** The documents {@code /v1/search/entityTypeCounts} counts for {@code client}. */
+  private static long countedHits(OpenMetadataClient client, String query, String queryFilter) {
+    String response =
+        client
+            .search()
+            .entityTypeCounts()
+            .query(query)
+            .index("context_memory_search_index")
+            .queryFilter(queryFilter)
+            .execute();
+    return JsonUtils.readTree(response).path("hits").path("total").path("value").asLong();
+  }
+
+  /** The memory ids {@code /v1/search/query} returns to {@code client}. */
+  private static Set<UUID> searchHits(OpenMetadataClient client, String query, String queryFilter) {
+    SearchAPI.SearchBuilder search =
+        client.search().query(query).index("context_memory_search_index").size(100);
+    if (queryFilter != null) {
+      search.queryFilter(queryFilter);
+    }
+    Set<UUID> hits = new HashSet<>();
+    JsonUtils.readTree(search.execute())
+        .path("hits")
+        .path("hits")
+        .forEach(hit -> hits.add(UUID.fromString(hit.path("_source").path("id").asText())));
+    return hits;
   }
 
   private static List<UUID> ids(ListResponse<ContextMemory> response) {

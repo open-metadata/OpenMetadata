@@ -490,15 +490,36 @@ public interface WorkflowDocStoreDAOs {
   }
 
   interface ContextMemoryDAO extends EntityDAO<ContextMemory> {
+    String MYSQL_PRESERVING_USAGE =
+        "UPDATE context_memory SET json = JSON_SET(:json, '$.usageCount', "
+            + "COALESCE(CAST(NULLIF(json ->> '$.usageCount', 'null') AS UNSIGNED), 0), "
+            + "'$.lastUsedAt', JSON_EXTRACT(json, '$.lastUsedAt')), nameHash = :nameHash ";
+    String POSTGRES_PRESERVING_USAGE =
+        "UPDATE context_memory SET json = :json::jsonb || jsonb_build_object("
+            + "'usageCount', COALESCE((json->>'usageCount')::int, 0), "
+            + "'lastUsedAt', json->'lastUsedAt'), nameHash = :nameHash ";
+
+    @ConnectionAwareSqlUpdate(
+        value = MYSQL_PRESERVING_USAGE + "WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = POSTGRES_PRESERVING_USAGE + "WHERE id = :id",
+        connectionType = POSTGRES)
+    int updatePreservingUsage(
+        @BindUUID("id") UUID id,
+        @BindFQN("nameHash") String fullyQualifiedName,
+        @BindJson("json") String json);
+
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE context_memory SET json = :json, nameHash = :nameHash "
-                + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
+            MYSQL_PRESERVING_USAGE
+                + "WHERE id = :id "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
                 + "AND JSON_EXTRACT(json, '$.updatedAt') = :updatedAt",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE context_memory SET json = :json::jsonb, nameHash = :nameHash "
+            POSTGRES_PRESERVING_USAGE
                 + "WHERE id = :id AND json->>'version' = :version "
                 + "AND (json->>'updatedAt')::bigint = :updatedAt",
         connectionType = POSTGRES)
@@ -508,6 +529,22 @@ public interface WorkflowDocStoreDAOs {
         @BindJson("json") String json,
         @Bind("version") String version,
         @Bind("updatedAt") Long updatedAt);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_memory SET json = JSON_SET(json, '$.usageCount', "
+                + "COALESCE(CAST(NULLIF(json ->> '$.usageCount', 'null') AS UNSIGNED), 0) + 1, "
+                + "'$.lastUsedAt', GREATEST(COALESCE(CAST(NULLIF(json ->> '$.lastUsedAt', 'null') AS UNSIGNED), 0), :usedAt)) "
+                + "WHERE id = :id AND deleted = FALSE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_memory SET json = json || jsonb_build_object("
+                + "'usageCount', COALESCE((json->>'usageCount')::int, 0) + 1, "
+                + "'lastUsedAt', GREATEST(COALESCE((json->>'lastUsedAt')::bigint, 0), :usedAt)) "
+                + "WHERE id = :id AND deleted = FALSE",
+        connectionType = POSTGRES)
+    int recordUsage(@BindUUID("id") UUID id, @Bind("usedAt") long usedAt);
 
     @Override
     default String getTableName() {

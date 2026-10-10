@@ -471,6 +471,9 @@ public interface CoreRelationshipDAOs {
     private String jsonSchema;
   }
 
+  /** An edge into a context memory from an entity that may anchor it. */
+  record MemoryAnchorEdge(UUID fromId, String fromEntity, int relation) {}
+
   record OntologyRelationshipRow(
       UUID fromId,
       UUID toId,
@@ -974,6 +977,24 @@ public interface CoreRelationshipDAOs {
       return EntityDAO.queryInChunks(
           fromIds, chunk -> findToBatchByToEntityInternal(chunk, relation, toEntityType));
     }
+
+    /**
+     * The distinct (entity, relation) pairs among {@code fromIds} with a live edge of one of {@code
+     * relations} into a context memory, one row per pair however many memories it points at. The
+     * target type is a literal so that PostgreSQL can use idx_entity_relationship_memory_anchor;
+     * MySQL serves the query from idx_entity_rel_cascade. Without either, a pinned domain or team
+     * would scan one edge per asset or user it holds.
+     */
+    @SqlQuery(
+        "SELECT DISTINCT fromId, fromEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation IN (<relations>) "
+            + "AND toEntity = 'contextMemory' "
+            + "AND deleted = FALSE")
+    @UseRowMapper(MemoryAnchorEdgeMapper.class)
+    List<MemoryAnchorEdge> findMemoryAnchorEdges(
+        @BindList("fromIds") List<String> fromIds, @BindList("relations") List<Integer> relations);
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -1867,6 +1888,16 @@ public interface CoreRelationshipDAOs {
         return new RelationshipTypeUsage()
             .withRelationshipType(relationshipType)
             .withCount(rs.getInt("cnt"));
+      }
+    }
+
+    class MemoryAnchorEdgeMapper implements RowMapper<MemoryAnchorEdge> {
+      @Override
+      public MemoryAnchorEdge map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new MemoryAnchorEdge(
+            UUID.fromString(rs.getString("fromId")),
+            rs.getString("fromEntity"),
+            rs.getInt("relation"));
       }
     }
 

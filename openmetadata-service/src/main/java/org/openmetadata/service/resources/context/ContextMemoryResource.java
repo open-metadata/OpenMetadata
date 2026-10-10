@@ -549,7 +549,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     return getVersionInternal(securityContext, id, version);
   }
 
-  /** Current visibility governs every historical version. */
+  /** Current visibility governs every response containing a stored memory. */
   private void enforceCurrentVisibility(SecurityContext securityContext, UUID id) {
     ContextMemory current =
         repository.get(
@@ -604,6 +604,12 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Valid CreateContextMemory create) {
     ContextMemory memory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    repository.setFullyQualifiedName(memory);
+    ContextMemory existing =
+        repository.findByNameOrNull(memory.getFullyQualifiedName(), Include.ALL);
+    if (existing != null) {
+      enforceCurrentVisibility(securityContext, existing.getId());
+    }
     return createOrUpdate(uriInfo, securityContext, memory);
   }
 
@@ -632,6 +638,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                       examples =
                           @ExampleObject("[{op:replace, path:/displayName, value: 'New name'}]")))
           JsonPatch patch) {
+    // A PATCH answers with the whole memory, and Data Consumers may edit any entity's description
+    // and tags, so without this anyone holding a memory's id could read it by patching it.
+    enforceCurrentVisibility(securityContext, id);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -688,6 +697,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    enforceCurrentVisibility(securityContext, id);
 
     ContextMemory original =
         repository.get(uriInfo, id, getFields(PIN_UPDATE_FIELDS), Include.NON_DELETED, false);

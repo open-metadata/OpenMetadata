@@ -76,6 +76,13 @@ export interface ContextMemory {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Server-owned timestamp of the latest change to memory content or its subject. Review,
+     * lifecycle, pin, tag, share and usage writes preserve it. Legacy memories fall back to
+     * updatedAt until their next write. Used for knowledge recency independently of the audit
+     * timestamp.
+     */
+    lastContentUpdatedAt?: number;
+    /**
      * When this memory was last confirmed to hold: set whenever it becomes Approved, and each
      * time Memory Reconciliation revalidates it. An Approved memory with no value predates the
      * field.
