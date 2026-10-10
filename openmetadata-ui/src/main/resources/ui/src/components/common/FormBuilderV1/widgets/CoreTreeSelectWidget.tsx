@@ -36,6 +36,7 @@ const matchesSearch = (node: TreeSelectNode, searchTerm: string) => {
  * sentinel the backend expands, unless the schema sets `expandAllValue`.
  */
 const CoreTreeSelectWidget = ({
+  id,
   value,
   disabled,
   readonly,
@@ -47,6 +48,7 @@ const CoreTreeSelectWidget = ({
   schema,
   options,
   onChange,
+  onFocus,
 }: WidgetProps) => {
   const { t } = useTranslation();
   const { allNode, childNodes } = useMemo(() => {
@@ -175,6 +177,7 @@ const CoreTreeSelectWidget = ({
       required={required}
       value={treeValue}
       onChange={handleChange}
+      onOpenChange={(isOpen) => isOpen && onFocus(id, value)}
     />
   );
 };

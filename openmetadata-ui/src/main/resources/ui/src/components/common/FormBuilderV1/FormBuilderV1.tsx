@@ -132,6 +132,19 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       [props.templates]
     );
 
+    // Custom fields (toggles, tag arrays) report focus through
+    // formContext.handleFocus, so a form-level onFocus has to reach them too.
+    const { onFocus, formContext: consumerFormContext } = props;
+    const formContext = useMemo(
+      () => ({
+        handleFocus: onFocus
+          ? (id: string) => onFocus(id, undefined)
+          : undefined,
+        ...consumerFormContext,
+      }),
+      [consumerFormContext, onFocus]
+    );
+
     return (
       <FieldDocsContext.Provider value={fieldDocs}>
         <Form
@@ -141,6 +154,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
           omitExtraData
           className="rjsf no-header"
           fields={mergedFields}
+          formContext={formContext}
           formData={localFormData}
           idSeparator="/"
           ref={ref}

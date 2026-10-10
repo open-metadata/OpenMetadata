@@ -67,6 +67,15 @@ describe('CoreTreeSelectWidget', () => {
     expect(screen.queryAllByTestId('tree-node-all')).toHaveLength(1);
   });
 
+  it('reports focus when the tree opens, so the doc panel can follow', async () => {
+    const onFocus = jest.fn();
+    renderWidget({ onFocus });
+
+    await openTree();
+
+    expect(onFocus).toHaveBeenCalledWith('root/entities', []);
+  });
+
   it('stores a partial selection as the picked values', async () => {
     const onChange = renderWidget();
 
