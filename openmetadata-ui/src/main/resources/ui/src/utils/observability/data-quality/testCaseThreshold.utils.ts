@@ -11,12 +11,19 @@
  *  limitations under the License.
  */
 
-import { omit } from 'lodash';
+import { isNil, omit } from 'lodash';
 import {
   ProfileSampleType,
   SampleConfigType,
   TableProfilerConfig,
 } from '../../../generated/entity/data/table';
+import {
+  ProfileSampleType as RunProfileSampleType,
+  TestCase,
+  TestCaseEvaluationScope,
+  TestCaseResult,
+  TestCaseStatus,
+} from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { unwrapSelectValue } from '../../ParameterForm/ParameterFieldsUtils';
 
@@ -140,7 +147,7 @@ const STATISTICAL_BOUND_PARAMS: Record<string, BoundParamNames> = {
 
 /**
  * The denominator a PERCENTAGE threshold is read against, per row-countable
- * test. Membership *is* the row-countable classification: these six are the
+ * test. Membership *is* the row-countable classification: these are the
  * validators that call `_apply_row_threshold`, and the value is the metric
  * they pass as its denominator — `valuesCount` (the column's non-null values)
  * or `rowCount` (every row). Getting this wrong misnames the very quantity the
@@ -148,6 +155,8 @@ const STATISTICAL_BOUND_PARAMS: Record<string, BoundParamNames> = {
  * predicate.
  */
 const ROW_COUNTABLE_DENOMINATORS: Record<string, ThresholdNoun> = {
+  columnValueLengthsToBeBetween: ThresholdNoun.Rows,
+  columnValuesToBeBetween: ThresholdNoun.Rows,
   columnValuesToMatchRegex: ThresholdNoun.NonNullValues,
   columnValuesToBeUnique: ThresholdNoun.NonNullValues,
   columnValuesToBeInSet: ThresholdNoun.Rows,
@@ -554,18 +563,18 @@ const getStatisticalPreview = (
  * the tolerance, however row-countable the test is on paper.
  */
 const getEffectiveSemantic = (
-  definition: TestDefinition,
+  definitionName: string | undefined,
   params: Record<string, unknown>
 ): { semantic: ThresholdTestSemantic; needsMatchEnum: boolean } => {
   const needsMatchEnum =
-    definition.name === COLUMN_VALUES_TO_BE_IN_SET &&
+    definitionName === COLUMN_VALUES_TO_BE_IN_SET &&
     !isBooleanParamOn(params[MATCH_ENUM_PARAM]);
 
   return {
     needsMatchEnum,
     semantic: needsMatchEnum
       ? ThresholdTestSemantic.NotEnforced
-      : getThresholdTestSemantic(definition.name),
+      : getThresholdTestSemantic(definitionName),
   };
 };
 
@@ -601,7 +610,10 @@ export const getThresholdPreviewData = (
   const threshold = toNumber(params[THRESHOLD_PARAM]) ?? 0;
   const unit =
     unwrapSelectValue(params[THRESHOLD_UNIT_PARAM]) ?? ThresholdUnit.Absolute;
-  const { semantic, needsMatchEnum } = getEffectiveSemantic(definition, params);
+  const { semantic, needsMatchEnum } = getEffectiveSemantic(
+    definition.name,
+    params
+  );
   const isPercentage = unit === ThresholdUnit.Percentage;
 
   const common = {
@@ -629,4 +641,203 @@ export const getThresholdPreviewData = (
   }
 
   return common;
+};
+
+// ─── Run results ─────────────────────────────────────────────────────────────
+
+/**
+ * A test case's stored parameters keyed by name — the shape the form's
+ * `params` has, so the preview helpers read a saved test case the same way.
+ * A stored value is the raw enum id, which `unwrapSelectValue` passes through.
+ */
+export const getTestCaseParams = (
+  testCase: Pick<TestCase, 'parameterValues'>
+): Record<string, unknown> =>
+  Object.fromEntries(
+    (testCase.parameterValues ?? []).map(({ name, value }) => [name, value])
+  );
+
+/** The fields a run reports, on an overall result and a dimension's alike. */
+export type RunThresholdResult = Pick<
+  TestCaseResult,
+  | 'testCaseStatus'
+  | 'passedRows'
+  | 'failedRows'
+  | 'failedRowsPercentage'
+  | 'minBound'
+  | 'maxBound'
+>;
+
+/**
+ * What one run measured next to the threshold it was judged by, as data. The
+ * threshold is re-read from the test case's parameters, never parsed out of
+ * `TestCaseResult.result`: that string is English free text built in
+ * ingestion.
+ */
+export interface RunThresholdData {
+  semantic:
+    | ThresholdTestSemantic.RowCountable
+    | ThresholdTestSemantic.Statistical;
+  /** `0` when unset: the run tolerated nothing. */
+  threshold: number;
+  isPercentage: boolean;
+  noun: ThresholdNoun;
+  /** Row-countable only: the run's failing rows, when it counted them. */
+  failedRows?: number;
+  failedPercentage?: number;
+  /** Row-countable only: the population the percentage is a share of. */
+  evaluatedRows?: number;
+  populationNoun?: ThresholdNoun;
+  /** Statistical only: the bound as configured. Absent when it is learned. */
+  configuredRange?: string;
+  /** Statistical only: the bound the run was judged against, once widened. */
+  effectiveRange?: string;
+}
+
+const COMPLETED_RUN_STATUSES = new Set<TestCaseStatus | undefined>([
+  TestCaseStatus.Success,
+  TestCaseStatus.Failed,
+]);
+
+const getRowCountableRun = (
+  definitionName: string,
+  result: RunThresholdResult
+): Pick<
+  RunThresholdData,
+  'failedRows' | 'failedPercentage' | 'evaluatedRows' | 'populationNoun'
+> => {
+  const { passedRows, failedRows, failedRowsPercentage } = result;
+  const evaluatedRows =
+    isNil(passedRows) || isNil(failedRows)
+      ? undefined
+      : passedRows + failedRows;
+
+  const populationNoun = ROW_COUNTABLE_DENOMINATORS[definitionName];
+  // The share is taken of the population the threshold is judged on.
+  // `failedRowsPercentage` divides by the table's rows, which for a test
+  // counted over non-null values (regex, unique) is a different, smaller share.
+  let failedPercentage: number | undefined;
+  if (evaluatedRows) {
+    failedPercentage = ((failedRows ?? 0) / evaluatedRows) * 100;
+  } else if (populationNoun === ThresholdNoun.Rows) {
+    failedPercentage = failedRowsPercentage ?? undefined;
+  }
+
+  return {
+    failedRows: failedRows ?? undefined,
+    failedPercentage,
+    evaluatedRows,
+    populationNoun,
+  };
+};
+
+/**
+ * The configured bound comes from the parameters, unless a dynamic assertion
+ * learns it. The effective one is the bound the run reports: it is the one the
+ * run was judged against, and a run from an agent that predates the threshold
+ * reports the configured bound — which is the truth about that run.
+ */
+const getStatisticalRun = (
+  testCase: Pick<TestCase, 'useDynamicAssertion'>,
+  definitionName: string,
+  params: Record<string, unknown>,
+  result: RunThresholdResult
+): Pick<RunThresholdData, 'configuredRange' | 'effectiveRange'> => {
+  const bounds = STATISTICAL_BOUND_PARAMS[definitionName];
+  const toBound = (value: number | undefined) =>
+    isNil(value) ? undefined : normalizeValue(value);
+
+  return {
+    configuredRange: testCase.useDynamicAssertion
+      ? undefined
+      : formatBound(toNumber(params[bounds.min]), toNumber(params[bounds.max])),
+    effectiveRange: formatBound(
+      toBound(result.minBound),
+      toBound(result.maxBound)
+    ),
+  };
+};
+
+/**
+ * The threshold a run was judged by, and what the run measured against it.
+ * `undefined` when there is nothing to set side by side: the run computed no
+ * verdict (queued, aborted), or the test reads no tolerance — including
+ * `tableCustomSQLQuery`, whose threshold is its expected result, already the
+ * card's Expected value.
+ */
+export const getRunThresholdData = (
+  testCase: Pick<
+    TestCase,
+    'parameterValues' | 'testDefinition' | 'useDynamicAssertion'
+  >,
+  result: RunThresholdResult
+): RunThresholdData | undefined => {
+  if (!COMPLETED_RUN_STATUSES.has(result.testCaseStatus)) {
+    return undefined;
+  }
+
+  const definitionName = testCase.testDefinition?.name ?? '';
+  const params = getTestCaseParams(testCase);
+  const { semantic } = getEffectiveSemantic(definitionName, params);
+
+  if (
+    semantic !== ThresholdTestSemantic.RowCountable &&
+    semantic !== ThresholdTestSemantic.Statistical
+  ) {
+    return undefined;
+  }
+
+  const unit =
+    unwrapSelectValue(params[THRESHOLD_UNIT_PARAM]) ?? ThresholdUnit.Absolute;
+  const common = {
+    semantic,
+    threshold: toNumber(params[THRESHOLD_PARAM]) ?? 0,
+    isPercentage: unit === ThresholdUnit.Percentage,
+    noun: getThresholdNoun(unit, definitionName),
+  };
+
+  return semantic === ThresholdTestSemantic.RowCountable
+    ? { ...common, ...getRowCountableRun(definitionName, result) }
+    : {
+        ...common,
+        ...getStatisticalRun(testCase, definitionName, params, result),
+      };
+};
+
+/** How the rows behind a run were narrowed, as data for its badges. */
+export interface RunScopeBadges {
+  sample?: { kind: ThresholdSamplingKind; value?: number };
+  partitionColumn?: string;
+  isPartitioned: boolean;
+}
+
+/**
+ * The run's own record of what it read — never the table's current profiler
+ * config, which may have changed since, and never the result message. A run
+ * from an agent that predates the record has no scope and so no badge.
+ */
+export const getRunScopeBadges = (
+  scope: TestCaseEvaluationScope | undefined
+): RunScopeBadges | undefined => {
+  if (!scope?.sampled && !scope?.partitioned) {
+    return undefined;
+  }
+
+  let sample: RunScopeBadges['sample'];
+  if (scope.sampled) {
+    const hasSize = !isNil(scope.profileSample);
+    sample = {
+      kind:
+        scope.profileSampleType === RunProfileSampleType.Rows
+          ? ThresholdSamplingKind.StaticRows
+          : ThresholdSamplingKind.StaticPercentage,
+      value: hasSize ? scope.profileSample : undefined,
+    };
+  }
+
+  return {
+    sample,
+    isPartitioned: Boolean(scope.partitioned),
+    partitionColumn: scope.partitioned ? scope.partitionColumnName : undefined,
+  };
 };

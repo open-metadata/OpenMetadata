@@ -54,6 +54,7 @@ from metadata.generated.schema.tests.basic import (
     DimensionValue,
     TestCaseDimensionResult,
     TestCaseErrorDetails,
+    TestCaseEvaluationScope,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -245,6 +246,7 @@ class BaseTestValidator(ABC):
         test_result = self._run_validation()
         if test_result.result:
             test_result.result = self.with_evaluation_scope(test_result.result, test_result.testCaseStatus)
+        test_result.evaluationScope = self.result_evaluation_scope(test_result.testCaseStatus)
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
@@ -760,6 +762,20 @@ class BaseTestValidator(ABC):
         except Exception as exc:
             logger.debug("Could not describe the evaluation scope of %s: %s", self.test_case, exc)
             return message
+
+    def result_evaluation_scope(self, status: TestCaseStatus | None) -> TestCaseEvaluationScope | None:
+        """The scope to record on the result, or none for an aborted run, which read no rows
+
+        Like the scope sentence, this is reporting: a scope that cannot be resolved is left off
+        the result rather than failing the run.
+        """
+        if status is TestCaseStatus.Aborted:
+            return None
+        try:
+            return self.get_evaluation_scope().to_result_scope(self.BYPASSES_SAMPLER)
+        except Exception as exc:
+            logger.debug("Could not record the evaluation scope of %s: %s", self.test_case, exc)
+            return None
 
     @staticmethod
     def _dimension_prefix(dimension_info: DimensionInfo | None) -> str:

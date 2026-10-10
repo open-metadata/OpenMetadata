@@ -28,6 +28,10 @@ export interface CreateTestCaseResult {
      */
     errorDetails?: TestCaseErrorDetails;
     /**
+     * Which rows the run was measured on.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
+    /**
      * Number of rows that failed.
      */
     failedRows?: number;
@@ -93,6 +97,10 @@ export interface TestCaseDimensionResult {
      * 'mumbai'}, {'name': 'product', 'value': 'laptop'}])
      */
     dimensionValues: DimensionValue[];
+    /**
+     * Which rows the parent run was measured on. Every dimension of a run shares it.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
     /**
      * Number of rows that failed for this dimension combination
      */
@@ -167,6 +175,51 @@ export interface DimensionValue {
      * Value for this dimension (e.g., 'address', 'US', 'gold')
      */
     value: string;
+}
+
+/**
+ * Which rows the parent run was measured on. Every dimension of a run shares it.
+ *
+ * Which rows a test case run was measured on. The verdict is the subset's: nothing
+ * extrapolates it back to the table.
+ *
+ * Which rows the run was measured on.
+ */
+export interface TestCaseEvaluationScope {
+    /**
+     * Column the partition filter was applied on.
+     */
+    partitionColumnName?: string;
+    /**
+     * Whether the rows read were restricted to a partition. False when the test runs its own
+     * SQL, which ignores the configured partition.
+     */
+    partitioned?: boolean;
+    /**
+     * Size of the sample read, in the unit `profileSampleType` names.
+     */
+    profileSample?: number;
+    /**
+     * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+     * `sampled` is true.
+     */
+    profileSampleType?: ProfileSampleType;
+    /**
+     * Whether the run read a sample of the table. False when the test runs its own SQL, which
+     * ignores the configured sample.
+     */
+    sampled?: boolean;
+}
+
+/**
+ * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+ * `sampled` is true.
+ *
+ * Type of Profile Sample (percentage or rows)
+ */
+export enum ProfileSampleType {
+    Percentage = "PERCENTAGE",
+    Rows = "ROWS",
 }
 
 /**

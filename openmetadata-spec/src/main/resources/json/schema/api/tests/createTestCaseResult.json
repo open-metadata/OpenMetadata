@@ -76,6 +76,10 @@
     "errorDetails": {
       "description": "Structured error details when the run was aborted by an error.",
       "$ref": "../../tests/basic.json#/definitions/testCaseErrorDetails"
+    },
+    "evaluationScope": {
+      "description": "Which rows the run was measured on.",
+      "$ref": "../../tests/basic.json#/definitions/testCaseEvaluationScope"
     }
   },
   "required": ["timestamp", "testCaseStatus", "testResultValue"],

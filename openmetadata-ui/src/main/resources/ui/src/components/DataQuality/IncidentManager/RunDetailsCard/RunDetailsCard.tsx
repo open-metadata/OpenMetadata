@@ -21,15 +21,28 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import type { TFunction } from 'i18next';
 import { isUndefined, maxBy } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
   TestCase,
   TestCaseErrorDetails,
+  TestCaseEvaluationScope,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  getRunScopeBadges,
+  getRunThresholdData,
+  RunThresholdData,
+  ThresholdNoun,
+  ThresholdSamplingKind,
+  ThresholdTestSemantic,
+  THRESHOLD_COUNT_NOUN_KEYS,
+} from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import { formatThresholdAmount } from '../../../../utils/observability/data-quality/testCaseThresholdSentence.utils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
+import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
 import { useTestCaseStore } from '../useTestCase.store';
@@ -134,6 +147,230 @@ const ComparisonBars = ({
   );
 };
 
+interface DetailCell {
+  className: string;
+  labelKey: string;
+  testId: string;
+  value: string;
+  weight?: 'medium' | 'semibold';
+}
+
+const DetailCells = ({ cells }: { cells: DetailCell[] }) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {cells.map(({ className, labelKey, testId, value, weight }) => (
+        <Box className="tw:min-w-0" direction="col" gap={1} key={labelKey}>
+          <Typography
+            className="tw:text-quaternary"
+            size="text-xs"
+            weight="medium">
+            {t(labelKey)}
+          </Typography>
+          <Typography
+            className={classNames('tw:font-mono', className)}
+            data-testid={testId}
+            size="text-xs"
+            weight={weight ?? 'semibold'}>
+            {value}
+          </Typography>
+        </Box>
+      ))}
+    </>
+  );
+};
+
+/**
+ * Which rows the run read, when that was not the whole table. Read from the
+ * run's own record, so an older run keeps the scope it actually had.
+ */
+const RunScopeBadges = ({ scope }: { scope?: TestCaseEvaluationScope }) => {
+  const { t } = useTranslation();
+  const badges = getRunScopeBadges(scope);
+
+  if (!badges) {
+    return null;
+  }
+
+  const { sample, isPartitioned, partitionColumn } = badges;
+  let sampleLabel = t('label.sampled');
+  if (sample && !isUndefined(sample.value)) {
+    sampleLabel =
+      sample.kind === ThresholdSamplingKind.StaticRows
+        ? t('label.row-sample-of', { value: formatNumber(sample.value) })
+        : t('label.percentage-sample-of', { value: sample.value });
+  }
+
+  return (
+    <Box align="center" gap={2}>
+      {sample && (
+        <Badge
+          color="blue"
+          data-testid="run-details-sampled-badge"
+          size="sm"
+          type="pill-color">
+          {sampleLabel}
+        </Badge>
+      )}
+      {isPartitioned && (
+        <Badge
+          color="blue"
+          data-testid="run-details-partitioned-badge"
+          size="sm"
+          type="pill-color">
+          {partitionColumn
+            ? t('label.partitioned-on', { column: partitionColumn })
+            : t('label.partitioned')}
+        </Badge>
+      )}
+    </Box>
+  );
+};
+
+const PRIMARY_VALUE = 'tw:text-primary';
+
+const knownOrQuiet = (
+  labelKey: string,
+  testId: string,
+  value: string | undefined,
+  className = PRIMARY_VALUE
+): DetailCell => ({
+  className: quietWhenUnknown(value ?? NO_VALUE, className),
+  labelKey,
+  testId,
+  value: value ?? NO_VALUE,
+});
+
+/** "1.20% (120 row(s))", led by the threshold's own unit so the two read alike. */
+const formatFailed = (
+  { isPercentage, failedRows, failedPercentage }: RunThresholdData,
+  countOf: (value: number) => string,
+  t: TFunction
+): string | undefined => {
+  const share = isUndefined(failedPercentage)
+    ? undefined
+    : t('label.percentage-value', { value: failedPercentage.toFixed(2) });
+  const count = isUndefined(failedRows) ? undefined : countOf(failedRows);
+  const [lead, aside] = isPercentage ? [share, count] : [count, share];
+
+  return lead && aside ? `${lead} (${aside})` : lead ?? aside;
+};
+
+const getRowCountableCells = (
+  data: RunThresholdData,
+  valueClassName: string,
+  t: TFunction
+): DetailCell[] => {
+  const { evaluatedRows, populationNoun = ThresholdNoun.Rows } = data;
+  const countOf = (value: number) =>
+    t('message.threshold-amount-absolute', {
+      value: formatNumber(value),
+      noun: t(THRESHOLD_COUNT_NOUN_KEYS[populationNoun]),
+    });
+
+  return [
+    knownOrQuiet(
+      'label.failed',
+      'run-details-failed',
+      formatFailed(data, countOf, t),
+      valueClassName
+    ),
+    knownOrQuiet(
+      'label.evaluated',
+      'run-details-evaluated',
+      isUndefined(evaluatedRows) ? undefined : countOf(evaluatedRows)
+    ),
+  ];
+};
+
+const getStatisticalCells = ({
+  threshold,
+  configuredRange,
+  effectiveRange,
+}: RunThresholdData): DetailCell[] => {
+  const cells = [
+    knownOrQuiet(
+      'label.configured-range',
+      'run-details-configured-range',
+      configuredRange
+    ),
+  ];
+  // Without a tolerance the effective range is the configured one.
+  if (threshold > 0) {
+    cells.push(
+      knownOrQuiet(
+        'label.effective-range',
+        'run-details-effective-range',
+        effectiveRange
+      )
+    );
+  }
+
+  return cells;
+};
+
+/**
+ * The threshold the run was judged by, beside what it measured against it:
+ * the failing share and the population for a row tolerance, the configured
+ * and widened bound for a deviation. Nothing for a test that reads no
+ * tolerance, or a run that computed no verdict.
+ */
+const RunThreshold = ({
+  testCase,
+  result,
+  valueClassName,
+}: {
+  testCase: TestCase;
+  result: RunResult;
+  valueClassName: string;
+}) => {
+  const { t } = useTranslation();
+  const data = getRunThresholdData(testCase, result);
+
+  if (!data) {
+    return null;
+  }
+
+  const { semantic, threshold, isPercentage, noun } = data;
+  const cells: DetailCell[] = [
+    {
+      className: PRIMARY_VALUE,
+      labelKey: 'label.threshold',
+      testId: 'run-details-threshold',
+      value:
+        threshold > 0
+          ? formatThresholdAmount(threshold, isPercentage, noun, t)
+          : t('label.no-tolerance'),
+    },
+    ...(semantic === ThresholdTestSemantic.RowCountable
+      ? getRowCountableCells(data, valueClassName, t)
+      : getStatisticalCells(data)),
+  ];
+
+  return (
+    <div
+      className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:border-t tw:border-secondary tw:pt-4 tw:@lg:grid-cols-4"
+      data-testid="run-details-threshold-section">
+      <DetailCells cells={cells} />
+    </div>
+  );
+};
+
+/** A sampled verdict says so in words, not only in the header's badge. */
+const RunSampleNote = ({ scope }: { scope?: TestCaseEvaluationScope }) => {
+  const { t } = useTranslation();
+
+  return scope?.sampled ? (
+    <Typography
+      className="tw:text-tertiary"
+      data-testid="run-details-sample-note"
+      size="text-xs">
+      {t('message.run-evaluated-on-sample')}
+    </Typography>
+  ) : null;
+};
+
 const RunNote = ({ style }: { style: RunDetailsStatusStyle }) => {
   const { t } = useTranslation();
 
@@ -194,17 +431,17 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
   const valueClassName = (text: string) =>
     quietWhenUnknown(text, style.valueClassName);
 
-  const details = [
+  const details: DetailCell[] = [
     {
       // A camel-case name may break anywhere; numbers below only between words.
       className: 'tw:break-words tw:font-medium tw:text-primary',
-      weight: 'medium' as const,
+      weight: 'medium',
       labelKey: 'label.test-definition-sentence',
       testId: 'run-details-definition',
       value: testCase.testDefinition?.name ?? NO_VALUE,
     },
     {
-      className: quietWhenUnknown(expectedText, 'tw:text-primary'),
+      className: quietWhenUnknown(expectedText, PRIMARY_VALUE),
       labelKey: 'label.expected',
       testId: 'run-details-expected',
       value: expectedText,
@@ -276,6 +513,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
             </Button>
           </Box>
         )}
+        <RunScopeBadges scope={result.evaluationScope} />
         <RunDuration duration={duration} errorDetails={errorDetails} />
       </Box>
       <Box
@@ -286,24 +524,14 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
             narrower than its name, or a camel-case name breaks mid-word.
             Two in a narrow card. */}
         <div className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:@lg:grid-cols-[minmax(max-content,1fr)_repeat(3,minmax(0,1fr))]">
-          {details.map(({ className, labelKey, testId, value, weight }) => (
-            <Box className="tw:min-w-0" direction="col" gap={1} key={labelKey}>
-              <Typography
-                className="tw:text-quaternary"
-                size="text-xs"
-                weight="medium">
-                {t(labelKey)}
-              </Typography>
-              <Typography
-                className={classNames('tw:font-mono', className)}
-                data-testid={testId}
-                size="text-xs"
-                weight={weight ?? 'semibold'}>
-                {value}
-              </Typography>
-            </Box>
-          ))}
+          <DetailCells cells={details} />
         </div>
+        <RunThreshold
+          result={result}
+          testCase={testCase}
+          valueClassName={style.valueClassName}
+        />
+        <RunSampleNote scope={result.evaluationScope} />
         {bars.length > 0 && (
           <ComparisonBars
             barClassName={style.barClassName}
