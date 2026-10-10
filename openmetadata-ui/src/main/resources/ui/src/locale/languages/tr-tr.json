@@ -1163,6 +1163,7 @@
     "exclude-fields": "Alanları Dışla",
     "exclude-filter": "Dışlama Filtresi",
     "exclude-system-entity": "Sistem {{entity}} hariç tut",
+    "excluded-from-roll-up": "Toplamadan hariç tutuldu",
     "execution-date": "Yürütme Tarihi",
     "execution-error": "Yürütme hatası",
     "execution-history": "Yürütme Geçmişi",

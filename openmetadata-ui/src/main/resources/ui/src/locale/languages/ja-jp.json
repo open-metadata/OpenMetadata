@@ -1163,6 +1163,7 @@
     "exclude-fields": "除外するフィールド",
     "exclude-filter": "除外フィルター",
     "exclude-system-entity": "システム{{entity}}を除外",
+    "excluded-from-roll-up": "集計から除外",
     "execution-date": "実行日",
     "execution-error": "実行エラー",
     "execution-history": "実行履歴",

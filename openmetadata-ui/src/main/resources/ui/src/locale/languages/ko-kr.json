@@ -1163,6 +1163,7 @@
     "exclude-fields": "필드 제외",
     "exclude-filter": "제외 필터",
     "exclude-system-entity": "시스템 {{entity}} 제외",
+    "excluded-from-roll-up": "집계에서 제외됨",
     "execution-date": "실행 날짜",
     "execution-error": "실행 오류",
     "execution-history": "실행 내역",

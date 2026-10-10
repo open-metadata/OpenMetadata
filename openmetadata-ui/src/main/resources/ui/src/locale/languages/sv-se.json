@@ -1163,6 +1163,7 @@
     "exclude-fields": "Exkludera fält",
     "exclude-filter": "Exkluderingsfilter",
     "exclude-system-entity": "Uteslut system-{{entity}}",
+    "excluded-from-roll-up": "Exkluderad från sammanställning",
     "execution-date": "Körningsdatum",
     "execution-error": "Körningsfel",
     "execution-history": "Körningshistorik",

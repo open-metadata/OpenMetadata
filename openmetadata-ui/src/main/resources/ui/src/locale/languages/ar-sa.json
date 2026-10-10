@@ -1163,6 +1163,7 @@
     "exclude-fields": "استبعاد الحقول",
     "exclude-filter": "مرشح الاستبعاد",
     "exclude-system-entity": "استبعاد {{entity}} الخاصة بالنظام",
+    "excluded-from-roll-up": "مستبعد من التجميع",
     "execution-date": "تاريخ التنفيذ",
     "execution-error": "خطأ في التنفيذ",
     "execution-history": "سجل التنفيذ",

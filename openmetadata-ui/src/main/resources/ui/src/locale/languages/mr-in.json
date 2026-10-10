@@ -1163,6 +1163,7 @@
     "exclude-fields": "फील्ड्स वगळा",
     "exclude-filter": "वगळण्याचा फिल्टर",
     "exclude-system-entity": "सिस्टम {{entity}} वगळा",
+    "excluded-from-roll-up": "एकत्रीकरणातून वगळले",
     "execution-date": "अंमलबजावणी तारीख",
     "execution-error": "अंमलबजावणी त्रुटी",
     "execution-history": "अंमलबजावणी इतिहास",

@@ -1163,6 +1163,7 @@
     "exclude-fields": "Velden uitsluiten",
     "exclude-filter": "Uitsluitingsfilter",
     "exclude-system-entity": "Systeem-{{entity}} uitsluiten",
+    "excluded-from-roll-up": "Uitgesloten van samenvatting",
     "execution-date": "Uitvoeringsdatum",
     "execution-error": "Uitvoeringsfout",
     "execution-history": "Uitvoeringsgeschiedenis",

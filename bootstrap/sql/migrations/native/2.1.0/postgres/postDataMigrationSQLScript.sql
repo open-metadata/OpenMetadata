@@ -273,6 +273,29 @@ WHERE name IN (
   )
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "dimensionFailurePolicy"}]'::jsonb);
 
+-- `minRowsPerDimension` keeps small dimension groups out of the ANY_DIMENSION roll-up under a
+-- PERCENTAGE threshold. Only the row-countable definitions declare it: a percentage of a statistic
+-- is not distorted by group size. These are the definition names, which differ from the seed file
+-- names for columnValueLengthsToBeBetween. Guarded on the parameter being absent, like the above.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'minRowsPerDimension',
+        'displayName', 'Minimum Rows per Dimension',
+        'description', 'Under the `ANY_DIMENSION` policy and a `PERCENTAGE` threshold, a dimension with fewer rows than this is still evaluated and reported, but does not fail the test (defaults to 0: every dimension counts).',
+        'dataType', 'INT',
+        'required', false
+    )::jsonb
+)
+WHERE name IN (
+    'columnValueLengthsToBeBetween', 'columnValuesToBeBetween', 'columnValuesToBeInSet',
+    'columnValuesToBeNotInSet', 'columnValuesToBeNotNull', 'columnValuesToBeUnique',
+    'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
+  )
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "minRowsPerDimension"}]'::jsonb);
+
 -- NUMERIC is a distinct member of the column dataType enum and is what BigQuery, Postgres,
 -- Snowflake and DB2 numeric columns are ingested as, but the numeric system test definitions were
 -- only ever seeded with NUMBER/DECIMAL. The "Add test case" dropdown filters on the column's exact

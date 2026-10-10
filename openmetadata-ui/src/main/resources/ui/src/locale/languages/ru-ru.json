@@ -1163,6 +1163,7 @@
     "exclude-fields": "Исключить поля",
     "exclude-filter": "Фильтр исключения",
     "exclude-system-entity": "Исключить системные {{entity}}",
+    "excluded-from-roll-up": "Исключено из сводки",
     "execution-date": "Дата запуска",
     "execution-error": "Ошибка выполнения",
     "execution-history": "История запуска",

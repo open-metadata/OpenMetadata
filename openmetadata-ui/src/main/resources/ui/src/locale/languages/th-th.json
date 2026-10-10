@@ -1163,6 +1163,7 @@
     "exclude-fields": "ยกเว้นฟิลด์",
     "exclude-filter": "ตัวกรองการยกเว้น",
     "exclude-system-entity": "ยกเว้น {{entity}} ของระบบ",
+    "excluded-from-roll-up": "ไม่นับรวมในการสรุป",
     "execution-date": "วันที่ดำเนินการ",
     "execution-error": "ข้อผิดพลาดในการทำงาน",
     "execution-history": "ประวัติการดำเนินการ",
