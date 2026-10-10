@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Button, Card, Input, Select } from 'antd';
@@ -365,7 +365,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
             className="add-mapping-btn"
             data-testid="add-mapping-btn"
             disabled={disabled}
-            icon={<PlusOutlined />}
+            icon={<Plus />}
             onClick={handleAddMapping}>
             {t('label.add-entity', {
               entity: t('label.ldap-group-mapping'),

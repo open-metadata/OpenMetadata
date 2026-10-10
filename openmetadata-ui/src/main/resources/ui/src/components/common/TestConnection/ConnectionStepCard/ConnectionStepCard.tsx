@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
 import { Divider, Typography } from '@openmetadata/ui-core-components';
@@ -186,7 +186,7 @@ const ConnectionStepCard = ({
               placement="bottom"
               showArrow={false}
               title={testConnectionStep.description}>
-              <InfoCircleOutlined />
+              <InfoCircle />
             </Tooltip>
           </Space>
           <ConnectionStepStatusBadge

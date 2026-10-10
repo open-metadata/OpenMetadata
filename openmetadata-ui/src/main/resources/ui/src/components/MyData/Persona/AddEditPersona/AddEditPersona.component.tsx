@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Box } from '@openmetadata/ui-core-components';
 import { Button, Form } from 'antd';
 import { useForm } from 'antd/es/form/Form';
@@ -163,7 +163,7 @@ export const AddEditPersonaForm = ({
         children: (
           <Button
             data-testid="add-users"
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            icon={<Plus style={{ color: 'white', fontSize: '12px' }} />}
             size="small"
             type="primary"
           />

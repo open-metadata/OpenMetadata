@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
-} from '@ant-design/icons';
+  AlertCircle,
+  CheckCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Alert, Button } from 'antd';
 import classNames from 'classnames';
@@ -69,14 +69,14 @@ function InlineAlert({
 
       case 'success':
         return (
-          <CheckCircleOutlined
+          <CheckCircle
             className={classNames(ALERT_ICON_CLASS, alertIconClass)}
           />
         );
       case 'info':
       default:
         return (
-          <ExclamationCircleOutlined
+          <AlertCircle
             className={classNames(ALERT_ICON_CLASS, alertIconClass)}
           />
         );

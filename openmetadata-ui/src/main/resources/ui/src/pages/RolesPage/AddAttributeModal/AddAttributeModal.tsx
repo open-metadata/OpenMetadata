@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
+import { Check, Search } from '@openmetadata/ui-core-components/icons';
 import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -164,7 +164,7 @@ const AddAttributeModal: FC<Props> = ({
                 placeholder={t('label.search-entity', {
                   entity: type,
                 })}
-                prefix={<SearchOutlined style={{ color: '#37352F4D' }} />}
+                prefix={<Search style={{ color: '#37352F4D' }} />}
                 onChange={(e) => handleSearch(e.target.value)}
               />
             </Col>
@@ -199,7 +199,7 @@ const AddAttributeModal: FC<Props> = ({
                 </Col>
                 <Col span={2}>
                   {selectedValues.includes(option.id) && (
-                    <CheckOutlined className="text-primary" />
+                    <Check className="text-primary" />
                   )}
                 </Col>
               </Row>

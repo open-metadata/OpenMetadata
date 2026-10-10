@@ -16,7 +16,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { GitMerge, X } from '@openmetadata/ui-core-components/icons';
+import { GitMerge, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -478,7 +478,7 @@ const EdgeInfoDrawer = ({
               className="tw:mr-2 tw:size-9 tw:rounded-lg tw:p-0 tw:text-primary tw:hover:bg-transparent tw:hover:text-primary"
               color="tertiary"
               data-testid="drawer-close-icon"
-              icon={X}
+              icon={XClose}
               size="xs"
               onClick={onClose}
             />

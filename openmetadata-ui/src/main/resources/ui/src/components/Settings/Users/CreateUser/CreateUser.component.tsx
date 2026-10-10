@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Toggle } from '@openmetadata/ui-core-components';
 import { Button, Form, FormProps, Input, Radio, Select, Space } from 'antd';
@@ -87,7 +87,7 @@ const buildDomainsField = (
     children: (
       <Button
         data-testid="add-domain"
-        icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+        icon={<Plus style={{ color: 'white', fontSize: '12px' }} />}
         size="small"
         type="primary"
       />

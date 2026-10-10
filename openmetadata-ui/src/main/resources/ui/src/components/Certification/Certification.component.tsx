@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { Button, Empty, Radio, Spin } from 'antd';
 import { AxiosError } from 'axios';
@@ -317,13 +317,13 @@ const Certification = ({
                 data-testid="close-certification"
                 type="default"
                 onClick={handleCloseCertification}>
-                <CloseOutlined />
+                <XClose />
               </Button>
               <Button
                 data-testid="update-certification"
                 type="primary"
                 onClick={() => updateCertificationData(selectedCertification)}>
-                <CheckOutlined />
+                <Check />
               </Button>
             </div>
           </Spin>

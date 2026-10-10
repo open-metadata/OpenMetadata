@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { InfoCircleOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Button, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
@@ -113,7 +114,7 @@ const LoginConfigurationPage = () => {
                   placement="top"
                   title={t('message.login-fail-attempt-message')}
                   trigger="hover">
-                  <InfoCircleOutlined
+                  <InfoCircle
                     className="m-x-xss"
                     data-testid="max-login-fail-attampts-url-info"
                     style={{ color: GRAYED_OUT_COLOR }}
@@ -137,7 +138,7 @@ const LoginConfigurationPage = () => {
                   placement="top"
                   title={t('message.access-block-time-message')}
                   trigger="hover">
-                  <InfoCircleOutlined
+                  <InfoCircle
                     className="m-x-xss"
                     data-testid="access-block-time-info"
                     style={{ color: GRAYED_OUT_COLOR }}
@@ -161,7 +162,7 @@ const LoginConfigurationPage = () => {
                   placement="top"
                   title={t('message.jwt-token-expiry-time-message')}
                   trigger="hover">
-                  <InfoCircleOutlined
+                  <InfoCircle
                     className="m-x-xss"
                     data-testid="jwt-token-expiry-time-info"
                     style={{ color: GRAYED_OUT_COLOR }}

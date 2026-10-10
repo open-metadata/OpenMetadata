@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DownOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 import { Button, Slider } from 'antd';
 import { AxiosError } from 'axios';
@@ -145,7 +146,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             filterOption={getFilterOptions}
             optionLabelProp="value"
             placeholder={t('label.select-tag')}
-            suffixIcon={<DownOutlined className="text-grey-muted" />}
+            suffixIcon={<ChevronDown className="text-grey-muted" />}
             value={termBoostData.value || undefined}
             onChange={handleTagChange}
           />

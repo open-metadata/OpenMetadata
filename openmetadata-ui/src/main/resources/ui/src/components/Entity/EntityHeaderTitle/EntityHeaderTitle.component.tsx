@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleFilled } from '@ant-design/icons';
 import {
   Badge,
   Button,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  ExclamationCircleFilled,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
@@ -127,7 +129,7 @@ const EntityHeaderTitle = ({
         {deleted && (
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              <ExclamationCircleFilled className="m-r-xss" size={14} />
               {t('label.deleted')}
             </span>
           </div>

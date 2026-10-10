@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Col, Modal, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
@@ -394,7 +394,7 @@ export const UserTab = ({
                   })}
                   data-testid="add-new-user"
                   disabled={!editUserPermission || isTeamDeleted}
-                  icon={<PlusOutlined />}
+                  icon={<Plus />}
                   type="primary">
                   {t('label.add')}
                 </Button>

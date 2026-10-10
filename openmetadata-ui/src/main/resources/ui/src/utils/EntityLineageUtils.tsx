@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon, { CheckOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import type { LoadingState } from 'Models';
@@ -37,7 +38,7 @@ export const getLoadingStatusValue = (
   if (loading) {
     return <Loader className="text-primary" size="small" />;
   } else if (status === 'success') {
-    return <CheckOutlined className="text-primary" />;
+    return <Check className="text-primary" />;
   } else {
     return defaultState;
   }

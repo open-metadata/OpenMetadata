@@ -211,7 +211,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  X: () => <span>X</span>,
+  XClose: () => <span>XClose</span>,
 }));
 
 jest.mock('../../../../utils/ObservabilityUtils', () => ({

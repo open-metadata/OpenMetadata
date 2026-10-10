@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined, RedoOutlined, SaveOutlined } from '@ant-design/icons';
 import type { Key } from '@openmetadata/ui-core-components';
 import {
   Box,
@@ -21,7 +20,12 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { DotsGrid } from '@openmetadata/ui-core-components/icons';
+import {
+  DotsGrid,
+  RefreshCw01,
+  Save,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEqual } from 'lodash';
@@ -360,7 +364,7 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="secondary"
                     data-testid="reset-button"
-                    iconLeading={<RedoOutlined />}
+                    iconLeading={<RefreshCw01 />}
                     isDisabled={isSaving}
                     onPress={handleReset}>
                     {t('label.reset')}
@@ -368,7 +372,7 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="primary"
                     data-testid="save-button"
-                    iconLeading={<SaveOutlined />}
+                    iconLeading={<Save />}
                     isDisabled={disableSave}
                     isLoading={isSaving}
                     onPress={handleSave}>
@@ -378,7 +382,7 @@ const CustomizeAppModeSidebarPage = () => {
                     aria-label={t('label.cancel')}
                     color="secondary"
                     data-testid="cancel-button"
-                    iconLeading={<CloseOutlined />}
+                    iconLeading={<XClose />}
                     isDisabled={isSaving}
                     onPress={handleCancel}
                   />

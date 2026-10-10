@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-  ClockCircleOutlined,
-  LeftOutlined,
-  StopOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+  ChevronLeft,
+  Clock,
+  SlashCircle01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
@@ -262,7 +262,7 @@ const AppDetails = () => {
                   description={t('message.disable-app', {
                     app: getEntityName(appData),
                   })}
-                  icon={StopOutlined as SvgComponent}
+                  icon={SlashCircle01 as SvgComponent}
                   id="disable-button"
                   name={t('label.disable')}
                 />
@@ -598,7 +598,7 @@ const AppDetails = () => {
         <div
           className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
           data-testid="runtime-disabled-badge">
-          <StopOutlined className="d-flex m-r-xss font-medium text-xs" />
+          <SlashCircle01 className="d-flex m-r-xss font-medium text-xs" />
           {t('label.disabled')}
         </div>
       </Tooltip>
@@ -666,7 +666,7 @@ const AppDetails = () => {
         <div className="d-flex tw:min-w-0 tw:flex-auto">
           <Button
             className="p-0"
-            icon={<LeftOutlined />}
+            icon={<ChevronLeft />}
             size="small"
             type="text"
             onClick={onBrowseAppsClick}>
@@ -700,7 +700,7 @@ const AppDetails = () => {
 
               <div className="d-flex items-center flex-wrap gap-6">
                 <Space size={8}>
-                  <ClockCircleOutlined />
+                  <Clock />
                   <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
@@ -709,7 +709,7 @@ const AppDetails = () => {
                 </Space>
 
                 <Space size={8}>
-                  <UserOutlined />
+                  <User01 />
                   <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,

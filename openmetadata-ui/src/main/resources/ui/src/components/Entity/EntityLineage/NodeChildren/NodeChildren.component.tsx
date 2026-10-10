@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SearchOutlined } from '@ant-design/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { Input } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
@@ -201,7 +201,7 @@ const NodeChildren = ({
             placeholder={t('label.search-entity', {
               entity: childrenHeading,
             })}
-            suffix={<SearchOutlined color={BORDER_COLOR} />}
+            suffix={<Search color={BORDER_COLOR} />}
             value={searchValue}
             onChange={handleSearchChange}
             onClick={(e) => e.stopPropagation()}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Box } from '@openmetadata/ui-core-components';
 import { Button, InputNumber, Slider, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -62,7 +62,7 @@ const SliderWithInput = ({
               data-testid="clear-slider-input"
               type="text"
               onClick={() => onChange(null)}>
-              <CloseOutlined />
+              <XClose />
             </Button>
           </Tooltip>
         </div>

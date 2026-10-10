@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
+import {
+  CheckCircleFilled,
+  CloseCircleFilled,
+} from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Button as CoreButton,

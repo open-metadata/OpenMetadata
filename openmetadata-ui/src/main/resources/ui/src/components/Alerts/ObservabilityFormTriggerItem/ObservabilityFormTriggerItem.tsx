@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Button, Col, Form, Row, Select } from 'antd';
 import { isEmpty } from 'lodash';
@@ -114,7 +114,7 @@ function ObservabilityFormTriggerItem({
                       {!isViewMode && (
                         <Button
                           data-testid={`remove-trigger-${name}`}
-                          icon={<CloseOutlined />}
+                          icon={<XClose />}
                           onClick={() => remove(name)}
                         />
                       )}

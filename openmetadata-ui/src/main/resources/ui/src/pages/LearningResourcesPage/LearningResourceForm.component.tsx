@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Box } from '@openmetadata/ui-core-components';
 import { Button, Drawer, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
@@ -147,7 +147,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       <span className="drawer-title">
         {resource ? t('label.edit-resource') : t('label.add-resource')}
       </span>
-      <CloseOutlined className="drawer-close" onClick={onClose} />
+      <XClose className="drawer-close" onClick={onClose} />
     </div>
   );
 

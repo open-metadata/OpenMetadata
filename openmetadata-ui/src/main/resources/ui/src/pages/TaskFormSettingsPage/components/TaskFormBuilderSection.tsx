@@ -24,7 +24,7 @@
  *  limitations under the License.
  */
 
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import {
   Button,
@@ -131,7 +131,7 @@ const TaskFormBuilderSection = ({
         </div>
         <Button
           data-testid={`${testIdPrefix}-add-field`}
-          icon={<PlusOutlined />}
+          icon={<Plus />}
           onClick={() => onChange([...fields, createEmptyDesignerField()])}>
           {t('label.add-field')}
         </Button>
@@ -160,7 +160,7 @@ const TaskFormBuilderSection = ({
                     <Button
                       danger
                       data-testid={`${testIdPrefix}-field-remove-${index}`}
-                      icon={<DeleteOutlined />}
+                      icon={<Trash01 />}
                       size="small"
                       type="text"
                       onClick={() =>

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-  CheckOutlined,
-  CloseOutlined,
-  InfoCircleOutlined,
-} from '@ant-design/icons';
+  Check,
+  InfoCircle,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
 import { Button, Form, Input, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
@@ -242,7 +242,7 @@ const TeamsInfo = ({
                   size="small"
                   type="primary"
                   onClick={() => setIsEmailEdit(false)}>
-                  <CloseOutlined />
+                  <XClose />
                 </Button>
                 <Button
                   className="h-8 p-x-xss"
@@ -251,7 +251,7 @@ const TeamsInfo = ({
                   loading={isLoading}
                   size="small"
                   type="primary">
-                  <CheckOutlined />
+                  <Check />
                 </Button>
               </Space>
             </Space>
@@ -447,7 +447,7 @@ const TeamsInfo = ({
           <Tooltip
             destroyTooltipOnHide
             title={t('message.team-distinct-user-description')}>
-            <InfoCircleOutlined
+            <InfoCircle
               className="m-x-xss"
               data-testid="helper-icon"
               style={{ color: GRAYED_OUT_COLOR }}

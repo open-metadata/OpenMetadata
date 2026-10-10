@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import { isEmpty } from 'lodash';
@@ -97,7 +97,7 @@ const SuggestionsSlider = () => {
                 className="text-xs text-primary font-medium"
                 data-testid="accept-all-suggestions"
                 disabled={loadingAccept}
-                icon={<CheckOutlined />}
+                icon={<Check />}
                 loading={loadingAccept}
                 type="primary"
                 onClick={() =>
@@ -110,7 +110,7 @@ const SuggestionsSlider = () => {
                 className="text-xs text-primary font-medium"
                 data-testid="reject-all-suggestions"
                 disabled={loadingReject}
-                icon={<CloseOutlined />}
+                icon={<XClose />}
                 loading={loadingReject}
                 type="primary"
                 onClick={() =>

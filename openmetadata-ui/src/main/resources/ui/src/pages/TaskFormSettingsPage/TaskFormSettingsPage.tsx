@@ -24,7 +24,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Tabs, Typography } from '@openmetadata/ui-core-components';
 import { Alert, Button, Card, Form, Input, Select, Space, Spin } from 'antd';
 import { AxiosError } from 'axios';
@@ -234,7 +234,7 @@ const TransitionFormsPane: FC<{
       </div>
       <Button
         data-testid="task-form-transition-add-button"
-        icon={<PlusOutlined />}
+        icon={<Plus />}
         onClick={() =>
           syncTransitionDesigner([
             ...transitionBuilders,
@@ -340,7 +340,7 @@ const WorkflowStagesPane: FC<{
       </div>
       <Button
         data-testid="task-form-stage-mapping-add-button"
-        icon={<PlusOutlined />}
+        icon={<Plus />}
         onClick={() =>
           syncStageMappings([...stageMappings, createEmptyStageMapping()])
         }>

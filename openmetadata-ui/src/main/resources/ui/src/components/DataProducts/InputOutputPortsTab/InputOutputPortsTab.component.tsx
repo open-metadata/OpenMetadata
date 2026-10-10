@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   Accordion,
   AccordionHeader,
@@ -195,7 +195,7 @@ const InputPortsAccordionSection = ({
                 <Button
                   color="link-color"
                   data-testid="add-input-port-button"
-                  iconLeading={<PlusOutlined />}
+                  iconLeading={<Plus />}
                   size="sm"
                   onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                     e.stopPropagation();
@@ -229,7 +229,7 @@ const InputPortsAccordionSection = ({
                       className="tw:mt-2"
                       color="primary"
                       data-testid="add-input-port-button"
-                      iconLeading={<PlusOutlined />}
+                      iconLeading={<Plus />}
                       onClick={onAddInputPort}>
                       {t('label.add-entity', {
                         entity: t('label.entity-port-plural', {
@@ -319,7 +319,7 @@ const OutputPortsAccordionSection = ({
                 <Button
                   color="link-color"
                   data-testid="add-output-port-button"
-                  iconLeading={<PlusOutlined />}
+                  iconLeading={<Plus />}
                   size="sm"
                   onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                     e.stopPropagation();
@@ -353,7 +353,7 @@ const OutputPortsAccordionSection = ({
                       className="tw:mt-2"
                       color="primary"
                       data-testid="add-output-port-button"
-                      iconLeading={<PlusOutlined />}
+                      iconLeading={<Plus />}
                       onClick={onAddOutputPort}>
                       {t('label.add-entity', {
                         entity: t('label.entity-port-plural', {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Form, Input, Modal, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -95,7 +95,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       children: (
         <Button
           data-testid="add-domain"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          icon={<Plus style={{ color: 'white', fontSize: '12px' }} />}
           size="small"
           type="primary"
         />

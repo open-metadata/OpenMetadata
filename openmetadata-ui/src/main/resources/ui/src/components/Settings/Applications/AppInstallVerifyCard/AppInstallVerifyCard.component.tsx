@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-  CheckCircleTwoTone,
-  ClockCircleOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+  CheckCircle,
+  Clock,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { Divider, Typography } from '@openmetadata/ui-core-components';
 import { Avatar, Button, Card, Collapse, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
@@ -45,7 +45,7 @@ const AppInstallVerifyCard = ({
         <Divider
           dashed
           className="tw:w-44 tw:gap-0 app-card-divider"
-          label={<CheckCircleTwoTone twoToneColor={LIGHT_GREEN_COLOR} />}
+          label={<CheckCircle color={LIGHT_GREEN_COLOR} />}
         />
         <Avatar
           className="app-marketplace-avatar flex-center bg-white border"
@@ -126,7 +126,7 @@ const AppInstallVerifyCard = ({
       <Card className="w-500 m-t-md">
         <div className="d-flex items-center justify-between">
           <Space size={8}>
-            <UserOutlined />
+            <User01 />
             <Typography className="text-xs" color="secondary">
               {t('label.developed-by-developer', {
                 developer: appData?.developer,
@@ -134,7 +134,7 @@ const AppInstallVerifyCard = ({
             </Typography>
           </Space>
           <Space size={8}>
-            <ClockCircleOutlined />
+            <Clock />
             <Typography className="text-xs" color="secondary">
               {`${t('label.updated')} ${getRelativeTime(appData?.updatedAt)}`}
             </Typography>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Box, Grid } from '@openmetadata/ui-core-components';
 import {
   chartColor,
@@ -294,7 +294,7 @@ const KPIChart: FC<Props> = ({
             button={
               <Button
                 ghost
-                icon={<PlusOutlined />}
+                icon={<Plus />}
                 type="primary"
                 onClick={handleAddKpi}>
                 {t('label.add-entity', {

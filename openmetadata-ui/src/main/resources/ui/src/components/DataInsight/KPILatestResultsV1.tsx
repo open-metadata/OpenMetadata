@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import {
+  CheckCircle,
+  InfoCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import {
   chartColor,
@@ -93,7 +96,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                     <Typography
                       className="days-remaining"
                       data-testid="kpi-success">
-                      <CheckCircleOutlined style={{ fontSize: '20px' }} />
+                      <CheckCircle style={{ fontSize: '20px' }} />
                     </Typography>
                   </>
                 ) : (
@@ -127,7 +130,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                         Boolean(isTargetMet)
                       )}
                       trigger="hover">
-                      <InfoCircleOutlined style={{ fontSize: '14px' }} />
+                      <InfoCircle style={{ fontSize: '14px' }} />
                     </Tooltip>
                   ) : null}
                 </Box>

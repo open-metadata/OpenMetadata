@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HolderOutlined } from '@ant-design/icons';
+import { Drag } from '@openmetadata/ui-core-components/icons';
 import { Toggle } from '@openmetadata/ui-core-components';
 import { Card, Col, Row, Tree, TreeDataNode, TreeProps } from 'antd';
 import { cloneDeep, isEqual } from 'lodash';
@@ -176,7 +176,7 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
                 blockNode
                 defaultExpandAll
                 showIcon
-                draggable={{ icon: <HolderOutlined /> }}
+                draggable={{ icon: <Drag size={16} /> }}
                 itemHeight={48}
                 switcherIcon={switcherIcon}
                 titleRender={titleRenderer}

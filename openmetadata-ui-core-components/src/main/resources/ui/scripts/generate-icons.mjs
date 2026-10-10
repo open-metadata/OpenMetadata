@@ -120,12 +120,16 @@ const svgoRegularConfig = {
         element: {
           enter: (node) => {
             const HEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+            // preset-default's convertColors already rewrote `white` to `#fff`
+            // by the time this runs, so match the hex forms too — otherwise the
+            // white knockout on filled icons gets themed away into currentColor.
+            const WHITE = /^(white|#fff|#ffffff)$/i;
             for (const attr of ['fill', 'stroke']) {
               const val = node.attributes[attr];
               if (
                 val &&
                 val !== 'none' &&
-                val !== 'white' &&
+                !WHITE.test(val) &&
                 val !== 'currentColor' &&
                 !val.startsWith('url(') &&
                 HEX.test(val)

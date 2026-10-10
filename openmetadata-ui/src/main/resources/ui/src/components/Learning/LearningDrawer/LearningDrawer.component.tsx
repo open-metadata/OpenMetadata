@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
+import { RefreshCw01, XClose } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
-import { Drawer, Empty, Spin } from 'antd';
+import { Drawer, Empty } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -109,9 +109,10 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
   if (isLoading) {
     drawerContent = (
       <div className="learning-drawer-loading">
-        <Spin
+        <RefreshCw01
+          className="tw:animate-spin"
           data-testid="loader"
-          indicator={<LoadingOutlined spin style={{ fontSize: 24 }} />}
+          size={24}
         />
       </div>
     );
@@ -161,9 +162,10 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
               weight="semibold">
               {t('label.entity-resource', { entity: getPageTitle() })}
             </Typography>
-            <CloseOutlined
+            <XClose
               className="learning-drawer-close"
               data-testid="close-drawer"
+              size={14}
               onClick={onClose}
             />
           </div>

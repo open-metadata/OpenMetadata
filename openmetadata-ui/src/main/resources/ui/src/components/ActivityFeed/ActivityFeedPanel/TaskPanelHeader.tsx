@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
@@ -66,7 +66,7 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
           {onCancel && (
             <Button
               data-testid="close-drawer-button"
-              icon={<CloseOutlined />}
+              icon={<XClose />}
               type="text"
               onClick={onCancel}
             />

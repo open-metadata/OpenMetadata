@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Button, Select, Space } from 'antd';
 import { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
@@ -71,7 +71,7 @@ function TeamTypeSelect({
           size="small"
           type="primary"
           onClick={handleCancel}>
-          <CloseOutlined />
+          <XClose />
         </Button>
         <Button
           className="h-8 p-x-xss"
@@ -79,7 +79,7 @@ function TeamTypeSelect({
           size="small"
           type="primary"
           onClick={handleSubmit}>
-          <CheckOutlined />
+          <Check />
         </Button>
       </Space>
     </Space>

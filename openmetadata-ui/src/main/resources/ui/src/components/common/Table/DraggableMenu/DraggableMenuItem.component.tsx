@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EyeInvisibleFilled, EyeOutlined } from '@ant-design/icons';
+import {
+  Eye,
+  EyeInvisibleFilled,
+} from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import { useCallback, useMemo } from 'react';
@@ -82,7 +85,11 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
           {label}
         </Typography>
 
-        {isItemSelected ? <EyeOutlined /> : <EyeInvisibleFilled />}
+        {isItemSelected ? (
+          <Eye data-testid="eye-icon" size={16} />
+        ) : (
+          <EyeInvisibleFilled data-testid="eye-invisible-icon" size={16} />
+        )}
       </Button>
     </div>
   );

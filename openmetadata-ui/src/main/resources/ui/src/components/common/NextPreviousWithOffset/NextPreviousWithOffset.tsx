@@ -12,10 +12,10 @@
  */
 
 import {
-  ArrowLeftOutlined,
-  ArrowRightOutlined,
-  DownOutlined,
-} from '@ant-design/icons';
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+} from '@openmetadata/ui-core-components/icons';
 import {
   Button as CoreButton,
   Dropdown,
@@ -78,7 +78,7 @@ const NextPreviousWithOffset = ({
         className="hover-button text-sm flex-center"
         data-testid="previous"
         disabled={currentPage === 1 || isLoading}
-        icon={<ArrowLeftOutlined />}
+        icon={<ArrowLeft />}
         type="primary"
         onClick={onPreviousHandler}>
         <span>{t('label.previous')}</span>
@@ -94,14 +94,14 @@ const NextPreviousWithOffset = ({
         type="primary"
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>
-        <ArrowRightOutlined />
+        <ArrowRight />
       </Button>
       {onShowSizeChange && (
         <Dropdown.Root>
           <CoreButton
             color="secondary"
             data-testid="page-size-change-button"
-            iconTrailing={<DownOutlined />}
+            iconTrailing={<ChevronDown />}
             isDisabled={isLoading}>
             {`${pageSize} / ${t('label.page')}`}
           </CoreButton>

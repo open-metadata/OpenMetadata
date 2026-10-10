@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Grid,
@@ -405,7 +405,7 @@ export const useSemanticsRuleList = ({
             ghost
             className="add-button"
             data-testid="add-widget-button"
-            icon={<PlusOutlined />}
+            icon={<Plus />}
             type="primary"
             onClick={handleAddDataAssetRule}>
             {t('label.add')}

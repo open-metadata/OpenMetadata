@@ -12,9 +12,9 @@
  */
 
 import {
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
-} from '@ant-design/icons';
+  AlertCircle,
+  CheckCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { Divider, Skeleton } from '@openmetadata/ui-core-components';
 import { AlertProps, Checkbox, Col, Select, Tooltip } from 'antd';
 import Form from 'antd/lib/form';
@@ -666,9 +666,9 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
       : 'destination-error-status';
   const alertIcon =
     destinationStatus === DestinationStatus.Success ? (
-      <CheckCircleOutlined height={14} />
+      <CheckCircle height={14} />
     ) : (
-      <ExclamationCircleOutlined height={14} />
+      <AlertCircle height={14} />
     );
 
   return {

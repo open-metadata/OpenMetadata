@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Button, Card } from 'antd';
 import classNames from 'classnames';
@@ -83,7 +83,7 @@ const SuggestionsAlert = ({
             <Button
               ghost
               data-testid="reject-suggestion"
-              icon={<CloseOutlined />}
+              icon={<XClose />}
               size="small"
               type="primary"
               onClick={() =>
@@ -92,7 +92,7 @@ const SuggestionsAlert = ({
             />
             <Button
               data-testid="accept-suggestion"
-              icon={<CheckOutlined />}
+              icon={<Check />}
               size="small"
               type="primary"
               onClick={() =>

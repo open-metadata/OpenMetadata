@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import {
   SkeletonParagraph,
   Typography,
@@ -76,7 +76,7 @@ function AlertDiagnosticInfoTab() {
                       {`${item.key}:`}
                     </Typography>
                     <Tooltip placement="bottom" title={item.description}>
-                      <InfoCircleOutlined
+                      <InfoCircle
                         className="info-icon"
                         style={{ color: GRAYED_OUT_COLOR }}
                       />

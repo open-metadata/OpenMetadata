@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { LinkOutlined } from '@ant-design/icons';
+import { Link01 } from '@openmetadata/ui-core-components/icons';
 import { Alert, Button, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -85,7 +85,7 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
             action={
               <Button
                 href={resource.source.url}
-                icon={<LinkOutlined />}
+                icon={<Link01 />}
                 rel="noopener noreferrer"
                 size="small"
                 target="_blank"

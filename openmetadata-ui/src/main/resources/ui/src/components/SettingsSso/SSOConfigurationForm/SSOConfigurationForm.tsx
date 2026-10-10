@@ -19,7 +19,7 @@ import {
 import {
   Check,
   UploadCloud02,
-  X,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
 import Form, { IChangeEvent } from '@rjsf/core';
 import {
@@ -150,7 +150,7 @@ const MetadataUploadStatusCard = ({
           {isSuccess ? (
             <Check className="text-white" size={16} />
           ) : (
-            <X className="text-white" size={16} />
+            <XClose className="text-white" size={16} />
           )}
         </div>
         <Typography className="text-grey-body text-sm font-medium">

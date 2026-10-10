@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import { Button } from 'antd';
@@ -45,7 +45,7 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         {schema.additionalProperties && (
           <Button
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            icon={<Plus style={{ color: 'white', fontSize: '12px' }} />}
             id={`${idSchema.$id}`}
             size="small"
             type="primary"

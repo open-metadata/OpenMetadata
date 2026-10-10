@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { WidgetProps } from '@rjsf/utils';
 import { Button } from 'antd';
@@ -130,7 +130,7 @@ const FormBuilder = forwardRef<Form, Props>(
             disabled
             className="p-x-md p-y-xxs h-auto rounded-6"
             type="primary">
-            <CheckOutlined />
+            <Check data-testid="success-icon" />
           </Button>
         );
       } else {

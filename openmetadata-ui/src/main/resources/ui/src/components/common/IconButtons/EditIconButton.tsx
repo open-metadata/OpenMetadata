@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ButtonUtility } from '@openmetadata/ui-core-components';
 import type { ButtonProps } from 'antd';
 import { Button, Tooltip } from 'antd';
@@ -171,7 +172,7 @@ export const PlusIconButton = ({
     <Tooltip title={title}>
       <Button
         className={classNames('bordered', className)}
-        icon={<PlusOutlined />}
+        icon={<Plus />}
         size={size}
         {...props}
       />

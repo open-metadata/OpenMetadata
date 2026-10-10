@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { LeftOutlined } from '@ant-design/icons';
+import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Alert, Button, Carousel, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
@@ -156,7 +156,7 @@ const MarketPlaceAppDetails = () => {
       <div className="p-x-md p-t-md ">
         <Button
           className="p-0"
-          icon={<LeftOutlined />}
+          icon={<ChevronLeft />}
           size="small"
           type="text"
           onClick={onBrowseAppsClick}>

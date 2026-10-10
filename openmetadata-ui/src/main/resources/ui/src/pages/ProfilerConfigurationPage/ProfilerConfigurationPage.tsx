@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
+import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
 import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Button, Col, Collapse, Form, Row, Select, TreeSelect } from 'antd';
 import { AxiosError } from 'axios';
@@ -277,7 +277,7 @@ const ProfilerConfigurationPage = () => {
                               <Form.Item>
                                 <Button
                                   data-testid={`remove-filter-${name}`}
-                                  icon={<CloseOutlined />}
+                                  icon={<XClose />}
                                   size="small"
                                   onClick={() => remove(name)}
                                 />
@@ -291,7 +291,7 @@ const ProfilerConfigurationPage = () => {
                             <Button
                               className="text-primary p-0"
                               data-testid="add-fields"
-                              icon={<PlusOutlined />}
+                              icon={<Plus />}
                               type="text"
                               onClick={() => add()}>
                               {t('label.add-new-field')}

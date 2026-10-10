@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { Badge, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -53,7 +53,7 @@ const FormItemLabel = ({
             overlayInnerStyle={overlayInnerStyle}
             placement={placement}
             title={helperText}>
-            <InfoCircleOutlined
+            <InfoCircle
               className="m-l-xs"
               data-testid="helper-icon"
               style={{ color: GRAYED_OUT_COLOR }}

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon, { CloseCircleOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
+import { XCircle } from '@openmetadata/ui-core-components/icons';
 import {
   Button as CoreButton,
   ButtonGroup,
@@ -202,7 +203,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                         showNow
                         bordered={false}
                         className="executions-date-picker"
-                        clearIcon={<CloseCircleOutlined />}
+                        clearIcon={<XCircle />}
                         data-testid="data-range-picker"
                         open={isClickedCalendar}
                         placeholder={['', '']}

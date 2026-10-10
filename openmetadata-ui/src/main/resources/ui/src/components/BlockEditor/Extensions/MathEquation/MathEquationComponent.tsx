@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Button, Input, Space, Tooltip } from 'antd';
 import { TextAreaRef } from 'antd/lib/input/TextArea';
@@ -64,13 +64,13 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
             />
             <Space direction="horizontal" size={8}>
               <Button
-                icon={<CloseOutlined />}
+                icon={<XClose />}
                 size="small"
                 type="default"
                 onClick={() => setIsEditing(false)}
               />
               <Button
-                icon={<CheckOutlined />}
+                icon={<Check />}
                 size="small"
                 type="primary"
                 onClick={handleSaveEquation}

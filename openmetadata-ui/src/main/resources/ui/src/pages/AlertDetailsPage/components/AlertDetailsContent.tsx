@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SyncOutlined } from '@ant-design/icons';
+import { RefreshCcw02 } from '@openmetadata/ui-core-components/icons';
 import { Box, Owner, Skeleton, Tabs } from '@openmetadata/ui-core-components';
 import { Button, Card, Space, Tooltip } from 'antd';
 import { useCallback, useState } from 'react';
@@ -134,7 +134,7 @@ function AlertDetailsContent({
                   <Button
                     className="flex flex-center"
                     data-testid="sync-button"
-                    icon={<SyncOutlined height={16} width={16} />}
+                    icon={<RefreshCcw02 height={16} width={16} />}
                     loading={isSyncing}
                     onClick={handleAlertSync}
                   />

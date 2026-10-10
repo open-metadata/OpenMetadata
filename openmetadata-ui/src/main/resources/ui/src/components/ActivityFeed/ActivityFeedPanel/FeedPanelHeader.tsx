@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
@@ -79,7 +79,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
             trigger="hover">
             <Button
               data-testid="add-new-conversation"
-              icon={<PlusOutlined />}
+              icon={<Plus />}
               size="small"
               type="primary"
               onClick={() => {

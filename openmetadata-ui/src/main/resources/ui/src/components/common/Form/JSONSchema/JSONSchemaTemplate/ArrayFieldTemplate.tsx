@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import { Button } from 'antd';
 import classNames from 'classnames';
@@ -31,7 +32,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
         {canAdd && (
           <Button
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            icon={<Plus style={{ color: 'white', fontSize: '12px' }} />}
             id={`${idSchema.$id}`}
             size="small"
             type="primary"

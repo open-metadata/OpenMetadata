@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
@@ -647,7 +647,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     </p>
                     <Button
                       className="include-columns-add-button flex-center"
-                      icon={<PlusOutlined />}
+                      icon={<Plus />}
                       size="small"
                       type="primary"
                       onClick={() => add({ metrics: ['all'] })}
@@ -941,7 +941,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           </p>
                           <Button
                             className="include-columns-add-button flex-center"
-                            icon={<PlusOutlined />}
+                            icon={<Plus />}
                             size="small"
                             type="primary"
                             onClick={() => add()}

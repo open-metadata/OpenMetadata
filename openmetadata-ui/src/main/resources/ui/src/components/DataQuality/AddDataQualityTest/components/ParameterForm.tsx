@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { HelpCircle, Plus } from '@openmetadata/ui-core-components/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import {
@@ -321,7 +321,7 @@ const buildStringField = ({
             <label className="d-flex align-items-center">
               <Typography className="form-label-title">{label}</Typography>
               <Tooltip title={data.description}>
-                <QuestionCircleOutlined className="ant-form-item-tooltip" />
+                <HelpCircle className="ant-form-item-tooltip" />
               </Tooltip>
             </label>
           </div>
@@ -376,7 +376,7 @@ const buildArraySetField = ({
             <span>{data.displayName}</span>
             <Button
               className="m-x-sm list-add-btn"
-              icon={<PlusOutlined />}
+              icon={<Plus />}
               size="small"
               type="primary"
               onClick={() => add()}

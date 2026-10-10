@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  CloseCircleOutlined,
-  SortAscendingOutlined,
-  SortDescendingOutlined,
-} from '@ant-design/icons';
 import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import {
+  SortAscending,
+  SortDescending,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -638,7 +638,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                             showNow
                             bordered={false}
                             className="p-t-0"
-                            clearIcon={<CloseCircleOutlined />}
+                            clearIcon={<XCircle size={14} />}
                             data-testid="data-range-picker"
                             open={isClickedCalendar}
                             suffixIcon={null}
@@ -671,12 +671,15 @@ const TableQueries: FC<TableQueriesProp> = ({
                           )
                         }>
                         {isAscSortOrder ? (
-                          <SortAscendingOutlined
-                            className="text-base text-grey-muted"
-                            style={{ fontSize: '14px' }}
+                          <SortAscending
+                            className="text-grey-muted"
+                            size={14}
                           />
                         ) : (
-                          <SortDescendingOutlined className="text-sm text-grey-muted" />
+                          <SortDescending
+                            className="text-grey-muted"
+                            size={14}
+                          />
                         )}
                       </Button>
                       {addButton}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Tabs,
@@ -744,7 +744,7 @@ const TeamDetailsV1 = ({
             ghost
             data-testid="add-placeholder-button"
             disabled={!entityPermissions.Create || isTeamDeleted}
-            icon={<PlusOutlined />}
+            icon={<Plus />}
             type="primary"
             onClick={handleAddTeamButtonClick}>
             {t('label.add')}
@@ -862,7 +862,7 @@ const TeamDetailsV1 = ({
                 })}
                 data-testid="add-placeholder-button"
                 disabled={isTeamDeleted}
-                icon={<PlusOutlined />}
+                icon={<Plus />}
                 type="primary"
                 onClick={() =>
                   setAddAttribute({
@@ -934,7 +934,7 @@ const TeamDetailsV1 = ({
                 })}
                 data-testid="add-placeholder-button"
                 disabled={isTeamDeleted}
-                icon={<PlusOutlined />}
+                icon={<Plus />}
                 type="primary"
                 onClick={() =>
                   setAddAttribute({

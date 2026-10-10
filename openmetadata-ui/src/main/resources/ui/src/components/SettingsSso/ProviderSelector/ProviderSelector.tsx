@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ArrowUpOutlined } from '@ant-design/icons';
+import { ArrowUp } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import React, { useState } from 'react';
@@ -51,7 +51,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
           type="primary"
           onClick={handleConfigureClick}>
           {t('label.configure')}
-          <ArrowUpOutlined className="configure-arrow" height={12} width={12} />
+          <ArrowUp className="configure-arrow" height={12} width={12} />
         </Button>
       </div>
 

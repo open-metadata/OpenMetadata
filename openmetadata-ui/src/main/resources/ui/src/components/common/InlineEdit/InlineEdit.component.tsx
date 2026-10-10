@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Box } from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import classNames from 'classnames';
@@ -60,7 +60,7 @@ const InlineEdit = ({
         <Button
           data-testid="inline-cancel-btn"
           disabled={isLoading}
-          icon={<CloseOutlined />}
+          icon={<XClose />}
           size="small"
           type="primary"
           onClick={onCancel}
@@ -68,7 +68,7 @@ const InlineEdit = ({
         />
         <Button
           data-testid="inline-save-btn"
-          icon={<CheckOutlined />}
+          icon={<Check />}
           loading={isLoading}
           size="small"
           type="primary"

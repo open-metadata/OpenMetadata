@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { Tooltip } from 'antd';
 import { AxiosError } from 'axios';
@@ -138,7 +138,7 @@ export const getDeleteIcon = (arg: {
   const { deleteTagId, id, status } = arg;
   if (deleteTagId === id) {
     if (status === 'success') {
-      return <CheckOutlined data-testid="check-outline" />;
+      return <Check data-testid="check-outline" />;
     }
 
     return <Loader size="small" type="default" />;
@@ -181,7 +181,7 @@ export const tagRender = (customTagProps: CustomTagProps) => {
         className="tw:flex tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-quaternary"
         type="button"
         onClick={onClose}>
-        <CloseOutlined data-testid="remove-tags" height={8} width={8} />
+        <XClose data-testid="remove-tags" height={8} width={8} />
       </button>
     </Badge>
   );

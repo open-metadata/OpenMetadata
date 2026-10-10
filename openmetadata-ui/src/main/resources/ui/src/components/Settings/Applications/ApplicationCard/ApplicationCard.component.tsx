@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ExclamationCircleFilled } from '@ant-design/icons';
+import { ExclamationCircleFilled } from '@openmetadata/ui-core-components/icons';
 import {
   Button,
   Card,
@@ -77,7 +77,7 @@ const ApplicationCard = ({
               <div
                 className="deleted-badge-button text-xss flex-center tw:items-center"
                 data-testid="deleted-badge">
-                <ExclamationCircleFilled className="d-flex m-r-xss font-medium text-xs" />
+                <ExclamationCircleFilled className="d-flex m-r-xss" size={14} />
                 {t('label.disabled')}
               </div>
             )}

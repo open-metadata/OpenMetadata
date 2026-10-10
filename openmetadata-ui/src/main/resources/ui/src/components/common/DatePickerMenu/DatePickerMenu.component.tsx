@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import { CloseCircleFilled, CloseCircleOutlined } from '@ant-design/icons';
 import {
   Button as CoreButton,
   Dropdown,
 } from '@openmetadata/ui-core-components';
-import { ChevronRight } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronRight,
+  CloseCircleFilled,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { Button } from 'antd';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import classNames from 'classnames';
@@ -303,7 +306,7 @@ const DatePickerMenu = ({
               open
               bordered={false}
               className="tw:pointer-events-none tw:size-0 tw:overflow-hidden tw:p-0 tw:opacity-0"
-              clearIcon={<CloseCircleOutlined />}
+              clearIcon={<XCircle size={14} />}
               format={(value) => value.toFormat('yyyy-MM-dd')}
               getPopupContainer={getCustomRangeContainer}
               placement="bottomRight"

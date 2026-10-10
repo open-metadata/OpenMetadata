@@ -42,7 +42,7 @@ import {
   Lock01,
   Plus,
   Share07,
-  X,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { ConfigProvider } from 'antd';
 import { AxiosError } from 'axios';
@@ -187,7 +187,7 @@ const LinkedAssetCard: FC<{
             <ButtonUtility
               color="tertiary"
               data-testid="remove-linked-asset-btn"
-              icon={<X size={18} strokeWidth={2} />}
+              icon={<XClose size={18} strokeWidth={2} />}
               onClick={() => onRemove(fqn)}
             />
           )}

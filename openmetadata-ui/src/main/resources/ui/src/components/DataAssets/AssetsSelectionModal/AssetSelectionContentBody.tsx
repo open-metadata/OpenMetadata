@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { AlertCircle } from '@openmetadata/ui-core-components/icons';
 import {
   Box,
   Divider as CoreDivider,
@@ -154,7 +154,7 @@ const AssetSelectionHeader = ({
           }
           message={
             <div className="d-flex items-center gap-3">
-              <ExclamationCircleOutlined className="tw:text-2xl tw:text-error-primary" />
+              <AlertCircle className="tw:text-2xl tw:text-error-primary" />
               <Typography as="span" size="text-sm" weight="semibold">
                 {t('label.validation-error-plural')}
               </Typography>
@@ -243,7 +243,7 @@ const AssetSelectionList = ({
                           <CoreDivider className="tw:mt-0 tw:my-2" />
                         </div>
                         <div className="d-flex gap-3 p-x-sm p-b-sm">
-                          <ExclamationCircleOutlined className="tw:text-2xl tw:text-error-primary" />
+                          <AlertCircle className="tw:text-2xl tw:text-error-primary" />
                           <Typography as="span" className="tw:break-all">
                             {errorMessage}
                           </Typography>

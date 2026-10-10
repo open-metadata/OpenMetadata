@@ -213,7 +213,7 @@ describe('AppDetails component', () => {
 
     // back button
     fireEvent.click(
-      screen.getByRole('button', { name: 'left label.browse-app-plural' })
+      screen.getByRole('button', { name: 'label.browse-app-plural' })
     );
 
     expect(mockNavigate).toHaveBeenCalledWith(

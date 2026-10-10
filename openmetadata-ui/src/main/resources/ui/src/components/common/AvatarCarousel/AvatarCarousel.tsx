@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LeftOutlined, RightOutlined } from '@ant-design/icons';
+import {
+  ChevronLeft,
+  ChevronRight,
+} from '@openmetadata/ui-core-components/icons';
 import { Button, Carousel } from 'antd';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
@@ -70,7 +73,7 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
           className="carousel-arrow"
           data-testid="prev-slide"
           disabled={avatarList.length <= 1 || currentSlide <= 0}
-          icon={<LeftOutlined />}
+          icon={<ChevronLeft />}
           size="small"
           type="text"
           onClick={prevSlide}
@@ -101,7 +104,7 @@ const AvatarCarousel = ({ showArrows = false }: AvatarCarouselProps) => {
           disabled={
             avatarList.length <= 1 || currentSlide === avatarList.length - 1
           }
-          icon={<RightOutlined />}
+          icon={<ChevronRight />}
           size="small"
           type="text"
           onClick={nextSlide}

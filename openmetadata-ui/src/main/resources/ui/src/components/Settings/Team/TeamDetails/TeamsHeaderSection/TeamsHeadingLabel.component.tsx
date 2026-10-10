@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  CheckOutlined,
-  CloseOutlined,
-  ExclamationCircleFilled,
-} from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Check,
+  ExclamationCircleFilled,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { Button, Input, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -164,7 +164,7 @@ const TeamsHeadingLabel = ({
             disabled={isLoading}
             type="primary"
             onMouseDown={handleClose}>
-            <CloseOutlined />
+            <XClose />
           </Button>
           <Button
             className="rounded-4 text-sm p-xss"
@@ -172,7 +172,7 @@ const TeamsHeadingLabel = ({
             loading={isLoading}
             type="primary"
             onMouseDown={onHeadingSave}>
-            <CheckOutlined />
+            <Check />
           </Button>
         </Space>
       </div>
@@ -186,7 +186,7 @@ const TeamsHeadingLabel = ({
           <div
             className="deleted-badge-button text-xs flex-center"
             data-testid="deleted-badge">
-            <ExclamationCircleFilled className="m-r-xss" />
+            <ExclamationCircleFilled className="m-r-xss" size={14} />
             {t('label.deleted')}
           </div>
         )}

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import {
   BadgeWithButton,
   Box,
@@ -101,14 +101,14 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
               className="p-x-05"
               data-testid="cancelDataAssets"
               disabled={isSubmitLoading}
-              icon={<CloseOutlined size={12} />}
+              icon={<XClose size={12} />}
               size="small"
               onClick={onCancel}
             />
             <Button
               className="p-x-05"
               data-testid="saveDataAssets"
-              icon={<CheckOutlined size={12} />}
+              icon={<Check size={12} />}
               loading={isSubmitLoading}
               size="small"
               type="primary"

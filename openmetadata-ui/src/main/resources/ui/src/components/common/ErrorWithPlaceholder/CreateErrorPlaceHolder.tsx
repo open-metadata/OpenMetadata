@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
@@ -103,7 +103,7 @@ const CreateErrorPlaceHolder = ({
                 ghost
                 className="p-x-lg"
                 data-testid={buttonId ?? 'add-placeholder-button'}
-                icon={<PlusOutlined />}
+                icon={<Plus />}
                 type="primary"
                 onClick={onClick}>
                 {t('label.add')}

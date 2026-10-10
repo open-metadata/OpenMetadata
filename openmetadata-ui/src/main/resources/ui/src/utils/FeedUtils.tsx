@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { RightOutlined } from '@ant-design/icons';
+import { ChevronRight } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import type { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
@@ -176,7 +176,7 @@ export const getEntityFieldDisplay = (entityField: string) => {
     const entityFields = entityField.split(ENTITY_LINK_SEPARATOR);
     const separator = (
       <span className="p-x-xss">
-        <RightOutlined className="text-xs m-t-xss cursor-default text-grey-muted align-middle " />
+        <ChevronRight className="text-xs m-t-xss cursor-default text-grey-muted align-middle " />
       </span>
     );
 

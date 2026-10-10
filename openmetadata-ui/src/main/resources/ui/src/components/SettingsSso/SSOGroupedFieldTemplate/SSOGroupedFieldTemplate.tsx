@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
@@ -401,9 +401,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
           {schema.additionalProperties && (
             <Button
               data-testid={`add-item-${title}`}
-              icon={
-                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-              }
+              icon={<Plus style={{ color: 'white', fontSize: '12px' }} />}
               id={`${idSchema.$id}`}
               size="small"
               type="primary"

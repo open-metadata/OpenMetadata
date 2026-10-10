@@ -102,7 +102,7 @@ describe('FormBuilder', () => {
   });
 
   it('should display check icon when status is success', () => {
-    const { getByRole } = render(
+    const { getByTestId } = render(
       <FormBuilder
         cancelText="Cancel"
         okText="OK"
@@ -114,7 +114,7 @@ describe('FormBuilder', () => {
       />
     );
 
-    expect(getByRole('img')).toBeInTheDocument();
+    expect(getByTestId('success-icon')).toBeInTheDocument();
   });
 
   it('does not show form header when showFormHeader is false', () => {

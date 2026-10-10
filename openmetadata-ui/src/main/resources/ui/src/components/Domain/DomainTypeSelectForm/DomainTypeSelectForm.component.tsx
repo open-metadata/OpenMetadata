@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { Box, Grid } from '@openmetadata/ui-core-components';
 import { Button, Form, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
@@ -56,7 +56,7 @@ const DomainTypeSelectForm = ({
               className="p-x-05"
               data-testid="cancelAssociatedTag"
               disabled={isSubmitLoading}
-              icon={<CloseOutlined size={12} />}
+              icon={<XClose size={12} />}
               size="small"
               onClick={onCancel}
             />
@@ -64,7 +64,7 @@ const DomainTypeSelectForm = ({
               className="p-x-05"
               data-testid="saveAssociatedTag"
               htmlType="submit"
-              icon={<CheckOutlined size={12} />}
+              icon={<Check size={12} />}
               loading={isSubmitLoading}
               size="small"
               type="primary"

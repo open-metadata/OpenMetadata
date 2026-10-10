@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { ArrowLeft, ArrowRight } from '@openmetadata/ui-core-components/icons';
 import {
   BreadcrumbItemType,
   Breadcrumbs,
@@ -42,12 +42,12 @@ export const LINEAGE_DEPENDENCY_OPTIONS = [
   {
     label: 'Direct',
     key: 'direct',
-    icon: <ArrowRightOutlined />,
+    icon: <ArrowRight />,
   },
   {
     label: 'Indirect',
     key: 'indirect',
-    icon: <ArrowLeftOutlined />,
+    icon: <ArrowLeft />,
   },
 ];
 
