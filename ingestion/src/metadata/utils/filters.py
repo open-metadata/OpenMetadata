@@ -76,6 +76,20 @@ def _filter(filter_pattern: FilterPattern | None, name: str | None) -> bool:
     return False
 
 
+def filtered_out(filter_pattern: FilterPattern | None, name: str) -> bool:
+    """Return True if the name needs to be filtered, False otherwise
+
+    The entity-agnostic form the ``filter_by_*`` helpers below specialise, for
+    callers whose objects are not one of the modelled entities (a MongoDB
+    database, a Cassandra keyspace, a Couchbase bucket).
+
+    :param filter_pattern: Model defining filtering logic
+    :param name: name of the object to filter
+    :return: True for filtering, False otherwise
+    """
+    return _filter(filter_pattern, name)
+
+
 def filter_by_schema(schema_filter_pattern: FilterPattern | None, schema_name: str) -> bool:
     """
     Return True if the schema needs to be filtered, False otherwise
