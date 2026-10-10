@@ -15,7 +15,13 @@ import { Card, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toPng } from 'html-to-image';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { FocusScope, useOverlay, usePreventScroll } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
@@ -372,47 +378,111 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     );
   }
 
-  // Splitter + details ReflexElement must be direct sibling children of
-  // ReflexContainer — a fragment around them silently breaks react-reflex's
-  // prop injection (it uses React.Children.map/cloneElement to pass
-  // `events`/`index` into each child). Returning the pair from a helper also
-  // keeps the main return's cyclomatic complexity within budget.
-  const renderDetailsSplitter = () =>
+  // Canvas content extracted so we can render it in two shapes without
+  // duplicating markup: standalone (drawer closed) and inside a ReflexElement
+  // (drawer open, splitter active). react-reflex's ReflexContainer renders
+  // every child as an empty placeholder on its first commit (before its
+  // `componentDidMount` populates flexData), which means our canvas ref would
+  // not be attached when `useKnowledgeGraphCanvas`'s init effect runs — the
+  // effect would bail with a null container and never retry because its deps
+  // don't change. Keeping the canvas unwrapped by default dodges that; we only
+  // pay the one-time G6 re-init when the drawer actually opens.
+  const canvasContent = (
+    <Card.Content className="knowledge-graph-body tw:p-0">
+      <KnowledgeGraphBands
+        layout={layout}
+        rings={canvas.rings}
+        showBands={areBandsVisible(showBands, selectedLevel)}
+        zoom={canvas.zoom}
+      />
+      <div
+        aria-busy={result.loading}
+        aria-label={t('label.knowledge-graph')}
+        className="knowledge-graph-canvas"
+        data-graph-origin={canvas.viewportOrigin}
+        data-ready={canvas.ready}
+        data-testid="knowledge-graph-canvas"
+        ref={canvas.containerRef}
+        role="region"
+      />
+      {view.initialLoading && (
+        <div className="knowledge-graph-loading">
+          <Loader />
+        </div>
+      )}
+      {view.empty && (
+        <KnowledgeGraphEmptyState
+          hasFilters={hasFilters}
+          level={view.level}
+          mode={mode}
+          onClearFilters={clearFilters}
+          onExtend={() => setSelectedLevel(3)}
+        />
+      )}
+      <KnowledgeGraphViewControls
+        isFullscreen={isFullscreen}
+        zoom={canvas.zoom}
+        onFit={handleFit}
+        onFullscreen={handleFullscreen}
+        onRefresh={handleRefresh}
+        onZoomIn={() => handleZoom(ZOOM_IN_FACTOR)}
+        onZoomOut={() => handleZoom(ZOOM_OUT_FACTOR)}
+      />
+    </Card.Content>
+  );
+  const detailsElement =
     drawer && displayData ? (
-      <ReflexSplitter
-        aria-label={t('label.kg-resize-details')}
-        className="kg-stage-splitter"
-        propagate={false}
+      <KnowledgeGraphDetails
+        columns={columns}
+        concepts={concepts}
+        coverage={coverage}
+        data={displayData}
+        drawer={drawer}
+        mode={mode}
+        relationshipScope={relationshipScope}
+        onClearRelationshipScope={() => setRelationshipScope(null)}
+        onClose={() => setDrawer(null)}
+        onDrawerChange={setDrawer}
+        onRetry={handleRefresh}
+        onSelect={(kind, id) =>
+          kind === 'node' ? findNode(id) : setSelection({ kind, id })
+        }
       />
     ) : null;
-  const renderDetailsElement = () => {
-    if (!drawer || !displayData) {
-      return null;
+  // Build the ReflexContainer children in a helper so the outer render's
+  // cyclomatic complexity stays within budget — react-reflex uses
+  // React.Children.map on its direct children, which handles the array fine
+  // and keeps the canvas ReflexElement stable so G6 isn't re-initialised
+  // every time the drawer toggles.
+  const renderStageChildren = () => {
+    const children: ReactNode[] = [
+      <ReflexElement
+        className="kg-stage-canvas-pane"
+        key="canvas"
+        minSize={160}
+        propagateDimensions={false}>
+        {canvasContent}
+      </ReflexElement>,
+    ];
+    if (detailsElement) {
+      children.push(
+        <ReflexSplitter
+          aria-label={t('label.kg-resize-details')}
+          className="kg-stage-splitter"
+          key="splitter"
+          propagate={false}
+        />,
+        <ReflexElement
+          className="kg-stage-details-pane"
+          flex={0.5}
+          key="details"
+          minSize={360}>
+          {detailsElement}
+        </ReflexElement>
+      );
     }
 
-    return (
-      <ReflexElement
-        className="kg-stage-details-pane"
-        flex={0.36}
-        minSize={220}>
-        <KnowledgeGraphDetails
-          columns={columns}
-          concepts={concepts}
-          coverage={coverage}
-          data={displayData}
-          drawer={drawer}
-          mode={mode}
-          relationshipScope={relationshipScope}
-          onClearRelationshipScope={() => setRelationshipScope(null)}
-          onClose={() => setDrawer(null)}
-          onDrawerChange={setDrawer}
-          onRetry={handleRefresh}
-          onSelect={(kind, id) =>
-            kind === 'node' ? findNode(id) : setSelection({ kind, id })
-          }
-        />
-      </ReflexElement>
-    );
+    return children;
   };
 
   return (
@@ -485,54 +555,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               <ReflexContainer
                 className="kg-stage-main"
                 orientation="horizontal">
-                <ReflexElement
-                  className="kg-stage-canvas-pane"
-                  minSize={160}
-                  propagateDimensions={false}>
-                  <Card.Content className="knowledge-graph-body tw:p-0">
-                    <KnowledgeGraphBands
-                      layout={layout}
-                      rings={canvas.rings}
-                      showBands={areBandsVisible(showBands, selectedLevel)}
-                      zoom={canvas.zoom}
-                    />
-                    <div
-                      aria-busy={result.loading}
-                      aria-label={t('label.knowledge-graph')}
-                      className="knowledge-graph-canvas"
-                      data-graph-origin={canvas.viewportOrigin}
-                      data-ready={canvas.ready}
-                      data-testid="knowledge-graph-canvas"
-                      ref={canvas.containerRef}
-                      role="region"
-                    />
-                    {view.initialLoading && (
-                      <div className="knowledge-graph-loading">
-                        <Loader />
-                      </div>
-                    )}
-                    {view.empty && (
-                      <KnowledgeGraphEmptyState
-                        hasFilters={hasFilters}
-                        level={view.level}
-                        mode={mode}
-                        onClearFilters={clearFilters}
-                        onExtend={() => setSelectedLevel(3)}
-                      />
-                    )}
-                    <KnowledgeGraphViewControls
-                      isFullscreen={isFullscreen}
-                      zoom={canvas.zoom}
-                      onFit={handleFit}
-                      onFullscreen={handleFullscreen}
-                      onRefresh={handleRefresh}
-                      onZoomIn={() => handleZoom(ZOOM_IN_FACTOR)}
-                      onZoomOut={() => handleZoom(ZOOM_OUT_FACTOR)}
-                    />
-                  </Card.Content>
-                </ReflexElement>
-                {renderDetailsSplitter()}
-                {renderDetailsElement()}
+                {renderStageChildren()}
               </ReflexContainer>
               <KnowledgeGraphOverlays
                 coverage={coverage}

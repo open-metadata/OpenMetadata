@@ -97,7 +97,7 @@ interface CanvasOptions {
 }
 
 interface UseKnowledgeGraphCanvasResult {
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: (node: HTMLDivElement | null) => void;
   ready: boolean;
   status: CanvasStatus;
   error: unknown;
@@ -114,7 +114,20 @@ export const useKnowledgeGraphCanvas = (
   options: CanvasOptions
 ): UseKnowledgeGraphCanvasResult => {
   const { theme, brandColors } = useTheme();
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Callback ref instead of a mutable ref: `useKnowledgeGraphCanvas`'s init
+  // effect reads the DOM node to attach G6, so we need the effect to re-run
+  // whenever the node changes identity (e.g. when a parent conditionally
+  // wraps the canvas in a different subtree). A plain useRef would never
+  // notify the effect — the ref would silently flip from null → node after
+  // the effect already bailed.
+  const [containerNode, setContainerNode] = useState<HTMLDivElement | null>(
+    null
+  );
+  const containerRef = useCallback((node: HTMLDivElement | null) => {
+    setContainerNode(node);
+  }, []);
+  const containerNodeRef = useRef<HTMLDivElement | null>(null);
+  containerNodeRef.current = containerNode;
   const graphRef = useRef<Graph | null>(null);
   const pendingFocus = useRef<string | null>(null);
   const latest = useRef(options);
@@ -158,7 +171,7 @@ export const useKnowledgeGraphCanvas = (
       );
       queue.current = queue.current
         .catch(() => undefined)
-        .then(() => fitViewport(graph, focusId, containerRef.current))
+        .then(() => fitViewport(graph, focusId, containerNodeRef.current))
         .catch(setErrorState);
     }
   }, [setErrorState]);
@@ -186,7 +199,7 @@ export const useKnowledgeGraphCanvas = (
         void graph
           .focusElement(id, false)
           .then(() => {
-            containerRef.current
+            containerNodeRef.current
               ?.querySelector<HTMLButtonElement>(
                 `[data-node-id="${CSS.escape(id)}"]`
               )
@@ -216,7 +229,7 @@ export const useKnowledgeGraphCanvas = (
           latest.current.onSelectionChange({ kind: 'node', id });
           if (keyboard) {
             requestAnimationFrame(() =>
-              containerRef.current
+              containerNodeRef.current
                 ?.closest('.knowledge-graph-container')
                 ?.querySelector<HTMLElement>(
                   '[data-testid="graph-inspector"] h3'
@@ -250,7 +263,7 @@ export const useKnowledgeGraphCanvas = (
 
   useEffect(() => {
     ensureG6NodeRegistered();
-    const container = containerRef.current;
+    const container = containerNodeRef.current;
     if (!container) {
       return;
     }
@@ -393,7 +406,7 @@ export const useKnowledgeGraphCanvas = (
       setStatus('idle');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entityKey, renderNode, updateRings, fit, setErrorState]);
+  }, [containerNode, entityKey, renderNode, updateRings, fit, setErrorState]);
 
   useEffect(() => {
     // The pane changes size after this effect runs; the ResizeObserver
@@ -452,7 +465,7 @@ export const useKnowledgeGraphCanvas = (
       const firstDraw = !drawn.current;
       if (firstDraw) {
         await graph.render();
-        containerRef.current?.querySelectorAll('canvas').forEach((canvas) => {
+        containerNodeRef.current?.querySelectorAll('canvas').forEach((canvas) => {
           canvas.tabIndex = -1;
           canvas.setAttribute('aria-hidden', 'true');
         });
@@ -470,7 +483,7 @@ export const useKnowledgeGraphCanvas = (
       );
       const fitKey = latest.current.fitKey;
       if ((firstDraw || fittedKey.current !== fitKey) && nodes.length > 0) {
-        await fitViewport(graph, focusId, containerRef.current);
+        await fitViewport(graph, focusId, containerNodeRef.current);
         fittedKey.current = fitKey;
       }
       await retainSelection(
@@ -482,7 +495,7 @@ export const useKnowledgeGraphCanvas = (
         focusId,
         latest.current.onSelectionChange
       );
-      await focusPendingNode(graph, nodes, pendingFocus, containerRef.current);
+      await focusPendingNode(graph, nodes, pendingFocus, containerNodeRef.current);
       setError(null);
       setStatus('ready');
       updateRings();

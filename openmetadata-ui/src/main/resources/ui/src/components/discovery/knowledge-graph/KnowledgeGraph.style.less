@@ -54,6 +54,24 @@
     min-width: 0;
   }
 
+  // Drawer-closed shape: canvas owns the whole stage, no ReflexContainer in
+  // play. We re-create the display/flex contract the ReflexContainer gave us
+  // so `.knowledge-graph-body` can stretch to fill without extra wrappers.
+  .kg-stage-single {
+    display: flex;
+    flex-direction: column;
+  }
+
+  // react-reflex's base styles set `overflow: auto` on every `.reflex-element`;
+  // the canvas pane embeds a G6-managed `<canvas>` that paints larger than the
+  // viewport, so `overflow: auto` would let that canvas prop the pane open.
+  // Lock the pane to `overflow: hidden` and give `.knowledge-graph-body` the
+  // full height so G6 only ever sees the stable visible size.
+  .kg-stage-canvas-pane.reflex-element {
+    overflow: hidden;
+  }
+
+  .kg-stage-single > .knowledge-graph-body,
   .kg-stage-canvas-pane > .knowledge-graph-body {
     height: 100%;
   }
