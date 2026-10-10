@@ -280,6 +280,43 @@ def _make_inspector(column_names):
     return inspector
 
 
+# ── set_schema_description_map: shared mock rows ──────────────────────────────
+# Each SimpleNamespace mirrors the SELECT list of COCKROACH_SCHEMA_COMMENTS:
+#   (database_name, schema_name, comment)
+# The query is a LEFT JOIN with the classoid/objsubid predicates in ON, so the
+# rows a *fixed* execution returns are exactly the namespace descriptions:
+# one row per schema, with ``comment=None`` when no namespace comment exists.
+#
+# ``database_name`` uses ``"default"`` to match the ``MOCK_DATABASE.name.root``
+# value the ``cockroachUnitTest.__init__`` wires into ``context.database``, so
+# ``get_schema_description`` lookups resolve against the live context without
+# needing to reassign it.
+SCHEMA_COMMENT_ROWS = [
+    # default.public: a real namespace comment was set
+    types.SimpleNamespace(database_name="default", schema_name="public", comment="my real schema comment"),
+    # default.pg_catalog: no namespace comment -> LEFT JOIN yields description NULL
+    types.SimpleNamespace(database_name="default", schema_name="pg_catalog", comment=None),
+]
+
+
+def _make_schema_comments_engine(rows):
+    """Build a mock engine/conn whose ``conn.execute(...).all()`` returns the
+    given row namespaces, simulating the rows the fixed
+    ``COCKROACH_SCHEMA_COMMENTS`` query would return against CockroachDB.
+
+    Rows are objects exposing ``.database_name``, ``.schema_name`` and
+    ``.comment`` attributes, typed to match what
+    ``set_schema_description_map`` reads off each result row.
+    """
+    conn = MagicMock()
+    result = MagicMock()
+    result.all.return_value = rows
+    conn.execute.return_value = result
+    engine = MagicMock()
+    engine.connect.return_value.__enter__.return_value = conn
+    return engine, conn
+
+
 class cockroachUnitTest(TestCase):  # noqa: N801
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(self, methodName, test_connection) -> None:  # noqa: N803
@@ -688,3 +725,104 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
         self.assertFalse(is_partitioned)
         self.assertIsNone(partition)
+
+    # ── set_schema_description_map ─────────────────────────────────────────────
+
+    def test_set_schema_description_map_keeps_real_comment_not_function_comment(self):
+        """The map must hold the real namespace comment, not a bogus
+        ``pg_proc`` doc-comment from an OID collision.
+
+        With the fix the executed query filters on ``classoid =
+        'pg_namespace'``, so CockroachDB returns exactly one row for a schema
+        that has a real comment — the ``pg_proc`` collision is excluded. The
+        simulated result set here mirrors that post-fix output: only the
+        namespace comment row survives, never the function comment.
+        """
+        rows = [
+            # Only the namespace comment row is returned by the fixed query;
+            # the colliding pg_proc row (regr_intercept) is filtered out.
+            types.SimpleNamespace(
+                database_name="default",
+                schema_name="public",
+                comment="my real schema comment",
+            ),
+        ]
+        engine, _ = _make_schema_comments_engine(rows)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        self.assertEqual(
+            self.cockroach_source.schema_desc_map[("default", "public")],
+            "my real schema comment",
+        )
+        # The fabricated function comment must never be published
+        self.assertNotIn(
+            "Calculates y-intercept of the least-squares-fit",
+            str(self.cockroach_source.schema_desc_map.values()),
+        )
+
+    def test_set_schema_description_map_uncommented_schema_yields_none(self):
+        """A schema with no namespace comment must map to ``None`` (the LEFT
+        JOIN returns a row with a NULL description), not a fabricated comment.
+
+        This locks the LEFT JOIN semantics restored by moving the
+        ``objsubid``/``classoid`` predicates into ``ON``: un-commented schemas
+        are still returned with a NULL description instead of being dropped or
+        filled with a colliding object's comment.
+        """
+        rows = [r for r in SCHEMA_COMMENT_ROWS if r.schema_name == "pg_catalog"]
+        engine, _ = _make_schema_comments_engine(rows)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        self.assertIsNone(self.cockroach_source.schema_desc_map[("default", "pg_catalog")])
+        # No fabricated function doc-comment should be present
+        self.assertNotIn(
+            "Calculates the average of the dependent variable",
+            str(self.cockroach_source.schema_desc_map.values()),
+        )
+
+    def test_set_schema_description_map_get_schema_description_reads_map(self):
+        """``get_schema_description`` must return the mapped comment for the
+        current database/schema context, and ``None`` when none exists.
+
+        This exercises the consumption path
+        (``common_db_source.py`` -> ``get_schema_description``) that
+        previously had no coverage, guarding the end-to-end contract the
+        fixed query feeds. The context database is ``"default"`` as wired by
+        ``cockroachUnitTest.__init__`` from ``MOCK_DATABASE.name.root``.
+        """
+        engine, _ = _make_schema_comments_engine(SCHEMA_COMMENT_ROWS)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        # context.database is "default" (set in __init__ from MOCK_DATABASE)
+        self.assertEqual(
+            self.cockroach_source.get_schema_description("public"),
+            "my real schema comment",
+        )
+        # A schema with no namespace comment (NULL description) resolves to None
+        self.assertIsNone(self.cockroach_source.get_schema_description("pg_catalog"))
+        # A schema that never appeared in the result set resolves to None
+        self.assertIsNone(self.cockroach_source.get_schema_description("missing_schema"))
+
+    def test_set_schema_description_map_executes_the_fixed_query(self):
+        """The map must be built by executing ``COCKROACH_SCHEMA_COMMENTS``
+        via ``text(...)``, so the fix in the constant is the query that
+        populates the map."""
+        engine, conn = _make_schema_comments_engine(SCHEMA_COMMENT_ROWS)
+        self.cockroach_source.engine = engine
+
+        self.cockroach_source.set_schema_description_map()
+
+        self.assertEqual(conn.execute.call_count, 1)
+        executed_stmt = conn.execute.call_args.args[0]
+        # text(...) wraps the SQL; assert the fixed predicates are present in
+        # whatever SQLAlchemy renders to text.
+        rendered = str(executed_stmt)
+        self.assertIn("d.classoid = 'pg_namespace'::regclass", rendered)
+        self.assertIn("d.objsubid = 0", rendered)
+        self.assertNotIn("WHERE", rendered.upper())
