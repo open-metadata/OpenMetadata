@@ -87,6 +87,13 @@ const DefaultAppModePage = withPageSuspenseFallback(
   )
 );
 
+const DefaultTimeFormatPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../pages/Settings/DefaultTimeFormatPage/DefaultTimeFormatPage')
+  )
+);
+
 const EditLoginConfiguration = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -1000,6 +1007,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.APP_MODE
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <DefaultTimeFormatPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.TIME_FORMAT
         )}
       />
       <Route

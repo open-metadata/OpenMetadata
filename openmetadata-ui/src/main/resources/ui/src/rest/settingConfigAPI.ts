@@ -93,21 +93,28 @@ export const getAppConfiguration = async (): Promise<AppConfiguration> => {
 };
 
 /**
- * Admin-only. Updates only the given keys: the generic `/system/settings` PUT
- * replaces the whole document, and several pages (Default App Mode, Table &
- * Schema) each own one key of it, so the stored value is merged first.
- * See ADR:2026-10-09-app-configuration-keys-are-owned-and-merged-on-write.
+ * Admin-only. Patches the AppConfiguration using RFC 6902 JSON Patch format.
+ * This prevents overwriting other configuration fields and avoids race conditions
+ * by targeting only the specific setting being updated.
  */
 export const patchAppConfiguration = async (
   patch: Partial<AppConfiguration>
-): Promise<AppConfiguration> => {
-  const current = await getAppConfiguration();
-  const response = await axiosClient.put<Settings>(`/system/settings`, {
-    config_type: SettingType.AppConfiguration,
-    config_value: { ...current, ...patch },
-  });
+): Promise<void> => {
+  const ops = Object.entries(patch).map(([key, value]) => ({
+    op: 'add',
+    path: `/${key}`,
+    value,
+  }));
 
-  return (response.data.config_value as AppConfiguration) ?? {};
+  await axiosClient.patch(
+    `/system/settings/${SettingType.AppConfiguration}`,
+    ops,
+    {
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    }
+  );
 };
 
 export const testEmailConnection = async (data: { email: string }) => {

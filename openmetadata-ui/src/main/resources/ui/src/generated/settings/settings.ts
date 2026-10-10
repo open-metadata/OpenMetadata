@@ -730,6 +730,10 @@ export interface PipelineServiceClientConfiguration {
      */
     defaultColumnOrder?: DefaultColumnOrder | null;
     /**
+     * Tenant-wide default time format for UI display.
+     */
+    defaultTimeFormat?: DefaultTimeFormat;
+    /**
      * Timestamp when the fingerprints were last persisted.
      */
     appliedAt?: number;
@@ -1970,6 +1974,14 @@ export enum DefaultAppMode {
 export enum DefaultColumnOrder {
     Alphabetical = "alphabetical",
     SourceOrder = "sourceOrder",
+}
+
+/**
+ * Tenant-wide default time format for UI display.
+ */
+export enum DefaultTimeFormat {
+    The12H = "12h",
+    The24H = "24h",
 }
 
 /**
