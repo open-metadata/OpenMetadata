@@ -108,6 +108,42 @@ def test_generic_forbidden_is_permission_denied():
     assert BIGQUERY_ERRORS.classify(error).title == "Permission denied"
 
 
+def test_quota_exceeded_is_not_reported_as_a_permission_problem():
+    # BigQuery answers a quota breach with 403, so it arrives as a Forbidden; the
+    # remediation is a quota bump, not a role grant.
+    error = _ApiError(Forbidden("403 Quota exceeded: Your project exceeded quota for free query bytes scanned"))
+    assert BIGQUERY_ERRORS.classify(error).title == "BigQuery quota exceeded"
+
+
+def test_rate_limit_is_not_reported_as_a_permission_problem():
+    error = Forbidden("403 Exceeded rate limits: too many api requests per user per method")
+    assert BIGQUERY_ERRORS.classify(error).title == "BigQuery quota exceeded"
+
+
+def test_disabled_api_is_not_reported_as_a_permission_problem():
+    # reason=accessNotConfigured, also a 403: no role grants access to a disabled API.
+    error = _ApiError(
+        Forbidden("403 BigQuery API has not been used in project 12345 before or it is disabled. Enable it by visiting")
+    )
+    assert BIGQUERY_ERRORS.classify(error).title == "BigQuery API is not enabled"
+
+
+def test_quota_and_disabled_api_beat_the_access_denied_token():
+    # A 403 body can carry the "Access Denied" prefix and the sharper reason at
+    # once; the reason rules are ordered first so the prefix cannot swallow them.
+    quota = Forbidden("403 Access Denied: Quota exceeded: Your project exceeded quota for free query bytes scanned")
+    assert BIGQUERY_ERRORS.classify(quota).title == "BigQuery quota exceeded"
+    disabled = Forbidden("403 Access Denied: BigQuery API has not been used in project 12345 before or it is disabled")
+    assert BIGQUERY_ERRORS.classify(disabled).title == "BigQuery API is not enabled"
+
+
+def test_other_disabled_google_api_is_not_named_bigquery():
+    # accessNotConfigured is raised for any Google API; with policy tags enabled
+    # the disabled one is Data Catalog, so the diagnosis must not name BigQuery.
+    error = Forbidden("403 Google Cloud Data Catalog API has not been used in project 12345 before or it is disabled")
+    assert BIGQUERY_ERRORS.classify(error).title == "A required Google Cloud API is not enabled"
+
+
 def test_not_found_is_classified():
     error = _ApiError(NotFound("404 Not found: Dataset project:dataset was not found"))
     assert BIGQUERY_ERRORS.classify(error).title == "Project or dataset not found"

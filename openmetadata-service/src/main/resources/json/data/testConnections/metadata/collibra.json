@@ -8,7 +8,8 @@
             "description":  "Check if the Collibra APIs are reachable and can fetch glossaries with the given credentials.",
             "errorMessage": "Failed to connect to Collibra or fetch glossaries, please validate the credentials",
             "shortCircuit": true,
-            "mandatory": true
+            "mandatory": true,
+            "category": "ConnectionGate"
         }
     ]
 }

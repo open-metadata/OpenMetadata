@@ -5,10 +5,11 @@
     "steps": [
         {
             "name": "CheckAccess",
-            "description":  "Check if the database is reachable to fetch the DAG details.",
-            "errorMessage": "Failed to connect to airflow, please validate the credentials",
+            "description":  "Check that the WhereScape metadata database is reachable, to fetch the job and workflow details.",
+            "errorMessage": "Failed to connect to the WhereScape metadata database. Please validate the metadata database connection details and that the user can read the WhereScape repository tables.",
             "shortCircuit": true,
-            "mandatory": true
+            "mandatory": true,
+            "category": "ConnectionGate"
         }
 
     ]

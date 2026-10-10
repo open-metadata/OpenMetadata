@@ -54,17 +54,18 @@ if TYPE_CHECKING:
 S3_ERRORS = ErrorPack(
     when(aws_code("NoSuchBucket")).diagnose(
         "Bucket not found",
-        fix="Verify the configured bucketNames exist in this AWS account and region.",
+        fix="No bucket with that name exists in this AWS account and region. Check the spelling in Bucket Names, and "
+        "that AWS Region is the region the buckets are actually in.",
     ),
     when(aws_code("AccessDenied", "AccessDeniedException")).diagnose(
         "Not authorized",
-        fix="Grant s3:ListAllMyBuckets (or s3:ListBucket on the configured buckets) "
-        "and cloudwatch:ListMetrics to the identity used.",
+        fix="Grant the AWS identity s3:ListAllMyBuckets - or s3:ListBucket on just the buckets named in Bucket Names - "
+        "and cloudwatch:ListMetrics.",
     ),
     when(Matchers.exception(EndpointConnectionError)).diagnose(
         "Cannot reach the AWS endpoint",
-        fix="Check awsRegion (and endPointURL for S3-compatible services), and that the "
-        "network allows access to it from where ingestion runs.",
+        fix="Could not reach the S3 endpoint. Check AWS Region, and Endpoint URL if you are pointing at an S3-compatible "
+        "store rather than AWS itself, and that the network lets the machine ingestion runs on reach it.",
     ),
 ).including(AWS_ERRORS)
 
