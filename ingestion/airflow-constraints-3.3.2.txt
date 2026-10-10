@@ -553,7 +553,7 @@ prometheus_client==0.26.0
 prompt_toolkit==3.0.53
 propcache==0.5.2
 proto-plus==1.28.4
-protobuf==6.33.6
+protobuf==7.36.2
 psutil==7.2.2
 psycopg-binary==3.3.5
 psycopg2-binary==2.9.13
