@@ -1,0 +1,80 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import React, { useMemo } from 'react';
+import { EntityType } from '../../../enums/entity.enum';
+import { useIsAiMode } from '../../../hooks/useAppMode';
+import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { TabsLabelProps } from '../../common/TabsLabel/TabsLabel.interface';
+import { getDefaultInboxDateRange } from '../../discovery/personal-space/InboxPage/inbox.utils';
+import { useActivityFeedCounts } from './useActivityFeedCounts';
+import { useEntityFeedLink } from './useEntityFeedLink';
+import { useTaskStatusParam } from './useTaskStatusParam';
+
+export type ActivityFeedTabLabelProps = TabsLabelProps & {
+  // The entity the page shows; its FQN comes from the route, else `fqn`.
+  entityType: EntityType;
+  fqn?: string;
+};
+
+// A capped Activity fetch holds only the newest events, so its total is a
+// lower bound: shown as `219+`, as the feed's own badge marks it.
+const getTabCount = (total: number, isCapped: boolean) =>
+  isCapped ? `${total}+` : total;
+
+const ActivityFeedCountLabel: React.FC<
+  TabsLabelProps & { entityLink: string }
+> = ({ entityLink, ...labelProps }) => {
+  // The window the feed opens on, so this reads the queries the feed will.
+  const dateRange = useMemo(getDefaultInboxDateRange, []);
+  const [taskStatus] = useTaskStatusParam();
+  const { activityCount, taskCounts } = useActivityFeedCounts(
+    entityLink,
+    dateRange
+  );
+
+  return (
+    <TabsLabel
+      {...labelProps}
+      // Hidden until the activity arrives; the task counts land alongside it.
+      count={
+        activityCount &&
+        getTabCount(
+          activityCount.total + taskCounts[taskStatus],
+          activityCount.isCapped
+        )
+      }
+    />
+  );
+};
+
+/**
+ * The entity page's Activity Feeds & Tasks tab label. In AI mode the tab is an
+ * `<ActivityFeed>`, so the label counts what it shows: its Activity and the
+ * tasks of the chosen Status. Otherwise `count`.
+ */
+const ActivityFeedTabLabel: React.FC<ActivityFeedTabLabelProps> = ({
+  entityType,
+  fqn,
+  ...labelProps
+}) => {
+  const isAiMode = useIsAiMode();
+  const entityLink = useEntityFeedLink(entityType, fqn);
+
+  return isAiMode && entityLink ? (
+    <ActivityFeedCountLabel entityLink={entityLink} {...labelProps} />
+  ) : (
+    <TabsLabel {...labelProps} />
+  );
+};
+
+export default ActivityFeedTabLabel;

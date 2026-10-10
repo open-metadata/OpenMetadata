@@ -101,6 +101,8 @@ export interface ListTasksParams {
   approver?: string;
   approverId?: string;
   mentionedUser?: string;
+  // Free-text search over the task and the entity it is about.
+  q?: string;
   limit?: number;
   before?: string;
   after?: string;

@@ -3476,6 +3476,7 @@
     "value-boost": "Усиление значения",
     "value-count": "Количество значений",
     "value-plural": "Значения",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "Вариант",
     "variant-plural": "Варианты",
     "vector-avg": "Сред. вектор",

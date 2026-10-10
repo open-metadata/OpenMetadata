@@ -3476,6 +3476,7 @@
     "value-boost": "세부 정보 보기",
     "value-count": "값 개수",
     "value-plural": "값들",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "변형",
     "variant-plural": "변형",
     "vector-avg": "벡터 평균",

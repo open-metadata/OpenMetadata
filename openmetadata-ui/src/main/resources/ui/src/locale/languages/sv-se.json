@@ -3476,6 +3476,7 @@
     "value-boost": "Värdeförstärkning",
     "value-count": "Värdeantal",
     "value-plural": "Värden",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "Metrikvariant",
     "variant-plural": "Varianter",
     "vector-avg": "Vektorgenomsnitt",

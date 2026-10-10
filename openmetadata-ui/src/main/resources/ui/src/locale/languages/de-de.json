@@ -3476,6 +3476,7 @@
     "value-boost": "Wert-Boost",
     "value-count": "Wertanzahl",
     "value-plural": "Werte",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "Variante",
     "variant-plural": "Varianten",
     "vector-avg": "Vektor Ø",

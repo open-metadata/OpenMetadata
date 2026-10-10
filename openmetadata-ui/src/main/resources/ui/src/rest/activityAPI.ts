@@ -107,9 +107,11 @@ export const getMyActivityFeed = (params?: ScopedActivityFeedParams) =>
 export const getFollowingActivityFeed = (params?: ScopedActivityFeedParams) =>
   getScopedActivityFeed('following', params);
 
-// Activity whose replies mention the viewer or one of their teams.
-export const getMentionsActivityFeed = (params?: ScopedActivityFeedParams) =>
-  getScopedActivityFeed('mentions', params);
+// Activity whose replies mention the viewer or one of their teams; with an
+// entityLink, only the activity about that entity.
+export const getMentionsActivityFeed = (
+  params?: ScopedActivityFeedParams & { entityLink?: string }
+) => getScopedActivityFeed('mentions', params);
 
 export const getActivityByEntityLink = async (
   entityLink: string,

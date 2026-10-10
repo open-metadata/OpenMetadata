@@ -27,6 +27,8 @@ const BASE_URL = '/conversations';
 
 export interface ListConversationsParams {
   entityLink?: string;
+  // With entityLink, also the conversations about the entity's fields.
+  includeFields?: boolean;
   userId?: string;
   filterType?: ConversationFilterType;
   resolved?: boolean;

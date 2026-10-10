@@ -3476,6 +3476,7 @@
     "value-boost": "Değer Desteği",
     "value-count": "Değer Sayısı",
     "value-plural": "Değerler",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "Varyant",
     "variant-plural": "Varyantlar",
     "vector-avg": "Vektör Ort.",

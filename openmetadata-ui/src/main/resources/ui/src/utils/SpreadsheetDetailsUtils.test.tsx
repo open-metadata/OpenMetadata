@@ -123,17 +123,19 @@ describe('SpreadsheetDetailsUtils', () => {
       ).toBeInTheDocument();
     });
 
-    it('should render activity feed tab with correct count', () => {
+    it('should render activity feed tab with correct count', async () => {
       const tabs = getSpreadsheetDetailsPageTabs(mockProps);
       const activityTab = tabs[1];
 
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByTestId('tab-label-label.activity-feed-and-task-plural')
+        await screen.findByTestId(
+          'tab-label-label.activity-feed-and-task-plural'
+        )
       ).toBeInTheDocument();
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (25)')
+        await screen.findByText('label.activity-feed-and-task-plural (25)')
       ).toBeInTheDocument();
     });
 
@@ -455,7 +457,7 @@ describe('SpreadsheetDetailsUtils', () => {
   });
 
   describe('edge cases', () => {
-    it('should handle missing feedCount gracefully', () => {
+    it('should handle missing feedCount gracefully', async () => {
       const propsWithoutFeedCount = {
         ...mockProps,
         feedCount: { totalCount: 0 },
@@ -467,7 +469,7 @@ describe('SpreadsheetDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (0)')
+        await screen.findByText('label.activity-feed-and-task-plural (0)')
       ).toBeInTheDocument();
     });
 
@@ -557,7 +559,7 @@ describe('SpreadsheetDetailsUtils', () => {
       ).toBeInTheDocument();
     });
 
-    it('should use custom label for activity feed tab from labelMap', () => {
+    it('should use custom label for activity feed tab from labelMap', async () => {
       const propsWithLabelMap = {
         ...mockProps,
         labelMap: {
@@ -570,7 +572,9 @@ describe('SpreadsheetDetailsUtils', () => {
 
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
-      expect(screen.getByText('Custom Activity (25)')).toBeInTheDocument();
+      expect(
+        await screen.findByText('Custom Activity (25)')
+      ).toBeInTheDocument();
     });
 
     it('should use custom label for lineage tab from labelMap', () => {

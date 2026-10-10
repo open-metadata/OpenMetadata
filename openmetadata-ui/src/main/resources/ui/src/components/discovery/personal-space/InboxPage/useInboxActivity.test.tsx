@@ -21,6 +21,9 @@ const mockGetMyActivityFeed = jest.fn();
 const mockGetFollowingActivityFeed = jest.fn();
 const mockGetMentionsActivityFeed = jest.fn();
 const mockListConversations = jest.fn();
+const mockGetActivityByEntityLink = jest.fn();
+const mockGetUserActivity = jest.fn();
+const mockGetUserByName = jest.fn();
 let mockCurrentUser: { id?: string } | undefined;
 
 jest.mock('rest/activityAPI', () => ({
@@ -30,6 +33,13 @@ jest.mock('rest/activityAPI', () => ({
     mockGetFollowingActivityFeed(...args),
   getMentionsActivityFeed: (...args: unknown[]) =>
     mockGetMentionsActivityFeed(...args),
+  getActivityByEntityLink: (...args: unknown[]) =>
+    mockGetActivityByEntityLink(...args),
+  getUserActivity: (...args: unknown[]) => mockGetUserActivity(...args),
+}));
+
+jest.mock('rest/userAPI', () => ({
+  getUserByName: (...args: unknown[]) => mockGetUserByName(...args),
 }));
 
 jest.mock('rest/conversationsAPI', () => ({
@@ -77,7 +87,10 @@ beforeEach(() => {
     mockGetMyActivityFeed,
     mockGetFollowingActivityFeed,
     mockGetMentionsActivityFeed,
+    mockGetActivityByEntityLink,
+    mockGetUserActivity,
   ].forEach((mock) => mock.mockResolvedValue(threeEvents));
+  mockGetUserByName.mockResolvedValue({ id: 'user-1' });
   mockListConversations.mockResolvedValue(twoThreads);
 });
 
@@ -457,5 +470,85 @@ describe('useInboxActivityCounts', () => {
     });
 
     expect(result.current).toEqual({});
+  });
+});
+
+describe('fetchInboxActivity per scope', () => {
+  const TABLE_LINK = '<#E::table::svc.db.schema.orders>';
+  const entity = { type: 'entity' as const, entityLink: TABLE_LINK };
+
+  it('reads everything about an entity and the conversations on it and its fields', async () => {
+    await fetchInboxActivity(ActivityFilter.All, 'u1', 100, 200, entity);
+
+    expect(mockGetActivityByEntityLink).toHaveBeenCalledWith(TABLE_LINK, {
+      days: 1,
+      limit: 200,
+    });
+    expect(mockListConversations).toHaveBeenCalledWith({
+      entityLink: TABLE_LINK,
+      includeFields: true,
+      filterType: undefined,
+      userId: undefined,
+      limit: 100,
+      startTs: 100,
+      endTs: 200,
+    });
+    expect(mockGetActivityEvents).not.toHaveBeenCalled();
+  });
+
+  // Mentions on an entity: only what names the viewer there.
+  it("reads an entity's mentions of the viewer", async () => {
+    await fetchInboxActivity(ActivityFilter.Mentions, 'u1', 100, 200, entity);
+
+    expect(mockGetMentionsActivityFeed).toHaveBeenCalledWith({
+      days: 1,
+      limit: 200,
+      entityLink: TABLE_LINK,
+    });
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityLink: TABLE_LINK,
+        includeFields: true,
+        filterType: ConversationFilterType.Mentions,
+        userId: 'u1',
+      })
+    );
+  });
+
+  // The activity API reads a user by id; conversations have no "started by".
+  it('reads what a user did, looked up by name', async () => {
+    const { activities, threads } = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1',
+      100,
+      200,
+      { type: 'user', userName: 'harsh.vador' }
+    );
+
+    expect(mockGetUserByName).toHaveBeenCalledWith('harsh.vador');
+    expect(mockGetUserActivity).toHaveBeenCalledWith('user-1', {
+      days: 1,
+      limit: 200,
+    });
+    expect(mockListConversations).not.toHaveBeenCalled();
+    expect(activities).toHaveLength(3);
+    expect(threads).toHaveLength(0);
+  });
+
+  it('counts only the feeds an entity offers', async () => {
+    const { result } = renderHook(
+      () => useInboxActivityCounts({ startTs: 100, endTs: 200 }, entity),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() =>
+      expect(Object.keys(result.current).sort()).toEqual([
+        ActivityFilter.All,
+        ActivityFilter.Mentions,
+      ])
+    );
+
+    expect(mockGetMyActivityFeed).not.toHaveBeenCalled();
+    expect(mockGetFollowingActivityFeed).not.toHaveBeenCalled();
   });
 });
