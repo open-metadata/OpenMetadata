@@ -458,6 +458,13 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         self.assertIn("tables.name = :table_name", COCKROACH_GET_PARTITION_DETAILS)
         self.assertIn("tables.schema_name = :schema_name", COCKROACH_GET_PARTITION_DETAILS)
 
+    def test_partition_query_filters_by_current_database(self):
+        """The query must be scoped to the connected database. `crdb_internal.tables`
+        lists every database on some versions (v23.1), so without the filter a
+        same-named `<schema>.<table>` in another database could supply the
+        partition key when `ingestAllDatabases` is set."""
+        self.assertIn("tables.database_name = current_database()", COCKROACH_GET_PARTITION_DETAILS)
+
     def test_partition_query_restricts_to_primary_index_and_top_level(self):
         """The query must join `crdb_internal.table_indexes` and restrict to the
         primary index (`index_type = 'primary'`) and top-level partitions
