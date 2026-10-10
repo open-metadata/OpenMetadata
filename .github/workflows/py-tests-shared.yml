@@ -268,12 +268,20 @@ jobs:
 
       - name: Run Unit Tests
         id: unit-tests
+        env:
+          # Must match the "Upload coverage artifact" condition below: only that
+          # version's .coverage is uploaded, so measuring it elsewhere is wasted time.
+          COLLECT_COVERAGE: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION }}
         run: |
           set -o pipefail
           source env/bin/activate
           cd ingestion
+          nox_args=()
+          if [[ "$COLLECT_COVERAGE" != "true" ]]; then
+            nox_args=(-- --no-cov)
+          fi
           set +e
-          nox --no-venv -s unit-tests 2>&1 | tee unit-test-run.log
+          nox --no-venv -s unit-tests "${nox_args[@]}" 2>&1 | tee unit-test-run.log
           test_exit_code=${PIPESTATUS[0]}
           echo "$test_exit_code" > unit-test-exit-code.txt
           exit "$test_exit_code"
@@ -374,7 +382,7 @@ jobs:
               --ignore=tests/integration/ssrs
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
         with:
           tool-cache: false
           android: true
@@ -444,9 +452,15 @@ jobs:
           source env/bin/activate
           cd ingestion
           read -r -a shard_args <<< "$NOX_ARGS"
+          if [[ "$COLLECT_COVERAGE" != "true" ]]; then
+            shard_args+=(--no-cov)
+          fi
           nox --no-venv -s integration-tests -- --standalone --durations=5 "${shard_args[@]}" 2>&1 | tee integration-test-run.log
         env:
           NOX_ARGS: ${{ matrix.shard.nox-args }}
+          # Must match the "Upload coverage artifact" condition below: only that
+          # combination's .coverage reaches py-combine-coverage.
+          COLLECT_COVERAGE: ${{ inputs.run-coverage && matrix.py-version == env.MAIN_PYTHON_VERSION }}
           TESTCONTAINERS_RYUK_DISABLED: true
         shell: bash
 
