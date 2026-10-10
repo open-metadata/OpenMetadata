@@ -5,6 +5,11 @@ Tests tagged `@quarantine` are excluded from every lane by
 resting place**: each entry below is a bug with an owner, and the fix is to
 diagnose it and delete the tag — not to leave it here.
 
+For a quarantine that keeps the test running nightly (so the fix keeps getting
+evidence), list it in `.github/playwright/quarantine.json` instead of tagging it:
+CI drops those tests from PR and merge-queue plans only. See *Quarantine* in
+`.github/playwright/README.md`.
+
 Run only the quarantined set to check whether an entry is still failing:
 
 ```bash
