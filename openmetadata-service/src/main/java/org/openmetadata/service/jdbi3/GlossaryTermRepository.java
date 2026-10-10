@@ -1958,13 +1958,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     result.withFailedRequest(failures).withSuccessRequest(success);
 
     // Set Final Status
-    if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
-      result.withStatus(ApiStatus.SUCCESS);
-    } else if (result.getNumberOfRowsPassed() > 1) {
-      result.withStatus(ApiStatus.PARTIAL_SUCCESS);
-    } else {
-      result.withStatus(ApiStatus.FAILURE);
-    }
+    result.withStatus(
+        deriveBulkOperationStatus(
+            result.getNumberOfRowsPassed(), result.getNumberOfRowsProcessed()));
 
     return result;
   }
@@ -2107,13 +2103,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     result.withFailedRequest(failures).withSuccessRequest(success);
 
     // Set Final Status
-    if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
-      result.withStatus(ApiStatus.SUCCESS);
-    } else if (result.getNumberOfRowsPassed() > 1) {
-      result.withStatus(ApiStatus.PARTIAL_SUCCESS);
-    } else {
-      result.withStatus(ApiStatus.FAILURE);
-    }
+    result.withStatus(
+        deriveBulkOperationStatus(
+            result.getNumberOfRowsPassed(), result.getNumberOfRowsProcessed()));
 
     return result;
   }

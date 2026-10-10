@@ -38,6 +38,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.PredefinedRecognizer;
 import org.openmetadata.schema.type.ProviderType;
@@ -2193,6 +2194,93 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         .atMost(Duration.ofSeconds(45))
         .during(Duration.ofSeconds(20))
         .until(() -> !tableHasTag(client, tableId, tagFqn));
+  }
+
+  @Test
+  void test_bulkAddTagsToAssets_partialFailure_onePassRestFail_reportsPartialSuccess(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Mutually-exclusive classification with two sibling tags; an asset that
+    // already carries one sibling fails the per-asset mutual-exclusion check
+    // when the other sibling is bulk-added. One bare asset passes; the rest
+    // fail → status must be PARTIAL_SUCCESS (the old `> 1` threshold reported
+    // FAILURE, hiding the single passing asset).
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("mx_cls_pf"))
+                    .withDescription("Mutually-exclusive classification for partial-failure")
+                    .withMutuallyExclusive(true));
+    Tag conflictTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("mx_conf_pf"))
+                    .withClassification(classification.getName())
+                    .withDescription("conflicting sibling already on the failing assets"));
+    Tag addingTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("mx_add_pf"))
+                    .withClassification(classification.getName())
+                    .withDescription("the tag being bulk-added"));
+    TagLabel conflictLabel =
+        new TagLabel()
+            .withTagFQN(conflictTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Table passTable = createBareTable(ns, "mx_pass_pf");
+    List<Table> failTables = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      Table t = createBareTable(ns, "mx_fail_pf" + i);
+      Table fetched = client.tables().get(t.getId().toString(), "tags");
+      fetched.setTags(List.of(conflictLabel));
+      client.tables().update(t.getId().toString(), fetched);
+      failTables.add(t);
+    }
+
+    // Pass-before-fail ordering: the lone passing asset is iterated first, so the
+    // apply-while-no-failures gate writes `addingTag` to it before any failure
+    // closes the gate. The /v1/tags/{id}/assets/add endpoint is *asynchronous*
+    // (EntityResource.bulkAddToAssetsAsync): the HTTP body is just a jobId ack,
+    // and the final BulkOperationResult — whose status is computed by the shared
+    // deriveBulkOperationStatus helper (the `> 0` fix) — is delivered via
+    // websocket, not in the HTTP body. The Tag path's status fix is therefore
+    // covered by EntityRepositoryBulkOperationStatusTest plus the synchronous
+    // glossary ITs; this test verifies the Tag path's validation+apply behavior
+    // via the observable side effect — exactly one asset passes (gets the tag)
+    // and the rest are gated off — which only happens when numberOfRowsPassed
+    // reaches 1.
+    List<EntityReference> assets = new ArrayList<>();
+    assets.add(passTable.getEntityReference());
+    assets.addAll(failTables.stream().map(Table::getEntityReference).toList());
+
+    AddTagToAssetsRequest add = new AddTagToAssetsRequest().withDryRun(false).withAssets(assets);
+    String path = "/v1/tags/" + addingTag.getId() + "/assets/add";
+    client.getHttpClient().execute(HttpMethod.PUT, path, add, Void.class);
+
+    UUID passTableId = passTable.getId();
+    String addingTagFqn = addingTag.getFullyQualifiedName();
+    Awaitility.await("lone passing asset must receive the adding tag (1 validation pass)")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> assertTrue(tableHasTag(client, passTableId, addingTagFqn)));
+    // The failing assets already carry the mutually-exclusive sibling, so the
+    // apply gate (closed after the first failure) must leave them untouched by
+    // addingTag.
+    for (Table t : failTables) {
+      assertFalse(
+          tableHasTag(client, t.getId(), addingTagFqn),
+          "failing assets must not receive the mutually-exclusive adding tag");
+    }
   }
 
   @Test

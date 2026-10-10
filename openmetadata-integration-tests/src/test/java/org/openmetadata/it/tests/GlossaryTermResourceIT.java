@@ -29,6 +29,9 @@ import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
+import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -39,6 +42,8 @@ import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -52,9 +57,11 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
@@ -3636,6 +3643,260 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     Table refreshed = client.tables().get(tableId.toString(), "tags");
     return refreshed.getTags() != null
         && refreshed.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
+  }
+
+  // ===================================================================
+  // BULK PARTIAL-FAILURE STATUS — `numberOfRowsPassed > 0` (was `> 1`)
+  //
+  // When exactly one asset passes validation and the rest fail, the aggregate
+  // status must be `partialSuccess`, not `failure`. The old `> 1` threshold (a
+  // copy-paste typo) hid the single passing asset and, in non-dryRun mode, hid
+  // a real tag application. These tests build the narrow "1 pass, rest fail"
+  // window with a mutually-exclusive classification and assert the status plus
+  // the dryRun/non-dryRun side effects.
+  // ===================================================================
+
+  @Test
+  void test_bulkAddGlossaryToAssets_partialFailure_onePassRestFail_reportsPartialSuccess(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_add");
+
+    AddGlossaryToAssetsRequest add =
+        new AddGlossaryToAssetsRequest().withDryRun(true).withAssets(allGlossaryAssetRefs(setup));
+    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, add, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertEquals(
+        ApiStatus.PARTIAL_SUCCESS, result.getStatus(), "1 pass + rest fail must be partial");
+    assertTrue(result.getDryRun(), "preview must propagate dryRun=true");
+    assertEquals(setup.totalAssets(), result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+    assertEquals(1, result.getSuccessRequest().size());
+    assertEquals(setup.failTables.size(), result.getFailedRequest().size());
+    // dryRun must not mutate any asset
+    assertFalse(
+        tableHasTag(client, setup.passTable.getId(), setup.term.getFullyQualifiedName()),
+        "dryRun add must not apply the term to any asset");
+  }
+
+  @Test
+  void test_validateGlossaryTagsAddition_partialFailure_reportsPartialSuccess(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_validate");
+
+    // The validate endpoint iterates over assets ALREADY tagged with the term,
+    // so apply the term to every table first.
+    for (Table t : setup.allTables()) {
+      applyTermToTable(client, t, setup.term);
+    }
+
+    ValidateGlossaryTagsRequest validate =
+        new ValidateGlossaryTagsRequest().withGlossaryTags(List.of(setup.glossaryTagLabel));
+    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/tags/validate";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, validate, BulkOperationResult.class);
+
+    assertNotNull(result);
+    assertEquals(
+        ApiStatus.PARTIAL_SUCCESS, result.getStatus(), "1 pass + rest fail must be partial");
+    assertTrue(result.getDryRun(), "validate endpoint is always a dryRun preview");
+    assertEquals(setup.totalAssets(), result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_nonDryRun_passBeforeFail_appliesOneTagAndReportsPartialSuccess(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_pbf");
+    // Pass-first ordering: the lone passing asset is iterated first, so the
+    // apply-while-no-failures gate writes the term's tag to it before any
+    // failure closes the gate. The status must still surface PARTIAL_SUCCESS
+    // (the bug previously reported FAILURE, hiding the real write).
+    List<EntityReference> assets = new ArrayList<>();
+    assets.add(setup.passTable.getEntityReference());
+    assets.addAll(setup.failTables.stream().map(Table::getEntityReference).toList());
+
+    AddGlossaryToAssetsRequest add =
+        new AddGlossaryToAssetsRequest().withDryRun(false).withAssets(assets);
+    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, add, BulkOperationResult.class);
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+    assertTrue(
+        tableHasTag(client, setup.passTable.getId(), setup.term.getFullyQualifiedName()),
+        "pass-before-fail must apply the term to the lone passing asset");
+    for (Table t : setup.failTables) {
+      assertFalse(
+          tableHasTag(client, t.getId(), setup.term.getFullyQualifiedName()),
+          "failing assets must not be tagged");
+    }
+  }
+
+  @Test
+  void test_bulkAddGlossaryToAssets_nonDryRun_failBeforePass_appliesNoTagsAndReportsPartialSuccess(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_fbp");
+    // Fail-first ordering: failures are iterated first, so the apply gate is
+    // already closed when the lone passing asset is reached — no tags are
+    // written. The status is a *validation* summary, so it must still be
+    // PARTIAL_SUCCESS (one validation pass), not FAILURE.
+    List<EntityReference> assets = new ArrayList<>();
+    assets.addAll(setup.failTables.stream().map(Table::getEntityReference).toList());
+    assets.add(setup.passTable.getEntityReference());
+
+    AddGlossaryToAssetsRequest add =
+        new AddGlossaryToAssetsRequest().withDryRun(false).withAssets(assets);
+    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/assets/add";
+    BulkOperationResult result =
+        client.getHttpClient().execute(HttpMethod.PUT, path, add, BulkOperationResult.class);
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+    assertFalse(
+        tableHasTag(client, setup.passTable.getId(), setup.term.getFullyQualifiedName()),
+        "fail-before-pass must not apply any tag (gate already closed)");
+  }
+
+  private static final class MutualExclusiveGlossarySetup {
+    final GlossaryTerm term;
+    final TagLabel glossaryTagLabel;
+    final Table passTable;
+    final List<Table> failTables;
+
+    MutualExclusiveGlossarySetup(
+        GlossaryTerm term, TagLabel glossaryTagLabel, Table passTable, List<Table> failTables) {
+      this.term = term;
+      this.glossaryTagLabel = glossaryTagLabel;
+      this.passTable = passTable;
+      this.failTables = failTables;
+    }
+
+    int totalAssets() {
+      return 1 + failTables.size();
+    }
+
+    List<Table> allTables() {
+      List<Table> all = new ArrayList<>();
+      all.add(passTable);
+      all.addAll(failTables);
+      return all;
+    }
+  }
+
+  private MutualExclusiveGlossarySetup mutualExclusiveGlossarySetup(TestNamespace ns, String suffix)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Mutually-exclusive classification with two sibling tags; applying both to
+    // the same asset violates the constraint. The glossary carries one sibling,
+    // the failing assets already carry the other.
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("mx_cls_" + suffix))
+                    .withDescription("Mutually-exclusive classification for partial-failure test")
+                    .withMutuallyExclusive(true));
+    Tag conflictTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("mx_conflict_" + suffix))
+                    .withClassification(classification.getName())
+                    .withDescription("conflicting sibling tag on the failing assets"));
+    Tag glossaryTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("mx_gloss_" + suffix))
+                    .withClassification(classification.getName())
+                    .withDescription("tag carried by the glossary"));
+
+    TagLabel conflictLabel = classificationTagLabel(conflictTag);
+    TagLabel glossaryLabel = classificationTagLabel(glossaryTag);
+
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("mx_g_" + suffix))
+                    .withDescription("Glossary carrying a mutually-exclusive tag")
+                    .withTags(List.of(glossaryLabel)));
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("mx_t_" + suffix))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Term under a mutually-exclusive glossary"));
+
+    Table passTable = createBareTable(ns, "mx_pass_" + suffix);
+    List<Table> failTables = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      failTables.add(
+          createTableTaggedWithClassification(ns, conflictLabel, "mx_fail_" + suffix + i));
+    }
+    return new MutualExclusiveGlossarySetup(term, glossaryLabel, passTable, failTables);
+  }
+
+  private TagLabel classificationTagLabel(Tag tag) {
+    return new TagLabel()
+        .withTagFQN(tag.getFullyQualifiedName())
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
+  }
+
+  private Table createTableTaggedWithClassification(
+      TestNamespace ns, TagLabel classificationLabel, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createBareTable(ns, suffix);
+    Table fetched = client.tables().get(table.getId().toString(), "tags");
+    fetched.setTags(List.of(classificationLabel));
+    client.tables().update(table.getId().toString(), fetched);
+    assertTrue(
+        tableHasTag(client, table.getId(), classificationLabel.getTagFQN()),
+        "fail-table should be pre-tagged with the conflicting classification tag");
+    return table;
+  }
+
+  private void applyTermToTable(OpenMetadataClient client, Table table, GlossaryTerm term) {
+    Table fetched = client.tables().get(table.getId().toString(), "tags");
+    List<TagLabel> tags = new ArrayList<>();
+    if (fetched.getTags() != null) {
+      tags.addAll(fetched.getTags());
+    }
+    tags.add(
+        new TagLabel()
+            .withTagFQN(term.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED));
+    fetched.setTags(tags);
+    client.tables().update(table.getId().toString(), fetched);
+  }
+
+  private List<EntityReference> allGlossaryAssetRefs(MutualExclusiveGlossarySetup setup) {
+    List<EntityReference> refs = new ArrayList<>();
+    refs.add(setup.passTable.getEntityReference());
+    refs.addAll(setup.failTables.stream().map(Table::getEntityReference).toList());
+    return refs;
   }
 
   // ===================================================================
