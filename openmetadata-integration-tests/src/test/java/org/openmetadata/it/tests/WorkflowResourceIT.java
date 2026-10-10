@@ -1,11 +1,13 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -23,6 +25,7 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.slf4j.Logger;
@@ -44,6 +47,7 @@ import org.slf4j.LoggerFactory;
 public class WorkflowResourceIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(WorkflowResourceIT.class);
+  private static final String ATHENA_SECRET = "never-echo-this-secret";
 
   private CreateWorkflow createRequest(String name) {
     return new CreateWorkflow()
@@ -62,6 +66,31 @@ public class WorkflowResourceIT {
                                 .withUsername("openmetadata_user")
                                 .withAuthType(
                                     new basicAuth().withPassword("openmetadata_password")))));
+  }
+
+  /** A raw config map, since a typed AthenaConnection cannot hold an invalid URI. */
+  private CreateWorkflow athenaTestConnectionRequest(String name, String s3StagingDir) {
+    Map<String, Object> config =
+        Map.of(
+            "type",
+            "Athena",
+            "s3StagingDir",
+            s3StagingDir,
+            "workgroup",
+            "primary",
+            "awsConfig",
+            Map.of(
+                "awsRegion", "us-east-1",
+                "awsAccessKeyId", "AKIAEXAMPLE",
+                "awsSecretAccessKey", ATHENA_SECRET));
+    return new CreateWorkflow()
+        .withName(name)
+        .withWorkflowType(WorkflowType.TEST_CONNECTION)
+        .withRequest(
+            new TestServiceConnectionRequest()
+                .withServiceType(ServiceType.DATABASE)
+                .withConnectionType("Athena")
+                .withConnection(new DatabaseConnection().withConfig(config)));
   }
 
   @Test
@@ -293,6 +322,40 @@ public class WorkflowResourceIT {
         Exception.class,
         () -> client.workflows().create(duplicateRequest),
         "Creating duplicate workflow with same name should fail");
+  }
+
+  @Test
+  void post_testConnectionWithInvalidConnectionField_400_namesFieldWithoutValues(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateWorkflow createRequest =
+        athenaTestConnectionRequest(ns.prefix("athenaBadUri"), "s3://bucket/athena results/");
+
+    InvalidRequestException error =
+        assertThrows(InvalidRequestException.class, () -> client.workflows().create(createRequest));
+
+    assertEquals(400, error.getStatusCode());
+    assertTrue(
+        error
+            .getMessage()
+            .contains(
+                "Invalid Athena connection: 's3StagingDir' must be a valid URI "
+                    + "(Illegal character in path at index 18)"),
+        error.getMessage());
+    assertFalse(error.getMessage().contains("athena results"), error.getMessage());
+    assertFalse(error.getMessage().contains(ATHENA_SECRET), error.getMessage());
+  }
+
+  @Test
+  void post_testConnectionWithValidAthenaConnection_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Workflow workflow =
+        client
+            .workflows()
+            .create(athenaTestConnectionRequest(ns.prefix("athenaOk"), "s3://bucket/results/"));
+
+    assertEquals(WorkflowType.TEST_CONNECTION, workflow.getWorkflowType());
+    assertNotNull(workflow.getRequest());
   }
 
   @Test
