@@ -309,8 +309,13 @@ export const InspectorRelationshipRow = ({
           className="tw:shrink-0 tw:text-tertiary"
           size={12}
         />
-        <span className="tw:inline-flex tw:items-center tw:rounded-full tw:border tw:border-primary tw:bg-surface tw:px-1.5 tw:py-0 tw:text-[11px] tw:leading-4 tw:font-medium tw:text-primary">
-          {predicate}
+        <span className="tw:inline-flex tw:items-center tw:rounded-full tw:border tw:border-primary tw:bg-surface tw:px-1.5 tw:py-0">
+          <Typography
+            className="tw:text-primary"
+            size="text-xs"
+            weight="medium">
+            {predicate}
+          </Typography>
         </span>
         <ArrowRight
           aria-hidden="true"
