@@ -1082,4 +1082,71 @@ describe('DataAssetSummaryPanelV1', () => {
       });
     });
   });
+
+  describe('i18n: stale section headers after language switch', () => {
+    // Regression test for the missing `t` in the `commonEntitySummaryInfo`
+    // `useMemo` dependency array. When the UI language changes, react-i18next
+    // hands the component a new `t` function instance. If `t` is not listed as
+    // a dependency, the memo returns the previously cached JSX and the owners
+    // section header (e.g. "Owners") keeps rendering in the previous language
+    // until some other dependency changes. All four summary branches bake
+    // `t('label.owner-plural')` into the memoized output, so each must
+    // recompute when `t`'s identity changes.
+    const branches: Array<{ name: string; summaryEntityType: EntityType }> = [
+      // DATABASE exercises the common-layout branch. It is intentionally NOT
+      // TABLE: `fetchTestCases`/`fetchIncidentCount` early-return when the
+      // `entityType` prop is not TABLE, which keeps init's async chain shallow
+      // (only `setEntityPermissions` lands post-mount). With TABLE, the deeper
+      // `listTestCases`/incident `setState`s can land after the `t` switch below
+      // and force a memo recompute that masks the missing-`t`-dep bug.
+      { name: 'common layout', summaryEntityType: EntityType.DATABASE },
+      { name: 'knowledge page', summaryEntityType: EntityType.KNOWLEDGE_PAGE },
+      { name: 'data product', summaryEntityType: EntityType.DATA_PRODUCT },
+      { name: 'misc layout', summaryEntityType: EntityType.USER },
+    ];
+
+    it.each(branches)(
+      'recomputes the owners-title header for the $name branch after `t` identity changes',
+      async ({ summaryEntityType }) => {
+        const tEN = jest.fn((key: string) => `EN:${key}`);
+        const tFR = jest.fn((key: string) => `FR:${key}`);
+
+        (useTranslation as jest.Mock).mockReturnValue({ t: tEN });
+
+        const { rerender } = render(
+          <DataAssetSummaryPanelV1
+            {...defaultProps}
+            entityType={summaryEntityType}
+            summaryEntityType={summaryEntityType}
+          />
+        );
+
+        await waitFor(() => {
+          expect(screen.getByText('EN:label.owner-plural')).toBeInTheDocument();
+        });
+
+        // Simulate the `languageChanged` event: react-i18next replaces `t`
+        // with a new function instance while every other memo dep is unchanged.
+        (useTranslation as jest.Mock).mockReturnValue({ t: tFR });
+
+        await act(async () => {
+          rerender(
+            <DataAssetSummaryPanelV1
+              {...defaultProps}
+              entityType={summaryEntityType}
+              summaryEntityType={summaryEntityType}
+            />
+          );
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText('FR:label.owner-plural')).toBeInTheDocument();
+        });
+
+        expect(
+          screen.queryByText('EN:label.owner-plural')
+        ).not.toBeInTheDocument();
+      }
+    );
+  });
 });
