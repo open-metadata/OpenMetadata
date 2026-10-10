@@ -3046,6 +3046,7 @@
     "sso-test-stage-roles-mapped": "Роли и команды сопоставлены",
     "sso-test-stage-started": "Проверка начата",
     "sso-test-stage-token-received": "Ответ на вход получен",
+    "sso-test-stage-token-refreshed": "Сеанс продлён с помощью токена обновления",
     "sso-test-stage-token-validated": "Ответ на вход проверен",
     "sso-uppercase": "SSO",
     "stage": "Этап",

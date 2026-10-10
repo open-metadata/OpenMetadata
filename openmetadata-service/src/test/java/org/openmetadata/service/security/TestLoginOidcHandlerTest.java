@@ -19,9 +19,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -101,7 +103,7 @@ class TestLoginOidcHandlerTest {
   void completeRedeemsTheCodeWithTheCandidateSecretAndPkceVerifier() {
     TestLoginOidcHandler.Authorization authorization =
         TestLoginOidcHandler.authorize(provider.confidentialClient(), MARKER);
-    provider.issueIdToken(authorization.handshake().nonce(), "alice@example.com");
+    provider.issueIdTokenWithRefreshToken(authorization.handshake().nonce(), "alice@example.com");
 
     TestLoginResult result =
         TestLoginOidcHandler.complete(
@@ -122,6 +124,103 @@ class TestLoginOidcHandlerTest {
                         .getBytes(UTF_8)),
         provider.lastTokenAuthorization());
     assertEquals(TestLoginStageStatus.PASSED, statusOf(result, TestLoginStage.TOKEN_VALIDATED));
+  }
+
+  /** Every live session refresh redeems the provider's refresh token for its next ID token. */
+  @Test
+  void completeRenewsTheSessionWithTheProvidersRefreshToken() {
+    TestLoginResult result = completeAfter(this::issuingARefreshToken);
+
+    assertEquals(TestLoginResult.Status.SUCCESS, result.getStatus(), String.valueOf(result));
+    assertEquals(TestLoginStageStatus.PASSED, statusOf(result, TestLoginStage.TOKEN_REFRESHED));
+    assertEquals("refresh_token", provider.lastRefreshRequest().get("grant_type"));
+    assertEquals(
+        FakeOidcProvider.REFRESH_TOKEN, provider.lastRefreshRequest().get("refresh_token"));
+  }
+
+  /** Without one the session ends with its first ID token; the identity is still reported. */
+  @Test
+  void aProviderThatIssuesNoRefreshTokenFailsTheRefreshStage() {
+    TestLoginResult result =
+        completeAfter(nonce -> provider.issueIdToken(nonce, "alice@example.com"));
+
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+    assertEquals(TestLoginStageStatus.FAILED, statusOf(result, TestLoginStage.TOKEN_REFRESHED));
+    assertTrue(result.getErrors().getFirst().contains("offline_access"), String.valueOf(result));
+    assertEquals("alice@example.com", result.getResolvedEmail());
+    assertTrue(provider.lastRefreshRequest().isEmpty());
+  }
+
+  @Test
+  void aRefreshTokenTheProviderRejectsFailsTheRefreshStage() {
+    TestLoginResult result =
+        completeAfter(
+            nonce -> {
+              issuingARefreshToken(nonce);
+              provider.rejectRefreshTokens(400, "invalid_grant");
+            });
+
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+    assertEquals(TestLoginStageStatus.FAILED, statusOf(result, TestLoginStage.TOKEN_REFRESHED));
+  }
+
+  /** An outage or a client not allowed the grant is no verdict, and no renewal either. */
+  @Test
+  void aRefreshTheProviderDoesNotAnswerFailsTheRefreshStage() {
+    TestLoginResult result =
+        completeAfter(
+            nonce -> {
+              issuingARefreshToken(nonce);
+              provider.rejectRefreshTokens(400, "unauthorized_client");
+            });
+
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+    assertEquals(TestLoginStageStatus.FAILED, statusOf(result, TestLoginStage.TOKEN_REFRESHED));
+    assertTrue(
+        result.getErrors().getFirst().contains("refresh_token grant"), String.valueOf(result));
+  }
+
+  /** The browser needs the renewed ID token; a renewal without one cannot extend its session. */
+  @Test
+  void aRenewalWithoutAnIdTokenFailsTheRefreshStage() {
+    TestLoginResult result =
+        completeAfter(
+            nonce -> {
+              issuingARefreshToken(nonce);
+              provider.renewWithoutIdToken();
+            });
+
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+    assertEquals(TestLoginStageStatus.FAILED, statusOf(result, TestLoginStage.TOKEN_REFRESHED));
+  }
+
+  /** The browser renews a minute before expiry, so a shorter-lived token would loop. */
+  @Test
+  void aRenewedIdTokenAboutToExpireFailsTheRefreshStage() {
+    TestLoginResult result =
+        completeAfter(
+            nonce -> {
+              issuingARefreshToken(nonce);
+              provider.renewWithIdTokenValidFor(Duration.ofSeconds(30));
+            });
+
+    assertEquals(TestLoginResult.Status.FAILED, result.getStatus());
+    assertEquals(TestLoginStageStatus.FAILED, statusOf(result, TestLoginStage.TOKEN_REFRESHED));
+  }
+
+  private void issuingARefreshToken(String nonce) {
+    provider.issueIdTokenWithRefreshToken(nonce, "alice@example.com");
+  }
+
+  /** Runs a Test Login whose token endpoint {@code stubProvider} prepared for the login's nonce. */
+  private TestLoginResult completeAfter(Consumer<String> stubProvider) {
+    TestLoginOidcHandler.Authorization authorization =
+        TestLoginOidcHandler.authorize(provider.confidentialClient(), MARKER);
+    stubProvider.accept(authorization.handshake().nonce());
+    return TestLoginOidcHandler.complete(
+        FakeOidcProvider.securityConfigFor(provider.confidentialClient()),
+        authorization.handshake(),
+        callback("code", "authorization-code-1"));
   }
 
   @Test

@@ -3046,6 +3046,7 @@
     "sso-test-stage-roles-mapped": "Roller ve ekipler eşlendi",
     "sso-test-stage-started": "Test başlatıldı",
     "sso-test-stage-token-received": "Oturum açma yanıtı alındı",
+    "sso-test-stage-token-refreshed": "Oturum yenileme belirteciyle yenilendi",
     "sso-test-stage-token-validated": "Oturum açma yanıtı doğrulandı",
     "sso-uppercase": "SSO",
     "stage": "Aşama",

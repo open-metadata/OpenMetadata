@@ -3046,6 +3046,7 @@
     "sso-test-stage-roles-mapped": "역할 및 팀 매핑됨",
     "sso-test-stage-started": "테스트 시작됨",
     "sso-test-stage-token-received": "로그인 응답 수신됨",
+    "sso-test-stage-token-refreshed": "새로 고침 토큰으로 세션 갱신됨",
     "sso-test-stage-token-validated": "로그인 응답 검증됨",
     "sso-uppercase": "SSO",
     "stage": "단계",

@@ -3046,6 +3046,7 @@
     "sso-test-stage-roles-mapped": "Rôles et équipes attribués",
     "sso-test-stage-started": "Test démarré",
     "sso-test-stage-token-received": "Réponse de connexion reçue",
+    "sso-test-stage-token-refreshed": "Session renouvelée avec le jeton d’actualisation",
     "sso-test-stage-token-validated": "Réponse de connexion validée",
     "sso-uppercase": "SSO",
     "stage": "Scène",

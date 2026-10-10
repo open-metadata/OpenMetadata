@@ -3046,6 +3046,7 @@
     "sso-test-stage-roles-mapped": "แมปบทบาทและทีมแล้ว",
     "sso-test-stage-started": "เริ่มการทดสอบแล้ว",
     "sso-test-stage-token-received": "ได้รับการตอบกลับการเข้าสู่ระบบแล้ว",
+    "sso-test-stage-token-refreshed": "ต่ออายุเซสชันด้วยโทเค็นรีเฟรชแล้ว",
     "sso-test-stage-token-validated": "ตรวจสอบการตอบกลับการเข้าสู่ระบบแล้ว",
     "sso-uppercase": "SSO",
     "stage": "ระยะ",

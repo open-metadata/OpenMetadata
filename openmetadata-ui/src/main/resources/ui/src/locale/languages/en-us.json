@@ -3046,6 +3046,7 @@
     "sso-test-stage-roles-mapped": "Roles and teams mapped",
     "sso-test-stage-started": "Test started",
     "sso-test-stage-token-received": "Sign-in response received",
+    "sso-test-stage-token-refreshed": "Session renewed with the refresh token",
     "sso-test-stage-token-validated": "Sign-in response validated",
     "sso-uppercase": "SSO",
     "stage": "Stage",

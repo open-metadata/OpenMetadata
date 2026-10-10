@@ -131,14 +131,14 @@ export const COMMON_UI_FIELDS = {
   oidcClientAuthenticationMethod: {
     'ui:title': 'OIDC Client Authentication Method',
   },
-  oidcTokenValidity: { 'ui:title': 'OpenMetadata Access Token Validity' },
+  // The browser holds the identity provider's own ID token, so its lifetime is the provider's
+  // and sessions always follow the provider: both settings are ignored for OIDC.
+  oidcTokenValidity: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcCustomParameters: { 'ui:title': 'OIDC Custom Parameters' },
   oidcMaxAge: { 'ui:title': 'OIDC Max Age' },
   oidcPrompt: { 'ui:title': 'OIDC Prompt' },
   oidcSessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
-  oidcEndSessionWithProvider: {
-    'ui:title': 'End Session With Identity Provider',
-  },
+  oidcEndSessionWithProvider: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Common non-OIDC fields
   authority: {
     'ui:title': 'Authority',
@@ -550,10 +550,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
     clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
-    tokenValidity: {
-      'ui:title': 'OpenMetadata Access Token Validity',
-      'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.tokenValidity}`,
-    },
+    tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
     tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },

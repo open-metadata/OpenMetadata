@@ -53,19 +53,24 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -107,6 +112,9 @@ public class JwtFilter implements ContainerRequestFilter {
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
+  private OidcClientConfig serverSideOidcClient;
+  private ProviderTokenValidator providerTokenValidator =
+      ProviderTokenValidator.acceptingAnyProviderToken();
 
   private String emailClaim;
   private String displayNameClaim;
@@ -189,7 +197,14 @@ public class JwtFilter implements ContainerRequestFilter {
     for (String publicKeyUrlStr : authenticationConfiguration.getPublicKeyUrls()) {
       publicKeyUrlsBuilder.add(URI.create(publicKeyUrlStr).toURL());
     }
-    this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
+    this.jwkProvider =
+        new MultiUrlJwkProvider(publicKeyUrlsBuilder.build(), this::providerKeySetUrls);
+    this.serverSideOidcClient =
+        authenticationConfiguration.getClientType() == ClientType.CONFIDENTIAL
+            ? authenticationConfiguration.getOidcConfiguration()
+            : null;
+    this.providerTokenValidator =
+        new ProviderTokenValidator(clientIdsOf(authenticationConfiguration), this::providerIssuer);
 
     this.principalDomain =
         SecurityUtil.resolvePrincipalDomain(
@@ -258,6 +273,16 @@ public class JwtFilter implements ContainerRequestFilter {
     this.enforcePrincipalDomain = enforcePrincipalDomain;
     this.providerType = providerType;
     this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      ProviderTokenValidator providerTokenValidator) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, false);
+    this.providerTokenValidator = providerTokenValidator;
   }
 
   @VisibleForTesting
@@ -530,8 +555,57 @@ public class JwtFilter implements ContainerRequestFilter {
       throw AuthenticationException.getInvalidTokenException(
           "Invalid token. Token verification failed. Public key mismatch.", runtimeException);
     }
+    requireIssuedForThisDeployment(jwt);
 
     return jwt;
+  }
+
+  private void requireIssuedForThisDeployment(DecodedJWT jwt) {
+    if (!isSignedWithOpenMetadataKey(jwt)) {
+      providerTokenValidator.validate(jwt);
+    }
+  }
+
+  /**
+   * Key lookup resolves OpenMetadata's own key id locally before any configured URL, so a verified
+   * token carrying it was signed with our key. Unlike {@link #isInternallyIssuedToken}, this does
+   * not require the current issuer: long-lived bot tokens minted under an earlier one are still ours.
+   */
+  private static boolean isSignedWithOpenMetadataKey(DecodedJWT jwt) {
+    String openMetadataKeyId = JWTTokenGenerator.getInstance().getKid();
+    return !nullOrEmpty(openMetadataKeyId) && openMetadataKeyId.equals(jwt.getKeyId());
+  }
+
+  /** The OIDC client IDs this deployment's sign-in flows request tokens for. */
+  static Set<String> clientIdsOf(AuthenticationConfiguration authenticationConfiguration) {
+    OidcClientConfig oidcClient = authenticationConfiguration.getOidcConfiguration();
+    return Stream.of(
+            authenticationConfiguration.getClientId(),
+            oidcClient == null ? null : oidcClient.getId())
+        .filter(clientId -> !nullOrEmpty(clientId) && !clientId.isBlank())
+        .collect(Collectors.toUnmodifiableSet());
+  }
+
+  @VisibleForTesting
+  Optional<String> providerIssuer() {
+    return codeFlowHandler().map(AuthenticationCodeFlowHandler::getProviderIssuer);
+  }
+
+  @VisibleForTesting
+  List<URL> providerKeySetUrls() {
+    return codeFlowHandler().map(AuthenticationCodeFlowHandler::getProviderKeySetUrl).stream()
+        .toList();
+  }
+
+  /**
+   * The server-side sign-in handler, when it serves this filter's OIDC client. It registers after
+   * this filter at startup and is replaced on a configuration change, so it is looked up per use.
+   */
+  private Optional<AuthenticationCodeFlowHandler> codeFlowHandler() {
+    return AuthServeletHandlerRegistry.getHandler() instanceof AuthenticationCodeFlowHandler handler
+            && handler.servesClient(serverSideOidcClient)
+        ? Optional.of(handler)
+        : Optional.empty();
   }
 
   private static Map<String, Claim> extractClaims(DecodedJWT jwt) {

@@ -3046,6 +3046,7 @@
     "sso-test-stage-roles-mapped": "تم تعيين الأدوار والفرق",
     "sso-test-stage-started": "بدأ الاختبار",
     "sso-test-stage-token-received": "تم استلام استجابة تسجيل الدخول",
+    "sso-test-stage-token-refreshed": "تم تجديد الجلسة باستخدام رمز التحديث",
     "sso-test-stage-token-validated": "تم التحقق من استجابة تسجيل الدخول",
     "sso-uppercase": "SSO",
     "stage": "المرحلة",

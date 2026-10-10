@@ -3046,6 +3046,7 @@
     "sso-test-stage-roles-mapped": "भूमिका आणि संघ मॅप केले",
     "sso-test-stage-started": "चाचणी सुरू झाली",
     "sso-test-stage-token-received": "साइन-इन प्रतिसाद मिळाला",
+    "sso-test-stage-token-refreshed": "रिफ्रेश टोकनने सत्राचे नूतनीकरण केले",
     "sso-test-stage-token-validated": "साइन-इन प्रतिसाद प्रमाणित केला",
     "sso-uppercase": "SSO",
     "stage": "टप्पा",

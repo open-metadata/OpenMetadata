@@ -13,6 +13,7 @@ import com.nimbusds.oauth2.sdk.token.BearerTokenError;
 import com.nimbusds.oauth2.sdk.token.RefreshToken;
 import com.nimbusds.oauth2.sdk.token.Tokens;
 import com.nimbusds.openid.connect.sdk.OIDCTokenResponseParser;
+import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
 import java.io.IOException;
 import java.util.Set;
 import java.util.function.Function;
@@ -47,16 +48,15 @@ public class OidcProviderTokenRefresher {
   /**
    * @param rotatedRefreshToken the replacement refresh token when the provider rotates on use,
    *     otherwise {@code null}
-   * @param lifetimeSeconds the renewed access token's {@code expires_in}, or 0 when the provider
-   *     did not say
+   * @param idToken the renewed ID token, or {@code null} when the provider returned none
    */
-  public record Outcome(Status status, String rotatedRefreshToken, long lifetimeSeconds) {
-    static Outcome renewed(String rotatedRefreshToken, long lifetimeSeconds) {
-      return new Outcome(Status.RENEWED, rotatedRefreshToken, lifetimeSeconds);
+  public record Outcome(Status status, String rotatedRefreshToken, String idToken) {
+    static Outcome renewed(String rotatedRefreshToken, String idToken) {
+      return new Outcome(Status.RENEWED, rotatedRefreshToken, idToken);
     }
 
     static Outcome of(Status status) {
-      return new Outcome(status, null, 0);
+      return new Outcome(status, null, null);
     }
 
     public boolean isRenewed() {
@@ -106,8 +106,12 @@ public class OidcProviderTokenRefresher {
 
   private static Outcome renewedOutcome(Tokens tokens) {
     RefreshToken rotated = tokens.getRefreshToken();
-    return Outcome.renewed(
-        rotated == null ? null : rotated.getValue(), tokens.getAccessToken().getLifetime());
+    return Outcome.renewed(rotated == null ? null : rotated.getValue(), idTokenOf(tokens));
+  }
+
+  /** OIDC allows a refresh response without an ID token (OpenID Connect Core 12.2). */
+  private static String idTokenOf(Tokens tokens) {
+    return tokens instanceof OIDCTokens oidcTokens ? oidcTokens.getIDTokenString() : null;
   }
 
   private static Outcome refusedOutcome(ErrorObject error) {
