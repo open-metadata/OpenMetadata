@@ -1,11 +1,13 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -41,6 +43,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.service.Entity;
@@ -54,6 +57,34 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class ContextMemoryWriteAccessIT {
+
+  @Test
+  void aDeletedAnchorCannotMakeAListedMemoryOrgWide(TestNamespace ns) {
+    Table anchor = ShortStackFactory.table(ns);
+    ContextMemoryService owner = memoriesAs(createUser(ns, null));
+    ContextMemoryService reader = memoriesAs(createUser(ns, null));
+    ContextMemory memory =
+        owner.create(
+            entityMemory(ns, "deleted-anchor-list")
+                .withPrimaryEntity(tableRef(anchor))
+                .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY)));
+    assertEquals(memory.getId(), reader.get(memory.getId().toString()).getId());
+    SdkClients.adminClient()
+        .tables()
+        .delete(anchor.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    assertThrows(ForbiddenException.class, () -> reader.get(memory.getId().toString()));
+    ListParams list = new ListParams().setFields("primaryEntity").setLimit(1000);
+    assertFalse(
+        reader.list(list).getData().stream()
+            .anyMatch(found -> memory.getId().equals(found.getId())));
+    ContextMemory retained =
+        owner.list(list).getData().stream()
+            .filter(found -> memory.getId().equals(found.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(anchor.getId(), retained.getPrimaryEntity().getId());
+  }
 
   @Test
   void reviewAndPinWritesCannotMakeOldContentNewer(TestNamespace ns) {

@@ -265,7 +265,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       return;
     }
     Map<UUID, EntityReference> primaryById = batchFetchPrimaryEntities(entities);
-    entities.forEach(memory -> memory.setPrimaryEntity(primaryById.get(memory.getId())));
+    entities.forEach(
+        memory ->
+            memory.setPrimaryEntity(
+                primaryById.getOrDefault(memory.getId(), memory.getPrimaryEntity())));
   }
 
   private Map<UUID, EntityReference> batchFetchPrimaryEntities(List<ContextMemory> entities) {

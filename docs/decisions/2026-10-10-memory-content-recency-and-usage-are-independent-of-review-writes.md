@@ -38,6 +38,8 @@ the version or either content/audit timestamp.
 An update may retain an unchanged, already-stored primary subject after its deletion, allowing a
 privileged lifecycle writer to expire the memory. Creation and changing the subject still require
 a live reference; the writer and reference visibility checks run first.
+Single and bulk reads retain the stored subject when its edge no longer resolves, so a deleted
+anchor cannot turn an Entity memory into unanchored, organization-wide knowledge in a list.
 
 ## Consequences
 
