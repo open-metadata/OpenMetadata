@@ -56,8 +56,13 @@ const Harness: React.FC<{
   listKey: string;
   fetchPage: FetchPage;
   onApi: (api: UseInboxInfiniteList<Item>) => void;
-}> = ({ listKey, fetchPage, onApi }) => {
-  const api = useInboxInfiniteList<Item>(['list', listKey], fetchPage);
+  canLoadMore?: (loaded: Item[]) => boolean;
+}> = ({ listKey, fetchPage, onApi, canLoadMore }) => {
+  const api = useInboxInfiniteList<Item>(
+    ['list', listKey],
+    fetchPage,
+    canLoadMore
+  );
   onApi(api);
 
   return (
@@ -141,6 +146,51 @@ describe('useInboxInfiniteList', () => {
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalled());
 
     expect(api.items).toHaveLength(0);
+  });
+
+  // The canLoadMore gate is the sole brake on fetchNextPage: while it returns
+  // false the observer-driven loadMore no-ops, and once it releases (as the
+  // TasksTab "Load more" cap raise does in one click) the next intersect
+  // fetches immediately.
+  it('fetches the next page only once canLoadMore releases the gate', async () => {
+    let scanLimit = 0;
+    const canLoadMore = (loaded: Item[]) => loaded.length < scanLimit;
+
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page(1, { after: 'c1', total: 5000 }))
+      .mockResolvedValueOnce(page(2, { total: 5000 }));
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Harness
+          canLoadMore={canLoadMore}
+          fetchPage={fetchPage}
+          listKey="open"
+          onApi={(value) => (api = value)}
+        />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => expect(api.items).toHaveLength(1));
+
+    expect(api.hasMore).toBe(true);
+
+    await act(async () => {
+      intersect?.();
+    });
+
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+
+    scanLimit = 1000;
+
+    await act(async () => {
+      intersect?.();
+    });
+
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2));
+
+    expect(fetchPage).toHaveBeenLastCalledWith('c1');
   });
 
   // A filter switch must not blank the list: the old rows stay until the new

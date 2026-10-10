@@ -405,6 +405,61 @@ describe('TasksTab', () => {
     expect(capturedCanLoadMore?.(scanned)).toBe(false);
   });
 
+  it('raises the scan cap past an already-loaded backlog in one Load more click', () => {
+    const loaded = Array.from(
+      { length: 1000 },
+      (_, index) =>
+        ({ id: `t${index}`, type: 'TestCaseResolution' } as unknown as Task)
+    );
+    hookState = { items: loaded, isLoading: false, total: 5000, hasMore: true };
+    renderTab();
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(capturedCanLoadMore?.(loaded)).toBe(false);
+
+    fireEvent.click(screen.getByText('label.load-more'));
+
+    expect(capturedCanLoadMore?.(loaded)).toBe(true);
+  });
+
+  it('raises the cap again once the scanned backlog grows back to it', () => {
+    const initial = Array.from(
+      { length: 1000 },
+      (_, index) =>
+        ({ id: `t${index}`, type: 'TestCaseResolution' } as unknown as Task)
+    );
+    hookState = {
+      items: initial,
+      isLoading: false,
+      total: 5000,
+      hasMore: true,
+    };
+    const { rerender } = renderTab();
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(capturedCanLoadMore?.(initial)).toBe(false);
+
+    fireEvent.click(screen.getByText('label.load-more'));
+
+    expect(capturedCanLoadMore?.(initial)).toBe(true);
+
+    const grown = Array.from(
+      { length: 1200 },
+      (_, index) =>
+        ({ id: `t${index}`, type: 'TestCaseResolution' } as unknown as Task)
+    );
+    hookState = { items: grown, isLoading: false, total: 5000, hasMore: true };
+    rerender(<TasksTab />);
+
+    expect(capturedCanLoadMore?.(grown)).toBe(false);
+
+    fireEvent.click(screen.getByText('label.load-more'));
+
+    expect(capturedCanLoadMore?.(grown)).toBe(true);
+  });
+
   it('shows the skeleton while loading', () => {
     hookState = { items: [], isLoading: true, total: 0 };
     renderTab();

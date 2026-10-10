@@ -506,14 +506,6 @@ const TasksTab: React.FC<TasksTabProps> = ({
     (loaded: Task[]) => !isClientNarrowed || loaded.length < scanLimit,
     [isClientNarrowed, scanLimit]
   );
-  const handleScanFurther = useCallback(
-    () =>
-      setScanRaise((raise) => ({
-        key: scanKey,
-        extra: (raise.key === scanKey ? raise.extra : 0) + MAX_NARROWED_SCAN,
-      })),
-    [scanKey]
-  );
 
   const {
     items: tasks,
@@ -529,6 +521,19 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text],
     fetchPage,
     canLoadMore
+  );
+
+  const handleScanFurther = useCallback(
+    () =>
+      setScanRaise((raise) => {
+        const base = raise.key === scanKey ? raise.extra : 0;
+
+        return {
+          key: scanKey,
+          extra: Math.max(base, tasks.length),
+        };
+      }),
+    [scanKey, tasks.length]
   );
 
   useEffect(() => {
