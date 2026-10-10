@@ -314,7 +314,9 @@ export const useHashPagingParams = () => {
  */
 export const useSettingsHashSync = (
   openModal: (panel: 'profile') => void,
-  isOpen: boolean
+  isOpen: boolean,
+  suppressHashClear?: boolean,
+  clearSuppressHashClear?: () => void
 ) => {
   const { state, clearHash } = useSettingsHash();
   const wasOpenRef = useRef(isOpen);
@@ -329,11 +331,16 @@ export const useSettingsHashSync = (
     prevTabRef.current = state.tab;
   }, [state.tab, isOpen, openModal]);
 
-  // Clear hash only when modal transitions from open → closed (not on mount)
+  // Clear hash only when modal transitions from open → closed (not on mount).
+  // Skip when suppressHashClear is set (fullscreen customize overlay took over).
   useEffect(() => {
     if (wasOpenRef.current && !isOpen) {
-      clearHash();
+      if (suppressHashClear) {
+        clearSuppressHashClear?.();
+      } else {
+        clearHash();
+      }
     }
     wasOpenRef.current = isOpen;
-  }, [isOpen, clearHash]);
+  }, [isOpen, clearHash, suppressHashClear, clearSuppressHashClear]);
 };

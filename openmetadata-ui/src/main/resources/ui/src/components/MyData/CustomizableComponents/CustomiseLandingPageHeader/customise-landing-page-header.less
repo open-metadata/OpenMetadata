@@ -20,76 +20,6 @@
   background-position: center;
   background-repeat: no-repeat;
 
-  // Carousel styles
-  .ant-carousel {
-    max-height: 125px;
-    width: 100%;
-    margin-bottom: @size-xl;
-    padding-bottom: @padding-xss;
-
-    .slick-slide {
-      vertical-align: top;
-      padding: 0 @padding-xs;
-    }
-
-    .slick-arrow {
-      color: var(--tw-color-text-white);
-      font-size: @size-lg;
-      z-index: var(--om-z-10);
-      width: 32px;
-      height: 32px;
-      background-color: var(--om-legacy-color-0-0-0-0-3);
-      border-radius: 50%;
-      display: flex !important;
-      align-items: center;
-      justify-content: center;
-
-      &:hover {
-        color: var(--tw-color-text-white);
-        background-color: var(--om-legacy-color-0-0-0-0-5);
-      }
-
-      &.slick-prev {
-        left: -@size-lg;
-      }
-
-      &.slick-next {
-        right: -@size-lg;
-      }
-
-      &::before {
-        color: var(--tw-color-text-white);
-        font-size: @size-lg;
-      }
-    }
-  }
-
-  .recently-viewed-data-carousel {
-    max-height: 125px;
-    .slick-dots {
-      bottom: -@size-sm !important;
-    }
-  }
-
-  .slick-list-center {
-    .slick-list {
-      max-height: 125px;
-    }
-  }
-
-  .search-input {
-    min-width: 0;
-    flex: 1 1 auto;
-    border: 1px solid @grey-25;
-    border-radius: @border-rad-sm;
-    background: var(--tw-color-bg-primary);
-    padding: @padding-xs @padding-sm;
-
-    .ant-popover-inner {
-      border-radius: @border-rad-sm;
-    }
-  }
-
   .disabled {
     cursor: not-allowed;
     pointer-events: none;
@@ -188,12 +118,6 @@
   justify-content: center;
   cursor: pointer;
   color: @white !important;
-
-  svg {
-    width: 12px;
-    height: 12px;
-    fill: var(--tw-color-bg-primary);
-  }
 }
 
 .right-arrow {
@@ -202,7 +126,6 @@
 
 .left-arrow {
   left: -@size-xl;
-  transform: translateY(-50%) rotate(180deg);
 }
 
 .customise-recently-viewed-data {
@@ -257,21 +180,4 @@
 .overlapped-container {
   height: 180px;
   width: 100%;
-}
-
-.nlp-search-button {
-  padding: 0 !important;
-
-  &.active {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none !important;
-
-    svg {
-      width: 24px;
-      height: 24px;
-      fill: none;
-    }
-  }
 }

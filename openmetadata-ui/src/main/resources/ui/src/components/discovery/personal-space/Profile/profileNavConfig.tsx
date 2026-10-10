@@ -16,6 +16,7 @@ import {
   Bell01,
   Key01,
   PermissionDebugger as AccessControlIcon,
+  Persona as PersonaIcon,
   Policy as GovernanceTabIcon,
   Settings02,
   ShieldTick,
@@ -41,6 +42,7 @@ import GovernancePanel from './tabs/governance/GovernancePanel';
 import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
+import PersonasPanel from './tabs/personas/PersonasPanel';
 import PlatformSettingsPanel from './tabs/platform-settings/PlatformSettingsPanel';
 import SsoPanel from './tabs/sso/SsoPanel';
 
@@ -226,6 +228,18 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
 ];
 
 export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'personas',
+    group: 'workspace',
+    label: 'label.persona-plural',
+    description: 'message.page-sub-header-for-persona',
+    icon: PersonaIcon as FC<{ className?: string }>,
+    isVisible: (_permissions, isAdmin) => isAdmin,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <PersonasPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
   {
     id: 'members',
     group: 'workspace',

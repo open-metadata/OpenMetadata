@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Modal } from 'antd';
+import {
+  Box,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -89,20 +94,18 @@ function AddWidgetModal({
         return {
           label: (
             <Box
-              inline
               align="center"
-              className="layout-space layout-space-horizontal"
               data-testid={`${widget.name}-widget-tab-label`}
-              gap={2}
-              itemClassName="layout-space-item">
+              direction="row"
+              gap={1}>
               <span>{widget.name}</span>
               {addedWidgetsList.some(
                 (w) =>
                   w.startsWith(widget.fullyQualifiedName) &&
                   !w.includes('EmptyWidgetPlaceholder')
               ) && (
-                <CheckOutlined
-                  className="m-l-xs"
+                <Check
+                  className="m-l-xs tw:size-4"
                   data-testid={`${widget.name}-check-icon`}
                   style={{ color: LIGHT_GREEN_COLOR }}
                 />
@@ -129,8 +132,8 @@ function AddWidgetModal({
   const visitedTabs = useVisitedTabs(activeTab);
 
   useEffect(() => {
-    fetchKnowledgePanels();
-  }, []);
+    void fetchKnowledgePanels();
+  }, [fetchKnowledgePanels]);
 
   const widgetsInfo = useMemo(() => {
     if (loading) {
@@ -175,20 +178,23 @@ function AddWidgetModal({
         ))}
       </Tabs>
     );
-  }, [loading, widgetsList, tabItems, activeTab, visitedTabs]);
+  }, [loading, widgetsList, tabItems, activeTab, visitedTabs, t]);
 
   return (
-    <Modal
-      centered
-      className="add-widget-modal"
-      data-testid="add-widget-modal"
-      footer={null}
-      open={open}
-      title={t('label.add-new-entity', { entity: t('label.widget') })}
-      width={750}
-      onCancel={handleCloseAddWidgetModal}>
-      {widgetsInfo}
-    </Modal>
+    <ModalOverlay
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && handleCloseAddWidgetModal()}>
+      <Modal className="add-widget-modal">
+        <Dialog
+          data-testid="add-widget-modal"
+          dividers="scroll"
+          title={t('label.add-new-entity', { entity: t('label.widget') })}
+          width={750}
+          onClose={handleCloseAddWidgetModal}>
+          <Dialog.Content>{widgetsInfo}</Dialog.Content>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 }
 
