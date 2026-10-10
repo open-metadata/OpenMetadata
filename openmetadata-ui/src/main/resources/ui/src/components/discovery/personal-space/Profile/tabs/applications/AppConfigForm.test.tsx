@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
 import { RJSFSchema } from '@rjsf/utils';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../../../../../generated/entity/applications/app';
 import AppConfigForm, { HintToggle } from './AppConfigForm';
 

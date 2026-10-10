@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactElement } from 'react';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   App,
   ScheduleType,
@@ -21,11 +22,10 @@ import {
   getApplicationByName,
   uninstallApp,
 } from '../../../../../../rest/applicationAPI';
-import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
-import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
+import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
 import AppDetail from './AppDetail';
 import type { ApplicationsHeader } from './Applications.types';
 

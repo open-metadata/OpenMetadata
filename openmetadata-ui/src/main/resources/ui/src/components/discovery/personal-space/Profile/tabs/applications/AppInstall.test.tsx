@@ -19,8 +19,8 @@ import { getMarketPlaceApplicationByFqn } from '../../../../../../rest/applicati
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import type { AppConfigFormProps } from './AppConfigForm';
-import type { ApplicationsHeader } from './Applications.types';
 import AppInstall from './AppInstall';
+import type { ApplicationsHeader } from './Applications.types';
 
 jest.mock('react-i18next', () => {
   const t = (key: string) => key;

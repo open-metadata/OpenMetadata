@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { GridView, Lock01 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import { FC, useCallback, useMemo, useState } from 'react';

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { FieldProps } from '@rjsf/utils';
 import { render, screen } from '@testing-library/react';
 import { ReactElement } from 'react';
-import { FieldProps } from '@rjsf/utils';
 import CoreEnumMultiSelectField, {
   ALL_VALUE,
   getNextEnumSelection,

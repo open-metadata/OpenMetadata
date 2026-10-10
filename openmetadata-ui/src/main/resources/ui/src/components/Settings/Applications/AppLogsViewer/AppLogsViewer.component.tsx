@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { BadgeColors } from '@openmetadata/ui-core-components';
 import {
   Badge,
   Box,
@@ -20,7 +21,6 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import type { BadgeColors } from '@openmetadata/ui-core-components';
 import { capitalize, isEmpty, toString } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

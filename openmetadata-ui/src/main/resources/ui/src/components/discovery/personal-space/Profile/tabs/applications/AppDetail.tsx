@@ -37,16 +37,17 @@ import { isEmpty } from 'lodash';
 import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { SEARCH_INDEXING_APPLICATION } from '../../../../../../constants/explore.constants';
 import { useLimitStore } from '../../../../../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import {
   App,
   ScheduleTimeline,
 } from '../../../../../../generated/entity/applications/app';
+import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourcePermission';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { Include } from '../../../../../../generated/type/include';
-import { ResourceEntity } from '../../../../../../enums/permissions.enum';
-import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourcePermission';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
@@ -65,14 +66,13 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import { SEARCH_INDEXING_APPLICATION } from '../../../../../../constants/explore.constants';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import type { AppPlugin } from '../../../../../Settings/Applications/plugins/AppPlugin';
 import AppLiveIndexing from '../../../../../Settings/Applications/AppLiveIndexing/AppLiveIndexing.component';
 import AppRunsHistory from '../../../../../Settings/Applications/AppRunsHistory/AppRunsHistory.component';
 import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
 import McpApplicationConfiguration from '../../../../../Settings/Applications/McpApplicationConfiguration/McpApplicationConfiguration';
+import type { AppPlugin } from '../../../../../Settings/Applications/plugins/AppPlugin';
 import ConfirmDialog from '../platform-settings/ConfirmDialog';
 import { HintToggle } from './AppConfigForm';
 import type { ApplicationsViewProps } from './Applications.types';

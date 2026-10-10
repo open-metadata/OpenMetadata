@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
 import { WidgetProps } from '@rjsf/utils';
+import { render, screen } from '@testing-library/react';
 import CoreDateWidget from './CoreDateWidget';
 
 const renderWidget = (props: Partial<WidgetProps>) =>
