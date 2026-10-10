@@ -26,11 +26,10 @@ import {
   formatDurationToHHMMSS,
   formatMonth,
   formatTimeDurationFromSeconds,
-  getElapsedTime,
-  getRelativeCalendar,
   getActiveTimeFormat,
   getElapsedTime,
   getMappedTimeFormat,
+  getRelativeCalendar,
   getScheduleDescriptionTexts,
   isValidDateFormat,
 } from './DateTimeUtils';
