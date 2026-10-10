@@ -508,13 +508,15 @@ const FilterSelect = ({
 
     // 'all' is react-aria's select-all sentinel (e.g. ⌘A) — resolve it to the
     // displayed rows merged with values selected but currently filtered out.
+    // The null row is an explicit choice and is not included, matching
+    // handleSelectAll and the showSelectAll JSDoc so both "Select all"
+    // gestures commit the same set.
     const next =
       keys === 'all'
         ? Array.from(
             new Set([
               ...current,
               ...displayedOptions.map((option) => option.value),
-              ...(displayedNullOption ? [displayedNullOption.value] : []),
             ])
           )
         : Array.from(keys, String);
