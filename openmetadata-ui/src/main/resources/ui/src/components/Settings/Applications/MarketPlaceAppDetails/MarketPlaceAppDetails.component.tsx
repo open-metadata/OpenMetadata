@@ -175,11 +175,13 @@ const MarketPlaceAppDetails = () => {
         </div>
         <Tooltip
           arrow
+          excludeTriggerFromTabOrder
           isDisabled={!tooltipTitle}
           placement="top"
-          title={tooltipTitle}>
+          title={tooltipTitle}
+          triggerClassName="tw:w-full m-t-md">
           <CoreButton
-            className="tw:w-full m-t-md"
+            className="tw:w-full"
             color="primary"
             data-testid="install-application"
             isDisabled={isInstalled || isAppDisabled}

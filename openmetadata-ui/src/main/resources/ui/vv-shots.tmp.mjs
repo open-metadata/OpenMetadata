@@ -18,29 +18,24 @@ const S = [
   ['table-schema-copy-link', `/table/${T}/schema`, '[data-testid="copy-column-link-button"]', 'row'],
   ['table-schema-edit-display-name', `/table/${T}/schema`, '[data-testid="edit-displayName-button"]', 'row'],
   ['table-version-button', `/table/${T}/versions/0.1`, '[data-testid="version-button"]'],
-  ['topic-schema-name', '/topic/sample_kafka.address_book/schema', '[data-testid="schema-fields-table"] .break-word'],
+  ['topic-schema-name', '/topic/sample_kafka.address_book/schema', '.break-word'],
   ['api-endpoint-schema-name', '/apiEndpoint/sample_api_service.pet.addPet', '.break-word'],
   ['container-data-model-type', '/container/s3_storage_sample.departments.customer_profiles_exports', 'td .cursor-pointer.tw\\:text-primary'],
-  ['search-index-field-type', '/searchIndex/elasticsearch_sample.customer_profiles_index', 'td .cursor-pointer'],
   ['nav-user-name', '/my-data', '[data-testid="nav-user-name"]'],
   ['team-edit-name', '/settings/members/teams/Organization', '[data-testid="edit-team-name"]'],
   ['team-edit-email', '/settings/members/teams/Organization', '[data-testid="edit-email"]'],
   ['team-edit-subscription', '/settings/members/teams/Organization', '[data-testid="edit-team-subscription"]'],
   ['team-total-users-info', '/settings/members/teams/Organization', '[data-testid="helper-icon"]'],
-  ['team-add-team', '/settings/members/teams/Organization', '[data-testid="add-placeholder-button"]'],
-  ['team-hierarchy-name', '/settings/members/teams/Organization', '[data-testid^="team-name-"]'],
-  ['team-roles-add', '/settings/members/teams/Organization/roles', '[data-testid="add-placeholder-button"]'],
+  ['team-roles-add', '/settings/members/teams/Organization', '[data-testid="add-placeholder-button"]', 'tab:Roles'],
   ['bots-delete-disabled', '/settings/bots', '[data-testid="bot-delete-ingestion-bot"]'],
-  ['bots-add', '/settings/bots', '[data-testid="add-bot"]'],
   ['roles-delete', '/settings/access/roles', '[data-testid^="delete-action-"]'],
   ['policies-delete', '/settings/access/policies', '[data-testid^="delete-action-"]'],
   ['role-detail-remove', '/settings/access/roles/DataConsumer', '[data-testid^="remove-action-"]'],
   ['services-add', '/settings/services/databases', '[data-testid="add-service-button"]'],
   ['service-edit-connection', '/service/databaseServices/sample_data/connection', '[data-testid="edit-connection-button"]'],
-  ['notification-alert-delete-disabled', '/settings/notifications/alerts', '[data-testid="alert-delete-ActivityFeedAlert"]'],
-  ['login-config-info', '/settings/preferences/login-configuration', '[data-testid="max-login-fail-attampts-url-info"]'],
+  ['notification-alert-delete-disabled', '/settings/notifications/alerts', '[data-testid^="alert-delete-"]'],
+  ['login-config-info', '/settings/preferences/loginConfiguration', '[data-testid="max-login-fail-attampts-url-info"]'],
   ['marketplace-install', '/marketplace/apps/AIChatApplication', '[data-testid="install-application"]'],
-  ['table-queries-add', `/table/${T}/table_queries`, '[data-testid="add-query-btn"]'],
   ['users-list-delete', '/settings/members/users', '[data-testid^="delete-user-btn-"]'],
 ];
 const only = process.argv.slice(3);
@@ -60,10 +55,12 @@ for (const [name, path, sel, mode] of S) {
     try {
       await page.goto(base + path, { waitUntil: 'domcontentloaded' });
       await page.evaluate((t) => document.documentElement.classList.toggle('dark-mode', t === 'dark'), theme);
+      if (mode?.startsWith('tab:')) await page.getByRole('tab', { name: new RegExp(mode.slice(4)) }).first().click();
       const el = page.locator(sel).first();
       await el.waitFor({ state: 'attached', timeout: 20000 });
       await page.evaluate((t) => document.documentElement.classList.toggle('dark-mode', t === 'dark'), theme);
       await el.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(2500);
       if (mode === 'row') await el.locator('xpath=ancestor::tr[1]').hover();
       await page.waitForTimeout(400);
       await page.mouse.move(0, 0);
