@@ -44,6 +44,51 @@ const renderCustomTrigger = (
     />
   );
 
+// A mutually-exclusive (radio) group: `PII` is the group parent and each child
+// is a radio sibling. Select All and per-row toggles must keep these radio
+// siblings from being co-selected.
+const PII_EMAIL: TreeSelectNode = {
+  id: 'PII.Email',
+  label: 'Email',
+  value: 'PII.Email',
+  isLeaf: true,
+  isParentMutuallyExclusive: true,
+  parentId: 'PII',
+};
+const PII_SSN: TreeSelectNode = {
+  id: 'PII.SSN',
+  label: 'SSN',
+  value: 'PII.SSN',
+  isLeaf: true,
+  isParentMutuallyExclusive: true,
+  parentId: 'PII',
+};
+const PII_PHONE: TreeSelectNode = {
+  id: 'PII.Phone',
+  label: 'Phone',
+  value: 'PII.Phone',
+  isLeaf: true,
+  isParentMutuallyExclusive: true,
+  parentId: 'PII',
+};
+const PII_RADIO_IDS = [PII_EMAIL.id, PII_SSN.id, PII_PHONE.id];
+
+// A plain (checkbox) node beside the exclusive group, so "Select All" still
+// has something to select and is not silently a no-op.
+const FINANCE: TreeSelectNode = {
+  id: 'Finance',
+  label: 'Finance',
+  value: 'Finance',
+  isLeaf: true,
+};
+
+// `useCoreTranslation` returns keys literally in the test environment, so the
+// Select All control reads as its i18n key.
+const SELECT_ALL_LABEL = 'label.select-all';
+
+const emittedAt = (onChange: ReturnType<typeof vi.fn>, call: number) =>
+  onChange.mock.calls[call][0] as TreeSelectNode[];
+
 describe('TreeSelect', () => {
   it('does not fetch while a custom-trigger picker stays closed', () => {
     const fetchData = fetchNodes();
@@ -295,5 +340,320 @@ describe('TreeSelect', () => {
     expect(screen.getByTestId('tree-node-d').className).toContain(
       'cursor-not-allowed'
     );
+  });
+});
+
+describe('TreeSelect Select All and mutual exclusivity', () => {
+  it('cascade + lazyLoad: Select All skips mutually-exclusive radio siblings', async () => {
+    const fetchData = vi
+      .fn()
+      .mockImplementation(async ({ parentId }: { parentId?: string }) => {
+        if (!parentId) {
+          return {
+            nodes: [
+              {
+                id: 'PII',
+                label: 'PII',
+                value: 'PII',
+                allowSelection: true,
+                lazyLoad: true,
+                isLeaf: false,
+                hasExclusiveChildren: true,
+              },
+              FINANCE,
+            ],
+          };
+        }
+
+        if (parentId === 'PII') {
+          return { nodes: [PII_EMAIL, PII_SSN, PII_PHONE] };
+        }
+
+        return { nodes: [] };
+      });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        cascadeSelection
+        isOpen
+        lazyLoad
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        onChange={onChange}
+      />
+    );
+
+    await screen.findByText('PII');
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    const emitted = emittedAt(onChange, 0);
+    const piiSelected = emitted.filter((n) => PII_RADIO_IDS.includes(n.id));
+
+    // Mutually-exclusive (radio) siblings must never be co-selected by Select All.
+    expect(piiSelected).toHaveLength(0);
+    // The exclusive-group parent carries no checkbox, so it is excluded too.
+    expect(emitted.some((n) => n.id === 'PII')).toBe(false);
+    // Every regular node is still selected.
+    expect(emitted.some((n) => n.id === FINANCE.id)).toBe(true);
+  });
+
+  it('non-cascade: Select All skips mutually-exclusive radio siblings nested inline', async () => {
+    const fetchData = vi
+      .fn()
+      .mockImplementation(async ({ parentId }: { parentId?: string }) => {
+        if (!parentId) {
+          return {
+            nodes: [
+              {
+                id: 'PII',
+                label: 'PII',
+                value: 'PII',
+                allowSelection: true,
+                isLeaf: false,
+                hasExclusiveChildren: true,
+                children: [PII_EMAIL, PII_SSN, PII_PHONE],
+              },
+              FINANCE,
+            ],
+          };
+        }
+
+        return { nodes: [] };
+      });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        onChange={onChange}
+      />
+    );
+
+    // `selectableNodes` is derived from the data model, not the rendered DOM,
+    // so the radio children are present while PII is collapsed.
+    await screen.findByText('PII');
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    const emitted = emittedAt(onChange, 0);
+    const piiSelected = emitted.filter((n) => PII_RADIO_IDS.includes(n.id));
+
+    expect(piiSelected).toHaveLength(0);
+    expect(emitted.some((n) => n.id === 'PII')).toBe(false);
+    expect(emitted.some((n) => n.id === FINANCE.id)).toBe(true);
+  });
+
+  it('Select All still selects every regular (non-exclusive) node', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'Glossary',
+          label: 'Glossary',
+          value: 'Glossary',
+          isLeaf: false,
+          children: [
+            {
+              id: 'TermA',
+              label: 'Term A',
+              value: 'TermA',
+              isLeaf: true,
+              parentId: 'Glossary',
+            },
+            {
+              id: 'TermB',
+              label: 'Term B',
+              value: 'TermB',
+              isLeaf: true,
+              parentId: 'Glossary',
+            },
+          ],
+        },
+        FINANCE,
+      ],
+    });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        onChange={onChange}
+      />
+    );
+
+    await screen.findByText('Glossary');
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    const ids = emittedAt(onChange, 0)
+      .map((n) => n.id)
+      .sort();
+
+    expect(ids).toEqual(['Finance', 'Glossary', 'TermA', 'TermB']);
+  });
+
+  it('Select All skips an unselectable container but still selects its normal children', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'Container',
+          label: 'Container',
+          value: 'Container',
+          allowSelection: false,
+          isLeaf: false,
+          children: [
+            {
+              id: 'SelectableChild',
+              label: 'Selectable',
+              value: 'SelectableChild',
+              isLeaf: true,
+              parentId: 'Container',
+            },
+          ],
+        },
+        FINANCE,
+      ],
+    });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        onChange={onChange}
+      />
+    );
+
+    await screen.findByText('Container');
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    const ids = emittedAt(onChange, 0).map((n) => n.id);
+    const expected = ['SelectableChild', 'Finance'].sort();
+
+    expect(ids).not.toContain('Container');
+    expect([...ids].sort()).toEqual(expected);
+  });
+
+  it('Select All reads fully checked once every selectable node is selected (radio group excluded)', async () => {
+    // FINANCE is the only selectable node once the PII radio group is excluded,
+    // so seeding it must leave the Select All checkbox fully checked. Clicking
+    // a checked box clears the selection rather than adding the radio group back.
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'PII',
+          label: 'PII',
+          value: 'PII',
+          isLeaf: false,
+          hasExclusiveChildren: true,
+          children: [PII_EMAIL, PII_SSN, PII_PHONE],
+        },
+        FINANCE,
+      ],
+    });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        value={[FINANCE]}
+        onChange={onChange}
+      />
+    );
+
+    await screen.findByText('Finance');
+
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    // The box was checked, so toggling it cleared the selection — it did not
+    // emit the radio siblings the buggy `allSelected` count would have demanded.
+    const emitted = emittedAt(onChange, 0);
+    const piiSelected = emitted.filter((n) => PII_RADIO_IDS.includes(n.id));
+
+    expect(emitted).toEqual([]);
+    expect(piiSelected).toHaveLength(0);
+  });
+
+  it('Select All skips a radio group nested under a regular parent', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'Glossary',
+          label: 'Glossary',
+          value: 'Glossary',
+          isLeaf: false,
+          children: [
+            {
+              id: 'PII',
+              label: 'PII',
+              value: 'PII',
+              allowSelection: true,
+              isLeaf: false,
+              hasExclusiveChildren: true,
+              children: [PII_EMAIL, PII_SSN],
+            },
+            {
+              id: 'TermA',
+              label: 'Term A',
+              value: 'TermA',
+              isLeaf: true,
+              parentId: 'Glossary',
+            },
+          ],
+        },
+        FINANCE,
+      ],
+    });
+
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        onChange={onChange}
+      />
+    );
+
+    await screen.findByText('Glossary');
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+
+    const ids = emittedAt(onChange, 0).map((n) => n.id);
+    const piiSelected = ids.filter((id) => PII_RADIO_IDS.includes(id));
+
+    // The nested radio group and the radio siblings beneath it are skipped.
+    expect(piiSelected).toHaveLength(0);
+    expect(ids).not.toContain('PII');
+    // The surrounding regular nodes are still selected (order reflects the walk).
+    expect([...ids].sort()).toEqual(['Finance', 'Glossary', 'TermA']);
   });
 });

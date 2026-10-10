@@ -195,11 +195,18 @@ const collectSelectableNodes = <T,>(
 ): TreeSelectNode<T>[] => {
   const result: TreeSelectNode<T>[] = [];
   for (const node of nodes) {
-    if (node.allowSelection !== false) {
+    if (node.allowSelection !== false && !hasExclusiveChildren(node)) {
       result.push(node);
     }
     if (node.children) {
-      result.push(...collectSelectableNodes(node.children));
+      result.push(
+        ...collectSelectableNodes(
+          node.children.filter(
+            (child) =>
+              !child.isParentMutuallyExclusive && !hasExclusiveChildren(child)
+          )
+        )
+      );
     }
   }
 
