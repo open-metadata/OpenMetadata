@@ -421,12 +421,12 @@ export const ContractSecurityFormTab: React.FC<{
       });
       onChange({
         security: {
-          dataClassification: dataClassificationFormItem,
+          dataClassification: form.getFieldValue('dataClassification'),
           policies: filteredValue,
         },
       });
     },
-    [policiesFormData]
+    [policiesFormData, dataClassificationFormItem, form, onChange]
   );
 
   const handleFormChange: FormProps['onValuesChange'] = (_, values) => {
