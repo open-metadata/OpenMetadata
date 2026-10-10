@@ -156,7 +156,7 @@ Full spec: [`src/main/resources/ui/DEVELOPER_HANDBOOK.md`](src/main/resources/ui
 - [ ] No merge conflicts with target branch
 - [ ] Branch is up to date with main/target branch
 - [ ] All review comments addressed or discussed
-- [ ] Screenshots/videos provided for UI changes
+- [ ] The PR's UI build ran in Docker with sample data, and its description includes a playable GitHub-hosted recording, recorded SHA, startup/health evidence and observed outcomes ([procedure](../skills/ui-pr-recording/SKILL.md)); missing evidence blocks readiness, and screenshots alone do not qualify
 - [ ] Testing instructions clear and verified
 
 ---

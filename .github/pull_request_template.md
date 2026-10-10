@@ -116,14 +116,20 @@ List the manual test steps you performed before requesting review. Example:
 -->
 
 #
-### UI screen recording / screenshots:
+### UI screen recording:
 <!--
-REQUIRED for any PR that changes the UI. Drag-and-drop a short screen recording (.mov / .mp4 / .gif)
-demonstrating the change end-to-end, plus before/after screenshots where relevant.
-Mark "Not applicable" if there are no UI changes.
+REQUIRED before requesting review for any production UI change, including shared UI components,
+styles, localization and refactors. Follow skills/ui-pr-recording/SKILL.md (/ui-pr-recording):
+build the PR code, run it in Docker with sample data, record the affected flow and its result,
+then upload the video to GitHub and embed it here. Screenshots may supplement, never replace, it.
+
+Include the recorded commit SHA, Docker startup command + health/version checks, sample-data
+setup, steps shown and observed results. Re-record after UI/runtime changes. If blocked, leave
+this PR as draft and state the blocker and remaining work; a local file or TODO is not evidence.
+Use "Not applicable — <reason>" only when the diff has no production UI impact.
 -->
 
-Not applicable. <!-- Or attach recording/screenshots above -->
+<!-- Replace with the uploaded video and evidence, or an explicit N/A reason. -->
 
 #
 ### Checklist:
@@ -133,7 +139,7 @@ Not applicable. <!-- Or attach recording/screenshots above -->
 - [ ] My PR is linked to a GitHub issue via `Fixes #<issue-number>` above.
 - [ ] I have commented on my code, particularly in hard-to-understand areas.
 - [ ] For JSON Schema changes: I updated the migration scripts or explained why it is not needed.
-- [ ] For UI changes: I attached a screen recording and/or screenshots above.
+- [ ] For UI changes: I ran this PR's build in Docker with sample data and embedded a verified GitHub-hosted screen recording plus build/health evidence above (or explained why there is no production UI impact).
 - [ ] I have added tests (unit / integration / Playwright as applicable) and listed them above.
 - [ ] Decision check: if this PR decides something the next contributor could undo — a schema field, REST path or format another component or repo must agree with, a new default or limit, an ordering that must hold, or a rule stated only in this description — it adds a record under `docs/decisions/` (see its `README.md`). This description is gone from `git log` after the squash-merge.
 
