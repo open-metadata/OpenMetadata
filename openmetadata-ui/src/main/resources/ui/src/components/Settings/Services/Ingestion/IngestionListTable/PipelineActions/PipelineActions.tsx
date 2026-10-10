@@ -113,7 +113,9 @@ function PipelineActions({
             pipeline.id,
             <StatusIcon height={12} width={12} />
           )}
-          isDisabled={isDisabled || !pipeline.deployed}
+          isDisabled={
+            isDisabled || !pipeline.deployed || currPauseId.id === pipeline.id
+          }
           onPress={() => onPauseUnpauseClick(pipelineId)}>
           {label}
         </Button>
