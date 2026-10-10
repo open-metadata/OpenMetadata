@@ -202,8 +202,10 @@ def execute_workflow(workflow: BaseWorkflow, workflow_config: OpenMetadataWorkfl
     """
     Execute the workflow and handle the status
     """
-    workflow.execute()
-    workflow.stop()
+    try:
+        workflow.execute()
+    finally:
+        workflow.stop()
     if workflow_config.workflowConfig.raiseOnError:
         workflow.raise_from_status()
 
