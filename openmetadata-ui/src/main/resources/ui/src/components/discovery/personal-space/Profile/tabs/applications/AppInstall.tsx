@@ -233,8 +233,17 @@ const AppInstall: FC<AppInstallProps> = ({
   const isScheduleInitialized = useRef(false);
 
   const steps = useMemo(
-    () => (appData ? getInstallSteps(appData) : []),
-    [appData]
+    // Without a schema there is no form to show, so the Configure step is
+    // skipped rather than leaving the wizard on an empty step.
+    () =>
+      appData
+        ? getInstallSteps({
+            ...appData,
+            allowConfiguration:
+              appData.allowConfiguration && Boolean(jsonSchema),
+          })
+        : [],
+    [appData, jsonSchema]
   );
   const currentStep = steps[stepIndex];
 
@@ -259,17 +268,22 @@ const AppInstall: FC<AppInstallProps> = ({
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
-    try {
-      const data = await getMarketPlaceApplicationByFqn(fqn, {
-        fields: TabSpecificField.OWNERS,
-      });
-      setAppData(data);
-      setJsonSchema(await applicationsClassBase.importSchema(fqn));
-    } catch {
-      showErrorToast(t('server.no-application-schema-found', { appName: fqn }));
-    } finally {
-      setIsLoading(false);
+    // Fetched independently so each failure shows its own error.
+    const [marketplaceApp, schema] = await Promise.allSettled([
+      getMarketPlaceApplicationByFqn(fqn, { fields: TabSpecificField.OWNERS }),
+      applicationsClassBase.importSchema(fqn),
+    ]);
+    if (marketplaceApp.status === 'fulfilled') {
+      setAppData(marketplaceApp.value);
+    } else {
+      showErrorToast(marketplaceApp.reason as AxiosError);
     }
+    if (schema.status === 'fulfilled') {
+      setJsonSchema(schema.value);
+    } else if (marketplaceApp.status === 'fulfilled') {
+      showErrorToast(t('server.no-application-schema-found', { appName: fqn }));
+    }
+    setIsLoading(false);
   }, [fqn, t]);
 
   useEffect(() => {

@@ -104,10 +104,9 @@ const DetailRow: FC<{
 
 const MarketplaceAppBody: FC<{
   appData: AppMarketPlaceDefinition;
-  screenshots: string[];
   blockedReason?: string;
   blockedReasonNode: ReactNode;
-}> = ({ appData, screenshots, blockedReason, blockedReasonNode }) => {
+}> = ({ appData, blockedReason, blockedReasonNode }) => {
   const { t } = useTranslation();
   const resources = getAppResources(appData);
 
@@ -138,22 +137,6 @@ const MarketplaceAppBody: FC<{
           </Card.Content>
         </Card>
       </Section>
-
-      {screenshots.length > 0 && (
-        <Section testId="app-screenshots" title={t('label.screenshot-plural')}>
-          <Box className="tw:overflow-x-auto" direction="row" gap={4}>
-            {screenshots.map((src) => (
-              <img
-                alt={getEntityName(appData)}
-                className="tw:h-80 tw:rounded-lg tw:border tw:border-secondary"
-                data-testid="app-screenshot"
-                key={src}
-                src={src}
-              />
-            ))}
-          </Box>
-        </Section>
-      )}
 
       <Section testId="app-details" title={t('label.detail-plural')}>
         <Card size="md">
@@ -210,7 +193,6 @@ const MarketplaceAppDetail: FC<MarketplaceAppDetailProps> = ({
   const { t } = useTranslation();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isInstalled, setIsInstalled] = useState(false);
-  const [screenshots, setScreenshots] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchAppDetails = useCallback(async () => {
@@ -226,17 +208,6 @@ const MarketplaceAppDetail: FC<MarketplaceAppDetailProps> = ({
 
     if (marketplaceApp.status === 'fulfilled') {
       setAppData(marketplaceApp.value);
-      // Missing screenshots are dropped silently, as on the legacy page.
-      const loaded = await Promise.allSettled(
-        (marketplaceApp.value.appScreenshots ?? []).map((name) =>
-          applicationsClassBase.importAppScreenshot(name)
-        )
-      );
-      setScreenshots(
-        loaded.flatMap((result) =>
-          result.status === 'fulfilled' ? [result.value.default] : []
-        )
-      );
     } else {
       showErrorToast(marketplaceApp.reason as AxiosError);
     }
@@ -357,7 +328,6 @@ const MarketplaceAppDetail: FC<MarketplaceAppDetailProps> = ({
       appData={appData}
       blockedReason={blockedReason}
       blockedReasonNode={blockedReasonNode}
-      screenshots={screenshots}
     />
   );
 };

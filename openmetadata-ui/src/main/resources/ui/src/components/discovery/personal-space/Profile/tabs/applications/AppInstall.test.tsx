@@ -16,6 +16,7 @@ import { ScheduleType } from '../../../../../../generated/entity/applications/ap
 import { ScheduleTimeline } from '../../../../../../generated/entity/applications/createAppRequest';
 import { installApplication } from '../../../../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../../../../rest/applicationMarketPlaceAPI';
+import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import type { AppConfigFormProps } from './AppConfigForm';
 import type { ApplicationsHeader } from './Applications.types';
@@ -214,5 +215,34 @@ describe('AppInstall', () => {
 
     expect(screen.getByTestId('plugin-install')).toBeInTheDocument();
     expect(screen.queryByTestId('authorize-card')).not.toBeInTheDocument();
+  });
+
+  it('skips Configure when the schema cannot be loaded, so the wizard never dead-ends', async () => {
+    jest
+      .spyOn(applicationsClassBase, 'importSchema')
+      .mockRejectedValue(new Error('no schema'));
+    await renderInstall();
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'server.no-application-schema-found'
+    );
+    expect(screen.queryByText('label.configure')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('next-button'));
+
+    expect(screen.getByTestId('pick-schedule')).toBeInTheDocument();
+    expect(screen.queryByTestId('config-form')).not.toBeInTheDocument();
+  });
+
+  it('reports a marketplace fetch failure with its own error', async () => {
+    const error = new Error('404');
+    (getMarketPlaceApplicationByFqn as jest.Mock).mockRejectedValue(error);
+    await renderInstall();
+
+    expect(showErrorToast).toHaveBeenCalledWith(error);
+    expect(showErrorToast).not.toHaveBeenCalledWith(
+      'server.no-application-schema-found'
+    );
+    expect(screen.getByTestId('app-not-found')).toBeInTheDocument();
   });
 });
