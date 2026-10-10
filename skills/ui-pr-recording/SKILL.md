@@ -25,6 +25,10 @@ evidence, sample-data setup, and the steps and outcomes shown.
 Screenshots supplement the video; a local path, test trace, terminal recording, mock-only UI or
 TODO does not satisfy the requirement. Required automated tests remain separate checks.
 
+When invoked from `pr-checklist` Step 5, complete sections 1–3 only and return the verified local
+video path and evidence for the PR body. Section 4 runs at `pr-checklist` Step 7, after Step 6 has
+prepared the complete body for review; capture must not create or edit a PR.
+
 ## 1. Run the PR build in Docker
 
 Use [test-locally](../test-locally/SKILL.md) for prerequisites and the existing build workflow.
@@ -112,37 +116,25 @@ ffmpeg -n -i recording.webm -c:v libx264 -preset slow -crf 18 \
 Inspect the result before choosing a smaller export. Check small text, moving/scrolling regions and
 captions in the uploaded version too; a higher bitrate or a larger file is not proof of readability.
 
-## 4. Upload into the PR description
+## 4. Upload at PR-checklist Step 7
 
-When PR creation is authorized, upload the recording as part of that work. Prepare the
-complete description in a temporary Markdown file, preserving its other sections, test results
-and attachments. Under **UI screen recording**, include the evidence listed above and a video
-reference on its own paragraph, using the same path supplied to `--attach`:
+Run this section only at the publication step, once creation/update is authorized. Use the
+complete body file from `pr-checklist` Step 6, including its evidence and local video reference.
+[PR-checklist Step 7](../pr-checklist/SKILL.md#step-7--create-or-update-the-pr) owns the create/edit
+commands; do not create a second PR from this skill. A standalone capture request without upload
+authorization ends with the verified local artifact.
 
-```markdown
-![](/absolute/path/to/recording.mp4)
-```
-
-Check `gh pr create --help` for `--attach`. With a supporting CLI, replace the example branch,
-title and paths per `pr-checklist` and run:
-
-```bash
-gh pr create --repo open-metadata/OpenMetadata --base main --head feature-branch \
-  --draft --title 'Fixes 12345: UI feature' \
-  --body-file /tmp/pr-body.md --attach /absolute/path/to/recording.mp4
-gh pr view feature-branch --repo open-metadata/OpenMetadata --json body,url,isDraft
-```
-
-For a draft created while recording was blocked, finish the upload with
-`gh pr edit <number> --body-file ... --attach ...`. The CLI replaces the local reference with the
-uploaded video URL. See [GitHub CLI attachments](https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli).
+Check `gh pr create --help` or `gh pr edit --help` for `--attach`. Supply the same video path used
+in the body reference. The CLI replaces it with the uploaded video URL. See
+[GitHub CLI attachments](https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli).
 If the CLI lacks this flag, use the authenticated GitHub browser editor's attachment control.
 
 Inspect the saved description and check that the uploaded video loads from GitHub. Uploads can
 partially succeed even when the CLI exits nonzero: read the current PR before retrying so you do
-not duplicate attachments or overwrite a newer description. Complete the recording and the other
-creation checks before marking the new PR ready. Do not create a release or commit video files to
-host them.
+not duplicate attachments or overwrite a newer description. For later updates, start from the saved
+GitHub body and preserve its uploaded URLs rather than reusing the pre-upload local draft.
+Complete the recording and the other creation checks before marking the new PR ready. Do not
+create a release or commit video files to host them.
 
 If Docker, recording or upload is blocked, complete the independent work and keep the PR draft.
 Report the exact failure, local artifact path (if created), and remaining step. If an authenticated
