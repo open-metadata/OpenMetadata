@@ -67,7 +67,11 @@
       let restoredTheme = 'light';
       try {
         const savedTheme = localStorage.getItem('ui-theme');
-        restoredTheme = savedTheme === 'dark' ? 'dark' : 'light';
+        const prefersDark =
+          savedTheme === 'system' &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches;
+        restoredTheme =
+          savedTheme === 'dark' || prefersDark ? 'dark' : 'light';
       } catch (e) {}
       document.documentElement.classList.toggle(
         'dark-mode',
