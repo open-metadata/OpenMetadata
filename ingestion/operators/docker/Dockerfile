@@ -273,6 +273,13 @@ USER openmetadata
 # INGESTION_DEPENDENCY does not install are skipped.
 RUN python -c "import importlib, importlib.util as u; [importlib.import_module(m) for m in ('MySQLdb', 'psycopg2', 'kerberos', '_mysql_connector', 'ibm_db') if u.find_spec(m)]"
 
+# Models are opt-in so the default image remains unchanged. Run this after the
+# package installs and before the spaCy cleanup below, while using the runtime user.
+ARG AUTO_CLASSIFICATION_LANGUAGES=""
+RUN if [ -n "$AUTO_CLASSIFICATION_LANGUAGES" ]; then \
+      metadata install-classification-models --languages "$AUTO_CLASSIFICATION_LANGUAGES"; \
+    fi
+
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
 # final pip install, or a later install restores the fixture.
