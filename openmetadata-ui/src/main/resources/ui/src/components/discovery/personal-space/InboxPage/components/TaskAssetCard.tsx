@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  Button,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import React, { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Task } from '../../../../../generated/entity/tasks/task';
 import { getEntityIcon } from '../../../../../utils/EntityIconUtils';
@@ -81,18 +77,26 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
       className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
       data-testid="task-asset-card"
       direction="col">
-      <Box align="center" className="tw:justify-between tw:gap-3 tw:p-4">
+      <Box align="center" className="tw:gap-3 tw:p-4">
         <Box align="center" className="tw:min-w-0" gap={3}>
           <span className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:text-fg-quaternary">
             {getEntityIcon(aboutRef.type)}
           </span>
           <Box className="tw:min-w-0" direction="col" gap={1}>
             <Box align="center" className="tw:flex-wrap" gap={2}>
-              <Typography
-                className="tw:break-all"
-                size="text-sm"
-                weight="semibold">
-                {getEntityName(aboutRef)}
+              {/* The asset's name is its link; the test id is the old Open
+                  asset button's, which specs click. `!`: the Typography's
+                  prose styles color its links. */}
+              <Typography className="tw:break-all" size="text-sm">
+                <Link
+                  className="tw:font-normal tw:text-brand-secondary! tw:no-underline! tw:hover:underline!"
+                  data-testid="task-open-asset"
+                  to={getEntityLinkFromType(
+                    aboutRef.fullyQualifiedName,
+                    aboutRef.type as EntityType
+                  )}>
+                  {getEntityName(aboutRef)}
+                </Link>
               </Typography>
               {about?.tier && (
                 <Badge color="blue" size="sm" type="color">
@@ -112,17 +116,6 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
             </Typography>
           </Box>
         </Box>
-        <Button
-          className="tw:shrink-0"
-          color="link-color"
-          data-testid="task-open-asset"
-          href={getEntityLinkFromType(
-            aboutRef.fullyQualifiedName,
-            aboutRef.type as EntityType
-          )}
-          size="sm">
-          {t('label.open-asset')}
-        </Button>
       </Box>
 
       <StatTiles about={about} isLoading={isLoading} task={task} />

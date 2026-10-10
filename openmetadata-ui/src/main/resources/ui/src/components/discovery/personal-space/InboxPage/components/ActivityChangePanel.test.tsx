@@ -69,6 +69,28 @@ describe('ActivityChangePanel', () => {
     expect(screen.getByText('−1')).toBeInTheDocument();
   });
 
+  // A description reads as the existing text and the one suggested in its place.
+  it('names a description change Existing and Suggested', () => {
+    render(
+      <ActivityChangePanel
+        change={{
+          labelKey: 'label.description',
+          before: ['Old text'],
+          after: ['New text'],
+          isText: true,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('activity-change-error')).toHaveTextContent(
+      'label.existing'
+    );
+    expect(screen.getByTestId('activity-change-success')).toHaveTextContent(
+      'label.suggested'
+    );
+    expect(screen.queryByText('label.before')).not.toBeInTheDocument();
+  });
+
   // Two owners can share a display name; each still gets its own chip.
   it('shows each of two values that read the same', () => {
     render(

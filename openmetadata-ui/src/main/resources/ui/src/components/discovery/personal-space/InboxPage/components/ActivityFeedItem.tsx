@@ -583,7 +583,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
           ) : (
             // A message reads on the recessed surface of a change's Before.
             <RichTextEditorPreviewerV1
-              className="inbox-feed-message tw:rounded-lg tw:bg-secondary_subtle tw:px-3.5 tw:py-3 tw:text-sm"
+              className="inbox-feed-message tw:rounded-lg tw:bg-utility-gray-blue-50 tw:px-3.5 tw:py-3 tw:text-sm"
               markdown={message}
             />
           )}
