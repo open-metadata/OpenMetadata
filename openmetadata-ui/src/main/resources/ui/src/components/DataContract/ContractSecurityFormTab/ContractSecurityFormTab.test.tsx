@@ -409,6 +409,52 @@ describe('ContractSecurityFormTab', () => {
 
       expect(mockOnChange).toHaveBeenCalled();
     });
+
+    it(
+      'should preserve dataClassification when deleting policy after ' +
+        'editing classification (regression for stale useCallback closure)',
+      async () => {
+        render(
+          <ContractSecurityFormTab
+            initialValues={mockInitialValues}
+            {...commonProps}
+          />
+        );
+
+        const classificationInput = screen.getByTestId(
+          'data-classification-input'
+        );
+        await act(async () => {
+          fireEvent.change(classificationInput, {
+            target: { value: 'Public' },
+          });
+        });
+
+        await act(async () => {
+          fireEvent.click(screen.getByTestId('cancel-policy-button'));
+        });
+
+        const deleteButton = screen.getByTestId('delete-policy-0');
+        await act(async () => {
+          fireEvent.click(deleteButton);
+        });
+
+        expect(mockOnChange).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            security: expect.objectContaining({
+              dataClassification: 'Public',
+              policies: expect.arrayContaining([
+                expect.objectContaining({ accessPolicy: 'Test Policy 2' }),
+              ]),
+            }),
+          })
+        );
+
+        const lastCall = mockOnChange.mock.calls.at(-1)?.[0];
+
+        expect(lastCall.security.policies).toHaveLength(1);
+      }
+    );
   });
 
   describe('Row Filters for Supported Entities', () => {
