@@ -7,10 +7,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 
 public final class McpResponseUtils {
   private static final Set<String> NOISE_FIELDS =
@@ -33,8 +35,22 @@ public final class McpResponseUtils {
 
   private McpResponseUtils() {}
 
+  /**
+   * Returns {@code entity} with the secrets the REST resource masks replaced by the mask, so an MCP
+   * response or change event never carries a credential the REST API would hide. Workflow
+   * definitions hold sink credentials in a free-form {@code sinkConfig} that the generic entity read
+   * returns in clear; every other entity type is returned as is.
+   */
+  public static EntityInterface<?> maskSecrets(EntityInterface<?> entity) {
+    // MCP tools read and write entities by a runtime entityType string, so the concrete type is
+    // only known from the instance.
+    return entity instanceof WorkflowDefinition definition
+        ? WorkflowDefinitionMasker.mask(definition)
+        : entity;
+  }
+
   public static Map<String, Object> compact(EntityInterface<?> entity, EventType changeType) {
-    Map<String, Object> doc = JsonUtils.getMap(entity);
+    Map<String, Object> doc = JsonUtils.getMap(maskSecrets(entity));
     NOISE_FIELDS.forEach(doc::remove);
     if (Boolean.FALSE.equals(doc.get(DELETED_KEY))) {
       doc.remove(DELETED_KEY);

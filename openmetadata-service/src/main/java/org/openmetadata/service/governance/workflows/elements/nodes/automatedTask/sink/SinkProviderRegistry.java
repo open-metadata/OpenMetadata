@@ -90,6 +90,12 @@ public class SinkProviderRegistry {
     return factories.containsKey(sinkType);
   }
 
+  /** Entity types excluded by a sink, without constructing a provider or resolving its secrets. */
+  public Set<String> excludedEntityTypes(String sinkType) {
+    SinkProviderFactory factory = factories.get(sinkType);
+    return factory == null ? Set.of() : Set.copyOf(factory.excludedEntityTypes());
+  }
+
   /**
    * Returns the set of registered sink types.
    *
@@ -102,6 +108,15 @@ public class SinkProviderRegistry {
   /** Factory interface for creating sink provider instances. */
   @FunctionalInterface
   public interface SinkProviderFactory {
+    /**
+     * Entity types this sink cannot sync. Workflow validation rejects these trigger types and
+     * deployment excludes them from legacy definitions. This metadata must not require credentials
+     * or contact the destination. Existing providers allow every entity type by default.
+     */
+    default Set<String> excludedEntityTypes() {
+      return Set.of();
+    }
+
     /**
      * Creates a sink provider instance with the given configuration.
      *

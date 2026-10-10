@@ -12,6 +12,8 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 class McpResponseUtilsTest {
 
@@ -32,6 +34,23 @@ class McpResponseUtilsTest {
             .withFieldsUpdated(List.of(new FieldChange().withName("description")))
             .withFieldsAdded(List.of(new FieldChange().withName("tags"))));
     return glossary;
+  }
+
+  @Test
+  void writeResponsesMaskWorkflowSinkSecrets() {
+    var workflow = GetEntityToolTest.gitSinkWorkflow("gitExport");
+
+    Map<String, Object> doc = McpResponseUtils.compactPatch(workflow, EventType.ENTITY_UPDATED);
+
+    var sinkConfig = JsonUtils.valueToTree(doc).at("/nodes/0/config/sinkConfig");
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, sinkConfig.at("/credentials/token").asText());
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK, sinkConfig.at("/signingKey/privateKey").asText());
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK, sinkConfig.at("/signingKey/passphrase").asText());
+    assertTrue(
+        JsonUtils.pojoToJson(workflow).contains(GetEntityToolTest.GIT_TOKEN),
+        "masking must not mutate the entity the repository returned");
   }
 
   @Test

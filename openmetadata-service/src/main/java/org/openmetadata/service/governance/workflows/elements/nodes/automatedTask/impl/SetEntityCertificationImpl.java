@@ -30,21 +30,13 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public class SetEntityCertificationImpl implements JavaDelegate {
   private Expression certificationExpr;
   private Expression inputNamespaceMapExpr;
+  private Expression batchExecutionExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
-      MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
-                      RELATED_ENTITY_VARIABLE));
-      String entityType = entityLink.getEntityType();
-      EntityInterface<?> entity = Entity.getEntity(entityLink, "certification", Include.ALL);
-
       String certification =
           Optional.ofNullable(certificationExpr)
               .map(certificationExpr -> (String) certificationExpr.getValue(execution))
@@ -55,14 +47,34 @@ public class SetEntityCertificationImpl implements JavaDelegate {
                       varHandler.getNamespacedVariable(
                           inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
               .orElse("governance-bot");
-
-      setStatus(entity, entityType, user, certification);
+      BatchEntities.applyAction(
+          new BatchEntities.NodeExecution(
+              batchExecutionExpr, execution, varHandler, inputNamespaces),
+          entityLink -> certify(entityLink, user, certification),
+          () ->
+              certify(
+                  (String)
+                      varHandler.getNamespacedVariable(
+                          inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                          RELATED_ENTITY_VARIABLE),
+                  user,
+                  certification));
+    } catch (BpmnError batchFailure) {
+      // Raised by a batch the action failed on entirely, after it recorded the per-entity summary
+      // and the first cause in global_exception.
+      throw batchFailure;
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
+  }
+
+  private void certify(String entityLinkValue, String user, String certification) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkValue);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, "certification", Include.ALL);
+    setStatus(entity, entityLink.getEntityType(), user, certification);
   }
 
   private void setStatus(

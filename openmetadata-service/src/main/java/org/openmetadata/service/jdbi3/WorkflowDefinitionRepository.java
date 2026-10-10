@@ -1,7 +1,9 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.json.JsonPatch;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,11 +22,16 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.workflows.BatchExecutionPlan;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
+import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
+import org.openmetadata.service.secrets.WorkflowSinkSecrets;
+import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
+import org.openmetadata.service.secrets.masker.WorkflowDefinitionSecretGuards;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -82,9 +89,10 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void prepare(WorkflowDefinition entity, boolean update) {
-    // Validate workflow configuration - single entry point for all validations
+    // The batch and sink rules run only on create and on updates that change the graph or the
+    // trigger (getUpdater), so a stored definition that breaks them can still be edited otherwise.
     LOG.info("Validating workflow configuration for: {}", entity.getName());
-    validateWorkflow(entity);
+    validateWorkflowStructure(entity);
   }
 
   @Override
@@ -93,7 +101,46 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       WorkflowDefinition updated,
       Operation operation,
       ChangeSource changeSource) {
+    // Every update path (PUT, PATCH, optimistic-locking PATCH) builds its updater here, and this is
+    // the one point where both the stored and incoming definitions are available before the diff,
+    // the store and the redeploy.
+    // Only the suspend and resume endpoints change suspension. A PUT request carries no suspended
+    // field, so the stored flag is kept for postUpdate to deploy the workflow suspended again.
+    updated.setSuspended(original.getSuspended());
+    WorkflowDefinitionMasker.restoreMaskedSecrets(original, updated);
+    if (operation != Operation.SOFT_DELETE) {
+      WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(updated);
+      WorkflowDefinitionSecretGuards.requireStoredEncryptedSecrets(original, updated);
+    }
+    // Encrypted before the diff, so the change description, the stored JSON and the BPMN that
+    // postUpdate deploys all carry the ciphertext.
+    WorkflowSinkSecrets.encrypt(original, updated);
+    if (changesWorkflowGraph(original, updated)) {
+      validateBatchAndSinkRules(updated);
+    }
     return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
+  }
+
+  /** PATCH is the one write that can read a stored secret, through a copy or move operation. */
+  @Override
+  protected void validatePatch(
+      WorkflowDefinition original, WorkflowDefinition updated, JsonPatch patch) {
+    WorkflowDefinitionSecretGuards.requireSecretsOnlyInSecretFields(original, updated, patch);
+  }
+
+  /**
+   * Whether an update changes what the batch and sink rules read. The rules read no sink secret, so
+   * the definitions are compared with their secrets masked: a secret stored as plaintext and
+   * encrypted by this update, or one replaced, does not count as a change.
+   */
+  static boolean changesWorkflowGraph(WorkflowDefinition original, WorkflowDefinition updated) {
+    WorkflowDefinition maskedOriginal = WorkflowDefinitionMasker.mask(original);
+    WorkflowDefinition maskedUpdated = WorkflowDefinitionMasker.mask(updated);
+    return !Objects.equals(
+            listOrEmpty(maskedOriginal.getNodes()), listOrEmpty(maskedUpdated.getNodes()))
+        || !Objects.equals(
+            listOrEmpty(maskedOriginal.getEdges()), listOrEmpty(maskedUpdated.getEdges()))
+        || !Objects.equals(maskedOriginal.getTrigger(), maskedUpdated.getTrigger());
   }
 
   public class WorkflowDefinitionUpdater extends EntityUpdater {
@@ -152,7 +199,25 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void storeEntity(WorkflowDefinition entity, boolean update) {
+    if (!update) {
+      // The one point every single creation passes; a PUT that creates runs prepare() as an
+      // update. An update was already checked and encrypted in getUpdater.
+      prepareForCreate(entity);
+    }
     store(entity, update);
+  }
+
+  @Override
+  protected void storeEntities(List<WorkflowDefinition> entities) {
+    entities.forEach(WorkflowDefinitionRepository::prepareForCreate);
+    super.storeEntities(entities);
+  }
+
+  private static void prepareForCreate(WorkflowDefinition entity) {
+    validateBatchAndSinkRules(entity);
+    WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(entity);
+    WorkflowDefinitionSecretGuards.requireNoEncryptedSecrets(entity);
+    WorkflowSinkSecrets.encrypt(entity);
   }
 
   @Override
@@ -182,6 +247,11 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
    * @throws BadRequestException if any validation fails
    */
   public void validateWorkflow(WorkflowDefinition workflowDefinition) {
+    validateWorkflowStructure(workflowDefinition);
+    validateBatchAndSinkRules(workflowDefinition);
+  }
+
+  private void validateWorkflowStructure(WorkflowDefinition workflowDefinition) {
     // Execute validations in order of importance
     // 1. Basic structural validations
     validateNodeIds(workflowDefinition);
@@ -195,6 +265,36 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateConditionalTasks(workflowDefinition);
     // 6. Restrict the values interpolated into conditional-edge JUEL expressions
     validateEdgeConditions(workflowDefinition);
+  }
+
+  /**
+   * Rules a stored definition may break and still be deployed and run, so they are checked when a
+   * definition is created and when an update changes its nodes, edges or trigger.
+   */
+  private static void validateBatchAndSinkRules(WorkflowDefinition workflowDefinition) {
+    // A workflow that runs once per batch handles every entity of the batch in each node
+    validateBatchExecution(workflowDefinition);
+    // Provider capabilities determine the entity types a sink can sync
+    validateSinkEntityTypes(workflowDefinition);
+  }
+
+  /** Checked on write only: a stored definition that fails it is still deployed and run. */
+  private static void validateSinkEntityTypes(WorkflowDefinition workflowDefinition) {
+    Set<String> unsupported = SinkEntityTypeRule.unsupportedTriggerEntityTypes(workflowDefinition);
+    if (!unsupported.isEmpty()) {
+      throw BadRequestException.of(SinkEntityTypeRule.rejectionMessage(unsupported));
+    }
+  }
+
+  /**
+   * Checked on write only: a stored definition that fails it is still deployed, with its nodes
+   * reading only the first entity of each batch, as they did before batch execution existed.
+   */
+  private static void validateBatchExecution(WorkflowDefinition workflowDefinition) {
+    BatchExecutionPlan plan = BatchExecutionPlan.of(workflowDefinition);
+    if (!plan.violations().isEmpty()) {
+      throw BadRequestException.of(plan.violationMessage());
+    }
   }
 
   private void validateEdgeConditions(WorkflowDefinition workflowDefinition) {

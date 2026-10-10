@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;
@@ -19,12 +20,14 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.service.governance.workflows.BatchExecutionPlan;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.Edge;
 import org.openmetadata.service.governance.workflows.elements.NodeFactory;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
 
+@Slf4j
 @Getter
 public class MainWorkflow {
   private final BpmnModel model;
@@ -45,13 +48,23 @@ public class MainWorkflow {
             .orElse(workflowDefinition.getFullyQualifiedName()));
     model.addProcess(process);
 
+    BatchExecutionPlan batchPlan = BatchExecutionPlan.of(workflowDefinition);
+    if (batchPlan.runsOncePerBatch() && !batchPlan.isActive()) {
+      LOG.warn(
+          "Workflow '{}' runs once per batch, but its nodes read only the first entity of each batch: {}",
+          workflowName,
+          batchPlan.violations());
+    }
+
     // Add Nodes
     for (WorkflowNodeDefinitionInterface nodeDefinitionObj : workflowDefinition.getNodes()) {
       NodeInterface node =
           NodeFactory.createNode(
               nodeDefinitionObj,
               workflowDefinition.getConfig(),
-              workflowDefinition.getFullyQualifiedName());
+              workflowDefinition.getFullyQualifiedName(),
+              workflowDefinition.getEdges(),
+              batchPlan.modeFor(nodeDefinitionObj.getName()));
       node.addToWorkflow(model, process);
 
       Optional.ofNullable(node.getRuntimeExceptionBoundaryEvent())

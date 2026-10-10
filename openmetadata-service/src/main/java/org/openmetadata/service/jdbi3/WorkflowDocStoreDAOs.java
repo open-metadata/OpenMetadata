@@ -702,6 +702,110 @@ public interface WorkflowDocStoreDAOs {
         @Bind("oldChildPrefix") String oldChildPrefix,
         @Bind("oldStem") String oldStem,
         @Bind("newStem") String newStem);
+
+    /**
+     * Sets {@code variables.stopRequest} on an instance in {@code runningStatus} or {@code
+     * exceptionStatus} whose process has not ended, see {@link #markProcessEnded}, leaving the rest
+     * of the document as it is in the database, so a concurrent end-of-process write is never
+     * overwritten. A missing or non-object {@code variables} becomes an object first: a nested set on
+     * a missing parent matches the row but writes nothing. Returns the rows updated.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = JSON_SET(json, '$.variables', JSON_SET("
+                + "IF(JSON_TYPE(JSON_EXTRACT(json, '$.variables')) = 'OBJECT', "
+                + "JSON_EXTRACT(json, '$.variables'), JSON_OBJECT()), "
+                + "'$.stopRequest', CAST(:stopRequest AS JSON))) "
+                + "WHERE id = :id AND status IN (:runningStatus, :exceptionStatus) "
+                + "AND JSON_EXTRACT(json, '$.variables.processEnded') IS NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = jsonb_set(json, '{variables}', "
+                + "(CASE WHEN jsonb_typeof(json -> 'variables') = 'object' "
+                + "THEN json -> 'variables' ELSE CAST('{}' AS jsonb) END) "
+                + "|| jsonb_build_object('stopRequest', CAST(:stopRequest AS jsonb))) "
+                + "WHERE id = :id AND status IN (:runningStatus, :exceptionStatus) "
+                + "AND json #> '{variables,processEnded}' IS NULL",
+        connectionType = POSTGRES)
+    int requestStop(
+        @Bind("id") String id,
+        @BindJson("stopRequest") String stopRequest,
+        @Bind("runningStatus") String runningStatus,
+        @Bind("exceptionStatus") String exceptionStatus);
+
+    /**
+     * Sets {@code variables.processEnded} once the instance's process has ended, which {@link
+     * #requestStop} then refuses. An EXCEPTION recorded for a failed job attempt that Flowable
+     * retries has no such mark, so a stop request still lands while the process runs on. A missing
+     * or non-object {@code variables} becomes an object first, as in {@link #requestStop}.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = JSON_SET(json, '$.variables', JSON_SET("
+                + "IF(JSON_TYPE(JSON_EXTRACT(json, '$.variables')) = 'OBJECT', "
+                + "JSON_EXTRACT(json, '$.variables'), JSON_OBJECT()), "
+                + "'$.processEnded', CAST('true' AS JSON))) "
+                + "WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = jsonb_set(json, '{variables}', "
+                + "(CASE WHEN jsonb_typeof(json -> 'variables') = 'object' "
+                + "THEN json -> 'variables' ELSE CAST('{}' AS jsonb) END) "
+                + "|| jsonb_build_object('processEnded', true)) "
+                + "WHERE id = :id",
+        connectionType = POSTGRES)
+    int markProcessEnded(@Bind("id") String id);
+
+    /**
+     * Records how an instance ended by setting only {@code status} and {@code endedAt}; {@code
+     * variables}, including a stop request written concurrently, and any exception are kept.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = JSON_SET(json, '$.status', :status, '$.endedAt', :endedAt) "
+                + "WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = json || jsonb_build_object('status', CAST(:status AS text), "
+                + "'endedAt', CAST(:endedAt AS bigint)) "
+                + "WHERE id = :id",
+        connectionType = POSTGRES)
+    int recordEnd(
+        @Bind("id") String id, @Bind("status") String status, @Bind("endedAt") long endedAt);
+
+    /**
+     * {@link #recordEnd} that also sets {@code exception}. Kept separate so a missing exception is
+     * never written as JSON null, which the generated {@code exceptionStacktrace} column would read
+     * back as the text {@code null}.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = JSON_SET(json, '$.status', :status, '$.endedAt', :endedAt, "
+                + "'$.exception', :exception) "
+                + "WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = json || jsonb_build_object('status', CAST(:status AS text), "
+                + "'endedAt', CAST(:endedAt AS bigint), 'exception', CAST(:exception AS text)) "
+                + "WHERE id = :id",
+        connectionType = POSTGRES)
+    int recordEndWithException(
+        @Bind("id") String id,
+        @Bind("status") String status,
+        @Bind("endedAt") long endedAt,
+        @Bind("exception") String exception);
   }
 
   interface WorkflowInstanceStateTimeSeriesDAO extends EntityTimeSeriesDAO {
