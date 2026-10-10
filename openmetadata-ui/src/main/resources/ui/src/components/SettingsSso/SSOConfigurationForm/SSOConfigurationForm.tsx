@@ -21,7 +21,7 @@ import {
   X,
 } from '@openmetadata/ui-core-components/icons';
 import Form from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, WidgetProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Button, Card, Upload } from 'antd';
 import classNames from 'classnames';
@@ -106,8 +106,20 @@ const MetadataUploadStatusCard = ({
   );
 };
 
+// SSOFieldTemplate draws the label, description and errors around the widget,
+// so the select renders only its control.
+const SsoSelectWidget = (props: WidgetProps) => (
+  <CoreSelectWidget
+    {...props}
+    hideLabel
+    options={{ ...props.options, help: undefined }}
+    rawErrors={undefined}
+    schema={{ ...props.schema, description: undefined }}
+  />
+);
+
 const widgets = {
-  SelectWidget: CoreSelectWidget,
+  SelectWidget: SsoSelectWidget,
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
