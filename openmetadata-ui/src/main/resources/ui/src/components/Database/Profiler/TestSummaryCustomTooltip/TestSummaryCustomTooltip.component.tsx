@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import {
+  Card,
+  Divider,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import entries from 'lodash/entries';
 import isNumber from 'lodash/isNumber';
 import isUndefined from 'lodash/isUndefined';
@@ -148,95 +152,99 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
       data-testid="test-summary-tooltip"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}>
-      <div className="test-summary-tooltip-container">
-        <div className="tooltip-date-time">{formattedDateTime}</div>
-        <Divider dashed className="tw:my-2" />
-        <ul data-testid="test-summary-tooltip-container">
-          <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-            <Typography as="span" className="flex items-center text-grey-muted">
-              {t('label.status')}
-            </Typography>
-            <Typography
-              as="span"
-              className="font-medium"
-              data-testid="status"
-              style={{ color: statusColor }}>
-              {status}
-            </Typography>
-          </li>
-          {incidentDisplayId && incidentPath && (
+      <Card.Content className="tw:p-5">
+        <div className="test-summary-tooltip-container">
+          <div className="tooltip-date-time">{formattedDateTime}</div>
+          <Divider dashed className="tw:my-2" />
+          <ul data-testid="test-summary-tooltip-container">
             <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
               <Typography
                 as="span"
                 className="flex items-center text-grey-muted">
-                {t('label.incident')}
+                {t('label.status')}
               </Typography>
               <Typography
                 as="span"
                 className="font-medium"
-                data-testid="incident">
-                <Link
-                  className="tooltip-incident-link font-medium cursor-pointer"
-                  to={incidentPath}>
-                  {`#${incidentDisplayId}`}
-                </Link>
+                data-testid="status"
+                style={{ color: statusColor }}>
+                {status}
               </Typography>
             </li>
-          )}
-          {!isUndefined(passedRows) && totalRows > 0 && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.passed-rows')}
-              </Typography>
-              <Typography
-                as="span"
-                className="font-medium"
-                data-testid="rows-passed">
-                {`${formatNumberWithComma(passedRows)}/${formatNumberWithComma(
-                  totalRows
-                )}`}
-              </Typography>
-            </li>
-          )}
-          {!isUndefined(failedRows) && totalRows > 0 && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.failed-rows')}
-              </Typography>
-              <Typography
-                as="span"
-                className="font-medium"
-                data-testid="rows-failed">
-                {`${formatNumberWithComma(failedRows)}/${formatNumberWithComma(
-                  totalRows
-                )}`}
-              </Typography>
-            </li>
-          )}
-          {data.map((entry) =>
-            tooltipRender(entry as [string, string | number])
-          )}
-          {incidentAssignees && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.assignee')}
-              </Typography>
-              <Typography
-                as="span"
-                className="font-medium"
-                data-testid="assignee">
-                <Owner owners={incidentAssignees} />
-              </Typography>
-            </li>
-          )}
-        </ul>
-      </div>
+            {incidentDisplayId && incidentPath && (
+              <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+                <Typography
+                  as="span"
+                  className="flex items-center text-grey-muted">
+                  {t('label.incident')}
+                </Typography>
+                <Typography
+                  as="span"
+                  className="font-medium"
+                  data-testid="incident">
+                  <Link
+                    className="tooltip-incident-link font-medium cursor-pointer"
+                    to={incidentPath}>
+                    {`#${incidentDisplayId}`}
+                  </Link>
+                </Typography>
+              </li>
+            )}
+            {!isUndefined(passedRows) && totalRows > 0 && (
+              <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+                <Typography
+                  as="span"
+                  className="flex items-center text-grey-muted">
+                  {t('label.passed-rows')}
+                </Typography>
+                <Typography
+                  as="span"
+                  className="font-medium"
+                  data-testid="rows-passed">
+                  {`${formatNumberWithComma(
+                    passedRows
+                  )}/${formatNumberWithComma(totalRows)}`}
+                </Typography>
+              </li>
+            )}
+            {!isUndefined(failedRows) && totalRows > 0 && (
+              <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+                <Typography
+                  as="span"
+                  className="flex items-center text-grey-muted">
+                  {t('label.failed-rows')}
+                </Typography>
+                <Typography
+                  as="span"
+                  className="font-medium"
+                  data-testid="rows-failed">
+                  {`${formatNumberWithComma(
+                    failedRows
+                  )}/${formatNumberWithComma(totalRows)}`}
+                </Typography>
+              </li>
+            )}
+            {data.map((entry) =>
+              tooltipRender(entry as [string, string | number])
+            )}
+            {incidentAssignees && (
+              <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+                <Typography
+                  as="span"
+                  className="flex items-center text-grey-muted">
+                  {t('label.assignee')}
+                </Typography>
+                <Typography
+                  as="span"
+                  className="font-medium"
+                  data-testid="assignee">
+                  <Owner owners={incidentAssignees} />
+                </Typography>
+              </li>
+            )}
+          </ul>
+        </div>
+      </Card.Content>
     </Card>
   );
 };

@@ -10,43 +10,49 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid } from '@openmetadata/ui-core-components';
+import { Grid, NumberInput, Slider } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { InputNumber, Slider } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 
 export const CustomRangeWidget = (props: WidgetProps) => {
   const min = props.schema.minimum ?? 0;
+  const { t } = useTranslation();
+  const label = props.label || t('label.profile-sample');
 
   return (
     <Grid
       className="layout-row layout-grid"
       data-testid="percentage-input"
       style={{ ...getLayoutGutter(20) }}>
-      <Grid.Item className="layout-column" span={20}>
+      <Grid.Item className="layout-column" span={18}>
         <Slider
-          marks={{
-            [min]: `${min}%`,
-            100: '100%',
-          }}
-          max={100}
-          min={min}
-          tooltip={{ open: false }}
-          value={props.value}
+          showRange
+          aria-label={label}
+          isDisabled={props.disabled || props.readonly}
+          labelFormatter={(value) => `${value}%`}
+          maxValue={100}
+          minValue={min}
+          step={1}
+          value={typeof props.value === 'number' ? props.value : min}
           onChange={props.onChange}
         />
       </Grid.Item>
-      <Grid.Item className="layout-column" span={4}>
-        <InputNumber
-          data-testid="slider-input"
-          formatter={(value) => `${value}%`}
+      <Grid.Item className="layout-column" span={6}>
+        <NumberInput
+          aria-label={label}
+          formatOptions={{ style: 'unit', unit: 'percent' }}
           id={props.id}
-          max={100}
-          min={min}
+          inputDataTestId="slider-input"
+          isDisabled={props.disabled || props.readonly}
+          maxValue={100}
+          minValue={min}
           name={props.name}
           step={1}
-          value={props.value}
-          onChange={props.onChange}
+          value={typeof props.value === 'number' ? props.value : NaN}
+          onChange={(value) =>
+            props.onChange(Number.isNaN(value) ? null : value)
+          }
         />
       </Grid.Item>
     </Grid>

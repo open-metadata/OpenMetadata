@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Grid } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+import { Button, Card, Grid } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -36,27 +35,30 @@ function ObservabilityAlertsHeader({
 
   return (
     <Card>
-      <Grid className="layout-row layout-grid">
-        <Grid.Item className="layout-column" span={16}>
-          <PageHeader
-            data={pageHeaderData}
-            learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
-            title={t('label.observability-alert')}
-          />
-        </Grid.Item>
-        <Grid.Item className="layout-column d-flex justify-end" span={8}>
-          {canCreate && (
-            <LimitWrapper resource="eventsubscription">
-              <Button
-                data-testid="create-observability"
-                type="primary"
-                onClick={onAddAlert}>
-                {t('label.add-entity', { entity: t('label.alert') })}
-              </Button>
-            </LimitWrapper>
-          )}
-        </Grid.Item>
-      </Grid>
+      <Card.Content className="tw:p-5">
+        <Grid className="layout-row layout-grid">
+          <Grid.Item className="layout-column" span={16}>
+            <PageHeader
+              data={pageHeaderData}
+              learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
+              title={t('label.observability-alert')}
+            />
+          </Grid.Item>
+          <Grid.Item className="layout-column d-flex justify-end" span={8}>
+            {canCreate && (
+              <LimitWrapper resource="eventsubscription">
+                <Button
+                  color="primary"
+                  data-testid="create-observability"
+                  size="md"
+                  onPress={onAddAlert}>
+                  {t('label.add-entity', { entity: t('label.alert') })}
+                </Button>
+              </LimitWrapper>
+            )}
+          </Grid.Item>
+        </Grid>
+      </Card.Content>
     </Card>
   );
 }

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { FC, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,18 +32,17 @@ interface TooltipRowProps {
 
 const TooltipRow: FC<TooltipRowProps> = ({ label, value }) => {
   return (
-    <div className="heatmap-cell-tooltip__row tw:flex tw:items-center tw:justify-between">
+    <Box align="center" gap={6} justify="between">
       <Typography
         as="span"
-        className="heatmap-cell-tooltip__label tw:whitespace-nowrap tw:text-[12px] tw:text-secondary">
+        className="tw:whitespace-nowrap tw:text-secondary"
+        size="text-xs">
         {label}
       </Typography>
-      <Typography
-        as="span"
-        className="heatmap-cell-tooltip__value tw:font-medium tw:text-[12px] tw:text-primary">
+      <Typography as="span" size="text-xs" weight="medium">
         {value}
       </Typography>
-    </div>
+    </Box>
   );
 };
 
@@ -87,35 +91,34 @@ export const HeatmapCellTooltip: FC<HeatmapCellTooltipProps> = ({ cell }) => {
   );
 
   return (
-    <div className="tw:rounded-lg tw:bg-primary tw:p-2.5 tw:shadow-sm">
-      <Typography
-        as="span"
-        className="tw:block tw:text-sm tw:font-medium tw:text-primary">
-        {cell.date}
-      </Typography>
-      <div
-        aria-hidden
-        className="tw:my-2 tw:border-b tw:border-dashed tw:border-secondary"
-      />
-      <div className="tw:flex tw:flex-col tw:gap-2">
-        {rows.map(
-          (row) =>
-            !isUndefined(row.value) && (
-              <TooltipRow key={row.key} label={row.label} value={row.value} />
-            )
-        )}
-        {cell.result?.testResultValue &&
-          cell.result.testResultValue.length > 0 &&
-          cell.result.testResultValue.map((resultValue) => (
-            <TooltipRow
-              key={`${resultValue.name ?? 'value'}-${String(
-                resultValue.value
-              )}`}
-              label={resultValue.name || t('label.value')}
-              value={resultValue.value || '-'}
-            />
-          ))}
-      </div>
-    </div>
+    <Card>
+      <Card.Content className="tw:p-2.5">
+        <Typography
+          as="span"
+          className="tw:block tw:text-sm tw:font-medium tw:text-primary">
+          {cell.date}
+        </Typography>
+        <Divider dashed className="tw:my-2" />
+        <Box direction="col" gap={2}>
+          {rows.map(
+            (row) =>
+              !isUndefined(row.value) && (
+                <TooltipRow key={row.key} label={row.label} value={row.value} />
+              )
+          )}
+          {cell.result?.testResultValue &&
+            cell.result.testResultValue.length > 0 &&
+            cell.result.testResultValue.map((resultValue) => (
+              <TooltipRow
+                key={`${resultValue.name ?? 'value'}-${String(
+                  resultValue.value
+                )}`}
+                label={resultValue.name || t('label.value')}
+                value={resultValue.value || '-'}
+              />
+            ))}
+        </Box>
+      </Card.Content>
+    </Card>
   );
 };

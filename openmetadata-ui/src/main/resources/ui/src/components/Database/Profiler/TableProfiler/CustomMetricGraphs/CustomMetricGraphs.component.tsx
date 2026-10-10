@@ -10,14 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Dialog,
+  Dropdown,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   type ChartTooltipRenderProps,
   type ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
 import { DotsVertical } from '@openmetadata/ui-core-components/icons';
-import { Form, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -81,7 +86,6 @@ const CustomMetricGraphs = ({
   customMetrics,
 }: CustomMetricGraphsProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<CustomMetric>();
   const {
     permissions,
     customMetric: tableDetails,
@@ -287,27 +291,42 @@ const CustomMetricGraphs = ({
         onDelete={handleDeleteClick}
       />
       {isEditModalVisible && !isUndefined(selectedMetrics) && (
-        <Modal
-          centered
-          destroyOnClose
-          cancelButtonProps={{ disabled: isActionLoading }}
-          closable={false}
-          okButtonProps={{ loading: isActionLoading }}
-          okText={t('label.save')}
-          open={isEditModalVisible}
-          title={t('label.edit-entity', { entity: selectedMetrics.name })}
-          width={650}
-          onCancel={handleModalCancel}
-          onOk={() => form.submit()}>
-          <CustomMetricForm
-            isEditMode
-            form={form}
-            initialValues={selectedMetrics}
-            isColumnMetric={!isUndefined(selectedMetrics.columnName)}
-            table={tableDetails}
-            onFinish={handleEditFormSubmit}
-          />
-        </Modal>
+        <ModalOverlay
+          isOpen={isEditModalVisible}
+          onOpenChange={(open) => !open && handleModalCancel()}>
+          <Modal>
+            <Dialog
+              title={t('label.edit-entity', { entity: selectedMetrics.name })}
+              width={650}>
+              <Dialog.Content>
+                <CustomMetricForm
+                  isEditMode
+                  initialValues={selectedMetrics}
+                  isColumnMetric={!isUndefined(selectedMetrics.columnName)}
+                  table={tableDetails}
+                  onFinish={handleEditFormSubmit}
+                />
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button
+                  color="secondary"
+                  isDisabled={isActionLoading}
+                  size="md"
+                  onPress={handleModalCancel}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  form="custom-metric-form"
+                  isLoading={isActionLoading}
+                  size="md"
+                  type="submit">
+                  {t('label.save')}
+                </Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
       )}
     </div>
   );

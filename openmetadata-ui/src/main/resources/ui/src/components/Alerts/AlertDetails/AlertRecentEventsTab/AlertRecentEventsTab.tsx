@@ -12,22 +12,28 @@
  */
 
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
   Box,
   Button,
   Dropdown,
   EmptyPlaceholder,
   Grid,
   Skeleton,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Bell01 } from '@openmetadata/ui-core-components/icons';
-import { Collapse, Tooltip } from 'antd';
+import {
+  Bell01,
+  FilterLines,
+  NoFilterFunnel,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
-import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import {
@@ -53,7 +59,6 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
 import NextPreviousWithOffset from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset';
 import { PagingHandlerParams } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
-import './alert-recent-events-tab.less';
 import {
   AlertEventDetailsToDisplay,
   AlertRecentEventsTabProps,
@@ -62,8 +67,6 @@ import {
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))
 );
-
-const { Panel } = Collapse;
 
 function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   const { t } = useTranslation();
@@ -137,18 +140,22 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   const recentEventsList = useMemo(() => {
     if (loading) {
       return (
-        <Collapse className="recent-events-collapse" expandIconPosition="end">
+        <Accordion>
           {Array.from(
             { length: 5 },
             (_, index) => `alert-event-skeleton-${index}`
           ).map((skeletonKey) => (
-            <Panel
+            <AccordionItem
+              isDisabled
               data-testid="skeleton-loading-panel"
-              header={<Skeleton height={16} width="100%" />}
-              key={skeletonKey}
-            />
+              id={skeletonKey}
+              key={skeletonKey}>
+              <AccordionHeader>
+                <Skeleton height={16} width="100%" />
+              </AccordionHeader>
+            </AccordionItem>
           ))}
-        </Collapse>
+        </Accordion>
       );
     }
 
@@ -165,7 +172,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
             )}
             icon={
               isFiltered ? (
-                <FilterOffIcon className="tw:text-fg-quaternary" />
+                <NoFilterFunnel className="tw:text-fg-quaternary" />
               ) : (
                 <Bell01 className="tw:text-fg-brand-primary" />
               )
@@ -189,18 +196,17 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           className="layout-column"
           data-testid="recent-events-list"
           span={24}>
-          <Collapse
-            className="recent-events-collapse"
-            defaultActiveKey={['1']}
-            expandIconPosition="end">
+          <Accordion allowsMultipleExpanded>
             {alertRecentEvents?.map((typedEvent) => {
               // Get the change event data from the typedEvent object
               const { changeEventData, changeEventDataToDisplay } =
                 getChangeEventDataFromTypedEvent(typedEvent);
 
               return (
-                <Panel
-                  header={
+                <AccordionItem
+                  id={`${changeEventData.id}-${changeEventData.timestamp}`}
+                  key={`${changeEventData.id}-${changeEventData.timestamp}`}>
+                  <AccordionHeader className="tw:px-3 tw:py-2 tw:font-normal">
                     <Box
                       className="layout-row"
                       data-testid={`event-collapse-${changeEventData.id}`}
@@ -215,16 +221,18 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                           <Box className="layout-column tw:block">
                             {/* Display icon for the status of the alert event */}
                             <Tooltip
-                              className="flex-center"
-                              title={startCase(typedEvent.status)}>
+                              excludeTriggerFromTabOrder
+                              title={startCase(typedEvent.status)}
+                              triggerClassName="tw:inline-flex">
                               {getAlertStatusIcon(typedEvent.status)}{' '}
                             </Tooltip>
                           </Box>
                           <Box className="layout-column tw:block">
                             {/* Display icon for the asset the change event is related to */}
                             <Tooltip
-                              className="flex-center"
-                              title={startCase(changeEventData.entityType)}>
+                              excludeTriggerFromTabOrder
+                              title={startCase(changeEventData.entityType)}
+                              triggerClassName="tw:inline-flex">
                               {searchClassBase.getEntityIcon(
                                 changeEventData.entityType ?? '',
                                 'h-4 w-4'
@@ -244,85 +252,86 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                         </Typography>
                       </Box>
                     </Box>
-                  }
-                  key={`${changeEventData.id}-${changeEventData.timestamp}`}>
-                  <Box
-                    className="layout-row"
-                    data-testid={`event-details-${changeEventData.id}`}
-                    style={{ ...getLayoutGutter(16, 16) }}
-                    wrap="wrap">
-                    <Box className="layout-column tw:block">
-                      <Grid
-                        className="layout-row layout-grid"
-                        style={{ ...getLayoutGutter(16, 16) }}>
-                        {Object.entries(changeEventDataToDisplay).map(
-                          ([key, value]) =>
-                            isUndefined(value) ? null : (
-                              <Grid.Item
-                                className="layout-column"
-                                key={key}
-                                span={key === 'reason' ? 24 : 8}>
-                                <Grid
-                                  className="layout-row layout-grid"
-                                  data-testid={`event-data-${key}`}
-                                  style={{ ...getLayoutGutter(4, 4) }}>
-                                  <Grid.Item
-                                    className="layout-column"
-                                    span={24}>
-                                    <Typography
-                                      color="secondary"
-                                      data-testid="event-data-key">
-                                      {`${getLabelsForEventDetails(
-                                        key as keyof AlertEventDetailsToDisplay
-                                      )}:`}
-                                    </Typography>
-                                  </Grid.Item>
-                                  <Grid.Item
-                                    className="layout-column"
-                                    span={24}>
-                                    <Typography
-                                      className="font-medium"
-                                      data-testid="event-data-value">
-                                      {value}
-                                    </Typography>
-                                  </Grid.Item>
-                                </Grid>
-                              </Grid.Item>
-                            )
-                        )}
-                      </Grid>
+                  </AccordionHeader>
+                  <AccordionPanel unmountOnCollapse>
+                    <Box
+                      className="layout-row"
+                      data-testid={`event-details-${changeEventData.id}`}
+                      style={{ ...getLayoutGutter(16, 16) }}
+                      wrap="wrap">
+                      <Box className="layout-column tw:block">
+                        <Grid
+                          className="layout-row layout-grid"
+                          style={{ ...getLayoutGutter(16, 16) }}>
+                          {Object.entries(changeEventDataToDisplay).map(
+                            ([key, value]) =>
+                              isUndefined(value) ? null : (
+                                <Grid.Item
+                                  className="layout-column"
+                                  key={key}
+                                  span={key === 'reason' ? 24 : 8}>
+                                  <Grid
+                                    className="layout-row layout-grid"
+                                    data-testid={`event-data-${key}`}
+                                    style={{ ...getLayoutGutter(4, 4) }}>
+                                    <Grid.Item
+                                      className="layout-column"
+                                      span={24}>
+                                      <Typography
+                                        color="secondary"
+                                        data-testid="event-data-key">
+                                        {`${getLabelsForEventDetails(
+                                          key as keyof AlertEventDetailsToDisplay
+                                        )}:`}
+                                      </Typography>
+                                    </Grid.Item>
+                                    <Grid.Item
+                                      className="layout-column"
+                                      span={24}>
+                                      <Typography
+                                        className="font-medium"
+                                        data-testid="event-data-value">
+                                        {value}
+                                      </Typography>
+                                    </Grid.Item>
+                                  </Grid>
+                                </Grid.Item>
+                              )
+                          )}
+                        </Grid>
+                      </Box>
+                      {!isEmpty(changeEventData.changeDescription) && (
+                        <>
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                            <Typography className="font-medium">
+                              {`${t('label.change-entity', {
+                                entity: t('label.description'),
+                              })}:`}
+                            </Typography>
+                          </Box>
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                            <SchemaEditor
+                              className="border"
+                              mode={{ name: CSMode.JAVASCRIPT }}
+                              options={{ readOnly: true }}
+                              showCopyButton={false}
+                              value={JSON.stringify(
+                                changeEventData.changeDescription
+                              )}
+                            />
+                          </Box>
+                        </>
+                      )}
                     </Box>
-                    {!isEmpty(changeEventData.changeDescription) && (
-                      <>
-                        <Box
-                          className="layout-column tw:block"
-                          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-                          <Typography className="font-medium">
-                            {`${t('label.change-entity', {
-                              entity: t('label.description'),
-                            })}:`}
-                          </Typography>
-                        </Box>
-                        <Box
-                          className="layout-column tw:block"
-                          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-                          <SchemaEditor
-                            className="border"
-                            mode={{ name: CSMode.JAVASCRIPT }}
-                            options={{ readOnly: true }}
-                            showCopyButton={false}
-                            value={JSON.stringify(
-                              changeEventData.changeDescription
-                            )}
-                          />
-                        </Box>
-                      </>
-                    )}
-                  </Box>
-                </Panel>
+                  </AccordionPanel>
+                </AccordionItem>
               );
             })}
-          </Collapse>
+          </Accordion>
         </Grid.Item>
         {showPagination && (
           <Grid.Item className="layout-column" span={24}>
@@ -378,9 +387,10 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           <Box className="layout-column tw:block">
             <Dropdown.Root>
               <Button
+                aria-label={t('label.filter-plural')}
                 color="secondary"
                 data-testid="filter-button"
-                iconLeading={<FilterIcon height={16} width={16} />}
+                iconLeading={FilterLines}
                 size="sm">
                 {filter !== AlertRecentEventFilters.ALL && (
                   <Typography

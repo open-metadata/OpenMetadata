@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { Card, Grid } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import IncidentManager from '../../components/IncidentManager/IncidentManager.component';
@@ -44,10 +43,12 @@ const IncidentManagerPage = () => {
         style={{ ...getLayoutGutter(0, 16) }}>
         <Grid.Item className="layout-column" span={24}>
           <Card>
-            <PageHeader
-              data={pageHeaderData}
-              learningPageId={LEARNING_PAGE_IDS.INCIDENT_MANAGER}
-            />
+            <Card.Content className="tw:p-5">
+              <PageHeader
+                data={pageHeaderData}
+                learningPageId={LEARNING_PAGE_IDS.INCIDENT_MANAGER}
+              />
+            </Card.Content>
           </Card>
         </Grid.Item>
 

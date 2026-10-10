@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
@@ -39,7 +39,9 @@ function AddObservabilityPage(_props: Readonly<AddObservabilityPageProps>) {
         allowScroll: true,
         children: (
           <Card className="steps-form-container">
-            <ObservabilityAlertForm {...formState} />
+            <Card.Content className="tw:p-5">
+              <ObservabilityAlertForm {...formState} />
+            </Card.Content>
           </Card>
         ),
         minWidth: 700,

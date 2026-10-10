@@ -11,23 +11,31 @@
  *  limitations under the License.
  */
 
-import { Box, Divider, Grid } from '@openmetadata/ui-core-components';
-import { Form, Input } from 'antd';
+import {
+  Box,
+  Divider,
+  FormField,
+  FormItemLabel,
+  Grid,
+  Input,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import AlertFormSourceItem from '../../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItemFormBridge, {
-  DestinationFormFieldRegistrar,
-} from '../../../components/Alerts/DestinationFormItem/DestinationFormItemFormBridge';
+import DestinationFormItem from '../../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { ProviderType } from '../../../generated/entity/events/notificationTemplate';
-import { AlertType } from '../../../generated/events/eventSubscription';
+import {
+  AlertAiFormFieldsProps,
+  AlertAiFormValidationErrors,
+} from '../../../components/observability/Alerts/AlertAiFormFields.interface';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormFieldsProps } from '../hooks/useObservabilityAlertForm';
+
+import { getAlertSourceChanges } from './ObservabilityAlertForm.utils';
 
 function ObservabilityAlertFormFields({
   alert,
@@ -39,41 +47,93 @@ function ObservabilityAlertFormFields({
   shouldShowFiltersSection,
   templateResourcePermission,
   templates,
-}: Readonly<ObservabilityAlertFormFieldsProps>) {
+  validationErrors,
+}: Readonly<
+  ObservabilityAlertFormFieldsProps & {
+    validationErrors: AlertAiFormValidationErrors;
+  }
+>) {
   const { t } = useTranslation();
-  const destinations = Form.useWatch('destinations', form);
-  const timeout = Form.useWatch('timeout', form);
-  const readTimeout = Form.useWatch('readTimeout', form);
+  const values = form.watch();
+  const onChange: AlertAiFormFieldsProps['onChange'] = (next) => {
+    const latest = typeof next === 'function' ? next(form.getValues()) : next;
+    form.setValue('input', latest.input, { shouldDirty: true });
+  };
+  const onValuesChange = (changes: Partial<ModifiedCreateEventSubscription>) =>
+    form.reset(
+      { ...form.getValues(), ...changes },
+      { keepErrors: true, keepDirty: true, keepTouched: true }
+    );
 
   return (
     <>
       <Grid.Item className="layout-column" span={24}>
-        <Form.Item
-          label={t('label.name')}
-          labelCol={{ span: 24 }}
+        <FormField
+          control={form.control}
           name="displayName"
-          rules={NAME_FIELD_RULES}>
-          <Input placeholder={t('label.name')} />
-        </Form.Item>
+          rules={{
+            required: t('label.field-required', { field: t('label.name') }),
+            maxLength: {
+              value: 128,
+              message: t('message.entity-size-in-between', {
+                entity: t('label.name'),
+                min: 1,
+                max: 128,
+              }),
+            },
+            pattern: {
+              value: ENTITY_NAME_REGEX,
+              message: t('message.entity-name-validation'),
+            },
+          }}>
+          {({ field, fieldState }) => (
+            <Input
+              {...field}
+              isRequired
+              hint={fieldState.error?.message ?? validationErrors.displayName}
+              id="displayName"
+              inputDataTestId="displayName"
+              isInvalid={
+                fieldState.invalid || Boolean(validationErrors.displayName)
+              }
+              label={t('label.name')}
+              placeholder={t('label.name')}
+              value={field.value ?? ''}
+              onChange={(value) => {
+                field.onChange(value);
+                void form.trigger('displayName');
+              }}
+            />
+          )}
+        </FormField>
       </Grid.Item>
       <Grid.Item className="layout-column" span={24}>
-        <Form.Item
-          label={t('label.description')}
-          labelCol={{ span: 24 }}
-          name="description"
-          trigger="onTextChange">
-          <RichTextEditor
-            data-testid="description"
-            initialValue={alert?.description}
-          />
-        </Form.Item>
+        <Box direction="col" gap={2}>
+          <FormItemLabel label={t('label.description')} />
+          <FormField control={form.control} name="description">
+            {({ field }) => (
+              <RichTextEditor
+                data-testid="description"
+                initialValue={alert?.description}
+                onTextChange={field.onChange}
+              />
+            )}
+          </FormField>
+        </Box>
       </Grid.Item>
       <Grid.Item className="layout-column" span={24}>
         <Box className="layout-row" justify="center" wrap="wrap">
           <Box
             className="layout-column tw:block"
             style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-            <AlertFormSourceItem filterResources={filterResources} />
+            <AlertFormSourceItem
+              error={validationErrors.resources}
+              filterResources={filterResources}
+              value={values.resources}
+              onChange={(next, previous) => {
+                onValuesChange(getAlertSourceChanges(next, previous));
+              }}
+            />
           </Box>
           {shouldShowFiltersSection && (
             <>
@@ -87,7 +147,11 @@ function ObservabilityAlertFormFields({
               <Box
                 className="layout-column tw:block"
                 style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-                <ObservabilityFormFiltersItem />
+                <ObservabilityFormFiltersItem
+                  validationErrors={validationErrors}
+                  value={values}
+                  onChange={onChange}
+                />
               </Box>
             </>
           )}
@@ -103,7 +167,11 @@ function ObservabilityAlertFormFields({
               <Box
                 className="layout-column tw:block"
                 style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-                <ObservabilityFormTriggerItem />
+                <ObservabilityFormTriggerItem
+                  validationErrors={validationErrors}
+                  value={values}
+                  onChange={onChange}
+                />
               </Box>
             </>
           )}
@@ -117,25 +185,7 @@ function ObservabilityAlertFormFields({
           <Box
             className="layout-column tw:block"
             style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-            <DestinationFormItemFormBridge
-              renderValidationField={(validate) => (
-                <Form.Item
-                  hidden
-                  name="destinations"
-                  rules={[{ validator: validate }]}>
-                  <DestinationFormFieldRegistrar />
-                </Form.Item>
-              )}
-              values={{ destinations, readTimeout, timeout }}
-              onChange={(values) => {
-                // Each shared field must be replaced at its root. Ant's bulk
-                // setter deep-merges destination array entries and would restore
-                // config removed by a type change.
-                Object.entries(values).forEach(([name, value]) =>
-                  form.setFieldValue(name, value)
-                );
-              }}
-            />
+            <DestinationFormItem />
           </Box>
 
           {!isEmpty(extraFormWidgets) && (
@@ -154,10 +204,11 @@ function ObservabilityAlertFormFields({
                     style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                     <Widget
                       alertDetails={alert}
-                      formRef={form}
                       loading={isLoading}
                       templateResourcePermission={templateResourcePermission}
                       templates={templates}
+                      values={values}
+                      onValuesChange={onValuesChange}
                     />
                   </Box>
                 </Fragment>
@@ -166,16 +217,6 @@ function ObservabilityAlertFormFields({
           )}
         </Box>
       </Grid.Item>
-      <Form.Item<ModifiedCreateEventSubscription>
-        hidden
-        initialValue={AlertType.Observability}
-        name="alertType"
-      />
-      <Form.Item<ModifiedCreateEventSubscription>
-        hidden
-        initialValue={ProviderType.User}
-        name="provider"
-      />
     </>
   );
 }

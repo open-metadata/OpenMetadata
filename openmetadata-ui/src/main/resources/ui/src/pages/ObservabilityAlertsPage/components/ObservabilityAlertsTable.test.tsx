@@ -125,6 +125,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Box: MockBox,
+    Button: jest.requireActual('@openmetadata/ui-core-components').Button,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Table: MockTable,
     TableCard: MockTableCard,
@@ -196,6 +197,15 @@ const renderTable = (props: Partial<ObservabilityAlertsTableProps> = {}) =>
 describe('ObservabilityAlertsTable component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('opens the selected alert when its name is pressed', () => {
+    const onViewAlert = jest.fn();
+    renderTable({ onViewAlert });
+
+    fireEvent.click(screen.getByRole('button', { name: 'alert-test' }));
+
+    expect(onViewAlert).toHaveBeenCalledWith(mockAlerts[0]);
   });
 
   it('should render the table with alert rows when data is present', () => {

@@ -11,32 +11,101 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
-import { ReactElement } from 'react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import FQNListSelect, { resolveWildcardFqns } from './FQNListSelect.component';
 
-jest.mock('../../../rest/searchAPI', () => ({
-  searchQuery: jest.fn(),
-}));
+jest.mock('../../../rest/searchAPI', () => ({ searchQuery: jest.fn() }));
+jest.mock('../../../utils/ToastUtils', () => ({ showErrorToast: jest.fn() }));
+const api = jest.fn().mockResolvedValue([
+  { value: 'service.schema', label: 'service.schema.*' },
+  { value: 'service.schema.table', label: 'service.schema.table' },
+]);
+const Controlled = () => {
+  const [value, setValue] = useState<string[]>([]);
 
-interface CapturedTagProps {
-  value: string;
-  closable: boolean;
-  onClose: () => void;
-}
-interface CapturedAsyncSelectProps {
-  tagRender: (props: CapturedTagProps) => ReactElement;
-}
-let capturedProps: CapturedAsyncSelectProps | undefined;
-jest.mock('../../common/AsyncSelect/AsyncSelect', () => ({
-  AsyncSelect: (props: CapturedAsyncSelectProps) => {
-    capturedProps = props;
+  return (
+    <>
+      <FQNListSelect
+        api={api}
+        placeholder="FQN"
+        searchIndex={SearchIndex.TABLE}
+        value={value}
+        onChange={setValue}
+      />
+      <output data-testid="saved-value">{JSON.stringify(value)}</output>
+    </>
+  );
+};
 
-    return <div data-testid="async-select" />;
-  },
-}));
+describe('FQNListSelect', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('searches exact typed labels and saves the selected FQN without wildcard decoration', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<Controlled />);
+    const input = screen.getByRole('combobox', { name: 'FQN' });
+    await user.type(input, 'service.schema.*');
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+
+    expect(api).toHaveBeenLastCalledWith('service.schema.*');
+    expect(screen.getByTestId('saved-value')).toHaveTextContent('[]');
+
+    await user.click(screen.getByRole('option', { name: 'service.schema.*' }));
+
+    expect(screen.getByTestId('saved-value')).toHaveTextContent(
+      '["service.schema"]'
+    );
+    expect(screen.getByTestId('fqn-tag-service.schema')).toHaveTextContent(
+      'service.schema'
+    );
+  });
+
+  it('resolves saved ancestors outside the first result page and updates changed form values', async () => {
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: [
+          {
+            _source: {
+              entityType: 'databaseSchema',
+              fullyQualifiedName: 'service.schema',
+            },
+          },
+        ],
+      },
+    });
+    const { rerender } = render(
+      <FQNListSelect
+        api={api}
+        containerEntities={['databaseSchema']}
+        placeholder="FQN"
+        searchIndex={[SearchIndex.TABLE, SearchIndex.DATABASE_SCHEMA]}
+        value={['service.schema']}
+      />
+    );
+
+    expect(await screen.findByText('service.schema.*')).toBeInTheDocument();
+
+    rerender(
+      <FQNListSelect
+        api={api}
+        placeholder="FQN"
+        searchIndex={SearchIndex.TABLE}
+        value={['service.schema.table']}
+      />
+    );
+
+    expect(await screen.findByText('service.schema.table')).toBeInTheDocument();
+    expect(screen.queryByText('service.schema.*')).not.toBeInTheDocument();
+  });
+});
 
 const mockSearchQuery = searchQuery as jest.Mock;
 
@@ -101,89 +170,5 @@ describe('resolveWildcardFqns', () => {
     expect(
       await resolveWildcardFqns(['svc'], SearchIndex.TABLE, ['databaseService'])
     ).toEqual([]);
-  });
-});
-
-describe('FQNListSelect', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    capturedProps = undefined;
-  });
-
-  it('decorates container FQNs with ".*" and renders leaves plain', async () => {
-    mockSearchQuery.mockResolvedValue({
-      hits: {
-        hits: [
-          {
-            _source: {
-              fullyQualifiedName: 'svc',
-              entityType: 'databaseService',
-            },
-          },
-        ],
-      },
-    });
-
-    render(
-      <FQNListSelect
-        api={jest.fn()}
-        containerEntities={['databaseService']}
-        mode="multiple"
-        searchIndex={SearchIndex.TABLE}
-        value={['svc', 'svc.db.schema.tbl']}
-      />
-    );
-
-    await screen.findByTestId('async-select');
-
-    await waitFor(() => {
-      const containerTag = render(
-        (capturedProps as CapturedAsyncSelectProps).tagRender({
-          value: 'svc',
-          closable: true,
-          onClose: jest.fn(),
-        })
-      );
-
-      expect(containerTag.getByText('svc.*')).toBeInTheDocument();
-      expect(
-        containerTag.getByText('svc.*').closest('[title]')
-      ).toHaveAttribute('title', 'svc.*');
-    });
-
-    const leafTag = render(
-      (capturedProps as CapturedAsyncSelectProps).tagRender({
-        value: 'svc.db.schema.tbl',
-        closable: true,
-        onClose: jest.fn(),
-      })
-    );
-
-    expect(leafTag.getByText('svc.db.schema.tbl')).toBeInTheDocument();
-  });
-
-  it('renders all tags plain when there are no container entities', async () => {
-    render(
-      <FQNListSelect
-        api={jest.fn()}
-        containerEntities={[]}
-        mode="multiple"
-        searchIndex={SearchIndex.TABLE}
-        value={['svc']}
-      />
-    );
-
-    await screen.findByTestId('async-select');
-
-    const tag = render(
-      (capturedProps as CapturedAsyncSelectProps).tagRender({
-        value: 'svc',
-        closable: true,
-        onClose: jest.fn(),
-      })
-    );
-
-    expect(tag.getByText('svc')).toBeInTheDocument();
-    expect(mockSearchQuery).not.toHaveBeenCalled();
   });
 });

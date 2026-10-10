@@ -19,6 +19,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
 import {
   DataType,
@@ -357,6 +358,21 @@ describe('ProfilerSettingsModal partitioning round-trip', () => {
 
     expect(payload.partitioning).toBeUndefined();
   });
+
+  it('clears excluded columns without changing included metrics or partitioning', async () => {
+    const payload = await renderAndSave(mockTableProfilerConfig, () => {
+      fireEvent.click(screen.getByTestId('clear-excluded-columns'));
+    });
+
+    expect(
+      screen.queryByTestId('clear-excluded-columns')
+    ).not.toBeInTheDocument();
+    expect(payload.excludeColumns).toBeUndefined();
+    expect(payload.includeColumns).toEqual(
+      mockTableProfilerConfig.includeColumns
+    );
+    expect(payload.partitioning).toEqual(mockTableProfilerConfig.partitioning);
+  });
 });
 
 const buildStaticSampleConfig = (
@@ -401,11 +417,13 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
       render(<ProfilerSettingsModal {...mockProps} />);
     });
 
-    expect(await screen.findByTestId('slider-input')).toHaveAttribute(
-      'aria-valuemin',
-      '1'
-    );
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuemin', '1');
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const input = await screen.findByTestId('slider-input');
+    await user.click(input);
+    await user.keyboard('{Home}{ArrowDown}');
+
+    expect(input).toHaveValue('1%');
+    expect(screen.getByRole('slider')).toHaveAttribute('min', '1');
   });
 
   it('should clamp a typed 0 percentage up to 1 on blur', async () => {
@@ -428,10 +446,12 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
       render(<ProfilerSettingsModal {...mockProps} />);
     });
 
-    expect(await screen.findByTestId('metric-number-input')).toHaveAttribute(
-      'aria-valuemin',
-      '1'
-    );
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const input = await screen.findByTestId('metric-number-input');
+    await user.click(input);
+    await user.keyboard('{Home}{ArrowDown}');
+
+    expect(input).toHaveValue('1');
   });
 
   // Configs saved before the minimum existed may hold 0; saving the modal
