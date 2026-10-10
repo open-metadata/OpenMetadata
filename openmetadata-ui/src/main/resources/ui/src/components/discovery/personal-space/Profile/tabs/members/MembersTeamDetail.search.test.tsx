@@ -131,6 +131,18 @@ jest.mock('../../../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: { id: 'me', teams: [] } }),
 }));
 
+// Contributed team tabs (e.g. Collate's SQL Studio) come through this provider;
+// default to none so only the native tabs are asserted.
+const mockGetContributions = jest.fn().mockReturnValue([]);
+jest.mock(
+  '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      getContributions: mockGetContributions,
+    }),
+  })
+);
+
 jest.mock(
   '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
   () => ({
