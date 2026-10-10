@@ -3905,14 +3905,11 @@ public class RdfRepository {
     try {
       String fromUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + fromTermId;
       String toUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + toTermId;
-      String predicateUri = getGlossaryTermRelationPredicateUri(relationType);
+      final Set<String> predicateUris = getGlossaryTermRelationPredicateUris(relationType);
 
-      // Delete BOTH directions. The add path runs through
-      // EntityRepository.addRelationship which writes the reverse direction
-      // for bidirectional relationships, so a one-sided delete leaves a
-      // stale "<to> om:<predicate> <from>" triple — visible as a lingering
-      // edge in the relations graph after the user removed the relation.
-      String sparqlUpdate = buildGlossaryTermRelationDeleteUpdate(fromUri, toUri, predicateUri);
+      // The target term sees the inverse type, and live or rebuilt graphs may contain either
+      // predicate in either direction for the same SQL relation.
+      String sparqlUpdate = buildGlossaryTermRelationDeleteUpdate(fromUri, toUri, predicateUris);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
@@ -3928,16 +3925,31 @@ public class RdfRepository {
     }
   }
 
-  private String getGlossaryTermRelationPredicateUri(String relationType) {
-    String resolvedType = relationType == null ? "relatedTo" : relationType;
-    return relationshipTypeResolver().requireIgnoreCase(resolvedType).getRdfPredicate().toString();
+  private Set<String> getGlossaryTermRelationPredicateUris(final String relationType) {
+    final RelationshipTypeResolver resolver = relationshipTypeResolver();
+    final RelationshipType type =
+        resolver.requireIgnoreCase(relationType == null ? "relatedTo" : relationType);
+    final Set<String> predicateUris = new LinkedHashSet<>();
+    predicateUris.add(type.getRdfPredicate().toString());
+    if (type.getInverse() != null && !type.getName().equals(type.getInverse().getName())) {
+      predicateUris.add(resolver.require(type.getInverse().getName()).getRdfPredicate().toString());
+    }
+    return predicateUris;
   }
 
   static String buildGlossaryTermRelationDeleteUpdate(
-      String fromUri, String toUri, String predicateUri) {
-    return String.format(
-        "DELETE DATA { GRAPH <%s> { <%s> <%s> <%s> . <%s> <%s> <%s> . } }",
-        KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri, toUri, predicateUri, fromUri);
+      final String fromUri, final String toUri, final Collection<String> predicateUris) {
+    final String triples =
+        String.join(
+            " ",
+            predicateUris.stream()
+                .map(
+                    predicateUri ->
+                        String.format(
+                            "<%s> <%s> <%s> . <%s> <%s> <%s> .",
+                            fromUri, predicateUri, toUri, toUri, predicateUri, fromUri))
+                .toList());
+    return String.format("DELETE DATA { GRAPH <%s> { %s } }", KNOWLEDGE_GRAPH, triples);
   }
 
   /**
