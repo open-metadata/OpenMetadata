@@ -676,6 +676,31 @@ UPDATE announcement_entity
 SET json = JSON_REMOVE(json, '$.status')
 WHERE JSON_EXTRACT(json, '$.status') IS NOT NULL;
 
+-- Perf: entity_usage is upserted on every usage event and read back by id alone
+-- (insertOrReplaceCount/insertOrUpdateCount recomputing count7/count30, getUsageById,
+-- getLatestUsage, getLatestUsageBatch, delete-by-id). Those reads filter on `id`; this index
+-- gives them a dedicated id-first access path independent of the upsert unique key, whose shape
+-- has changed across releases ((usageDate, id) before 1.13.0, (id, usageDate) since) and which
+-- the DBA may drop/rebuild during the upsert-deadlock tuning.
+-- Guarded like the sibling index statements above: the migration runner keys statements by SQL-text
+-- hash, but an interrupted run can leave the ALTER unapplied, so re-check information_schema.
+SET @entity_usage_id_index_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'entity_usage'
+        AND index_name = 'idx_entity_usage_id'
+    ),
+    'SELECT 1',
+    'ALTER TABLE entity_usage ADD INDEX idx_entity_usage_id (id)'
+  )
+);
+PREPARE entity_usage_id_index_stmt FROM @entity_usage_id_index_ddl;
+EXECUTE entity_usage_id_index_stmt;
+DEALLOCATE PREPARE entity_usage_id_index_stmt;
+
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
