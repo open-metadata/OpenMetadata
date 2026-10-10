@@ -483,7 +483,7 @@
     <dependency>
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.http.wrappers</artifactId>
-      <version>1.1.8</version>
+      <version>6.1.0</version>
     </dependency>
 
     <dependency>
