@@ -1,14 +1,14 @@
 package org.openmetadata.it.tests.alerts;
 
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.alerting.AlertPublisher;
 import org.openmetadata.service.util.DIContainer;
 
 /**
@@ -16,6 +16,7 @@ import org.openmetadata.service.util.DIContainer;
  * It behaves exactly like the default consumer until a test arms a gate for one alert.
  */
 public class LatchedConsumer extends AlertPublisher {
+  static final String ID = "test.latched";
 
   static final class Gate {
     private final CountDownLatch reached = new CountDownLatch(1);
@@ -61,12 +62,12 @@ public class LatchedConsumer extends AlertPublisher {
   }
 
   @Override
-  public void publishEvents(Map<ChangeEvent, Set<UUID>> events) {
+  protected void handle(List<ChangeEvent> events) {
     Gate gate = GATES.get(getEventSubscription().getId());
     if (gate != null && gate.callsBeforeHolding.decrementAndGet() == 0) {
       hold(gate);
     }
-    super.publishEvents(events);
+    super.handle(events);
   }
 
   private static void hold(Gate gate) {

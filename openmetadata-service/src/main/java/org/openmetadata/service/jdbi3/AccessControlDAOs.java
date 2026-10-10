@@ -38,6 +38,7 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.api.events.TypedEvent;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.events.FailedEvent;
@@ -57,7 +58,6 @@ import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO.UsageDetailsMap
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
-import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindFQN;

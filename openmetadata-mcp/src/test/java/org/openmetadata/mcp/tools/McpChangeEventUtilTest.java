@@ -18,7 +18,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.ChangeEventHandler;
-import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
@@ -71,15 +71,15 @@ class McpChangeEventUtilTest {
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
 
-    try (MockedStatic<FormatterUtil> formatterMock = mockStatic(FormatterUtil.class);
+    try (MockedStatic<ChangeEvents> changeEventsMock = mockStatic(ChangeEvents.class);
         MockedStatic<ChangeEventHandler> handlerMock = mockStatic(ChangeEventHandler.class);
         MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
 
-      formatterMock
+      changeEventsMock
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "admin", EventType.ENTITY_CREATED, entity))
           .thenReturn(changeEvent);
       handlerMock.when(() -> ChangeEventHandler.copyChangeEvent(changeEvent)).thenReturn(copy);
@@ -98,9 +98,9 @@ class McpChangeEventUtilTest {
     EntityInterface<?> entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
-    try (MockedStatic<FormatterUtil> formatterMock = mockStatic(FormatterUtil.class)) {
-      formatterMock
-          .when(() -> FormatterUtil.createChangeEventForEntity(anyString(), any(), any()))
+    try (MockedStatic<ChangeEvents> changeEventsMock = mockStatic(ChangeEvents.class)) {
+      changeEventsMock
+          .when(() -> ChangeEvents.createChangeEventForEntity(anyString(), any(), any()))
           .thenThrow(new RuntimeException("DB connection refused"));
 
       assertThatNoException()
@@ -122,14 +122,14 @@ class McpChangeEventUtilTest {
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
 
-    try (MockedStatic<FormatterUtil> formatterMock = mockStatic(FormatterUtil.class);
+    try (MockedStatic<ChangeEvents> changeEventsMock = mockStatic(ChangeEvents.class);
         MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
 
-      formatterMock
+      changeEventsMock
           .when(
               () ->
-                  FormatterUtil.createChangeEventForEntity(
+                  ChangeEvents.createChangeEventForEntity(
                       "alice", EventType.ENTITY_CREATED, entity))
           .thenReturn(changeEvent);
       jsonMock.when(() -> JsonUtils.pojoToJson(changeEvent)).thenReturn("{\"user\":\"alice\"}");

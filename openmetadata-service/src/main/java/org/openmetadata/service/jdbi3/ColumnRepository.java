@@ -16,7 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
-import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
+import static org.openmetadata.service.events.ChangeEvents.createChangeEventForEntity;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 
 import jakarta.json.JsonPatch;

@@ -15,11 +15,14 @@ package org.openmetadata.service.resources.events.subscription;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.service.events.consumer.Consumers;
 
 class EventSubscriptionMapperTest {
 
@@ -37,5 +40,36 @@ class EventSubscriptionMapperTest {
     assertEquals(List.of("table"), alert.getFilteringRules().getResources());
     assertNull(alert.getFilteringRules().getRules());
     assertNull(alert.getFilteringRules().getActions());
+  }
+
+  @Test
+  void aRequestNamingNoConsumerIsSentByTheAlertConsumer() {
+    assertEquals(Consumers.DEFAULT, toEntity(request()).getClassName());
+  }
+
+  @Test
+  void aConsumerNamedByTheClassItWasOnceStoredUnderIsStoredByItsId() {
+    String storedBeforeIds = "org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher";
+
+    assertEquals(
+        Consumers.DEFAULT, toEntity(request().withClassName(storedBeforeIds)).getClassName());
+  }
+
+  @Test
+  void aConsumerNothingAnswersToIsRefused() {
+    CreateEventSubscription request = request().withClassName("org.openmetadata.NoSuchConsumer");
+
+    assertThrows(BadRequestException.class, () -> toEntity(request));
+  }
+
+  private static CreateEventSubscription request() {
+    return new CreateEventSubscription()
+        .withName("alert")
+        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+        .withResources(List.of("table"));
+  }
+
+  private static EventSubscription toEntity(CreateEventSubscription request) {
+    return new EventSubscriptionMapper().createToEntity(request, "admin");
   }
 }

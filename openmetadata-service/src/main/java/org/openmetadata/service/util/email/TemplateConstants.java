@@ -7,7 +7,6 @@ public class TemplateConstants {
 
   // templates
   public static final String ACCOUNT_ACTIVITY_CHANGE_TEMPLATE = "account-activity-change";
-  public static final String CHANGE_EVENT_TEMPLATE = "changeEvent";
   public static final String DATA_INSIGHT_REPORT_TEMPLATE = "dataInsightReport";
   public static final String EMAIL_VERIFICATION_TEMPLATE = "email-verification";
   public static final String INVITE_CREATE_PASSWORD_TEMPLATE = "invite-createPassword";
@@ -35,9 +34,6 @@ public class TemplateConstants {
   public static final String ACTION_KEY = "action";
   public static final String ACTION_STATUS_KEY = "actionStatus";
   public static final String INVITE_SUBJECT = "Welcome to %s";
-  public static final String CHANGE_EVENT_UPDATE = "[%s] - Change Event Update from %s";
-
-  public static final String TASK_SUBJECT = "%s : Task Assignment Notification";
 
   public static final String REPORT_SUBJECT = "%s: Data Insights Weekly - %s";
   public static final String TEST_EMAIL_SUBJECT = "%s : Test Email";

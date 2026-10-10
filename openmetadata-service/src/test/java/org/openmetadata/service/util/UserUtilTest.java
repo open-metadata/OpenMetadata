@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -19,6 +20,7 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.USER;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import jakarta.ws.rs.core.Response;
@@ -47,7 +49,9 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.LandingPageSettings;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
@@ -1045,5 +1049,35 @@ class UserUtilTest {
   void testIsConfiguredAdmin_handlesNullConfigAndNullFields() {
     assertFalse(UserUtil.isConfiguredAdmin(null, "a@b.com", "a"));
     assertFalse(UserUtil.isConfiguredAdmin(new AuthorizerConfiguration(), "a@b.com", "a"));
+  }
+
+  @Test
+  void getAdminEmailsAggregatesAcrossPages() {
+    UserRepository userRepository = mock(UserRepository.class);
+    ResultList<User> firstPage = mock(ResultList.class);
+    ResultList<User> secondPage = mock(ResultList.class);
+    Paging firstPaging = new Paging().withAfter("cursor-1");
+    Paging secondPaging = new Paging().withAfter(null);
+
+    when(firstPage.getData()).thenReturn(List.of(user("alice", "alice@example.com")));
+    when(firstPage.getPaging()).thenReturn(firstPaging);
+    when(secondPage.getData()).thenReturn(List.of(user("bob", "bob@example.com")));
+    when(secondPage.getPaging()).thenReturn(secondPaging);
+    when(userRepository.getFields("email")).thenReturn(new EntityUtil.Fields(Set.of("email")));
+    when(userRepository.listAfter(isNull(), any(), any(), eq(50), isNull())).thenReturn(firstPage);
+    when(userRepository.listAfter(isNull(), any(), any(), eq(50), eq("cursor-1")))
+        .thenReturn(secondPage);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(USER)).thenReturn(userRepository);
+
+      Set<String> admins = UserUtil.getAdminEmails();
+
+      assertEquals(Set.of("alice@example.com", "bob@example.com"), admins);
+    }
+  }
+
+  private User user(String name, String email) {
+    return new User().withId(UUID.randomUUID()).withName(name).withEmail(email);
   }
 }

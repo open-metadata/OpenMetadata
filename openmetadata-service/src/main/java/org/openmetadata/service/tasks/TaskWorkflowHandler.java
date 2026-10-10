@@ -50,8 +50,8 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.TaskStateConflictException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -818,7 +818,7 @@ public class TaskWorkflowHandler {
     }
     try {
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(user, changeType, entityInterface);
+          ChangeEvents.createChangeEventForEntity(user, changeType, entityInterface);
       Object entityForEvent = changeEvent.getEntity();
       changeEvent = ChangeEventHandler.copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityForEvent));

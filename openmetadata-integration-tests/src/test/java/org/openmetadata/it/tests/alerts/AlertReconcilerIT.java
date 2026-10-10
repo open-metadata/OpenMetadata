@@ -2,6 +2,7 @@ package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
@@ -21,14 +22,15 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
-import org.openmetadata.service.events.scheduled.AlertJobs;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.scheduled.ReconcileRound;
-import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.ConsumerJob;
+import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.schedule.AlertJobs;
+import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
+import org.openmetadata.service.events.consumer.schedule.ReconcileRound;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
+import org.quartz.JobPersistenceException;
 import org.quartz.SimpleScheduleBuilder;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
@@ -67,14 +69,14 @@ class AlertReconcilerIT {
   // A job stored before this release carries the class its alert names.
   @Test
   void reconcilerConvertsJobsStoredWithTheNamedClass(TestNamespace ns) throws Exception {
-    EventSubscription alert = alert(ns, "named_class", LatchedConsumer.class.getName());
+    EventSubscription alert = alert(ns, "named_class", LatchedConsumer.ID);
     JobKey key = AlertFixtures.jobKey(alert.getId());
     AlertFixtures.scheduler()
         .addJob(JobBuilder.newJob(LatchedConsumer.class).withIdentity(key).build(), true, true);
 
     EventSubscriptionScheduler.getInstance().reconcileNow();
 
-    assertEquals(AlertPublisher.class, AlertFixtures.scheduler().getJobDetail(key).getJobClass());
+    assertEquals(ConsumerJob.class, AlertFixtures.scheduler().getJobDetail(key).getJobClass());
   }
 
   // After an upgrade, a job can name a consumer class this release no longer has.
@@ -88,14 +90,45 @@ class AlertReconcilerIT {
     EventSubscriptionScheduler.getInstance().reconcileNow();
 
     assertEquals(
-        AlertPublisher.class,
+        ConsumerJob.class,
         AlertFixtures.scheduler().getJobDetail(AlertFixtures.jobKey(alert.getId())).getJobClass());
+  }
+
+  // A job naming a class that loads but is not a job cannot even be read, and while its trigger is
+  // due the scheduler acquires nothing else: every alert and the audit log stop. The reconciler
+  // replaces it, and the others carry on.
+  @Test
+  void jobWhoseClassIsNotAJobIsReplacedAndTheSchedulerCarriesOn(TestNamespace ns) throws Exception {
+    EventSubscription broken = alert(ns, "class_not_a_job", null);
+    EventSubscription other = alert(ns, "beside_class_not_a_job", null);
+    QuietAlert.settle(broken);
+    QuietAlert.settle(other);
+    JobKey brokenJob = AlertFixtures.jobKey(broken.getId());
+    AlertFixtures.updateJob("JOB_CLASS_NAME = 'java.lang.String'", broken.getId());
+    AlertFixtures.updateTrigger("NEXT_FIRE_TIME = " + System.currentTimeMillis(), broken.getId());
+    assertThrows(
+        JobPersistenceException.class, () -> AlertFixtures.scheduler().getJobDetail(brokenJob));
+
+    EventSubscriptionScheduler.getInstance().reconcileNow();
+
+    assertEquals(
+        ConsumerJob.class, AlertFixtures.scheduler().getJobDetail(brokenJob).getJobClass());
+    long auditLogBefore = auditLogOffset();
+    long otherBefore = AlertFixtures.offsetOf(other.getId());
+    FixtureEvents.insert(FixtureEvents.tableEvents());
+    AlertFixtures.scheduler().triggerJob(AlertFixtures.jobKey(other.getId()));
+    Awaitility.await("the other alert and the audit log to read the new events")
+        .atMost(Duration.ofSeconds(60))
+        .until(
+            () ->
+                AlertFixtures.offsetOf(other.getId()) > otherBefore
+                    && auditLogOffset() > auditLogBefore);
   }
 
   // While its own tick runs, a trigger is BLOCKED and its fire time can look arbitrarily old.
   @Test
   void reconcilerLeavesARunningTickAlone(TestNamespace ns) throws Exception {
-    EventSubscription alert = alert(ns, "running_tick", LatchedConsumer.class.getName());
+    EventSubscription alert = alert(ns, "running_tick", LatchedConsumer.ID);
     QuietAlert.settle(alert);
     LatchedConsumer.Gate gate = LatchedConsumer.arm(alert.getId());
     try {
@@ -191,7 +224,7 @@ class AlertReconcilerIT {
   }
 
   private static JobDetail foreignJob(JobKey key) {
-    return JobBuilder.newJob(AlertPublisher.class).withIdentity(key).storeDurably().build();
+    return JobBuilder.newJob(ConsumerJob.class).withIdentity(key).storeDurably().build();
   }
 
   private static String positionWrittenLongAgo() {
@@ -213,6 +246,11 @@ class AlertReconcilerIT {
   private static EventSubscription alert(TestNamespace ns, String name, String className) {
     return AlertFixtures.tableAlert(
         ns, name, className, List.of(AlertFixtures.external(WEBHOOK, "http://localhost:9/unused")));
+  }
+
+  private static long auditLogOffset() {
+    String stored = AlertFixtures.dao().getSubscriberExtension("AUDIT_LOG_CONSUMER", "offset");
+    return stored == null ? 0L : JsonUtils.readTree(stored).get("currentOffset").asLong();
   }
 
   private static Trigger.TriggerState stateOf(EventSubscription alert) throws Exception {

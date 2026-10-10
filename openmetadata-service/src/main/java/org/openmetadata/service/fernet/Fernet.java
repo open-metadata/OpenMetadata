@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.fernet;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FERNET_KEY_NULL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FIELD_ALREADY_TOKENIZED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FIELD_NOT_TOKENIZED;
@@ -27,15 +26,11 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalAmount;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import lombok.NonNull;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 
 public class Fernet {
   private static final Fernet instance = new Fernet();
@@ -129,23 +124,5 @@ public class Fernet {
   /** Encrypt value without throwing an Exception in case it is not encrypted */
   public String encryptIfApplies(@NonNull String secret) {
     return isTokenized(secret) ? secret : encrypt(secret);
-  }
-
-  public static List<SubscriptionDestination> encryptWebhookSecretKey(
-      List<SubscriptionDestination> subscriptions) {
-    List<SubscriptionDestination> result = new ArrayList<>();
-
-    subscriptions.forEach(
-        subscription -> {
-          if (nullOrEmpty(subscription.getId())) {
-            subscription.withId(UUID.randomUUID());
-          }
-          ChannelResolution.of(subscription)
-              .channel()
-              .ifPresent(channel -> channel.configRules().encryptSecrets(subscription));
-
-          result.add(subscription);
-        });
-    return result;
   }
 }
