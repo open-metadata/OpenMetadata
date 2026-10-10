@@ -118,15 +118,16 @@ List the manual test steps you performed before requesting review. Example:
 #
 ### UI screen recording:
 <!--
-REQUIRED before requesting review for any production UI change, including shared UI components,
-styles, localization and refactors. Follow skills/ui-pr-recording/SKILL.md (/ui-pr-recording):
-build the PR code, run it in Docker with sample data, record the affected flow and its result,
-then upload the video to GitHub and embed it here. Screenshots may supplement, never replace, it.
+REQUIRED as part of creating a PR for a UI feature or a feature task/subtask with UI impact.
+Follow skills/ui-pr-recording/SKILL.md (/ui-pr-recording): build the PR code, run it in Docker
+with sample data, record the feature and its result, then upload the video to GitHub and embed it
+here. Screenshots may supplement, never replace, a required recording.
 
 Include the recorded commit SHA, Docker startup command + health/version checks, sample-data
 setup, steps shown and observed results. Re-record after UI/runtime changes. If blocked, leave
 this PR as draft and state the blocker and remaining work; a local file or TODO is not evidence.
-Use "Not applicable — <reason>" only when the diff has no production UI impact.
+Standalone fixes, refactors, styling, localization, docs, tests and backend-only work may use
+"Not applicable — <reason>". Classify by the task and behavior, not just paths or labels.
 -->
 
 <!-- Replace with the uploaded video and evidence, or an explicit N/A reason. -->
@@ -139,7 +140,7 @@ Use "Not applicable — <reason>" only when the diff has no production UI impact
 - [ ] My PR is linked to a GitHub issue via `Fixes #<issue-number>` above.
 - [ ] I have commented on my code, particularly in hard-to-understand areas.
 - [ ] For JSON Schema changes: I updated the migration scripts or explained why it is not needed.
-- [ ] For UI changes: I ran this PR's build in Docker with sample data and embedded a verified GitHub-hosted screen recording plus build/health evidence above (or explained why there is no production UI impact).
+- [ ] For a UI feature or feature task: as part of PR creation, I ran the PR build in Docker with sample data and embedded a verified GitHub-hosted recording plus build/health evidence above (or explained why this requirement is not applicable).
 - [ ] I have added tests (unit / integration / Playwright as applicable) and listed them above.
 - [ ] Decision check: if this PR decides something the next contributor could undo — a schema field, REST path or format another component or repo must agree with, a new default or limit, an ordering that must hold, or a rule stated only in this description — it adds a record under `docs/decisions/` (see its `README.md`). This description is gone from `git log` after the squash-merge.
 

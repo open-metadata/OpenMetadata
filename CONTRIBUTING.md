@@ -2,16 +2,17 @@
 
 We ❤️ all contributions, big and small!
 
-## UI pull request evidence
+## Creating a UI feature pull request
 
-Every PR that changes production UI must run the PR's build in Docker with sample data and include
-a GitHub-hosted screen recording in its description before requesting review. This includes shared
-UI components, styling, localization and refactors. Show the affected flow and its result, and
-include the recorded commit, startup/health checks and sample-data setup. Screenshots supplement
+When creating a PR for a UI feature or a feature task/subtask with UI impact, run the PR build in
+Docker with sample data and include a GitHub-hosted screen recording in its description. Show the
+feature and its result, and include the recorded commit, startup/health checks and sample-data
+setup. Screenshots supplement
 the video; they do not replace it. Follow [UI PR recording](skills/ui-pr-recording/SKILL.md), or
-invoke `/ui-pr-recording`. Keep the PR draft if setup, recording or upload is blocked. For changes
-with no production UI impact, explain why the recording is not applicable. Automated tests are
-still required where applicable.
+invoke `/ui-pr-recording`. Keep the PR draft if setup, recording or upload is blocked. Standalone
+fixes, refactors, styling, localization, docs, tests and backend-only changes may explain N/A.
+This step belongs to PR creation; it is not required for every implementation task or standalone
+review. Automated tests are still required where applicable.
 
 ## Getting started
 

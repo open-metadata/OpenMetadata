@@ -1,24 +1,27 @@
 ---
 name: ui-pr-recording
-description: Build and run the PR's OpenMetadata UI in Docker with sample data, record the changed flow, and upload the video into the GitHub PR description. Required before requesting review for any production UI change, including shared UI components, styles, localization, and refactors.
+description: Use during PR creation for a UI feature or feature task. Run the PR build in Docker with sample data, record the feature, and upload the verified video into the GitHub PR description. Standalone fixes, refactors, styling and localization changes do not require this workflow.
 ---
 
 # UI PR recording
 
-Produce reviewable evidence of the changed UI running against a real local OpenMetadata stack.
-Use with [pr-checklist](../pr-checklist/SKILL.md) before opening or marking a UI PR ready.
+Produce evidence of the feature running against a real local OpenMetadata stack as part of
+[pr-checklist](../pr-checklist/SKILL.md) when creating its PR.
 The requirement is recorded in ADR:2026-10-10-ui-prs-require-docker-screen-recordings.
 
 ## Scope and completion
 
-Inspect the diff against the PR's base, including `openmetadata-ui/` and
-`openmetadata-ui-core-components/`, and any other files that change the UI's behavior. Styling,
-localization and behavior-preserving production UI refactors still require a recording of an
-affected flow. Only changes with no production UI impact (for example, docs or test-only changes)
-may use `Not applicable — <reason>` in the PR's recording section.
+Inspect the task/linked issue and the diff against the PR's base. This requirement applies when
+creating a PR that implements or extends a UI feature, including a task or subtask of that feature
+with UI impact. Standalone bug fixes, refactors, styling, localization, docs, tests and backend-only
+work may use `Not applicable — <reason>` in the recording section. Classify by the task and its
+behavior, not just changed paths or labels. A styling task that delivers part of a UI feature
+still qualifies.
 
-A UI PR is ready only when its description contains a playable GitHub-hosted video, the recorded
-commit, Docker startup/health evidence, sample-data setup, and the steps and outcomes shown.
+Run this step during PR creation, not automatically during implementation or a standalone review.
+A user can still explicitly request a recording for any change. For a qualifying PR, prepare a
+description containing a playable GitHub-hosted video, the recorded commit, Docker startup/health
+evidence, sample-data setup, and the steps and outcomes shown.
 Screenshots supplement the video; a local path, test trace, terminal recording, mock-only UI or
 TODO does not satisfy the requirement. Required automated tests remain separate checks.
 
@@ -63,8 +66,7 @@ close the context before reading/saving the video. If reusing login state, inclu
 `storageState` when authentication uses it. Keep authentication files and tokens out of artifacts.
 
 Show navigation to the feature, the action and its visible result against the Docker server.
-For a preference, show both states and switching back; for a bug fix, show the corrected scenario;
-for a refactor, show the affected existing flow still works. Include persistence, permission or
+For a preference, show both states and switching back. Include persistence, permission or
 error behavior when the change affects it. Use UI/API assertions to verify the outcomes instead
 of treating a completed click sequence as success. Use real server responses, not route mocks.
 
@@ -84,7 +86,7 @@ Compress or split a rejected oversized upload without hiding relevant behavior.
 
 ## 4. Upload into the PR description
 
-When creating/updating the PR is authorized, upload the recording as part of that work. Prepare the
+When PR creation is authorized, upload the recording as part of that work. Prepare the
 complete description in a temporary Markdown file, preserving its other sections, test results
 and attachments. Under **UI screen recording**, include the evidence listed above and a video
 reference on its own paragraph, using the same path supplied to `--attach`:
@@ -93,27 +95,28 @@ reference on its own paragraph, using the same path supplied to `--attach`:
 ![](/absolute/path/to/recording.mp4)
 ```
 
-Check `gh pr edit --help` for `--attach`. With a supporting CLI, replace the example PR number and
-paths and run:
+Check `gh pr create --help` for `--attach`. With a supporting CLI, replace the example branch,
+title and paths per `pr-checklist` and run:
 
 ```bash
-gh pr edit 12345 --repo open-metadata/OpenMetadata \
+gh pr create --repo open-metadata/OpenMetadata --base main --head feature-branch \
+  --draft --title 'Fixes 12345: UI feature' \
   --body-file /tmp/pr-body.md --attach /absolute/path/to/recording.mp4
-gh pr view 12345 --repo open-metadata/OpenMetadata --json body,url,isDraft
+gh pr view feature-branch --repo open-metadata/OpenMetadata --json body,url,isDraft
 ```
 
-For a new PR, `gh pr create --draft --body-file ... --attach ...` also works; supply its title,
-base and head per `pr-checklist`. The CLI replaces the local reference with the uploaded video
-URL. See [GitHub CLI attachments](https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli).
+For a draft created while recording was blocked, finish the upload with
+`gh pr edit <number> --body-file ... --attach ...`. The CLI replaces the local reference with the
+uploaded video URL. See [GitHub CLI attachments](https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli).
 If the CLI lacks this flag, use the authenticated GitHub browser editor's attachment control.
 
 Inspect the saved description and check that the uploaded video loads from GitHub. Uploads can
 partially succeed even when the CLI exits nonzero: read the current PR before retrying so you do
-not duplicate attachments or overwrite a newer description. Only mark ready after the recording
-and the other PR checks are complete. Do not create a release or commit video files to host them.
+not duplicate attachments or overwrite a newer description. Complete the recording and the other
+creation checks before marking the new PR ready. Do not create a release or commit video files to
+host them.
 
 If Docker, recording or upload is blocked, complete the independent work and keep the PR draft.
 Report the exact failure, local artifact path (if created), and remaining step. If an authenticated
 upload requires the user's help, provide the finished video and prepared description for attachment;
-do not claim a local file is uploaded. A read-only review checks this evidence without starting a
-stack, uploading files or changing PR state.
+do not claim a local file is uploaded. This skill adds no separate gate to a read-only review.

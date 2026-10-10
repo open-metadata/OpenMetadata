@@ -31,7 +31,7 @@ Every PR must address each section below. Skip with an explicit "Not applicable 
 2. **Type of change** — exactly one box checked.
 3. **High-level design** — required for large PRs (new features, refactors, breaking changes, >5 files); skip for small bug fixes.
 4. **Tests** — use cases covered, unit tests + coverage %, backend integration tests, ingestion integration tests, Playwright (UI) tests, manual test steps.
-5. **UI screen recording** — for any production UI change, the PR build must run in Docker with sample data and a verified GitHub-hosted video must be embedded in the description. Use [ui-pr-recording](../ui-pr-recording/SKILL.md).
+5. **UI screen recording** — when creating a PR for a UI feature or feature task with UI impact, run the PR build in Docker with sample data and embed a verified GitHub-hosted video in the description. Use [ui-pr-recording](../ui-pr-recording/SKILL.md); other changes may explain N/A.
 6. **Checklist** — every box either checked or explicitly N/A.
 
 ## Step-by-Step Workflow
@@ -45,7 +45,7 @@ git log origin/main..HEAD --oneline
 ```
 
 Use the diff to classify the PR:
-- **Changes production UI**, including `openmetadata-ui/`, `openmetadata-ui-core-components/`, styles, localization or refactors → Docker run + recording + GitHub upload required. Inspect behavior, not just paths; docs/test-only changes with no production UI impact may explain N/A.
+- **Creating a PR for a UI feature or a feature task/subtask with UI impact** → Docker run + recording + GitHub upload required. Use task/issue intent and the diff, not just paths or labels. Standalone fixes, refactors, styling, localization, docs, tests and backend-only changes may explain N/A.
 - **Touches `openmetadata-service/`** + new/changed REST endpoints → backend integration tests required.
 - **Touches Java, a JSON schema, an index mapping, `bootstrap/sql/`, seed data or a pom** → the
   impacted Java tests must pass locally (Step 3). PR CI runs only the unit tests.
@@ -151,17 +151,19 @@ Ask the user (or recall from the conversation): "What did you do by hand to veri
 - Sample input + observed output
 - Negative-path check (error case, permission denial)
 
-### Step 5 — Docker UI recording and upload (UI changes only)
+### Step 5 — Docker recording when creating a UI feature/task PR
 
-Use [ui-pr-recording](../ui-pr-recording/SKILL.md) to build and run the PR in Docker with sample
-data, capture the affected flow, verify the video, and upload it into the description. Carry out
-these steps as part of the authorized PR work rather than merely asking the user for a recording.
+For a qualifying feature or feature task, use [ui-pr-recording](../ui-pr-recording/SKILL.md) to
+build and run the PR in Docker with sample data, capture the feature, verify the video, and upload
+it into the description. Carry out these steps as part of the authorized PR work rather than
+merely asking the user for a recording.
 Include the recorded SHA, startup/health evidence, sample-data setup and observed outcomes.
 Screenshots are optional additions, not substitutes. Refresh evidence after UI/runtime changes.
 
 If any step is blocked, finish independent work, report the exact blocker and keep the PR draft.
-Do not mark ready with a TODO, a local path or an unverified upload. Only changes with no production
-UI impact may use an explicit N/A reason.
+Do not open a non-draft feature PR with a TODO, a local path or an unverified upload. Other changes
+may use an explicit N/A reason. This requirement is part of PR creation; it does not add a separate
+gate to implementation tasks, standalone reviews or routine PR-description updates.
 
 ### Step 6 — Draft the PR body
 
@@ -209,7 +211,7 @@ Refuse to open the PR if any of these are missing — surface them to the user i
 - [ ] Tests section lists actual files and coverage numbers (not placeholders)
 - [ ] The description lists every test run locally (the Java block's classes plus every other suite
       run), and links the counterpart Collate PR when there is one
-- [ ] Production UI changes have Docker build/health evidence, sample-data setup and a verified GitHub-hosted recording in the description; incomplete evidence means draft, not ready
+- [ ] When creating a PR for a UI feature or feature task: Docker build/health evidence, sample-data setup and a verified GitHub-hosted recording are in the description; incomplete evidence means draft. Other changes may explain N/A.
 - [ ] Java / schema / migration / pom changes: the `local-java-test-results` block reads PASSED (or
       NOT NEEDED) for the current commit — a FAILED block or no block means draft, not ready
 - [ ] Manual test steps are concrete and reproducible

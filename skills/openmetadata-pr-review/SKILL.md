@@ -171,12 +171,6 @@ The high-signal checks, distilled — use these to decide *which* rule to open, 
 
 ### Step 4 — Assess the test (integration if possible, and meaningful)
 
-For any production UI change, verify the description's evidence against
-[ui-pr-recording](../ui-pr-recording/SKILL.md): the PR build ran in Docker with sample data and a
-playable GitHub-hosted video shows the affected flow. Missing, stale or inaccessible evidence is a
-readiness blocker; screenshots alone do not qualify. Docs/test-only changes may explain N/A.
-Review the evidence without starting a stack or mutating the PR during a read-only review.
-
 This is the step most reviews skip. Do it explicitly for every PR. See the rubric below. A PR with no test, or a test that only proves the mocks are wired, does **not** clear the bar — say so plainly. For a full coverage analysis on a large PR, the `test-enforcement` skill has the 90%-changed-class procedure.
 
 **On a multi-file PR, map source file → test file before judging quality.** "Has tests" is not a property of a PR, it's a property of each file. List every new/changed source file with its line count, then list which test file exercises it; the ones with nothing pointed at them are the finding. Grep the test files for the source module's symbols rather than trusting the directory layout — a `test_<connector>.py` next to a four-module connector routinely covers two of them. In one connector review this turned "68 tests, all passing" into "the 240-line status module has zero tests and the 656-line lineage module has two constructor tests" — and both untested modules were where the runtime bugs were.
