@@ -109,6 +109,7 @@ import org.openmetadata.schema.services.connections.pipeline.TableauPipelineConn
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
 import org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
@@ -212,11 +213,6 @@ public final class ClassConverterFactory {
                       "authType", List.of(basicAuth.class),
                       "sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
-              NatsConnection.class,
-              new NestedConfigClassConverter(
-                  NatsConnection.class,
-                  Map.of("tlsConfig", List.of(ValidateSSLClientConfig.class)))),
-          Map.entry(
               OmniConnection.class,
               new NestedConfigClassConverter(
                   OmniConnection.class,
@@ -291,8 +287,8 @@ public final class ClassConverterFactory {
                       "sslConfig", List.of(ValidateSSLClientConfig.class)))));
 
   static {
-    Map<Class<?>, ClassConverter> converters =
-        new HashMap<>(
+    converterMap =
+        mergeDisjoint(
             Map.ofEntries(
                 Map.entry(AirbyteConnection.class, new AirbyteConnectionClassConverter()),
                 Map.entry(AirflowConnection.class, new AirflowConnectionClassConverter()),
@@ -341,6 +337,8 @@ public final class ClassConverterFactory {
                 Map.entry(ClickzettaConnection.class, new ClickzettaConnectionClassConverter()),
                 Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
                 Map.entry(OpenLineageConnection.class, new OpenLineageConnectionClassConverter()),
+                Map.entry(NatsBrokerConfig.class, new NatsBrokerConfigClassConverter()),
+                Map.entry(NatsConnection.class, new NatsConnectionClassConverter()),
                 Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
                 Map.entry(PrefectConnection.class, new PrefectConnectionClassConverter()),
                 Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
@@ -352,9 +350,30 @@ public final class ClassConverterFactory {
                 Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
                 Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
                 Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
-                Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter())));
-    converters.putAll(NESTED_CONFIG_CONVERTERS);
-    converterMap = Map.copyOf(converters);
+                Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter())),
+            NESTED_CONFIG_CONVERTERS);
+  }
+
+  /**
+   * The union of two converter registries, which must not both claim the same class.
+   *
+   * <p>Merging the nested registry over the dedicated one used to let a generic entry win in
+   * silence, dropping whatever the dedicated converter did beyond re-typing properties. That is how
+   * {@code NatsConnection} lost its {@code authType} conversion and persisted a token in the clear,
+   * so a class claimed twice fails here instead. The caller is a static initializer that every test
+   * touching this factory triggers, so the failure lands in CI rather than in a release.
+   */
+  static Map<Class<?>, ClassConverter> mergeDisjoint(
+      Map<Class<?>, ClassConverter> dedicated, Map<Class<?>, ClassConverter> nested) {
+    Map<Class<?>, ClassConverter> merged = new HashMap<>(dedicated);
+    nested.forEach(
+        (clazz, converter) -> {
+          if (merged.putIfAbsent(clazz, converter) != null) {
+            throw new IllegalStateException(
+                "Duplicate ClassConverter registration for " + clazz.getName());
+          }
+        });
+    return Map.copyOf(merged);
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {

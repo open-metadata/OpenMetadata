@@ -1,32 +1,83 @@
 {
-  "title": "NatsConnection",
-  "description": "NATS Connection Config",
+  "title": "Nats",
+  "description": "NATS JetStream configuration for OpenLineage events.",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.messaging.NatsConnection",
-  "definitions": {
-    "natsType": {
-      "description": "Service type.",
-      "type": "string",
-      "enum": [
-        "Nats"
-      ],
-      "default": "Nats"
-    }
-  },
+  "additionalProperties": false,
   "properties": {
-    "type": {
-      "title": "Service Type",
-      "description": "Service Type",
-      "default": "Nats",
-      "type": "string",
-      "enum": [
-        "Nats"
-      ]
-    },
     "natsServers": {
       "title": "NATS Servers",
       "description": "NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222",
       "type": "string"
+    },
+    "streamName": {
+      "title": "Stream Name",
+      "description": "JetStream stream holding the OpenLineage events.",
+      "type": "string"
+    },
+    "subject": {
+      "title": "Subject Filter",
+      "description": "Subject to consume from the stream. Defaults to all subjects of the stream.",
+      "type": "string"
+    },
+    "durableConsumerName": {
+      "title": "Durable Consumer Name",
+      "description": "Durable JetStream consumer name. Reusing it resumes where the previous run stopped.",
+      "type": "string",
+      "default": "openmetadata"
+    },
+    "consumerOffsets": {
+      "title": "Initial Consumer Offsets",
+      "description": "Where a new durable consumer starts reading.",
+      "default": "all",
+      "type": "string",
+      "enum": [
+        "all",
+        "new"
+      ],
+      "javaEnums": [
+        {
+          "name": "ALL"
+        },
+        {
+          "name": "NEW"
+        }
+      ]
+    },
+    "batchSize": {
+      "title": "Fetch Batch Size",
+      "description": "Number of events fetched per request.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 100
+    },
+    "poolTimeout": {
+      "title": "Single Fetch Call Timeout",
+      "description": "Max allowed wait time for a single fetch, in seconds. Must be positive: the run ends once it has waited out sessionTimeout, and a zero wait would never advance that.",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "default": 1
+    },
+    "sessionTimeout": {
+      "title": "Broker Inactive Session Timeout",
+      "description": "Max allowed inactivity time before the run ends, in seconds.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 30
+    },
+    "ackWait": {
+      "title": "Acknowledgement Wait",
+      "description": "How long JetStream waits for an acknowledgement before redelivering an event, in seconds.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 60
+    },
+    "maxDeliver": {
+      "title": "Max Delivery Attempts",
+      "description": "How many times JetStream redelivers an event that is never acknowledged, before it gives up. Keeps an event that ingestion cannot process from being retried on every run.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
     },
     "authType": {
       "title": "Authentication Type",
@@ -90,6 +141,24 @@
           },
           "required": [
             "nkeySeed"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "Credentials File",
+          "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.nats.CredentialsAuth",
+          "type": "object",
+          "properties": {
+            "credentials": {
+              "title": "Credentials File Contents",
+              "description": "Contents of the .creds file, including the user JWT and the NKey seed.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "credentials"
           ],
           "additionalProperties": false
         }
@@ -170,44 +239,10 @@
         }
       },
       "additionalProperties": true
-    },
-    "schemaKvBucket": {
-      "title": "Schema KV Bucket",
-      "description": "Name of the JetStream KV bucket where schemas are stored. Keys must match stream names. Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.",
-      "type": "string"
-    },
-    "topicFilterPattern": {
-      "title": "Default Topic Filter Pattern",
-      "description": "Regex to only fetch subjects/streams that match the pattern.",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
-      "properties": {
-        "includes": {
-          "description": "List of strings/regex patterns to match and include only database entities that match.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "excludes": {
-          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    "supportsMetadataExtraction": {
-      "title": "Supports Metadata Extraction",
-      "description": "Supports Metadata Extraction.",
-      "type": "boolean",
-      "default": true
     }
   },
-  "additionalProperties": false,
   "required": [
-    "natsServers"
+    "natsServers",
+    "streamName"
   ]
 }

@@ -1,11 +1,11 @@
 {
     "name": "OpenLineage",
     "displayName": "OpenLineage Test Connection",
-    "description": "This Test Connection validates the access against the event broker (Kafka or Kinesis).",
+    "description": "This Test Connection validates the access against the event broker (Kafka, Kinesis or NATS).",
     "steps": [
         {
             "name": "CheckBrokerConnectivity",
-            "description":  "Check if the event broker is reachable (Kafka topic or Kinesis stream).",
+            "description":  "Check if the event broker is reachable (Kafka topic, Kinesis stream or NATS JetStream stream).",
             "errorMessage": "Failed to connect to event broker",
             "shortCircuit": true,
             "mandatory": true

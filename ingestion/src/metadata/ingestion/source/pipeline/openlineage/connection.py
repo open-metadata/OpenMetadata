@@ -13,11 +13,20 @@
 Source connection handler
 """
 
+import asyncio
+import threading
+from dataclasses import dataclass, field
+from typing import Any
+
+import nats
+import nats.errors
+import nats.js.errors
 from botocore.client import BaseClient
 from confluent_kafka import Consumer as KafkaConsumer
 from confluent_kafka import TopicPartition
 
 from metadata.clients.aws_client import AWSClient
+from metadata.clients.nats_client import build_connect_options, cleanup_temp_secrets
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -33,6 +42,12 @@ from metadata.generated.schema.entity.services.connections.pipeline.openlineage.
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
     Kinesis as KinesisBrokerConfig,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.natsBrokerConfig import (
+    ConsumerOffsets as NatsConsumerOffsets,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.natsBrokerConfig import (
+    Nats as NatsBrokerConfig,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection as OpenLineageConnectionConfig,
 )
@@ -46,7 +61,13 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager
+
+logger = ingestion_logger()
+
+# Bound for the JetStream control calls: acknowledgements, flush and stream lookups
+ACK_TIMEOUT_SECONDS = 5.0
 
 
 def _get_kafka_connection(
@@ -129,8 +150,226 @@ def _get_kinesis_connection(broker: KinesisBrokerConfig):
         raise SourceConnectionException(msg)  # noqa: B904
 
 
-class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaConsumer | BaseClient]):
-    def _get_client(self) -> KafkaConsumer | BaseClient:
+@dataclass
+class NatsJetStreamClient:
+    """
+    Synchronous view of a JetStream pull consumer.
+
+    nats-py is asyncio-only while the connector is a synchronous batch job. The loop runs
+    on its own daemon thread rather than only inside each call: the connector spends most
+    of a run suspended in the middle of its generator, and a loop that only runs during
+    fetch() cannot answer the server's PINGs, so the server drops the connection as stale
+    and every acknowledgement published while disconnected is silently discarded.
+    """
+
+    nc: Any
+    subscription: Any
+    _loop: asyncio.AbstractEventLoop = field(repr=False)
+    _thread: threading.Thread = field(repr=False)
+    _temp_files: list[str] = field(default_factory=list)
+    # What the server enforces, which is not the configured value when an existing
+    # durable was reused: the keep-alive has to be paced off this one
+    effective_ack_wait: float | None = None
+
+    def _run(self, coro: Any, timeout: float | None = None) -> Any:
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result(timeout=timeout)
+
+    def fetch(self, batch: int, timeout: float) -> list[Any]:
+        """Return up to `batch` messages, or an empty list when the stream is idle."""
+
+        async def _fetch() -> list[Any]:
+            try:
+                return await self.subscription.fetch(batch, timeout=timeout)
+            except (asyncio.TimeoutError, nats.errors.TimeoutError):
+                return []
+
+        return self._run(_fetch(), timeout=timeout + ACK_TIMEOUT_SECONDS)
+
+    def ack(self, message: Any) -> None:
+        """Acknowledge an event, waiting for the server to confirm it."""
+        # ack() only publishes; ack_sync() waits for the server, so a failure surfaces
+        # here instead of leaving the event to be redelivered on the next run
+        self._run(message.ack_sync(timeout=ACK_TIMEOUT_SECONDS), timeout=ACK_TIMEOUT_SECONDS * 2)
+
+    def in_progress(self, message: Any) -> None:
+        """Tell the server the event is still being processed, resetting its ack timer."""
+        self._run(message.in_progress(), timeout=ACK_TIMEOUT_SECONDS)
+
+    def stream_info(self, stream_name: str) -> Any:
+        async def _info() -> Any:
+            return await self.nc.jetstream().stream_info(stream_name)
+
+        return self._run(_info(), timeout=ACK_TIMEOUT_SECONDS)
+
+    def close(self) -> None:
+        async def _close() -> None:
+            # Flush the acknowledgements, then close: draining a pull consumer waits for
+            # deliveries that are not coming and times out
+            await self.nc.flush(timeout=ACK_TIMEOUT_SECONDS)
+            await self.nc.close()
+
+        try:
+            if not self._loop.is_closed():
+                self._run(_close(), timeout=ACK_TIMEOUT_SECONDS * 2)
+        except Exception as exc:
+            logger.warning("Error closing the NATS connection: %s", exc)
+        finally:
+            if not self._loop.is_closed():
+                self._loop.call_soon_threadsafe(self._loop.stop)
+            self._thread.join(timeout=ACK_TIMEOUT_SECONDS)
+            cleanup_temp_secrets(self._temp_files)
+
+
+def _run_event_loop(loop: asyncio.AbstractEventLoop) -> None:
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_forever()
+    finally:
+        loop.close()
+
+
+def _consumer_subject_filter(config: Any) -> str:
+    """The subject filter of a consumer config, as one comparable string.
+
+    A consumer with no filter at all receives every subject of its stream, which is
+    exactly what ``>`` means, so the two spellings have to compare equal. Newer servers
+    also allow a list of filters, which is why the plural field is checked first.
+    """
+    subjects = getattr(config, "filter_subjects", None)
+    if subjects:
+        return ",".join(sorted(subjects))
+    return getattr(config, "filter_subject", None) or ">"
+
+
+async def _existing_consumer(js: Any, consumer: Any, broker: NatsBrokerConfig) -> Any | None:
+    """The durable's config as the server holds it, or None once we created it."""
+    try:
+        info = await js.consumer_info(broker.streamName, broker.durableConsumerName)
+    except nats.js.errors.NotFoundError:
+        pass
+    else:
+        return info.config
+    try:
+        await js.add_consumer(broker.streamName, config=consumer)
+    except nats.js.errors.APIError:
+        # Another run created it between the lookup and here, so hold what now
+        # exists to the same check rather than failing this run over the race
+        info = await js.consumer_info(broker.streamName, broker.durableConsumerName)
+        return info.config
+    return None
+
+
+async def _ensure_consumer(js: Any, consumer: Any, broker: NatsBrokerConfig) -> float | None:
+    """Create the durable consumer, or confirm the existing one is ours.
+
+    Reusing a durable by name is the point -- it carries the position in the
+    stream from one run to the next -- but ``durableConsumerName`` defaults to
+    ``openmetadata`` for every OpenLineage service. A second service pointed at
+    the same stream therefore finds a durable belonging to the first, and binding
+    to it blindly means consuming and acknowledging events this connector was
+    never configured to read. A subject filter that does not match is refused
+    instead of silently adopted.
+
+    Returns the acknowledgement wait the server will enforce, which is the existing
+    consumer's when one is reused.
+    """
+    existing = await _existing_consumer(js, consumer, broker)
+    if existing is None:
+        return consumer.ack_wait
+
+    wanted = _consumer_subject_filter(consumer)
+    found = _consumer_subject_filter(existing)
+    if wanted != found:
+        raise SourceConnectionException(
+            f"The JetStream consumer '{broker.durableConsumerName}' on stream "
+            f"'{broker.streamName}' already exists and filters '{found}', not '{wanted}'. "
+            f"It belongs to a different configuration: give this service its own "
+            f"durableConsumerName, or delete the existing consumer."
+        )
+
+    # A durable cannot be reconfigured through add_consumer, so these stay as the
+    # existing consumer has them. Say so rather than let them look applied.
+    for label, configured, in_use in (
+        ("ackWait", consumer.ack_wait, existing.ack_wait),
+        ("maxDeliver", consumer.max_deliver, existing.max_deliver),
+        ("consumerOffsets", consumer.deliver_policy, existing.deliver_policy),
+    ):
+        if configured != in_use:
+            logger.warning(
+                "The existing JetStream consumer '%s' keeps its %s of %s; the configured %s is ignored",
+                broker.durableConsumerName,
+                label,
+                getattr(in_use, "value", in_use),
+                getattr(configured, "value", configured),
+            )
+
+    return existing.ack_wait
+
+
+def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
+    from nats.js.api import AckPolicy, ConsumerConfig, DeliverPolicy
+
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=_run_event_loop, args=(loop,), name="openmetadata-nats", daemon=True)
+    thread.start()
+    temp_files: list[str] = []
+    try:
+        options = build_connect_options(
+            servers=broker.natsServers,
+            auth=broker.authType,
+            tls_config=broker.tlsConfig,
+            additional_config=broker.additionalConfig,
+            temp_files=temp_files,
+        )
+        # the generated enum members carry the JSON values: all / new
+        deliver_policy = DeliverPolicy.NEW if broker.consumerOffsets == NatsConsumerOffsets.new else DeliverPolicy.ALL
+        # Every subject of the stream, unless the user narrowed it down
+        filter_subject = broker.subject or ">"
+
+        async def _connect() -> tuple[Any, Any]:
+            nc = await nats.connect(**options)
+            try:
+                js = nc.jetstream()
+                consumer = ConsumerConfig(
+                    durable_name=broker.durableConsumerName,
+                    filter_subject=filter_subject,
+                    deliver_policy=deliver_policy,
+                    ack_policy=AckPolicy.EXPLICIT,
+                    ack_wait=broker.ackWait,
+                    # A run that dies mid-batch leaves its events unacknowledged; without
+                    # a limit JetStream would redeliver them on every run
+                    max_deliver=broker.maxDeliver,
+                )
+                effective_ack_wait = await _ensure_consumer(js, consumer, broker)
+                subscription = await js.pull_subscribe_bind(broker.durableConsumerName, stream=broker.streamName)
+            except Exception:
+                # The connection is open by now, so a failure here would leak it: one
+                # live connection per attempt against a stream that does not exist
+                await nc.close()
+                raise
+            return nc, subscription, effective_ack_wait
+
+        nc, subscription, effective_ack_wait = asyncio.run_coroutine_threadsafe(_connect(), loop).result()
+    except Exception as exc:
+        cleanup_temp_secrets(temp_files)
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join(timeout=ACK_TIMEOUT_SECONDS)
+        msg = f"Unknown error connecting with NATS: {exc}."
+        raise SourceConnectionException(msg)  # noqa: B904
+    return NatsJetStreamClient(
+        nc=nc,
+        subscription=subscription,
+        _loop=loop,
+        _thread=thread,
+        _temp_files=temp_files,
+        effective_ack_wait=effective_ack_wait,
+    )
+
+
+class OpenLineageConnection(
+    BaseConnection[OpenLineageConnectionConfig, KafkaConsumer | BaseClient | NatsJetStreamClient]
+):
+    def _get_client(self) -> KafkaConsumer | BaseClient | NatsJetStreamClient:
         """
         Create connection based on broker config type.
         """
@@ -147,6 +386,11 @@ class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaCon
             client = _get_kinesis_connection(broker)
             self._on_close(client.close)
             return client
+
+        if isinstance(broker, NatsBrokerConfig):
+            nats_client = _get_nats_connection(broker)
+            self._on_close(nats_client.close)
+            return nats_client
 
         raise SourceConnectionException(f"Unsupported broker config type: {type(broker)}")
 
@@ -175,6 +419,13 @@ class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaCon
 
             def custom_executor():
                 client.describe_stream_summary(StreamName=broker.streamName)  # pyright: ignore[reportAttributeAccessIssue]
+
+            test_fn = {"CheckBrokerConnectivity": custom_executor}
+
+        elif isinstance(broker, NatsBrokerConfig):
+
+            def custom_executor():
+                client.stream_info(broker.streamName)  # pyright: ignore[reportAttributeAccessIssue]
 
             test_fn = {"CheckBrokerConnectivity": custom_executor}
 
