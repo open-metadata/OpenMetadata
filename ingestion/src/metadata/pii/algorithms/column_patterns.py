@@ -38,7 +38,21 @@ _pii_column_name_regexes: Mapping[PIITag, str | list[str]] = {
     ],
     PIITag.EMAIL_ADDRESS: "^(email|e-mail|mail)(.*address)?$",
     PIITag.PERSON: "^.*(user|client|person|first|last|maiden|nick).*(name).*$",
-    PIITag.DATE_TIME: "^.*(date|time|dob|birthday|dod).*$",
+    # DATE_TIME content hits are suppressed entirely (see classifiers.py).  The only
+    # way a column gets a DATE_TIME PII tag is when its name explicitly signals a
+    # personal date.  Use an allowlist of known personal-date name fragments rather
+    # than a broad "anything with 'date'" match, so operational timestamps
+    # (event_timestamp, created_at, updated_at) are never tagged as PII.
+    PIITag.DATE_TIME: [
+        # Date of birth / age / death
+        r"^.*(date[_-]?of[_-]?birth|birth[_-]?date|dob|birthday|date[_-]?of[_-]?death|dod).*$",
+        # Employment lifecycle dates
+        r"^.*(hire[_-]?date|employment[_-]?date|start[_-]?date|termination[_-]?date|retirement[_-]?date|resignation[_-]?date).*$",
+        # Medical / patient dates
+        r"^.*(admission[_-]?date|discharge[_-]?date|appointment[_-]?date|diagnosis[_-]?date|treatment[_-]?date|medical[_-]?test[_-]?date).*$",
+        # User / account lifecycle dates (registration, onboarding, deletion)
+        r"^.*(registration[_-]?date|signup[_-]?date|sign[_-]?up[_-]?date|account[_-]?date|onboarding[_-]?date|deletion[_-]?date|deactivation[_-]?date).*$",
+    ],
     PIITag.NRP: "^.*(gender|nationality).*$",
     PIITag.LOCATION: "^.*(address|city|state|county|country|zipcode|zip|postal|zone|borough).*$",
     PIITag.PHONE_NUMBER: "^.*(phone).*$",
