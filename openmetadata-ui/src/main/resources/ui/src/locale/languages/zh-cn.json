@@ -1696,6 +1696,7 @@
     "kg-presentation": "呈现方式",
     "kg-range": "值域",
     "kg-relationship-labels": "关系标签",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "{{nodes}} 个实体 · {{edges}} 个关系",
     "kg-selected-entity": "所选实体",
     "kg-show-more": "再显示 {{count}} 条（共 {{total}} 条）",

@@ -1696,6 +1696,7 @@
     "kg-presentation": "Weergave",
     "kg-range": "Bereik",
     "kg-relationship-labels": "Relatielabels",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "{{nodes}} entiteiten · {{edges}} relaties",
     "kg-selected-entity": "Geselecteerde entiteit",
     "kg-show-more": "Nog {{count}} van {{total}} tonen",

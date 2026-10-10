@@ -1696,6 +1696,7 @@
     "kg-presentation": "Présentation",
     "kg-range": "Plage",
     "kg-relationship-labels": "Étiquettes des relations",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "{{nodes}} entités · {{edges}} relations",
     "kg-selected-entity": "Entité sélectionnée",
     "kg-show-more": "Afficher {{count}} de plus sur {{total}}",

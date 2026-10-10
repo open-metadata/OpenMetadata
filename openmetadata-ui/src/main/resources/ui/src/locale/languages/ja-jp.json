@@ -1696,6 +1696,7 @@
     "kg-presentation": "表示方式",
     "kg-range": "値域",
     "kg-relationship-labels": "関係のラベル",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "エンティティ {{nodes}} 件 · 関係 {{edges}} 件",
     "kg-selected-entity": "選択したエンティティ",
     "kg-show-more": "さらに{{count}}件を表示（全{{total}}件）",

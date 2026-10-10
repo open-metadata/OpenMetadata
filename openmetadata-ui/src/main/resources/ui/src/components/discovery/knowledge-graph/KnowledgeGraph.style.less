@@ -35,20 +35,67 @@
     min-width: 0;
   }
 
-  // Canvas row uses `minmax(0, 1fr)` (not min-content) so the canvas yields
-  // first when the viewport is short and the drawer below sits at its clamped
-  // height instead of pushing the whole stage past the window.
+  // Canvas and details share the stage via a horizontal ReflexContainer
+  // (`.kg-stage-main`); overlays like the right-side inspector sit as siblings
+  // of that container inside `.kg-stage` and get positioned via CSS below.
   .kg-stage {
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
     min-width: 0;
     position: relative;
   }
 
-  &.kg-details-open .kg-stage {
-    grid-template-rows: minmax(0, 1fr) auto;
+  .kg-stage-main {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  // Drawer-closed shape: canvas owns the whole stage, no ReflexContainer in
+  // play. We re-create the display/flex contract the ReflexContainer gave us
+  // so `.knowledge-graph-body` can stretch to fill without extra wrappers.
+  .kg-stage-single {
+    display: flex;
+    flex-direction: column;
+  }
+
+  // react-reflex's base styles set `overflow: auto` on every `.reflex-element`;
+  // the canvas pane embeds a G6-managed `<canvas>` that paints larger than the
+  // viewport, so `overflow: auto` would let that canvas prop the pane open.
+  // Lock the pane to `overflow: hidden` and give `.knowledge-graph-body` the
+  // full height so G6 only ever sees the stable visible size.
+  .kg-stage-canvas-pane.reflex-element {
+    overflow: hidden;
+  }
+
+  .kg-stage-single > .knowledge-graph-body,
+  .kg-stage-canvas-pane > .knowledge-graph-body {
+    height: 100%;
+  }
+
+  // The horizontal splitter between canvas and details — a thin tappable
+  // handle that reveals a wider active hit area via a transparent padded
+  // ::before, so the physical border stays 1px but the user has room to grab.
+  .kg-stage-splitter.reflex-splitter {
+    height: var(--om-space-1);
+    background: var(--tw-border-color-secondary);
+    border: 0;
+    cursor: row-resize;
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: calc(-1 * var(--om-space-4)) 0;
+    }
+
+    &:hover,
+    &.active {
+      background: var(--tw-border-color-brand);
+    }
   }
 
   .kg-toolbar-header > div {
@@ -132,18 +179,20 @@
     fill: var(--tw-text-color-quaternary);
   }
 
-  // Design: the list takes a little over a third of the pane, capped so the
-  // graph above keeps room for the subject and its direct neighbours.
-  // `display: flex` + the `min-height: 0` cascade on children is load-bearing:
-  // without them the inner `tw:flex-1 tw:overflow-auto` table body cannot
-  // resolve its height, so the whole drawer expands to its content and the
-  // canvas above gets squeezed out.
+  // The ReflexContainer that wraps canvas + details owns the panel height now;
+  // `.kg-details` only has to grow to fill its ReflexElement cell. Flex +
+  // `min-height: 0` on children stays load-bearing: without them the inner
+  // `tw:flex-1 tw:overflow-auto` table body cannot resolve its height, and
+  // the drawer expands to its content and squeezes the canvas out.
+  .kg-stage-details-pane {
+    min-height: 0;
+  }
+
+  .kg-stage-details-pane > .kg-details,
   .kg-details {
     display: flex;
     flex-direction: column;
-    height: ~'clamp(calc(var(--om-space-40) * 5.5), 36vh, calc(var(--om-space-40) * 8.5))';
-    max-height: calc(var(--om-space-40) * 8.5);
-    min-height: calc(var(--om-space-40) * 5.5);
+    height: 100%;
     overflow: hidden;
 
     > * {
@@ -275,14 +324,9 @@
   .kg-stage:has(.kg-inspector) {
     grid-template-columns: ~'minmax(0, 1fr) min(calc(var(--om-space-44) * 8), 36%)';
 
-    .knowledge-graph-body {
+    .kg-stage-main {
       grid-column: 1;
       grid-row: 1;
-    }
-
-    .kg-details {
-      grid-column: 1;
-      grid-row: 2;
     }
   }
 

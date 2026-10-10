@@ -1696,6 +1696,7 @@
     "kg-presentation": "نمایش",
     "kg-range": "برد",
     "kg-relationship-labels": "برچسب‌های رابطه",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "{{nodes}} موجودیت · {{edges}} رابطه",
     "kg-selected-entity": "موجودیت انتخاب‌شده",
     "kg-show-more": "نمایش {{count}} مورد بیشتر از {{total}}",

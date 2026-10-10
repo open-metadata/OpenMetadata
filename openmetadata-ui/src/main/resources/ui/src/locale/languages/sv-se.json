@@ -1696,6 +1696,7 @@
     "kg-presentation": "Presentation",
     "kg-range": "Värdemängd",
     "kg-relationship-labels": "Relationsetiketter",
+    "kg-resize-details": "Drag to resize the details panel",
     "kg-returned-counts": "{{nodes}} entiteter · {{edges}} relationer",
     "kg-selected-entity": "Vald entitet",
     "kg-show-more": "Visa {{count}} till av {{total}}",
