@@ -30,7 +30,11 @@ import type { Key } from 'react-aria-components';
 import { useDragAndDrop } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../../../../../constants/constants';
+import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
+import {
+  INITIAL_PAGING_VALUE,
+  ROUTES,
+} from '../../../../../../constants/constants';
 import { ExportTypes } from '../../../../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -188,6 +192,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   // or after unmount) must not report its name up via onRename and clobber the
   // now-current team's header. Bumped on each fetch start and on unmount.
   const fetchIdRef = useRef(0);
+  // Bumped on each user search so a slow, stale search response can't overwrite
+  // the rows for a newer search (or the cleared-search page fetch) that followed.
+  const latestUserSearchIdRef = useRef(0);
 
   // Inline add role/policy — only one tab is ever adding at a time, so a single
   // field-keyed add session serves both (defaultRoles | policies).
@@ -398,8 +405,95 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [team?.name, usersPageSize, handleUsersPagingChange]
   );
 
+  // Whole-team user search via the backend search API, mirroring the sibling
+  // MembersUsersPanel and the legacy UserTab. getUsers has no name/query field,
+  // so a client-side filter over one cursor page would miss off-page members on
+  // multi-page teams. Scopes the query to this team and its descendant teams
+  // (descendantTeams is resolved on the team request above) so members inherited
+  // from sub-groups are found too, matches the Users tab list. isBot:false keeps
+  // search results consistent with the non-search getUsers list (which excludes
+  // bots). Number-based paging — pageNumber drives the result page directly.
+  const searchTeamUsers = useCallback(
+    async (query: string, page: number = INITIAL_PAGING_VALUE) => {
+      if (!team?.id) {
+        return;
+      }
+      const searchId = ++latestUserSearchIdRef.current;
+      setIsTeamUsersLoading(true);
+      try {
+        const response = await searchQuery({
+          query: `${WILD_CARD_CHAR}${query}${WILD_CARD_CHAR}`,
+          pageNumber: page,
+          pageSize: usersPageSize,
+          searchIndex: SearchIndex.USER,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [
+                  {
+                    terms: {
+                      'teams.id': [
+                        team.id,
+                        ...(team.descendantTeams?.map((t) => t.id) ?? []),
+                      ],
+                    },
+                  },
+                  {
+                    term: { isBot: 'false' },
+                  },
+                ],
+              },
+            },
+          },
+        });
+        if (searchId !== latestUserSearchIdRef.current) {
+          return;
+        }
+        const data = response.hits.hits.map((hit) => hit._source as User);
+        setTeamUsers(data);
+        handleUsersPagingChange({ total: response.hits.total.value });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+        setTeamUsers([]);
+        handleUsersPagingChange({ total: 0 });
+      } finally {
+        if (searchId === latestUserSearchIdRef.current) {
+          setIsTeamUsersLoading(false);
+        }
+      }
+    },
+    [team?.id, team?.descendantTeams, usersPageSize, handleUsersPagingChange]
+  );
+
+  // Drives the users search input: sets the term and dispatches either a backend
+  // search (non-empty) or the cursor-paginated getUsers fetch (cleared). Mirrors
+  // MembersUsersPanel.handleSearch. The term is deliberately NOT an effect dep —
+  // search/clear is driven here, not by the refetch effect, to avoid a double
+  // fetch on every keystroke (the search input debounces via typingInterval).
+  const handleUsersSearch = useCallback(
+    (term: string) => {
+      setUsersSearchTerm(term);
+      handleUsersPageChange(INITIAL_PAGING_VALUE);
+      if (term) {
+        void searchTeamUsers(term);
+      } else {
+        void fetchTeamUsers();
+      }
+    },
+    [handleUsersPageChange, searchTeamUsers, fetchTeamUsers]
+  );
+
   const handleTeamUsersPageNavigation = (newPage: number) => {
     if (newPage === usersPage) {
+      return;
+    }
+
+    // Search uses number-based paging — pageNumber drives the result page, so
+    // any page jump is allowed (no ±1 cursor restriction).
+    if (usersSearchTerm) {
+      handleUsersPageChange(newPage);
+      void searchTeamUsers(usersSearchTerm, newPage);
+
       return;
     }
 
@@ -442,7 +536,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const refetchTeamUsers = useRef<() => void>(() => undefined);
   refetchTeamUsers.current = () => {
     if (team && activeTab === 'users') {
-      void fetchTeamUsers();
+      if (usersSearchTerm) {
+        void searchTeamUsers(usersSearchTerm);
+      } else {
+        void fetchTeamUsers();
+      }
     }
   };
 
@@ -617,12 +715,15 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           t('server.update-entity-success', { entity: t('label.team') })
         );
         void fetchTeam();
-        void fetchTeamUsers();
+        // Re-run the active view (search or paginated list) so removing a user
+        // during a search doesn't drop the search term: the refetch runs the
+        // backend search when a term is active, the page fetch otherwise.
+        refetchTeamUsers.current();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [team, t, fetchTeam, fetchTeamUsers]
+    [team, t, fetchTeam]
   );
 
   const handleAddUsers = useCallback(
@@ -633,9 +734,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         return;
       }
       await handlePatchTeam({ ...team, users });
-      void fetchTeamUsers();
+      // Re-run the active view — preserve an in-flight search rather than
+      // swapping in the unfiltered first page (see handleRemoveUser).
+      refetchTeamUsers.current();
     },
-    [team, handlePatchTeam, fetchTeamUsers]
+    [team, handlePatchTeam]
   );
 
   const handleStartAdd = useCallback(
@@ -940,18 +1043,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     );
   }, [childTeams, searchTerm]);
 
-  const filteredTeamUsers = useMemo(() => {
-    if (!usersSearchTerm) {
-      return teamUsers;
-    }
-    const lower = usersSearchTerm.toLowerCase();
-
-    return teamUsers.filter(
-      (u) =>
-        (u.name ?? '').toLowerCase().includes(lower) ||
-        getEntityName(u).toLowerCase().includes(lower)
-    );
-  }, [teamUsers, usersSearchTerm]);
+  // The users rows are now sourced entirely from the backend: getUsers for the
+  // paginated list and searchQuery (whole-team) when a search term is active,
+  // so no client-side filter is applied here — both paths write `teamUsers`.
 
   const addItems = useMemo<SelectItemType[]>(
     () =>
@@ -1122,7 +1216,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         return (
           <MembersUsersTab
             canEditAll={canEditAll}
-            filteredTeamUsers={filteredTeamUsers}
+            filteredTeamUsers={teamUsers}
             isGroupType={isGroupType}
             isTeamUsersLoading={isTeamUsersLoading}
             showUsersPagination={showUsersPagination}
@@ -1137,7 +1231,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             onTeamUsersPageNavigation={handleTeamUsersPageNavigation}
             onUsersExport={handleUsersExport}
             onUsersPageSizeChange={handleUsersPageSizeChange}
-            onUsersSearchTermChange={setUsersSearchTerm}
+            onUsersSearchTermChange={handleUsersSearch}
           />
         );
       case 'assets':
