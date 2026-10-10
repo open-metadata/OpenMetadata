@@ -27,10 +27,16 @@ coverage, a retried one looks green.
 
 ## Entries
 
-No entries. The threshold for quarantining is **2 or more** failures, counted per
-generated variant rather than per source line. The 11 merge_group runs sampled
-on 2026-09-04 that seeded this list are all released now, as is the DataContracts
-entry that was tagged separately on 2026-09-11 (see *Released from quarantine*).
+The live set is whatever the specs currently `@quarantine`-tag —
+`git grep '@quarantine' -- '*.spec.ts'` lists it; each tag should also have a row
+here with its evidence and owner. The threshold for quarantining is **2 or
+more** failures, counted per generated variant rather than per source line. The
+11 merge_group runs sampled on 2026-09-04 that seeded this list are all released
+now, as is the DataContracts entry that was tagged separately on 2026-09-11
+(see *Released from quarantine*).
+
+| Spec / variant | Tests | Evidence and root cause | Owner / release condition |
+|---|---|---|---|
 
 ### Triage, 2026-09-09
 
