@@ -110,11 +110,13 @@ const Certification = ({
   };
 
   // Keyed on the resolved open state, so a caller opening it through
-  // `popoverProps.open` fetches as well. A form field fetches up front so its
-  // closed trigger can name the selected certification.
+  // `popoverProps.open` fetches as well. A form field fetches once up front, so
+  // its closed trigger can name the selected certification, and again on open
+  // only if that first fetch came back empty.
   useEffect(() => {
-    if (isOpen || isFormField) {
-      fetchCertifications();
+    if (isFormField ? certifications.length === 0 : isOpen) {
+      // Errors are toasted inside; nothing to await here.
+      void fetchCertifications();
     }
   }, [isOpen]);
 

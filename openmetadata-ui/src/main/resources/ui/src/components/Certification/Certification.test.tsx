@@ -209,4 +209,24 @@ describe('Certification', () => {
       after: 'page-2',
     });
   });
+
+  it('should fetch a form field once, not on every open and close', async () => {
+    render(
+      <Certification
+        {...defaultProps}
+        currentCertificate="Certification.Gold"
+        popoverProps={undefined}>
+        {undefined}
+      </Certification>
+    );
+
+    const trigger = await screen.findByRole('button', { name: 'Gold' });
+    fireEvent.click(trigger);
+    await screen.findByTestId('Certification.Silver');
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    fireEvent.click(trigger);
+    await screen.findByTestId('Certification.Silver');
+
+    expect(mockGetTags).toHaveBeenCalledTimes(1);
+  });
 });
