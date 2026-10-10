@@ -1851,7 +1851,8 @@ test.describe(
         .first();
       await expect(row).toBeVisible();
 
-      await row.getByRole('status').click();
+      // Status and Health are both role="status" pills; click the Status one.
+      await row.getByTestId('metric-status-pill').click();
 
       await expect(page).toHaveURL(/\/metric\//);
     });

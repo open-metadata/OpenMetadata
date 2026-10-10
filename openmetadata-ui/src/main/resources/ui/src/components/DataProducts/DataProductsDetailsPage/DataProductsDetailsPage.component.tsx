@@ -10,16 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import { Avatar, Box, Button, Tabs } from '@openmetadata/ui-core-components';
 import {
-  Avatar,
-  Button as CoreButton,
-  Tabs,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Announcement02 as IconAnnouncementsBlack } from '@openmetadata/ui-core-components/icons';
-import { Button, Tooltip } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+  Announcement02 as IconAnnouncementsBlack,
+  RefreshCcw01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toLower, toString } from 'lodash';
@@ -30,7 +25,6 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
 import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
@@ -114,10 +108,12 @@ import {
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import { DEFAULT_DATA_PRODUCT_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
+import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -125,7 +121,7 @@ import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interfac
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
-import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import DataProductMetadataModal from '../DataProductMetadataModal/DataProductMetadataModal.component';
 import ODPSImportModal from '../ODPSImportModal/ODPSImportModal.component';
 import './data-products-details-page.less';
@@ -396,16 +392,16 @@ function DataProductActionButtons(
 
       {!isVersionsView && canCreate && (
         <Button
+          color="primary"
           data-testid="data-product-details-add-button"
-          type="primary"
-          onClick={openAssetDrawer}>
+          onPress={openAssetDrawer}>
           {t('label.add-entity', {
             entity: t('label.asset-plural'),
           })}
         </Button>
       )}
 
-      <ButtonGroup className="spaced" size="small">
+      <Box align="center" gap={4}>
         {dataContractLatestResultButton}
 
         {onUpdateVote && (
@@ -417,29 +413,20 @@ function DataProductActionButtons(
         )}
 
         {dataProduct?.version && (
-          <Tooltip
-            title={t(
+          <StatItem
+            count={toString(dataProduct.version)}
+            icon={RefreshCcw01}
+            isActive={Boolean(version)}
+            testId="version-button"
+            tooltip={t(
               `label.${
                 isVersionsView
                   ? 'exit-version-history'
                   : 'version-plural-history'
               }`
-            )}>
-            <Button
-              className={classNames('', {
-                'text-primary border-primary': version,
-              })}
-              data-testid="version-button"
-              icon={<Icon component={VersionIcon} />}
-              onClick={handleVersionClick}>
-              <Typography
-                className={classNames('', {
-                  'text-primary': version,
-                })}>
-                {toString(dataProduct.version)}
-              </Typography>
-            </Button>
-          </Tooltip>
+            )}
+            onClick={handleVersionClick}
+          />
         )}
 
         {!isVersionsView && manageButtonContent.length > 0 && (
@@ -453,7 +440,7 @@ function DataProductActionButtons(
             onOpenChange={setShowActions}
           />
         )}
-      </ButtonGroup>
+      </Box>
     </div>
   );
 }
@@ -967,7 +954,7 @@ const DataProductsDetailsPage = ({
       );
 
       return (
-        <CoreButton
+        <Button
           noTextPadding
           className={classNames(
             CONTRACT_RESULT_BUTTON_BASE_CLASS,
@@ -987,7 +974,7 @@ const DataProductsDetailsPage = ({
           {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
             entity: t('label.contract'),
           })}
-        </CoreButton>
+        </Button>
       );
     }
 
@@ -1168,7 +1155,8 @@ const DataProductsDetailsPage = ({
         }}
       />
 
-      <StyleModal
+      <IconColorModal
+        defaultIcon={DEFAULT_DATA_PRODUCT_ICON}
         open={isStyleEditing}
         style={dataProduct.style}
         onCancel={() => setIsStyleEditing(false)}
