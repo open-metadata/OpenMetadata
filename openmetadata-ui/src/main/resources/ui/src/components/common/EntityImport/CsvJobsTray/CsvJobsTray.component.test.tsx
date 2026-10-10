@@ -418,84 +418,11 @@ describe('CsvJobsTray', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv-job');
   });
 
-  // The completion websocket event only reaches sockets held by the server that
-  // ran the job, so on a multi-server deployment it is often delivered to a peer.
-  // Polling is what actually keeps the tray truthful.
-  it('polls for job updates while a job is active, without a websocket event', async () => {
-    mockGetCsvAsyncJobs
-      .mockResolvedValueOnce([
-        createJob({
-          jobId: 'running-job',
-          progress: 20,
-          result: undefined,
-          status: 'RUNNING',
-        }),
-      ])
-      .mockResolvedValue([
-        createJob({ jobId: 'running-job', status: 'COMPLETED' }),
-      ]);
-
-    await act(async () => {
-      render(<CsvJobsTray />);
-    });
-
-    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      jest.advanceTimersByTime(5000);
-    });
-
-    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(2);
-    expect(screen.getByText('label.background-job-plural')).toBeInTheDocument();
-
-    // Once nothing is active the loop must stop rather than poll forever.
-    const callsAfterCompletion = mockGetCsvAsyncJobs.mock.calls.length;
-    await act(async () => {
-      jest.advanceTimersByTime(20000);
-    });
-
-    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(callsAfterCompletion);
-  });
-
-  it('auto-opens an owned export for download via polling alone on multi-pod', async () => {
-    const multipodExportJobId = 'multipod-export-job';
-    markCsvJobOwned(multipodExportJobId);
-
-    mockGetCsvAsyncJobs
-      .mockResolvedValueOnce([
-        createJob({
-          jobId: multipodExportJobId,
-          progress: 20,
-          result: undefined,
-          status: 'RUNNING',
-        }),
-      ])
-      .mockResolvedValue([
-        createJob({ jobId: multipodExportJobId, status: 'COMPLETED' }),
-      ]);
-
-    await act(async () => {
-      render(<CsvJobsTray />);
-    });
-
-    expect(
-      await screen.findByText('label.count-jobs-running')
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'label.download' })
-    ).not.toBeInTheDocument();
-
-    await act(async () => {
-      jest.advanceTimersByTime(5000);
-    });
-
-    expect(
-      screen.getByRole('button', { name: 'label.download' })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('label.exported-entity-plural')
-    ).toBeInTheDocument();
-  });
+  // Cross-pod completion delivery is no longer the tray's concern: the WebSocketRelay
+  // carries the CSV_IMPORT/EXPORT channel frames to the pod holding this socket, so the
+  // tray refreshes from its socket subscription without a fallback poll. Relay delivery is
+  // covered by DbWebSocketRelayTest / WebSocketManagerTest; job discovery over the socket is
+  // covered by the "discovered after the initial fetch" cases below.
 
   it('fires a follow-up fetch after a refresh event to catch a late-registering job', async () => {
     mockGetCsvAsyncJobs
@@ -580,48 +507,6 @@ describe('CsvJobsTray', () => {
     expect(
       await screen.findByText('label.clear-completed')
     ).toBeInTheDocument();
-  });
-
-  // The poll is self-scheduling rather than a fixed interval, so a response
-  // slower than the interval cannot stack up concurrent requests.
-  it('does not start another poll while one is still in flight', async () => {
-    let resolveSlowFetch: (jobs: CsvAsyncJob[]) => void = () => undefined;
-    mockGetCsvAsyncJobs
-      .mockResolvedValueOnce([
-        createJob({
-          jobId: 'slow-job',
-          progress: 20,
-          result: undefined,
-          status: 'RUNNING',
-        }),
-      ])
-      .mockImplementationOnce(
-        () =>
-          new Promise<CsvAsyncJob[]>((resolve) => {
-            resolveSlowFetch = resolve;
-          })
-      );
-
-    await act(async () => {
-      render(<CsvJobsTray />);
-    });
-
-    await act(async () => {
-      jest.advanceTimersByTime(5000);
-    });
-
-    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(2);
-
-    // Three further intervals elapse while the second poll is unresolved.
-    await act(async () => {
-      jest.advanceTimersByTime(15000);
-    });
-
-    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      resolveSlowFetch([createJob({ jobId: 'slow-job', status: 'COMPLETED' })]);
-    });
   });
 
   it('marks a job undownloadable when its result is gone', async () => {
