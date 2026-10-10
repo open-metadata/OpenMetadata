@@ -14,8 +14,8 @@
 import { Select } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Key, useMemo } from 'react';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
 import CoreTreeSelectWidget from './CoreTreeSelectWidget';
+import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
 
 const CoreEnumSelectWidget = ({
   id,
