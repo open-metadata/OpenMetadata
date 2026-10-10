@@ -483,7 +483,6 @@ class IngestionLogTailerTest {
     }
   }
 
-  /** Wall clock the test moves by hand, so timeouts are asserted rather than waited out. */
   /** Line-offset pagination over a log that keeps growing, as {@code S3LogStorage.getLogs} pages. */
   private static final class GrowingLogStorage implements StorageLogTailSource.LogPageReader {
 
@@ -506,6 +505,7 @@ class IngestionLogTailerTest {
     }
   }
 
+  /** Wall clock the test moves by hand, so timeouts are asserted rather than waited out. */
   private static final class FakeClock implements LongSupplier {
 
     private long nanos = 1_000_000_000L;
