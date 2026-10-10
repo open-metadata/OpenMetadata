@@ -274,6 +274,24 @@ describe('QueryBuilderRuleRow', () => {
     expect(actions.removeRule).toHaveBeenCalledWith(['root', 'r1']);
   });
 
+  it('should draw the delete control red unless the preset asks for a plain button', () => {
+    const { unmount } = renderRow();
+
+    expect(screen.getByTestId('advanced-search-delete-rule')).toHaveClass(
+      'tw:text-error-primary'
+    );
+
+    unmount();
+    renderRow(
+      {},
+      { preset: { ...EXPLORE_BUTTON_PRESET, delRuleColor: 'secondary' } }
+    );
+
+    expect(screen.getByTestId('advanced-search-delete-rule')).not.toHaveClass(
+      'tw:text-error-primary'
+    );
+  });
+
   it('should withhold the delete control from the last remaining rule', () => {
     renderRow({}, { canRemoveRule: false });
 

@@ -56,6 +56,8 @@ export interface QueryBuilderProps {
   // Seed subfield, for the JSONLogic `rule_group` seed.
   subField?: string;
   readonly?: boolean;
+  // Lets the last remaining condition be removed; the caller must handle the emptied tree.
+  allowRemoveLastRule?: boolean;
 
   // ---- chrome ----
   label?: string;
