@@ -2177,6 +2177,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+    List<EntityReference> nonColumnAssets = new ArrayList<>();
 
     if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
@@ -2221,7 +2222,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         // Update ES
         searchRepository.updateEntity(ref);
         RdfUpdater.updateEntity(asset);
+        // Collect for batch propagation to child entities
+        nonColumnAssets.add(ref);
       }
+    }
+
+    // Batch propagate tag removal to child entities (columns, test suites, test cases)
+    if (!dryRun && !nullOrEmpty(nonColumnAssets)) {
+      searchRepository.propagateTagRemovalToChildren(
+          nonColumnAssets, term.getFullyQualifiedName());
     }
 
     return result.withSuccessRequest(success);
