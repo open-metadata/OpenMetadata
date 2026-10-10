@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { searchGlossaryTerms } from '../../../rest/glossaryAPI';
+import { convertGlossaryTermsToTreeOptions } from '../../../utils/GlossaryUtils';
 import { SelectOption } from './AsyncSelectList.interface';
 import TreeAsyncSelectList from './TreeAsyncSelectList';
 
@@ -55,5 +57,47 @@ describe('TreeAsyncSelectList', () => {
 
   it('should render the component', () => {
     expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
+  });
+
+  it('should expand every level of the search results', async () => {
+    jest.useFakeTimers();
+    (convertGlossaryTermsToTreeOptions as jest.Mock).mockImplementation(
+      jest.requireActual('../../../utils/GlossaryUtils')
+        .convertGlossaryTermsToTreeOptions
+    );
+    (searchGlossaryTerms as jest.Mock).mockResolvedValue([
+      {
+        id: 'g',
+        name: 'Business',
+        fullyQualifiedName: 'Business',
+        children: [
+          {
+            id: 'c',
+            name: 'Customer',
+            fullyQualifiedName: 'Business.Customer',
+            children: [
+              {
+                id: 't',
+                name: 'Churn',
+                fullyQualifiedName: 'Business.Customer.Churn',
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Churn' },
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(
+      await screen.findByTestId('tag-Business.Customer.Churn')
+    ).toBeInTheDocument();
+
+    jest.useRealTimers();
   });
 });

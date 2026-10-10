@@ -1701,7 +1701,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private List<?> buildSearchHierarchy(
       org.openmetadata.schema.search.SearchRequest request,
       SearchResponse<JsonData> searchResponse,
-      String clusterAlias) {
+      String clusterAlias)
+      throws IOException {
     List<?> response = new ArrayList<>();
 
     String indexName = request.getIndex();
@@ -1716,7 +1717,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     if (indexName.equalsIgnoreCase(glossaryTermIndex)
         || indexName.equalsIgnoreCase(glossaryTermAlias)) {
-      response = buildGlossaryTermSearchHierarchy(searchResponse);
+      response = buildGlossaryTermSearchHierarchy(indexName, searchResponse);
     } else if (indexName.equalsIgnoreCase(domainIndex) || indexName.equalsIgnoreCase(domainAlias)) {
       response = buildDomainSearchHierarchy(searchResponse);
     }
@@ -1724,7 +1725,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   private List<EntityHierarchy> buildGlossaryTermSearchHierarchy(
-      SearchResponse<JsonData> searchResponse) {
+      String indexName, SearchResponse<JsonData> searchResponse) throws IOException {
     Map<String, EntityHierarchy> termMap = new LinkedHashMap<>();
     Map<String, EntityHierarchy> rootTerms = new LinkedHashMap<>();
 
@@ -1748,6 +1749,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       termMap.putIfAbsent(term.getFullyQualifiedName(), term);
     }
 
+    addMissingAncestors(indexName, termMap);
     termMap.putAll(rootTerms);
 
     termMap
@@ -1773,6 +1775,55 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             });
 
     return new ArrayList<>(rootTerms.values());
+  }
+
+  // Ancestors that ranked below the page cut would orphan the hits beneath them
+  private void addMissingAncestors(String indexName, Map<String, EntityHierarchy> termMap)
+      throws IOException {
+    List<FieldValue> missing =
+        termMap.keySet().stream()
+            .flatMap(fqn -> ancestorFqns(fqn).stream())
+            .filter(fqn -> !termMap.containsKey(fqn))
+            .distinct()
+            .map(FieldValue::of)
+            .toList();
+    if (!missing.isEmpty()) {
+      for (EntityHierarchy term : fetchTermsByFqn(indexName, missing)) {
+        term.setChildren(new ArrayList<>());
+        termMap.putIfAbsent(term.getFullyQualifiedName(), term);
+      }
+    }
+  }
+
+  private List<EntityHierarchy> fetchTermsByFqn(String indexName, List<FieldValue> fqns)
+      throws IOException {
+    Query byFqn =
+        Query.of(q -> q.terms(t -> t.field("fullyQualifiedName").terms(tv -> tv.value(fqns))));
+    // Same status gate as buildHierarchyQuery
+    Query approved =
+        Query.of(q -> q.match(m -> m.field("entityStatus").query(FieldValue.of("Approved"))));
+    SearchResponse<JsonData> response =
+        client.search(
+            s ->
+                s.index(indexName)
+                    .size(fqns.size())
+                    .query(q -> q.bool(b -> b.filter(List.of(byFqn, approved)))),
+            JsonData.class);
+    return response.hits().hits().stream()
+        .filter(hit -> hit.source() != null)
+        .map(hit -> JsonUtils.readValue(hit.source().toJson().toString(), EntityHierarchy.class))
+        .toList();
+  }
+
+  // Term ancestors only: the glossary (single-part FQN) is the root and lives in another index
+  private static List<String> ancestorFqns(String fqn) {
+    List<String> ancestors = new ArrayList<>();
+    for (String parent = getParentFQN(fqn);
+        parent != null && getParentFQN(parent) != null;
+        parent = getParentFQN(parent)) {
+      ancestors.add(parent);
+    }
+    return ancestors;
   }
 
   private List<EntityHierarchy> buildDomainSearchHierarchy(
