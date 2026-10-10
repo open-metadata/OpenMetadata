@@ -329,11 +329,18 @@ final class GovernanceActivity {
       if (versions == null) {
         return result;
       }
-      for (Object version : versions) {
-        LLMModel versionModel = asLlmVersion(version);
-        if (versionModel != null
-            && versionModel.getGovernanceStatus() == LLMModel.GovernanceStatus.PENDING_REVIEW
-            && versionModel.getUpdatedAt() != null) {
+      for (int i = 0; i < versions.size(); i++) {
+        LLMModel versionModel = asLlmVersion(versions.get(i));
+        if (versionModel == null
+            || versionModel.getGovernanceStatus() != LLMModel.GovernanceStatus.PENDING_REVIEW
+            || versionModel.getUpdatedAt() == null) {
+          continue;
+        }
+        LLMModel older = i + 1 < versions.size() ? asLlmVersion(versions.get(i + 1)) : null;
+        boolean predecessorIsNotPendingReview =
+            older == null
+                || older.getGovernanceStatus() != LLMModel.GovernanceStatus.PENDING_REVIEW;
+        if (predecessorIsNotPendingReview) {
           result = new LlmSubmission(versionModel.getUpdatedBy(), versionModel.getUpdatedAt());
           break;
         }
