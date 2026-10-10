@@ -278,11 +278,10 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async assignTier(tierName: string): Promise<OverviewPageObject> {
-    // A panel scroll closes the picker; the click's scroll-into-view can land just after it opens.
-    await expect(async () => {
-      await this.editTierIcon.click();
-      await expect(this.tierListContainer).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 15_000 });
+    await this.editTierIcon.click();
+
+    // Wait for the tier selection popover
+    await this.tierListContainer.waitFor({ state: 'visible' });
 
     await waitForAllLoadersToDisappear(this.tierListContainer);
 
@@ -533,12 +532,10 @@ export class OverviewPageObject extends RightPanelBase {
   async removeTier(): Promise<OverviewPageObject> {
     await this.editTierIcon.scrollIntoViewIfNeeded();
     await this.editTierIcon.waitFor({ state: 'visible' });
-    // A panel scroll closes the picker; the click's scroll-into-view can land just after it opens.
-    await expect(async () => {
-      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-      await this.editTierIcon.click({ force: true });
-      await expect(this.tierListContainer).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 15_000 });
+    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
+    await this.editTierIcon.click({ force: true });
+
+    await this.tierListContainer.waitFor({ state: 'visible' });
     await this.clearTierButton.waitFor({ state: 'visible' });
 
     const patchPromise = this.waitForPatchResponse();

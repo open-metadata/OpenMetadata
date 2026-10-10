@@ -806,7 +806,13 @@ export const removeDataProduct = async (
   );
   await picker.getByTestId('search-input').fill(dataProduct.displayName);
   await searchDataProduct;
-  await picker.getByTestId(dataProduct.fullyQualifiedName ?? '').click();
+  const row = picker.getByTestId(dataProduct.fullyQualifiedName ?? '');
+  // A single-select picker's radio row can't be unpicked; Clear all drops it.
+  if ((await row.getAttribute('role')) === 'menuitemradio') {
+    await picker.getByTestId('clear-filter-btn').click();
+  } else {
+    await row.click();
+  }
 
   await expect(picker.getByTestId('update-btn')).toBeEnabled();
 

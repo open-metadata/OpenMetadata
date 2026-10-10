@@ -924,10 +924,13 @@ const FilterSelect = ({
         placement={placement}
         style={popoverStyle}
         // A custom trigger has no MenuTrigger around it, so the popover takes
-        // its open state directly.
+        // its open state directly. React Aria's only close request here is
+        // from `isNonModal`'s close-on-ancestor-scroll, which fires when a
+        // page still settling scrolls just after opening. Dismissal is owned
+        // above, so like TreeSelect only the open request is honoured.
         {...(hasCustomTrigger && {
           isOpen,
-          onOpenChange: handleOpenChange,
+          onOpenChange: (open: boolean) => open && handleOpenChange(true),
         })}
         triggerRef={anchorRef}>
         <div

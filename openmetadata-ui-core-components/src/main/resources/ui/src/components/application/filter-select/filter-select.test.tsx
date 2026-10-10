@@ -902,6 +902,21 @@ describe('FilterSelect', () => {
     );
   });
 
+  it('stays open from a custom trigger when the page scrolls', () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      trigger: <button type="button">Edit</button>,
+      onOpenChange,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.scroll(document);
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
   it('disables the built-in trigger', () => {
     renderFilter({
       isDisabled: true,
