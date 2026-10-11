@@ -1696,7 +1696,7 @@
     "kg-presentation": "תצוגה",
     "kg-range": "טווח",
     "kg-relationship-labels": "תוויות קשרים",
-    "kg-resize-details": "Drag to resize the details panel",
+    "kg-resize-details": "גרור כדי לשנות את גודל חלונית הפרטים",
     "kg-returned-counts": "{{nodes}} ישויות · {{edges}} קשרים",
     "kg-selected-entity": "הישות שנבחרה",
     "kg-show-more": "הצגת {{count}} נוספים מתוך {{total}}",

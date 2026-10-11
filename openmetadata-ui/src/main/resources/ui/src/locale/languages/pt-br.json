@@ -1696,7 +1696,7 @@
     "kg-presentation": "Apresentação",
     "kg-range": "Intervalo",
     "kg-relationship-labels": "Rótulos de relações",
-    "kg-resize-details": "Drag to resize the details panel",
+    "kg-resize-details": "Arraste para redimensionar o painel de detalhes",
     "kg-returned-counts": "{{nodes}} entidades · {{edges}} relações",
     "kg-selected-entity": "Entidade selecionada",
     "kg-show-more": "Mostrar mais {{count}} de {{total}}",
