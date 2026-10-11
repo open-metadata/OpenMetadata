@@ -405,6 +405,17 @@ describe('withExistingValues for a tag task', () => {
     ]);
   });
 
+  // An empty currentTags is the payload's default, not a snapshot.
+  it('reads the asset when the payload carries an empty currentTags', () => {
+    expect(
+      withExistingValues(
+        change,
+        tagTask({ fieldPath: 'columns.email', currentTags: [] }),
+        entity
+      )?.unchanged
+    ).toEqual(['PII.Email']);
+  });
+
   it("prefers the payload's snapshot of the current tags", () => {
     expect(
       withExistingValues(
