@@ -30,12 +30,12 @@ import org.apache.jena.query.Syntax;
  * NAMED so that GRAPH patterns cannot reach the inferred graphs either.
  *
  * <p>Asserted graphs are not a closed set, since SPARQL updates and loaders may create any graph,
- * so the list is read from the store. Listing graph names scans the quad index, so the list is
- * cached briefly; a graph created since is left out until the next refresh, while a new inferred
+ * so the list is read from the store. It is refreshed in the background, so queries never wait on
+ * the listing; a graph created since is left out until the next refresh, while a new inferred
  * graph is never let in.
  */
 final class AssertedOnlyQueries {
-  static final Duration GRAPH_LIST_TTL = Duration.ofSeconds(30);
+  static final Duration GRAPH_LIST_TTL = Duration.ofMinutes(2);
 
   /** Names no graph, so a store without asserted graphs answers from an empty dataset. */
   static final String NO_ASSERTED_GRAPH = "urn:openmetadata:rdf:no-asserted-graph";
@@ -55,7 +55,7 @@ final class AssertedOnlyQueries {
     this.assertedGraphs =
         Caffeine.newBuilder()
             .maximumSize(1)
-            .expireAfterWrite(graphListTtl)
+            .refreshAfterWrite(graphListTtl)
             .build(ignored -> listAssertedGraphs());
   }
 
