@@ -209,6 +209,14 @@ short interval, or a SQL outage that prevents enqueueing, is outside the queue's
 Enqueue failures are logged and degrade projection health when SQL is available; a failed health
 write is retried while that process remains alive. This is not a transactional metadata outbox.
 
+During a rolling upgrade from a release before 2.1.0, reasoning freshness can report results as
+current that are not. Older servers enqueue without recording
+`rdf_projection_health.enqueuedWatermark`. A 2.1.0 server that delivers or dead-letters such a
+write records its ID, but an older server that drains it removes the only trace of that write. An
+older server's blue/green promotion also switches datasets without assigning a new generation.
+Avoid blue/green rebuilds until every server runs 2.1.0, and refresh reasoning after the last older
+server stops.
+
 ## Write throughput
 
 TDB2 is a single-writer store, and the indexing pipeline is built around that fact: reader
