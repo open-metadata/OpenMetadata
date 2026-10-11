@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
@@ -249,6 +250,17 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   public void validateTags(DashboardDataModel entity) {
     super.validateTags(entity);
     validateColumnTags(entity.getColumns());
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    DashboardDataModel dashboardDataModel = (DashboardDataModel) entity;
+    EntityUtil.mergeTags(allTags, dashboardDataModel.getTags());
+    for (Column column : listOrEmpty(dashboardDataModel.getColumns())) {
+      EntityUtil.mergeTags(allTags, column.getTags());
+    }
+    return allTags;
   }
 
   public class DataModelUpdater extends ColumnEntityUpdater {
