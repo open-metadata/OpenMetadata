@@ -46,6 +46,9 @@ import org.openmetadata.schema.utils.JsonUtils;
  * The reasoning protocol between OpenMetadata and the RDF store. Each example under {@code
  * rdf/reasoning/} must satisfy its JSON Schema and survive the generated Java model unchanged,
  * because the store implements the protocol from the schemas, not from these classes.
+ *
+ * <p>The per-operation rules are recorded in
+ * ADR:2026-10-11-rdf-reasoning-job-requests-carry-the-fields-their-operation-needs.
  */
 class RdfReasoningContractTest {
   private static final String SCHEMA_BASE = "https://open-metadata.org/schema/";

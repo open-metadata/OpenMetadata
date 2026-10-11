@@ -147,7 +147,8 @@ public final class RdfLiveWriteStore {
   /**
    * Removes a delivered or dead-lettered row, keeping its ID in the enqueued watermark. Servers that
    * predate the column enqueue without recording it, so the queue row is the only trace of their
-   * write until it is retired here.
+   * write until it is retired here. No other code deletes queue rows; see
+   * ADR:2026-10-11-rdf-freshness-watermarks-have-one-writer-per-table.
    */
   private static void retire(final Handle handle, final long id) {
     handle.execute("DELETE FROM rdf_live_write_queue WHERE id = ?", id);
