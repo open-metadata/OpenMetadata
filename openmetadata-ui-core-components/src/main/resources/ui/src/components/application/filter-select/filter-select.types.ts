@@ -102,6 +102,11 @@ export interface FilterSelectProps {
    */
   showRadio?: boolean;
   /**
+   * `false` drops the selection-count footer and its Clear action, for a
+   * value that is required once set (e.g. a radio picker). Defaults to `true`.
+   */
+  isClearable?: boolean;
+  /**
    * Tri-state header row that toggles every currently displayed value row
    * (the filtered list). The null option is an explicit choice and is not
    * included.

@@ -636,6 +636,18 @@ describe('FilterSelect', () => {
     expect(screen.getByTestId('clear-filter-btn')).toBeDisabled();
   });
 
+  it('drops the selection footer when the value is not clearable', () => {
+    renderFilter({
+      isClearable: false,
+      selectedValues: ['snowflake'],
+      selectionMode: 'single',
+      showRadio: true,
+    });
+
+    expect(screen.queryByTestId('selected-count')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('clear-filter-btn')).not.toBeInTheDocument();
+  });
+
   it('immediate mode footer reports the count and clears on demand', () => {
     const { onChange } = renderFilter({
       selectedValues: ['snowflake', 'bigquery'],
