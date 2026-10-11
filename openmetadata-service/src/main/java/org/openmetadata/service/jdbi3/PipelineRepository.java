@@ -1365,6 +1365,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       // Execute the SPARQL update
       rdfRepository.executeSparqlUpdate(sparql.toString());
+      RdfUpdater.recordUntrackedWrite();
 
     } catch (Exception e) {
       LOG.error("Failed to store pipeline execution in RDF", e);

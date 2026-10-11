@@ -40,6 +40,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   @Getter private EventPublisherJob jobData;
   private volatile ReindexingOrchestrator orchestrator;
+  // Quartz builds a new app instance for every run, so this is the stop signal of exactly one run.
+  private final ReindexStopSignal stopSignal = new ReindexStopSignal();
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -60,7 +62,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
         new QuartzOrchestratorContext(
             ctx, getApp(), this::getJobRecord, this::pushAppStatusUpdates);
     ReindexingOrchestrator orch =
-        new ReindexingOrchestrator(collectionDAO, searchRepository, orchCtx);
+        new ReindexingOrchestrator(collectionDAO, searchRepository, orchCtx, stopSignal);
     this.orchestrator = orch;
     orch.run(jobData);
     this.jobData = orch.getJobData();
@@ -68,9 +70,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   @Override
   public void stop() {
+    stopSignal.requestStop();
     ReindexingOrchestrator orch = this.orchestrator;
     if (orch != null) {
-      orch.stop();
       this.jobData = orch.getJobData();
     }
   }

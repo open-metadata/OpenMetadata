@@ -84,8 +84,6 @@ import org.openmetadata.service.rdf.agent.AgentSparqlService;
 import org.openmetadata.service.rdf.extension.CustomOntologyRepository;
 import org.openmetadata.service.rdf.extension.CustomOntologyValidator;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
-import org.openmetadata.service.rdf.inference.InferenceMaterializer;
-import org.openmetadata.service.rdf.inference.InferenceRuleRepository;
 import org.openmetadata.service.rdf.inference.InferenceRuleService;
 import org.openmetadata.service.rdf.inference.InferenceRuleValidator;
 import org.openmetadata.service.rdf.insights.RdfInsightsService;
@@ -256,13 +254,8 @@ public class RdfResource {
   }
 
   private InferenceRuleService createInferenceRuleService() {
-    final RdfRepository repository = requireRdfRepository();
-    final Clock clock = Clock.systemUTC();
-    final InferenceRuleRepository ruleRepository =
-        new InferenceRuleRepository(
-            Entity.getCollectionDAO().rdfInferenceRuleDAO(), clock, repository.getBaseUri());
-    return new InferenceRuleService(
-        ruleRepository, new InferenceMaterializer(repository, ruleRepository, clock));
+    return InferenceRuleService.forRepository(
+        requireRdfRepository(), Entity.getCollectionDAO(), Clock.systemUTC());
   }
 
   private CustomOntologyRepository customOntologyRepository() {
@@ -472,10 +465,15 @@ public class RdfResource {
   @Operation(
       operationId = "deleteInferenceRule",
       summary = "Delete a custom inference rule and its materialized graph",
+      description =
+          "Marks the remaining rules dirty, since they may have read the deleted rule's "
+              + "conclusions. When a materialization run is in progress, the next run removes "
+              + "the deleted rule's graph.",
       responses = {
         @ApiResponse(responseCode = "204", description = "Rule deleted"),
         @ApiResponse(responseCode = "400", description = "System rules cannot be deleted"),
-        @ApiResponse(responseCode = "403", description = "Forbidden")
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "503", description = "Materialized inference is disabled")
       })
   public Response deleteInferenceRule(
       @Context final SecurityContext securityContext, @PathParam("name") final String name) {
@@ -489,16 +487,29 @@ public class RdfResource {
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(
       operationId = "materializeInferenceRules",
-      summary = "Materialize dirty inference rules inside Fuseki",
+      summary = "Materialize inference rules to a fixed point inside Fuseki",
+      description =
+          "Recomputes every rule from the stored graph when any rule is dirty, or when forced. "
+              + "Rules read each other's conclusions, so the whole bundle always runs together.",
       responses = {
         @ApiResponse(responseCode = "200", description = "Materialization completed"),
         @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "The requested rule does not exist"),
+        @ApiResponse(responseCode = "409", description = "Another run is in progress"),
         @ApiResponse(responseCode = "503", description = "Materialized inference is disabled")
       })
   public Response materializeInferenceRules(
       @Context final SecurityContext securityContext,
-      @QueryParam("force") @DefaultValue("false") final boolean force,
-      @QueryParam("ruleName") final String ruleName) {
+      @Parameter(description = "Recompute even when no rule is dirty")
+          @QueryParam("force")
+          @DefaultValue("false")
+          final boolean force,
+      @Parameter(
+              description =
+                  "Rule that must exist. The run still computes every rule, because rules read "
+                      + "each other's conclusions.")
+          @QueryParam("ruleName")
+          final String ruleName) {
     authorizer.authorizeAdmin(securityContext);
     final InferenceMaterializationResult result =
         inferenceRuleService().materialize(force, ruleName);
