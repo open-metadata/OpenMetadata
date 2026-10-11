@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { ButtonUtility, Card, Tooltip } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -62,12 +62,13 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           }}>
           {isFirstPanelWrapInCard ? (
             <Card
-              bodyStyle={firstPanel.cardBodyStyles}
               className={classNames(firstPanel.cardClassName, {
                 // If allowScroll is true, the card will not have a scrollbar
                 'h-full overflow-y-auto': !firstPanel.allowScroll,
               })}>
-              {firstPanel.children}
+              <Card.Content style={firstPanel.cardBodyStyles}>
+                {firstPanel.children}
+              </Card.Content>
             </Card>
           ) : (
             firstPanel.children
@@ -81,7 +82,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             { collapsed: isRightPanelCollapsed }
           )}>
           {isRightPanelCollapsed && (
-            <Card className="reflex-card card-padding-0">
+            <Card className="reflex-card">
               <Tooltip arrow placement="right" title={t('label.expand')}>
                 <ButtonUtility
                   className="mr-2"
@@ -127,7 +128,11 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           }}>
           {!hideSecondPanel &&
             (isSecondPanelWrapInCard ? (
-              <Card className="reflex-card">{secondPanel.children}</Card>
+              <Card className="reflex-card">
+                <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto">
+                  {secondPanel.children}
+                </div>
+              </Card>
             ) : (
               secondPanel.children
             ))}

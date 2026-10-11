@@ -77,10 +77,6 @@
     margin-bottom: @size-mlg;
     border: none;
 
-    .ant-card-body {
-      padding: @size-md;
-    }
-
     .ant-form-item {
       margin-bottom: @size-lg;
 
@@ -99,14 +95,6 @@
       .card-title-description {
         color: @grey-600;
         margin-bottom: @margin-mlg;
-      }
-    }
-
-    .schedule-interval {
-      .cron-expression-card {
-        .ant-card-body {
-          padding: @padding-xs;
-        }
       }
     }
   }
@@ -261,11 +249,10 @@
   }
 }
 
-// RHF bodies render plain divs instead of antd <Card>, so the
-// .ant-card-body inner padding never applies — pad the section itself.
+// RHF bodies render plain divs instead of a card, so pad the section itself.
 .test-case-form-v1,
 .bundle-suite-form {
-  .form-card-section:not(.ant-card) {
+  .form-card-section {
     padding: @size-md;
 
     > * + * {

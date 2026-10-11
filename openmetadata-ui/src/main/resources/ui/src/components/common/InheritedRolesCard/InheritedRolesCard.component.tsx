@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import { Card, Typography } from '@openmetadata/ui-core-components';
+
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,32 +27,34 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
   return (
     <Card
       className="bot-page-roles-card-header"
-      key="inherited-roles-card-component"
-      title={t('label.inherited-role-plural')}>
-      <Fragment>
-        {isEmpty(userData.inheritedRoles) ? (
-          <div className="mb-4">
-            <span className="text-grey-muted">
-              {t('message.no-inherited-roles-found')}
-            </span>
-          </div>
-        ) : (
-          <div className="d-flex justify-between flex-col">
-            {userData.inheritedRoles?.map((inheritedRole) => (
-              <div
-                className="mb-2 d-flex items-center gap-2"
-                key={inheritedRole.id}>
-                <Icon component={IconUser} style={{ fontSize: '16px' }} />
-                <Typography
-                  className="ant-typography-ellipsis-custom w-48"
-                  ellipsis={{ tooltip: true }}>
-                  {getEntityName(inheritedRole)}
-                </Typography>
-              </div>
-            ))}
-          </div>
-        )}
-      </Fragment>
+      key="inherited-roles-card-component">
+      <Card.Header title={t('label.inherited-role-plural')} />
+      <Card.Content>
+        <Fragment>
+          {isEmpty(userData.inheritedRoles) ? (
+            <div className="mb-4">
+              <span className="text-grey-muted">
+                {t('message.no-inherited-roles-found')}
+              </span>
+            </div>
+          ) : (
+            <div className="d-flex justify-between flex-col">
+              {userData.inheritedRoles?.map((inheritedRole) => (
+                <div
+                  className="mb-2 d-flex items-center gap-2"
+                  key={inheritedRole.id}>
+                  <Icon component={IconUser} style={{ fontSize: '16px' }} />
+                  <Typography
+                    className="ant-typography-ellipsis-custom w-48"
+                    ellipsis={{ tooltip: true }}>
+                    {getEntityName(inheritedRole)}
+                  </Typography>
+                </div>
+              ))}
+            </div>
+          )}
+        </Fragment>
+      </Card.Content>
     </Card>
   );
 };
