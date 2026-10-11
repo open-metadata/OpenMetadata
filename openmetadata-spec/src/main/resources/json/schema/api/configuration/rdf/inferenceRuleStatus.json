@@ -32,6 +32,7 @@
     },
     "tripleCount": {
       "description": "Number of triples in the rule's materialized graph.",
+      "existingJavaType": "java.lang.Long",
       "type": "integer",
       "format": "int64",
       "minimum": 0

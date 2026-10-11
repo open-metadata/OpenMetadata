@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
@@ -56,9 +55,12 @@ const ContractSemantics: React.FC<{
         {semantics.map((item) => {
           const inheritedIcon = item.inherited ? (
             <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
               title={t('label.inherited-entity', {
                 entity: t('label.semantic-plural'),
-              })}>
+              })}
+              triggerClassName="tw:inline-flex">
               <InheritIcon className="inherit-icon cursor-pointer" width={14} />
             </Tooltip>
           ) : null;

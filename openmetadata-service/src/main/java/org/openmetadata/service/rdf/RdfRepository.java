@@ -21,6 +21,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
@@ -152,6 +153,11 @@ public class RdfRepository {
   private final JsonLdTranslator translator;
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
   private final RdfProjectionLoaders projectionLoaders;
+  private final AssertedOnlyQueries assertedOnlyQueries =
+      new AssertedOnlyQueries(
+          this::listAllGraphs,
+          () -> InferenceRuleRepository.inferredGraphPrefix(getBaseUri()),
+          AssertedOnlyQueries.GRAPH_LIST_TTL);
   private final Cache<String, String> entityGraphCache =
       Caffeine.newBuilder()
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
@@ -198,8 +204,11 @@ public class RdfRepository {
               Clock.systemUTC(),
               config.getBaseUri().toString());
       this.storageService =
-          new InferenceInvalidatingRdfStorage(
-              materializationStorageService, inferenceRuleRepository);
+          new AssertedGraphTrackingRdfStorage(
+              new InferenceInvalidatingRdfStorage(
+                  materializationStorageService, inferenceRuleRepository),
+              assertedOnlyQueries,
+              KNOWLEDGE_GRAPH);
       this.translator =
           new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
@@ -345,6 +354,7 @@ public class RdfRepository {
   /** Replay live mutations and atomically publish the completed rebuild generation. */
   public void activateDataset(String datasetName, String rebuildId, String updatedBy) {
     requireDatasetManager().promote(new BuildTarget(rebuildId, datasetName), updatedBy);
+    assertedOnlyQueries.graphsChanged();
     LOG.info("RDF serving dataset switched to '{}'", datasetName);
   }
 
@@ -493,14 +503,20 @@ public class RdfRepository {
 
   /**
    * Projects a lineage edge with the details stored for it now, including column lineage, so live
-   * edits and reindexing write the same triples.
+   * edits and reindexing write the same triples. A replay that finds the edge gone, such as an add
+   * replayed after the edge was deleted, removes it instead of restoring it without details.
    */
   public void refreshLineage(final EntityRelationship lineage) {
-    final LineageDetails details =
-        projectionLoaders
-            .lineageDetailsLoader()
-            .load(lineage.getFromId(), lineage.getToId())
-            .orElse(null);
+    final Optional<RdfProjectionLoaders.StoredLineageEdge> storedEdge =
+        projectionLoaders.lineageDetailsLoader().load(lineage.getFromId(), lineage.getToId());
+    if (storedEdge.isEmpty()) {
+      removeRelationship(lineage);
+    } else {
+      projectLineage(lineage, storedEdge.get().details());
+    }
+  }
+
+  private void projectLineage(final EntityRelationship lineage, final LineageDetails details) {
     try {
       addLineageWithDetails(
           lineage.getFromEntity(),
@@ -1640,6 +1656,24 @@ public class RdfRepository {
       throw new IllegalStateException("RDF not enabled");
     }
     return storageService.executeSparqlQuery(query, format);
+  }
+
+  /**
+   * Runs a read query against asserted data only. Fuseki's union default graph also holds the
+   * graphs materialized inference writes, so a query that must not see derived triples, such as
+   * one at inference level {@code none}, is restricted to the other graphs. A query that declares
+   * its own dataset with FROM or FROM NAMED runs as written.
+   */
+  public String executeAssertedSparqlQuery(final String query, final String format) {
+    return executeSparqlQueryDirect(assertedOnly(query), format);
+  }
+
+  private String assertedOnly(final String query) {
+    return supportsMaterializedInference(config) ? assertedOnlyQueries.restrict(query) : query;
+  }
+
+  private List<String> listAllGraphs() {
+    return storageService.getAllGraphs();
   }
 
   /**

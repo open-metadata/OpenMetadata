@@ -436,6 +436,7 @@ const FilterSelect = ({
   emptyState,
   helperText,
   hideCounts,
+  isClearable = true,
   isDisabled,
   isLoading,
   isOpen: controlledIsOpen,
@@ -662,13 +663,15 @@ const FilterSelect = ({
 
     // 'all' is react-aria's select-all sentinel (e.g. ⌘A) — resolve it to the
     // displayed rows merged with values selected but currently filtered out.
+    // The null row is an explicit choice and is not included, matching
+    // handleSelectAll and the showSelectAll JSDoc so both "Select all"
+    // gestures commit the same set.
     const next =
       keys === 'all'
         ? Array.from(
             new Set([
               ...current,
               ...displayedOptions.map((option) => option.value),
-              ...(displayedNullOption ? [displayedNullOption.value] : []),
             ])
           )
         : Array.from(keys, String);
@@ -844,7 +847,8 @@ const FilterSelect = ({
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it gets a quiet footer instead:
   // what is selected, and a way to drop it all without closing the menu.
-  const showStatusFooter = (isMulti || isRadio) && !isStaged;
+  // A value that can't be cleared has nothing for the footer to offer.
+  const showStatusFooter = (isMulti || isRadio) && !isStaged && isClearable;
   const showSelectAllRow =
     isMulti && Boolean(showSelectAll) && displayedOptions.length > 0;
   // The null row is a synthetic filter, not a search result: an unmatched

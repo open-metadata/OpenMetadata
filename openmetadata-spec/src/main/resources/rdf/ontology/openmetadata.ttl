@@ -3213,6 +3213,10 @@ om:lastActivityTime a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "lastActivityTime" .
 
+om:lastContentUpdatedAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lastContentUpdatedAt" .
+
 om:lastLoginTime a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "lastLoginTime" .
