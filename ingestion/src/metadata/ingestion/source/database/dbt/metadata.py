@@ -826,7 +826,9 @@ class DbtSource(DbtServiceSource):
         # instead of sniffing the parsed object downstream
         self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.IS_FRESHNESS.value] = True
 
-    def _search_tables(self, fqn_search_string: str) -> list[Table]:
+    def _search_tables(self, fqn_search_string: str | None) -> list[Table]:
+        if not fqn_search_string:
+            return []
         table_entities = get_entity_from_es_result(
             entity_list=self.metadata.es_search_from_fqn(
                 entity_type=Table,
