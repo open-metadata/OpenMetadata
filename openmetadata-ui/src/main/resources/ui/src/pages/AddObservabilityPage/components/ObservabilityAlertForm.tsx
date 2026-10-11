@@ -28,10 +28,10 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { AlertAiFormValidationErrors } from '../../../components/observability/Alerts/AlertAiFormFields.interface';
 import { validateAlertAiForm } from '../../../components/observability/Alerts/AlertAiFormFieldsValidationUtils';
 import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
+import { getClassicAlertInitialValues } from '../../../utils/Alerts/ClassicAlertForm.utils';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
-import { getClassicAlertInitialValues } from '../../../utils/Alerts/ClassicAlertForm.utils';
 import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
 
 function ObservabilityAlertForm({

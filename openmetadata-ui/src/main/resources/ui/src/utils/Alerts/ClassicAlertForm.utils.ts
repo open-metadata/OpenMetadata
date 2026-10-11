@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { getEntityName } from '../EntityNameUtils';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { getEntityName } from '../EntityNameUtils';
 
 export const getClassicAlertInitialValues = (
   alert: ModifiedEventSubscription
