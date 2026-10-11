@@ -31,7 +31,7 @@ import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
-import { getClassicAlertInitialValues } from './ObservabilityAlertForm.utils';
+import { getClassicAlertInitialValues } from '../../../utils/Alerts/ClassicAlertForm.utils';
 import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
 
 function ObservabilityAlertForm({

@@ -31,7 +31,7 @@ import {
   useAlertSelection,
 } from '../../../../hooks/useAlertSelection';
 import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getClassicAlertInitialValues } from '../../../../pages/AddObservabilityPage/components/ObservabilityAlertForm.utils';
+import { getClassicAlertInitialValues } from '../../../../utils/Alerts/ClassicAlertForm.utils';
 import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
 import { getResourceFunctions } from '../../../../rest/observabilityAPI';

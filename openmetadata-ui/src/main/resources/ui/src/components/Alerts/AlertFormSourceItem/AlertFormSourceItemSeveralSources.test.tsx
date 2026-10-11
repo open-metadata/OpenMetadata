@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getAlertSourceChanges } from '../../../pages/AddObservabilityPage/components/ObservabilityAlertForm.utils';
+import { getAlertSourceChanges } from '../../../utils/Alerts/ClassicAlertForm.utils';
 
 describe('Classic alert source transitions', () => {
   it('invalidates filters without resetting destinations when a source is added', () => {

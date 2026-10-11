@@ -105,6 +105,30 @@ describe('FQNListSelect', () => {
     expect(await screen.findByText('service.schema.table')).toBeInTheDocument();
     expect(screen.queryByText('service.schema.*')).not.toBeInTheDocument();
   });
+
+  it('does not let a disabled field remove a selected FQN', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onChange = jest.fn();
+    render(
+      <FQNListSelect
+        isDisabled
+        api={api}
+        placeholder="FQN"
+        searchIndex={SearchIndex.TABLE}
+        value={['service.schema.table']}
+        onChange={onChange}
+      />
+    );
+
+    const removeButton = screen.getByRole('button', { name: 'label.remove' });
+
+    expect(removeButton).toBeDisabled();
+
+    await user.click(removeButton);
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByTestId('fqn-tag-service.schema.table')).toBeVisible();
+  });
 });
 
 const mockSearchQuery = searchQuery as jest.Mock;

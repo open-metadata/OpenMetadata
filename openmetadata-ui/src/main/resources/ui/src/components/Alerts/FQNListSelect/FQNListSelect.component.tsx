@@ -134,6 +134,7 @@ const FQNListSelect = ({
             buttonLabel={t('label.remove')}
             color="gray"
             data-testid={'fqn-tag-' + item.id}
+            isDisabled={isDisabled}
             size="sm"
             title={item.label}
             onButtonClick={onRemove}
