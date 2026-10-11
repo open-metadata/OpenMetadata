@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Box, Tooltip } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -84,13 +83,14 @@ const EntityTasks = ({
 
     return (
       <Tooltip
-        destroyTooltipOnHide
-        overlayClassName="ant-popover-request-description"
+        arrow
+        excludeTriggerFromTabOrder
         title={
           hasData
             ? t(ENTITY_TASKS_TOOLTIP[entityTaskType].update)
             : t(ENTITY_TASKS_TOOLTIP[entityTaskType].request)
-        }>
+        }
+        triggerClassName="tw:inline-flex">
         <IconRequest
           className="table-action-icon hover-cell-icon"
           data-testid="task-element"
