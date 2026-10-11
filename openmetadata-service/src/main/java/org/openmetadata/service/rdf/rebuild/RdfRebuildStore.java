@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf.rebuild;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -29,6 +30,8 @@ public final class RdfRebuildStore {
   public static final String UNCERTAIN_WRITE = "RDF rebuild received an uncertain write outcome";
   private static final String ACTIVE_DATASET =
       "SELECT datasetName FROM rdf_active_dataset WHERE id = 'active'";
+  private static final String SERVING_GENERATION =
+      "SELECT generation FROM rdf_active_dataset WHERE id = 'active'";
   private static final String STATE =
       "SELECT rebuildId, buildDataset, expiresAt, failure FROM rdf_rebuild_state WHERE id = 'active'";
 
@@ -45,10 +48,11 @@ public final class RdfRebuildStore {
   public void initialize(final String configuredDataset) {
     try (Handle handle = jdbi.open()) {
       handle.execute(
-          "INSERT INTO rdf_active_dataset (id, datasetName, updatedAt, updatedBy) "
-              + "SELECT 'active', ?, ?, 'system' WHERE NOT EXISTS "
+          "INSERT INTO rdf_active_dataset (id, datasetName, generation, updatedAt, updatedBy) "
+              + "SELECT 'active', ?, ?, ?, 'system' WHERE NOT EXISTS "
               + "(SELECT 1 FROM rdf_active_dataset WHERE id = 'active')",
           configuredDataset,
+          newGeneration(),
           clock.millis());
     } catch (UnableToExecuteStatementException exception) {
       // Concurrent startup can win the insert; it must never overwrite an existing promotion.
@@ -56,12 +60,34 @@ public final class RdfRebuildStore {
         throw exception;
       }
     }
+    try (Handle handle = jdbi.open()) {
+      // A pointer written before generations existed gets one; the first server to start wins.
+      handle.execute(
+          "UPDATE rdf_active_dataset SET generation = ? WHERE id = 'active' AND generation IS NULL",
+          newGeneration());
+    }
   }
 
   public String activeDataset() {
     try (Handle handle = jdbi.open()) {
       return handle.createQuery(ACTIVE_DATASET).mapTo(String.class).findOne().orElse(null);
     }
+  }
+
+  /** Identity of the serving dataset. Every promotion assigns a new one, even to a reused name. */
+  public UUID servingGeneration() {
+    try (Handle handle = jdbi.open()) {
+      final List<String> generations =
+          handle.createQuery(SERVING_GENERATION).mapTo(String.class).list();
+      if (generations.isEmpty() || generations.getFirst() == null) {
+        throw new IllegalStateException("The RDF serving dataset has no generation");
+      }
+      return UUID.fromString(generations.getFirst());
+    }
+  }
+
+  private static String newGeneration() {
+    return UUID.randomUUID().toString();
   }
 
   public State state() {
@@ -250,8 +276,10 @@ public final class RdfRebuildStore {
         return false;
       }
       handle.execute(
-          "UPDATE rdf_active_dataset SET datasetName = ?, updatedAt = ?, updatedBy = ? WHERE id = 'active'",
+          "UPDATE rdf_active_dataset SET datasetName = ?, generation = ?, updatedAt = ?, updatedBy = ? "
+              + "WHERE id = 'active'",
           current.buildDataset(),
+          newGeneration(),
           clock.millis(),
           updatedBy);
       // Bumping dirtyVersion keeps a materialization run that read the old dataset from marking

@@ -79,6 +79,8 @@ final class RdfTestDatabase implements AutoCloseable {
     applyTableChanges("2.1.0", "rdf_inference_rule");
     applyReleaseMigration();
     applyReleaseMigration();
+    applyTableChanges("2.1.0", "rdf_active_dataset");
+    applyTableChanges("2.1.0", "rdf_projection_health");
   }
 
   void applyReleaseMigration() {
