@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-10T03:33:05Z",
+  "generatedAt": "2026-10-11T03:28:34Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "36808101811",
-      "sourceSha": "3bded8388307ee861eda07353ec99d121a085c13",
-      "recordedAt": "2026-10-01T03:36:53Z"
-    },
     {
       "runId": "36957299462",
       "sourceSha": "170677437861064916f8ac34ceea410bb4ca8273",
@@ -53,6 +48,11 @@
       "runId": "38018608325",
       "sourceSha": "39e7b3e330a5738cba17ee544660efc8730c6627",
       "recordedAt": "2026-10-10T03:33:05Z"
+    },
+    {
+      "runId": "38106742725",
+      "sourceSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
+      "recordedAt": "2026-10-11T03:28:34Z"
     }
   ],
   "entries": {
@@ -76,6 +76,16 @@
       "lastSeenSha": "170677437861064916f8ac34ceea410bb4ca8273",
       "hardFailure": false
     },
+    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 customize saves \u203a Data Assets \u2192 Table: a new tab is saved": {
+      "observations": [
+        "38106742725"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/PersonaSettings.spec.ts",
+      "title": "Persona settings \u2014 customize saves \u203a Data Assets \u2192 Table: a new tab is saved",
+      "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
+      "hardFailure": false
+    },
     "chromium :: Features/AIMode/ProfileNotificationTab.spec.ts :: Multiple Filters Alert": {
       "observations": [
         "36957299462"
@@ -94,16 +104,6 @@
       "file": "Features/ActivityFeed.spec.ts",
       "title": "ActivityFeed: activity + conversation merge (regression #25894) \u203a All badge, header and rendered list agree on the count",
       "lastSeenSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
-      "hardFailure": false
-    },
-    "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Draft Persistence \u203a description: switching articles does not bleed unsaved content into next article": {
-      "observations": [
-        "36808101811"
-      ],
-      "project": "chromium",
-      "file": "Features/ContextCenterArticles.spec.ts",
-      "title": "Context Center Articles \u203a Draft Persistence \u203a description: switching articles does not bleed unsaved content into next article",
-      "lastSeenSha": "3bded8388307ee861eda07353ec99d121a085c13",
       "hardFailure": false
     },
     "chromium :: Features/DataQuality/ColumnLevelTests.spec.ts :: Column Level Data Quality Test Cases \u203a Column Values To Be In Set": {
@@ -146,6 +146,16 @@
       "lastSeenSha": "39e7b3e330a5738cba17ee544660efc8730c6627",
       "hardFailure": false
     },
+    "chromium :: Pages/AppStopRunModal.spec.ts :: App Stop Run Modal \u203a should open stop modal when stop button is clicked and call stop API with runId": {
+      "observations": [
+        "38106742725"
+      ],
+      "project": "chromium",
+      "file": "Pages/AppStopRunModal.spec.ts",
+      "title": "App Stop Run Modal \u203a should open stop modal when stop button is clicked and call stop API with runId",
+      "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
+      "hardFailure": false
+    },
     "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Add and update Security and SLA tabs": {
       "observations": [
         "37720017171"
@@ -156,14 +166,14 @@
       "lastSeenSha": "278e4abf6fb0c3027d5f1878bac92839995ef75c",
       "hardFailure": false
     },
-    "chromium :: Pages/DomainAdvanced.spec.ts :: Domain Description Editing \u203a Admin can edit domain description": {
+    "chromium :: Pages/DataContractsSemanticRules.spec.ts :: Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set": {
       "observations": [
-        "36808101811"
+        "38106742725"
       ],
       "project": "chromium",
-      "file": "Pages/DomainAdvanced.spec.ts",
-      "title": "Domain Description Editing \u203a Admin can edit domain description",
-      "lastSeenSha": "3bded8388307ee861eda07353ec99d121a085c13",
+      "file": "Pages/DataContractsSemanticRules.spec.ts",
+      "title": "Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set",
+      "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
       "hardFailure": false
     },
     "chromium :: Pages/Domains.spec.ts :: Domains \u203a Create DataProducts and add remove assets": {
@@ -214,6 +224,16 @@
       "file": "Pages/ServiceEntity.spec.ts",
       "title": "Database Schema \u203a Announcement create, edit & delete",
       "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
+      "hardFailure": false
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Delete Storage Service": {
+      "observations": [
+        "38106742725"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Delete Storage Service",
+      "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
       "hardFailure": false
     },
     "chromium :: Pages/Tags.spec.ts :: Verify Owner Add Delete": {
