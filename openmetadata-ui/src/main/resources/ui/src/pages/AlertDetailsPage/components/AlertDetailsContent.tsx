@@ -141,7 +141,8 @@ function AlertDetailsContent({
                   className="layout-space layout-space-horizontal"
                   gap={2}
                   itemClassName="layout-space-item">
-                  <Tooltip arrow
+                  <Tooltip
+                    arrow
                     title={t('label.sync-alert-offset', {
                       entity: t('label.alert'),
                     })}>
@@ -159,7 +160,8 @@ function AlertDetailsContent({
                   </Tooltip>
                   {editPermission &&
                     alertDetails?.provider !== ProviderType.System && (
-                      <Tooltip arrow
+                      <Tooltip
+                        arrow
                         title={t('label.edit-entity', {
                           entity: t('label.alert'),
                         })}>
@@ -177,7 +179,8 @@ function AlertDetailsContent({
                     )}
                   {deletePermission &&
                     alertDetails?.provider !== ProviderType.System && (
-                      <Tooltip arrow
+                      <Tooltip
+                        arrow
                         title={t('label.delete-entity', {
                           entity: t('label.alert'),
                         })}>

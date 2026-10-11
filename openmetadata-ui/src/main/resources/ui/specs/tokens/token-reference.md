@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **834**.
+Total project tokens: **828**.
 
 ## Spacing (57)
 
@@ -706,11 +706,11 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
 </details>
 
-## Legacy colors (191)
+## Legacy colors (185)
 
 Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.
 
-<details><summary>Show all 191</summary>
+<details><summary>Show all 185</summary>
 
 | Token | Value |
 | --- | --- |
@@ -815,7 +815,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-52525b` | `#52525b` |
 | `--om-legacy-color-52607a` | `#52607a` |
 | `--om-legacy-color-76746f` | `#76746f` |
-| `--om-legacy-color-101828` | `#101828` |
 | `--om-legacy-color-111827` | `#111827` |
 | `--om-legacy-color-155724` | `#155724` |
 | `--om-legacy-color-344054` | `#344054` |
@@ -835,7 +834,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-b93815` | `#b93815` |
 | `--om-legacy-color-bee5eb` | `#bee5eb` |
 | `--om-legacy-color-c3e6cb` | `#c3e6cb` |
-| `--om-legacy-color-c6b5f6` | `#c6b5f6` |
 | `--om-legacy-color-c6c6c6` | `#c6c6c6` |
 | `--om-legacy-color-c9d7ff` | `#c9d7ff` |
 | `--om-legacy-color-c45296` | `#c45296` |
@@ -863,7 +861,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-e8e8e9` | `#e8e8e9` |
 | `--om-legacy-color-e8ecf5` | `#e8ecf5` |
 | `--om-legacy-color-e60000` | `#e60000` |
-| `--om-legacy-color-eaecf0` | `#eaecf0` |
 | `--om-legacy-color-ebeef1` | `#ebeef1` |
 | `--om-legacy-color-ecedee` | `#ecedee` |
 | `--om-legacy-color-eeeeee` | `#eeeeee` |
@@ -871,7 +868,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-efbdc1` | `#efbdc1` |
 | `--om-legacy-color-f0f0f0` | `#f0f0f0` |
 | `--om-legacy-color-f0f5ff` | `#f0f5ff` |
-| `--om-legacy-color-f1edfd` | `#f1edfd` |
 | `--om-legacy-color-f1f1f1` | `#f1f1f1` |
 | `--om-legacy-color-f1f5ff` | `#f1f5ff` |
 | `--om-legacy-color-f3f7fd` | `#f3f7fd` |
@@ -887,10 +883,8 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-f7f9fc` | `#f7f9fc` |
 | `--om-legacy-color-f7fbf9` | `#f7fbf9` |
 | `--om-legacy-color-f8f8f8` | `#f8f8f8` |
-| `--om-legacy-color-f8f9fa` | `#f8f9fa` |
 | `--om-legacy-color-f8faff` | `#f8faff` |
 | `--om-legacy-color-f9dbaf` | `#f9dbaf` |
-| `--om-legacy-color-f9f5ff` | `#f9f5ff` |
 | `--om-legacy-color-f9816c` | `#f9816c` |
 | `--om-legacy-color-f44336` | `#f44336` |
 | `--om-legacy-color-fbf8f8` | `#fbf8f8` |

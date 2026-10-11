@@ -72,12 +72,8 @@ describe('DimensionalityHeatmap Component', () => {
     if (!cell) {
       throw new Error('Heatmap cell missing');
     }
-    const trigger = cell.closest('button');
-    if (!trigger) {
-      throw new Error('Heatmap tooltip trigger missing');
-    }
     fireEvent.mouseMove(document);
-    await user.hover(trigger);
+    await user.hover(cell);
     const tooltip = await screen.findByRole('tooltip');
 
     expect(tooltip).toHaveTextContent('US');
@@ -86,7 +82,7 @@ describe('DimensionalityHeatmap Component', () => {
     expect(within(tooltip).getByText('label.passed-rows')).toBeInTheDocument();
     expect(within(tooltip).getByText('label.failed-rows')).toBeInTheDocument();
 
-    await user.unhover(trigger);
+    await user.unhover(cell);
 
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });

@@ -83,7 +83,10 @@ function AlertDiagnosticInfoTab() {
                       <Typography className="m-0" color="secondary">
                         {`${item.key}:`}
                       </Typography>
-                      <Tooltip arrow placement="bottom" title={item.description}>
+                      <Tooltip
+                        arrow
+                        placement="bottom"
+                        title={item.description}>
                         <TooltipTrigger aria-label={item.description}>
                           <InfoCircle className="tw:size-4 tw:text-fg-quaternary" />
                         </TooltipTrigger>

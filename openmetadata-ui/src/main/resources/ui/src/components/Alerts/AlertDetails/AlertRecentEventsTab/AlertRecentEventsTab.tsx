@@ -220,7 +220,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                           wrap="wrap">
                           <Box className="layout-column tw:block">
                             {/* Display icon for the status of the alert event */}
-                            <Tooltip arrow
+                            <Tooltip
+                              arrow
                               excludeTriggerFromTabOrder
                               title={startCase(typedEvent.status)}
                               triggerClassName="tw:inline-flex">
@@ -229,7 +230,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                           </Box>
                           <Box className="layout-column tw:block">
                             {/* Display icon for the asset the change event is related to */}
-                            <Tooltip arrow
+                            <Tooltip
+                              arrow
                               excludeTriggerFromTabOrder
                               title={startCase(changeEventData.entityType)}
                               triggerClassName="tw:inline-flex">
