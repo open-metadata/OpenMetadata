@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import { TIER_CATEGORY } from '../../../../constants/constants';
 import {
@@ -717,9 +718,11 @@ const withKeptTags = (
   entity?: EntityUnion
 ): ActivityChange => {
   const payload = getPayload<TagUpdatePayload>(task);
-  const current =
-    payload.currentTags ??
-    getField(entity, payload.fieldPath, COLUMN_TAGS_PATH)?.tags;
+  // Tasks often carry an empty currentTags by default rather than a
+  // snapshot, so only a non-empty one stands in for the asset.
+  const current = isEmpty(payload.currentTags)
+    ? getField(entity, payload.fieldPath, COLUMN_TAGS_PATH)?.tags
+    : payload.currentTags;
   const changed = new Set([...change.before, ...change.after]);
   const unchanged = tagNames(current).filter((name) => !changed.has(name));
 
