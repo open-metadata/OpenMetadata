@@ -151,7 +151,11 @@ const noMigratedAntdImport = {
       const component = componentOf(source, symbol);
 
       if (migrated.has(component)) {
-        context.report({ node, messageId: 'migratedImport', data: { component } });
+        context.report({
+          node,
+          messageId: 'migratedImport',
+          data: { component },
+        });
       }
     });
   },

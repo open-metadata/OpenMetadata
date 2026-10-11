@@ -109,7 +109,9 @@ ruleTester.run(
       {
         code: "import { Button, Tooltip as AntdTooltip } from 'antd';",
         options: MIGRATED,
-        errors: [{ messageId: 'migratedImport', data: { component: 'Tooltip' } }],
+        errors: [
+          { messageId: 'migratedImport', data: { component: 'Tooltip' } },
+        ],
       },
       {
         code: "import type { TooltipProps } from 'antd';",
@@ -147,9 +149,12 @@ test('the app config never suppresses a migrated component', async () => {
   assert.equal(migrated[0], 2);
   assert.deepEqual(general[1], migrated[1]);
 
-  const { default: suppressions } = await import('../eslint-suppressions.json', {
-    with: { type: 'json' },
-  });
+  const { default: suppressions } = await import(
+    '../eslint-suppressions.json',
+    {
+      with: { type: 'json' },
+    }
+  );
   const suppressedMigratedRules = Object.values(suppressions).filter(
     (rules) => rules['openmetadata-antd/no-migrated-antd-import']
   );
