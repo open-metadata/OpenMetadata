@@ -13,6 +13,7 @@
 import {
   Alert,
   Button,
+  Card,
   FieldProp,
   FieldTypes,
   FormField,
@@ -23,7 +24,6 @@ import {
   HelperTextType,
   useFieldDoc,
   useFieldDocRegistry,
-  Card,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';

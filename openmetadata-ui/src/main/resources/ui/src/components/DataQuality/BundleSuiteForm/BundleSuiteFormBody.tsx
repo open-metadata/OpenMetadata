@@ -12,13 +12,13 @@
  */
 import {
   Alert,
+  Card,
   FieldProp,
   FieldTypes,
   FormField,
   FormItemLabel,
   FormItemLayout,
   getField,
-  Card,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';

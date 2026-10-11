@@ -12,13 +12,13 @@
  */
 import {
   Alert,
+  Card,
   FieldProp,
   FieldTypes,
   FormField,
   FormItemLabel,
   FormItemLayout,
   getField,
-  Card,
 } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
