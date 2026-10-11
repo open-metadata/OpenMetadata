@@ -364,7 +364,7 @@ const AdminPermissionDebugger: React.FC = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>
-          <Card>
+          <Card className="m-b-md">
             <Card.Content>
               <Box
                 inline
@@ -514,7 +514,7 @@ const AdminPermissionDebugger: React.FC = () => {
           )}
 
           {permissionInfo && !loadingPermissions && (
-            <Card>
+            <Card className="m-b-md">
               <Card.Header
                 title={`${t('label.permissions-for')} ${selectedUsername}`}
               />

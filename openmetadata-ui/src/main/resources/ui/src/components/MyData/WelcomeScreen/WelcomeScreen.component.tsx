@@ -51,17 +51,15 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
 
   return (
     <Card className="welcome-screen-container" data-testid="welcome-screen">
-      <Card.Header
-        extra={
-          <Button
-            className="flex-center welcome-screen-close-btn"
-            data-testid="welcome-screen-close-btn"
-            icon={<CloseIcon height={12} width={12} />}
-            type="text"
-            onClick={onClose}
-          />
-        }
-      />
+      <div className="tw:flex tw:justify-end tw:px-4 tw:pt-4">
+        <Button
+          className="flex-center welcome-screen-close-btn"
+          data-testid="welcome-screen-close-btn"
+          icon={<CloseIcon height={12} width={12} />}
+          type="text"
+          onClick={onClose}
+        />
+      </div>
       <div className="welcome-screen-body">
         <Grid className="layout-row layout-grid p-md welcome-screen-full-height">
           <Grid.Item className="layout-column flex-center" span={12}>
