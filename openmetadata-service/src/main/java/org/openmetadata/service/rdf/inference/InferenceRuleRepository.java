@@ -19,8 +19,10 @@ import java.net.URI;
 import java.time.Clock;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
@@ -125,6 +127,17 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
       final RuleSnapshot snapshot, final String error) {
     ruleDAO.markFailed(snapshot.name(), error);
     return findActive(snapshot.name());
+  }
+
+  /** Whether any rule was edited, added, deleted or invalidated after a run read {@code run}. */
+  public boolean hasChangedSince(final List<RuleSnapshot> run) {
+    final Map<String, Long> versionsReadByRun =
+        run.stream().collect(Collectors.toMap(RuleSnapshot::name, RuleSnapshot::dirtyVersion));
+    final Map<String, Long> currentVersions =
+        ruleDAO.listActive().stream()
+            .collect(
+                Collectors.toMap(RdfInferenceRuleRow::name, RdfInferenceRuleRow::dirtyVersion));
+    return !versionsReadByRun.equals(currentVersions);
   }
 
   @Override

@@ -120,6 +120,35 @@ class InferenceRuleRepositoryTest {
   }
 
   @Test
+  void aRunSeesNoChangeWhenNothingTouchedTheRules() {
+    repository.upsert(RULE, rule(RULE, 10));
+
+    assertFalse(repository.hasChangedSince(repository.listForRun()));
+  }
+
+  @Test
+  void invalidatingRulesAfterTheSnapshotIsAChange() {
+    repository.upsert(RULE, rule(RULE, 10));
+    final List<RuleSnapshot> run = repository.listForRun();
+
+    repository.markAllDirty();
+
+    assertTrue(repository.hasChangedSince(run));
+  }
+
+  @Test
+  void addingOrDeletingARuleAfterTheSnapshotIsAChange() {
+    final List<RuleSnapshot> beforeAddition = repository.listForRun();
+    repository.upsert(RULE, rule(RULE, 10));
+    final boolean additionSeen = repository.hasChangedSince(beforeAddition);
+    final List<RuleSnapshot> beforeDeletion = repository.listForRun();
+    repository.delete(RULE);
+
+    assertTrue(additionSeen);
+    assertTrue(repository.hasChangedSince(beforeDeletion));
+  }
+
+  @Test
   void recordingAFailureKeepsTheRuleDirtyWithTheError() {
     repository.upsert(RULE, rule(RULE, 10));
     repository.recordMaterialized(snapshot(RULE), NOW, 1);
