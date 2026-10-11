@@ -1597,7 +1597,12 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                           // Add the original query as a should clause to preserve high scores
                           b.should(originalQuery);
                           // Add parent term queries as should clauses to fetch hierarchy
-                          parentTermQueries.forEach(b::should);
+                          if (indexName.equalsIgnoreCase(glossaryTermIndex)
+                              || indexName.equalsIgnoreCase(glossaryTermAlias)) {
+                            b.should(withZeroScore(parentTermQueries));
+                          } else {
+                            parentTermQueries.forEach(b::should);
+                          }
                           if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
                             b.must(m -> m.match(ma -> ma.field("entityStatus").query("Approved")));
                           }
@@ -1693,6 +1698,17 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             });
 
     return new ArrayList<>(rootTerms.values());
+  }
+
+  // Parents only draw the tree, so they must not take page slots from real matches (missing ones
+  // are backfilled by addMissingAncestors)
+  private static Query withZeroScore(List<Query> parentTermQueries) {
+    return Query.of(
+        q ->
+            q.constantScore(
+                c ->
+                    c.filter(f -> f.bool(b -> b.should(parentTermQueries).minimumShouldMatch("1")))
+                        .boost(0f)));
   }
 
   // Ancestors that ranked below the page cut would orphan the hits beneath them
