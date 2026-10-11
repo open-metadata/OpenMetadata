@@ -697,12 +697,11 @@ test.describe('Context Center Articles', () => {
         await addBtn.click();
         await searchResponse;
 
-        await expect(
-          dpContainer.getByTestId('data-product-selector')
-        ).toBeVisible();
+        const picker = page.getByTestId('drop-down-menu');
+        await expect(picker).toBeVisible();
 
-        await page
-          .getByTestId(`tag-${dataProduct.responseData.fullyQualifiedName}`)
+        await picker
+          .getByTestId(dataProduct.responseData.fullyQualifiedName ?? '')
           .click();
 
         const savePatch = page.waitForResponse(
@@ -710,7 +709,7 @@ test.describe('Context Center Articles', () => {
             response.url().includes('/api/v1/contextCenter/pages/') &&
             response.request().method() === 'PATCH'
         );
-        await page.getByTestId('saveAssociatedTag').click();
+        await picker.getByTestId('update-btn').click();
         await savePatch;
         await waitForAllLoadersToDisappear(page);
 

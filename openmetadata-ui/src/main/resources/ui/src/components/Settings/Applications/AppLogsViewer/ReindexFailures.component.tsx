@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Drawer, Select, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Drawer, Select } from 'antd';
 import { AxiosError } from 'axios';
 import {
   useCallback,
@@ -202,9 +207,11 @@ const ReindexFailures = ({
         render: (text: string) =>
           text ? (
             <Tooltip
-              overlayStyle={{ maxWidth: 500 }}
-              placement="topLeft"
-              title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}>
+              arrow
+              excludeTriggerFromTabOrder
+              placement="top left"
+              title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}
+              triggerClassName="tw:inline-flex">
               <ErrorMessage text={text} />
             </Tooltip>
           ) : (

@@ -647,35 +647,17 @@ const openActiveCellPopover = async (
   await expect(targetLocator).toBeVisible();
 };
 
-const openRadioCardEditor = async (
-  page: Page,
-  radioTestId: string,
-  responseUrlPattern: string
-) => {
-  await openActiveCellPopover(
-    page,
-    page.getByTestId(radioTestId),
-    responseUrlPattern
-  );
-};
-
-const clickRadioCardUpdate = async (page: Page, updateButtonTestId: string) => {
-  const updateButton = page.getByTestId(updateButtonTestId);
-
-  await updateButton.click();
-  await updateButton.waitFor({ state: 'detached' });
-};
-
 export const fillTierDetails = async (
   page: Page,
   tier: string,
   _isBulkEdit?: boolean
 ) => {
-  const radioTestId = `radio-btn-${tier}`;
-  await openRadioCardEditor(page, radioTestId, '/api/v1/tags?parent=Tier*');
+  const option = page.getByTestId('drop-down-menu').getByTestId(`Tier.${tier}`);
+  await openActiveCellPopover(page, option, '/api/v1/tags?parent=Tier*');
 
-  await page.getByTestId(radioTestId).click();
-  await clickRadioCardUpdate(page, 'update-tier-card');
+  // Picking a row commits it and closes the editor.
+  await option.click();
+  await option.waitFor({ state: 'detached' });
 };
 
 export const fillCertificationDetails = async (

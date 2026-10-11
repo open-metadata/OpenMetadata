@@ -27,7 +27,9 @@ export type PlatformSettingsPageId =
   | 'data-asset-rules'
   | 'learning-resources'
   | 'search'
-  | 'app-mode';
+  | 'table-schema'
+  | 'app-mode'
+  | 'glossary';
 
 export type PlatformSettingsView =
   | { type: 'landing' }

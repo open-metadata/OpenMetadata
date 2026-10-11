@@ -2417,10 +2417,12 @@ const getCsvTiersEditor: CSVEditorFactory = ({ entityType, options }) => {
 
     // The popover takes focus on open, so its keydowns bubble (via the portal)
     // to the rdg EditCell, which closes the editor on Enter / navigates on Tab.
+    // The trigger fills the cell, so the popover opens below the cell.
     return (
-      <KeyDownStopPropagationWrapper>
+      <KeyDownStopPropagationWrapper className="tw:h-full">
         <TierCard
           open
+          className="tw:flex tw:size-full"
           currentTier={value}
           updateTier={handleChange}
           onClose={() => onClose(false)}>
