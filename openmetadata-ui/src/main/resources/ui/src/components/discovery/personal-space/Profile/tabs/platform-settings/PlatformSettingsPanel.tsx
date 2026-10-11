@@ -18,7 +18,9 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import GlossarySettings from '../../../../../governance/glossary/GlossarySettings';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import AppModeSettings from './AppModeSettings';
 import AppModeSettingsForm from './AppModeSettingsForm';
@@ -39,6 +41,7 @@ import LoginSettingsForm from './LoginSettingsForm';
 import { PLATFORM_SETTINGS_HASH_TAB } from './PlatformSettings.constants';
 import type {
   PlatformSettingsFormProps,
+  PlatformSettingsPageContribution,
   PlatformSettingsPageId,
   PlatformSettingsPageProps,
   PlatformSettingsView,
@@ -120,9 +123,17 @@ const PlatformSettingsPanel = ({
   const authProvider = useApplicationStore(
     (state) => state.authConfig?.provider
   );
+  const { getContributions } = useApplicationsProvider();
+  // Downstream builds (e.g. Collate) contribute extra pages; each gets a card
+  // after the built-in ones and renders its own `component`.
   const pages = useMemo(
-    () => getVisiblePlatformSettingsPages(authProvider),
-    [authProvider]
+    () => [
+      ...getVisiblePlatformSettingsPages(authProvider),
+      ...getContributions<PlatformSettingsPageContribution>(
+        EXTENSION_POINTS.PLATFORM_SETTINGS_PAGES
+      ),
+    ],
+    [authProvider, getContributions]
   );
   const [showHint, setShowHint] = useState(false);
   const [pageActions, setPageActions] = useState<ReactNode>();
@@ -216,18 +227,25 @@ const PlatformSettingsPanel = ({
     }
 
     if (showsForm) {
-      return FORM_PAGES[view.page]?.({
+      return FORM_PAGES[view.page as PlatformSettingsPageId]?.({
         showHint,
         onNavigate,
         itemId: view.itemId,
       });
     }
 
-    return VIEW_PAGES[view.page]?.({
+    const pageProps: PlatformSettingsPageProps = {
       itemId: view.itemId,
       onNavigate,
       onSetHeaderActions: setPageActions,
-    });
+    };
+    const ContributedPage = activePage?.component;
+
+    return ContributedPage ? (
+      <ContributedPage {...pageProps} />
+    ) : (
+      VIEW_PAGES[view.page as PlatformSettingsPageId]?.(pageProps)
+    );
   })();
 
   return (
