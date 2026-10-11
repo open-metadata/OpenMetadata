@@ -20,8 +20,10 @@ type PickerRange = { start: DateValue; end: DateValue } | null;
 export interface DqDateRangeFilterProps {
   startTs?: number;
   endTs?: number;
-  /** `sm` shrinks the core `md` trigger to match the sm filter inputs. */
+  /** `sm` matches the trigger to the sm filter inputs. */
   size?: 'sm' | 'md';
+  /** Stretch the trigger across its container, like the inputs beside it. */
+  fullWidth?: boolean;
   /** Controlled popover open state (for single-open filter coordination). */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -38,6 +40,7 @@ export const DqDateRangeFilter = ({
   startTs,
   endTs,
   size = 'md',
+  fullWidth = false,
   isOpen,
   onOpenChange,
   onApply,
@@ -83,23 +86,17 @@ export const DqDateRangeFilter = ({
     setValue(buildValue());
   };
 
-  const picker = (
+  return (
     <DateRangePicker
+      fullWidth={fullWidth}
       isOpen={isOpen}
+      size={size}
       value={value}
       onApply={handleApply}
       onCancel={handleCancel}
       onChange={setValue}
       onOpenChange={onOpenChange}
     />
-  );
-
-  // The core DateRangePicker trigger is a hardcoded `md` button; scope-override
-  // its inline trigger padding down to `sm` so it lines up with the sm inputs.
-  return size === 'sm' ? (
-    <div className="tw:[&_button]:px-3! tw:[&_button]:py-2!">{picker}</div>
-  ) : (
-    picker
   );
 };
 

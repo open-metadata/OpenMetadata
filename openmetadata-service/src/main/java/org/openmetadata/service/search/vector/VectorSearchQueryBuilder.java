@@ -6,12 +6,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.experimental.UtilityClass;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
@@ -26,8 +30,9 @@ public class VectorSearchQueryBuilder {
 
   /**
    * Consulted only for its engine-independent predicates ({@code isSubjectResolvable}) and field
-   * constants, so this builder decides who is restricted from the same rule the search managers use.
-   * The factory is irrelevant here — this class renders raw JSON, never OMQueryBuilder clauses.
+   * constants, so this builder decides who is restricted from the
+   * same rule the search managers use. The factory is irrelevant here — this class renders raw
+   * JSON, never OMQueryBuilder clauses.
    */
   private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
       new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
@@ -62,8 +67,14 @@ public class VectorSearchQueryBuilder {
             null, filters, size, from, k, threshold, null, subjectContext, null));
   }
 
-  /** Build an OpenSearch request that also applies a compiled query filter. */
+  /** Build an OpenSearch request without admitting anchors whose access has not been evaluated. */
   public static String build(float[] vector, VectorSearchParameters parameters) {
+    return build(vector, parameters, Set.of());
+  }
+
+  /** As above, with the anchors the request pins already evaluated for its subject. */
+  static String build(
+      float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
     StringBuilder sb =
         new StringBuilder(512)
             .append("{\"size\":")
@@ -72,14 +83,7 @@ public class VectorSearchQueryBuilder {
             .append(parameters.from())
             .append(",\"_source\":{\"excludes\":[\"embedding\"]}")
             .append(",\"query\":");
-    appendKnnQuery(
-        sb,
-        vector,
-        parameters.k(),
-        parameters.filters(),
-        parameters.threshold(),
-        parameters.subjectContext(),
-        parameters.queryFilter());
+    appendKnnQuery(sb, vector, parameters, readableAnchorIds);
     sb.append('}');
     return sb.toString();
   }
@@ -102,45 +106,40 @@ public class VectorSearchQueryBuilder {
       Map<String, List<String>> filters,
       double threshold,
       SubjectContext subjectContext) {
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(null, filters, 0, 0, k, threshold, null, subjectContext, null);
+    return buildQuery(vector, parameters, Set.of());
+  }
+
+  /** As above, with the anchors the request pins already evaluated for its subject. */
+  public static String buildQuery(
+      float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
     StringBuilder sb = new StringBuilder(512);
-    appendKnnQuery(sb, vector, k, filters, threshold, subjectContext);
+    appendKnnQuery(sb, vector, parameters, readableAnchorIds);
     return sb.toString();
   }
 
   private static void appendKnnQuery(
       StringBuilder sb,
       float[] vector,
-      int k,
-      Map<String, List<String>> filters,
-      double threshold,
-      SubjectContext subjectContext) {
-    appendKnnQuery(sb, vector, k, filters, threshold, subjectContext, null);
-  }
-
-  private static void appendKnnQuery(
-      StringBuilder sb,
-      float[] vector,
-      int k,
-      Map<String, List<String>> filters,
-      double threshold,
-      SubjectContext subjectContext,
-      String queryFilter) {
+      VectorSearchParameters parameters,
+      Set<String> readableAnchorIds) {
     sb.append("{\"knn\":{\"embedding\":{\"vector\":").append(Arrays.toString(vector));
 
     // OpenSearch KNN supports either min_score or k, not both. When min_score is set,
     // it returns all neighbors above the threshold (unbounded count, capped by the outer
     // "size" parameter). When k is set, it returns exactly k nearest neighbors.
-    if (threshold > 0.0) {
-      sb.append(",\"min_score\":").append(threshold);
+    if (parameters.threshold() > 0.0) {
+      sb.append(",\"min_score\":").append(parameters.threshold());
     } else {
-      sb.append(",\"k\":").append(k);
+      sb.append(",\"k\":").append(parameters.k());
     }
 
     // Build filter inside knn for efficient k-NN filtering
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
-    appendFilterMustClauses(sb, filters, queryFilter);
+    appendFilterMustClauses(sb, parameters.filters(), parameters.queryFilter());
     sb.append("]"); // close must array
-    appendMemoryVisibilityFilter(sb, subjectContext);
+    appendMemoryVisibilityFilter(sb, parameters.subjectContext(), readableAnchorIds);
     sb.append("}}"); // close bool and filter
 
     sb.append("}}}"); // close embedding, knn, query
@@ -180,9 +179,18 @@ public class VectorSearchQueryBuilder {
     return buildNativeESQuery(vector, parameters, numCandidatesMultiplier);
   }
 
-  /** Build an Elasticsearch request that also applies a compiled query filter. */
+  /** Build an Elasticsearch request without admitting anchors whose access has not been evaluated. */
   public static String buildNativeESQuery(
       float[] vector, VectorSearchParameters parameters, int numCandidatesMultiplier) {
+    return buildNativeESQuery(vector, parameters, numCandidatesMultiplier, Set.of());
+  }
+
+  /** As above, with the anchors the request pins already evaluated for its subject. */
+  static String buildNativeESQuery(
+      float[] vector,
+      VectorSearchParameters parameters,
+      int numCandidatesMultiplier,
+      Set<String> readableAnchorIds) {
     // Compute in long to avoid int overflow when k * numCandidatesMultiplier exceeds
     // Integer.MAX_VALUE; clamp to Integer.MAX_VALUE so num_candidates is always positive.
     long candidatesLong = (long) parameters.k() * (long) numCandidatesMultiplier;
@@ -206,7 +214,7 @@ public class VectorSearchQueryBuilder {
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
     appendFilterMustClauses(sb, parameters.filters(), parameters.queryFilter());
     sb.append("]");
-    appendMemoryVisibilityFilter(sb, parameters.subjectContext());
+    appendMemoryVisibilityFilter(sb, parameters.subjectContext(), readableAnchorIds);
     sb.append("}}");
     sb.append("}}");
     return sb.toString();
@@ -221,14 +229,12 @@ public class VectorSearchQueryBuilder {
    * ContextMemorySearchVisibility#buildVisibilityFilter}, where a null or unresolvable subject means
    * "no filter" and each call site opts into {@code buildOrgWideOnlyFilter}: this builder serves
    * callers that pass no identity at all, so the safe default lives here rather than in call-site
-   * discipline. Unknown subject means org-wide memories only; admins get no clause.
+   * discipline. Unknown subject means org-wide memories only; admins still see only Approved
+   * memories in normal search.
    */
   private static void appendMemoryVisibilityFilter(
-      StringBuilder sb, SubjectContext subjectContext) {
-    boolean widen = MEMORY_VISIBILITY.isVisibilityEnforced(subjectContext);
-    if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) && !widen) {
-      return; // an identified admin sees every memory, so no clause at all
-    }
+      StringBuilder sb, SubjectContext subjectContext, Set<String> readableAnchorIds) {
+    boolean enforceVisibility = MEMORY_VISIBILITY.isVisibilityEnforced(subjectContext);
     // A sibling `filter` array rather than another `must` entry: a security constraint must not
     // contribute to the relevance score, and keeping it out of `must` also keeps the
     // caller-supplied
@@ -246,35 +252,50 @@ public class VectorSearchQueryBuilder {
     sb.append(",{\"bool\":{\"must\":[")
         .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
         .append(',');
-    appendVisibleToUserClause(sb, widen ? subjectContext : null, true);
+    if (!MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) || enforceVisibility) {
+      appendVisibleToUserClause(
+          sb, enforceVisibility ? subjectContext : null, true, readableAnchorIds);
+      sb.append(',');
+    }
+    sb.append(termClause(ContextMemoryIndex.FIELD_STATUS, EntityStatus.APPROVED.value()));
     sb.append("]}}");
     // Branch 3: a context file this subject may see. A file with no visibility stamped is not
     // restricted — unlike a memory, which is written with one — so it gets its own branch.
     sb.append(",{\"bool\":{\"must\":[")
-        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_FILE))
-        .append(",{\"bool\":{\"should\":[{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"")
-        .append(ContextMemorySearchVisibility.FIELD_VISIBILITY)
-        .append("\"}}]}},");
-    appendVisibleToUserClause(sb, widen ? subjectContext : null, false);
-    sb.append("]}}");
+        .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_FILE));
+    if (!MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) || enforceVisibility) {
+      sb.append(",{\"bool\":{\"should\":[{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"")
+          .append(ContextMemorySearchVisibility.FIELD_VISIBILITY)
+          .append("\"}}]}},");
+      appendVisibleToUserClause(sb, enforceVisibility ? subjectContext : null, false, Set.of());
+      sb.append("]}}");
+    }
     sb.append("]}}");
     sb.append("]}}]");
   }
 
-  /** Mirrors {@code ContextMemorySearchVisibility#buildVisibleToUserClause}. */
+  /**
+   * Mirrors {@code ContextMemorySearchVisibility#buildVisibleMemoryClause} when {@code allowPublic},
+   * and the inner clause of its {@code buildVisibleFileClause} otherwise.
+   */
   private static void appendVisibleToUserClause(
-      StringBuilder sb, SubjectContext subjectContext, boolean allowPublic) {
+      StringBuilder sb,
+      SubjectContext subjectContext,
+      boolean allowPublic,
+      Set<String> readableAnchorIds) {
     // This clause excludes unstamped memories until Search Reindex restamps them; the file wrapper
     // above separately admits unstamped files because those predate document sharing.
-    sb.append("{\"bool\":{\"should\":[")
-        .append(
-            termClause(
-                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+    sb.append("{\"bool\":{\"should\":[");
     if (allowPublic) {
+      sb.append("{\"bool\":{\"must\":[");
+      appendEntityOrPublic(sb);
       sb.append(',')
-          .append(
-              termClause(
-                  ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()));
+          .append(termClause(ContextMemoryIndex.FIELD_ANCHOR_ID, ContextMemoryIndex.UNANCHORED))
+          .append("]}}");
+    } else {
+      sb.append(
+          termClause(
+              ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
     }
     if (subjectContext != null) {
       User user = subjectContext.user();
@@ -298,8 +319,38 @@ public class VectorSearchQueryBuilder {
           ContextMemorySearchVisibility.FIELD_SHARED_WITH_IDS,
           ContextMemorySearchVisibility.sharedPrincipalIds(user));
       sb.append("]}}");
+      if (allowPublic && !readableAnchorIds.isEmpty()) {
+        sb.append(',');
+        appendAnchoredToClause(sb, readableAnchorIds);
+      }
     }
     sb.append("]}}");
+  }
+
+  /** Mirrors {@code ContextMemorySearchVisibility#anchoredToClause}. */
+  private static void appendAnchoredToClause(StringBuilder sb, Set<String> readableAnchorIds) {
+    sb.append("{\"bool\":{\"must\":[");
+    appendEntityOrPublic(sb);
+    sb.append(",{\"terms\":{\"").append(ContextMemoryIndex.FIELD_ANCHOR_ID).append("\":[");
+    String separator = "";
+    for (String anchorId : readableAnchorIds.stream().sorted().toList()) {
+      sb.append(separator).append('"').append(escape(anchorId)).append('"');
+      separator = ",";
+    }
+    sb.append("]}}]}}");
+  }
+
+  /** Mirrors {@code ContextMemorySearchVisibility#entityOrPublicClause}. */
+  private static void appendEntityOrPublic(StringBuilder sb) {
+    sb.append("{\"bool\":{\"should\":[")
+        .append(
+            termClause(
+                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()))
+        .append(',')
+        .append(
+            termClause(
+                ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.PUBLIC.value()))
+        .append("]}}");
   }
 
   private static String termClause(String field, String value) {
@@ -367,9 +418,9 @@ public class VectorSearchQueryBuilder {
             sb.append(',');
             appendFlat(sb, "databaseSchema.name", values);
           }
-          case "primaryEntityId" -> {
+          case ContextMemoryAnchorPins.PINNED_ANCHOR_FILTER -> {
             sb.append(',');
-            appendFlat(sb, "primaryEntity.id", values);
+            appendFlat(sb, ContextMemoryAnchorPins.FIELD_PRIMARY_ENTITY_ID, values);
           }
           case "parentId" -> {
             sb.append(',');
@@ -387,6 +438,25 @@ public class VectorSearchQueryBuilder {
           case "visibility" -> {
             sb.append(',');
             appendFlat(sb, ContextMemorySearchVisibility.FIELD_VISIBILITY, values);
+          }
+          case ContextMemoryIndex.FIELD_STATUS -> {
+            sb.append(',');
+            appendFlat(sb, ContextMemoryIndex.FIELD_STATUS, values);
+          }
+            // A user's own memories by kind: Collate's per-question recall asks for the
+            // UserGlobal, non-Preference, unpinned ones its preference block does not carry.
+            // Dropped here, a Preference would reach that recall through the semantic leg alone.
+          case ContextMemoryIndex.FIELD_MEMORY_SCOPE -> {
+            sb.append(',');
+            appendFlat(sb, ContextMemoryIndex.FIELD_MEMORY_SCOPE, values);
+          }
+          case ContextMemoryIndex.FIELD_MEMORY_TYPE -> {
+            sb.append(',');
+            appendFlat(sb, ContextMemoryIndex.FIELD_MEMORY_TYPE, values);
+          }
+          case ContextMemoryIndex.FIELD_PINNED -> {
+            sb.append(',');
+            appendFlat(sb, ContextMemoryIndex.FIELD_PINNED, values);
           }
             // Metric facets: semantic_search returns these on every metric result, so a caller
             // that sees "granularity": "MONTH" will reasonably filter by it.

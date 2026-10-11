@@ -10,51 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AreaChart } from '@openmetadata/ui-core-components/charts';
 import { render, screen } from '@testing-library/react';
-import { PropsWithChildren } from 'react';
 import { act } from 'react-test-renderer';
 import { MOCK_KPI_LIST_RESPONSE } from '../../../../pages/KPIPage/KPIMock.mock';
 import { getListKPIs } from '../../../../rest/KpiAPI';
 import KPIWidget from './KPIWidget.component';
-
-jest.mock('../../../../hooks/insights/useDataInsightChartColors', () => ({
-  useDataInsightChartColors: jest.fn().mockReturnValue({
-    activeDotBorder: '#123456',
-    axis: '#234567',
-    grid: '#345678',
-    kpiSeries: ['#456789'],
-  }),
-}));
-
-jest.mock('recharts', () => ({
-  Area: ({
-    activeDot,
-    stroke,
-  }: {
-    activeDot: { stroke: string };
-    stroke: string;
-  }) => (
-    <div
-      data-active-dot-stroke={activeDot.stroke}
-      data-stroke={stroke}
-      data-testid="kpi-area"
-    />
-  ),
-  AreaChart: ({ children }: PropsWithChildren) => <svg>{children}</svg>,
-  CartesianGrid: ({ stroke }: { stroke: string }) => (
-    <div data-stroke={stroke} data-testid="kpi-grid" />
-  ),
-  ResponsiveContainer: ({ children }: PropsWithChildren) => (
-    <div>{children}</div>
-  ),
-  Tooltip: () => null,
-  XAxis: ({ tick }: { tick: { fill: string } }) => (
-    <div data-fill={tick.fill} data-testid="kpi-x-axis" />
-  ),
-  YAxis: ({ tick }: { tick: { fill: string } }) => (
-    <div data-fill={tick.fill} data-testid="kpi-y-axis" />
-  ),
-}));
 
 jest.mock('../../../../constants/constants', () => {
   const actualConstants = jest.requireActual('../../../../constants/constants');
@@ -188,31 +149,26 @@ describe('KPIWidget', () => {
     expect(await screen.findByTestId('kpi-widget')).toBeInTheDocument();
   });
 
-  it('uses active theme colors for the chart presentation', async () => {
+  it('plots each KPI as an area with dots on a fixed y scale', async () => {
     await act(async () => {
       render(<KPIWidget {...widgetProps} />);
     });
 
-    expect(await screen.findByTestId('kpi-grid')).toHaveAttribute(
-      'data-stroke',
-      '#345678'
+    const props = (AreaChart as unknown as jest.Mock).mock.calls.at(-1)[0];
+
+    expect(props.xKey).toBe('day');
+    expect(props.series[0]).toEqual(
+      expect.objectContaining({
+        color: '#100000',
+        showDots: true,
+        seriesOption: { connectNulls: true },
+      })
     );
-    expect(screen.getByTestId('kpi-x-axis')).toHaveAttribute(
-      'data-fill',
-      '#234567'
-    );
-    expect(screen.getByTestId('kpi-y-axis')).toHaveAttribute(
-      'data-fill',
-      '#234567'
-    );
-    expect(screen.getAllByTestId('kpi-area')[0]).toHaveAttribute(
-      'data-active-dot-stroke',
-      '#123456'
-    );
-    expect(screen.getAllByTestId('kpi-area')[0]).toHaveAttribute(
-      'data-stroke',
-      '#456789'
-    );
+    expect(props.yAxis).toEqual({ min: 0, max: expect.any(Number) });
+    expect(props.yAxis.max).toBeGreaterThan(0);
+    expect(props.yAxis).not.toHaveProperty('interval');
+    expect(props.legend).toEqual({ show: false });
+    expect(props['data-testid']).toBe('kpi-widget-chart');
   });
 
   it('should render WidgetEmptyState if no data there', async () => {

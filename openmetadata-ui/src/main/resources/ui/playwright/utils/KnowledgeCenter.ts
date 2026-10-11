@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page, Response } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   SHORTCUTS,
   SLASH_COMMANDS,
@@ -365,7 +366,7 @@ export const readArticleInHierarchy = async (
       },
       {
         message: `article "${articleTitle}" never appeared in the hierarchy while scrolling`,
-        timeout: 30_000,
+        timeout: ACTION_TIMEOUT,
       }
     )
     .toBe(true);

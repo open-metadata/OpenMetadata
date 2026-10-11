@@ -251,7 +251,7 @@ test.describe('Glossary P3 Tests', () => {
           .catch(() => false)
       ) {
         // Vote count should be visible (even if 0)
-        await expect(voteSection.first()).toBeVisible();
+        await expect(voteSection.filter({ visible: true })).not.toHaveCount(0);
       }
     } finally {
       await glossary.delete(apiContext);
@@ -491,8 +491,8 @@ test.describe('Glossary P3 Tests', () => {
           .locator(
             '[data-testid="add-glossary"], [data-testid="glossary-left-panel"]'
           )
-          .first()
-      ).toBeVisible({ timeout: 10000 });
+          .filter({ visible: true })
+      ).not.toHaveCount(0, { timeout: 10000 });
     } finally {
       await glossary.delete(apiContext);
       await afterAction();

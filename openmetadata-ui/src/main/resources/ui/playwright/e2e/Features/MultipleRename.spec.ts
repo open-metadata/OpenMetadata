@@ -233,7 +233,9 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Navigate to classification using side panel and displayName
       await sidebarClick(page, SidebarItem.TAGS);
-      await page.getByTestId('side-panel-classification').first().waitFor();
+      await expect(
+        page.getByTestId('side-panel-classification').filter({ visible: true })
+      ).not.toHaveCount(0);
       await page
         .locator('[data-testid="side-panel-classification"]')
         .filter({ hasText: classification.data.displayName })
@@ -302,7 +304,9 @@ test.describe('Multiple Rename Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Navigate to tag using side panel and displayName
       await sidebarClick(page, SidebarItem.TAGS);
-      await page.getByTestId('side-panel-classification').first().waitFor();
+      await expect(
+        page.getByTestId('side-panel-classification').filter({ visible: true })
+      ).not.toHaveCount(0);
       await page
         .locator('[data-testid="side-panel-classification"]')
         .filter({ hasText: classification.data.displayName })

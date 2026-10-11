@@ -58,6 +58,7 @@ jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: jest.requireActual('@openmetadata/ui-core-components').Box,
   Tabs: jest.requireActual('@openmetadata/ui-core-components').Tabs,
+  Divider: jest.requireActual('@openmetadata/ui-core-components').Divider,
   Breadcrumbs: jest
     .fn()
     .mockImplementation(
@@ -296,10 +297,6 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>EntityNameModal</div>);
   }
 );
-
-jest.mock('../../components/Modals/StyleModal/StyleModal.component', () => {
-  return jest.fn().mockImplementation(() => <div>StyleModal</div>);
-});
 
 jest.mock('../../components/Modals/IconColorModal/IconColorModal', () => {
   return jest.fn().mockImplementation(() => <div>IconColorModal</div>);

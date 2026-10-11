@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -78,9 +79,7 @@ export const visitClassificationPage = async (
       .or(tagsContainer.getByText('Add the first tag'))
   ).toBeVisible();
 
-  await expect(
-    tagsContainer.locator('.table-container').getByTestId('loader')
-  ).toHaveCount(0, { timeout: 30000 });
+  await waitForAllLoadersToDisappear(tagsContainer.locator('.table-container'));
 
   await expect(tagsContainer.getByTestId('header')).toContainText(
     classificationDisplayName
@@ -99,10 +98,7 @@ export const addAssetsToTag = async (
 
   await tag.visitPage(page);
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   await page.getByTestId('assets').click();
   const initialFetchResponse = page.waitForResponse(
@@ -195,10 +191,7 @@ export const removeAssetsFromTag = async (
   await tag.visitPage(page);
   await res;
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
@@ -242,10 +235,7 @@ export const removeAssetsFromTag = async (
   await assetsRemoveRes;
 
   await page.reload();
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
   await checkAssetsCount(page, 0);
 };
 
@@ -254,7 +244,7 @@ export const checkAssetsCount = async (page: Page, count: number) => {
   // give it the same 30s the domain util allows instead of the default 15s.
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
-  ).toContainText(count.toString(), { timeout: 30_000 });
+  ).toContainText(count.toString(), { timeout: ACTION_TIMEOUT });
 };
 
 export const setupAssetsForTag = async (page: Page) => {
@@ -404,10 +394,7 @@ export const verifyTagPageUI = async (
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
@@ -444,10 +431,7 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   await redirectToHomePage(page);
   await tag.visitPage(page);
 
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
 
   const updatedDescription = `This is updated test description for tag ${tag.data.name}.`;
 
@@ -472,10 +456,7 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   );
   await page.getByTestId('save').click();
   await editDescription;
-  await page
-    .getByTestId('tags-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByTestId('tags-container'));
   await expect(page.getByRole('dialog')).not.toBeVisible();
 
   await expect(page.getByTestId('viewer-container')).toContainText(
@@ -602,6 +583,13 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
 
   await domainOption.waitFor({ state: 'visible', timeout: 5000 });
   await domainOption.click();
+
+  // The autocomplete keeps its listbox open on a pick and re-queries, so the
+  // drawer footer never settles for submitForm. Click the heading to dismiss.
+  await adminPage.getByTestId('drawer-heading').click();
+
+  await expect(adminPage.getByRole('listbox')).toBeHidden();
+  await expect(adminPage.getByTestId('tags-form')).toBeVisible();
 };
 
 export const setTagDisabled = async (
@@ -656,7 +644,7 @@ export const verifyEntityTypeFilterInTagAssets = async (
   assets: EntityClass[]
 ) => {
   await page.getByTestId('asset-filter-button').click();
-  await page.getByRole('menuitem', { name: 'Entity Type' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Entity Type' }).click();
   await expect(page.getByRole('button', { name: 'Entity Type' })).toBeVisible();
   await page.getByRole('button', { name: 'Entity Type' }).click();
   const entityTypeMenu = page.getByTestId('drop-down-menu');

@@ -1241,7 +1241,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     DataContract contract = createEntity(request);
 
-    // Default status should be UNPROCESSED
+    // A new contract starts in Draft until it is reviewed
     assertEquals(EntityStatus.UNPROCESSED, contract.getEntityStatus());
   }
 
@@ -6743,6 +6743,76 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(2, validation.getSchemaValidation().getFailed());
     assertTrue(validation.getSchemaValidation().getFailedFields().contains("nonexistent_column"));
     assertTrue(validation.getSchemaValidation().getFailedFields().contains("another_missing"));
+  }
+
+  // Regression for the validate endpoints returning 500/404 instead of a structured
+  // ContractValidation. Before the fix, validateContractWithoutThrowing let an unguarded second
+  // validateSchemaFieldsAgainstEntity call throw (NPE for null entity, EntityNotFoundException
+  // for a missing entity id) and the endpoints returned 500/404. These inputs must now return
+  // 200 with a populated ContractValidation (valid=false).
+
+  @Test
+  void testValidateContractRequestNullEntityWithSchemaReturnsValidation(TestNamespace ns) {
+    // Variant A: entity omitted, non-empty schema -> before the fix: HTTP 500 (NPE).
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("validate_null_entity"))
+            .withSchema(List.of(new Column().withName("a").withDataType(ColumnDataType.STRING)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getEntityErrors());
+    assertTrue(
+        validation.getEntityErrors().stream().anyMatch(e -> e.contains("entity")),
+        "entityErrors must include the @NotNull violation for the null entity: "
+            + validation.getEntityErrors());
+    assertNotNull(
+        validation.getConstraintErrors(),
+        "the previously-unguarded NPE must now be collected as a constraint error");
+    assertFalse(validation.getConstraintErrors().isEmpty());
+  }
+
+  @Test
+  void testValidateContractRequestMissingEntityIdWithSchemaReturnsValidation(TestNamespace ns) {
+    // Variant B: entity present but id does not resolve (supported type), non-empty schema ->
+    // before the fix: HTTP 404 (EntityNotFoundException). A random UUID of type "table" will not
+    // resolve.
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("validate_missing_entity_id"))
+            .withEntity(new EntityReference().withId(UUID.randomUUID()).withType("table"))
+            .withSchema(List.of(new Column().withName("a").withDataType(ColumnDataType.STRING)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getConstraintErrors());
+    assertFalse(
+        validation.getConstraintErrors().isEmpty(),
+        "the EntityNotFoundException must be recorded as a constraint error, not returned as 404");
+  }
+
+  @Test
+  void testValidateContractRequestYamlNullEntityWithSchemaReturnsValidation(TestNamespace ns) {
+    // Variant A through the YAML endpoint (POST /v1/dataContracts/validate/yaml). Before the
+    // fix: HTTP 500 (NPE). The YAML body is a CreateDataContract with only name + schema.
+    String yaml =
+        "name: "
+            + ns.prefix("validate_yaml_null_entity")
+            + "\nschema:\n  - name: a\n    dataType: STRING\n";
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContractYaml(yaml);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getEntityErrors());
+    assertTrue(validation.getEntityErrors().stream().anyMatch(e -> e.contains("entity")));
   }
 
   @Test

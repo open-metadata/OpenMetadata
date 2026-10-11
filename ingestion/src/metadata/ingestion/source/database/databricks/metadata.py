@@ -66,6 +66,7 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
+    DATABRICKS_GET_COLUMN_TYPE,
     DATABRICKS_GET_SCHEMA_COMMENTS,
     DATABRICKS_GET_SCHEMA_TAGS,
     DATABRICKS_GET_TABLE_COMMENTS,
@@ -547,12 +548,22 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             }
             if col_type in {"array", "struct", "map"}:
                 try:
-                    sub_rows = {
-                        r[0]: r[1]
-                        for r in connection.execute(
-                            text(f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`")
-                        ).fetchall()
-                    }
+                    if db_name and schema:
+                        column_type_query = _format_identifier_query(
+                            DATABRICKS_GET_COLUMN_TYPE,
+                            database_name=db_name,
+                            schema_name=schema,
+                            table_name=table_name,
+                            column_name=col_name,
+                        )
+                    else:
+                        # No catalog (older Hive-metastore path), or no schema:
+                        # compose the table reference the same way get_table_type's
+                        # fallback does, and quote the column on its own.
+                        column_type_query = (
+                            f"DESCRIBE TABLE {_qualified_identifier(schema, table_name)} {_quote_identifier(col_name)}"
+                        )
+                    sub_rows = {r[0]: r[1] for r in connection.execute(text(column_type_query)).fetchall()}
                     col_info["system_data_type"] = sub_rows["data_type"]
                     col_info["is_complex"] = True
                     # Map values aren't surfaced as named children, so map

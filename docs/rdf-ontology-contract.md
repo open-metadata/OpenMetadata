@@ -7,7 +7,7 @@ make availability explicit:
 | Status | Meaning |
 | --- | --- |
 | `om:Stored` | The projection writes the predicate when the corresponding field or relationship is populated. Queries work with `inference=none`. Optional fields need not be present on every entity. |
-| `om:InferenceOnly` | The metadata projection does not supply this predicate. It is retained for custom inference, external ontology data, or an explicit export path described in its comment. Enabling RDFS or OWL alone does not guarantee any matching triples. |
+| `om:InferenceOnly` | The metadata projection does not supply this predicate. It is retained for custom inference, external ontology data, or an explicit export path described in its comment. Triples materialized by custom rules are returned with `inference=custom` only; `inference=none` reads asserted graphs. Enabling RDFS or OWL alone does not guarantee any matching triples. |
 
 In particular, declaring an alias as `rdfs:subPropertyOf` an external property
 does **not** infer the alias from triples using that external property. The
@@ -57,6 +57,48 @@ source to output. That predicate is deprecated. Live writes and reconciliation
 remove the legacy edge and repair old live PROV edges while preserving a valid
 reciprocal lineage edge. Graph exports normalize lineage predicates to match the
 exported source-to-output orientation.
+
+## Column-level lineage
+
+A lineage edge's details node links each column mapping through
+`om:hasColumnLineage`. Live lineage writes and the RDF indexing app write the same
+triples, using the edge's details as currently stored:
+
+```turtle
+<details> om:hasColumnLineage <columnLineage> .
+<columnLineage> a om:ColumnLineage ;
+    om:fromColumn <https://open-metadata.org/entity/column/service.db.schema.customers.email> ;
+    om:fromColumnFqn "service.db.schema.customers.email" ;
+    om:toColumn <https://open-metadata.org/entity/column/service.db.schema.contacts.email> ;
+    om:toColumnFqn "service.db.schema.contacts.email" .
+```
+
+`om:fromColumn` and `om:toColumn` reference the same column IRIs that `om:hasColumn`
+mints for the table, so queries and inference rules can join column lineage with column
+tags. Match by name with `om:fromColumnFqn` and `om:toColumnFqn`. Stores indexed before
+2.1 hold FQN literals in `om:fromColumn` and `om:toColumn` until the lineage edge is
+written again or the store is rebuilt.
+
+## Domain membership
+
+An asset's `domains` are projected as `om:belongsToDomain`, the predicate already used
+for the singular `domain` field. `om:domains` is deprecated: the next projection of
+each entity removes it, and a full rebuild removes it everywhere.
+
+## Concept realizations
+
+Each entry in a glossary term's `realizedIn` links the term to the asset twice: with
+`om:mappedTo`, written from the stored realization relationship, and with a predicate
+for the asset's role:
+
+| Role | Predicate |
+|---|---|
+| `PRIMARY_STORE` (the default) | `om:hasPrimaryStore` |
+| `DERIVED` | `om:hasDerivedAsset` |
+| `REPLICA` | `om:hasReplica` |
+
+`om:realizedIn` is deprecated. Earlier releases stored realizations under it as a JSON
+literal, which the term's next projection removes.
 
 ## Custom extension values
 

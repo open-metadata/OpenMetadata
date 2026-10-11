@@ -16,6 +16,7 @@ package org.openmetadata.service;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -182,6 +183,7 @@ import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLoginSessionSweeper;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -555,6 +557,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
     environment.lifecycle().manage(sessionService);
     environment.lifecycle().manage(new WebSocketSessionValidator(sessionService));
+    environment.lifecycle().manage(new TestLoginSessionSweeper());
     setAuthServletAttributes(
         contextHandler,
         AuthServeletHandlerFactory.getHandler(config, sessionService),
@@ -718,6 +721,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
 
     int createdIndexCount = searchRepository.createMissingIndexes();
+    // Drops a column index left behind while column indexing was off, e.g. one a server with a
+    // stale settings cache recreated by writing to it.
+    searchRepository.reconcileColumnIndex();
     searchRepository.createOrUpdateIndexTemplates(createdIndexCount);
 
     LOG.info("Core search infrastructure initialization completed");
@@ -768,7 +774,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         EnumSet.allOf(DispatcherType.class), true, eventMonitorConfiguration.getPathPattern());
   }
 
-  private void registerAssetServlet(
+  protected void registerAssetServlet(
       OpenMetadataApplicationConfig config,
       OMWebConfiguration webConfiguration,
       Environment environment) {
@@ -776,13 +782,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     LOG.info("Registering Asset Servlet with basePath: {}", config.getBasePath());
     LOG.info("Application Context Path: {}", environment.getApplicationContext().getContextPath());
 
-    // Handle Asset Using Servlet
-    OpenMetadataAssetServlet assetServlet =
-        new OpenMetadataAssetServlet(
-            config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
+    OpenMetadataAssetServlet assetServlet = createAssetServlet(config, webConfiguration);
     environment.servlets().addServlet("static", assetServlet).addMapping("/*");
 
     LOG.info("Asset Servlet registered with mapping: /*");
+  }
+
+  /**
+   * Subclass hook: construct the servlet that serves the SPA shell. Override to return a subclass
+   * of {@link OpenMetadataAssetServlet} that uses the {@code renderIndex} / {@code etagVariant}
+   * hooks to inject per-request transforms (feature-flag shells, CDN URL rewriting, tenant
+   * branding, …). Default returns an unmodified {@link OpenMetadataAssetServlet}.
+   */
+  protected OpenMetadataAssetServlet createAssetServlet(
+      OpenMetadataApplicationConfig config, OMWebConfiguration webConfiguration) {
+    return new OpenMetadataAssetServlet(
+        config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
@@ -796,12 +811,19 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
 
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    // The ACS is registered whatever the live provider, so a SAML candidate can be tested from any
+    // instance. While SAML is not live it answers 404 to anything that is not such a test.
+    if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/acs")) {
+      contextHandler.addServlet(
+          new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+    }
+
     // Ensure we have a session handler
     if (SecurityConfigurationManager.getCurrentAuthConfig() != null
         && SecurityConfigurationManager.getCurrentAuthConfig()
             .getProvider()
             .equals(AuthProvider.SAML)) {
-      MutableServletContextHandler contextHandler = environment.getApplicationContext();
       if (contextHandler.getSessionHandler() == null) {
         contextHandler.setSessionHandler(new SessionHandler());
       }
@@ -812,10 +834,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Only register servlets if they don't already exist to prevent duplicate registration
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/login")) {
         contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
-      }
-      if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/acs")) {
-        contextHandler.addServlet(
-            new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
       }
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/metadata")) {
         contextHandler.addServlet(
@@ -939,9 +957,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   public void reinitializeAuthSystem(
       OpenMetadataApplicationConfig config, Environment environment) {
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    AuthServeletHandler previousHandler =
+        AuthServeletHandlerRegistry.getHandler(contextHandler.getServletContext());
+    AuthenticatorHandler previousAuthenticator = authenticatorHandler;
     try {
       LOG.info("Starting authentication system reinitialization");
-      MutableServletContextHandler contextHandler = environment.getApplicationContext();
       SessionService sessionService =
           AuthServeletHandlerRegistry.getSessionService(contextHandler.getServletContext());
       if (sessionService == null) {
@@ -985,6 +1006,41 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Trigger rollback in AuthenticationConfigurationManager
       // Rollback is handled internally by SecurityConfigurationManager
       throw new RuntimeException("Authentication system reinitialization failed", e);
+    } finally {
+      closeReplacedAuthHandlers(
+          previousHandler,
+          AuthServeletHandlerRegistry.getHandler(contextHandler.getServletContext()),
+          previousAuthenticator,
+          authenticatorHandler);
+    }
+  }
+
+  /**
+   * Closes the handlers a security reload swapped out, including when the reload failed after the
+   * swap: nothing routes to them any more, and an LDAP one would otherwise keep its pool probing
+   * the directory it was built for. A handler the reload never replaced is still serving logins
+   * and stays open. Every reload builds new instances, so identity tells the two apart.
+   */
+  @VisibleForTesting
+  static void closeReplacedAuthHandlers(
+      AuthServeletHandler previousHandler,
+      AuthServeletHandler currentHandler,
+      AuthenticatorHandler previousAuthenticator,
+      AuthenticatorHandler currentAuthenticator) {
+    if (previousHandler != currentHandler) {
+      closeQuietly(previousHandler::close);
+    }
+    if (previousAuthenticator != currentAuthenticator) {
+      closeQuietly(previousAuthenticator::close);
+    }
+  }
+
+  /** A failed close must neither hide the reload's own error nor fail a reload that worked. */
+  private static void closeQuietly(Runnable close) {
+    try {
+      close.run();
+    } catch (RuntimeException e) {
+      LOG.warn("Could not close an auth handler replaced by a security reload", e);
     }
   }
 

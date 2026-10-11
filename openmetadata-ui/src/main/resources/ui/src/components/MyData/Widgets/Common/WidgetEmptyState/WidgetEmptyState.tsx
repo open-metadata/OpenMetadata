@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import './widget-empty-state.less';
 
 export interface WidgetEmptyStateProps {
   icon?: ReactElement;
@@ -45,48 +43,50 @@ const WidgetEmptyState = ({
 }: WidgetEmptyStateProps) => {
   const { t } = useTranslation();
 
-  const handleActionClick = () => {
-    if (onActionClick) {
-      onActionClick();
-    }
-  };
-
-  const actionButton = showActionButton && (
-    <Button className="m-t-md" type="primary" onClick={handleActionClick}>
-      {actionButtonText || t('label.explore')}
-    </Button>
-  );
-
-  const actionLink = actionButtonLink && (
-    <Link to={actionButtonLink}>
-      <Button className="m-t-md" type="primary">
-        {actionButtonText || t('label.explore')}
-      </Button>
-    </Link>
-  );
+  const buttonLabel = actionButtonText || t('label.explore');
 
   return (
-    <div className={`widget-empty-state ${className}`} data-testid={dataTestId}>
+    <Box
+      align="center"
+      className={classNames(
+        'widget-empty-state tw:h-full tw:min-h-50 tw:p-6',
+        className
+      )}
+      data-testid={dataTestId}
+      justify="center">
       <ErrorPlaceHolder
         className="border-none"
         icon={icon}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <div className="d-flex flex-col items-center">
+        <Box align="center" direction="col">
           {title && (
-            <Typography className="empty-state-title text-md font-semibold m-b-sm">
+            <Typography
+              className="tw:mb-3 tw:text-secondary"
+              size="text-md"
+              weight="semibold">
               {title}
             </Typography>
           )}
           {description && (
-            <Typography className="empty-state-placeholder text-sm font-regular">
+            <Typography
+              className="tw:max-w-75 tw:text-center tw:text-quaternary"
+              size="text-sm">
               {description}
             </Typography>
           )}
-          {actionButton}
-          {actionLink}
-        </div>
+          {showActionButton && (
+            <Button className="tw:mt-4" size="sm" onPress={onActionClick}>
+              {buttonLabel}
+            </Button>
+          )}
+          {actionButtonLink && (
+            <Button className="tw:mt-4" href={actionButtonLink} size="sm">
+              {buttonLabel}
+            </Button>
+          )}
+        </Box>
       </ErrorPlaceHolder>
-    </div>
+    </Box>
   );
 };
 

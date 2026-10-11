@@ -283,7 +283,7 @@ public final class OntologyChangeOperationExecutor {
     return outcome(deleted);
   }
 
-  private static OperationOutcome outcome(final EntityInterface entity) {
+  private static OperationOutcome outcome(final EntityInterface<?> entity) {
     return new OperationOutcome(entity.getEntityReference(), entity.getVersion());
   }
 

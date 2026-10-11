@@ -19,6 +19,7 @@ import {
   TestType,
 } from '@playwright/test';
 import { startCase } from 'lodash';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { deleteFixtureEntity, okJson } from '../../../utils/apiResponse';
 import { descriptionBox, getApiContext } from '../../../utils/common';
 import {
@@ -193,11 +194,7 @@ class ServiceBaseClass {
 
     await page.click('[data-testid="add-new-ingestion-button"]');
 
-    await page
-      .locator('.ant-dropdown:visible [data-menu-id*="metadata"]')
-      .waitFor();
-
-    await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
+    await page.getByTestId('agent-item-metadata').click();
 
     // Add ingestion page
     await waitForIngestionWorkflowForm(page);
@@ -215,7 +212,9 @@ class ServiceBaseClass {
     // being gone is a no-op when it has not rendered yet and when it has already
     // closed. A bounded click covers every ordering — Playwright retries the
     // intercepted click for the whole timeout, which outlasts the toast.
-    await page.click('[data-testid="next-button"]', { timeout: 30_000 });
+    await page.click('[data-testid="next-button"]', {
+      timeout: ACTION_TIMEOUT,
+    });
 
     // Go back and data should persist
     await page.click('[data-testid="previous-button"]');
@@ -230,19 +229,13 @@ class ServiceBaseClass {
 
     // Header available once page loads
     await page.getByTestId('data-assets-header').waitFor();
-    await page
-      .getByTestId('table-container')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('table-container'));
     await page.getByTestId('agents').click();
     const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
     if (await metadataTab2.isVisible()) {
       await metadataTab2.click();
     }
-    await page
-      .getByLabel('agents')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
     const triggerPipeline = page.waitForResponse(
       (response) =>
@@ -538,10 +531,7 @@ class ServiceBaseClass {
       false
     );
 
-    await page
-      .getByTestId('table-container')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('table-container'));
 
     await page.click('[data-testid="agents"]');
     const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
@@ -549,10 +539,7 @@ class ServiceBaseClass {
       await metadataTab2.click();
     }
 
-    await page
-      .getByLabel('agents')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByLabel('agents'));
     await page.getByTestId('logs-button').first().waitFor({ state: 'visible' });
 
     const triggerPipeline = page.waitForResponse(

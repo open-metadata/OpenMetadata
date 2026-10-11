@@ -47,6 +47,7 @@
       "$ref": "../../type/termRelation.json#/definitions/provenance"
     },
     "entityStatus": {
+      "description": "Lifecycle stage of the axiom. When omitted, the axiom starts in Draft.",
       "$ref": "../../type/status.json"
     },
     "owners": {
@@ -66,8 +67,7 @@
     "glossary",
     "axiomType",
     "subjectIri",
-    "provenance",
-    "entityStatus"
+    "provenance"
   ],
   "additionalProperties": false
 }

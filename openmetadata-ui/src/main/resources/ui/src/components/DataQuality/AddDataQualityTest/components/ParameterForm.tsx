@@ -13,17 +13,8 @@
 
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
-  Tooltip,
-} from 'antd';
+import { Toggle, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, FormItemProps, Input, InputNumber, Select } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import { debounce, isUndefined } from 'lodash';
 import {
@@ -321,7 +312,11 @@ const buildStringField = ({
             {/* eslint-disable-next-line jsx-a11y/label-has-for -- editor caption, not a form control */}
             <label className="d-flex align-items-center">
               <Typography className="form-label-title">{label}</Typography>
-              <Tooltip title={data.description}>
+              <Tooltip
+                arrow
+                excludeTriggerFromTabOrder
+                title={data.description}
+                triggerClassName="tw:inline-flex">
                 <QuestionCircleOutlined className="ant-form-item-tooltip" />
               </Tooltip>
             </label>
@@ -491,10 +486,10 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         />
       );
     } else if (data.dataType === TestDataType.Boolean) {
-      Field = <Switch />;
+      Field = <Toggle size="sm" />;
       internalFormItemProps = {
         ...internalFormItemProps,
-        valuePropName: 'checked',
+        valuePropName: 'isSelected',
       };
     } else if (
       data.dataType === TestDataType.Array ||

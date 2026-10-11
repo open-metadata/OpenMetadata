@@ -713,14 +713,7 @@ public class OSLineageGraphBuilder
       throws IOException {
     Map<Integer, List<String>> entitiesByDepth =
         getAllEntitiesByDepth(
-            fqn,
-            direction,
-            maxDepth,
-            structuralFilter,
-            includeDeleted,
-            Set.of(),
-            startTime,
-            endTime);
+            fqn, direction, maxDepth, structuralFilter, includeDeleted, startTime, endTime);
 
     Set<String> allFqnHashes = new HashSet<>();
     for (List<String> fqns : entitiesByDepth.values()) {
@@ -829,7 +822,6 @@ public class OSLineageGraphBuilder
                   traversalDepth,
                   hasNodeLevelQueryFilter ? structuralQueryFilter : request.getQueryFilter(),
                   request.getIncludeDeleted(),
-                  request.getIncludeSourceFields(),
                   request.getStartTime(),
                   request.getEndTime()));
 
@@ -1068,7 +1060,7 @@ public class OSLineageGraphBuilder
               0,
               10000,
               includeDeleted,
-              List.of("id", "fullyQualifiedName", "entityType", "upstreamLineage"),
+              LINEAGE_WALK_FIELDS,
               SOURCE_FIELDS_TO_EXCLUDE);
 
       SearchResponse<JsonData> searchResponse = esClient.search(searchRequest, JsonData.class);
@@ -1124,7 +1116,6 @@ public class OSLineageGraphBuilder
       int maxDepth,
       String queryFilter,
       boolean includeDeleted,
-      Set<String> includeSourceFields,
       Long startTime,
       Long endTime)
       throws IOException {
@@ -1150,7 +1141,7 @@ public class OSLineageGraphBuilder
               0,
               10000,
               includeDeleted,
-              includeSourceFields.stream().toList(),
+              LINEAGE_WALK_FIELDS,
               SOURCE_FIELDS_TO_EXCLUDE);
 
       SearchResponse<JsonData> searchResponse = esClient.search(searchRequest, JsonData.class);
@@ -1331,7 +1322,7 @@ public class OSLineageGraphBuilder
               0,
               10000,
               request.getIncludeDeleted(),
-              request.getIncludeSourceFields().stream().toList(),
+              LINEAGE_WALK_FIELDS,
               SOURCE_FIELDS_TO_EXCLUDE);
 
       SearchResponse<JsonData> searchResponse = esClient.search(searchRequest, JsonData.class);
@@ -1389,17 +1380,22 @@ public class OSLineageGraphBuilder
     allCollectedFqns.add(request.getFqn());
 
     // Add paginated entities to result
+    Map<String, Map<String, Object>> pageDocuments =
+        pageDocuments(
+            paginatedEntities.stream().map(entityData -> entityData.fqn).toList(), request, result);
     for (EntityData entityData : paginatedEntities) {
+      Map<String, Object> document = pageDocuments.get(entityData.fqn);
+      if (document == null) {
+        continue;
+      }
       int entityDepth = entityData.depth;
       if (request.getDirection() == LineageDirection.UPSTREAM) {
         entityDepth = -entityDepth;
       }
 
-      result
-          .getNodes()
-          .put(entityData.fqn, getNodeInformation(entityData.document, null, null, entityDepth));
+      result.getNodes().put(entityData.fqn, getNodeInformation(document, null, null, entityDepth));
 
-      addLineageEdges(result, entityData.document, request, allCollectedFqns);
+      addLineageEdges(result, document, request, allCollectedFqns);
     }
 
     Map<Integer, Integer> depthCounts = new LinkedHashMap<>();
@@ -1410,6 +1406,32 @@ public class OSLineageGraphBuilder
     }
 
     return depthCounts;
+  }
+
+  @Override
+  protected Map<String, Map<String, Object>> documentsByHash(
+      Set<String> hashes, EntityCountLineageRequest request) throws IOException {
+    SearchRequest searchRequest =
+        getSearchRequest(
+            request.getDirection(),
+            GLOBAL_SEARCH_ALIAS,
+            null,
+            null,
+            Map.of(FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD, hashes),
+            0,
+            10000,
+            request.getIncludeDeleted(),
+            request.getIncludeSourceFields().stream().toList(),
+            SOURCE_FIELDS_TO_EXCLUDE);
+    Map<String, Map<String, Object>> documents = new HashMap<>();
+    for (Hit<JsonData> hit : esClient.search(searchRequest, JsonData.class).hits().hits()) {
+      Map<String, Object> esDoc =
+          hit.source() == null ? Map.of() : OsUtils.jsonDataToMap(hit.source());
+      if (!esDoc.isEmpty()) {
+        documents.put(esDoc.get(FQN_FIELD).toString(), esDoc);
+      }
+    }
+    return documents;
   }
 
   private LineagePaginationInfo buildEntityCountPaginationInfo(

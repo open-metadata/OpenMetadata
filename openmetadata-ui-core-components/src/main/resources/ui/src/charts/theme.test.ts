@@ -12,6 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { DARK_CHART_PALETTE, LIGHT_CHART_PALETTE } from './palette';
 import { buildChartTheme, DARK_CHART_THEME, LIGHT_CHART_THEME } from './theme';
 
 describe('buildChartTheme', () => {
@@ -41,7 +42,15 @@ describe('chart themes', () => {
       tooltipBg: '#ffffff',
       tooltipText: '#374151',
       tooltipBorder: '#e5e7eb',
+      palette: LIGHT_CHART_PALETTE,
     });
+  });
+
+  // The dark empty fill used to equal the dark surface (#22262f), so a pie
+  // track or a map region without data vanished into the card.
+  it('draws empty areas in a colour that stands out from the dark surface', () => {
+    expect(DARK_CHART_THEME.emptyFill).not.toBe(DARK_CHART_THEME.tooltipBg);
+    expect(DARK_CHART_THEME.emptyFill).toBe(DARK_CHART_THEME.grid);
   });
 
   it('keeps the dark chrome colours', () => {
@@ -52,11 +61,12 @@ describe('chart themes', () => {
       axisTitle: '#cecfd2',
       xAxisTitle: '#cecfd2',
       grid: '#373a41',
-      emptyFill: '#22262f',
+      emptyFill: '#373a41',
       segmentBorder: '#0c0e12',
       tooltipBg: '#22262f',
       tooltipText: '#f7f7f7',
       tooltipBorder: '#373a41',
+      palette: DARK_CHART_PALETTE,
     });
   });
 });

@@ -165,6 +165,7 @@ test('Copy column link button should copy the column URL to clipboard', async ({
     page,
     buttonTestId: 'copy-column-link-button',
     containerTestId: 'entity-table',
+    rowName: table.columnsName[0],
     expectedUrlPath: '/table/',
     entityFqn: table.entityResponseData?.['fullyQualifiedName'] ?? '',
   });

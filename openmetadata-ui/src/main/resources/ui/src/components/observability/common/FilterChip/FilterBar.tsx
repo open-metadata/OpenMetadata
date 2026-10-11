@@ -17,7 +17,7 @@ import { useCallback, useState } from 'react';
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { FilterDescriptor } from '../../../DataQuality/TestCases/FilterChip.interface';
-import FilterChip, { FilterChipVariant } from './FilterChip';
+import FilterChip from './FilterChip';
 
 interface AdvancedMenuItem {
   key: string;
@@ -39,8 +39,6 @@ export interface FilterBarProps {
   advancedMenu?: AdvancedMenuInput;
   selectedFilter?: string[];
   hasActiveFilters: boolean;
-  /** Trigger style for the filter chips. Defaults to `chip`. */
-  variant?: FilterChipVariant;
   onToggleFilter?: (info: { key: string }) => void;
   onClearAll: () => void;
 }
@@ -50,7 +48,6 @@ export const FilterBar = ({
   advancedMenu,
   selectedFilter = [],
   hasActiveFilters,
-  variant = 'chip',
   onToggleFilter,
   onClearAll,
 }: FilterBarProps) => {
@@ -106,7 +103,7 @@ export const FilterBar = ({
 
   return (
     <Box
-      align={variant === 'input' ? 'stretch' : 'center'}
+      align="center"
       className="tw:w-full"
       data-testid="filter-bar"
       gap={3}
@@ -147,43 +144,21 @@ export const FilterBar = ({
           descriptor={descriptor}
           isOpen={openFilterKey === descriptor.key}
           key={descriptor.key}
-          variant={variant}
           onOpenChange={(open) => handleFilterOpenChange(descriptor.key, open)}
         />
       ))}
 
-      {hasActiveFilters &&
-        (variant === 'input' ? (
-          // Spacer matches the chip label so the flex-1 region equals the input
-          // height, centering the button against the inputs (not label+input).
-          <div className="tw:ml-auto tw:flex tw:flex-col tw:gap-1.5">
-            <span
-              aria-hidden="true"
-              className="tw:invisible tw:text-sm tw:font-medium">
-              &nbsp;
-            </span>
-            <div className="tw:flex tw:flex-1 tw:items-center">
-              <Button
-                color="secondary"
-                data-testid="clear-all-filter-btn"
-                iconLeading={XCircle}
-                size="xs"
-                onPress={handleClearAll}>
-                {clearAllLabel}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button
-            className="tw:ml-auto"
-            color="secondary"
-            data-testid="clear-all-filter-btn"
-            iconLeading={XCircle}
-            size="xs"
-            onPress={handleClearAll}>
-            {clearAllLabel}
-          </Button>
-        ))}
+      {hasActiveFilters && (
+        <Button
+          className="tw:ml-auto"
+          color="secondary"
+          data-testid="clear-all-filter-btn"
+          iconLeading={XCircle}
+          size="xs"
+          onPress={handleClearAll}>
+          {clearAllLabel}
+        </Button>
+      )}
     </Box>
   );
 };

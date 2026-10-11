@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Modal, Skeleton, Space, Switch } from 'antd';
+import {
+  Box,
+  Skeleton,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -111,10 +116,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'subTeams',
         render: (childrenCount: number) =>
           isFetchingAllTeamAdvancedDetails ? (
-            <Skeleton
-              active={isFetchingAllTeamAdvancedDetails}
-              paragraph={{ rows: 0 }}
-            />
+            <Skeleton height={16} width="38%" />
           ) : (
             childrenCount ?? 0
           ),
@@ -126,10 +128,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'users',
         render: (userCount: number) =>
           isFetchingAllTeamAdvancedDetails ? (
-            <Skeleton
-              active={isFetchingAllTeamAdvancedDetails}
-              paragraph={{ rows: 0 }}
-            />
+            <Skeleton height={16} width="38%" />
           ) : (
             userCount ?? 0
           ),
@@ -143,10 +142,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'owns',
         render: (fullyQualifiedName: string) =>
           isFetchingAllTeamAdvancedDetails ? (
-            <Skeleton
-              active={isFetchingAllTeamAdvancedDetails}
-              paragraph={{ rows: 0 }}
-            />
+            <Skeleton height={16} width="38%" />
           ) : (
             <Typography
               className="tw:text-primary"
@@ -329,12 +325,17 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           dragAndDropHooks={dragAndDropHooks}
           expandable={expandableConfig}
           extraTableFilters={
-            <Space align="center">
-              <span>
-                <Switch
-                  checked={showDeletedTeam}
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <span className="tw:inline-flex tw:items-center">
+                <Toggle
                   data-testid="show-deleted"
-                  onClick={onShowDeletedTeamChange}
+                  isSelected={showDeletedTeam}
+                  onChange={onShowDeletedTeamChange}
                 />
                 <Typography className="m-l-xs">{t('label.deleted')}</Typography>
               </span>
@@ -347,7 +348,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
                   {t('label.add-entity', { entity: t('label.team') })}
                 </Button>
               )}
-            </Space>
+            </Box>
           }
           loading={isTableLoading || isTeamBasicDataLoading || isSearchLoading}
           locale={{

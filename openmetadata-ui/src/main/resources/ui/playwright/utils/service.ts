@@ -94,15 +94,20 @@ export const waitForServiceChildList = (
   );
 
 /**
- * Opens a service on the AI-mode details page (`/connections/<category>/<fqn>[/<tab>]`) and waits
- * for its child-asset list. The caller puts the page in AI mode first (`enableAiAppMode`).
+ * Opens a service on the AI-mode details page (`/connections/<category>/<fqn>/<tab>`) and, on the
+ * data-assets tab, waits for its child-asset list. The caller puts the page in AI mode first
+ * (`enableAiAppMode`).
+ *
+ * The tab defaults to `dataAssets` rather than the page's default tab: that is the first tab in
+ * `order`, and a plugin can contribute tabs ahead of the built-ins (Collate puts Summary first), so
+ * a bare service URL does not land on the data assets everywhere.
  */
 export const visitAiModeServiceDetailsPage = async (
   page: Page,
   {
     category,
     fqn,
-    tab = '',
+    tab = 'dataAssets',
     query = '',
     include = 'non-deleted',
   }: {
@@ -113,16 +118,18 @@ export const visitAiModeServiceDetailsPage = async (
     include?: string;
   }
 ) => {
-  const list = waitForServiceChildList(
-    page,
-    category,
-    fqn,
-    (params) => params.get('include') === include
-  );
+  // Only the data-assets tab requests the list; another tab, or the tab a gated deep link falls
+  // back to, may never send it.
+  const list =
+    tab === 'dataAssets' &&
+    waitForServiceChildList(
+      page,
+      category,
+      fqn,
+      (params) => params.get('include') === include
+    );
   await page.goto(
-    `/connections/${category}/${encodeURIComponent(fqn)}${
-      tab ? `/${tab}` : ''
-    }${query}`,
+    `/connections/${category}/${encodeURIComponent(fqn)}/${tab}${query}`,
     { waitUntil: 'domcontentloaded' }
   );
   await list;

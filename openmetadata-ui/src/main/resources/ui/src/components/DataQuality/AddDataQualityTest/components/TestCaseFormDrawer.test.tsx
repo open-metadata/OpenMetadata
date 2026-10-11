@@ -599,7 +599,7 @@ describe('TestCaseFormDrawer', () => {
       await screen.findByRole('dialog');
 
       await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+        fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
       });
 
       expect(onClose).toHaveBeenCalledTimes(1);

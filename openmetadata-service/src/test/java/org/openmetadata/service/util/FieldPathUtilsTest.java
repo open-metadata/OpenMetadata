@@ -802,6 +802,154 @@ class FieldPathUtilsTest {
     verifyNoInteractions(repository);
   }
 
+  /** Table with two sibling columns [profile, address], each with an immediate child "street". */
+  private Table twinStreetTable() {
+    Column profileStreet = new Column().withName("street");
+    Column profile =
+        new Column().withName("profile").withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column addressStreet = new Column().withName("street");
+    Column address =
+        new Column().withName("address").withChildren(new ArrayList<>(List.of(addressStreet)));
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("people")
+        .withColumns(new ArrayList<>(List.of(profile, address)));
+  }
+
+  @Test
+  void updateFieldDescription_bareLeafInTwoSubtrees_refusesInsteadOfGuessing() {
+    // A bare leaf "street" that lives under two sibling columns must not resolve to the first
+    // sibling's child and report success — guessing the target is worse than declining.
+    Table table = twinStreetTable();
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    boolean updated =
+        FieldPathUtils.updateFieldDescription(
+            table, repository, "admin", "columns::street::description", "Road name");
+
+    assertFalse(updated, "an ambiguous bare leaf must not be resolved by sibling iteration order");
+    assertNull(
+        table.getColumns().get(0).getChildren().get(0).getDescription(),
+        "profile.street must not be written when the name is ambiguous");
+    assertNull(
+        table.getColumns().get(1).getChildren().get(0).getDescription(),
+        "address.street must not be written when the name is ambiguous");
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void getFieldDescription_bareLeafInTwoSubtrees_refusesInsteadOfGuessing() {
+    Table table = twinStreetTable();
+    table.getColumns().get(0).getChildren().get(0).setDescription("first");
+    table.getColumns().get(1).getChildren().get(0).setDescription("second");
+
+    Optional<String> description =
+        FieldPathUtils.getFieldDescription(table, "columns::street::description");
+
+    assertTrue(description.isEmpty(), "an ambiguous bare leaf must not return a value");
+  }
+
+  @Test
+  void findField_bareLeafInTwoSubtrees_refusesInsteadOfGuessing() {
+    // findField is what the tag path resolves through (TaskWorkflowHandler.patchFieldTags), so
+    // an ambiguous bare leaf here would silently tag the first sibling's child.
+    Table table = twinStreetTable();
+
+    Optional<Object> found = FieldPathUtils.findField(table, "columns::street::tags");
+
+    assertTrue(found.isEmpty(), "an ambiguous bare leaf must not resolve to a field POJO");
+  }
+
+  @Test
+  void updateFieldDescription_bareLeafTwoDeepInTwoSubtrees_isDeclinedNotGuessed() {
+    // The same ambiguity one level deeper: "street" is a grandchild of both siblings. The
+    // recursive fallback must not write to the first sibling's grandchild either; declining is
+    // the safe outcome for any bare leaf whose resolution would be a guess.
+    Column profileStreet = new Column().withName("street");
+    Column profileInner =
+        new Column().withName("personal").withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column profile =
+        new Column().withName("profile").withChildren(new ArrayList<>(List.of(profileInner)));
+    Column addressStreet = new Column().withName("street");
+    Column addressInner =
+        new Column().withName("contact").withChildren(new ArrayList<>(List.of(addressStreet)));
+    Column address =
+        new Column().withName("address").withChildren(new ArrayList<>(List.of(addressInner)));
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("people")
+            .withColumns(new ArrayList<>(List.of(profile, address)));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    boolean updated =
+        FieldPathUtils.updateFieldDescription(
+            table, repository, "admin", "columns::street::description", "Road name");
+
+    assertFalse(updated, "an ambiguous grandchild bare leaf must not be guessed");
+    assertNull(profileStreet.getDescription(), "profile's deep street must not be written");
+    assertNull(addressStreet.getDescription(), "address's deep street must not be written");
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void updateFieldDescription_bareLeafInSingleSubtree_resolvesWithoutFalseRefusal() {
+    // Counterweight: a bare leaf that lives in exactly one sibling's subtree must still
+    // resolve, so the cross-subtree guard does not over-refuse unambiguous names.
+    Column street = new Column().withName("street");
+    Column profile =
+        new Column().withName("profile").withChildren(new ArrayList<>(List.of(street)));
+    Column other =
+        new Column()
+            .withName("address")
+            .withChildren(new ArrayList<>(List.of(new Column().withName("city"))));
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("people")
+            .withColumns(new ArrayList<>(List.of(profile, other)));
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    boolean updated =
+        FieldPathUtils.updateFieldDescription(
+            table, repository, "admin", "columns::street::description", "Road name");
+
+    assertTrue(updated, "a unique bare leaf must still resolve");
+    assertEquals("Road name", street.getDescription());
+  }
+
+  @Test
+  void findField_dottedPathThroughNamedParentResolvesWithSiblingDuplicatePresent() {
+    // Regression: a dotted path that names the parent resolves to that parent's child even when
+    // a sibling subtree contains a same-named leaf; the cross-subtree guard is for bare leaves
+    // that the caller did not anchor to a parent.
+    Column profileStreet = new Column().withName("street");
+    Column profile =
+        new Column().withName("profile").withChildren(new ArrayList<>(List.of(profileStreet)));
+    Column addressStreet = new Column().withName("street");
+    Column address =
+        new Column().withName("address").withChildren(new ArrayList<>(List.of(addressStreet)));
+    Table table =
+        new Table().withName("people").withColumns(new ArrayList<>(List.of(profile, address)));
+
+    Optional<Object> found =
+        FieldPathUtils.findField(table, "columns::address.street::description");
+
+    assertTrue(found.isPresent());
+    assertSame(addressStreet, found.get());
+  }
+
+  @Test
+  void getFieldDescription_bareLeafMissingEverywhere_isEmpty() {
+    // A bare leaf that matches no sibling's children is simply absent (not guessed).
+    Table table = twinStreetTable();
+
+    Optional<String> description =
+        FieldPathUtils.getFieldDescription(table, "columns::nope::description");
+
+    assertTrue(description.isEmpty());
+  }
+
   private FieldPathComponents invokeParseFieldPath(String fieldPath) throws Exception {
     Method method = FieldPathUtils.class.getDeclaredMethod("parseFieldPath", String.class);
     method.setAccessible(true);

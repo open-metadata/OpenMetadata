@@ -51,6 +51,30 @@ describe('getPropertyValueSummary', () => {
     );
   });
 
+  it('renders raw markdown as plain text (not raw syntax)', () => {
+    const rawMarkdown =
+      '# Header\n\n**Bold text** and *italic*\n\n- List item 1\n- List item 2';
+    const summary = summarize('markdown', rawMarkdown);
+
+    expect(summary).not.toContain('#');
+    expect(summary).not.toContain('**');
+    expect(summary).not.toMatch(/^\s*-\s/m);
+    expect(summary).toContain('Bold');
+    expect(summary).toContain('italic');
+  });
+
+  it('collapses a markdown link to its link text without raw syntax', () => {
+    const summary = summarize(
+      'markdown',
+      'See [Collate](https://example.com) for details.'
+    );
+
+    expect(summary).not.toContain('[');
+    expect(summary).not.toContain(']');
+    expect(summary).not.toContain('](');
+    expect(summary).toContain('Collate');
+  });
+
   it('shows the duration of a time interval', () => {
     expect(summarize('timeInterval', { start: 0, end: 2 * HOUR_MS })).toBe(
       '2 hours'

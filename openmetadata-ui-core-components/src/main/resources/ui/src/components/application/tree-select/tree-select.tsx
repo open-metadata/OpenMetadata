@@ -15,6 +15,7 @@ import {
   DropdownSearchField,
   DropdownStagedFooter,
   DropdownStatusFooter,
+  selectedTriggerClassName,
   TriggerCountBadge,
 } from '../filter-select/filter-select.shared';
 import {
@@ -57,8 +58,11 @@ import {
 
 /** Row id of a branch's load-more item; a real node is matched first. */
 const LOAD_MORE_SUFFIX = '__more';
+/** Row id of the root listing's load-more item. Null byte: no node can collide. */
+const ROOT_LOAD_MORE_ID = '\u0000root__more';
+
 /** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
-const DROPDOWN_CHROME_WIDTH = 320;
+export const DROPDOWN_CHROME_WIDTH = 320;
 /** Matches react-aria's default overlay `containerPadding`. */
 const VIEWPORT_PADDING = 12;
 
@@ -66,7 +70,7 @@ type DropdownPlacement = 'bottom left' | 'bottom right';
 
 // Left edge of the trigger, mirrored right when there is no room on screen.
 // Width is measured: `--trigger-width` is unset for a bare Popover + triggerRef.
-const useDropdownPlacement = (
+export const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   width?: number
@@ -191,11 +195,18 @@ const collectSelectableNodes = <T,>(
 ): TreeSelectNode<T>[] => {
   const result: TreeSelectNode<T>[] = [];
   for (const node of nodes) {
-    if (node.allowSelection !== false) {
+    if (node.allowSelection !== false && !hasExclusiveChildren(node)) {
       result.push(node);
     }
     if (node.children) {
-      result.push(...collectSelectableNodes(node.children));
+      result.push(
+        ...collectSelectableNodes(
+          node.children.filter(
+            (child) =>
+              !child.isParentMutuallyExclusive && !hasExclusiveChildren(child)
+          )
+        )
+      );
     }
   }
 
@@ -240,6 +251,7 @@ export const TreeSelect = <T = unknown,>({
   showSelectAll = false,
   commitMode = 'immediate',
   offset,
+  placement,
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
@@ -283,7 +295,7 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
-  const { placement, triggerWidth } = useDropdownPlacement(
+  const { placement: autoPlacement, triggerWidth } = useDropdownPlacement(
     triggerRef,
     isOpen,
     usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
@@ -307,14 +319,23 @@ export const TreeSelect = <T = unknown,>({
   }
 
   // The button badge excludes root ids, so it needs the tree while closed.
-  const { treeData, loading, loadingNodes, loadChildren, loadMoreChildren } =
-    useTreeSelectData<T>({
-      fetchData,
-      searchTerm,
-      pageSize,
-      onFetchError,
-      enabled: hasOpened || isButtonVariant,
-    });
+  const {
+    treeData,
+    loading,
+    loadingNodes,
+    loadChildren,
+    loadMoreChildren,
+    hasMoreRoot,
+    rootTotal,
+    loadingMoreRoot,
+    loadMoreRoot,
+  } = useTreeSelectData<T>({
+    fetchData,
+    searchTerm,
+    pageSize,
+    onFetchError,
+    enabled: hasOpened || isButtonVariant,
+  });
 
   const visibleNodeIds = useMemo(
     () =>
@@ -601,6 +622,47 @@ export const TreeSelect = <T = unknown,>({
       t,
     ]
   );
+
+  // The root listing's own tail — the glossary level of a glossary/term tree.
+  const renderRootLoadMore = useCallback(() => {
+    if (!hasMoreRoot) {
+      return null;
+    }
+
+    const remaining = rootTotal ? rootTotal - treeData.length : undefined;
+    const nextCount = Math.min(pageSize, remaining ?? pageSize);
+
+    if (nextCount <= 0) {
+      return null;
+    }
+
+    return (
+      <Tree.Item
+        id={ROOT_LOAD_MORE_ID}
+        key={ROOT_LOAD_MORE_ID}
+        textValue={t('label.show-count-more', { count: nextCount })}>
+        <TreeSelectLoadMoreItemContent
+          isLoading={loadingMoreRoot}
+          maxIndentLevel={maxIndentLevel}
+          nextCount={nextCount}
+          parentId="root"
+          remaining={remaining}
+          showExpandIcon={showExpandIcon}
+          onLoadMore={loadMoreRoot}
+        />
+      </Tree.Item>
+    );
+  }, [
+    hasMoreRoot,
+    rootTotal,
+    treeData.length,
+    pageSize,
+    loadingMoreRoot,
+    maxIndentLevel,
+    showExpandIcon,
+    loadMoreRoot,
+    t,
+  ]);
 
   const renderNodes = useCallback(
     (
@@ -904,7 +966,9 @@ export const TreeSelect = <T = unknown,>({
               // Keyboard activation lands here too, so the load-more row needs
               // to answer it — its button alone is not reachable by arrow keys.
               if (!node) {
-                if (id.endsWith(LOAD_MORE_SUFFIX)) {
+                if (id === ROOT_LOAD_MORE_ID) {
+                  loadMoreRoot();
+                } else if (id.endsWith(LOAD_MORE_SUFFIX)) {
                   loadMoreChildren(id.slice(0, -LOAD_MORE_SUFFIX.length));
                 }
 
@@ -915,7 +979,9 @@ export const TreeSelect = <T = unknown,>({
               }
             }}
             onExpandedChange={handleExpandedChange}>
-            {renderNodes(filteredTreeData)}
+            {[...renderNodes(filteredTreeData), renderRootLoadMore()].filter(
+              Boolean
+            )}
           </Tree>
         )}
       </div>
@@ -955,7 +1021,7 @@ export const TreeSelect = <T = unknown,>({
       data-react-aria-top-layer="true"
       isOpen={isOpen}
       offset={offset}
-      placement={placement}
+      placement={placement ?? autoPlacement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
       // The input variant matches its trigger; measured, not `--trigger-width`.
@@ -1012,6 +1078,7 @@ export const TreeSelect = <T = unknown,>({
             className={cx(
               'tw:whitespace-nowrap',
               !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+              hasSelection && selectedTriggerClassName(bordered),
               triggerClassName
             )}
             color={bordered ? 'secondary' : 'tertiary'}

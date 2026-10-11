@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Popover, Skeleton, Space, Tag } from 'antd';
+import {
+  Badge,
+  Box,
+  HoverCard,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNamesFunc from 'classnames';
 import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
@@ -144,11 +149,14 @@ export const IngestionRecentRuns = <
   const handleModalCancel = () => setSelectedStatus(undefined);
 
   if (isAppRunsLoading || loading) {
-    return <Skeleton.Input active size="small" />;
+    return <Skeleton height={24} variant="rounded" width={120} />;
   }
 
   return (
-    <Space className={classNames} size={5}>
+    <Box
+      inline
+      align="center"
+      className={classNamesFunc('tw:gap-1.25', classNames)}>
       {isEmpty(recentRunStatus) ? (
         <Typography data-testid="pipeline-status">
           {NO_DATA_PLACEHOLDER}
@@ -159,7 +167,8 @@ export const IngestionRecentRuns = <
             getRunFieldValues(r);
 
           const status = (
-            <Tag
+            <Badge
+              bordered={false}
               className={classNamesFunc(
                 'ingestion-run-badge',
                 pipelineState ?? '',
@@ -167,24 +176,27 @@ export const IngestionRecentRuns = <
                   latest: i === recentRunStatus.length - 1,
                 }
               )}
+              color="gray"
               data-testid="pipeline-status"
               key={`${runId}-status`}
+              size="sm"
+              type="color"
               onClick={() => handleRunStatusClick(r)}>
               {i === recentRunStatus.length - 1
                 ? upperFirst(pipelineState)
                 : ''}
-            </Tag>
+            </Badge>
           );
 
           const showTooltip =
             isNumber(endDate) || isNumber(startDate) || isNumber(r?.timestamp);
 
           return showTooltip ? (
-            <Popover
+            <HoverCard
               content={getRunTooltipContent(r.timestamp, startDate, endDate, t)}
               key={`${runId}-timestamp`}>
               {status}
-            </Popover>
+            </HoverCard>
           ) : (
             status
           );
@@ -197,6 +209,6 @@ export const IngestionRecentRuns = <
           pipelineStatus={selectedStatus}
         />
       )}
-    </Space>
+    </Box>
   );
 };

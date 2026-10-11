@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Grid,
+  Toggle,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -51,6 +58,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { searchQuery } from '../../rest/searchAPI';
 import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
@@ -320,12 +328,15 @@ const UserListPageV1 = () => {
         key: 'actions',
         width: 90,
         render: (_, record) => (
-          <Space
+          <Box
+            inline
             align="center"
-            className="w-full justify-center action-icons"
-            size={8}>
+            className="layout-space layout-space-horizontal w-full justify-center action-icons"
+            gap={2}
+            itemClassName="layout-space-item">
             {showRestore && (
               <Tooltip
+                arrow
                 placement={isAdminUser ? 'bottom' : 'left'}
                 title={
                   isAdminUser
@@ -334,11 +345,12 @@ const UserListPageV1 = () => {
                       })
                     : t(ADMIN_ONLY_ACTION)
                 }>
-                <Button
+                <ButtonUtility
+                  color="tertiary"
                   data-testid={`restore-user-btn-${record.name}`}
-                  disabled={!isAdminUser}
-                  icon={<IconRestore name={t('label.restore')} width="16px" />}
-                  type="text"
+                  icon={IconRestore}
+                  isDisabled={!isAdminUser}
+                  size="sm"
                   onClick={() => {
                     setSelectedUser(record);
                     setShowReactiveModal(true);
@@ -347,6 +359,7 @@ const UserListPageV1 = () => {
               </Tooltip>
             )}
             <Tooltip
+              arrow
               placement={isAdminUser ? 'bottom' : 'left'}
               title={
                 isAdminUser
@@ -355,24 +368,19 @@ const UserListPageV1 = () => {
                     })
                   : t(ADMIN_ONLY_ACTION)
               }>
-              <Button
-                disabled={!isAdminUser}
-                icon={
-                  <IconDelete
-                    data-testid={`delete-user-btn-${record.name}`}
-                    name={t('label.delete')}
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
+              <ButtonUtility
+                color="tertiary"
+                data-testid={`delete-user-btn-${record.name}`}
+                icon={IconDelete}
+                isDisabled={!isAdminUser}
+                size="xs"
                 onClick={() => {
                   setSelectedUser(record);
                   setShowDeleteModal(true);
                 }}
               />
             </Tooltip>
-          </Space>
+          </Box>
         ),
       },
     ];
@@ -480,14 +488,14 @@ const UserListPageV1 = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.user-plural')}>
-      <Row
-        className="user-listing p-b-md"
+      <Grid
+        className="layout-row layout-grid user-listing p-b-md"
         data-testid="user-list-v1-component"
-        gutter={[0, 16]}>
-        <Col span={24}>
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={12}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
           <PageHeader
             data={
               isAdminPage
@@ -503,9 +511,14 @@ const UserListPageV1 = () => {
             learningPageId={LEARNING_PAGE_IDS.USERS}
             title={t('label.user')}
           />
-        </Col>
-        <Col span={12}>
-          <Space align="center" className="w-full justify-end" size={16}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-end"
+            gap={4}
+            itemClassName="layout-space-item">
             {isAdminUser && (
               <LimitWrapper resource="user">
                 <Button
@@ -518,10 +531,10 @@ const UserListPageV1 = () => {
                 </Button>
               </LimitWrapper>
             )}
-          </Space>
-        </Col>
+          </Box>
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <Table
             className="user-list-table"
             columns={columns}
@@ -538,11 +551,11 @@ const UserListPageV1 = () => {
             data-testid="user-list-table"
             dataSource={userList}
             extraTableFilters={
-              <span>
-                <Switch
-                  checked={isDeleted}
+              <span className="tw:inline-flex tw:items-center">
+                <Toggle
                   data-testid="show-deleted"
-                  onClick={handleShowDeletedUserChange}
+                  isSelected={isDeleted}
+                  onChange={handleShowDeletedUserChange}
                 />
                 <span className="m-l-xs">{t('label.deleted')}</span>
               </span>
@@ -556,7 +569,7 @@ const UserListPageV1 = () => {
             searchProps={searchProps}
             size="small"
           />
-        </Col>
+        </Grid.Item>
 
         <Modal
           cancelButtonProps={{
@@ -599,7 +612,7 @@ const UserListPageV1 = () => {
             setSelectedUser(undefined);
           }}
         />
-      </Row>
+      </Grid>
     </PageLayoutV1>
   );
 };

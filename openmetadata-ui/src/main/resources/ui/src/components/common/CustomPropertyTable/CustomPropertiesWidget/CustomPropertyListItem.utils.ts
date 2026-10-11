@@ -17,7 +17,10 @@ import {
   TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../../../../constants/CustomProperty.constants';
 import { EntityReference } from '../../../../generated/entity/type';
-import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
+import {
+  formatClientContent,
+  getTextFromHtmlString,
+} from '../../../../utils/BlockEditorPureUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPropertyItemCount } from '../CustomPropertyCard/CustomPropertyCard.utils';
@@ -42,7 +45,8 @@ const SUMMARY_FORMATTERS: Record<string, SummaryFormatter> = {
     }),
   sqlQuery: (value, t) =>
     t('label.count-line-plural', { count: String(value).split('\n').length }),
-  markdown: (value) => getTextFromHtmlString(String(value)),
+  markdown: (value) =>
+    getTextFromHtmlString(formatClientContent(String(value))),
   timeInterval: (value, _t, locale) => {
     const { start, end } = value as { start?: number; end?: number };
 

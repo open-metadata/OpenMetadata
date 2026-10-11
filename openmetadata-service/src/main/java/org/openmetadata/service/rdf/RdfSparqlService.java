@@ -56,12 +56,12 @@ public final class RdfSparqlService {
   }
 
   /**
-   * Runs an already-validated SELECT as SPARQL JSON, bypassing any configured default inference so
-   * results reflect exactly the projected dataset.
+   * Runs an already-validated SELECT as SPARQL JSON over asserted data only, leaving out triples
+   * that materialized inference rules derived.
    */
   public String selectJsonWithoutInference(final String sparql) {
     return SparqlQueryLimits.requireBoundedOutput(
-        repository.executeSparqlQueryDirect(sparql, ResultFormat.JSON.mediaType));
+        repository.executeAssertedSparqlQuery(sparql, ResultFormat.JSON.mediaType));
   }
 
   public void update(final String sparql) {
@@ -77,6 +77,7 @@ public final class RdfSparqlService {
     federationGuard.enforceUpdate(request);
     requireSingleWhereBearingOperation(request);
     repository.executeSparqlUpdate(sparql);
+    RdfUpdater.recordUntrackedWrite();
   }
 
   private static void requireSingleWhereBearingOperation(UpdateRequest request) {
@@ -106,7 +107,7 @@ public final class RdfSparqlService {
   private QueryResult directQuery(String sparql, ResultFormat format) {
     return new QueryResult(
         SparqlQueryLimits.requireBoundedOutput(
-            repository.executeSparqlQuery(sparql, format.mediaType)),
+            repository.executeAssertedSparqlQuery(sparql, format.mediaType)),
         format.externalName,
         format.mediaType,
         null);
