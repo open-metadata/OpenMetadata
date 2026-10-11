@@ -51,7 +51,12 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
       final RdfInferenceRuleDAO ruleDAO, final Clock clock, final String rdfBaseUri) {
     this.ruleDAO = Objects.requireNonNull(ruleDAO);
     this.clock = Objects.requireNonNull(clock);
-    this.inferredGraphBaseUri = normalizeBaseUri(rdfBaseUri) + INFERRED_GRAPH_PATH;
+    this.inferredGraphBaseUri = inferredGraphPrefix(rdfBaseUri);
+  }
+
+  /** The IRI prefix shared by every rule's materialized graph. */
+  public static String inferredGraphPrefix(final String rdfBaseUri) {
+    return normalizeBaseUri(rdfBaseUri) + INFERRED_GRAPH_PATH;
   }
 
   /** A rule as a materialization run read it, with the version it must still have to end clean. */

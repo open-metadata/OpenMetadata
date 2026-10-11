@@ -153,6 +153,11 @@ public class RdfRepository {
   private final JsonLdTranslator translator;
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
   private final RdfProjectionLoaders projectionLoaders;
+  private final AssertedOnlyQueries assertedOnlyQueries =
+      new AssertedOnlyQueries(
+          this::listAllGraphs,
+          () -> InferenceRuleRepository.inferredGraphPrefix(getBaseUri()),
+          AssertedOnlyQueries.GRAPH_LIST_TTL);
   private final Cache<String, String> entityGraphCache =
       Caffeine.newBuilder()
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
@@ -1647,6 +1652,24 @@ public class RdfRepository {
       throw new IllegalStateException("RDF not enabled");
     }
     return storageService.executeSparqlQuery(query, format);
+  }
+
+  /**
+   * Runs a read query against asserted data only. Fuseki's union default graph also holds the
+   * graphs materialized inference writes, so a query that must not see derived triples, such as
+   * one at inference level {@code none}, is restricted to the other graphs. A query that declares
+   * its own dataset with FROM or FROM NAMED runs as written.
+   */
+  public String executeAssertedSparqlQuery(final String query, final String format) {
+    return executeSparqlQueryDirect(assertedOnly(query), format);
+  }
+
+  private String assertedOnly(final String query) {
+    return supportsMaterializedInference(config) ? assertedOnlyQueries.restrict(query) : query;
+  }
+
+  private List<String> listAllGraphs() {
+    return storageService.getAllGraphs();
   }
 
   /**
