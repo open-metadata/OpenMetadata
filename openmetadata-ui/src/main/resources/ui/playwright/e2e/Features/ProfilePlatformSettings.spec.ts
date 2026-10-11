@@ -21,7 +21,10 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
-import { clickAndWaitFor } from '../../utils/waitHelpers';
+import {
+  clickAndWaitFor,
+  waitForResponseWithStatus,
+} from '../../utils/waitHelpers';
 import { enableAiAppMode } from '../Utils/appMode';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -124,6 +127,47 @@ test.describe(
   'Profile Platform Settings',
   { tag: ['@Platform', '@Features'] },
   () => {
+    test('glossary: propagation preference survives a reload', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(page, 'glossarySettings', {
+        initial: { enableTagPropagation: true },
+      });
+
+      await test.step('Open the glossary preference', async () => {
+        await openPlatformSettings(page);
+        await openCard(page, 'glossary');
+        await expect(page.getByTestId('glossary-settings')).toBeVisible();
+      });
+
+      await test.step('Disable propagation and reload', async () => {
+        const toggle = page.getByRole('switch', {
+          name: /Propagate glossary tags/,
+        });
+        await expect(toggle).toBeChecked();
+        const saved = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.url().endsWith('/api/v1/system/settings') &&
+            response.request().method() === 'PUT',
+          200
+        );
+        await toggle.press('Space');
+        await saved;
+        await expect(toggle).not.toBeChecked();
+        expect(settings.puts).toEqual([
+          {
+            config_type: 'glossarySettings',
+            config_value: { enableTagPropagation: false },
+          },
+        ]);
+
+        await page.reload();
+        await expect(page.getByTestId('glossary-settings')).toBeVisible();
+        await expect(toggle).not.toBeChecked();
+      });
+    });
+
     test('landing lists every legacy Preferences page and each one opens', async ({
       page,
     }) => {
@@ -148,6 +192,7 @@ test.describe(
         ['search', 'search-settings'],
         ['app-mode', 'default-app-mode-page'],
         ['table-schema', 'table-schema-settings'],
+        ['glossary', 'glossary-settings'],
       ];
 
       for (const [cardId, contentTestId] of pages) {

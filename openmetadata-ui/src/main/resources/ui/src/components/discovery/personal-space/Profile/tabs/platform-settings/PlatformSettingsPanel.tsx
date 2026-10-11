@@ -18,6 +18,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import GlossarySettings from '../../../../../governance/glossary/GlossarySettings';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import AppModeSettings from './AppModeSettings';
 import AppModeSettingsForm from './AppModeSettingsForm';
@@ -80,6 +81,7 @@ const VIEW_PAGES: Partial<
   'learning-resources': (props) => <LearningResourcesSettings {...props} />,
   'app-mode': (props) => <AppModeSettings {...props} />,
   'table-schema': (props) => <TableSchemaSettings {...props} />,
+  glossary: () => <GlossarySettings />,
   search: (props) =>
     props.itemId ? (
       <EntitySearchSettings {...props} />
