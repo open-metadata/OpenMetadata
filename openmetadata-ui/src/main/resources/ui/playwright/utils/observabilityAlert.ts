@@ -727,14 +727,16 @@ export const checkAlertConfigDetails = async ({
     sourceLabelOf(sourceName)
   );
 
-  await expect(page.getByTestId('filter-select-0')).toHaveText('Table Name');
+  await expect(
+    page.getByTestId('filter-select-0').getByRole('button')
+  ).toHaveText('Table Name');
   await expect(
     page.getByTestId('fqn-list-select').getByTitle(tableName)
   ).toBeAttached();
 
-  await expect(page.getByTestId('trigger-select-0')).toHaveText(
-    'Get Schema Changes'
-  );
+  await expect(
+    page.getByTestId('trigger-select-0').getByRole('button')
+  ).toHaveText('Get Schema Changes');
 
   await expect(
     page.getByTestId('destination-category-select-0').getByRole('combobox')

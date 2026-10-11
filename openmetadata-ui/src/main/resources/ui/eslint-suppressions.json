@@ -127,11 +127,6 @@
       "count": 2
     }
   },
-  "playwright/e2e/Features/DataQuality/DataQuality.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
@@ -140,11 +135,6 @@
   "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
-    }
-  },
-  "playwright/e2e/Features/DataQuality/Profiler.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
     }
   },
   "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts": {

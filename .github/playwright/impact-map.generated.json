@@ -749,7 +749,8 @@
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Features/ProfilePreferences.spec.ts",
-        "playwright/e2e/Pages/BotsProfile.spec.ts"
+        "playwright/e2e/Pages/BotsProfile.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
       ]
     },
     {

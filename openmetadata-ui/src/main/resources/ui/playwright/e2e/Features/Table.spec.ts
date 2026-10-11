@@ -149,7 +149,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
       '/api/v1/dataQuality/testCases/search/list?*testCaseStatus=Queued*'
     );
 
-    await page.getByTitle('Queued').locator('div').click();
+    await page
+      .getByRole('listbox')
+      .getByRole('option', { name: 'Queued', exact: true })
+      .click();
 
     await filteredResults;
     await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));

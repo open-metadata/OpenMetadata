@@ -126,7 +126,7 @@ test.describe('Alerts with several sources', () => {
     );
     await page.click('[data-testid="trigger-select-0"]');
     await page
-      .locator('.ant-select-dropdown:visible')
+      .getByRole('listbox')
       .getByTestId('Get Schema Changes (Table)-filter-option')
       .click();
     await capabilities;
@@ -173,22 +173,26 @@ test.describe('Alerts with several sources', () => {
       await page.getByTestId('add-filters').click();
       await page.getByTestId('filter-select-0').click();
       await page
-        .locator('.ant-select-dropdown:visible')
+        .getByRole('listbox')
         .getByTestId('Table Name-filter-option')
         .click();
 
       const names = page.getByTestId('fqn-list-select').getByRole('combobox');
-      const found = page.locator('.ant-select-dropdown:visible');
+      const found = page.getByRole('listbox');
       await names.click();
       await names.fill(tableName);
 
       await expect(
-        found.getByTitle(table.entityResponseData.fullyQualifiedName ?? '', {
+        found.getByRole('option', {
+          name: table.entityResponseData.fullyQualifiedName,
           exact: true,
         })
       ).toBeVisible();
       await expect(
-        found.getByTitle(contract.fullyQualifiedName ?? '', { exact: true })
+        found.getByRole('option', {
+          name: contract.fullyQualifiedName,
+          exact: true,
+        })
       ).toBeVisible();
     } finally {
       await apiContext.delete(

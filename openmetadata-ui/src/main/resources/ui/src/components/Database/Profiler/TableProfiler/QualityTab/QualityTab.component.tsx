@@ -49,7 +49,7 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
-import { getTestCaseManageMenuItems } from '../../../../../utils/TestCaseUtils';
+import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
@@ -277,7 +277,7 @@ export const QualityTab = () => {
     };
 
     return table?.fullyQualifiedName
-      ? getTestCaseManageMenuItems(
+      ? ExtraTestCaseDropdownOptions(
           table.fullyQualifiedName,
           bulkImportExportTestCasePermission,
           table?.deleted ?? false,

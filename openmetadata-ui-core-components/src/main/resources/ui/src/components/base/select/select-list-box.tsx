@@ -34,11 +34,14 @@ export const SelectListBox = ({
   const listBox = (
     <ListBox
       {...props}
+      // Filtering can replace this node while a modal's visibility observer is active.
+      // Keep the new listbox interactive as part of the portaled top layer.
       className={cx(
         'tw:size-full tw:outline-hidden',
         virtualize && 'tw:overflow-y-auto',
         virtualize && (size === 'sm' ? 'tw:max-h-64' : 'tw:max-h-80')
-      )}>
+      )}
+      data-react-aria-top-layer="true">
       {children}
     </ListBox>
   );

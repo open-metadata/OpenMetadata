@@ -466,7 +466,9 @@ export const checkAlertConfigDetails = async ({
     sourceLabelOf(sourceName)
   );
 
-  await expect(page.getByTestId('filter-select-0')).toHaveText('Event Type');
+  await expect(
+    page.getByTestId('filter-select-0').getByRole('button')
+  ).toHaveText('Event Type');
   await expect(
     page
       .getByTestId('event-type-select')
@@ -478,7 +480,9 @@ export const checkAlertConfigDetails = async ({
       .getByText('Entity Soft Deleted', { exact: true })
   ).toBeAttached();
 
-  await expect(page.getByTestId('filter-select-1')).toHaveText('Entity FQN');
+  await expect(
+    page.getByTestId('filter-select-1').getByRole('button')
+  ).toHaveText('Entity FQN');
 
   await expect(
     page.getByTestId('destination-category-select-0').getByRole('combobox')
