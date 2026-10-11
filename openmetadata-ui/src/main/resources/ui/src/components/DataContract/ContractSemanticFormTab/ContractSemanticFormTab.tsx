@@ -130,11 +130,9 @@ export const ContractSemanticFormTab: React.FC<{
     [form, onChange, remove]
   );
 
-  const handleSaveRule = async () => {
-    if (await form.trigger()) {
-      setEditingKey(null);
-    }
-  };
+  // handleSubmit, unlike trigger, marks the form submitted, so each later change
+  // re-validates and clears or re-shows its error, as the antd form did.
+  const handleSaveRule = form.handleSubmit(() => setEditingKey(null));
 
   const renderCardTitle = (index: number) => (
     <div className="semantic-form-item-title-container">
@@ -264,7 +262,9 @@ export const ContractSemanticFormTab: React.FC<{
             <Button color="secondary" onPress={() => setEditingKey(null)}>
               {t('label.cancel')}
             </Button>
-            <Button data-testid="save-semantic-button" onPress={handleSaveRule}>
+            <Button
+              data-testid="save-semantic-button"
+              onPress={() => handleSaveRule()}>
               {t('label.save')}
             </Button>
           </div>

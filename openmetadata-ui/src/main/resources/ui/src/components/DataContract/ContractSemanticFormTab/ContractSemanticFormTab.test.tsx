@@ -431,6 +431,29 @@ describe('ContractSemanticFormTab', () => {
       expect(screen.getByText('Description is required')).toBeInTheDocument();
     });
 
+    // A failed save must keep validating: fixing a field clears its error.
+    it('clears an error once the field is fixed after a failed save', async () => {
+      render(<ContractSemanticFormTab {...commonProps} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('save-semantic-button'));
+      });
+
+      expect(await screen.findByText('Name is required')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
+          target: { value: 'Owner rule' },
+        });
+      });
+
+      await waitFor(() =>
+        expect(screen.queryByText('Name is required')).not.toBeInTheDocument()
+      );
+
+      expect(screen.getByText('Description is required')).toBeInTheDocument();
+    });
+
     it('should handle empty initial values', () => {
       expect(() => {
         render(
