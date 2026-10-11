@@ -30,17 +30,19 @@ import RichTextEditorPreviewerV1 from '../../../../../components/common/RichText
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
-import { formatInboxDate } from '../inbox.utils';
+import { ActivityChange, formatInboxDate } from '../inbox.utils';
 import {
   TaskDetailCallout,
   TaskDetailRow,
   TaskDetailRowIcon,
   TaskDetailRowValue,
 } from '../taskDetail.types';
+import ActivityChangePanel from './ActivityChangePanel';
 import TaskDetailListValue from './TaskDetailListValue';
 
 export interface TaskDetailSummaryProps {
   rows: TaskDetailRow[];
+  change?: ActivityChange;
   callout?: TaskDetailCallout;
 }
 
@@ -120,6 +122,7 @@ const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
  */
 const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
   rows,
+  change,
   callout,
 }) => (
   <Box data-testid="task-detail-summary" direction="col" gap={5}>
@@ -150,6 +153,8 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
         })}
       </div>
     )}
+
+    {change && <ActivityChangePanel change={change} />}
 
     {callout && (
       <Box

@@ -109,7 +109,7 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
       className={classNames(
         'tw:cursor-pointer tw:rounded-xl tw:border tw:p-3 tw:transition',
         isActive
-          ? 'tw:border-utility-brand-300 tw:bg-primary tw:shadow-xs'
+          ? 'tw:border-utility-blue-light-100 tw:bg-utility-blue-light-50'
           : 'tw:border-transparent tw:hover:bg-secondary'
       )}
       data-testid={`inbox-task-${task.id}`}

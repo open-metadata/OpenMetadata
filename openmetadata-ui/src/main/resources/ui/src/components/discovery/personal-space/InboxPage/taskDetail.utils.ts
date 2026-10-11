@@ -29,6 +29,7 @@ import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseRe
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
+import type { ActivityChange } from './inbox.utils';
 import {
   TaskAboutEntity,
   TaskDetailCallout,
@@ -365,6 +366,21 @@ const describeIncident = (
   };
 };
 
+const tagNames = (tags?: TagLabel[]) =>
+  (tags ?? []).map(({ tagFQN }) => tagFQN);
+
+// The tags a request removes and adds, as an activity card shows a tags change.
+const getTagChange = (
+  payload: TagUpdatePayload
+): ActivityChange | undefined => {
+  const before = tagNames(payload.tagsToRemove);
+  const after = tagNames(payload.tagsToAdd);
+
+  return before.length || after.length
+    ? { labelKey: 'label.tag-plural', before, after, isText: false }
+    : undefined;
+};
+
 const describeTagUpdate = (
   task: Task,
   t: Translate
@@ -377,17 +393,6 @@ const describeTagUpdate = (
       approve: t('label.approve-entity', { entity: t('label.tag') }),
     },
     rows: [
-      // Approving applies both lists, so the approver sees both.
-      ...tagsRow(
-        'tags',
-        t('label.add-entity', { entity: t('label.tag-plural') }),
-        payload.tagsToAdd
-      ),
-      ...tagsRow(
-        'tagsToRemove',
-        t('label.remove-entity', { entity: t('label.tag-plural') }),
-        payload.tagsToRemove
-      ),
       ...textRow(
         'source',
         'source',
@@ -402,6 +407,8 @@ const describeTagUpdate = (
       ),
       ...dateRow('requestedOn', t('label.requested-on'), task.createdAt),
     ],
+    // Approving applies both lists, so the approver sees both.
+    change: getTagChange(payload),
     callout: descriptionCallout(task, t('label.justification')),
   };
 };
@@ -424,10 +431,16 @@ const describeDescriptionUpdate = (
         getSourceLabel(t, payload.source)
       ),
     ],
-    callout: payload.newDescription
+    change: payload.newDescription
       ? {
-          label: t('label.suggested-description'),
-          text: payload.newDescription,
+          labelKey: 'label.description',
+          // Filled from the entity when the payload carries no snapshot
+          // (withExistingDescription).
+          before: payload.currentDescription
+            ? [payload.currentDescription]
+            : [],
+          after: [payload.newDescription],
+          isText: true,
         }
       : undefined,
   };
@@ -636,4 +649,57 @@ export const deriveTaskAboutEntity = (
     ownerCount: typed.owners?.length,
     updatedAt: typed.updatedAt,
   };
+};
+
+type DescribedField = {
+  name?: string;
+  description?: string;
+  children?: DescribedField[];
+};
+
+const COLUMN_DESCRIPTION_PATH = /^columns\.(.+)\.description$/;
+
+const findColumn = (
+  columns: DescribedField[] | undefined,
+  name: string
+): DescribedField | undefined =>
+  columns?.reduce<DescribedField | undefined>(
+    (found, column) =>
+      found ??
+      (column.name === name ? column : findColumn(column.children, name)),
+    undefined
+  );
+
+// The description a field path names on its entity: the entity's own, or a
+// (possibly nested) column's.
+const getFieldDescription = (
+  entity: EntityUnion | undefined,
+  fieldPath?: string
+): string | undefined => {
+  const typed = entity as
+    | { description?: string; columns?: DescribedField[] }
+    | undefined;
+  const columnName = fieldPath && COLUMN_DESCRIPTION_PATH.exec(fieldPath)?.[1];
+
+  return columnName
+    ? findColumn(typed?.columns, columnName)?.description
+    : typed?.description;
+};
+
+/**
+ * A description task's change with its Existing side: the payload's snapshot
+ * when it has one, else the field's description on the entity as it is now.
+ */
+export const withExistingDescription = (
+  change: ActivityChange | undefined,
+  task: Task,
+  entity?: EntityUnion
+): ActivityChange | undefined => {
+  if (!change?.isText || change.before.length) {
+    return change;
+  }
+  const { fieldPath } = getPayload<DescriptionUpdatePayload>(task);
+  const existing = getFieldDescription(entity, fieldPath)?.trim();
+
+  return existing ? { ...change, before: [existing] } : change;
 };
