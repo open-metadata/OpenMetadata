@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologySourceColumn.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologySourceColumn",
+  "description": "Catalog column realizing an ontology property. Contains identities, never sample values.",
+  "javaType": "org.openmetadata.schema.type.OntologySourceColumn",
+  "type": "object",
+  "properties": {
+    "tableFqn": {"$ref": "basic.json#/definitions/fullyQualifiedEntityName"},
+    "columnFqn": {"$ref": "basic.json#/definitions/fullyQualifiedEntityName"}
+  },
+  "required": ["tableFqn", "columnFqn"],
+  "additionalProperties": false
+}

@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.type.AssetRealization;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationState;
@@ -113,6 +114,43 @@ class OntologyChangeSetValidatorTest {
   }
 
   @Test
+  void acceptsReviewedAssetBindingWithOptimisticVersionGuard() {
+    final UUID termId = UUID.randomUUID();
+    final OntologyChangeOperation binding =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.BIND_ASSET)
+            .withTargetId(termId)
+            .withBaseVersion(1.2)
+            .withAssetBinding(
+                new AssetRealization()
+                    .withAsset(new EntityReference().withId(UUID.randomUUID()).withType("table")));
+
+    assertDoesNotThrow(
+        () ->
+            OntologyChangeSetValidator.normalizeAndValidate(
+                new OntologyChangeSet().withOperations(List.of(binding)).withUndoCursor(1)));
+  }
+
+  @Test
+  void rejectsAssetBindingsWithoutRequiredTermAndAssetIds() {
+    for (final OntologyChangeOperationType operationType :
+        List.of(OntologyChangeOperationType.BIND_ASSET, OntologyChangeOperationType.UNBIND_ASSET)) {
+      final OntologyChangeOperation missingTermId =
+          assetBindingOperation(
+              operationType, null, new EntityReference().withId(UUID.randomUUID()));
+      final OntologyChangeOperation missingAsset =
+          assetBindingOperation(operationType, UUID.randomUUID(), null);
+      final OntologyChangeOperation missingAssetId =
+          assetBindingOperation(operationType, UUID.randomUUID(), new EntityReference());
+
+      assertInvalid(missingTermId);
+      assertInvalid(missingAsset);
+      assertInvalid(missingAssetId);
+    }
+  }
+
+  @Test
   void requiresPlannedGlossaryBeforeItsTerms() {
     final Glossary glossary =
         new Glossary()
@@ -165,6 +203,18 @@ class OntologyChangeSetValidatorTest {
         .withOperationType(OntologyChangeOperationType.DELETE_TERM)
         .withTargetId(targetId)
         .withBaseVersion(version);
+  }
+
+  private static OntologyChangeOperation assetBindingOperation(
+      final OntologyChangeOperationType operationType,
+      final UUID targetId,
+      final EntityReference asset) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(operationType)
+        .withTargetId(targetId)
+        .withBaseVersion(1.2)
+        .withAssetBinding(new AssetRealization().withAsset(asset));
   }
 
   private static OntologyChangeOperation relationshipOperation(

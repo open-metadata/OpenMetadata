@@ -27,6 +27,10 @@ export interface EndEvent {
      */
     name?:    string;
     subType?: string;
-    type?:    string;
+    /**
+     * Whether reaching this event cancels every other active execution in the workflow instance.
+     */
+    terminateAll?: boolean;
+    type?:         string;
     [property: string]: any;
 }

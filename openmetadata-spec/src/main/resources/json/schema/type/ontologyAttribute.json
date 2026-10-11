@@ -60,6 +60,12 @@
       "type": "boolean",
       "default": false
     },
+    "sourceColumns": {
+      "description": "Reviewed column-to-property mappings from ontology discovery.",
+      "type": "array",
+      "maxItems": 100,
+      "items": {"$ref": "ontologySourceColumn.json"}
+    },
     "inherited": {
       "description": "True when the attribute is contributed by an ancestor concept rather than declared on the concept itself. Only set on computed `effectiveAttributes`; never valid inside a concept's own `attributes`.",
       "type": "boolean",

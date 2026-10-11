@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
 import java.net.URI;
 import java.time.Clock;
@@ -40,9 +41,14 @@ import org.openmetadata.schema.api.data.OntologyRelationshipSuggestionRequest;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyConfiguration;
+import org.openmetadata.schema.type.OntologyDiscoveryContext;
+import org.openmetadata.schema.type.OntologyDiscoveryEvidence;
+import org.openmetadata.schema.type.OntologyVerificationProvider;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.RelationshipTypeCategory;
 import org.openmetadata.service.exception.OntologyAiProviderException;
@@ -250,6 +256,70 @@ class OntologyAiServiceTest {
   }
 
   @Test
+  void stampsTypedDiscoveryProvenanceOnGeneratedOperations() {
+    gateway.domainCompletion =
+        completion(
+            new OntologyAiCompletionGateway.DomainConceptCandidate(
+                "customer", "Customer", "A customer concept", null));
+    final OntologyDiscoveryContext context =
+        new OntologyDiscoveryContext()
+            .withServiceFqn("snowflake.prod")
+            .withAutomationId(UUID.randomUUID())
+            .withConversationId(UUID.randomUUID())
+            .withVerificationProvider(OntologyVerificationProvider.LAYA)
+            .withVerificationModelId("convaiinnovations/laya@immutable-revision")
+            .withRuleVersion("ontology-discovery-v2")
+            .withEvidence(
+                List.of(
+                    new OntologyDiscoveryEvidence()
+                        .withEntityType("table")
+                        .withFullyQualifiedName("snowflake.prod.db.schema.customers")
+                        .withSourceVersion(1.3)
+                        .withSourceRunId("metadata-run-1")));
+    final String fingerprint = OntologyDiscoveryFingerprint.derive(GLOSSARY_FQN, context);
+    context.setEvidenceFingerprint(fingerprint);
+
+    final var result = service.generateDomainDraft(domainRequest().withDiscoveryContext(context));
+    final var draftContext = result.getDraft().getDiscoveryContext();
+
+    assertEquals("test-model", draftContext.getModelId());
+    assertEquals(
+        "convaiinnovations/laya@immutable-revision", draftContext.getVerificationModelId());
+    assertEquals(GENERATED_AT, draftContext.getGeneratedAt());
+    assertEquals(
+        fingerprint, result.getDraft().getOperations().getFirst().getEvidenceFingerprint());
+    assertEquals(ProviderType.AUTOMATION, result.getDraft().getProvider());
+  }
+
+  @Test
+  void rejectsAForgedDiscoveryFingerprintBeforeCallingTheModel() {
+    final OntologyDiscoveryContext context =
+        discoveryContext().withEvidenceFingerprint("b".repeat(64));
+
+    assertThrows(
+        BadRequestException.class,
+        () -> service.generateDomainDraft(domainRequest().withDiscoveryContext(context)));
+
+    assertEquals(0, gateway.invocationCount);
+  }
+
+  @Test
+  void rejectsStaleDiscoveryEvidenceBeforeCallingTheModel() {
+    service =
+        service(true, new TestCatalog(glossary, List.of(source, target), relationshipType, true));
+
+    final IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                service.generateDomainDraft(
+                    domainRequest().withDiscoveryContext(discoveryContext())));
+
+    assertTrue(thrown.getMessage().contains("stale evidence"));
+    assertEquals(0, gateway.invocationCount);
+  }
+
+  @Test
   void rejectsCrossGlossaryTermsAndReadOnlyOntologiesBeforeCompletion() {
     final Glossary otherGlossary = glossary("other", false);
     final GlossaryTerm otherTerm = term("otherTerm", otherGlossary, 0.1D);
@@ -367,11 +437,37 @@ class OntologyAiServiceTest {
     return new OntologyAiCompletionGateway.Completion<>("test-model", List.of(item));
   }
 
+  private static OntologyDiscoveryContext discoveryContext() {
+    final OntologyDiscoveryContext context =
+        new OntologyDiscoveryContext()
+            .withServiceFqn("snowflake.prod")
+            .withAutomationId(UUID.randomUUID())
+            .withConversationId(UUID.randomUUID())
+            .withVerificationProvider(OntologyVerificationProvider.MODEL)
+            .withRuleVersion("ontology-discovery-v2")
+            .withEvidence(
+                List.of(
+                    new OntologyDiscoveryEvidence()
+                        .withEntityType("table")
+                        .withFullyQualifiedName("snowflake.prod.db.schema.customers")
+                        .withSourceVersion(1.3)));
+    return context.withEvidenceFingerprint(
+        OntologyDiscoveryFingerprint.derive(GLOSSARY_FQN, context));
+  }
+
   private record TestCatalog(
       Glossary configuredGlossary,
       List<GlossaryTerm> terms,
-      RelationshipType configuredRelationshipType)
+      RelationshipType configuredRelationshipType,
+      boolean rejectEvidence)
       implements OntologyAiCatalog {
+    private TestCatalog(
+        final Glossary configuredGlossary,
+        final List<GlossaryTerm> terms,
+        final RelationshipType configuredRelationshipType) {
+      this(configuredGlossary, terms, configuredRelationshipType, false);
+    }
+
     @Override
     public Glossary glossary(final String fullyQualifiedName) {
       assertEquals(configuredGlossary.getFullyQualifiedName(), fullyQualifiedName);
@@ -384,9 +480,24 @@ class OntologyAiServiceTest {
     }
 
     @Override
+    public Table table(final String fullyQualifiedName) {
+      throw new UnsupportedOperationException("No table fixture for this test");
+    }
+
+    @Override
     public RelationshipType relationshipType(final UUID id) {
       assertEquals(configuredRelationshipType.getId(), id);
       return configuredRelationshipType;
+    }
+
+    @Override
+    public void validateDiscoveryEvidence(
+        final OntologyDiscoveryEvidence evidence, final String expectedServiceFullyQualifiedName) {
+      if (rejectEvidence) {
+        throw new IllegalArgumentException("stale evidence");
+      }
+      assertNotNull(evidence);
+      assertEquals("snowflake.prod", expectedServiceFullyQualifiedName);
     }
   }
 

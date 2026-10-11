@@ -31,6 +31,12 @@
       "title": "Description",
       "description": "Description of the Node.",
       "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "terminateAll": {
+      "title": "Terminate all executions",
+      "description": "Whether reaching this event cancels every other active execution in the workflow instance.",
+      "type": "boolean",
+      "default": false
     }
   }
 }

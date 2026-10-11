@@ -58,6 +58,10 @@
     "applicationResult": {
       "$ref": "../../type/ontologyChangeApplicationResult.json"
     },
+    "discoveryContext": {
+      "description": "Immutable source evidence and run attribution for an automatically discovered draft.",
+      "$ref": "../../type/ontologyDiscoveryContext.json"
+    },
     "owners": {
       "$ref": "../../type/entityReferenceList.json"
     },

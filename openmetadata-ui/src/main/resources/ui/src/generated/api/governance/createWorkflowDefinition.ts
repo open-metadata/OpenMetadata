@@ -116,6 +116,10 @@ export interface CheckEntityAttributesTaskDefinition {
     subType?: string;
     type?:    string;
     output?:  string[];
+    /**
+     * Whether reaching this event cancels every other active execution in the workflow instance.
+     */
+    terminateAll?: boolean;
     [property: string]: any;
 }
 
