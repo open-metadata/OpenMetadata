@@ -179,7 +179,7 @@ const MarketPlaceAppDetails = () => {
           isDisabled={!tooltipTitle}
           placement="top"
           title={tooltipTitle}
-          triggerClassName="tw:w-full m-t-md">
+          triggerClassName="tw:block tw:w-full m-t-md">
           <CoreButton
             className="tw:w-full"
             color="primary"

@@ -303,21 +303,15 @@ const NotificationListPage = () => {
           return (
             <div className="d-flex items-center">
               {alertPermission.edit && (
-                <Tooltip
-                  arrow
-                  excludeTriggerFromTabOrder
-                  placement="bottom"
-                  title={t('label.edit')}
-                  triggerClassName="tw:inline-flex">
-                  <Link to={getNotificationAlertsEditPath(fullyQualifiedName)}>
-                    <ButtonUtility
-                      color="tertiary"
-                      data-testid={`alert-edit-${record.name}`}
-                      icon={EditIcon}
-                      isDisabled={record.provider === ProviderType.System}
-                      size="sm"
-                    />
-                  </Link>
+                <Tooltip arrow placement="bottom" title={t('label.edit')}>
+                  <ButtonUtility
+                    color="tertiary"
+                    data-testid={`alert-edit-${record.name}`}
+                    href={getNotificationAlertsEditPath(fullyQualifiedName)}
+                    icon={EditIcon}
+                    isDisabled={record.provider === ProviderType.System}
+                    size="sm"
+                  />
                 </Tooltip>
               )}
               {alertPermission.delete && (
