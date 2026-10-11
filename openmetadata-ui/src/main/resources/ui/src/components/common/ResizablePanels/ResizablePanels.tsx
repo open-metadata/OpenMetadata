@@ -129,9 +129,9 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           {!hideSecondPanel &&
             (isSecondPanelWrapInCard ? (
               <Card className="reflex-card">
-                <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto">
+                <Card.Content className="tw:min-h-0 tw:flex-1 tw:overflow-auto">
                   {secondPanel.children}
-                </div>
+                </Card.Content>
               </Card>
             ) : (
               secondPanel.children
