@@ -399,6 +399,16 @@ describe('withExistingValues for a tag task', () => {
     ).toEqual(['PII.Email']);
   });
 
+  it('keeps no tags for a field path it cannot resolve', () => {
+    expect(
+      withExistingValues(
+        change,
+        tagTask({ fieldPath: 'messageSchema.schemaFields.order_id' }),
+        entity
+      )?.unchanged
+    ).toEqual([]);
+  });
+
   it("reads the asset's own tags for a table-level task", () => {
     expect(withExistingValues(change, tagTask({}), entity)?.unchanged).toEqual([
       'Tier.Tier1',
@@ -445,6 +455,7 @@ describe('withExistingValues', () => {
     description: 'The table.',
     columns: [
       { name: 'country', description: 'Country.' },
+      { name: 'order.total', description: 'Order total.' },
       {
         name: 'address',
         children: [{ name: 'city', description: 'City.' }],
@@ -455,7 +466,9 @@ describe('withExistingValues', () => {
   it.each([
     ['description', 'The table.'],
     ['columns.country.description', 'Country.'],
+    ['columns.address.city.description', 'City.'],
     ['columns.city.description', 'City.'],
+    ['columns."order.total".description', 'Order total.'],
   ])('reads the existing text of %s from the entity', (fieldPath, existing) => {
     expect(
       withExistingValues(change, taskFor(fieldPath), entity)?.before
@@ -470,6 +483,17 @@ describe('withExistingValues', () => {
         entity
       )?.before
     ).toEqual(['Snapshot.']);
+  });
+
+  // A path naming a field this cannot resolve, such as a topic's schema field,
+  // shows nothing rather than the entity's own description.
+  it.each([
+    'messageSchema.schemaFields.order_id.description',
+    'dataModel.columns.amount.description',
+  ])('leaves the Existing side empty for %s', (fieldPath) => {
+    expect(
+      withExistingValues(change, taskFor(fieldPath), entity)?.before
+    ).toEqual([]);
   });
 
   it('leaves the Existing side empty for a field the entity lacks', () => {

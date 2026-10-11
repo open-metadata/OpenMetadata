@@ -29,6 +29,7 @@ import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Fqn from '../../../../utils/Fqn';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import type { ActivityChange } from './inbox.utils';
 import {
@@ -667,28 +668,61 @@ type DescribedEntity = {
 const COLUMN_DESCRIPTION_PATH = /^columns\.(.+)\.description$/;
 const COLUMN_TAGS_PATH = /^columns\.(.+?)(?:\.tags)?$/;
 
-const findColumn = (
+// The paths that name the entity itself; any other path names one of its
+// fields, and one this cannot resolve (a topic's schema field, a container's
+// data-model column) shows nothing rather than the entity's values.
+const ENTITY_LEVEL_PATHS = new Set(['', 'description', 'tags', 'entity']);
+
+// Follows a column path's names down through nested columns.
+const findColumnByPath = (
+  columns: DescribedField[] | undefined,
+  names: string[]
+): DescribedField | undefined =>
+  names.reduce<{ found?: DescribedField; level?: DescribedField[] }>(
+    ({ level }, name) => {
+      const found = level?.find((column) => column.name === name);
+
+      return { found, level: found?.children };
+    },
+    { level: columns }
+  ).found;
+
+// A nested column named on its own, without its parents.
+const findColumnByName = (
   columns: DescribedField[] | undefined,
   name: string
 ): DescribedField | undefined =>
   columns?.reduce<DescribedField | undefined>(
     (found, column) =>
       found ??
-      (column.name === name ? column : findColumn(column.children, name)),
+      (column.name === name ? column : findColumnByName(column.children, name)),
     undefined
   );
 
-// What a field path names on its entity: the entity itself, or a (possibly
-// nested) column.
+// What a field path names on its entity: the entity itself, or a column by its
+// path (`address.city`, `"a.b"` with its quotes dropped).
 const getField = (
   entity: EntityUnion | undefined,
   fieldPath: string | undefined,
   columnPath: RegExp
 ): DescribedField | DescribedEntity | undefined => {
   const typed = entity as DescribedEntity | undefined;
-  const columnName = fieldPath && columnPath.exec(fieldPath)?.[1];
+  const path = fieldPath ?? '';
+  if (ENTITY_LEVEL_PATHS.has(path)) {
+    return typed;
+  }
+  const column = columnPath.exec(path)?.[1];
+  const names = column
+    ? Fqn.split(column).map((name) => Fqn.unquoteName(name))
+    : [];
+  const byPath = findColumnByPath(typed?.columns, names);
 
-  return columnName ? findColumn(typed?.columns, columnName) : typed;
+  return (
+    byPath ??
+    (names.length === 1
+      ? findColumnByName(typed?.columns, names[0])
+      : undefined)
+  );
 };
 
 // The description's Existing side: the payload's snapshot when it has one,
