@@ -15,6 +15,7 @@ import jakarta.json.Json;
 import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,6 +75,17 @@ class SystemRepositoryPatchSettingTest {
     settingsCacheMock.close();
     migrationMock.close();
     entityMock.close();
+  }
+
+  @Test
+  void invalidGlossaryPreferenceIsRejectedAsBadRequest() {
+    Settings settings =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_SETTINGS)
+            .withConfigValue(Map.of("enableTagPropagation", "invalid"));
+
+    assertThrows(BadRequestException.class, () -> systemRepository.updateSetting(settings));
+    verify(systemDAO, never()).insertSettings(anyString(), anyString());
   }
 
   @Test

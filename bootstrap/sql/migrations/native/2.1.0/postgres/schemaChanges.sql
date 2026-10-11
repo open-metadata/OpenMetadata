@@ -511,3 +511,14 @@ ALTER TABLE announcement_entity DROP COLUMN IF EXISTS status;
 UPDATE announcement_entity
 SET json = json - 'status'
 WHERE json ->> 'status' IS NOT NULL;
+
+-- Reasoning results record the serving dataset they read. Every promotion assigns a new generation,
+-- even when it reuses a physical dataset name, so a result computed before it never passes for
+-- current. Servers assign one on startup to a pointer row created before this column existed.
+ALTER TABLE rdf_active_dataset ADD COLUMN IF NOT EXISTS generation VARCHAR(36);
+
+-- Highest live-write queue ID handed out, kept because processed rows are deleted. Writes to the
+-- serving graph made outside the queue take an ID too, so a reasoning result records how far the
+-- projection had got and is current only while no write has been given a higher ID since.
+ALTER TABLE rdf_projection_health
+  ADD COLUMN IF NOT EXISTS enqueuedWatermark BIGINT NOT NULL DEFAULT 0;

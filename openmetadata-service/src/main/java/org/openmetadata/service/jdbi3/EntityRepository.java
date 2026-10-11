@@ -6839,39 +6839,45 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return null;
     }
 
-    Optional<List<TagLabel>> bundleTags = getTagsFromReadBundle(entity);
-    if (bundleTags.isPresent()) {
-      return bundleTags.get();
-    }
-
     // Try to get from cache first
     var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+    boolean propagationEnabled = SettingsCache.isGlossaryTagPropagationEnabled();
     if (cachedTagUsageDao != null) {
-      List<TagLabel> cached = cachedTagUsageDao.getTags(entityType, entity.getId());
+      List<TagLabel> cached =
+          cachedTagUsageDao.getTags(entityType, entity.getId(), propagationEnabled);
       if (cached != null) {
         LOG.debug("CACHE HIT: Retrieved tags from cache for {} {}", entityType, entity.getId());
         return cached;
       }
     }
 
-    // Fall back to database
-    List<TagLabel> tags = getTags(entity.getFullyQualifiedName());
+    List<TagLabel> tags =
+        getTagsFromReadBundle(entity)
+            .map(bundleTags -> addDerivedTagsGracefully(bundleTags, propagationEnabled))
+            .orElseGet(() -> getTags(entity.getFullyQualifiedName(), propagationEnabled));
 
     // Cache the result for next time
-    if (cachedTagUsageDao != null && tags != null) {
+    if (cachedTagUsageDao != null
+        && tags != null
+        && propagationEnabled == SettingsCache.isGlossaryTagPropagationEnabled()) {
       String tagsJson = JsonUtils.pojoToJson(tags);
-      cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson);
+      cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson, propagationEnabled);
     }
 
     return tags;
   }
 
   protected List<TagLabel> getTags(String fqn) {
+    return getTags(fqn, SettingsCache.isGlossaryTagPropagationEnabled());
+  }
+
+  private List<TagLabel> getTags(String fqn, boolean propagationEnabled) {
     if (!supportsTags) {
       return null;
     }
 
-    List<TagLabel> tags = addDerivedTagsGracefully(daoCollection.tagUsageDAO().getTags(fqn));
+    List<TagLabel> tags =
+        addDerivedTagsGracefully(daoCollection.tagUsageDAO().getTags(fqn), propagationEnabled);
     String certClassification = getCertificationClassification();
     if (certClassification != null && tags != null) {
       tags = new ArrayList<>(tags);
