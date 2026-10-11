@@ -24,7 +24,7 @@ import {
   getTaskDetailDescriptor,
   getTaskTypeBadge,
   resolveIncidentTestCaseFqn,
-  withExistingDescription,
+  withExistingValues,
 } from './taskDetail.utils';
 
 // Echo the key so a test asserts which label was chosen, and keep the
@@ -366,7 +366,60 @@ describe('tag request change', () => {
   });
 });
 
-describe('withExistingDescription', () => {
+describe('withExistingValues for a tag task', () => {
+  const change = {
+    labelKey: 'label.tag-plural',
+    before: ['PII.None'],
+    after: ['PII.Sensitive'],
+    isText: false,
+  };
+  const tagTask = (payload: Record<string, unknown>) =>
+    buildTask({
+      type: TaskType.TagUpdate,
+      payload,
+    } as unknown as Partial<Task>);
+  const entity = {
+    tags: [{ tagFQN: 'Tier.Tier1' }],
+    columns: [
+      {
+        name: 'email',
+        tags: [{ tagFQN: 'PII.Email' }, { tagFQN: 'PII.None' }],
+      },
+    ],
+  } as unknown as EntityUnion;
+
+  // The column's current tags, less the one the task removes.
+  it("keeps the column's other tags on both sides", () => {
+    expect(
+      withExistingValues(
+        change,
+        tagTask({ fieldPath: 'columns.email' }),
+        entity
+      )?.unchanged
+    ).toEqual(['PII.Email']);
+  });
+
+  it("reads the asset's own tags for a table-level task", () => {
+    expect(withExistingValues(change, tagTask({}), entity)?.unchanged).toEqual([
+      'Tier.Tier1',
+    ]);
+  });
+
+  it("prefers the payload's snapshot of the current tags", () => {
+    expect(
+      withExistingValues(
+        change,
+        tagTask({
+          fieldPath: 'columns.email',
+          currentTags: [{ tagFQN: 'PersonalData.Personal' }],
+        }),
+        entity
+      )?.unchanged
+    ).toEqual(['PersonalData.Personal']);
+  });
+});
+
+describe('withExistingValues', () => {
   const change = {
     labelKey: 'label.description',
     before: [],
@@ -394,13 +447,13 @@ describe('withExistingDescription', () => {
     ['columns.city.description', 'City.'],
   ])('reads the existing text of %s from the entity', (fieldPath, existing) => {
     expect(
-      withExistingDescription(change, taskFor(fieldPath), entity)?.before
+      withExistingValues(change, taskFor(fieldPath), entity)?.before
     ).toEqual([existing]);
   });
 
   it("keeps the payload's own snapshot", () => {
     expect(
-      withExistingDescription(
+      withExistingValues(
         { ...change, before: ['Snapshot.'] },
         taskFor('description'),
         entity
@@ -410,11 +463,8 @@ describe('withExistingDescription', () => {
 
   it('leaves the Existing side empty for a field the entity lacks', () => {
     expect(
-      withExistingDescription(
-        change,
-        taskFor('columns.gone.description'),
-        entity
-      )?.before
+      withExistingValues(change, taskFor('columns.gone.description'), entity)
+        ?.before
     ).toEqual([]);
   });
 });

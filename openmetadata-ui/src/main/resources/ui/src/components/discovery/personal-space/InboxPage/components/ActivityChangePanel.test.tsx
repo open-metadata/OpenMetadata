@@ -69,6 +69,30 @@ describe('ActivityChangePanel', () => {
     expect(screen.getByText('−1')).toBeInTheDocument();
   });
 
+  // A task's change keeps the field's other values, neutral, on both sides.
+  it('shows kept values on both sides beside what changed', () => {
+    render(
+      <ActivityChangePanel
+        change={{
+          labelKey: 'label.tag-plural',
+          before: [],
+          after: ['PII.Sensitive'],
+          isText: false,
+          unchanged: ['PII.Email'],
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('activity-change-error')).toHaveTextContent(
+      'label.beforePII.Email'
+    );
+    expect(screen.getByTestId('activity-change-success')).toHaveTextContent(
+      'label.afterPII.Email+ PII.Sensitive'
+    );
+    expect(screen.getByText('+1')).toBeInTheDocument();
+    expect(screen.queryByText('−0')).not.toBeInTheDocument();
+  });
+
   // A description reads as the existing text and the one suggested in its place.
   it('names a description change Existing and Suggested', () => {
     render(

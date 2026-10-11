@@ -25,6 +25,8 @@ const CHANGE_SIGN: Record<ChangeTone, string> = { error: '−', success: '+' };
 interface ChangeColumnProps {
   title: string;
   values: string[];
+  // Shown on both sides, neutral, ahead of what changed.
+  kept: string[];
   tone: ChangeTone;
   isText: boolean;
 }
@@ -65,7 +67,13 @@ const keyValues = (values: string[]) => {
   });
 };
 
-const ChangeColumn = ({ title, values, tone, isText }: ChangeColumnProps) => (
+const ChangeColumn = ({
+  title,
+  values,
+  kept,
+  tone,
+  isText,
+}: ChangeColumnProps) => (
   <Box
     className={classNames(
       'tw:min-w-0 tw:flex-1',
@@ -87,6 +95,11 @@ const ChangeColumn = ({ title, values, tone, isText }: ChangeColumnProps) => (
       />
     ) : (
       <Box className="tw:gap-1.5" wrap="wrap">
+        {keyValues(kept).map(({ value, key }) => (
+          <Badge color="gray" key={`kept-${key}`} size="sm" type="color">
+            {value}
+          </Badge>
+        ))}
         {keyValues(values).map(({ value, key }) => (
           <Badge color={tone} key={key} size="sm" type="color">
             {`${CHANGE_SIGN[tone]} ${value}`}
@@ -97,54 +110,75 @@ const ChangeColumn = ({ title, values, tone, isText }: ChangeColumnProps) => (
   </Box>
 );
 
+// The field a change is to, and how many values it gains and loses.
+const ChangeHeader = ({
+  label,
+  added,
+  removed,
+  isText,
+}: {
+  label: string;
+  added: number;
+  removed: number;
+  isText: boolean;
+}) => (
+  <Box
+    align="center"
+    className="tw:h-9 tw:border-b tw:border-secondary tw:bg-secondary_subtle tw:px-3.5"
+    gap={2}>
+    <Typography className="tw:text-secondary" size="text-xs" weight="semibold">
+      {label}
+    </Typography>
+    {!isText && added > 0 && (
+      <Badge color="success" size="sm" type="color">
+        {`+${added}`}
+      </Badge>
+    )}
+    {!isText && removed > 0 && (
+      <Badge color="error" size="sm" type="color">
+        {`−${removed}`}
+      </Badge>
+    )}
+  </Box>
+);
+
 /**
  * The card's change panel: the field, how many values it gained or lost, and
- * what was removed beside what was added. A side shows only when it has
- * something, since an event records the change, not the full list.
+ * what was removed beside what was added, with any values it keeps on both
+ * sides. A side shows only when it has something, since an event records the
+ * change, not the full list.
  */
 const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
   const { t } = useTranslation();
-  const { labelKey, before, after, isText } = change;
+  const { labelKey, before, after, isText, unchanged = [] } = change;
   const titleKey = COLUMN_TITLE_KEY[isText ? 'text' : 'values'];
-  const hasBoth = before.length > 0 && after.length > 0;
+  // Kept values belong to both sides, so either shows when there are any.
+  const showBefore = before.length > 0 || unchanged.length > 0;
+  const showAfter = after.length > 0 || unchanged.length > 0;
 
   return (
     <Box
       className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary"
       data-testid="activity-change-panel"
       direction="col">
-      <Box
-        align="center"
-        className="tw:h-9 tw:border-b tw:border-secondary tw:bg-secondary_subtle tw:px-3.5"
-        gap={2}>
-        <Typography
-          className="tw:text-secondary"
-          size="text-xs"
-          weight="semibold">
-          {t(labelKey)}
-        </Typography>
-        {!isText && after.length > 0 && (
-          <Badge color="success" size="sm" type="color">
-            {`+${after.length}`}
-          </Badge>
-        )}
-        {!isText && before.length > 0 && (
-          <Badge color="error" size="sm" type="color">
-            {`−${before.length}`}
-          </Badge>
-        )}
-      </Box>
+      <ChangeHeader
+        added={after.length}
+        isText={isText}
+        label={t(labelKey)}
+        removed={before.length}
+      />
       {/* Top-aligned columns split by a rule, the arrow sitting on it. */}
       <Box className="tw:relative tw:divide-x tw:divide-secondary">
-        {before.length > 0 && (
+        {showBefore && (
           <ChangeColumn
             isText={isText}
+            kept={unchanged}
             title={t(titleKey.before)}
             tone="error"
             values={before}
           />
         )}
-        {hasBoth && (
+        {showBefore && showAfter && (
           <span
             aria-hidden
             className={classNames(
@@ -154,9 +188,10 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
             <ArrowRight className="tw:size-3.5 tw:text-fg-quaternary" />
           </span>
         )}
-        {after.length > 0 && (
+        {showAfter && (
           <ChangeColumn
             isText={isText}
+            kept={unchanged}
             title={t(titleKey.after)}
             tone="success"
             values={after}

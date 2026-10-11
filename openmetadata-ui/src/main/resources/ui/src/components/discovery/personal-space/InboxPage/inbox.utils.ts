@@ -80,6 +80,9 @@ export interface ActivityChange {
   after: string[];
   // Descriptions are prose, not a set of chips.
   isText: boolean;
+  // Values on both sides that the change keeps, e.g. a tag task's current
+  // tags. An activity event records only the change, so it has none.
+  unchanged?: string[];
 }
 
 const CHANGE_LABEL_KEY: Partial<Record<ActivityEventType, string>> = {
