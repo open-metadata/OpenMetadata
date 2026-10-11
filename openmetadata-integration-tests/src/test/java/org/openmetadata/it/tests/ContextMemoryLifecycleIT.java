@@ -219,6 +219,42 @@ public class ContextMemoryLifecycleIT {
     assertEquals(ContextMemoryStatus.UNPROCESSED, memory.getEntityStatus());
   }
 
+  @Test
+  void anUnprocessedConflictCanBeDraftedWithoutLosingItsReason(TestNamespace ns) {
+    ContextMemory pending =
+        withReviewReason(
+            admin()
+                .create(
+                    memory(ns, "pending-conflict")
+                        .withEntityStatus(ContextMemoryStatus.UNPROCESSED)));
+
+    ContextMemory draft = admin().patch(idOf(pending), status(ContextMemoryStatus.DRAFT));
+
+    assertEquals(ContextMemoryStatus.DRAFT, draft.getEntityStatus());
+    assertEquals(pending.getAnswer(), draft.getAnswer());
+    assertEquals(pending.getStatusReason(), draft.getStatusReason());
+    assertEquals(draft.getStatusReason(), admin().get(idOf(draft)).getStatusReason());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "REJECTED", "UNPROCESSED"})
+  void aDraftConflictCanBeResolvedOrExplicitlyRequeued(
+      ContextMemoryStatus stage, TestNamespace ns) {
+    ContextMemory draft =
+        withReviewReason(
+            admin()
+                .create(memory(ns, "draft-conflict").withEntityStatus(ContextMemoryStatus.DRAFT)));
+
+    ContextMemory resolved = admin().patch(idOf(draft), status(stage));
+
+    assertEquals(stage, resolved.getEntityStatus());
+    assertEquals(draft.getAnswer(), resolved.getAnswer());
+    assertNull(resolved.getStatusReason());
+    assertEquals(stage, admin().get(idOf(resolved)).getEntityStatus());
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ContextMemoryStatus.class,
@@ -536,6 +572,15 @@ public class ContextMemoryLifecycleIT {
   private static JsonNode status(ContextMemoryStatus status) {
     return JsonUtils.readTree(
         "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"" + status.value() + "\"}]");
+  }
+
+  private static ContextMemory withReviewReason(ContextMemory memory) {
+    return admin()
+        .patch(
+            idOf(memory),
+            JsonUtils.readTree(
+                """
+                [{"op":"add","path":"/statusReason","value":"contradicts: threshold differs"}]"""));
   }
 
   private static Set<String> changedFields(ContextMemory memory) {

@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 import {
+  Box,
   EmptyPlaceholder,
+  Grid,
   Skeleton,
   SkeletonParagraph,
 } from '@openmetadata/ui-core-components';
 import { Lock01 } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Space } from 'antd';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
 import { RefObject, useEffect, useMemo, useState } from 'react';
@@ -165,12 +168,25 @@ const KnowledgeCenterFilterPage = () => {
     return (
       <PageLayoutV1 pageTitle={t('label.context-center')}>
         <div className="knowledge-center-filter-page">
-          <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
+          <Grid
+            className="layout-row layout-grid"
+            data-testid="knowledge-page-listing"
+            style={{ ...getLayoutGutter(0, 56) }}>
             {Array.from({ length: 4 }).map(() => (
-              <Col className="knowledge-card-col" key={uniqueId()} span={24}>
-                <Row gutter={[16, 16]}>
-                  <Col span={24}>
-                    <Space>
+              <Grid.Item
+                className="layout-column knowledge-card-col"
+                key={uniqueId()}
+                span={24}>
+                <Grid
+                  className="layout-row layout-grid"
+                  style={{ ...getLayoutGutter(16, 16) }}>
+                  <Grid.Item className="layout-column" span={24}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={2}
+                      itemClassName="layout-space-item">
                       <div className="tw:flex tw:gap-4">
                         <Skeleton
                           animation={false}
@@ -182,27 +198,32 @@ const KnowledgeCenterFilterPage = () => {
                         </div>
                       </div>
                       <Skeleton animation={false} height={16} width={150} />
-                    </Space>
-                  </Col>
-                  <Col span={24}>
+                    </Box>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={24}>
                     <SkeletonParagraph
                       className="m-b-sm"
                       rows={1}
                       title={false}
                     />
                     <SkeletonParagraph rows={2} title={false} />
-                  </Col>
-                  <Col span={24}>
-                    <Space>
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={24}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={2}
+                      itemClassName="layout-space-item">
                       <Skeleton height={16} width={100} />
                       <Skeleton height={16} width={100} />
                       <Skeleton height={16} width={100} />
-                    </Space>
-                  </Col>
-                </Row>
-              </Col>
+                    </Box>
+                  </Grid.Item>
+                </Grid>
+              </Grid.Item>
             ))}
-          </Row>
+          </Grid>
         </div>
       </PageLayoutV1>
     );
@@ -233,25 +254,30 @@ const KnowledgeCenterFilterPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.context-center')}>
       <div className="knowledge-center-filter-page">
-        <Row gutter={[0, 24]}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(0, 24) }}>
           {!isEmpty(breadcrumbs) && (
-            <Col className="d-flex items-center" span={16}>
+            <Grid.Item className="layout-column d-flex items-center" span={16}>
               <TitleBreadcrumb titleLinks={breadcrumbs} />
-            </Col>
+            </Grid.Item>
           )}
-          <Col span={24}>
-            <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
+          <Grid.Item className="layout-column" span={24}>
+            <Grid
+              className="layout-row layout-grid"
+              data-testid="knowledge-page-listing"
+              style={{ ...getLayoutGutter(0, 56) }}>
               {map(knowledgePages, (knowledgePage) => (
-                <Col
-                  className="knowledge-card-col"
+                <Grid.Item
+                  className="layout-column knowledge-card-col"
                   key={knowledgePage.id}
                   span={24}>
                   <KnowledgeCard readonly knowledgeItem={knowledgePage} />
-                </Col>
+                </Grid.Item>
               ))}
-            </Row>
-          </Col>
-        </Row>
+            </Grid>
+          </Grid.Item>
+        </Grid>
 
         {isLoadingMore ? <Loader /> : null}
         <div

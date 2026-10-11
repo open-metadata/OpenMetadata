@@ -100,6 +100,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     hasViewPermission,
     hasDeletePermission,
     editDisplayNamePermission,
+    canRestorePermission,
     displayName,
     tabs,
     activeTab,
@@ -118,6 +119,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     extraDropdownContent,
     handleOwnerChange,
     handleDisplayNameChange,
+    handleRestore,
     getEntityFeedCount,
     setTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
@@ -459,8 +461,9 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                             observabilityRouterClassBase.getDataQualityPagePath()
                           )
                         }
-                        allowSoftDelete={false}
                         canDelete={hasDeletePermission}
+                        canRestore={canRestorePermission}
+                        deleted={testCase.deleted}
                         displayName={testCase.displayName}
                         editDisplayNamePermission={editDisplayNamePermission}
                         entityFQN={testCase.fullyQualifiedName}
@@ -469,6 +472,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                         entityType={EntityType.TEST_CASE}
                         extraDropdownContent={extraDropdownContent}
                         onEditDisplayName={handleDisplayNameChange}
+                        onRestoreEntity={handleRestore}
                       />
                     </>
                   )}

@@ -39,6 +39,7 @@ export enum SettingType {
     EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
+    GlossarySettings = "glossarySettings",
     GlossaryTermRelationSettings = "glossaryTermRelationSettings",
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
@@ -111,6 +112,8 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
+ *
+ * Catalog-wide preferences for glossary terms.
  *
  * Administrator-managed SPARQL query templates available across the installation.
  *
@@ -714,6 +717,11 @@ export interface PipelineServiceClientConfiguration {
      */
     relationTypes?: GlossaryTermRelationType[];
     /**
+     * Apply classification tags from glossary terms to their associated assets. Changes to
+     * existing search results require reindexing.
+     */
+    enableTagPropagation?: boolean;
+    /**
      * Installation query templates visible to SPARQL console users.
      */
     queryTemplates?: SavedSparqlQuery[];
@@ -723,6 +731,12 @@ export interface PipelineServiceClientConfiguration {
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Tenant-wide default order of columns in table schema views. Users can still change the
+     * order per page from the Sort menu; that choice is not saved. Null means no tenant default
+     * is configured, and columns are ordered alphabetically.
+     */
+    defaultColumnOrder?: DefaultColumnOrder | null;
     /**
      * Timestamp when the fingerprints were last persisted.
      */
@@ -1959,6 +1973,11 @@ export interface Aws {
 export enum DefaultAppMode {
     AI = "ai",
     Classic = "classic",
+}
+
+export enum DefaultColumnOrder {
+    Alphabetical = "alphabetical",
+    SourceOrder = "sourceOrder",
 }
 
 /**

@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Form, Row, Space } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form } from 'antd';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -39,6 +39,7 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../utils/FqnUtils';
@@ -213,11 +214,13 @@ const AddCustomMetricPage = () => {
         allowScroll: true,
         children: (
           <div data-testid="add-custom-metric-page-container">
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(16, 16) }}>
+              <Grid.Item className="layout-column" span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
-              </Col>
-              <Col span={24}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
                 <Typography
                   as="h5"
                   className="m-b-0"
@@ -230,8 +233,8 @@ const AddCustomMetricPage = () => {
                       : t('label.table'),
                   })}
                 </Typography>
-              </Col>
-              <Col span={24}>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
                 <CustomMetricForm
                   form={form}
                   initialValues={initialValues}
@@ -239,7 +242,12 @@ const AddCustomMetricPage = () => {
                   table={table}
                   onFinish={handleFormSubmit}
                 />
-                <Space className="w-full justify-end">
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal w-full justify-end"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <Button
                     data-testid="cancel-button"
                     disabled={isActionLoading}
@@ -254,9 +262,9 @@ const AddCustomMetricPage = () => {
                     onClick={() => form.submit()}>
                     {t('label.create')}
                   </Button>
-                </Space>
-              </Col>
-            </Row>
+                </Box>
+              </Grid.Item>
+            </Grid>
           </div>
         ),
         minWidth: 700,

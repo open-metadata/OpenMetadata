@@ -50,6 +50,7 @@ import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationRes
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleList;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.data.RdfEntityDiff;
 import org.openmetadata.schema.api.rdf.AgentSparqlCompletenessStatus;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
@@ -284,6 +285,48 @@ class RdfResourceTest {
     assertEquals(false, status.getAiEnabled());
     assertEquals("NONE", status.getInference().getDefaultLevel());
     verify(authorizer, never()).authorizeAdmin(securityContext);
+  }
+
+  @Test
+  void rdfStatusAdvertisesMaterializedRulesAsTheOnlyAvailableInference() {
+    final RdfStatus status =
+        statusFor(
+            fusekiConfiguration()
+                .withMaterializedInferenceEnabled(true)
+                .withInferenceEnabled(true)
+                .withDefaultInferenceLevel(RdfConfiguration.ReasoningLevel.OWL_DL));
+
+    assertEquals(true, status.getInference().getEnabled());
+    assertEquals("NONE", status.getInference().getDefaultLevel());
+    assertEquals(Set.of("NONE", "CUSTOM"), status.getInference().getAvailableLevels());
+  }
+
+  @Test
+  void rdfStatusReportsNoInferenceWithoutMaterializedRules() {
+    final RdfStatus status =
+        statusFor(
+            fusekiConfiguration()
+                .withInferenceEnabled(true)
+                .withDefaultInferenceLevel(RdfConfiguration.ReasoningLevel.RDFS));
+
+    assertEquals(false, status.getInference().getEnabled());
+    assertEquals("NONE", status.getInference().getDefaultLevel());
+    assertEquals(Set.of("NONE"), status.getInference().getAvailableLevels());
+  }
+
+  private RdfStatus statusFor(final RdfConfiguration configuration) {
+    final RdfRepository repository = Mockito.mock(RdfRepository.class);
+    when(repository.isEnabled()).thenReturn(true);
+    when(repository.getConfig()).thenReturn(configuration);
+    when(securityContext.getUserPrincipal()).thenReturn(() -> "steward");
+    rdfResource = new RdfResource(authorizer, () -> repository, null);
+    return (RdfStatus) rdfResource.getRdfStatus(securityContext).getEntity();
+  }
+
+  private static RdfConfiguration fusekiConfiguration() {
+    return new RdfConfiguration()
+        .withEnabled(true)
+        .withStorageType(RdfConfiguration.StorageType.FUSEKI);
   }
 
   @Test
