@@ -363,7 +363,11 @@ public interface FeedDAOs {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
       return listSearchAfter(
-          filter.getConditionForEntity(getTableName()), filter.getQueryParams(), limit, afterName, afterId);
+          filter.getConditionForEntity(getTableName()),
+          filter.getQueryParams(),
+          limit,
+          afterName,
+          afterId);
     }
 
     @Override
@@ -373,7 +377,11 @@ public interface FeedDAOs {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
       return listSearchBefore(
-          filter.getConditionForEntity(getTableName()), filter.getQueryParams(), limit, beforeName, beforeId);
+          filter.getConditionForEntity(getTableName()),
+          filter.getQueryParams(),
+          limit,
+          beforeName,
+          beforeId);
     }
 
     @ConnectionAwareSqlQuery(
