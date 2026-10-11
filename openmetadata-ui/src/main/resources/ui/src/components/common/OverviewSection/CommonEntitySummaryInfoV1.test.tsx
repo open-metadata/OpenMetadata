@@ -22,8 +22,6 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock Icon component from antd icons to avoid SVG/render issues
-
 // Mock Link from react-router-dom to avoid Router dependency
 jest.mock('react-router-dom', () => ({
   Link: ({ to, children }: { to?: unknown; children?: ReactNode }) => (

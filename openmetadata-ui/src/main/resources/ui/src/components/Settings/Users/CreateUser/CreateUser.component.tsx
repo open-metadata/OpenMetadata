@@ -12,8 +12,8 @@
  */
 
 import { Plus } from '@openmetadata/ui-core-components/icons';
-import { Toggle } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Input, Radio, Select, Space } from 'antd';
+import { Box, Toggle } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps, Input, Radio, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
 import {
@@ -388,14 +388,19 @@ const AdminOnlyFields = ({
       )}
 
       <Form.Item>
-        <Space>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           <span> {t('label.admin')}</span>
           <Toggle
             data-testid="admin"
             isSelected={isAdmin}
             onChange={onToggleAdmin}
           />
-        </Space>
+        </Box>
       </Form.Item>
     </>
   );
@@ -723,7 +728,12 @@ const CreateUser = ({
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
 
-      <Space className="w-full justify-end" size={4}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-end"
+        gap={1}
+        itemClassName="layout-space-item">
         <Button data-testid="cancel-user" type="link" onClick={onCancel}>
           {t('label.cancel')}
         </Button>
@@ -735,7 +745,7 @@ const CreateUser = ({
           type="primary">
           {t('label.create')}
         </Button>
-      </Space>
+      </Box>
     </Form>
   );
 };

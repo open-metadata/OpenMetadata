@@ -13,12 +13,13 @@
 
 import {
   Box,
+  Button,
   Divider,
   Grid,
   Owner,
-  Typography,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Button, Tooltip } from 'antd';
+
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -152,15 +153,14 @@ function DataAssetsVersionHeader({
         style={{ maxWidth: '12.5%', flex: '0 0 12.5%' }}>
         <Box className="layout-row" justify="end" wrap="wrap">
           <Box className="layout-column tw:block">
-            <Tooltip title={t('label.exit-version-history')}>
+            <Tooltip arrow title={t('label.exit-version-history')}>
               <Button
-                className="w-16 p-0"
+                color="secondary"
                 data-testid="version-button"
-                icon={
-                  <VersionIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />
-                }
-                onClick={onVersionClick}>
-                <Typography>{version}</Typography>
+                iconLeading={VersionIcon}
+                size="sm"
+                onPress={onVersionClick}>
+                {version}
               </Button>
             </Tooltip>
           </Box>

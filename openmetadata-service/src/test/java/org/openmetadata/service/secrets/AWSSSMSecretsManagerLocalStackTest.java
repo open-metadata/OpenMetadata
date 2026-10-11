@@ -18,9 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.service.fernet.Fernet;
 import org.testcontainers.containers.localstack.LocalStackContainer;
@@ -101,6 +103,48 @@ class AWSSSMSecretsManagerLocalStackTest {
     secretsManager.deleteSecretInternal(parameterName);
 
     assertFalse(secretsManager.existSecret(parameterName), "a deleted parameter must not exist");
+  }
+
+  @Test
+  void hardDeletingAMigratedServiceRemovesTheParameterAtItsOldPath() {
+    String serviceName = "ssm-fabric-migrated";
+    String legacyParameterName =
+        secretsManager.buildSecretId(true, "database", serviceName) + "/clientsecret";
+    secretsManager.upsertSecret(legacyParameterName, "legacy-client-secret");
+
+    secretsManager.deleteSecretsFromServiceConnectionConfig(
+        fabricConnection("secret:" + legacyParameterName),
+        "MicrosoftFabric",
+        serviceName,
+        ServiceType.DATABASE);
+
+    assertFalse(
+        secretsManager.existSecret(legacyParameterName),
+        "the parameter the moved field still references must be deleted with the service");
+  }
+
+  @Test
+  void hardDeleteKeepsAParameterTheServiceOnlyReferences() {
+    String sharedParameterName = "/shared/vault/ssm-fabric-client-secret";
+    secretsManager.upsertSecret(sharedParameterName, "managed-by-the-user");
+
+    secretsManager.deleteSecretsFromServiceConnectionConfig(
+        fabricConnection("secret:" + sharedParameterName),
+        "MicrosoftFabric",
+        "ssm-fabric-shared",
+        ServiceType.DATABASE);
+
+    assertTrue(
+        secretsManager.existSecret(sharedParameterName),
+        "a parameter the user manages outside the service must survive its hard delete");
+  }
+
+  private static Map<String, Object> fabricConnection(String clientSecret) {
+    return Map.of(
+        "hostPort", "fabric.datawarehouse.fabric.microsoft.com",
+        "clientId", "client-id",
+        "tenantId", "tenant-id",
+        "authType", Map.of("clientSecret", clientSecret));
   }
 
   private SecretsManager.SecretsConfig localStackConfig() {

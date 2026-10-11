@@ -32,7 +32,13 @@ const AttachmentPlaceholder: FC<AttachmentPlaceholderProps> = ({
       className="image-placeholder"
       contentEditable={false}
       data-testid="image-placeholder">
-      <FileIcon className="tw:size-8 tw:shrink-0" />
+      <FileIcon
+        aria-hidden
+        className="attachment-placeholder-icon"
+        fill="currentColor"
+        height="1em"
+        width="1em"
+      />
       <Typography className="tw:text-center" color="secondary" size="text-md">
         {t('label.add-an-file-type', {
           fileType: t(`label.${fileType}`),

@@ -11,8 +11,17 @@
  *  limitations under the License.
  */
 
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Grid,
+  Toggle,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -37,6 +46,7 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   highlightSearchText,
@@ -321,14 +331,13 @@ const BotListV1 = ({
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
-            <Tooltip placement="topRight" title={title}>
-              <Button
+            <Tooltip arrow placement="top right" title={title}>
+              <ButtonUtility
+                color="tertiary"
                 data-testid={`bot-delete-${record.name}`}
-                disabled={isDisabled}
-                icon={
-                  <IconDelete className="align-middle tw:size-4 tw:mr-2 tw:shrink-0" />
-                }
-                type="text"
+                icon={IconDelete}
+                isDisabled={isDisabled}
+                size="sm"
                 onClick={() => setSelectedUser(record)}
               />
             </Tooltip>
@@ -428,8 +437,8 @@ const BotListV1 = ({
   const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
 
   return handleErrorPlaceholder ? (
-    <Row>
-      <Col className="w-full d-flex justify-end">
+    <Box className="layout-row" wrap="wrap">
+      <Box className="layout-column w-full d-flex justify-end">
         <Toggle
           id="switch-deleted"
           isSelected={showDeleted}
@@ -437,8 +446,8 @@ const BotListV1 = ({
           size="sm"
           onChange={handleShowDeletedBots}
         />
-      </Col>
-      <Col className="w-full">
+      </Box>
+      <Box className="layout-column tw:block w-full">
         <ErrorPlaceHolder
           className="mt-24"
           doc={BOTS_DOCS}
@@ -450,25 +459,32 @@ const BotListV1 = ({
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddBotClick}
         />
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   ) : (
-    <Row gutter={[0, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbs} />
-      </Col>
+      </Grid.Item>
 
-      <Col span={12}>
+      <Grid.Item className="layout-column" span={12}>
         <PageHeader
           data={{
             header: t(PAGE_HEADERS.BOTS.header),
             subHeader: t(PAGE_HEADERS.BOTS.subHeader),
           }}
         />
-      </Col>
+      </Grid.Item>
 
-      <Col span={12}>
-        <Space align="center" className="w-full justify-end" size={16}>
+      <Grid.Item className="layout-column" span={12}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-end"
+          gap={4}
+          itemClassName="layout-space-item">
           <Toggle
             data-testid="switch-deleted"
             id="switch-deleted"
@@ -479,21 +495,28 @@ const BotListV1 = ({
           />
 
           <Tooltip
-            placement="topLeft"
-            title={!isAdminUser && t('message.admin-only-action')}>
+            arrow
+            excludeTriggerFromTabOrder
+            isDisabled={isAdminUser}
+            placement="top left"
+            title={t('message.admin-only-action')}
+            triggerClassName={classNames('tw:inline-flex', {
+              'tw:cursor-not-allowed tw:*:pointer-events-none': !isAdminUser,
+            })}>
             <LimitWrapper resource="bot">
               <Button
+                color="primary"
                 data-testid="add-bot"
-                disabled={!isAdminUser}
-                type="primary"
-                onClick={handleAddBotClick}>
+                isDisabled={!isAdminUser}
+                size="sm"
+                onPress={handleAddBotClick}>
                 {addBotLabel}
               </Button>
             </LimitWrapper>
           </Tooltip>
-        </Space>
-      </Col>
-      <Col span={8}>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={8}>
         <Searchbar
           removeMargin
           placeholder={`${t('label.search-for-type', {
@@ -502,8 +525,8 @@ const BotListV1 = ({
           typingInterval={500}
           onSearch={handleSearch}
         />
-      </Col>
-      <Col className="bot-list-v1-container" span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column bot-list-v1-container" span={24}>
         <Table
           columns={columns}
           customPaginationProps={{
@@ -524,7 +547,7 @@ const BotListV1 = ({
           rowKey="name"
           size="small"
         />
-      </Col>
+      </Grid.Item>
 
       <DeleteEntityModal
         afterDeleteAction={handleDeleteAction}
@@ -537,7 +560,7 @@ const BotListV1 = ({
           setSelectedUser(undefined);
         }}
       />
-    </Row>
+    </Grid>
   );
 };
 

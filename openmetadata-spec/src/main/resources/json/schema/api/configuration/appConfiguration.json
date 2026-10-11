@@ -11,6 +11,12 @@
       "type": ["string", "null"],
       "enum": ["ai", "classic", null],
       "default": null
+    },
+    "defaultColumnOrder": {
+      "description": "Tenant-wide default order of columns in table schema views. Users can still change the order per page from the Sort menu; that choice is not saved. Null means no tenant default is configured, and columns are ordered alphabetically.",
+      "type": ["string", "null"],
+      "enum": ["alphabetical", "sourceOrder", null],
+      "default": null
     }
   },
   "additionalProperties": false

@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Badge, Button, Card, Col, Row, Space, Table } from 'antd';
+import {
+  Box,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Badge, Button, Card, Table } from 'antd';
 import { capitalize, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +29,7 @@ import {
   getAppRunFailureLogs,
   getEntityStatsData,
 } from '../../../../utils/ApplicationUtils';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
@@ -108,9 +114,17 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           }`}
           size="small"
           title={title}>
-          <Row gutter={[16, 8]}>
-            <Col span={24}>
-              <Space wrap direction="horizontal" size={0}>
+          <Grid
+            className="layout-row layout-grid"
+            style={{ ...getLayoutGutter(16, 8) }}>
+            <Grid.Item className="layout-column" span={24}>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={0}
+                itemClassName="layout-space-item"
+                wrap="wrap">
                 {showStatus && (
                   <>
                     <div className="flex">
@@ -118,10 +132,15 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                         'label.status'
                       )}:`}</span>
 
-                      <Space align="center" className="m-l-xs" size={8}>
+                      <Box
+                        inline
+                        align="center"
+                        className="layout-space layout-space-horizontal m-l-xs"
+                        gap={2}
+                        itemClassName="layout-space-item">
                         <StatusIcon className="tw:size-3.5 tw:shrink-0" />
                         <span>{capitalize(status)}</span>
-                      </Space>
+                      </Box>
                     </div>
                     <Divider
                       className="tw:mx-2 tw:h-[0.9em] tw:self-center"
@@ -134,7 +153,12 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                     'label.index-states'
                   )}:`}</span>
                   <span className="m-l-xs">
-                    <Space size={8}>
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={2}
+                      itemClassName="layout-space-item">
                       <Badge
                         showZero
                         className="request-badge running"
@@ -177,7 +201,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                             })}: ${stepStats.warningRecords}`}
                           />
                         )}
-                    </Space>
+                    </Box>
                   </span>
                 </div>
                 {(() => {
@@ -236,9 +260,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                     </div>
                   </>
                 )}
-              </Space>
-            </Col>
-          </Row>
+              </Box>
+            </Grid.Item>
+          </Grid>
         </Card>
       );
     },
@@ -541,7 +565,12 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
         data-testid="server-stats-card"
         size="small"
         title={
-          <Space>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <span>{t('label.server-stat-plural')}</span>
             {serverCount && (
               <Badge
@@ -550,7 +579,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                 title={`${serverCount} ${t('label.server')}(s)`}
               />
             )}
-          </Space>
+          </Box>
         }>
         <Table
           columns={serverStatsColumns}
@@ -574,11 +603,11 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
 
   const renderStatCol = (stats: StepStats | undefined, labelKey: string) =>
     stats ? (
-      <Col span={6}>
+      <Grid.Item className="layout-column" span={6}>
         {statsRender(stats, t(labelKey), {
           showStatus: false,
         })}
-      </Col>
+      </Grid.Item>
     ) : null;
 
   const renderEntityStats = (entityStats?: { [key: string]: StepStats }) =>
@@ -589,7 +618,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {renderOverallStats(successContext?.stats?.jobStats)}
       {renderOverallStats(failureContext?.stats?.jobStats)}
 
-      <Row className="m-t-md" gutter={[16, 16]}>
+      <Grid
+        className="layout-row layout-grid m-t-md"
+        style={getLayoutGutter(16, 16)}>
         {renderStatCol(
           successContext?.stats?.readerStats,
           'label.reader-stat-plural'
@@ -625,7 +656,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
           failureContext?.stats?.vectorStats,
           'label.vector-stat-plural'
         )}
-      </Row>
+      </Grid>
 
       {serverStatsRenderer()}
 

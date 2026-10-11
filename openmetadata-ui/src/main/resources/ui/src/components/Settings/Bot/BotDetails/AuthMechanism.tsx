@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Input, Space } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Input } from 'antd';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -104,11 +104,15 @@ const AuthMechanism: FC<Props> = ({
   const renderTokenSection = () =>
     JWTToken ? (
       <>
-        <Space
-          className={classNames(
+        <Box
+          inline
+          align="center"
+          className={`layout-space layout-space-horizontal ${classNames(
             'w-full justify-between ant-space-authMechanism',
             isSCIMBot && 'm-t-xs'
-          )}>
+          )}`}
+          gap={2}
+          itemClassName="layout-space-item">
           <Input.Password
             readOnly
             autoComplete="off"
@@ -124,7 +128,7 @@ const AuthMechanism: FC<Props> = ({
               onClick={() => navigator.clipboard.writeText(JWTToken)}
             />
           )}
-        </Space>
+        </Box>
         {!isSCIMBot && (
           <p className="text-grey-muted" data-testid="token-expiry">
             {renderExpiryText()}
@@ -169,7 +173,12 @@ const AuthMechanism: FC<Props> = ({
 
   return (
     <>
-      <Space className="w-full justify-between">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-between"
+        gap={2}
+        itemClassName="layout-space-item">
         {isSCIMBot ? (
           <div className="flex flex-col gap-2">
             <Typography className="card-title m-t-0 m-b-2 text-md">
@@ -189,7 +198,12 @@ const AuthMechanism: FC<Props> = ({
           </Typography>
         )}
 
-        <Space>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           {JWTToken ? (
             <Button
               danger
@@ -211,8 +225,8 @@ const AuthMechanism: FC<Props> = ({
               {t('label.generate-new-token')}
             </Button>
           )}
-        </Space>
-      </Space>
+        </Box>
+      </Box>
       <Divider className="tw:my-6" />
 
       {!isSCIMBot && <Typography as="p">{t('message.jwt-token')}</Typography>}

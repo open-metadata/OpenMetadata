@@ -17,8 +17,8 @@ import {
   EmptyPlaceholder,
   OwnerChip,
   Table,
-  toOwnerRef,
   Typography,
+  toOwnerRef,
 } from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,

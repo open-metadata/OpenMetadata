@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import { ICON_DIMENSION } from '../../../constants/constants';
 import {
   CommonEntitySummaryInfoV1Props,
   EntityInfoItemV1,
@@ -68,8 +69,9 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
           target="_blank">
           {info.value}
           <IconExternalLink
-            className="m-l-xs tw:size-3.5 tw:shrink-0"
+            className="m-l-xs tw:inline-block tw:align-middle"
             data-testid="external-link-icon"
+            {...ICON_DIMENSION}
           />
         </a>
       );

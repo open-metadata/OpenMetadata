@@ -12,8 +12,12 @@
  */
 
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
-import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import {
+  Badge,
+  Box,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -165,11 +169,12 @@ export const tagRender = (customTagProps: CustomTagProps) => {
       type="color"
       onMouseDown={onPreventMouseDown}>
       <Tooltip
-        className="cursor-pointer"
-        mouseEnterDelay={1.5}
-        placement="topLeft"
+        arrow
+        excludeTriggerFromTabOrder
+        delay={1500}
+        placement="top left"
         title={getTagTooltip(label as string)}
-        trigger="hover">
+        triggerClassName="tw:inline-flex cursor-pointer">
         <Typography
           as="p"
           className="m-0 d-inline-block break-all whitespace-normal">

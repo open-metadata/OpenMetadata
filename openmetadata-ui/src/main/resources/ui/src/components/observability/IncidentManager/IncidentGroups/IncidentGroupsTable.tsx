@@ -17,8 +17,8 @@ import {
   Button,
   Checkbox,
   Table,
-  toOwnerRefs,
   Typography,
+  toOwnerRefs,
 } from '@openmetadata/ui-core-components';
 import {
   ChevronRight,

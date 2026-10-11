@@ -779,7 +779,9 @@ const KnowledgePageListComponent = forwardRef<
             </Grid.Item>
           ))}
         </Grid>
-        {isLoadingMore ? <Loader className="tw:shrink-0" /> : null}
+        {isLoadingMore ? (
+          <Loader className="tw:shrink-0" dataTestId="knowledge-page-loader" />
+        ) : null}
         <div
           className="w-full"
           data-testid="observer-element"

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined, startCase } from 'lodash';
 import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
@@ -72,7 +71,7 @@ export const renderStatusField = (_: string, record: IngestionPipeline) => {
       data-testid="pipeline-active-status"
       size="sm"
       type="color">
-      <StatusIcon className="tw:size-3.5 tw:shrink-0" />
+      <StatusIcon fill="currentColor" height="1em" width="1em" />
       {record.enabled ? t('label.active') : t('label.paused')}
     </Badge>
   );
@@ -87,32 +86,24 @@ const ScheduleFieldCell = ({
     useScheduleDescriptionTexts(scheduleInterval);
 
   return (
-    <Row gutter={[8, 8]} wrap={false}>
-      <Col flex="none">
-        <TimeDateIcon className="m-t-xss" height={20} width={20} />
-      </Col>
-      <Col className="tw:min-w-0" flex="auto">
-        <Row className="line-height-16">
-          <Col span={24}>
-            <Typography
-              className="font-medium"
-              data-testid="schedule-primary-details"
-              ellipsis={{ tooltip: descriptionFirstPart }}>
-              {descriptionFirstPart}
-            </Typography>
-          </Col>
-          <Col span={24}>
-            <Typography
-              className="text-xs"
-              color="secondary"
-              data-testid="schedule-secondary-details"
-              ellipsis={{ tooltip: descriptionSecondPart }}>
-              {descriptionSecondPart}
-            </Typography>
-          </Col>
-        </Row>
-      </Col>
-    </Row>
+    <Box align="start" gap={2} wrap="nowrap">
+      <TimeDateIcon className="m-t-xss tw:shrink-0" height={20} width={20} />
+      <Box className="tw:min-w-0 tw:flex-auto line-height-16" direction="col">
+        <Typography
+          className="font-medium"
+          data-testid="schedule-primary-details"
+          ellipsis={{ tooltip: descriptionFirstPart }}>
+          {descriptionFirstPart}
+        </Typography>
+        <Typography
+          className="text-xs"
+          color="secondary"
+          data-testid="schedule-secondary-details"
+          ellipsis={{ tooltip: descriptionSecondPart }}>
+          {descriptionSecondPart}
+        </Typography>
+      </Box>
+    </Box>
   );
 };
 

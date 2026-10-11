@@ -12,16 +12,8 @@
  */
 
 import { HelpCircle, Plus } from '@openmetadata/ui-core-components/icons';
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  Tooltip,
-} from 'antd';
+import { Toggle, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, FormItemProps, Input, InputNumber, Select } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import { debounce, isUndefined } from 'lodash';
 import {
@@ -319,7 +311,11 @@ const buildStringField = ({
             {/* eslint-disable-next-line jsx-a11y/label-has-for -- editor caption, not a form control */}
             <label className="d-flex align-items-center">
               <Typography className="form-label-title">{label}</Typography>
-              <Tooltip title={data.description}>
+              <Tooltip
+                arrow
+                excludeTriggerFromTabOrder
+                title={data.description}
+                triggerClassName="tw:inline-flex">
                 <HelpCircle className="ant-form-item-tooltip" />
               </Tooltip>
             </label>

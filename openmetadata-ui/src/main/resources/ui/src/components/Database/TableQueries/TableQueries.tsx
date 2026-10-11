@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button as CoreButton,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   SortAscending,
   SortDescending,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
-import { Button, Tooltip } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -493,15 +499,18 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const addButton = (
     <Tooltip
+      arrow
+      isDisabled={permissions?.query.Create}
       placement="top"
-      title={!permissions?.query.Create && t(NO_PERMISSION_FOR_ACTION)}>
-      <Button
+      title={t(NO_PERMISSION_FOR_ACTION)}>
+      <CoreButton
+        color="primary"
         data-testid="add-query-btn"
-        disabled={!permissions?.query.Create}
-        type="primary"
-        onClick={handleAddQueryClick}>
+        isDisabled={!permissions?.query.Create}
+        size="sm"
+        onPress={handleAddQueryClick}>
         {t('label.add')}
-      </Button>
+      </CoreButton>
     </Tooltip>
   );
 
@@ -638,7 +647,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                             showNow
                             bordered={false}
                             className="p-t-0"
-                            clearIcon={<XCircle size={14} />}
+                            clearIcon={<XCircle />}
                             data-testid="data-range-picker"
                             open={isClickedCalendar}
                             suffixIcon={null}
@@ -671,15 +680,9 @@ const TableQueries: FC<TableQueriesProp> = ({
                           )
                         }>
                         {isAscSortOrder ? (
-                          <SortAscending
-                            className="text-grey-muted"
-                            size={14}
-                          />
+                          <SortAscending className="text-grey-muted tw:size-3.5 tw:shrink-0" />
                         ) : (
-                          <SortDescending
-                            className="text-grey-muted"
-                            size={14}
-                          />
+                          <SortDescending className="text-grey-muted tw:size-3.5 tw:shrink-0" />
                         )}
                       </Button>
                       {addButton}

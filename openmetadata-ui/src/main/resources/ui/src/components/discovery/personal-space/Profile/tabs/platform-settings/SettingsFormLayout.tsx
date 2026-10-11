@@ -42,7 +42,7 @@ export const SettingsFormSection = ({
         {title}
       </Typography>
     )}
-    <div className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-5 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:p-6 tw:md:grid-cols-2">
+    <div className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-5 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:p-6 tw:md:grid-cols-2">
       {children}
     </div>
   </Box>
@@ -90,7 +90,7 @@ const SettingsFormLayout = <T extends FieldValues>({
         </Box>
       </div>
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-8 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-8 tw:py-4"
         direction="row"
         gap={3}
         justify="end">

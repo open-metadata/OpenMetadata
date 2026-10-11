@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconPaperPlanePrimary } from '../../../assets/svg/paper-plane-fill.svg';
 import './send-button.less';
 
@@ -27,13 +28,19 @@ export const SendButton: FC<SendButtonProp> = ({
   editorValue,
   className,
   onSaveHandler,
-}) => (
-  <Button
-    className={classNames('send-button', className)}
-    data-testid="send-button"
-    disabled={editorValue.length === 0}
-    icon={<IconPaperPlanePrimary className="tw:size-3.5 tw:shrink-0" />}
-    type="text"
-    onClick={onSaveHandler}
-  />
-);
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <ButtonUtility
+      aria-label={t('label.send')}
+      className={classNames('send-button', className)}
+      color="tertiary"
+      data-testid="send-button"
+      icon={IconPaperPlanePrimary}
+      isDisabled={editorValue.length === 0}
+      size="xs"
+      onClick={onSaveHandler}
+    />
+  );
+};

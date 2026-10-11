@@ -18,6 +18,7 @@
 export const PROFILE_NAV_ID_LIST = [
   'profile',
   'permissions',
+  'preferences',
   'access-token',
   'my-connections',
   'access-control',
@@ -29,6 +30,7 @@ export const PROFILE_NAV_ID_LIST = [
   'governance',
   'billing',
   'platform-settings',
+  'sso',
 ] as const;
 
 export type ProfileNavId = (typeof PROFILE_NAV_ID_LIST)[number];

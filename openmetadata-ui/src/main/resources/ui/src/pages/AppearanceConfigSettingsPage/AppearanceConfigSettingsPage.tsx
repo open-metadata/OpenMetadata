@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Form, FormProps, Row, Space } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Form, FormProps } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -34,6 +34,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import { generatePalette } from '../../styles/colorPallet';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getField } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getThemeConfig } from '../../utils/ThemeUtils';
@@ -417,14 +418,27 @@ const AppearanceConfigSettingsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.theme')}>
-      <Row align="middle" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid tw:items-center"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Row align="middle" justify="space-between">
-            <Col span={24}>
-              <Space className="w-full justify-between">
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-row"
+            justify="between"
+            wrap="wrap">
+            <Box
+              className="layout-column tw:block"
+              style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal w-full justify-between"
+                gap={2}
+                itemClassName="layout-space-item">
                 <PageHeader
                   data={{
                     header: t('label.theme'),
@@ -438,11 +452,11 @@ const AppearanceConfigSettingsPage = () => {
                   onClick={handleReset}>
                   {t('label.reset')}
                 </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={24}>
+              </Box>
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <Form
             form={form}
             initialValues={{
@@ -456,13 +470,25 @@ const AppearanceConfigSettingsPage = () => {
               <Card
                 className="white-label-config-card"
                 title={t('label.custom-logo')}>
-                <Row className="w-full" gutter={[16, 16]}>
+                <Grid
+                  className="layout-row layout-grid w-full"
+                  style={{ ...getLayoutGutter(16, 16) }}>
                   {customLogoFormFields.map((field) => {
                     return (
-                      <Col className="w-full" key={field.id} span={24}>
-                        <Row gutter={[48, 16]}>
-                          <Col span={12}>{getField(field)}</Col>
-                          <Col>
+                      <Grid.Item
+                        className="layout-column w-full"
+                        key={field.id}
+                        span={24}>
+                        <Box
+                          className="layout-row"
+                          style={{ ...getLayoutGutter(48, 16) }}
+                          wrap="wrap">
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ maxWidth: '50%', flex: '0 0 50%' }}>
+                            {getField(field)}
+                          </Box>
+                          <Box className="layout-column tw:block">
                             <BrandImage
                               className="preview-image"
                               height={70}
@@ -474,17 +500,19 @@ const AppearanceConfigSettingsPage = () => {
                                 field.name !== 'customLogoUrlPath' ? 75 : 120
                               }
                             />
-                          </Col>
-                        </Row>
-                      </Col>
+                          </Box>
+                        </Box>
+                      </Grid.Item>
                     );
                   })}
-                </Row>
+                </Grid>
               </Card>
               <Card
                 className="white-label-config-card"
                 title={<Typography>{t('label.custom-theme')}</Typography>}>
-                <Row className="w-full" gutter={[16, 16]}>
+                <Grid
+                  className="layout-row layout-grid w-full"
+                  style={{ ...getLayoutGutter(16, 16) }}>
                   {themeFormFields.map((field) => {
                     const currentColor =
                       formState[
@@ -492,10 +520,22 @@ const AppearanceConfigSettingsPage = () => {
                       ];
 
                     return (
-                      <Col className="w-full" key={field.id} span={24}>
-                        <Row gutter={[48, 16]}>
-                          <Col span={12}>{getField(field)}</Col>
-                          <Col style={{ placeSelf: 'center' }}>
+                      <Grid.Item
+                        className="layout-column w-full"
+                        key={field.id}
+                        span={24}>
+                        <Box
+                          className="layout-row"
+                          style={{ ...getLayoutGutter(48, 16) }}
+                          wrap="wrap">
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ maxWidth: '50%', flex: '0 0 50%' }}>
+                            {getField(field)}
+                          </Box>
+                          <Box
+                            className="layout-column tw:block"
+                            style={{ placeSelf: 'center' }}>
                             <Card className="theme-preview">
                               <Button
                                 style={{
@@ -510,7 +550,7 @@ const AppearanceConfigSettingsPage = () => {
 
                               <Button
                                 icon={
-                                  <ShareIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />
+                                  <ShareIcon className="tw:size-3.5 tw:shrink-0" />
                                 }
                                 style={{
                                   width: '56px',
@@ -544,19 +584,22 @@ const AppearanceConfigSettingsPage = () => {
                                 {t('label.link')}
                               </Button>
                             </Card>
-                          </Col>
-                        </Row>
-                      </Col>
+                          </Box>
+                        </Box>
+                      </Grid.Item>
                     );
                   })}
-                </Row>
+                </Grid>
               </Card>
             </div>
 
-            <Space
-              className="w-full justify-end appearance-cta-buttons"
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal w-full justify-end appearance-cta-buttons"
               data-testid="cta-buttons"
-              size={16}>
+              gap={4}
+              itemClassName="layout-space-item">
               <Button
                 data-testid="cancel-btn"
                 type="link"
@@ -570,10 +613,10 @@ const AppearanceConfigSettingsPage = () => {
                 type="primary">
                 {t('label.save')}
               </Button>
-            </Space>
+            </Box>
           </Form>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

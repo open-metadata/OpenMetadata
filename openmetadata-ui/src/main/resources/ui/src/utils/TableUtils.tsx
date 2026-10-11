@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -160,13 +159,14 @@ export const getConstraintIcon = ({
 
   return (
     <Tooltip
-      className={classNames(className)}
+      arrow
+      excludeTriggerFromTabOrder
       placement="bottom"
       title={title}
-      trigger="hover">
+      triggerClassName={classNames('tw:inline-flex', className)}>
       <ConstraintIcon
         aria-label={title}
-        className={classNames({
+        className={classNames('tw:shrink-0', {
           'diff-added': isConstraintAdded,
           'diff-removed': isConstraintDeleted,
         })}
@@ -249,6 +249,7 @@ export const getColumnDataTypeIcon = ({
   return (
     <DataTypeIcon
       aria-label={dataType}
+      className="tw:shrink-0"
       height={width}
       role="img"
       width={width}
@@ -275,8 +276,6 @@ export function getTableExpandableConfig<T>(
             )}
             data-testid="expand-icon"
             onClick={(e: React.MouseEvent<SVGSVGElement>) =>
-              // antd types onExpand for an HTMLElement event; the svg event
-              // carries the same shape the handler actually uses.
               onExpand(record, e as unknown as React.MouseEvent<HTMLElement>)
             }
           />
