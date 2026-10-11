@@ -30,6 +30,8 @@ import org.apache.jena.vocabulary.XSD;
  * given property axioms: OWL 2 DL forbids redefining it. SKOS terms keep the kind the SKOS
  * reference vocabulary gives them, whatever kind a caller asks for, so an export never contradicts
  * SKOS when both are loaded together.
+ *
+ * <p>See ADR:2026-10-11-glossary-ontology-projection-is-owl2-dl-with-one-class-iri-rule.
  */
 public final class OwlEntityDeclarations {
   private static final Set<String> BUILT_IN_NAMESPACES = Set.of(RDF.uri, RDFS.uri, OWL2.NS, XSD.NS);

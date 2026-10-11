@@ -146,7 +146,8 @@ final class GlossaryOntologyModelBuilder {
   /**
    * Every parent link is SKOS hierarchy. It is also a subclass axiom only when both terms are OWL
    * classes: a term whose concept type is {@code SKOS_CONCEPT} came from a thesaurus whose {@code
-   * skos:broader} does not assert subsumption.
+   * skos:broader} does not assert subsumption. See
+   * ADR:2026-10-11-glossary-dates-are-xsd-datetime-and-skos-parents-are-not-superclasses.
    */
   private static void addHierarchy(
       final Model model,

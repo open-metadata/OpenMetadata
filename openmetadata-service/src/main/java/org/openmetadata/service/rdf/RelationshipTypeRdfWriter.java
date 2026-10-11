@@ -39,7 +39,8 @@ import org.openmetadata.service.rdf.OwlEntityDeclarations.EntityKind;
  * own meaning: its edges are written as they are, so an {@code rdfs:subClassOf} edge is a subclass
  * axiom and an {@code rdfs:seeAlso} edge an annotation. Such a type never becomes an {@code
  * owl:ObjectProperty} with characteristics, and other types never declare it as their inverse,
- * chain member or disjoint property; OWL 2 DL forbids all of these on reserved vocabulary.
+ * chain member or disjoint property; OWL 2 DL forbids all of these on reserved vocabulary. See
+ * ADR:2026-10-11-glossary-ontology-projection-is-owl2-dl-with-one-class-iri-rule.
  */
 @Slf4j
 final class RelationshipTypeRdfWriter {

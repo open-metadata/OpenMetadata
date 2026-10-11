@@ -146,7 +146,8 @@ final class GlossaryTermProjection {
   /**
    * Defaults inside the OWL 2 datatype map. {@code xsd:date} is not in it, so a DATE attribute
    * ranges over {@code xsd:dateTime}: a calendar date is the instant at its start, and unlike
-   * {@code xsd:dateTimeStamp} no timezone is required.
+   * {@code xsd:dateTimeStamp} no timezone is required. See
+   * ADR:2026-10-11-glossary-dates-are-xsd-datetime-and-skos-parents-are-not-superclasses.
    */
   static String defaultDatatype(final OntologyAttributeDataType dataType) {
     final String iri =

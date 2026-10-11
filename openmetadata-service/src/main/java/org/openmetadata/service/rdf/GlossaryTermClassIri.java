@@ -23,6 +23,8 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
  * subject, because tags, realizations, relations and deletes all address the record by it; the
  * class IRI names the term only in OWL class axioms. Metadata records and classes are never joined
  * with {@code owl:sameAs}.
+ *
+ * <p>See ADR:2026-10-11-glossary-ontology-projection-is-owl2-dl-with-one-class-iri-rule.
  */
 public final class GlossaryTermClassIri {
   private static final String GLOSSARY_TERM_PATH = "entity/glossaryTerm/";
