@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { Grid, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Button, Select, Tooltip } from 'antd';
+import { Select } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -151,14 +156,13 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
 
         <div className="workflow-array-field-divider" />
         <Tooltip
-          overlayClassName="custom-tooltip"
+          arrow
           placement="top"
           title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
-          <Button
-            className="workflow-array-field-copy-button remove-button-default-styling"
-            icon={<CopyLeft height={20} />}
-            size="small"
-            type="text"
+          <ButtonUtility
+            color="tertiary"
+            icon={CopyLeft}
+            size="xs"
             onClick={(e) => {
               e.stopPropagation();
               handleCopy(e);

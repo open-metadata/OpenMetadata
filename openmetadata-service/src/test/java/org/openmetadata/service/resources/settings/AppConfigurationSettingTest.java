@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.settings;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -35,7 +36,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.AppConfiguration.DefaultAppMode;
+import org.openmetadata.schema.api.configuration.AppConfiguration.DefaultColumnOrder;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.SystemRepository;
@@ -149,5 +152,27 @@ class AppConfigurationSettingTest {
       mockedEntity.when(Entity::getSystemRepository).thenReturn(systemRepository);
       return new SystemResource(authorizer);
     }
+  }
+
+  @Test
+  void defaultColumnOrder_roundTripsAndOlderRowsReadAsUnset() {
+    AppConfiguration stored =
+        JsonUtils.readValue(
+            "{\"defaultAppMode\":\"ai\",\"defaultColumnOrder\":\"sourceOrder\"}",
+            AppConfiguration.class);
+    assertEquals(DefaultColumnOrder.SOURCE_ORDER, stored.getDefaultColumnOrder());
+    assertEquals(DefaultAppMode.AI, stored.getDefaultAppMode());
+
+    // Rows written before the field existed carry no value; the UI falls back to alphabetical.
+    assertNull(
+        JsonUtils.readValue("{\"defaultAppMode\":\"ai\"}", AppConfiguration.class)
+            .getDefaultColumnOrder());
+  }
+
+  @Test
+  void defaultColumnOrder_rejectsUnknownValues() {
+    assertThrows(
+        RuntimeException.class,
+        () -> JsonUtils.readValue("{\"defaultColumnOrder\":\"byType\"}", AppConfiguration.class));
   }
 }

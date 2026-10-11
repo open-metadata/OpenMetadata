@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
@@ -149,6 +150,7 @@ public class SystemResource {
       Set.of(
           LINEAGE_SETTINGS.value().toLowerCase(Locale.ROOT),
           GLOSSARY_TERM_RELATION_SETTINGS.value().toLowerCase(Locale.ROOT),
+          GLOSSARY_SETTINGS.value().toLowerCase(Locale.ROOT),
           // appConfiguration is read by every user at boot (fallback-chain resolution),
           // not just admins; PATCH remains admin-only.
           APP_CONFIGURATION.value().toLowerCase(Locale.ROOT));
