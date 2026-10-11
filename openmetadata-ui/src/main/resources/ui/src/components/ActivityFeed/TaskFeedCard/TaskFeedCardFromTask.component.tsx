@@ -473,7 +473,7 @@ const TaskFeedCardFromTask = ({
         </Box>
         <div className="w-full">
           {isTaskTags && (
-            <Card className="activity-feed-card-message tags-card-container">
+            <Card>
               <Card.Content>
                 <TagsTaskFromTask hasEditAccess={false} task={task} />
               </Card.Content>

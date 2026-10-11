@@ -18,6 +18,7 @@ import {
   FormItemLabel,
   FormItemLayout,
   getField,
+  Card,
 } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
@@ -131,83 +132,85 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
         />
       </Alert>
 
-      <div
+      <Card
         className="form-card-section scheduler-card"
         id="root/cron"
         role="presentation"
         onClick={() => onActiveFieldChange?.('root/cron')}>
-        <div className="card-title-container">
-          <p className="card-title-text">
-            {t('label.create-entity', {
-              entity: t('label.pipeline'),
-            })}
-          </p>
-          <p className="card-title-description">
-            {t('message.pipeline-entity-description', {
-              entity: t('label.test-case'),
-            })}
-          </p>
-        </div>
+        <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+          <div className="card-title-container">
+            <p className="card-title-text">
+              {t('label.create-entity', {
+                entity: t('label.pipeline'),
+              })}
+            </p>
+            <p className="card-title-description">
+              {t('message.pipeline-entity-description', {
+                entity: t('label.test-case'),
+              })}
+            </p>
+          </div>
 
-        {isSelectAllTestCasesEnabled && (
-          <>
-            {getField(selectAllField)}
+          {isSelectAllTestCasesEnabled && (
+            <>
+              {getField(selectAllField)}
 
-            {!selectAllTestCases && (
-              <FormField
-                control={form.control}
-                name="testCases"
-                rules={{
-                  required: t('label.field-required', {
-                    field: t('label.test-case'),
-                  }),
-                }}>
-                {({ field }) => (
-                  <div data-testid="test-cases-field">
-                    <FormItemLabel required label={t('label.test-case')} />
-                    <AddTestCaseList
-                      columnFilters={columnFilters}
-                      hideTableFilter={Boolean(table)}
-                      selectedTest={(field.value ?? []).map(
-                        (testCase) => testCase.name ?? ''
-                      )}
-                      showButton={false}
-                      testCaseParams={testCaseParams}
-                      onChange={(payload: AddTestCaseListChangePayload) =>
-                        field.onChange(
-                          payload.testCases.map((testCase) => ({
-                            id: testCase.id,
-                            name: testCase.name,
-                            type: 'testCase',
-                          }))
-                        )
-                      }
-                    />
-                  </div>
-                )}
-              </FormField>
-            )}
-          </>
-        )}
-
-        {getField(pipelineNameField)}
-
-        <FormField control={form.control} name="cron">
-          {({ field }) => (
-            <ScheduleInterval
-              defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
-              entity={t('label.test-case')}
-              includePeriodOptions={schedulerOptions}
-              value={field.value || undefined}
-              onChange={(cron) => field.onChange(cron ?? '')}
-            />
+              {!selectAllTestCases && (
+                <FormField
+                  control={form.control}
+                  name="testCases"
+                  rules={{
+                    required: t('label.field-required', {
+                      field: t('label.test-case'),
+                    }),
+                  }}>
+                  {({ field }) => (
+                    <div data-testid="test-cases-field">
+                      <FormItemLabel required label={t('label.test-case')} />
+                      <AddTestCaseList
+                        columnFilters={columnFilters}
+                        hideTableFilter={Boolean(table)}
+                        selectedTest={(field.value ?? []).map(
+                          (testCase) => testCase.name ?? ''
+                        )}
+                        showButton={false}
+                        testCaseParams={testCaseParams}
+                        onChange={(payload: AddTestCaseListChangePayload) =>
+                          field.onChange(
+                            payload.testCases.map((testCase) => ({
+                              id: testCase.id,
+                              name: testCase.name,
+                              type: 'testCase',
+                            }))
+                          )
+                        }
+                      />
+                    </div>
+                  )}
+                </FormField>
+              )}
+            </>
           )}
-        </FormField>
 
-        {getField(enableDebugLogField)}
+          {getField(pipelineNameField)}
 
-        {getField(raiseOnErrorField)}
-      </div>
+          <FormField control={form.control} name="cron">
+            {({ field }) => (
+              <ScheduleInterval
+                defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
+                entity={t('label.test-case')}
+                includePeriodOptions={schedulerOptions}
+                value={field.value || undefined}
+                onChange={(cron) => field.onChange(cron ?? '')}
+              />
+            )}
+          </FormField>
+
+          {getField(enableDebugLogField)}
+
+          {getField(raiseOnErrorField)}
+        </Card.Content>
+      </Card>
     </div>
   );
 };

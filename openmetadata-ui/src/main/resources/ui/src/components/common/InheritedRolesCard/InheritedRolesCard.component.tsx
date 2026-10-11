@@ -32,11 +32,9 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
       <Card.Content>
         <Fragment>
           {isEmpty(userData.inheritedRoles) ? (
-            <div className="mb-4">
-              <span className="text-grey-muted">
-                {t('message.no-inherited-roles-found')}
-              </span>
-            </div>
+            <Typography as="p" className="tw:mb-4" color="secondary">
+              {t('message.no-inherited-roles-found')}
+            </Typography>
           ) : (
             <div className="d-flex justify-between flex-col">
               {userData.inheritedRoles?.map((inheritedRole) => (

@@ -15,7 +15,6 @@ import { Card, Grid, Typography } from '@openmetadata/ui-core-components';
 
 import classNames from 'classnames';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import './form-card-section.less';
 import { FormCardSectionProps } from './FormCardSection.interface';
 
 function FormCardSection({
