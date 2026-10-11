@@ -124,7 +124,12 @@ test.describe.serial(
       await page.click('[data-testid="save-button"]');
 
       // Enable backfill configuration
-      await page.click('#root\\/backfillConfiguration\\/enabled');
+      // The switch input carries the field id but is visually hidden; click its label.
+      await page
+        .locator('label', {
+          has: page.locator('#root\\/backfillConfiguration\\/enabled'),
+        })
+        .click();
 
       // Set start and end dates
       const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
