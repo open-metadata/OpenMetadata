@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.graph.Node;
@@ -41,6 +42,7 @@ class AssertedOnlyQueriesTest {
   private static final String ONTOLOGY = BASE + "graph/ontology";
   private static final String INFERRED = BASE + "graph/inferred/";
   private static final String INHERITED_TAG = INFERRED + "schema-tag-inheritance";
+  private static final String CENTRALITY = BASE + "insights/centrality/table";
 
   private final DatasetGraph dataset = DatasetGraphFactory.createGeneral();
   private final AtomicInteger graphListings = new AtomicInteger();
@@ -103,6 +105,37 @@ class AssertedOnlyQueriesTest {
     queries.restrict("ASK { ?s ?p ?o }");
 
     assertEquals(1, graphListings.get());
+  }
+
+  @Test
+  void aGraphThisServerCreatesIsReadByTheNextQuery() {
+    add(KNOWLEDGE, "urn:a", "urn:p", "urn:b");
+    queries.restrict("ASK { ?s ?p ?o }");
+    add(CENTRALITY, "urn:a", "urn:centralityScore", "urn:high");
+
+    queries.graphsWritten(Set.of(CENTRALITY));
+
+    assertTrue(ask(queries.restrict("ASK { ?s <urn:centralityScore> ?o }")));
+    assertEquals(2, graphListings.get());
+  }
+
+  @Test
+  void writesToListedOrInferredGraphsKeepTheList() {
+    add(KNOWLEDGE, "urn:a", "urn:p", "urn:b");
+    queries.restrict("ASK { ?s ?p ?o }");
+
+    queries.graphsWritten(Set.of(KNOWLEDGE, INHERITED_TAG));
+    queries.restrict("ASK { ?s ?p ?o }");
+
+    assertEquals(1, graphListings.get());
+  }
+
+  @Test
+  void anEmptyGraphListIsNotKept() {
+    assertFalse(ask(queries.restrict("ASK { ?s ?p ?o }")));
+    add(KNOWLEDGE, "urn:a", "urn:p", "urn:b");
+
+    assertTrue(ask(queries.restrict("ASK { ?s ?p ?o }")));
   }
 
   private List<String> listGraphs() {

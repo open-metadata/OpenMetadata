@@ -204,8 +204,11 @@ public class RdfRepository {
               Clock.systemUTC(),
               config.getBaseUri().toString());
       this.storageService =
-          new InferenceInvalidatingRdfStorage(
-              materializationStorageService, inferenceRuleRepository);
+          new AssertedGraphTrackingRdfStorage(
+              new InferenceInvalidatingRdfStorage(
+                  materializationStorageService, inferenceRuleRepository),
+              assertedOnlyQueries,
+              KNOWLEDGE_GRAPH);
       this.translator =
           new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
@@ -351,6 +354,7 @@ public class RdfRepository {
   /** Replay live mutations and atomically publish the completed rebuild generation. */
   public void activateDataset(String datasetName, String rebuildId, String updatedBy) {
     requireDatasetManager().promote(new BuildTarget(rebuildId, datasetName), updatedBy);
+    assertedOnlyQueries.graphsChanged();
     LOG.info("RDF serving dataset switched to '{}'", datasetName);
   }
 

@@ -16,6 +16,7 @@ package org.openmetadata.service.rdf;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 import org.apache.jena.query.Query;
@@ -30,9 +31,13 @@ import org.apache.jena.query.Syntax;
  * NAMED so that GRAPH patterns cannot reach the inferred graphs either.
  *
  * <p>Asserted graphs are not a closed set, since SPARQL updates and loaders may create any graph,
- * so the list is read from the store. It is refreshed in the background, so queries never wait on
- * the listing; a graph created since is left out until the next refresh, while a new inferred
- * graph is never let in.
+ * so the list is read from the store. A write by this server that names a graph missing from the
+ * list drops it, so the next query reads it again; a graph another server or a direct Fuseki
+ * writer creates is picked up by the periodic background refresh. An empty list is never kept,
+ * so a query before the first projection does not pin an empty dataset. A new inferred graph is
+ * never let in.
+ *
+ * <p>See ADR:2026-10-11-asserted-only-rdf-reads-name-every-non-inferred-graph.
  */
 final class AssertedOnlyQueries {
   static final Duration GRAPH_LIST_TTL = Duration.ofMinutes(2);
@@ -62,9 +67,31 @@ final class AssertedOnlyQueries {
   /** The query over asserted graphs only, or unchanged when it already declares its dataset. */
   String restrict(final String sparql) {
     final Query query = QueryFactory.create(sparql, Syntax.syntaxARQ);
-    return query.hasDatasetDescription()
-        ? sparql
-        : withDataset(query, assertedGraphs.get(GRAPH_LIST_KEY)).serialize();
+    if (query.hasDatasetDescription()) {
+      return sparql;
+    }
+    final List<String> graphs = assertedGraphs.get(GRAPH_LIST_KEY);
+    if (graphs.isEmpty()) {
+      assertedGraphs.invalidate(GRAPH_LIST_KEY);
+    }
+    return withDataset(query, graphs).serialize();
+  }
+
+  /** Records graphs this server wrote; one missing from the list makes the next query relist. */
+  void graphsWritten(final Collection<String> graphs) {
+    final List<String> known = assertedGraphs.getIfPresent(GRAPH_LIST_KEY);
+    if (known == null) {
+      return;
+    }
+    final String prefix = inferredGraphPrefix.get();
+    if (graphs.stream().anyMatch(graph -> !graph.startsWith(prefix) && !known.contains(graph))) {
+      assertedGraphs.invalidate(GRAPH_LIST_KEY);
+    }
+  }
+
+  /** Makes the next query relist the graphs, for a change whose graphs are not known. */
+  void graphsChanged() {
+    assertedGraphs.invalidate(GRAPH_LIST_KEY);
   }
 
   static Query withDataset(final Query query, final List<String> graphs) {
