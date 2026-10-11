@@ -271,8 +271,7 @@ const hasNoRenderableAssignee = (
   assignee?: EntityReference
 ): boolean =>
   status.testCaseResolutionStatusType ===
-    TestCaseResolutionStatusTypes.Assigned &&
-  (!assignee || !assignee.name);
+    TestCaseResolutionStatusTypes.Assigned && !assignee?.name;
 
 /**
  * An incident's real history: one event per status record — opened,
