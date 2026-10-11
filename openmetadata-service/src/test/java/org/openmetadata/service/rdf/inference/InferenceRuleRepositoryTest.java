@@ -102,6 +102,16 @@ class InferenceRuleRepositoryTest {
   }
 
   @Test
+  void reportsTripleCountsBeyondTheIntRange() {
+    final long beyondInt = Integer.MAX_VALUE + 1L;
+    repository.upsert(RULE, rule(RULE, 10));
+
+    repository.recordMaterialized(snapshot(RULE), NOW, beyondInt);
+
+    assertEquals(beyondInt, repository.get(RULE).getTripleCount());
+  }
+
+  @Test
   void anInvalidationAfterTheSnapshotKeepsTheRuleDirty() {
     repository.upsert(RULE, rule(RULE, 10));
     final RuleSnapshot snapshot = snapshot(RULE);

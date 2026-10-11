@@ -199,7 +199,7 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
             .withGraphUri(URI.create(graphUri(row.name())))
             .withSystemRule(row.systemRule())
             .withDirty(row.dirty())
-            .withTripleCount(Math.toIntExact(row.lastTripleCount()));
+            .withTripleCount(row.lastTripleCount());
     Optional.ofNullable(row.lastMaterializedAt()).ifPresent(status::setLastMaterializedAt);
     Optional.ofNullable(row.lastError()).ifPresent(status::setLastError);
     return status;
