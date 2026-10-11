@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
@@ -327,11 +326,7 @@ const BotListV1 = ({
                 data-testid={`bot-delete-${record.name}`}
                 disabled={isDisabled}
                 icon={
-                  <Icon
-                    className="align-middle"
-                    component={IconDelete}
-                    style={{ fontSize: '16px' }}
-                  />
+                  <IconDelete className="align-middle tw:size-4 tw:mr-2 tw:shrink-0" />
                 }
                 type="text"
                 onClick={() => setSelectedUser(record)}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   SkeletonParagraph,
   Typography,
@@ -189,7 +188,7 @@ function EmailConfigSettingsPage() {
                   className="m-l-md"
                   icon={
                     !isUndefined(emailConfigValues) && (
-                      <Icon component={IconEdit} size={12} />
+                      <IconEdit className="tw:size-3.5 tw:shrink-0" />
                     )
                   }
                   onClick={handleEditClick}>

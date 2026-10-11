@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ButtonUtility } from '@openmetadata/ui-core-components';
 import type { ButtonProps } from 'antd';
@@ -26,6 +25,7 @@ import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.
 
 export type IconButtonProps = ButtonProps & {
   newLook?: boolean;
+  'data-testid'?: string;
 };
 
 // Forwards its ref so react-aria's Pressable can make it a PopoverTrigger child.
@@ -63,6 +63,7 @@ export const RequestIconButton = ({
   className,
   newLook,
   size,
+  'data-testid': dataTestId,
   ...props
 }: IconButtonProps) => {
   return (
@@ -76,11 +77,14 @@ export const RequestIconButton = ({
           {...props}
         />
       ) : (
-        <Icon
+        <button
+          aria-label={title}
           className={classNames('table-action-icon', className)}
-          component={RequestIcon}
-          {...props}
-        />
+          data-testid={dataTestId}
+          type="button"
+          onClick={props.onClick}>
+          <RequestIcon className="tw:size-3.5 tw:shrink-0" />
+        </button>
       )}
     </Tooltip>
   );
@@ -91,6 +95,7 @@ export const CommentIconButton = ({
   className,
   newLook,
   size,
+  'data-testid': dataTestId,
   ...props
 }: IconButtonProps) => {
   return (
@@ -104,11 +109,14 @@ export const CommentIconButton = ({
           {...props}
         />
       ) : (
-        <Icon
+        <button
+          aria-label={title}
           className={classNames('table-action-icon', className)}
-          component={CommentIcon}
-          {...props}
-        />
+          data-testid={dataTestId}
+          type="button"
+          onClick={props.onClick}>
+          <CommentIcon className="tw:size-3.5 tw:shrink-0" />
+        </button>
       )}
     </Tooltip>
   );

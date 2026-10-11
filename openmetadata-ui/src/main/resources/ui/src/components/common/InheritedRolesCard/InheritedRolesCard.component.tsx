@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Card } from 'antd';
 import { isEmpty } from 'lodash';
@@ -42,7 +41,7 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
               <div
                 className="mb-2 d-flex items-center gap-2"
                 key={inheritedRole.id}>
-                <Icon component={IconUser} style={{ fontSize: '16px' }} />
+                <IconUser className="tw:size-4 tw:shrink-0" />
                 <Typography
                   className="ant-typography-ellipsis-custom w-48"
                   ellipsis={{ tooltip: true }}>

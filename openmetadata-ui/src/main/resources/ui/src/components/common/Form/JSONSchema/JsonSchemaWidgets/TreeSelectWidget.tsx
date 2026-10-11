@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { WidgetProps } from '@rjsf/utils';
 import { TreeSelect } from 'antd';
 import { startCase } from 'lodash';
@@ -85,10 +84,10 @@ const TreeSelectWidget: FC<WidgetProps> = ({
         width: '100%',
       }}
       switcherIcon={
-        <Icon
-          component={ArrowIcon}
+        <ArrowIcon
+          className="tw:size-2.5 tw:shrink-0"
           data-testid="expand-icon"
-          style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
+          style={{ color: TEXT_BODY_COLOR }}
         />
       }
       treeData={treeData}

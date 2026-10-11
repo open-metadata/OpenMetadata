@@ -16,7 +16,6 @@ import {
   SlashCircle01,
   User01,
 } from '@openmetadata/ui-core-components/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
@@ -30,7 +29,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -612,7 +610,7 @@ const AppDetails = () => {
 
     return (
       <div className="flex-center gap-2">
-        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+        <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
         <Typography>
           <a
             className="text-xs"

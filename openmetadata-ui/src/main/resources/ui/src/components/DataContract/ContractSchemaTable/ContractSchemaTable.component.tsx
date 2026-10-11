@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Badge, Grid, Typography } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
@@ -48,8 +47,8 @@ const ContractSchemaTable: React.FC<{
       size: 'default',
       hideOnSinglePage: true,
       pageSize: LIST_SIZE,
-      prevIcon: <Icon component={ArrowIcon} />,
-      nextIcon: <Icon component={ArrowIcon} />,
+      prevIcon: <ArrowIcon className="tw:size-3.5 tw:shrink-0" />,
+      nextIcon: <ArrowIcon className="tw:size-3.5 tw:shrink-0" />,
       className: 'schema-custom-pagination',
     }),
     []
@@ -121,10 +120,14 @@ const ContractSchemaTable: React.FC<{
                   latestSchemaValidationResult?.failedFields?.includes(name);
                 const iconClass = isColumnFailed ? 'failed' : 'success';
 
+                const StatusIcon = isColumnFailed ? FailedIcon : CompletedIcon;
+
                 return (
-                  <Icon
-                    className={classNames('column-status-icon', iconClass)}
-                    component={isColumnFailed ? FailedIcon : CompletedIcon}
+                  <StatusIcon
+                    className={classNames(
+                      'column-status-icon tw:size-3.5 tw:shrink-0',
+                      iconClass
+                    )}
                     data-testid={`schema-column-${name}-${iconClass}`}
                   />
                 );

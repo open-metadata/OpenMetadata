@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Progress } from 'antd';
 import classNames from 'classnames';
 import { round } from 'lodash';
@@ -81,11 +80,7 @@ const DataInsightProgressBar = ({
             strokeColor={progressColor}
           />
           {showSuccessInfo && progress >= 100 && (
-            <Icon
-              className="align-middle m-l-xs"
-              component={IconSuccessBadge}
-              style={{ fontSize: '16px' }}
-            />
+            <IconSuccessBadge className="align-middle m-l-xs tw:size-4 tw:shrink-0" />
           )}
         </div>
       )}

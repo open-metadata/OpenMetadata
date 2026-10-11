@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { XCircle } from '@openmetadata/ui-core-components/icons';
 import {
   Button as CoreButton,
@@ -191,7 +190,9 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                         !datesSelected && !isClickedCalendar,
                     })}
                     data-testid="data-range-picker-button"
-                    icon={<Icon component={Calendar} size={12} />}
+                    icon={
+                      <Calendar className="tw:size-3.5 tw:mr-2 tw:shrink-0" />
+                    }
                     type="primary"
                     onClick={() => {
                       setIsClickedCalendar(true);

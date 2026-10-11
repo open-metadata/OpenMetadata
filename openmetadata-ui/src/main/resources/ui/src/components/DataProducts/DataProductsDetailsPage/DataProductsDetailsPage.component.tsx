@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Avatar,
   Button as CoreButton,
@@ -430,7 +429,7 @@ function DataProductActionButtons(
                 'text-primary border-primary': version,
               })}
               data-testid="version-button"
-              icon={<Icon component={VersionIcon} />}
+              icon={<VersionIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
               onClick={handleVersionClick}>
               <Typography
                 className={classNames('', {
@@ -979,7 +978,9 @@ const DataProductsDetailsPage = ({
           color="secondary"
           data-testid="data-contract-latest-result-btn"
           iconLeading={
-            StatusIcon ? <StatusIcon className="tw:size-6.5" /> : undefined
+            StatusIcon ? (
+              <StatusIcon className="tw:size-6.5 tw:shrink-0" />
+            ) : undefined
           }
           onPress={() => {
             handleTabChange(EntityTabs.CONTRACT);

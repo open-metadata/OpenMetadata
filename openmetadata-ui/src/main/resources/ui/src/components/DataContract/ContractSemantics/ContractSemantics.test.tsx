@@ -90,6 +90,22 @@ const mockLatestContractResults: DataContractResult = {
   },
 } as DataContractResult;
 
+jest.mock('../../../assets/svg/ic-fail.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
+jest.mock('../../../assets/svg/ic-inherit.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
+jest.mock('../../../assets/svg/ic-successful.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
+jest.mock('../../../assets/svg/ic-task.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
 describe('ContractSemantics', () => {
   beforeEach(() => {
     jest.clearAllMocks();

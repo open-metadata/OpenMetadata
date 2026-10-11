@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Button, Tooltip } from 'antd';
 import { isUndefined } from 'lodash';
@@ -176,9 +175,7 @@ const KPIList = () => {
                 <Button
                   data-testid={`delete-action-${getEntityName(record)}`}
                   disabled={!isAdminUser}
-                  icon={
-                    <Icon component={IconDelete} style={{ fontSize: '16px' }} />
-                  }
+                  icon={<IconDelete className="tw:size-4 tw:shrink-0" />}
                   type="text"
                   onClick={() => setSelectedKpi(record)}
                 />

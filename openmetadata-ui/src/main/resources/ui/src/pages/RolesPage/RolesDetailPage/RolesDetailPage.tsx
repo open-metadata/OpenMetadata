@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { Button, Card, Modal } from 'antd';
 import { AxiosError } from 'axios';
@@ -376,13 +375,7 @@ const RolesDetailPage = () => {
                   className="w-max-full"
                   displayName={role.displayName}
                   icon={
-                    <Icon
-                      className="align-middle p-y-xss"
-                      component={RoleIcon}
-                      style={{
-                        fontSize: '50px',
-                      }}
-                    />
+                    <RoleIcon className="align-middle p-y-xss tw:size-[50px] tw:shrink-0" />
                   }
                   name={role?.name ?? ''}
                   serviceName="role"

@@ -191,13 +191,17 @@
     }
   }
 
+  // antd `Menu` wraps its own icons in `.anticon`; ours are the <svg> itself
+  // (sized by a class), so both shapes need the transparent fill.
   .anticon {
     line-height: 0 !important;
-    font-size: @left-sidebar-icon-size !important;
+  }
 
-    svg {
-      fill: transparent;
-    }
+  .anticon svg,
+  .ant-menu-title-content svg,
+  .ant-menu-item > svg,
+  .ant-menu-submenu-title > svg {
+    fill: transparent;
   }
 
   .ant-menu-submenu.ant-menu-submenu-open {

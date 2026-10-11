@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import {
   CheckCircleFilled,
   CloseCircleFilled,
@@ -409,6 +408,8 @@ const TaskFeedCardFromTask = ({
     </Box>
   );
 
+  const TaskStatusIcon = getTaskStatusIcon(task.status);
+
   return (
     // The less `task-feed-card-v1-new` rules (unlayered) own the surface,
     // border and active state; CoreCard adds the clickable/focus behaviour.
@@ -440,9 +441,8 @@ const TaskFeedCardFromTask = ({
         wrap="wrap">
         <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
           <div className="tw:w-full">
-            <Icon
-              className="m-r-xss m-t-xss text-md"
-              component={getTaskStatusIcon(task.status)}
+            <TaskStatusIcon
+              className="m-r-xss m-t-xss tw:size-3.5 tw:shrink-0"
               data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
             />
             {taskLinkTitleElement}

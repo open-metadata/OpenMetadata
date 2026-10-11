@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import { Button } from 'antd';
@@ -53,9 +52,8 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
           key={element.key}>
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
-            <Icon
-              className="w-7 h-0 m-l-sm"
-              component={DeleteIcon}
+            <DeleteIcon
+              className="w-7 h-0 m-l-sm tw:size-3.5 tw:shrink-0"
               onClick={(event) => {
                 element.onDropIndexClick(element.index)(event);
               }}

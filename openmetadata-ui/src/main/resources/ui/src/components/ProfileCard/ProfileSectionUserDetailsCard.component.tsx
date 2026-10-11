@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   ButtonUtility,
   Popover,
@@ -349,10 +348,7 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <Icon
-            className="m-r-xss font-medium text-md ant-icon"
-            component={DeleteIcon}
-          />
+          <DeleteIcon className="m-r-xss font-medium text-md ant-icon tw:size-3.5 tw:shrink-0" />
 
           {t('label.deleted')}
         </span>

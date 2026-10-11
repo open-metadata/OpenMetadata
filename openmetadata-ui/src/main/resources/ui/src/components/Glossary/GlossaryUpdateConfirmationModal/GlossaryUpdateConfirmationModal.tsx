@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Alert, Button, Modal, Progress } from 'antd';
 import { AxiosError } from 'axios';
@@ -176,11 +175,7 @@ export const GlossaryUpdateConfirmationModal = ({
           footer: null,
           content: (
             <div className="d-flex items-center flex-column gap-2">
-              <Icon
-                className="m-b-lg"
-                component={ExclamationIcon}
-                style={{ fontSize: '60px' }}
-              />
+              <ExclamationIcon className="m-b-lg tw:size-[60px] tw:shrink-0" />
               <Typography as="h5" size="text-md" weight="semibold">
                 {t('message.tag-update-confirmation')}
               </Typography>

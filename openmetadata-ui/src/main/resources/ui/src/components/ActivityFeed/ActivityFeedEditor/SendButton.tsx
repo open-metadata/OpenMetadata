@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
@@ -33,7 +32,7 @@ export const SendButton: FC<SendButtonProp> = ({
     className={classNames('send-button', className)}
     data-testid="send-button"
     disabled={editorValue.length === 0}
-    icon={<Icon component={IconPaperPlanePrimary} />}
+    icon={<IconPaperPlanePrimary className="tw:size-3.5 tw:shrink-0" />}
     type="text"
     onClick={onSaveHandler}
   />

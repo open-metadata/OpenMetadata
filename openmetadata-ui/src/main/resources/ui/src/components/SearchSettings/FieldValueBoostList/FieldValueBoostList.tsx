@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Button } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -98,14 +97,14 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
             <Button
               className="edit-field-value-boost-btn"
               data-testid="edit-field-value-boost-btn"
-              icon={<Icon className="text-md" component={EditIcon} />}
+              icon={<EditIcon className="text-md tw:size-3.5 tw:shrink-0" />}
               type="text"
               onClick={() => handleEditFieldValueBoost(record)}
             />
             <Button
               className="delete-field-value-boost-btn"
               data-testid="delete-field-value-boost-btn"
-              icon={<Icon className="text-md" component={Delete} />}
+              icon={<Delete className="text-md tw:size-3.5 tw:shrink-0" />}
               type="text"
               onClick={() => handleDeleteFieldValueBoost(record.field)}
             />

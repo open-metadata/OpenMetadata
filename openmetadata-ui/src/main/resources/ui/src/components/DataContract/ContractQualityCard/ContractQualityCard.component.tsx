@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
@@ -93,17 +92,17 @@ const ContractQualityCard: React.FC<{
     };
   }, [testCaseSummary]);
 
-  const getTestCaseStatusIcon = (record: TestCase) => (
-    <Icon
-      className="test-status-icon"
-      component={
-        TEST_CASE_STATUS_ICON[
-          (record?.testCaseResult?.testCaseStatus ??
-            'Queued') as keyof typeof TEST_CASE_STATUS_ICON
-        ]
-      }
-    />
-  );
+  const getTestCaseStatusIcon = (record: TestCase) => {
+    const TestStatusIcon =
+      TEST_CASE_STATUS_ICON[
+        (record?.testCaseResult?.testCaseStatus ??
+          'Queued') as keyof typeof TEST_CASE_STATUS_ICON
+      ];
+
+    return (
+      <TestStatusIcon className="test-status-icon tw:size-3.5 tw:shrink-0" />
+    );
+  };
 
   useEffect(() => {
     if (contract?.testSuite?.id) {

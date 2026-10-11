@@ -23,13 +23,6 @@ jest.mock('react-i18next', () => ({
 }));
 
 // Mock Icon component from antd icons to avoid SVG/render issues
-jest.mock('@ant-design/icons/lib/components/Icon', () => {
-  return jest
-    .fn()
-    .mockImplementation((props: Record<string, string>) => (
-      <span data-testid={props['data-testid'] || 'icon'} />
-    ));
-});
 
 // Mock Link from react-router-dom to avoid Router dependency
 jest.mock('react-router-dom', () => ({

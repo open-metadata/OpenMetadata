@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   ButtonUtility,
@@ -513,11 +512,7 @@ const PoliciesDetailPage = () => {
                     className="w-max-full"
                     displayName={policy.displayName}
                     icon={
-                      <Icon
-                        className="align-middle p-y-xss"
-                        component={PolicyIcon}
-                        style={{ fontSize: '50px' }}
-                      />
+                      <PolicyIcon className="align-middle p-y-xss tw:size-[50px] tw:shrink-0" />
                     }
                     name={policy?.name ?? ''}
                     serviceName="policy"

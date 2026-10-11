@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 import { Button, Slider } from 'antd';
@@ -178,7 +177,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
           <Button
             className="delete-term-boost"
             data-testid="delete-term-boost"
-            icon={<Icon className="text-md" component={Delete} />}
+            icon={<Delete className="text-md tw:size-3.5 tw:shrink-0" />}
             onClick={() => onDeleteBoost(termBoost.value)}
           />
         </Box>

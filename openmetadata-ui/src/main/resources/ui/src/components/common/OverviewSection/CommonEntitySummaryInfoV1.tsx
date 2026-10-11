@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
@@ -18,7 +17,6 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
-import { ICON_DIMENSION } from '../../../constants/constants';
 import {
   CommonEntitySummaryInfoV1Props,
   EntityInfoItemV1,
@@ -69,11 +67,9 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
           rel="noopener noreferrer"
           target="_blank">
           {info.value}
-          <Icon
-            className="m-l-xs"
-            component={IconExternalLink}
+          <IconExternalLink
+            className="m-l-xs tw:size-3.5 tw:shrink-0"
             data-testid="external-link-icon"
-            style={ICON_DIMENSION}
           />
         </a>
       );

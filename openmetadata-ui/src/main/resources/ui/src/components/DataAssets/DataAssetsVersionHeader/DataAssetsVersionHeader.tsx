@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   Divider,
@@ -157,7 +156,9 @@ function DataAssetsVersionHeader({
               <Button
                 className="w-16 p-0"
                 data-testid="version-button"
-                icon={<Icon component={VersionIcon} />}
+                icon={
+                  <VersionIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />
+                }
                 onClick={onVersionClick}>
                 <Typography>{version}</Typography>
               </Button>

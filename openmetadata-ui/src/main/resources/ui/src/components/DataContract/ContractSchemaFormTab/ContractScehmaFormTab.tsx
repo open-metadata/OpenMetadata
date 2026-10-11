@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Badge, Typography } from '@openmetadata/ui-core-components';
 import { Button, Card } from 'antd';
 import { isEmpty, pick, uniqBy } from 'lodash';
@@ -581,7 +580,7 @@ export const ContractSchemaFormTab: React.FC<{
             type="primary"
             onClick={onNext}>
             {nextLabel ?? t('label.next')}
-            <Icon component={RightIcon} />
+            <RightIcon className="tw:size-3.5 tw:shrink-0" />
           </Button>
         )}
       </div>

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Box, Grid, Owner, Typography } from '@openmetadata/ui-core-components';
 import { Button } from 'antd';
 import classNames from 'classnames';
@@ -183,7 +182,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                 'text-primary border-primary': version,
               })}
               data-testid="version-button"
-              icon={<Icon component={VersionIcon} />}
+              icon={<VersionIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
               onClick={handleVersionClick}>
               <Typography
                 className={classNames('', {

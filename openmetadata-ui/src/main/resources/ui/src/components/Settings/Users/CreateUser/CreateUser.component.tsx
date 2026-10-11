@@ -12,7 +12,6 @@
  */
 
 import { Plus } from '@openmetadata/ui-core-components/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Toggle } from '@openmetadata/ui-core-components';
 import { Button, Form, FormProps, Input, Radio, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
@@ -254,11 +253,7 @@ const PasswordConfigSection = ({
                     {isPasswordGenerating ? (
                       <Loader size="small" type="default" />
                     ) : (
-                      <Icon
-                        className="align-middle"
-                        component={IconSync}
-                        style={{ fontSize: '16px' }}
-                      />
+                      <IconSync className="align-middle tw:size-4 tw:shrink-0" />
                     )}
                   </div>
 

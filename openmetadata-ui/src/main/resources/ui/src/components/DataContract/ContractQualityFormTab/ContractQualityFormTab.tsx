@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import {
   Button as CoreButton,
   Dropdown,
@@ -230,7 +229,7 @@ export const ContractQualityFormTab: React.FC<{
         <Button
           className="contract-export-button"
           data-testid="add-test-button"
-          icon={<Icon className="anticon" component={PlusIcon} />}
+          icon={<PlusIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
           onClick={handleOpenTestCaseDrawer}>
           {t('label.add-entity', {
             entity: t('label.test'),
@@ -302,7 +301,7 @@ export const ContractQualityFormTab: React.FC<{
           type="primary"
           onClick={onNext}>
           {buttonProps.nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
+          <RightIcon className="tw:size-3.5 tw:shrink-0" />
         </Button>
       </div>
 

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   Grid,
@@ -129,7 +128,9 @@ const SearchBoostsSection = ({
                   className="term-boost-add-btn"
                   data-testid="term-boost-add-btn"
                   disabled={isUpdating || showNewTermBoost}
-                  icon={<Icon className="text-sm" component={PlusOutlined} />}
+                  icon={
+                    <PlusOutlined className="text-sm tw:size-3.5 tw:mr-2 tw:shrink-0" />
+                  }
                   type="primary"
                   onClick={onAddNewTermBoost}>
                   {t('label.add')}
@@ -167,7 +168,9 @@ const SearchBoostsSection = ({
                   className="field-value-boost-add-btn"
                   data-testid="add-field-value-boost-btn"
                   disabled={isUpdating || showFieldValueBoostModal}
-                  icon={<Icon className="text-sm" component={PlusOutlined} />}
+                  icon={
+                    <PlusOutlined className="text-sm tw:size-3.5 tw:mr-2 tw:shrink-0" />
+                  }
                   onClick={onAddFieldValueBoost}>
                   {t('label.add')}
                 </Button>

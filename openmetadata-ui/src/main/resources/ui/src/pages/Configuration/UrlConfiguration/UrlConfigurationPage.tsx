@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
@@ -107,7 +106,7 @@ const UrlConfigurationPage = () => {
             <Col>
               <Button
                 data-testid="edit-button"
-                icon={<Icon component={IconEdit} size={12} />}
+                icon={<IconEdit className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>

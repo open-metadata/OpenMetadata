@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Space, Tooltip } from 'antd';
 import { DataNode } from 'antd/lib/tree';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
@@ -42,25 +41,43 @@ export interface ViewDataInterface {
   duration?: string;
 }
 
-export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
-  <Space>
-    <Icon
-      alt="result"
-      className="align-middle"
-      component={getStatusBadgeIcon(status)}
-      // by default, color is set to inherit for Icon in ANTD, so we need to set it to transparent
-      style={{ fontSize: '16px', color: 'transparent' }}
+const StatusBadge = ({ status }: { status?: StatusType }) => {
+  const Badge = getStatusBadgeIcon(status);
+
+  return (
+    <Badge
+      aria-label="result"
+      className="align-middle tw:size-6 tw:shrink-0"
+      role="img"
+      // the badge supplies its own colours; stop currentColor tinting it
+      style={{ color: 'transparent' }}
     />
-    <p>
-      {status === StatusType.Successful
-        ? MenuOptions[StatusType.Successful]
-        : ''}
-      {status === StatusType.Failed ? MenuOptions[StatusType.Failed] : ''}
-      {status === StatusType.Pending ? MenuOptions[StatusType.Pending] : ''}
-      {status === StatusType.Skipped ? MenuOptions[StatusType.Skipped] : ''}
-    </p>
-  </Space>
-);
+  );
+};
+
+export const StatusIndicator = ({ status }: StatusIndicatorInterface) => {
+  const StatusBadgeIcon = getStatusBadgeIcon(status);
+
+  return (
+    <Space>
+      <StatusBadgeIcon
+        aria-label="result"
+        className="align-middle tw:size-4 tw:shrink-0"
+        role="img"
+        // the badge supplies its own colours; stop currentColor tinting it
+        style={{ color: 'transparent' }}
+      />
+      <p>
+        {status === StatusType.Successful
+          ? MenuOptions[StatusType.Successful]
+          : ''}
+        {status === StatusType.Failed ? MenuOptions[StatusType.Failed] : ''}
+        {status === StatusType.Pending ? MenuOptions[StatusType.Pending] : ''}
+        {status === StatusType.Skipped ? MenuOptions[StatusType.Skipped] : ''}
+      </p>
+    </Space>
+  );
+};
 
 /**
  * It takes in an array of PipelineStatus objects and a string, and returns an array of
@@ -230,13 +247,7 @@ export const getTreeData = (
                       )}
                     </Space>
                   }>
-                  <Icon
-                    alt="result"
-                    className="align-middle"
-                    component={getStatusBadgeIcon(status.executionStatus)}
-                    // by default, color is set to inherit for Icon in ANTD, so we need to set it to transparent
-                    style={{ fontSize: '24px', color: 'transparent' }}
-                  />
+                  <StatusBadge status={status.executionStatus} />
                 </Tooltip>
               ))}
             </div>

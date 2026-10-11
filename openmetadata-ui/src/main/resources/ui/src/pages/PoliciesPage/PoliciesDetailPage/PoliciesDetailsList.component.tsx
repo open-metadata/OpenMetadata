@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tooltip } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -88,11 +87,7 @@ const PoliciesDetailsList = ({
                 disabled={!hasAccess}
                 type="text"
                 onClick={() => onDelete(record)}>
-                <Icon
-                  className="align-middle"
-                  component={IconRemove}
-                  style={{ fontSize: '16px' }}
-                />
+                <IconRemove className="align-middle tw:size-4 tw:shrink-0" />
               </Button>
             </Tooltip>
           );

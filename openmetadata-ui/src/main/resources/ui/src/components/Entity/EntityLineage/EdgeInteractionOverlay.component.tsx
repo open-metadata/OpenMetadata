@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
 import React, { useMemo } from 'react';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
@@ -72,11 +71,10 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           className="cursor-pointer d-flex"
           data-testid="add-pipeline"
           icon={
-            <Icon
-              alt="edit-circle"
-              className="align-middle"
-              component={IconEditCircle}
-              style={{ fontSize: '16px' }}
+            <IconEditCircle
+              aria-label="edit-circle"
+              className="align-middle tw:size-4 tw:shrink-0"
+              role="img"
             />
           }
           type="link"
@@ -99,11 +97,10 @@ export const EdgeInteractionOverlay: React.FC<EdgeInteractionOverlayProps> = ({
           className="cursor-pointer d-flex"
           data-testid="delete-button"
           icon={
-            <Icon
-              alt="times-circle"
-              className="align-middle"
-              component={IconTimesCircle}
-              style={{ fontSize: '16px' }}
+            <IconTimesCircle
+              aria-label="times-circle"
+              className="align-middle tw:size-4 tw:shrink-0"
+              role="img"
             />
           }
           type="link"

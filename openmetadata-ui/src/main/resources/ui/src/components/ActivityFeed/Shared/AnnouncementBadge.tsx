@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
@@ -22,7 +21,7 @@ const AnnouncementBadge = () => {
 
   return (
     <div className="announcement-badge-container">
-      <Icon className="announcement-badge" component={AnnouncementIcon} />
+      <AnnouncementIcon className="announcement-badge tw:size-3.5 tw:shrink-0" />
 
       <Typography className="announcement-text">
         {t('label.announcement')}

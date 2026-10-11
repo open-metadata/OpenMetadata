@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { InfoCircle } from '@openmetadata/ui-core-components/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { LazyLog } from '@melloware/react-logviewer';
 import { Divider, Typography } from '@openmetadata/ui-core-components';
 import { Button, Collapse, Space, Tooltip } from 'antd';
@@ -87,10 +86,9 @@ const ConnectionStepStatusBadge = ({
         <Typography className="success-status">
           {`${t('label.success')}`}
         </Typography>
-        <Icon
-          component={SuccessIcon}
+        <SuccessIcon
+          className="tw:size-5 tw:shrink-0"
           data-testid="success-badge"
-          style={{ fontSize: '20px' }}
         />
       </div>
     );
@@ -102,11 +100,7 @@ const ConnectionStepStatusBadge = ({
         <Typography className="failure-status">
           {`${t('label.failed')}`}
         </Typography>
-        <Icon
-          component={FailIcon}
-          data-testid="fail-badge"
-          style={{ fontSize: '20px' }}
-        />
+        <FailIcon className="tw:size-5 tw:shrink-0" data-testid="fail-badge" />
       </div>
     );
   }
@@ -117,10 +111,9 @@ const ConnectionStepStatusBadge = ({
         <Typography className="warning-status">
           {`${t('label.attention')}`}
         </Typography>
-        <Icon
-          component={AttentionIcon}
+        <AttentionIcon
+          className="tw:size-5 tw:shrink-0"
           data-testid="warning-badge"
-          style={{ fontSize: '20px' }}
         />
       </div>
     );

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Divider,
   Owner,
@@ -2103,17 +2102,15 @@ export const TaskTabNew = ({
     );
   };
 
+  const TaskStatusIcon = isTaskClosed ? TaskCloseIcon : TaskOpenIcon;
+
   return (
     <Row
       className="relative task-details-panel"
       data-testid="task-tab"
       gutter={[0, 20]}>
       <Col className="d-flex items-start task-feed-message-container" span={24}>
-        <Icon
-          className="m-r-xs"
-          component={isTaskClosed ? TaskCloseIcon : TaskOpenIcon}
-          height={14}
-        />
+        <TaskStatusIcon className="m-r-xs tw:size-3.5 tw:shrink-0" />
 
         {taskLinkTitleElement}
       </Col>

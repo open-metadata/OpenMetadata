@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Divider, SelectPopover } from '@openmetadata/ui-core-components';
 import { Button, Input, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
@@ -216,6 +215,10 @@ export const GlobalSearchBar = () => {
       return null;
     }
 
+    const SuggestionsIcon = isNLPActive
+      ? IconSuggestionsActive
+      : IconSuggestionsBlue;
+
     return (
       <>
         <Tooltip
@@ -229,13 +232,7 @@ export const GlobalSearchBar = () => {
               active: isNLPActive,
             })}
             data-testid="nlp-suggestions-button"
-            icon={
-              <Icon
-                component={
-                  isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
-                }
-              />
-            }
+            icon={<SuggestionsIcon className="tw:size-3.5 tw:shrink-0" />}
             type="text"
             onClick={() => setNLPActive(!isNLPActive)}
           />
@@ -283,27 +280,25 @@ export const GlobalSearchBar = () => {
 
   const renderSearchIcon = () =>
     searchValue ? (
-      <Icon
-        alt="icon-cancel"
-        className={classNames('align-middle', {
+      <IconCloseCircleOutlined
+        aria-label="icon-cancel"
+        className={classNames('align-middle tw:size-4 tw:shrink-0', {
           'text-primary': !isSearchBlur,
         })}
-        component={IconCloseCircleOutlined}
         data-testid="cancel-icon"
-        style={{ fontSize: '16px' }}
+        role="img"
         onClick={handleClear}
       />
     ) : (
-      <Icon
-        alt="icon-search"
-        className={classNames('align-middle', {
+      <IconSearch
+        aria-label="icon-search"
+        className={classNames('align-middle tw:size-4 tw:shrink-0', {
           'text-color': isSearchBlur,
           'text-primary': !isSearchBlur,
         })}
-        component={IconSearch}
         data-testid="search-icon"
-        style={{ fontSize: '16px' }}
-        onClick={(e) => {
+        role="img"
+        onClick={(e: React.MouseEvent<SVGSVGElement>) => {
           e.preventDefault();
           e.stopPropagation();
           handleOnClick();

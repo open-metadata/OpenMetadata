@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import CodeMirror from '@uiw/react-codemirror';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
@@ -87,7 +86,7 @@ const SchemaEditor = ({
             <Button
               className="query-editor-copy-button"
               data-testid="query-copy-button"
-              icon={<Icon component={CopyIcon} />}
+              icon={<CopyIcon className="tw:size-3.5 tw:shrink-0" />}
               onClick={() => onCopyToClipBoard(internalValue)}
             />
           </Tooltip>

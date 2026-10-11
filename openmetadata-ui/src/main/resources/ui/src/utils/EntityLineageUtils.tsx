@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Check } from '@openmetadata/ui-core-components/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
@@ -61,7 +60,7 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
     return (
       <div className="d-flex items-center gap-2">
         {isMetricEntity ? (
-          <Icon component={MetricIcon} style={{ fontSize: '20px' }} />
+          <MetricIcon className="tw:size-5 tw:shrink-0" />
         ) : (
           <img
             alt={fqn}

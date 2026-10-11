@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Button, Empty, Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
@@ -553,11 +552,7 @@ const TableConstraintsModal = ({
                       className="delete-constraint-button"
                       data-testid={`${key}-delete-constraint-button`}
                       icon={
-                        <Icon
-                          className="align-middle text-grey-muted"
-                          component={IconDelete}
-                          style={{ fontSize: '16px' }}
-                        />
+                        <IconDelete className="align-middle text-grey-muted tw:size-4 tw:shrink-0" />
                       }
                       size="small"
                       type="text"

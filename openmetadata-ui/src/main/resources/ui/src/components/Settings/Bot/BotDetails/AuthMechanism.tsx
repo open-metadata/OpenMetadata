@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Divider, Typography } from '@openmetadata/ui-core-components';
 import { Button, Input, Space } from 'antd';
 import classNames from 'classnames';
@@ -85,11 +84,10 @@ const AuthMechanism: FC<Props> = ({
     if (!JWTTokenExpiresAt) {
       return (
         <>
-          <Icon
-            alt="warning"
-            className="align-middle"
-            component={IconError}
-            style={{ fontSize: '16px' }}
+          <IconError
+            aria-label="warning"
+            className="align-middle tw:size-4 tw:shrink-0"
+            role="img"
           />
           <span className="align-middle">
             {t('message.token-has-no-expiry')}

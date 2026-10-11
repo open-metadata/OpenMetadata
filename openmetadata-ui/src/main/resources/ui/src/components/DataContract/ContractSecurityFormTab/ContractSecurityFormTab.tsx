@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Divider, Grid, Typography } from '@openmetadata/ui-core-components';
 import { Button, Card, Form, Input, Select } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
@@ -230,7 +229,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                           <Button
                             className="add-row-filter-button"
                             data-testid={`add-row-filter-button-${policyIndex}`}
-                            icon={<Icon component={PlusIcon} />}
+                            icon={
+                              <PlusIcon className="tw:size-3.5 tw:shrink-0" />
+                            }
                             type="link"
                             onClick={() => addRowFilter()}>
                             {t('label.add-entity', {
@@ -298,7 +299,9 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                                   <Grid.Item className="layout-column" span={2}>
                                     <Button
                                       className="contract-consumer-security-card-rule-delete-button"
-                                      icon={<Icon component={CloseIcon} />}
+                                      icon={
+                                        <CloseIcon className="tw:size-3 tw:shrink-0" />
+                                      }
                                       size="small"
                                       type="text"
                                       onClick={() => {
@@ -511,7 +514,7 @@ export const ContractSecurityFormTab: React.FC<{
                 className="add-policy-button"
                 data-testid="add-policy-button"
                 disabled={!isNull(editingKey) || !addFunctionRef.current}
-                icon={<Icon className="anticon" component={PlusIcon} />}
+                icon={<PlusIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
                 type="link"
                 onClick={handleAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}
@@ -555,7 +558,7 @@ export const ContractSecurityFormTab: React.FC<{
           type="primary"
           onClick={onNext}>
           {buttonProps.nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
+          <RightIcon className="tw:size-3.5 tw:shrink-0" />
         </Button>
       </div>
     </>

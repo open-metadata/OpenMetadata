@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Button } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,7 +36,7 @@ const StatusAction = ({
       <Button
         className={`approve-btn ${isRejectHovered ? 'icon-only' : ''}`}
         data-testid={dataTestId + '-approve-btn'}
-        icon={<Icon component={TickCircleIcon} />}
+        icon={<TickCircleIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
         onClick={onApprove}>
         {!isRejectHovered && (
           <span className="btn-text">{t('label.approve')}</span>
@@ -46,7 +45,7 @@ const StatusAction = ({
       <Button
         className={`reject-btn ${isRejectHovered ? 'show-text' : ''}`}
         data-testid={dataTestId + '-reject-btn'}
-        icon={<Icon component={CloseCircleIcon} />}
+        icon={<CloseCircleIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
         onClick={onReject}
         onMouseEnter={() => setIsRejectHovered(true)}
         onMouseLeave={() => setIsRejectHovered(false)}>

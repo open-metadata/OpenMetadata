@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Button, Card, Col, Form, FormProps, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
@@ -510,7 +509,9 @@ const AppearanceConfigSettingsPage = () => {
                               </Button>
 
                               <Button
-                                icon={<Icon component={ShareIcon} />}
+                                icon={
+                                  <ShareIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />
+                                }
                                 style={{
                                   width: '56px',
                                   color: currentColor,

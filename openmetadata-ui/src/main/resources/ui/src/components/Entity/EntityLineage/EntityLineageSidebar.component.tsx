@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
@@ -66,12 +65,9 @@ const EntityNodeInternal: FC<EntityNodeProps> = ({
           {searchClassBase.getEntityIcon(type ?? '')}
         </span>
         <span className="d-flex m-l-xs">
-          <Icon
-            component={DragIconDotted}
-            rotate={90}
-            style={{
-              color: theme.primaryColor,
-            }}
+          <DragIconDotted
+            className="tw:size-3.5 tw:shrink-0"
+            style={{ color: theme.primaryColor, transform: 'rotate(90deg)' }}
           />
         </span>
       </div>

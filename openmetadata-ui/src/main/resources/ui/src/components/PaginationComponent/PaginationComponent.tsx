@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Button, Pagination, PaginationProps } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowRightOutlined } from '../../assets/svg/arrow-right.svg';
@@ -33,10 +32,7 @@ const PaginationComponent = (props: PaginationProps) => {
           className="pagination-button hover-button h-full"
           data-testid="previous"
           icon={
-            <Icon
-              className="pagination-prev-icon"
-              component={ArrowRightOutlined}
-            />
+            <ArrowRightOutlined className="pagination-prev-icon tw:size-3 tw:shrink-0" />
           }
           type="text">
           <span>{t('label.previous')}</span>
@@ -50,10 +46,7 @@ const PaginationComponent = (props: PaginationProps) => {
           data-testid="next"
           type="text">
           <span> {t('label.next')}</span>
-          <Icon
-            className="pagination-next-icon"
-            component={ArrowRightOutlined}
-          />
+          <ArrowRightOutlined className="pagination-next-icon tw:size-3 tw:shrink-0" />
         </Button>
       );
     }

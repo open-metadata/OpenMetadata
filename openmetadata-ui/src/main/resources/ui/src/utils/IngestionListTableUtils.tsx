@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Badge, Typography } from '@openmetadata/ui-core-components';
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
@@ -61,7 +60,7 @@ export const renderTypeField =
   };
 
 export const renderStatusField = (_: string, record: IngestionPipeline) => {
-  const statusIcon = record.enabled ? ActiveIcon : PausedIcon;
+  const StatusIcon = record.enabled ? ActiveIcon : PausedIcon;
 
   return (
     <Badge
@@ -73,7 +72,7 @@ export const renderStatusField = (_: string, record: IngestionPipeline) => {
       data-testid="pipeline-active-status"
       size="sm"
       type="color">
-      <Icon component={statusIcon} />
+      <StatusIcon className="tw:size-3.5 tw:shrink-0" />
       {record.enabled ? t('label.active') : t('label.paused')}
     </Badge>
   );

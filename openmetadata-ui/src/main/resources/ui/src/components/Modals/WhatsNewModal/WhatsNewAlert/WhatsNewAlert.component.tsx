@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Affix, Button, Card } from 'antd';
 import { CookieStorage } from 'cookie-storage';
@@ -171,9 +170,8 @@ const WhatsNewAlert = () => {
               <Box
                 className="layout-column tw:block"
                 style={{ flex: '0 0 48px' }}>
-                <Icon
-                  className="whats-new-alert-close"
-                  component={CloseIcon}
+                <CloseIcon
+                  className="whats-new-alert-close tw:size-3 tw:shrink-0"
                   onClick={handleCancel}
                 />
               </Box>

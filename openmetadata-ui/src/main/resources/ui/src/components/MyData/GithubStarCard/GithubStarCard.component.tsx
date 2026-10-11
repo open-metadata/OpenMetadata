@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { Affix, Button, Card } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
@@ -166,7 +165,7 @@ const GithubStarCard = () => {
               target="_blank">
               <Button
                 className="github-star-button github-modal-action-button"
-                icon={<Icon component={StarGithubIcon} size={12} />}>
+                icon={<StarGithubIcon className="tw:size-3.5 tw:shrink-0" />}>
                 {t('label.star')}
               </Button>
             </a>

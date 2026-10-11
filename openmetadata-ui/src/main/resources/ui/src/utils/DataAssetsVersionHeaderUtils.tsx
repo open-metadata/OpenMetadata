@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 
 import { isEmpty, isUndefined, toString } from 'lodash';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
-import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Chart } from '../generated/entity/data/chart';
@@ -129,11 +127,7 @@ export const getExtraInfoSourceUrl = (
               )}
             </Typography>
             {safeSourceUrl && (
-              <Icon
-                className="m-l-xss"
-                component={IconExternalLink}
-                style={DATA_ASSET_ICON_DIMENSION}
-              />
+              <IconExternalLink className="m-l-xss tw:size-3.5 tw:shrink-0" />
             )}
           </div>
         </>

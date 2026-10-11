@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from '@openmetadata/ui-core-components';
 import { Badge, Card } from 'antd';
 import classNames from 'classnames';
@@ -43,7 +42,7 @@ const SettingItemCard = ({
       data-testid={data.key}
       onClick={handleOnClick}>
       <div className="setting-card-icon">
-        <Icon component={data.icon} />
+        <data.icon className="tw:size-3.5 tw:shrink-0" />
         {Boolean(data?.isBeta) && (
           <Badge className="service-beta-tag" count={t('label.beta')} />
         )}

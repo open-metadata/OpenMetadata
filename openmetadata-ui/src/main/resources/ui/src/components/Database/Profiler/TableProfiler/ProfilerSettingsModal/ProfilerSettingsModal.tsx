@@ -12,7 +12,6 @@
  */
 
 import { Plus } from '@openmetadata/ui-core-components/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Box,
   Grid,
@@ -698,11 +697,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                           <Button
                             className="delete-btn"
                             icon={
-                              <Icon
-                                className="align-middle"
-                                component={IconDelete}
-                                style={{ fontSize: '16px' }}
-                              />
+                              <IconDelete className="align-middle tw:size-4 tw:shrink-0" />
                             }
                             type="text"
                             onClick={() => remove(name)}
@@ -981,11 +976,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               <Button
                                 className="delete-btn"
                                 icon={
-                                  <Icon
-                                    className="align-middle"
-                                    component={IconDelete}
-                                    style={{ fontSize: '16px' }}
-                                  />
+                                  <IconDelete className="align-middle tw:size-4 tw:shrink-0" />
                                 }
                                 type="text"
                                 onClick={() => remove(name)}

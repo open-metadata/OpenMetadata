@@ -47,7 +47,9 @@ jest.mock('../../../utils/i18next/LocalUtil', () => ({
 }));
 
 jest.mock('../../../assets/svg/ic-check-circle-2.svg', () => ({
-  ReactComponent: () => <svg data-testid="check-icon" />,
+  ReactComponent: (props: Record<string, unknown>) => (
+    <svg {...props} data-testid="check-icon" />
+  ),
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({

@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Divider, Typography } from '@openmetadata/ui-core-components';
 import { Badge, Button, Card, Col, Row, Space, Table } from 'antd';
 import { capitalize, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
+import { STATUS_ICON } from '../../../../constants/constants';
 import { StepStats } from '../../../../generated/entity/applications/appRunRecord';
 import {
   formatLatencyAverage,
@@ -100,6 +99,8 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
     ) => {
       const { showStatus = true, effectiveTimeMs, latencyLabelKey } = options;
 
+      const StatusIcon = STATUS_ICON[status as keyof typeof STATUS_ICON];
+
       return (
         <Card
           data-testid={`stats-component${
@@ -118,12 +119,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                       )}:`}</span>
 
                       <Space align="center" className="m-l-xs" size={8}>
-                        <Icon
-                          component={
-                            STATUS_ICON[status as keyof typeof STATUS_ICON]
-                          }
-                          style={ICON_DIMENSION}
-                        />
+                        <StatusIcon className="tw:size-3.5 tw:shrink-0" />
                         <span>{capitalize(status)}</span>
                       </Space>
                     </div>

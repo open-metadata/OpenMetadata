@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Button, Input } from 'antd';
 import { AxiosError } from 'axios';
@@ -248,7 +247,7 @@ const SearchPreview = ({
         data-testid="searchbar"
         placeholder={t('message.search-for-data-assets-placeholder')}
         suffix={
-          <Icon className="text-md font-bold m-r-xs" component={IconSearchV1} />
+          <IconSearchV1 className="text-md font-bold m-r-xs tw:size-3.5 tw:shrink-0" />
         }
         type="text"
         value={searchValue}

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Divider,
   Toggle,
@@ -126,7 +125,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               <Button
                 className="delete-search-field"
                 data-testid="delete-search-field"
-                icon={<Icon className="text-md" component={Delete} />}
+                icon={<Delete className="text-md tw:size-3.5 tw:shrink-0" />}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeleteSearchField(field.fieldName);
@@ -141,7 +140,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               <span
                 className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
                 data-testid="field-weight">
-                <Icon className="text-md" component={FilterIcon} />
+                <FilterIcon className="text-md tw:size-3.5 tw:shrink-0" />
                 {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}
               </span>
             </div>

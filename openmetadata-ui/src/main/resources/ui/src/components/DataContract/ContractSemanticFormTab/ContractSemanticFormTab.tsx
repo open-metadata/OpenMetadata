@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Grid, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import { Button, Form, FormListFieldData, Input } from 'antd';
@@ -189,7 +188,7 @@ export const ContractSemanticFormTab: React.FC<{
             className="add-semantic-button"
             data-testid="add-semantic-button"
             disabled={!isNull(editingKey) || !addFunctionRef.current}
-            icon={<Icon className="anticon" component={PlusIcon} />}
+            icon={<PlusIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
             type="link"
             onClick={handleAddSemantic}>
             {t('label.add-entity', {
@@ -348,7 +347,9 @@ export const ContractSemanticFormTab: React.FC<{
                             className="add-semantic-button"
                             data-testid="add-new-rule-btn"
                             disabled={!queryBuilderAddRule?.addRule}
-                            icon={<Icon component={PlusIcon} />}
+                            icon={
+                              <PlusIcon className="tw:size-3.5 tw:shrink-0" />
+                            }
                             type="link"
                             onClick={handleAddNewRule}>
                             {t('label.add-new-entity', {
@@ -413,7 +414,7 @@ export const ContractSemanticFormTab: React.FC<{
             type="primary"
             onClick={onNext}>
             {nextLabel ?? t('label.next')}
-            <Icon component={RightIcon} />
+            <RightIcon className="tw:size-3.5 tw:shrink-0" />
           </Button>
         )}
       </div>
