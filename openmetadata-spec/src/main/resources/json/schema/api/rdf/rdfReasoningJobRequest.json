@@ -37,7 +37,30 @@
         }
       },
       "required": ["kind"],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "SATISFIABILITY" } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["classExpression"] }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "SUBSUMPTION" } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["classExpression", "superClassExpression"] }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "ENTAILMENT" } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["statement"] }
+        }
+      ]
     },
     "explain": {
       "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningExplain",
@@ -103,5 +126,28 @@
     }
   },
   "required": ["requestId", "operation", "sourceRevision", "ontologySelection"],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "operation": { "const": "REFRESH" } },
+        "required": ["operation"]
+      },
+      "then": { "required": ["ruleBundleDigest"] }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "CHECK" } },
+        "required": ["operation"]
+      },
+      "then": { "required": ["ontologyIri", "check"] }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "EXPLAIN" } },
+        "required": ["operation"]
+      },
+      "then": { "required": ["ontologyIri", "explain"] }
+    }
+  ]
 }
