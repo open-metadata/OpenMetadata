@@ -24,6 +24,7 @@ import {
   getTaskDetailDescriptor,
   getTaskTypeBadge,
   resolveIncidentTestCaseFqn,
+  withExistingDescription,
 } from './taskDetail.utils';
 
 // Echo the key so a test asserts which label was chosen, and keep the
@@ -104,22 +105,33 @@ describe('resolveIncidentTestCaseFqn', () => {
 });
 
 describe('getTaskDetailDescriptor', () => {
-  it('puts a description task proposal in the callout', () => {
+  // A description task reads as an activity card's change: Existing, then
+  // Suggested.
+  it("shows a description task's proposal beside the existing text", () => {
     const descriptor = getTaskDetailDescriptor(
       buildTask({
-        payload: { newDescription: 'The order total in local currency.' },
+        payload: {
+          currentDescription: 'Order total.',
+          newDescription: 'The order total in local currency.',
+        },
       } as unknown as Partial<Task>),
       t
     );
 
-    expect(descriptor.callout).toEqual({
-      label: 'label.suggested-description',
-      text: 'The order total in local currency.',
+    expect(descriptor.change).toEqual({
+      labelKey: 'label.description',
+      before: ['Order total.'],
+      after: ['The order total in local currency.'],
+      isText: true,
     });
+    expect(descriptor.callout).toBeUndefined();
   });
 
-  it('omits the callout when the payload carries no rationale', () => {
-    expect(getTaskDetailDescriptor(buildTask(), t).callout).toBeUndefined();
+  it('has no change when the payload proposes nothing', () => {
+    const descriptor = getTaskDetailDescriptor(buildTask(), t);
+
+    expect(descriptor.change).toBeUndefined();
+    expect(descriptor.callout).toBeUndefined();
   });
 
   // Ownership ships plain: who holds the asset now, and when someone asked.
@@ -318,40 +330,92 @@ describe('getTaskDetailDescriptor', () => {
   });
 });
 
-describe('tag request rows', () => {
-  // Approving a tag request removes tags as well as adding them.
-  it('lists the tags to remove beside the tags to add', () => {
-    const rows = getTaskDetailDescriptor(
+describe('tag request change', () => {
+  const changeOf = (payload: Record<string, unknown>) =>
+    getTaskDetailDescriptor(
       buildTask({
         type: TaskType.TagUpdate,
-        payload: {
-          tagsToAdd: [{ tagFQN: 'PII.Sensitive' }],
-          tagsToRemove: [{ tagFQN: 'PII.None' }],
-        },
+        payload,
       } as unknown as Partial<Task>),
       t
-    ).rows;
+    ).change;
 
-    expect(rows.find((row) => row.key === 'tags')?.value).toEqual({
-      kind: 'tags',
-      tags: [{ tagFQN: 'PII.Sensitive' }],
-    });
-    expect(rows.find((row) => row.key === 'tagsToRemove')?.value).toEqual({
-      kind: 'tags',
-      tags: [{ tagFQN: 'PII.None' }],
+  // Approving a tag request removes tags as well as adding them.
+  it('shows the tags to remove beside the tags to add', () => {
+    expect(
+      changeOf({
+        tagsToAdd: [{ tagFQN: 'PII.Sensitive' }],
+        tagsToRemove: [{ tagFQN: 'PII.None' }],
+      })
+    ).toEqual({
+      labelKey: 'label.tag-plural',
+      before: ['PII.None'],
+      after: ['PII.Sensitive'],
+      isText: false,
     });
   });
 
-  it('omits the removal row when nothing is removed', () => {
-    const rows = getTaskDetailDescriptor(
-      buildTask({
-        type: TaskType.TagUpdate,
-        payload: { tagsToAdd: [{ tagFQN: 'PII.Sensitive' }] },
-      } as unknown as Partial<Task>),
-      t
-    ).rows;
+  it('shows only the added side when nothing is removed', () => {
+    expect(changeOf({ tagsToAdd: [{ tagFQN: 'PII.Sensitive' }] })).toEqual(
+      expect.objectContaining({ before: [], after: ['PII.Sensitive'] })
+    );
+  });
 
-    expect(rows.some((row) => row.key === 'tagsToRemove')).toBe(false);
+  it('has no change when the request names no tags', () => {
+    expect(changeOf({})).toBeUndefined();
+  });
+});
+
+describe('withExistingDescription', () => {
+  const change = {
+    labelKey: 'label.description',
+    before: [],
+    after: ['Suggested'],
+    isText: true,
+  };
+  const taskFor = (fieldPath: string) =>
+    buildTask({
+      payload: { fieldPath, newDescription: 'Suggested' },
+    } as unknown as Partial<Task>);
+  const entity = {
+    description: 'The table.',
+    columns: [
+      { name: 'country', description: 'Country.' },
+      {
+        name: 'address',
+        children: [{ name: 'city', description: 'City.' }],
+      },
+    ],
+  } as unknown as EntityUnion;
+
+  it.each([
+    ['description', 'The table.'],
+    ['columns.country.description', 'Country.'],
+    ['columns.city.description', 'City.'],
+  ])('reads the existing text of %s from the entity', (fieldPath, existing) => {
+    expect(
+      withExistingDescription(change, taskFor(fieldPath), entity)?.before
+    ).toEqual([existing]);
+  });
+
+  it("keeps the payload's own snapshot", () => {
+    expect(
+      withExistingDescription(
+        { ...change, before: ['Snapshot.'] },
+        taskFor('description'),
+        entity
+      )?.before
+    ).toEqual(['Snapshot.']);
+  });
+
+  it('leaves the Existing side empty for a field the entity lacks', () => {
+    expect(
+      withExistingDescription(
+        change,
+        taskFor('columns.gone.description'),
+        entity
+      )?.before
+    ).toEqual([]);
   });
 });
 

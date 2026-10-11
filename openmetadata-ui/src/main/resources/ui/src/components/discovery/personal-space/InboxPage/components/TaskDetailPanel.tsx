@@ -61,6 +61,7 @@ import { formatInboxDate, isTaskOpen } from '../inbox.utils';
 import {
   getTaskDetailDescriptor,
   resolveIncidentTestCaseFqn,
+  withExistingDescription,
 } from '../taskDetail.utils';
 import {
   getTaskStatusBadge,
@@ -710,6 +711,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         ) : (
           <TaskDetailSummary
             callout={descriptor.callout}
+            change={withExistingDescription(
+              descriptor.change,
+              task,
+              about?.entity
+            )}
             rows={descriptor.rows}
           />
         )}
