@@ -162,6 +162,20 @@ class InferenceRuleRepositoryTest {
   }
 
   @Test
+  void storedRulesNegatingExistsAreDisabledWithTheReason() {
+    storeRule(
+        rule(LEGACY_RULE, 10)
+            .withRuleBody(
+                "CONSTRUCT { ?s <urn:copy> ?o } WHERE { ?s <urn:source> ?o "
+                    + "FILTER(!EXISTS { ?o <urn:label> ?l }) }"));
+
+    final InferenceRuleStatus status = repository.get(LEGACY_RULE);
+
+    assertFalse(status.getRule().getEnabled());
+    assertTrue(status.getLastError().contains("EXISTS is only allowed"), status.getLastError());
+  }
+
+  @Test
   void clearingADisabledRuleKeepsTheReasonItWasDisabled() {
     storeRule(rule(LEGACY_RULE, 10).withRuleBody(OPTIONAL_BODY));
     final String reason = repository.get(LEGACY_RULE).getLastError();
