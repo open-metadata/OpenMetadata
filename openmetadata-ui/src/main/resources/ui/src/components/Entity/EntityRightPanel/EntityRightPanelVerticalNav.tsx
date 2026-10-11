@@ -149,37 +149,18 @@ const EntityRightPanelVerticalNav: React.FC<
         {/* pt-5 keeps the first item where antd's menu clearfix put it. */}
         <Tabs.List
           aria-label={t('label.navigation')}
-          className="tw:w-full tw:gap-5 tw:pt-5">
+          className="tw:w-full tw:gap-5 tw:pt-5"
+          type="line">
           {getTabItems().map(({ key, icon, label, 'data-testid': testId }) => (
             <Tabs.Item
-              className={({ isSelected }) =>
-                classNames(
-                  'tw:relative tw:h-auto tw:w-full tw:flex-col tw:justify-center tw:gap-1.5 tw:rounded-none tw:bg-transparent tw:p-0 tw:font-normal tw:whitespace-normal tw:shadow-none',
-                  'tw:[&>svg]:size-6',
-                  isSelected
-                    ? [
-                        'tw:bg-brand-primary tw:text-fg-brand-primary',
-                        'tw:before:absolute tw:before:top-1/2 tw:before:left-0 tw:before:h-8 tw:before:w-1',
-                        'tw:before:-translate-y-1/2 tw:before:rounded-r-sm tw:before:bg-fg-brand-primary',
-                      ]
-                    : 'tw:text-tertiary tw:hover:bg-transparent tw:hover:text-brand-secondary'
-                )
-              }
+              className="tw:w-full tw:flex-col tw:justify-center tw:gap-1.5 tw:whitespace-normal tw:[&>svg]:size-6"
               data-testid={testId}
               id={key}
               key={key}>
-              {({ isSelected }) => (
-                <>
-                  {icon}
-                  <span
-                    className={classNames(
-                      'tw:mx-auto tw:block tw:w-[54px] tw:text-center tw:text-[11px] tw:leading-[1.2] tw:break-words tw:whitespace-normal',
-                      isSelected ? 'tw:font-semibold' : 'tw:font-normal'
-                    )}>
-                    {label}
-                  </span>
-                </>
-              )}
+              {icon}
+              <span className="tw:mx-auto tw:block tw:w-[54px] tw:text-center tw:text-[11px] tw:leading-[1.2] tw:break-words tw:whitespace-normal">
+                {label}
+              </span>
             </Tabs.Item>
           ))}
         </Tabs.List>
