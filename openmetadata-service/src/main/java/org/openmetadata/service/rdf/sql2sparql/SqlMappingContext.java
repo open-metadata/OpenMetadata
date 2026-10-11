@@ -113,8 +113,8 @@ public class SqlMappingContext {
                     .parentProperty("om:hasColumnLineage")
                     .nestedClass("om:ColumnLineage")
                     .build()
-                    .addField("fromColumns", "om:fromColumn", "xsd:string")
-                    .addField("toColumn", "om:toColumn", "xsd:string")
+                    .addField("fromColumns", "om:fromColumnFqn", "xsd:string")
+                    .addField("toColumn", "om:toColumnFqn", "xsd:string")
                     .addField("function", "om:transformFunction", "xsd:string")));
 
     context.addTableMapping(

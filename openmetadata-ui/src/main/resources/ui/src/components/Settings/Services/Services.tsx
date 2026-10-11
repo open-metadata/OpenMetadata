@@ -12,12 +12,14 @@
  */
 
 import {
+  Box,
   Button,
+  Button as CoreButton,
   EmptyPlaceholder,
   Grid,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tooltip } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
@@ -555,12 +557,18 @@ const Services = ({ serviceName }: ServicesProps) => {
   };
 
   return (
-    <Row
-      className="justify-center"
+    <Grid
+      className="layout-row layout-grid justify-center"
       data-testid="services-container"
-      gutter={[16, 16]}>
-      <Col span={24}>
-        <Space className="w-full justify-between m-b-lg" data-testid="header">
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-between m-b-lg"
+          data-testid="header"
+          gap={2}
+          itemClassName="layout-space-item">
           <PageHeader
             data={getServicePageHeader()}
             learningPageId={LEARNING_PAGE_IDS.SERVICES}
@@ -569,6 +577,8 @@ const Services = ({ serviceName }: ServicesProps) => {
             <ButtonSkeleton size="default" />
           ) : (
             <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
               placement="left"
               title={
                 addServicePermission
@@ -576,25 +586,27 @@ const Services = ({ serviceName }: ServicesProps) => {
                       entity: t('label.service'),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
-              }>
+              }
+              triggerClassName="tw:inline-flex">
               {addServicePermission && (
                 <LimitWrapper resource="dataAssets">
-                  <Button
+                  <CoreButton
                     className="m-b-xs"
+                    color="primary"
                     data-testid="add-service-button"
-                    type="primary"
-                    onClick={handleAddServiceClick}>
+                    size="sm"
+                    onPress={handleAddServiceClick}>
                     {t('label.add-new-entity', {
                       entity: t('label.service'),
                     })}
-                  </Button>
+                  </CoreButton>
                 </LimitWrapper>
               )}
             </Tooltip>
           )}
-        </Space>
-      </Col>
-      <Col span={24}>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
           customPaginationProps={customPaginationTableProps}
@@ -617,8 +629,8 @@ const Services = ({ serviceName }: ServicesProps) => {
             onChange: handleTableChange,
           }}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

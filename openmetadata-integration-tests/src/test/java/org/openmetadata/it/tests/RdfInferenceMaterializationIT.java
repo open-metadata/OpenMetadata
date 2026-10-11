@@ -26,6 +26,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -41,6 +42,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
+import org.openmetadata.it.util.RdfInferenceRuns;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -236,12 +238,19 @@ public class RdfInferenceMaterializationIT {
     rules.upsert(ruleName, rule(ruleName));
     try {
       insertScopedSource(glossary, subject, object);
-      rules.materialize(true, ruleName);
+      RdfInferenceRuns.materializeWhenIdle(true, ruleName);
 
+      // A scheduled run empties rule graphs before recomputing them, so wait for it to settle.
       final OntologyInferenceExplanation explanation =
-          SdkClients.adminClient()
-              .ontologyReasoning()
-              .explain(explanationRequest(glossary, subject, object));
+          Awaitility.await("materialized explanation")
+              .atMost(Duration.ofMinutes(3))
+              .pollInterval(Duration.ofSeconds(1))
+              .until(
+                  () ->
+                      SdkClients.adminClient()
+                          .ontologyReasoning()
+                          .explain(explanationRequest(glossary, subject, object)),
+                  candidate -> Boolean.TRUE.equals(candidate.getInferred()));
       final OntologyInferenceExplanation isolated =
           SdkClients.adminClient()
               .ontologyReasoning()
@@ -344,17 +353,23 @@ public class RdfInferenceMaterializationIT {
     insertInvalidatingTriple(fixture);
     assertTrue(service.get(fixture.ruleName()).getDirty());
     service.delete(fixture.ruleName());
+    // A scheduled run in progress during the delete leaves the graph for the next run to empty.
+    RdfInferenceRuns.materializeWhenIdle(false, null);
     assertFalse(hasInferredTriple(fixture));
   }
 
   private static void assertSuccessfulMaterialization(
       final InferenceRuleService service, final MaterializationFixture fixture) {
     final InferenceRuleStatus dirty = service.get(fixture.ruleName());
-    final InferenceMaterializationResult result = service.materialize(false, fixture.ruleName());
+    final InferenceMaterializationResult result =
+        RdfInferenceRuns.materializeWhenIdle(true, fixture.ruleName());
     final InferenceRuleStatus materialized = service.get(fixture.ruleName());
 
     assertTrue(dirty.getDirty());
-    assertEquals(1, result.getSuccessfulRules());
+    assertEquals(0, result.getFailedRules(), () -> "Failed rules: " + result.getProcessedRules());
+    assertTrue(
+        result.getProcessedRules().stream()
+            .anyMatch(status -> fixture.ruleName().equals(status.getRule().getName())));
     assertFalse(materialized.getDirty());
     assertEquals(1, materialized.getTripleCount());
     assertTrue(hasInferredTriple(fixture));

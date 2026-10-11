@@ -98,7 +98,8 @@ export const getDataProductVersionData = async (
 export const fetchDataProductsElasticSearch = async (
   searchText: string,
   domainFQNs: string[],
-  page: number
+  page: number,
+  pageSize = PAGE_SIZE
 ): Promise<{
   data: {
     label: string;
@@ -113,7 +114,7 @@ export const fetchDataProductsElasticSearch = async (
     query: searchText,
     filters: '',
     pageNumber: page,
-    pageSize: PAGE_SIZE,
+    pageSize,
     queryFilter,
     searchIndex: SearchIndex.DATA_PRODUCT,
   });

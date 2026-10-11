@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 import {
+  Alert,
   Box,
+  Button,
   ButtonUtility,
+  Checkbox,
   Dropdown,
   Grid,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Alert, Button, Checkbox, MenuProps, notification } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isObject } from 'lodash';
@@ -37,10 +39,9 @@ import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
-import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
@@ -391,11 +392,11 @@ const BulkDeleteNotification = ({
           {selectedItemsCount} {t('label.items-selected-lowercase')}
         </Typography>
         <Button
-          danger
+          showTextWhileLoading
+          color="primary-destructive"
           data-testid="delete-all-button"
-          loading={assetRemoving}
-          type="primary"
-          onClick={onBulkDeleteClick}>
+          isLoading={assetRemoving}
+          onPress={onBulkDeleteClick}>
           {t('label.delete')}
         </Button>
       </div>
@@ -457,8 +458,6 @@ const AssetsTabs = forwardRef(
     );
 
     const [selectedCard, setSelectedCard] = useState<SourceType>();
-    const [visible, setVisible] = useState<boolean>(false);
-    const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<SourceType>();
     const [activeEntity, setActiveEntity] = useState<AssetsTabEntity>();
@@ -592,24 +591,6 @@ const AssetsTabs = forwardRef(
       ]
     );
 
-    const hideNotification = () => {
-      notification.close('asset-tab-notification-key');
-    };
-
-    const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
-      const latestOpenKey = keys.find(
-        (key) => !openKeys.includes(key as EntityType)
-      );
-      if (ASSET_MENU_KEYS.includes(latestOpenKey as EntityType)) {
-        setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
-      } else {
-        setOpenKeys(keys as EntityType[]);
-      }
-    };
-
-    const handleAssetButtonVisibleChange = (newVisible: boolean) =>
-      setVisible(newVisible);
-
     const fetchCurrentEntity = useCallback(async () => {
       let data;
       const fqn = entityFqn ?? '';
@@ -714,23 +695,22 @@ const AssetsTabs = forwardRef(
             <Typography>{baseMessage}</Typography>
             <Alert
               showIcon
-              className="m-t-sm"
-              description={
-                assetsInOutputPorts.length > 1 || assetsToRemove.length > 1 ? (
-                  <ul className="m-b-0 p-l-md">
-                    {assetsInOutputPorts.map((asset) => (
-                      <li key={asset.id}>{getEntityName(asset)}</li>
-                    ))}
-                  </ul>
-                ) : undefined
-              }
-              message={
+              className="tw:mt-2"
+              data-testid="output-port-removal-warning"
+              title={
                 assetsInOutputPorts.length === 1 && assetsToRemove.length === 1
                   ? t('message.remove-asset-will-also-remove-from-output-ports')
                   : t('message.remove-asset-output-port-warning')
               }
-              type="warning"
-            />
+              variant="warning">
+              {assetsInOutputPorts.length > 1 || assetsToRemove.length > 1 ? (
+                <ul className="tw:mb-0 tw:list-disc tw:pl-4">
+                  {assetsInOutputPorts.map((asset) => (
+                    <li key={asset.id}>{getEntityName(asset)}</li>
+                  ))}
+                </ul>
+              ) : undefined}
+            </Alert>
           </>
         );
       },
@@ -825,7 +805,6 @@ const AssetsTabs = forwardRef(
           setAssetRemoving(false);
           if (!dryRunImpactDetected) {
             onRemoveAsset?.();
-            hideNotification();
             setSelectedItems(new Map()); // Reset selected items
             if (type === AssetsOfEntity.DATA_PRODUCT) {
               fetchOutputPorts();
@@ -855,7 +834,6 @@ const AssetsTabs = forwardRef(
           }, ES_UPDATE_DELAY);
         });
         onRemoveAsset?.();
-        hideNotification();
         setSelectedItems(new Map());
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -902,7 +880,6 @@ const AssetsTabs = forwardRef(
     useEffect(() => {
       return () => {
         onAssetClick?.(undefined);
-        hideNotification();
       };
     }, []);
 
@@ -1104,26 +1081,17 @@ const AssetsTabs = forwardRef(
         data.length > 0 && (
           <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
-              className="assets-checkbox p-x-sm"
-              onChange={(e) => onSelectAll(e.target.checked)}>
-              {t('label.select-field', {
+              className="tw:px-2"
+              data-testid="select-all-assets"
+              label={t('label.select-field', {
                 field: t('label.all'),
               })}
-            </Checkbox>
+              onChange={onSelectAll}
+            />
           </div>
         )
       );
-    }, [
-      activeEntity,
-      isLoading,
-      data,
-      openKeys,
-      visible,
-      currentPage,
-      onOpenChange,
-      handleAssetButtonVisibleChange,
-      onSelectAll,
-    ]);
+    }, [activeEntity, isLoading, data, currentPage, onSelectAll]);
 
     const layout = useMemo(() => {
       return (

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, FormProps, Select, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Form, FormProps, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
@@ -172,7 +172,12 @@ const AuthMechanismForm: FC<Props> = ({
         </Select>
       </Form.Item>
 
-      <Space className="w-full justify-end" size={4}>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal w-full justify-end"
+        gap={1}
+        itemClassName="layout-space-item">
         {!isEmpty(authenticationMechanism) && (
           <Button data-testid="cancel-edit" type="link" onClick={onCancel}>
             {t('label.cancel')}
@@ -186,7 +191,7 @@ const AuthMechanismForm: FC<Props> = ({
           type="primary">
           {t('label.generate')}
         </Button>
-      </Space>
+      </Box>
     </Form>
   );
 };

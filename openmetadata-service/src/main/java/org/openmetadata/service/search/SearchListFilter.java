@@ -13,6 +13,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
 public class SearchListFilter extends Filter<SearchListFilter> {
@@ -55,7 +56,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private static final String FIELD_TEST_STATUS = "testCaseStatus";
   private static final String FIELD_BASIC = "basic";
   private static final String FIELD_PINNED = "pinned";
-  private static final String FIELD_PRIMARY_ENTITY_ID = "primaryEntity.id";
+  private static final String FIELD_PRIMARY_ENTITY_ID =
+      ContextMemoryAnchorPins.FIELD_PRIMARY_ENTITY_ID;
   private static final String FIELD_RELATED_ENTITIES_ID = "relatedEntities.id";
 
   @Override

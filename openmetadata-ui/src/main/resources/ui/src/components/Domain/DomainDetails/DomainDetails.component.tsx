@@ -13,10 +13,9 @@
 import {
   Avatar,
   Box,
-  Button as CoreButton,
+  Button,
   Dropdown,
   Tabs,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   Announcement02,
@@ -25,8 +24,6 @@ import {
   Trash01,
   Version,
 } from '@openmetadata/ui-core-components/icons';
-import { Button, Tooltip } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, toString } from 'lodash';
@@ -126,12 +123,14 @@ import {
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import { DEFAULT_DOMAIN_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
+import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -1051,12 +1050,12 @@ const DomainDetails = ({
                 wrap="wrap">
                 {!isVersionsView && addButtonContent.length > 0 && (
                   <Dropdown.Root>
-                    <CoreButton
+                    <Button
                       data-testid="domain-details-add-button"
                       iconTrailing={<ChevronDown size={14} />}
                       size="sm">
                       {t('label.add')}
-                    </CoreButton>
+                    </Button>
                     <Dropdown.Popover className="tw:w-auto">
                       <Dropdown.Menu
                         aria-label={t('label.add')}
@@ -1075,7 +1074,7 @@ const DomainDetails = ({
                   </Dropdown.Root>
                 )}
 
-                <ButtonGroup className="spaced" size="small">
+                <Box align="center" gap={4}>
                   {onUpdateVote && (
                     <Voting
                       voteStatus={voteStatus}
@@ -1085,31 +1084,20 @@ const DomainDetails = ({
                   )}
 
                   {domain?.version && (
-                    <Tooltip
-                      title={t(
+                    <StatItem
+                      count={toString(domain.version)}
+                      icon={Version}
+                      isActive={Boolean(version)}
+                      testId="version-button"
+                      tooltip={t(
                         `label.${
                           isVersionsView
                             ? 'exit-version-history'
                             : 'version-plural-history'
                         }`
-                      )}>
-                      <Button
-                        className={classNames('', {
-                          'text-primary border-primary': version,
-                        })}
-                        data-testid="version-button"
-                        // Not wrapped in antd <Icon component>: it forces fill=currentColor, which fills
-                        // stroke-only core icons. `anticon` keeps antd's icon-text gap.
-                        icon={<Version className="anticon" size={14} />}
-                        onClick={handleVersionClick}>
-                        <Typography
-                          className={classNames('', {
-                            'text-primary': version,
-                          })}>
-                          {toString(domain.version)}
-                        </Typography>
-                      </Button>
-                    </Tooltip>
+                      )}
+                      onClick={handleVersionClick}
+                    />
                   )}
 
                   {!isVersionsView && manageButtonContent.length > 0 && (
@@ -1123,7 +1111,7 @@ const DomainDetails = ({
                       onOpenChange={setShowActions}
                     />
                   )}
-                </ButtonGroup>
+                </Box>
               </Box>
             ))()
           }
@@ -1225,7 +1213,8 @@ const DomainDetails = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <StyleModal
+      <IconColorModal
+        defaultIcon={DEFAULT_DOMAIN_ICON}
         open={isStyleEditing}
         style={domain.style}
         onCancel={() => setIsStyleEditing(false)}

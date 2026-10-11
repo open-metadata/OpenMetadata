@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { FilterSelect } from './filter-select';
 import type { FilterSelectProps } from './filter-select.types';
@@ -27,6 +30,7 @@ const EN_LABELS: Record<string, string> = {
   'label.apply': 'Apply',
   'label.apply-count': 'Apply ({{count}})',
   'label.cancel': 'Cancel',
+  'label.clear': 'Clear',
   'label.clear-all': 'Clear all',
   'label.count-selected': '{{count}} selected',
   'label.loading': 'Loading…',
@@ -72,6 +76,24 @@ const renderFilter = (props: Partial<FilterSelectProps> = {}) => {
   );
 
   return { onChange };
+};
+
+// react-aria fires onSelectionChange('all') for ⌘/Ctrl+A on a focused menu
+// row; drive the same native keydown the browser would.
+const selectAllByKeyboard = (focusRow = 'snowflake') => {
+  const menu = screen.getByRole('menu');
+  screen.getByTestId(focusRow).focus();
+
+  act(() =>
+    menu.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'a',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      })
+    )
+  );
 };
 
 describe('FilterSelect', () => {
@@ -229,6 +251,108 @@ describe('FilterSelect', () => {
     fireEvent.click(screen.getByLabelText('Select all'));
 
     expect(onChange).toHaveBeenCalledWith(['bigquery', 'redshift']);
+  });
+
+  it('keyboard select-all (Ctrl+A) selects displayed rows, not the null option', () => {
+    const { onChange } = renderFilter({
+      showSelectAll: true,
+      nullOption: { value: 'OM_NULL_FIELD', label: 'No Service' },
+    });
+
+    selectAllByKeyboard();
+
+    expect(onChange).toHaveBeenCalledWith([
+      'snowflake',
+      'bigquery',
+      'redshift',
+    ]);
+  });
+
+  it('keyboard select-all and the checkbox select-all commit the same set', () => {
+    const changes: string[][] = [];
+    const Controlled = () => {
+      const [selected, setSelected] = useState<string[]>([]);
+
+      return (
+        <FilterSelect
+          isOpen
+          showSelectAll
+          label="Service"
+          nullOption={{ value: 'OM_NULL_FIELD', label: 'No Service' }}
+          options={OPTIONS}
+          selectedValues={selected}
+          onChange={(v) => {
+            changes.push(v);
+            setSelected(v);
+          }}
+        />
+      );
+    };
+    render(<Controlled />);
+
+    // ⌘A from a menu row excludes the null option, matching the checkbox.
+    selectAllByKeyboard();
+    expect(changes.at(-1)).toEqual(['snowflake', 'bigquery', 'redshift']);
+
+    // Deselecting via the checkbox now clears every displayed row too — the
+    // keyboard path no longer commits a wider set that strands the null.
+    fireEvent.click(screen.getByLabelText('Select all'));
+    expect(changes.at(-1)).toEqual([]);
+  });
+
+  it('keyboard select-all merges displayed rows with selections hidden by the search', () => {
+    const changes: string[][] = [];
+    const Controlled = () => {
+      const [selected, setSelected] = useState<string[]>(['snowflake']);
+
+      return (
+        <FilterSelect
+          isOpen
+          searchable
+          showSelectAll
+          label="Service"
+          nullOption={{ value: 'OM_NULL_FIELD', label: 'No Service' }}
+          options={OPTIONS}
+          selectedValues={selected}
+          onChange={(v) => {
+            changes.push(v);
+            setSelected(v);
+          }}
+        />
+      );
+    };
+    render(<Controlled />);
+
+    fireEvent.change(screen.getByPlaceholderText('Search'), {
+      target: { value: 'big' },
+    });
+
+    // 'bigquery' is the only displayed row; 'snowflake' is filtered out, so it
+    // is retained via ...current, and the null (hidden by the search) is still
+    // excluded — matching the checkbox scope.
+    selectAllByKeyboard('bigquery');
+    expect(changes.at(-1)).toEqual(['snowflake', 'bigquery']);
+  });
+
+  it('ignores keyboard select-all while the search box has focus', () => {
+    const { onChange } = renderFilter({
+      searchable: true,
+      showSelectAll: true,
+    });
+
+    screen.getByPlaceholderText('Search').focus();
+    act(() =>
+      screen.getByRole('menu').dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'a',
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    );
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('filters locally when no onSearch is given', () => {
@@ -634,6 +758,18 @@ describe('FilterSelect', () => {
     expect(screen.getByTestId('clear-filter-btn')).toBeDisabled();
   });
 
+  it('drops the selection footer when the value is not clearable', () => {
+    renderFilter({
+      isClearable: false,
+      selectedValues: ['snowflake'],
+      selectionMode: 'single',
+      showRadio: true,
+    });
+
+    expect(screen.queryByTestId('selected-count')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('clear-filter-btn')).not.toBeInTheDocument();
+  });
+
   it('immediate mode footer reports the count and clears on demand', () => {
     const { onChange } = renderFilter({
       selectedValues: ['snowflake', 'bigquery'],
@@ -832,5 +968,227 @@ describe('FilterSelect', () => {
     });
 
     expect(screen.getByText('Choose services')).toBeInTheDocument();
+  });
+  it('marks single-select rows with a radio and keeps the row untinted', () => {
+    renderFilter({
+      selectionMode: 'single',
+      selectedValues: ['bigquery'],
+      showRadio: true,
+    });
+
+    const row = screen.getByTestId('bigquery');
+
+    expect(row).toHaveAttribute('aria-checked', 'true');
+    expect(row.querySelector('.tw\\:bg-brand-solid')).not.toBeNull();
+    // The indicator owns selection, so the row background is suppressed.
+    expect(row.className).toMatch(/\[&>div\]:bg-(transparent|primary_hover)!/);
+  });
+
+  it('does not unpick a radio row clicked again', () => {
+    const { onChange } = renderFilter({
+      selectionMode: 'single',
+      selectedValues: ['bigquery'],
+      showRadio: true,
+    });
+
+    fireEvent.click(screen.getByTestId('bigquery'));
+
+    expect(onChange).not.toHaveBeenCalledWith([]);
+  });
+
+  it('shows a Clear footer on a radio single select that closes it', () => {
+    const onOpenChange = vi.fn();
+    const { onChange } = renderFilter({
+      showRadio: true,
+      onOpenChange,
+      selectionMode: 'single',
+      selectedValues: ['bigquery'],
+    });
+
+    expect(screen.getByTestId('selected-count')).toHaveTextContent(
+      '1 selected'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(onChange).toHaveBeenCalledWith([]);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('opens from a custom trigger and focuses its search box', async () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      searchable: true,
+      trigger: <button type="button">Edit</button>,
+      onOpenChange,
+    });
+
+    expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(true);
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    // A synthetic click reads as virtual modality, which defers focus a tick.
+    await waitFor(() =>
+      expect(screen.getByTestId('search-input')).toHaveFocus()
+    );
+  });
+
+  it('stays open from a custom trigger when the page scrolls', () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      trigger: <button type="button">Edit</button>,
+      onOpenChange,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.scroll(document);
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it('disables the built-in trigger', () => {
+    renderFilter({
+      isDisabled: true,
+      isOpen: undefined,
+      triggerVariant: 'input',
+    });
+
+    expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  it('applies className to the wrapper of a custom trigger', () => {
+    renderFilter({
+      className: 'tw:flex tw:w-full',
+      isOpen: undefined,
+      trigger: <button type="button">Edit</button>,
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Edit' }).parentElement
+    ).toHaveClass('tw:flex', 'tw:w-full');
+  });
+
+  it('keeps the built-in trigger when the custom trigger is null', () => {
+    renderFilter({ isOpen: undefined, trigger: null, triggerVariant: 'input' });
+
+    expect(screen.getByTestId('search-dropdown-Service')).toBeInTheDocument();
+  });
+
+  it('names the built-in trigger by an external label and its value', () => {
+    render(
+      <>
+        <span id="field-label">Field value</span>
+        <FilterSelect
+          aria-labelledby="field-label"
+          label="Service"
+          options={OPTIONS}
+          selectedValues={['bigquery']}
+          selectionMode="single"
+          triggerVariant="input"
+          onChange={vi.fn()}
+        />
+      </>
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Field value BigQuery' })
+    ).toBeInTheDocument();
+  });
+
+  it('asks for the next page once the menu is scrolled to its end', () => {
+    const onLoadMore = vi.fn();
+    renderFilter({ onLoadMore });
+    const menu = screen.getByRole('menu');
+    Object.defineProperties(menu, {
+      scrollHeight: { configurable: true, value: 400 },
+      clientHeight: { configurable: true, value: 200 },
+    });
+
+    menu.scrollTop = 50;
+    fireEvent.scroll(menu);
+
+    expect(onLoadMore).not.toHaveBeenCalled();
+
+    menu.scrollTop = 200;
+    fireEvent.scroll(menu);
+
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a loading row while the next page loads', () => {
+    renderFilter({ isLoadingMore: true });
+
+    expect(
+      screen.getByRole('status', { name: 'Loading…' })
+    ).toBeInTheDocument();
+  });
+
+  describe('row details', () => {
+    const TIERS = [
+      { value: 't1', label: 'Tier1', details: 'Critical metrics' },
+      { value: 't2', label: 'Tier2', details: 'Important datasets' },
+    ];
+
+    it('expands a row from its chevron without selecting it', () => {
+      const { onChange } = renderFilter({
+        options: TIERS,
+        selectionMode: 'single',
+        showRadio: true,
+      });
+
+      expect(screen.queryByText('Important datasets')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('t2-expand'));
+
+      expect(screen.getByText('Important datasets')).toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('opens with the selected row expanded', () => {
+      renderFilter({
+        options: TIERS,
+        selectedValues: ['t1'],
+        selectionMode: 'single',
+        showRadio: true,
+      });
+
+      expect(screen.getByText('Critical metrics')).toBeInTheDocument();
+      expect(screen.queryByText('Important datasets')).not.toBeInTheDocument();
+    });
+
+    it('collapses the selected row from its chevron', () => {
+      renderFilter({
+        options: TIERS,
+        selectedValues: ['t1'],
+        selectionMode: 'single',
+        showRadio: true,
+      });
+
+      fireEvent.click(screen.getByTestId('t1-expand'));
+
+      expect(screen.queryByText('Critical metrics')).not.toBeInTheDocument();
+    });
+
+    it('expands and collapses the focused row with the arrow keys', () => {
+      renderFilter({
+        options: TIERS,
+        selectionMode: 'single',
+        showRadio: true,
+      });
+      const row = screen.getByTestId('t2');
+
+      fireEvent.keyDown(row, { key: 'ArrowRight' });
+
+      expect(screen.getByText('Important datasets')).toBeInTheDocument();
+
+      fireEvent.keyDown(row, { key: 'ArrowLeft' });
+
+      expect(screen.queryByText('Important datasets')).not.toBeInTheDocument();
+    });
   });
 });
