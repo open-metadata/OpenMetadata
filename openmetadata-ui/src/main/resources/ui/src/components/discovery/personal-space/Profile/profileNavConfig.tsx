@@ -19,6 +19,7 @@ import {
   PermissionDebugger as AccessControlIcon,
   Persona as PersonaIcon,
   Policy as GovernanceTabIcon,
+  Settings01,
   Settings02,
   ShieldTick,
   SingleSignOn,
@@ -46,6 +47,7 @@ import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 import PersonasPanel from './tabs/personas/PersonasPanel';
 import PlatformSettingsPanel from './tabs/platform-settings/PlatformSettingsPanel';
+import PreferencesPanel from './tabs/preferences/PreferencesPanel';
 import SsoPanel from './tabs/sso/SsoPanel';
 
 // Single source of truth lives in Profile.constants (hook-safe layer); re-exported
@@ -169,6 +171,14 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
         userData={userData}
       />
     ),
+  },
+  {
+    id: 'preferences',
+    group: 'account',
+    label: 'label.preference-plural',
+    description: 'message.preferences-page-description',
+    icon: Settings01,
+    render: () => <PreferencesPanel />,
   },
   {
     id: 'access-token',

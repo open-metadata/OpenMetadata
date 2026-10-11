@@ -636,6 +636,18 @@ describe('FilterSelect', () => {
     expect(screen.getByTestId('clear-filter-btn')).toBeDisabled();
   });
 
+  it('drops the selection footer when the value is not clearable', () => {
+    renderFilter({
+      isClearable: false,
+      selectedValues: ['snowflake'],
+      selectionMode: 'single',
+      showRadio: true,
+    });
+
+    expect(screen.queryByTestId('selected-count')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('clear-filter-btn')).not.toBeInTheDocument();
+  });
+
   it('immediate mode footer reports the count and clears on demand', () => {
     const { onChange } = renderFilter({
       selectedValues: ['snowflake', 'bigquery'],
@@ -902,6 +914,21 @@ describe('FilterSelect', () => {
     );
   });
 
+  it('stays open from a custom trigger when the page scrolls', () => {
+    const onOpenChange = vi.fn();
+    renderFilter({
+      isOpen: undefined,
+      trigger: <button type="button">Edit</button>,
+      onOpenChange,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.scroll(document);
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
   it('disables the built-in trigger', () => {
     renderFilter({
       isDisabled: true,
@@ -949,5 +976,97 @@ describe('FilterSelect', () => {
     expect(
       screen.getByRole('button', { name: 'Field value BigQuery' })
     ).toBeInTheDocument();
+  });
+
+  it('asks for the next page once the menu is scrolled to its end', () => {
+    const onLoadMore = vi.fn();
+    renderFilter({ onLoadMore });
+    const menu = screen.getByRole('menu');
+    Object.defineProperties(menu, {
+      scrollHeight: { configurable: true, value: 400 },
+      clientHeight: { configurable: true, value: 200 },
+    });
+
+    menu.scrollTop = 50;
+    fireEvent.scroll(menu);
+
+    expect(onLoadMore).not.toHaveBeenCalled();
+
+    menu.scrollTop = 200;
+    fireEvent.scroll(menu);
+
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a loading row while the next page loads', () => {
+    renderFilter({ isLoadingMore: true });
+
+    expect(
+      screen.getByRole('status', { name: 'Loading…' })
+    ).toBeInTheDocument();
+  });
+
+  describe('row details', () => {
+    const TIERS = [
+      { value: 't1', label: 'Tier1', details: 'Critical metrics' },
+      { value: 't2', label: 'Tier2', details: 'Important datasets' },
+    ];
+
+    it('expands a row from its chevron without selecting it', () => {
+      const { onChange } = renderFilter({
+        options: TIERS,
+        selectionMode: 'single',
+        showRadio: true,
+      });
+
+      expect(screen.queryByText('Important datasets')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('t2-expand'));
+
+      expect(screen.getByText('Important datasets')).toBeInTheDocument();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('opens with the selected row expanded', () => {
+      renderFilter({
+        options: TIERS,
+        selectedValues: ['t1'],
+        selectionMode: 'single',
+        showRadio: true,
+      });
+
+      expect(screen.getByText('Critical metrics')).toBeInTheDocument();
+      expect(screen.queryByText('Important datasets')).not.toBeInTheDocument();
+    });
+
+    it('collapses the selected row from its chevron', () => {
+      renderFilter({
+        options: TIERS,
+        selectedValues: ['t1'],
+        selectionMode: 'single',
+        showRadio: true,
+      });
+
+      fireEvent.click(screen.getByTestId('t1-expand'));
+
+      expect(screen.queryByText('Critical metrics')).not.toBeInTheDocument();
+    });
+
+    it('expands and collapses the focused row with the arrow keys', () => {
+      renderFilter({
+        options: TIERS,
+        selectionMode: 'single',
+        showRadio: true,
+      });
+      const row = screen.getByTestId('t2');
+
+      fireEvent.keyDown(row, { key: 'ArrowRight' });
+
+      expect(screen.getByText('Important datasets')).toBeInTheDocument();
+
+      fireEvent.keyDown(row, { key: 'ArrowLeft' });
+
+      expect(screen.queryByText('Important datasets')).not.toBeInTheDocument();
+    });
   });
 });

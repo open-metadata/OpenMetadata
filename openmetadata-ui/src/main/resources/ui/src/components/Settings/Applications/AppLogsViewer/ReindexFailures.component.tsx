@@ -16,6 +16,7 @@ import {
   Button,
   Select,
   SlideoutMenu,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -205,7 +206,19 @@ const ReindexFailures = ({
         dataIndex: 'errorMessage',
         key: 'errorMessage',
         width: 400,
-        render: (text: string) => (text ? <ErrorMessage text={text} /> : '-'),
+        render: (text: string) =>
+          text ? (
+            <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
+              placement="top left"
+              title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}
+              triggerClassName="tw:inline-flex">
+              <ErrorMessage text={text} />
+            </Tooltip>
+          ) : (
+            '-'
+          ),
       },
       {
         title: t('label.timestamp'),

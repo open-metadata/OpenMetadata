@@ -21,9 +21,20 @@ export interface AppConfiguration {
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Tenant-wide default order of columns in table schema views. Users can still change the
+     * order per page from the Sort menu; that choice is not saved. Null means no tenant default
+     * is configured, and columns are ordered alphabetically.
+     */
+    defaultColumnOrder?: DefaultColumnOrder | null;
 }
 
 export enum DefaultAppMode {
     AI = "ai",
     Classic = "classic",
+}
+
+export enum DefaultColumnOrder {
+    Alphabetical = "alphabetical",
+    SourceOrder = "sourceOrder",
 }

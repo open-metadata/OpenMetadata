@@ -22,6 +22,11 @@ export interface FilterSelectOption {
   /** Result count shown as a trailing badge on the row. */
   count?: number;
   /**
+   * Extra content under the row, shown and hidden by a chevron (or
+   * ArrowRight / ArrowLeft) without selecting the row.
+   */
+  details?: ReactNode;
+  /**
    * Leading icon (service logo, domain color chip, entity icon, …) — an icon
    * component, or an already-rendered node.
    */
@@ -97,6 +102,11 @@ export interface FilterSelectProps {
    */
   showRadio?: boolean;
   /**
+   * `false` drops the selection-count footer and its Clear action, for a
+   * value that is required once set (e.g. a radio picker). Defaults to `true`.
+   */
+  isClearable?: boolean;
+  /**
    * Tri-state header row that toggles every currently displayed value row
    * (the filtered list). The null option is an explicit choice and is not
    * included.
@@ -123,4 +133,11 @@ export interface FilterSelectProps {
   onOpenChange?: (open: boolean) => void;
   /** Async search — when set the parent filters `options`; otherwise local. */
   onSearch?: (text: string) => void;
+  /**
+   * Called when the option list is scrolled to its end, to append the next
+   * page. The parent tracks whether there is one and whether it is loading.
+   */
+  onLoadMore?: () => void;
+  /** Shows a loading row under the options while the next page loads. */
+  isLoadingMore?: boolean;
 }
