@@ -835,7 +835,7 @@ class DbtSource(DbtServiceSource):
             ),
             fetch_multiple_entities=True,
         )
-        logger.debug(f"Found table entities from {fqn_search_string}: {len(table_entities or [])} entities")
+        logger.debug("Found table entities from %s: %d entities", fqn_search_string, len(table_entities or []))
         return table_entities or []
 
     def _get_table_entity_ignoring_database(self, schema_name: str, table_name: str) -> Table | None:
@@ -865,8 +865,9 @@ class DbtSource(DbtServiceSource):
         ]
         if len(candidates) > 1:
             logger.warning(
-                f"Table '{search_fqn}' matches more than one table in OpenMetadata, so it is left unresolved: "
-                f"{', '.join(model_str(table.fullyQualifiedName) for table in candidates)}"
+                "Table '%s' matches more than one table in OpenMetadata, so it is left unresolved: %s",
+                search_fqn,
+                ", ".join(model_str(table.fullyQualifiedName) for table in candidates),
             )
         return candidates[0] if len(candidates) == 1 else None
 
