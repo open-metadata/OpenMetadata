@@ -34,7 +34,8 @@ class RdfSparqlServiceTest {
   void executesAReadQueryWithTypedWireMetadata() {
     RdfRepository repository = mock(RdfRepository.class);
     String query = "SELECT * WHERE { ?subject ?predicate ?object }";
-    when(repository.executeSparqlQuery(anyString(), eq("text/csv"))).thenReturn("subject\n");
+    when(repository.executeAssertedSparqlQuery(anyString(), eq("text/csv")))
+        .thenReturn("subject\n");
 
     RdfSparqlService.QueryResult result = service(repository).query(query, "csv", "none");
 
@@ -42,7 +43,7 @@ class RdfSparqlServiceTest {
     assertEquals("csv", result.format());
     assertEquals("text/csv", result.mediaType());
     ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
-    verify(repository).executeSparqlQuery(queryCaptor.capture(), eq("text/csv"));
+    verify(repository).executeAssertedSparqlQuery(queryCaptor.capture(), eq("text/csv"));
     assertTrue(queryCaptor.getValue().contains("LIMIT"));
     assertTrue(queryCaptor.getValue().contains("1000"));
   }
@@ -137,7 +138,7 @@ class RdfSparqlServiceTest {
     RdfRepository repository = mock(RdfRepository.class);
     String graphQuery =
         "CONSTRUCT { ?subject ?predicate ?object } WHERE { ?subject ?predicate ?object }";
-    when(repository.executeSparqlQuery(anyString(), eq("text/turtle"))).thenReturn("");
+    when(repository.executeAssertedSparqlQuery(anyString(), eq("text/turtle"))).thenReturn("");
 
     RdfSparqlService.QueryResult result = service(repository).query(graphQuery, null, null);
 
@@ -170,7 +171,7 @@ class RdfSparqlServiceTest {
   @Test
   void rejectsOversizedSerializedResults() {
     RdfRepository repository = mock(RdfRepository.class);
-    when(repository.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
+    when(repository.executeAssertedSparqlQuery(anyString(), eq("application/sparql-results+json")))
         .thenReturn("x".repeat(SparqlQueryLimits.MAX_OUTPUT_BYTES + 1));
 
     IllegalStateException exception =

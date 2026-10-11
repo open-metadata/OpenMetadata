@@ -162,7 +162,6 @@ function AlertEditModal({
       footerActions={extraFooterButtons}
       hintOpen={showHint}
       icon={AlertTriangle}
-      iconColor="warning"
       isSubmitDisabled={saving || isLoading}
       isSubmitting={saving}
       open={isOpen}

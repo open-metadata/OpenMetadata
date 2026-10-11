@@ -18,7 +18,6 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
@@ -273,7 +272,7 @@ const MlModelFeaturesList = () => {
                               entityFqn={entityFqn}
                               entityType={EntityType.MLMODEL}
                               handleTagSelection={handleTagsChange}
-                              hasTagEditAccess={canEditTags}
+                              hasTagEditAccess={canEditGlossaryTerms}
                               index={index}
                               isReadOnly={isDeleted}
                               record={feature}
@@ -303,7 +302,7 @@ const MlModelFeaturesList = () => {
                               entityFqn={entityFqn}
                               entityType={EntityType.MLMODEL}
                               handleTagSelection={handleTagsChange}
-                              hasTagEditAccess={canEditGlossaryTerms}
+                              hasTagEditAccess={canEditTags}
                               index={index}
                               isReadOnly={isDeleted}
                               record={feature}
