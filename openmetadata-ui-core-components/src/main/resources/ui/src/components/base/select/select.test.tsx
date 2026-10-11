@@ -233,4 +233,128 @@ describe('Select with a large collection', () => {
     );
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
+
+  it('navigates a windowed ComboBox with arrows and PageDown and commits', async () => {
+    const user = userEvent.setup();
+    const onSelectionChange = vi.fn();
+    const items = Array.from({ length: 250 }, (_, index) => ({
+      id: `column-${index}`,
+      label: `Column ${index}`,
+    }));
+    render(
+      <Select.ComboBox
+        aria-label="Columns"
+        items={items}
+        onSelectionChange={onSelectionChange}>
+        {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+      </Select.ComboBox>
+    );
+    const input = screen.getByRole('combobox', { name: /Columns/ });
+    await user.click(input);
+    await screen.findByRole('listbox');
+    expect(screen.getAllByRole('option').length).toBeLessThan(items.length);
+
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    await waitFor(() =>
+      expect(input.getAttribute('aria-activedescendant')).toBeTruthy()
+    );
+    const activeText = () =>
+      document.getElementById(input.getAttribute('aria-activedescendant') ?? '')
+        ?.textContent;
+    await waitFor(() => expect(activeText()).toBe('Column 1'));
+
+    for (let i = 0; i < 60; i++) {
+      await user.keyboard('{PageDown}');
+    }
+    await waitFor(() => expect(activeText()).toBe('Column 249'));
+    await user.keyboard('{Enter}');
+
+    await waitFor(() =>
+      expect(onSelectionChange).toHaveBeenCalledWith('column-249')
+    );
+  });
+
+  describe('keyboard navigation', () => {
+    const items = Array.from({ length: 250 }, (_, index) => ({
+      id: `column-${index}`,
+      label: `Column ${index}`,
+    }));
+    const openSelect = async (onSelectionChange = vi.fn()) => {
+      const user = userEvent.setup();
+      render(
+        <Select
+          aria-label="Columns"
+          items={items}
+          onSelectionChange={onSelectionChange}>
+          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+        </Select>
+      );
+      await user.click(screen.getByRole('button', { name: /Columns/ }));
+      await screen.findByRole('listbox');
+
+      return { user, onSelectionChange };
+    };
+    const activeLabel = () => document.activeElement?.textContent;
+
+    it('moves the active option with arrows, Home, End and PageDown', async () => {
+      const { user } = await openSelect();
+      await user.keyboard('{Home}');
+      await waitFor(() => expect(activeLabel()).toBe('Column 0'));
+
+      await user.keyboard('{ArrowDown}{ArrowDown}');
+      await waitFor(() => expect(activeLabel()).toBe('Column 2'));
+
+      await user.keyboard('{ArrowUp}');
+      await waitFor(() => expect(activeLabel()).toBe('Column 1'));
+
+      await user.keyboard('{End}');
+      await waitFor(() => expect(activeLabel()).toBe('Column 249'));
+
+      await user.keyboard('{Home}{PageDown}');
+      await waitFor(() => {
+        const label = activeLabel() ?? '';
+        expect(Number(label.replace('Column ', ''))).toBeGreaterThan(1);
+      });
+    });
+
+    it('reaches options past the 100th by repeated PageDown and commits', async () => {
+      const { user, onSelectionChange } = await openSelect();
+      await user.keyboard('{Home}');
+      await waitFor(() => expect(activeLabel()).toBe('Column 0'));
+
+      for (let i = 0; i < 60; i++) {
+        await user.keyboard('{PageDown}');
+      }
+      await waitFor(() => expect(activeLabel()).toBe('Column 249'));
+      await user.keyboard('{Enter}');
+
+      await waitFor(() =>
+        expect(onSelectionChange).toHaveBeenCalledWith('column-249')
+      );
+    });
+
+    it('jumps to a late option by typeahead and commits it', async () => {
+      const { user, onSelectionChange } = await openSelect();
+      await user.keyboard('Column 17');
+      await waitFor(() => expect(activeLabel()).toBe('Column 17'));
+      await user.keyboard('{Enter}');
+
+      await waitFor(() =>
+        expect(onSelectionChange).toHaveBeenCalledWith('column-17')
+      );
+    });
+
+    it('closes on Escape without committing and returns focus to the trigger', async () => {
+      const { user, onSelectionChange } = await openSelect();
+      await user.keyboard('{End}{Escape}');
+
+      await waitFor(() =>
+        expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+      );
+      expect(onSelectionChange).not.toHaveBeenCalled();
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /Columns/ })).toHaveFocus()
+      );
+    });
+  });
 });

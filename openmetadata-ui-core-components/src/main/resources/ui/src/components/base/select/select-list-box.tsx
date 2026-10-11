@@ -36,7 +36,7 @@ export const SelectListBox = ({
       {...props}
       className={cx(
         'tw:size-full tw:outline-hidden',
-        virtualize && 'tw:overflow-y-auto tw:py-1',
+        virtualize && 'tw:overflow-y-auto',
         virtualize && (size === 'sm' ? 'tw:max-h-64' : 'tw:max-h-80')
       )}>
       {children}
