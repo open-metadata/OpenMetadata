@@ -21,6 +21,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
@@ -493,14 +494,20 @@ public class RdfRepository {
 
   /**
    * Projects a lineage edge with the details stored for it now, including column lineage, so live
-   * edits and reindexing write the same triples.
+   * edits and reindexing write the same triples. A replay that finds the edge gone, such as an add
+   * replayed after the edge was deleted, removes it instead of restoring it without details.
    */
   public void refreshLineage(final EntityRelationship lineage) {
-    final LineageDetails details =
-        projectionLoaders
-            .lineageDetailsLoader()
-            .load(lineage.getFromId(), lineage.getToId())
-            .orElse(null);
+    final Optional<RdfProjectionLoaders.StoredLineageEdge> storedEdge =
+        projectionLoaders.lineageDetailsLoader().load(lineage.getFromId(), lineage.getToId());
+    if (storedEdge.isEmpty()) {
+      removeRelationship(lineage);
+    } else {
+      projectLineage(lineage, storedEdge.get().details());
+    }
+  }
+
+  private void projectLineage(final EntityRelationship lineage, final LineageDetails details) {
     try {
       addLineageWithDetails(
           lineage.getFromEntity(),
