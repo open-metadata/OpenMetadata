@@ -18,12 +18,22 @@
   min-height: calc(var(--om-space-40) * 14);
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(min-content, 1fr);
+  // Row 2 must be `minmax(0, 1fr)` so the ReflexContainer stage inside
+  // can't propagate its intrinsic height up through the grid chain.
+  // `minmax(min-content, 1fr)` lets a tall details pane blow the Card
+  // out thousands of pixels past the viewport.
+  grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
 
   .kg-content {
     display: grid;
-    grid-template-rows: auto minmax(min-content, 1fr) auto;
+    // Row 2 (the stage) is `minmax(0, 1fr)` so a tall ReflexContainer child
+    // can't inflate the grid chain past the Card's bounded height. The old
+    // `minmax(min-content, 1fr)` was fine when the stage was a simple grid
+    // with a clamped `.kg-details`, but react-reflex lets the details pane
+    // size to its content and that intrinsic minimum would push the container
+    // thousands of pixels past the viewport.
+    grid-template-rows: auto minmax(0, 1fr) auto;
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
     // Grid items default to min-width:auto, so the absolutely-sized G6 canvas
@@ -45,6 +55,13 @@
     min-height: 0;
     min-width: 0;
     position: relative;
+    // The parent `.kg-content` row uses `minmax(min-content, 1fr)`, which
+    // treats its content's intrinsic height as the floor. The details pane's
+    // table is tall and would push that floor past the viewport; capping the
+    // stage to its grid cell with overflow:hidden stops the ReflexContainer
+    // inside from inflating up through the chain.
+    height: 100%;
+    overflow: hidden;
   }
 
   .kg-stage-main {
@@ -52,6 +69,7 @@
     grid-row: 1;
     min-height: 0;
     min-width: 0;
+    height: 100%;
   }
 
   // Drawer-closed shape: canvas owns the whole stage, no ReflexContainer in

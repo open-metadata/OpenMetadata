@@ -476,7 +476,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           className="kg-stage-details-pane"
           flex={0.4}
           key="details"
-          minSize={300}>
+          minSize={180}>
           {detailsElement}
         </ReflexElement>
       );
