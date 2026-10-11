@@ -435,7 +435,7 @@ const describeDescriptionUpdate = (
       ? {
           labelKey: 'label.description',
           // Filled from the entity when the payload carries no snapshot
-          // (withExistingDescription).
+          // (withExistingValues).
           before: payload.currentDescription
             ? [payload.currentDescription]
             : [],
@@ -654,10 +654,17 @@ export const deriveTaskAboutEntity = (
 type DescribedField = {
   name?: string;
   description?: string;
+  tags?: TagLabel[];
   children?: DescribedField[];
+};
+type DescribedEntity = {
+  description?: string;
+  tags?: TagLabel[];
+  columns?: DescribedField[];
 };
 
 const COLUMN_DESCRIPTION_PATH = /^columns\.(.+)\.description$/;
+const COLUMN_TAGS_PATH = /^columns\.(.+?)(?:\.tags)?$/;
 
 const findColumn = (
   columns: DescribedField[] | undefined,
@@ -670,36 +677,69 @@ const findColumn = (
     undefined
   );
 
-// The description a field path names on its entity: the entity's own, or a
-// (possibly nested) column's.
-const getFieldDescription = (
+// What a field path names on its entity: the entity itself, or a (possibly
+// nested) column.
+const getField = (
   entity: EntityUnion | undefined,
-  fieldPath?: string
-): string | undefined => {
-  const typed = entity as
-    | { description?: string; columns?: DescribedField[] }
-    | undefined;
-  const columnName = fieldPath && COLUMN_DESCRIPTION_PATH.exec(fieldPath)?.[1];
+  fieldPath: string | undefined,
+  columnPath: RegExp
+): DescribedField | DescribedEntity | undefined => {
+  const typed = entity as DescribedEntity | undefined;
+  const columnName = fieldPath && columnPath.exec(fieldPath)?.[1];
 
-  return columnName
-    ? findColumn(typed?.columns, columnName)?.description
-    : typed?.description;
+  return columnName ? findColumn(typed?.columns, columnName) : typed;
+};
+
+// The description's Existing side: the payload's snapshot when it has one,
+// else the field's description as it is now.
+const withExistingDescription = (
+  change: ActivityChange,
+  task: Task,
+  entity?: EntityUnion
+): ActivityChange => {
+  const { fieldPath } = getPayload<DescriptionUpdatePayload>(task);
+  const existing = getField(
+    entity,
+    fieldPath,
+    COLUMN_DESCRIPTION_PATH
+  )?.description?.trim();
+
+  return change.before.length || !existing
+    ? change
+    : { ...change, before: [existing] };
+};
+
+// The tags a tag task keeps: the field's current tags (the payload's snapshot,
+// else the asset as it is now) less those it removes or adds.
+const withKeptTags = (
+  change: ActivityChange,
+  task: Task,
+  entity?: EntityUnion
+): ActivityChange => {
+  const payload = getPayload<TagUpdatePayload>(task);
+  const current =
+    payload.currentTags ??
+    getField(entity, payload.fieldPath, COLUMN_TAGS_PATH)?.tags;
+  const changed = new Set([...change.before, ...change.after]);
+  const unchanged = tagNames(current).filter((name) => !changed.has(name));
+
+  return { ...change, unchanged };
 };
 
 /**
- * A description task's change with its Existing side: the payload's snapshot
- * when it has one, else the field's description on the entity as it is now.
+ * A task's change with what the asset holds now: a description's Existing
+ * text, or the tags a tag request keeps.
  */
-export const withExistingDescription = (
+export const withExistingValues = (
   change: ActivityChange | undefined,
   task: Task,
   entity?: EntityUnion
 ): ActivityChange | undefined => {
-  if (!change?.isText || change.before.length) {
-    return change;
+  if (!change) {
+    return undefined;
   }
-  const { fieldPath } = getPayload<DescriptionUpdatePayload>(task);
-  const existing = getFieldDescription(entity, fieldPath)?.trim();
 
-  return existing ? { ...change, before: [existing] } : change;
+  return change.isText
+    ? withExistingDescription(change, task, entity)
+    : withKeptTags(change, task, entity);
 };
