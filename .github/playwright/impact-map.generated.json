@@ -6845,14 +6845,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/Teams.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Domain/DomainTypeWidget/DomainTypeWidget.tsx"
       ],
       "specs": [
