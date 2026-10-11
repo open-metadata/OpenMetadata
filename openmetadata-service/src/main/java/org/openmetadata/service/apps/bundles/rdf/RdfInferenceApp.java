@@ -74,7 +74,7 @@ public final class RdfInferenceApp extends AbstractNativeApplication {
     final RdfRepository repository = RdfRepository.getInstanceOrNull();
     final InferenceMaterializationResult result;
     if (repository == null
-        || !Boolean.TRUE.equals(repository.getConfig().getMaterializedInferenceEnabled())) {
+        || !RdfRepository.supportsMaterializedInference(repository.getConfig())) {
       final long now = System.currentTimeMillis();
       result = emptyResult(now);
     } else {
