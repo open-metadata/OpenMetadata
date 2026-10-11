@@ -18,11 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
@@ -130,6 +132,28 @@ class RdfSparqlServiceTest {
     service(repository).update(update);
 
     verify(repository).executeSparqlUpdate(update);
+  }
+
+  @Test
+  void recordsAnUpdateWhoseOutcomeIsUnknownAsAnUntrackedWrite()
+      throws ReflectiveOperationException {
+    RdfRepository repository = mock(RdfRepository.class);
+    String update = "INSERT DATA { <urn:subject> <urn:predicate> <urn:object> }";
+    doThrow(new IllegalStateException("Timed out after Fuseki applied the update"))
+        .when(repository)
+        .executeSparqlUpdate(update);
+    RdfLiveWriteStore store = mock(RdfLiveWriteStore.class);
+    Field storeField = RdfUpdater.class.getDeclaredField("liveWriteStore");
+    storeField.setAccessible(true);
+    Object originalStore = storeField.get(null);
+    storeField.set(null, store);
+    try {
+      assertThrows(IllegalStateException.class, () -> service(repository).update(update));
+
+      verify(store).recordUntrackedWrite();
+    } finally {
+      storeField.set(null, originalStore);
+    }
   }
 
   @Test

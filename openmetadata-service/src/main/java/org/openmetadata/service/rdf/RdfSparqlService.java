@@ -76,8 +76,12 @@ public final class RdfSparqlService {
     }
     federationGuard.enforceUpdate(request);
     requireSingleWhereBearingOperation(request);
-    repository.executeSparqlUpdate(sparql);
-    RdfUpdater.recordUntrackedWrite();
+    try {
+      repository.executeSparqlUpdate(sparql);
+    } finally {
+      // A failure can arrive after Fuseki applied the update, such as a timeout on the response.
+      RdfUpdater.recordUntrackedWrite();
+    }
   }
 
   private static void requireSingleWhereBearingOperation(UpdateRequest request) {
