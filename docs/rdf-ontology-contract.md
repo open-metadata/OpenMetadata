@@ -119,6 +119,63 @@ extension entries. Unrelated entities and relationship hooks remain intact.
 User-registered glossary relationship IRIs and custom ontology axioms still use
 their configured vocabulary; they are not a finite part of the shipped core ontology.
 
+## Glossary ontology projection
+
+`GET /v1/glossaries/{id}/exportOntology`, `GET /v1/rdf/glossary/{id}/export`, and the
+glossary-scoped `POST /v1/glossaries/{id}/sparql` build one glossary's ontology from the
+database on each request; they do not read the knowledge graph. That projection is OWL 2
+DL: OWL API, configured as the reasoner worker configures it, parses it without
+placeholders or unconsumed triples, and its OWL 2 DL profile check reports nothing for
+valid input (`GlossaryOntologyModelBuilderTest`, `OntologyExpressionRdfWriterTest`).
+
+- **Declarations.** Every class, object property, data property, annotation property, and
+  named individual the projection uses is declared. SKOS terms are declared with the kind
+  the SKOS reference vocabulary gives them (`skos:broader` is an object property,
+  `skos:prefLabel` an annotation property), and `om:mappedTo`, the realization roles and
+  `om:fullyQualifiedName` with the kind `openmetadata.ttl` gives them. Built-in RDF, RDFS,
+  OWL, and XSD vocabulary is never declared. The importer ignores these declarations when an
+  export is imported again: an IRI in the SKOS, RDF, RDFS, OWL, XSD, or `om:` namespace
+  never becomes a term or an attribute.
+- **Reserved relationship types.** A relationship type whose predicate is built-in or SKOS
+  vocabulary keeps that predicate's meaning instead of becoming an `owl:ObjectProperty`
+  with the type's characteristics:
+
+  | Type | Edge is read as | Not emitted any more |
+  |---|---|---|
+  | `subClassOf` (`rdfs:subClassOf`) | Subclass axiom; both terms are declared classes | `rdfs:subClassOf a owl:TransitiveProperty` |
+  | `seeAlso` (`rdfs:seeAlso`) | Annotation | `rdfs:seeAlso a owl:SymmetricProperty` |
+  | `broader`, `narrower`, `synonym` (SKOS) | SKOS object property assertion | Transitive or symmetric declarations; SKOS does not make `skos:broader` transitive |
+  | `superClassOf` (`om:superClassOf`) | Transitive object property | `owl:inverseOf rdfs:subClassOf`; the inverse edge is stored as a `subClassOf` edge |
+
+  The characteristics stay on the relationship types for OpenMetadata's own navigation and
+  validation. A property chain or property disjointness that names reserved vocabulary
+  cannot be expressed in OWL 2 DL; the projection omits that axiom and logs a warning.
+- **Hierarchy.** Every parent link is `skos:broader`/`skos:narrower`. It is also
+  `rdfs:subClassOf` only when both terms are OWL classes, that is, neither has concept type
+  `SKOS_CONCEPT`. A thesaurus imported as SKOS no longer gains subclass axioms it never
+  stated.
+- **Class IRIs.** A term's OWL class is its `iri` when set, otherwise its entity IRI
+  (`GlossaryTermClassIri`). The live metadata projection keeps the entity IRI as the term
+  record's subject, because tags, realizations, relations and deletes address the record
+  by it; `om:iri` records the class IRI there. No `owl:sameAs` joins the two.
+- **Datatypes.** Cardinalities are `xsd:nonNegativeInteger`. A qualified restriction uses
+  `owl:onDataRange` when its value is a literal, its filler names a datatype, or its
+  property is a term attribute, and `owl:onClass` otherwise. `xsd:date` is not in the OWL 2
+  datatype map, so a `DATE` attribute without an explicit `datatypeIri` ranges over
+  `xsd:dateTime`. An explicit `datatypeIri` is kept exactly; one outside the map fails the
+  profile check instead of being rewritten.
+
+Not yet DL-checked: annex triples, which are merged unchanged, and attributes declared on a
+`SKOS_CONCEPT`-only term. Every non-deleted axiom is included regardless of lifecycle state.
+
+For ontology-scoped SPARQL with `inference=owl`, `skos:broader` is no longer transitive; use
+`skos:broader+`. With `rdfs` or `owl`, a `SKOS_CONCEPT` term no longer has its parent as a
+superclass.
+
+The projection is computed per request, so the change applies as soon as the server is
+upgraded. Nothing is stored in Fuseki, so no rebuild is needed. Annex rows recorded by
+earlier imports are unchanged.
+
 ## Upgrading an existing RDF store
 
 Run a full `RdfIndexApp` rebuild with `recreateIndex=true` after upgrading to 2.0.2.
