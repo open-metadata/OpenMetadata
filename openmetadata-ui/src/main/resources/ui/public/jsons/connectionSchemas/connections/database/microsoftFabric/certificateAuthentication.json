@@ -1,0 +1,43 @@
+{
+  "title": "Certificate Authentication",
+  "description": "Authenticate the service principal with an X.509 certificate registered on its Microsoft Entra ID application.",
+  "javaType": "org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication",
+  "type": "object",
+  "properties": {
+    "certificate": {
+      "title": "Certificate",
+      "description": "PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page in Microsoft Entra ID. It may be followed by its issuing certificate chain.",
+      "type": "string",
+      "format": "password",
+      "accept": [
+        ".pem",
+        ".crt",
+        ".cer"
+      ],
+      "uiFieldType": "fileOrInput"
+    },
+    "privateKey": {
+      "title": "Private Key",
+      "description": "PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding both the key and the certificate can be supplied in both fields.",
+      "type": "string",
+      "format": "password",
+      "accept": [
+        ".pem",
+        ".key",
+        ".p8"
+      ],
+      "uiFieldType": "fileOrInput"
+    },
+    "privateKeyPassphrase": {
+      "title": "Private Key Passphrase",
+      "description": "Passphrase of an encrypted private key. Leave empty when the private key is not encrypted.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "certificate",
+    "privateKey"
+  ]
+}

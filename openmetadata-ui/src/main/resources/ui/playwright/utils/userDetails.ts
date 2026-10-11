@@ -20,9 +20,6 @@ export const redirectToUserPage = async (page: Page) => {
 
   await page.getByTestId('dropdown-profile').click();
 
-  // Hover on the profile avatar to close the name tooltip
-  await page.getByTestId('profile-avatar').first().hover();
-
   await page.locator('.profile-dropdown').waitFor({ state: 'visible' });
 
   const getUserDetails = page.waitForResponse(`/api/v1/users/name/*`);

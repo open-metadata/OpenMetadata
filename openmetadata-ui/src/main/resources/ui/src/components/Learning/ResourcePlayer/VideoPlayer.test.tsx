@@ -21,6 +21,7 @@ const createMockResource = (url: string): LearningResource => ({
   displayName: 'Test Video',
   resourceType: 'Video',
   source: { url },
+  categories: [],
   contexts: [{ pageId: 'glossary' }],
 });
 
@@ -31,7 +32,7 @@ describe('VideoPlayer', () => {
     );
     render(<VideoPlayer resource={resource} />);
 
-    expect(document.querySelector('.ant-spin')).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).toBeInTheDocument();
   });
 
   it('should render iframe with correct YouTube embed URL', () => {
@@ -127,7 +128,7 @@ describe('VideoPlayer', () => {
     const iframe = screen.getByTitle('Test Video');
     fireEvent.load(iframe);
 
-    expect(document.querySelector('.ant-spin')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 
   it('should use resource name as title fallback', () => {
@@ -136,6 +137,7 @@ describe('VideoPlayer', () => {
       name: 'test-video-name',
       resourceType: 'Video',
       source: { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+      categories: [],
       contexts: [{ pageId: 'glossary' }],
     };
     render(<VideoPlayer resource={resource} />);

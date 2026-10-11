@@ -106,13 +106,16 @@ const formatCustomSqlSentence = (
   data: ThresholdPreviewData,
   amount: string
 ): string => {
-  const { operator, operatorLabelKey, strategy, threshold } = data;
+  const { isPercentage, operator, operatorLabelKey, strategy, threshold } =
+    data;
   const operatorText = operatorLabelKey ? t(operatorLabelKey) : operator;
 
+  // A COUNT query returns a bare number, so an absolute threshold is quoted
+  // without a noun; a percentage is still a share of the table rows.
   return strategy === CustomSqlStrategy.Count
     ? t('message.dq-threshold-preview-custom-sql-count', {
         operator: operatorText,
-        value: threshold,
+        value: isPercentage ? amount : threshold,
       })
     : t('message.dq-threshold-preview-custom-sql-rows', {
         operator: operatorText,
@@ -127,16 +130,8 @@ const formatCustomSqlSentence = (
  * reads yet gets no sentence at all, only the warning beside it.
  */
 const formatSentence = (data: ThresholdPreviewData): string | undefined => {
-  const { semantic, threshold, isPercentage, noun, target, isUnitIgnored } =
-    data;
-
-  // When the unit is not read for this test the threshold is a raw count
-  // whatever the dropdown says, so the sentence says what will happen.
-  const amount = formatAmount(
-    threshold,
-    isUnitIgnored ? false : isPercentage,
-    isUnitIgnored ? ThresholdNoun.Rows : noun
-  );
+  const { semantic, threshold, isPercentage, noun, target } = data;
+  const amount = formatAmount(threshold, isPercentage, noun);
 
   switch (semantic) {
     case ThresholdTestSemantic.Statistical:
@@ -221,13 +216,6 @@ const ThresholdPreview: FC<ThresholdPreviewProps> = ({
         <Alert
           data-testid="threshold-not-enforced-warning"
           title={t('message.dq-threshold-preview-not-enforced')}
-          variant="warning"
-        />
-      )}
-      {data.isUnitIgnored && (
-        <Alert
-          data-testid="threshold-unit-not-enforced-warning"
-          title={t('message.dq-threshold-preview-unit-not-enforced')}
           variant="warning"
         />
       )}

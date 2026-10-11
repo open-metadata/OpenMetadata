@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Modal, Space } from 'antd';
+import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
 import {
@@ -553,14 +553,19 @@ const AppRunsHistory = forwardRef(
           closable={false}
           data-testid="edit-table-type-property-modal"
           footer={
-            <Space className="w-full justify-end">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal w-full justify-end"
+              gap={2}
+              itemClassName="layout-space-item">
               <Button
                 data-testid="app-run-config-close"
                 type="primary"
                 onClick={() => setShowConfigModal(false)}>
                 {t('label.close')}
               </Button>
-            </Space>
+            </Box>
           }
           maskClosable={false}
           open={showConfigModal}

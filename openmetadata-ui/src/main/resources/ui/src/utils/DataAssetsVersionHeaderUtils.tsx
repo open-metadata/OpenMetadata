@@ -12,8 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Space } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+
 import { isEmpty, isUndefined, toString } from 'lodash';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
@@ -71,7 +71,13 @@ export const VersionExtraInfoLabel = ({
       className="self-center m-x-sm tw:h-[0.9em]"
       orientation="vertical"
     />
-    <Space align="center" data-testid={dataTestId}>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      data-testid={dataTestId}
+      gap={2}
+      itemClassName="layout-space-item">
       <Typography className="self-center text-xs whitespace-nowrap">
         {!isEmpty(label) && (
           <span className="text-grey-muted">{`${label}: `}</span>
@@ -81,7 +87,7 @@ export const VersionExtraInfoLabel = ({
       <Typography className="self-center text-xs whitespace-nowrap font-medium">
         {stringToHTML(value)}
       </Typography>
-    </Space>
+    </Box>
   </>
 );
 

@@ -42,6 +42,7 @@ make java_affected                # what runs, why, and the exact commands
 | `Impacted, but not run locally` | List them in the PR with where they run (nightly, external cluster); don't run |
 | `Changed classes no unit test references` | Add a unit test (see `test-enforcement`), or say in the PR why none applies |
 | `Impact-map gaps` | Add the file's directory to the area that owns that code in `.github/java-tests/impact-map.json`, in this PR, then re-plan. Until then the full suite runs |
+| `Fix .github/java-tests/impact-map.json in this branch before you raise the PR` | Do what each line says: add the named glob to an area's `sources`, a pattern for the new IT to its `tests`, or remove a pattern your deletions emptied. `git push` and `gh pr create` stay blocked until it's clean (rule `java-impact-map.md`) |
 
 ### Ground rules for adding tests
 
@@ -131,6 +132,10 @@ mvn -B verify -pl :openmetadata-integration-tests -am -Dspring-boot.repackage.sk
 - Without a lane, `-Dit.test` runs the class twice, once in each failsafe execution.
 - `mvn test -pl openmetadata-integration-tests -Dtest=…IT` tests the `openmetadata-service` jar
   in `~/.m2`, which another checkout may have overwritten. Use `-am` as above.
+- After a pull, merge or branch switch that changes a JSON schema, run
+  `mvn -B -q clean -pl openmetadata-spec` first. jsonschema2pojo keeps the `javaType` classes it
+  already compiled, so an incremental build tests the old models. `make java_affected` warns
+  when this applies, and `--run` cleans for you.
 - `mvn test … -am` cannot compile the service. The relocated search clients only exist after
   `package`, which is why unit steps run `mvn -B package -pl <module> -am -Dtest=…`.
 - Check the evidence: a `Tests run: N` line with N > 0, and

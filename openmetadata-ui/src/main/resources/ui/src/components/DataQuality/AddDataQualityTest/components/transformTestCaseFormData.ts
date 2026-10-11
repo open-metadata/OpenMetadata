@@ -32,7 +32,7 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
-import { omitDimensionFailurePolicy } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import { omitInapplicableDimensionParams } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import {
   getParamPrefillKind,
   normalizeParamsForPayload,
@@ -172,7 +172,7 @@ export const transformTestCaseFormData = (
     values,
     ctx.selectedDefinition
   );
-  normalizedValues.params = omitDimensionFailurePolicy(
+  normalizedValues.params = omitInapplicableDimensionParams(
     normalizedValues.params,
     isDimensionalTest
   );

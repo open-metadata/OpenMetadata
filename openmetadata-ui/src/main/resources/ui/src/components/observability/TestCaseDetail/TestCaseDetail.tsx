@@ -100,6 +100,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     hasViewPermission,
     hasDeletePermission,
     editDisplayNamePermission,
+    canRestorePermission,
     displayName,
     tabs,
     activeTab,
@@ -118,6 +119,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     extraDropdownContent,
     handleOwnerChange,
     handleDisplayNameChange,
+    handleRestore,
     getEntityFeedCount,
     setTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
@@ -156,9 +158,10 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         {key === TestCasePageTabs.TEST_CASE_RESULTS &&
           !isVersionPage &&
           !dimensionKey && (
-            <div
-              className="tw:pt-4 tw:pb-2.5"
-              data-testid="test-case-last-run-banner-tab-container">
+            <Box
+              className="tw:pt-4 tw:pb-5.5"
+              data-testid="test-case-last-run-banner-tab-container"
+              direction="col">
               <TestCaseLastRunBanner
                 hasEditStatusPermission={
                   incidentHeaderData.hasEditStatusPermission
@@ -172,7 +175,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 testCaseStatusData={incidentHeaderData.testCaseStatusData}
                 onAcknowledge={incidentHeaderData.handleAcknowledgeIncident}
               />
-            </div>
+            </Box>
           )}
         <Tab editVariant="modal" showSidePanel={isTabExpanded} />
       </>
@@ -458,8 +461,9 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                             observabilityRouterClassBase.getDataQualityPagePath()
                           )
                         }
-                        allowSoftDelete={false}
                         canDelete={hasDeletePermission}
+                        canRestore={canRestorePermission}
+                        deleted={testCase.deleted}
                         displayName={testCase.displayName}
                         editDisplayNamePermission={editDisplayNamePermission}
                         entityFQN={testCase.fullyQualifiedName}
@@ -468,6 +472,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                         entityType={EntityType.TEST_CASE}
                         extraDropdownContent={extraDropdownContent}
                         onEditDisplayName={handleDisplayNameChange}
+                        onRestoreEntity={handleRestore}
                       />
                     </>
                   )}

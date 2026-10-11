@@ -354,6 +354,18 @@
       "default": 10,
       "minimum": 1,
       "maximum": 1000
+    },
+    "maxSchemaInferenceDepth": {
+      "title": "Max Schema Inference Depth",
+      "description": "Maximum nesting depth of column children inferred from sampled JSON values. The direct children of a column are depth 1. Deeper children are not ingested, and a column at the limit keeps its data type without children. 0 keeps no inferred children. Leave empty for no limit.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "maxChildrenPerColumn": {
+      "title": "Max Children Per Column",
+      "description": "Maximum number of direct children kept for any column inferred from sampled JSON values, applied at every nesting level. When a column has more, the children whose names sort first are kept, so every run keeps the same children whatever the order of the sampled records. 0 keeps no inferred children. Leave empty for no limit.",
+      "type": "integer",
+      "minimum": 0
     }
   },
   "additionalProperties": false

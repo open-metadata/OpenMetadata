@@ -18,6 +18,7 @@ import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.ClickzettaConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
+import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
@@ -60,6 +61,7 @@ public class ClassConverterFactoryTest {
         OpenLineageConnection.class,
         PubSubConnection.class,
         PrefectConnection.class,
+        MicrosoftFabricConnection.class,
       })
   void testClassConverterIsSet(Class<?> clazz) {
     assertFalse(

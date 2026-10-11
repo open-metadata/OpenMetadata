@@ -1521,7 +1521,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/rdf/queries/templates` | List administrator-managed installation query templates |
 | `GET` | `/v1/rdf/reindex/failures` | Get RDF reindex failures |
 | `GET` | `/v1/rdf/rules` | List durable inference rules and materialization state |
-| `POST` | `/v1/rdf/rules/materialize` | Materialize dirty inference rules inside Fuseki |
+| `POST` | `/v1/rdf/rules/materialize` | Materialize inference rules to a fixed point inside Fuseki |
 | `POST` | `/v1/rdf/rules/validate` | Validate a candidate inference rule without persisting it |
 | `DELETE` | `/v1/rdf/rules/{name}` | Delete a custom inference rule and its materialized graph |
 | `GET` | `/v1/rdf/rules/{name}` | Get a single inference rule by name |

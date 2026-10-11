@@ -62,10 +62,10 @@ public final class AttachedKnowledgeBatch {
 
   /** Resolves attached knowledge for each asset. Unknown or unloadable assets are skipped. */
   public static List<AssetKnowledge> resolve(List<AssetKey> assets) {
-    Map<AssetKey, EntityInterface> loaded = loadAssets(assets);
+    Map<AssetKey, EntityInterface<?>> loaded = loadAssets(assets);
     Lookups lookups = lookupKnowledge(loaded);
     List<AssetKnowledge> result = new ArrayList<>();
-    for (Map.Entry<AssetKey, EntityInterface> entry : loaded.entrySet()) {
+    for (Map.Entry<AssetKey, EntityInterface<?>> entry : loaded.entrySet()) {
       result.add(
           new AssetKnowledge(
               entry.getKey().fullyQualifiedName(),
@@ -77,8 +77,8 @@ public final class AttachedKnowledgeBatch {
 
   // Keyed by the full AssetKey (type + FQN): FQNs are only unique per entity type — a chart and
   // a dashboard under the same service can share an FQN, and a name-only key would drop one.
-  private static Map<AssetKey, EntityInterface> loadAssets(List<AssetKey> assets) {
-    Map<AssetKey, EntityInterface> loaded = new LinkedHashMap<>();
+  private static Map<AssetKey, EntityInterface<?>> loadAssets(List<AssetKey> assets) {
+    Map<AssetKey, EntityInterface<?>> loaded = new LinkedHashMap<>();
     for (AssetKey key : assets.stream().limit(MAX_ASSETS).toList()) {
       if (!nullOrEmpty(key.fullyQualifiedName()) && !nullOrEmpty(key.entityType())) {
         loadAsset(key, loaded);
@@ -87,7 +87,7 @@ public final class AttachedKnowledgeBatch {
     return loaded;
   }
 
-  private static void loadAsset(AssetKey key, Map<AssetKey, EntityInterface> into) {
+  private static void loadAsset(AssetKey key, Map<AssetKey, EntityInterface<?>> into) {
     try {
       String fields = Entity.TABLE.equals(key.entityType()) ? TABLE_FIELDS : DEFAULT_FIELDS;
       into.putIfAbsent(
@@ -99,7 +99,7 @@ public final class AttachedKnowledgeBatch {
     }
   }
 
-  private static Lookups lookupKnowledge(Map<AssetKey, EntityInterface> loaded) {
+  private static Lookups lookupKnowledge(Map<AssetKey, EntityInterface<?>> loaded) {
     List<String> assetIds =
         loaded.values().stream().map(entity -> entity.getId().toString()).toList();
     Map<String, List<UUID>> pageIdsByAsset = Map.of();
@@ -131,9 +131,9 @@ public final class AttachedKnowledgeBatch {
 
   /** Null values are cached too, so a missing/unapproved term is looked up once per batch. */
   private static Map<String, KnowledgeItem> loadGlossaryTerms(
-      Map<AssetKey, EntityInterface> loaded) {
+      Map<AssetKey, EntityInterface<?>> loaded) {
     Map<String, KnowledgeItem> terms = new LinkedHashMap<>();
-    for (EntityInterface entity : loaded.values()) {
+    for (EntityInterface<?> entity : loaded.values()) {
       for (String fqn : AIContextBuilder.collectGlossaryFqns(entity)) {
         if (!terms.containsKey(fqn)) {
           terms.put(fqn, PersonaContextBuilder.loadGlossaryTerm(fqn));
@@ -143,7 +143,7 @@ public final class AttachedKnowledgeBatch {
     return terms;
   }
 
-  private static List<KnowledgeItem> itemsFor(EntityInterface asset, Lookups lookups) {
+  private static List<KnowledgeItem> itemsFor(EntityInterface<?> asset, Lookups lookups) {
     List<KnowledgeItem> items = new ArrayList<>();
     for (String fqn : AIContextBuilder.collectGlossaryFqns(asset)) {
       addItem(items, lookups.glossaryTerms().get(fqn));
@@ -164,7 +164,7 @@ public final class AttachedKnowledgeBatch {
     }
   }
 
-  private static KnowledgeItem knowledgeItemOf(String entityType, EntityInterface entity) {
+  private static KnowledgeItem knowledgeItemOf(String entityType, EntityInterface<?> entity) {
     return entity == null ? null : PersonaContextBuilder.fullKnowledgeItem(entityType, entity);
   }
 

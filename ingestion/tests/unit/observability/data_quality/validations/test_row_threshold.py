@@ -194,6 +194,27 @@ def test_percentage_threshold_counts_against_the_denominator(
 
 
 @pytest.mark.parametrize("validator_class,test_params,metrics", VALIDATORS)
+@pytest.mark.parametrize(
+    "violations,denominator,threshold,expected",
+    [
+        (7, 100, 7, True),
+        (8, 100, 7, False),
+        (29, 1000, 2.9, True),
+        (30, 1000, 2.9, False),
+    ],
+)
+def test_percentage_threshold_passes_exactly_at_the_boundary(
+    validator_class, test_params, metrics, violations, denominator, threshold, expected
+):
+    """7 / 100 * 100 is 7.000000000000001 in floats, which used to fail a share sitting on the threshold"""
+    validator = build_validator(
+        validator_class, test_params + threshold_params(threshold, ThresholdUnit.PERCENTAGE.value)
+    )
+
+    assert evaluate(validator, metrics(violations, denominator))["matched"] is expected
+
+
+@pytest.mark.parametrize("validator_class,test_params,metrics", VALIDATORS)
 @pytest.mark.parametrize("unit", [ThresholdUnit.ABSOLUTE.value, ThresholdUnit.PERCENTAGE.value])
 def test_empty_denominator_passes(validator_class, test_params, metrics, unit):
     """Nothing was evaluated, so nothing can violate the test - and nothing is divided by zero"""
