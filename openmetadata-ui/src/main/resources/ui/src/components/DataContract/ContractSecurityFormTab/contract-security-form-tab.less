@@ -24,28 +24,11 @@
 
       .contract-consumer-security-card-rule-container {
         padding: 0 var(--om-space-20);
-
-        .contract-consumer-security-card-rule-delete-button {
-          margin-top: var(--om-space-10);
-          border: 1px solid @grey-34;
-          border-radius: var(--om-radius-lg);
-          color: @grey-34;
-          width: 40px;
-          height: 40px;
-
-          .anticon {
-            font-size: var(--om-font-size-xs);
-          }
-        }
       }
 
       .add-row-filter-button {
         span {
           font-weight: var(--om-font-weight-semibold);
-        }
-        .anticon {
-          font-size: var(--om-font-size-sm);
-          rotate: 45deg;
         }
       }
 
@@ -61,9 +44,6 @@
           span {
             font-weight: var(--om-font-weight-semibold);
           }
-          .anticon {
-            font-size: var(--om-font-size-sm);
-          }
 
           &:hover {
             color: @red-3;
@@ -76,10 +56,6 @@
   .add-policy-button {
     span {
       font-weight: var(--om-font-weight-semibold);
-    }
-    .anticon {
-      font-size: var(--om-font-size-sm);
-      rotate: 45deg;
     }
   }
 }
@@ -117,33 +93,6 @@
         width: 100%;
         gap: var(--om-space-12);
 
-        .enable-form-item {
-          margin-bottom: 0;
-
-          .ant-switch {
-            margin-left: var(--om-space-2);
-            width: 44px;
-            height: 24px;
-
-            .ant-switch-handle {
-              width: 16px;
-              height: 16px;
-              top: 4px;
-              left: 4px;
-
-              &::before {
-                border-radius: var(--om-radius-20);
-              }
-            }
-          }
-
-          .ant-switch-checked {
-            .ant-switch-handle {
-              left: calc(100% - 16px - 4px);
-            }
-          }
-        }
-
         > div:first-child {
           flex: 1;
           min-width: 0;
@@ -154,47 +103,6 @@
           font-size: var(--om-font-size-md);
           font-weight: var(--om-font-weight-semibold);
           line-height: 32px;
-        }
-
-        .ant-btn.edit-expand-button {
-          border-radius: var(--om-radius-md);
-          border: 1px solid @border-light;
-
-          svg {
-            font-size: var(--om-font-size-xl);
-            color: @grey-600;
-          }
-        }
-
-        .ant-btn.delete-expand-button {
-          width: 30px;
-          height: 30px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0;
-          border-radius: var(--om-radius-md);
-          background: transparent;
-          border-color: @error-color;
-
-          svg {
-            width: 16px;
-            color: @error-color;
-          }
-        }
-      }
-
-      .expandable-card-extra {
-        .ant-btn.expand-collapse-icon {
-          width: 30px;
-          height: 30px;
-          border-radius: var(--om-radius-md);
-          border: 1px solid @border-light;
-
-          svg {
-            font-size: var(--om-font-size-xl);
-            color: @grey-600;
-          }
         }
       }
     }
@@ -210,29 +118,6 @@
 
       .semantic-form-item-content {
         padding: var(--om-space-20);
-
-        .ant-switch {
-          margin-left: var(--om-space-2);
-          width: 36px;
-          height: 20px;
-
-          .ant-switch-handle {
-            width: 14px;
-            height: 14px;
-            top: 3px;
-            left: 3px;
-
-            &::before {
-              border-radius: var(--om-radius-20);
-            }
-          }
-        }
-
-        .ant-switch-checked {
-          .ant-switch-handle {
-            left: calc(100% - 14px - 4px);
-          }
-        }
       }
     }
   }

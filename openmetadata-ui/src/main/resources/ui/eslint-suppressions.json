@@ -450,14 +450,9 @@
       "count": 1
     }
   },
-  "playwright/e2e/Pages/DataContractInheritance.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Pages/DataContracts.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts": {
@@ -936,76 +931,6 @@
   "src/components/DataAssets/AssetsSelectionModal/AssetSelectionContentBody.tsx": {
     "openmetadata-antd/no-antd-import": {
       "count": 4
-    }
-  },
-  "src/components/DataContract/AddDataContract/AddDataContract.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
-    }
-  },
-  "src/components/DataContract/ContractDetailFormTab/ContractDetailFormTab.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 4
-    }
-  },
-  "src/components/DataContract/ContractDetailTab/ContractDetail.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/DataContract/ContractQualityCard/ContractQualityCard.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/DataContract/ContractQualityFormTab/ContractQualityFormTab.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
-    }
-  },
-  "src/components/DataContract/ContractSLACard/ContractSLA.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/DataContract/ContractSLAFormTab/ContractSLAFormTab.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 7
-    }
-  },
-  "src/components/DataContract/ContractSchemaFormTab/ContractScehmaFormTab.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
-    }
-  },
-  "src/components/DataContract/ContractSchemaTable/ContractSchemaTable.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/DataContract/ContractSecurityFormTab/ContractSecurityFormTab.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 7
-    }
-  },
-  "src/components/DataContract/ContractSemanticFormTab/ContractSemanticFormTab.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 7
-    }
-  },
-  "src/components/DataContract/ContractSemantics/ContractSemantics.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/components/DataContract/ContractTermOfService/ContractTermsOfService.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 3
-    }
-  },
-  "src/components/DataContract/ContractViewSwitchTab/ContractViewSwitchTab.component.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 2
     }
   },
   "src/components/DataInsight/DailyActiveUsersChart.tsx": {
@@ -2334,11 +2259,6 @@
     }
   },
   "src/utils/DataAssetsVersionHeaderUtils.tsx": {
-    "openmetadata-antd/no-antd-import": {
-      "count": 1
-    }
-  },
-  "src/utils/DataContract/DataContractUtils.ts": {
     "openmetadata-antd/no-antd-import": {
       "count": 1
     }

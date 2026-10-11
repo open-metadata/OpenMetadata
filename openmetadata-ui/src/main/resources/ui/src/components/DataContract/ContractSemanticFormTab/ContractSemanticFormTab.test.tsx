@@ -419,29 +419,16 @@ describe('ContractSemanticFormTab', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle validation errors gracefully', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
+    it('keeps an invalid rule open and shows the errors', async () => {
       render(<ContractSemanticFormTab {...commonProps} />);
 
-      const addButton = screen.getByTestId('add-semantic-button');
-
       await act(async () => {
-        fireEvent.click(addButton);
+        fireEvent.click(screen.getByTestId('save-semantic-button'));
       });
 
-      const saveButton = screen.getByTestId('save-semantic-button');
-
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Validation failed:',
-        expect.any(Object)
-      );
-
-      consoleSpy.mockRestore();
+      expect(screen.getByTestId('save-semantic-button')).toBeInTheDocument();
+      expect(await screen.findByText('Name is required')).toBeInTheDocument();
+      expect(screen.getByText('Description is required')).toBeInTheDocument();
     });
 
     it('should handle empty initial values', () => {
