@@ -845,6 +845,7 @@ class DbtSource(DbtServiceSource):
         the BigQuery connector ingests the same table under the GCP project id. Matching on
         schema and table alone is only safe when exactly one table answers, so an ambiguous
         match resolves to nothing rather than to an arbitrary table.
+        See ADR:2026-10-11-dbt-search-across-databases-falls-back-to-unique-schema-table.
         """
         search_fqn = fqn.build(
             self.metadata,

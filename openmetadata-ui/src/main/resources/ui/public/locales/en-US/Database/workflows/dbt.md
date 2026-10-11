@@ -352,6 +352,8 @@ $$section
 Option to search across database services for tables or not for processing dbt metadata ingestion.
 If this option is enabled, OpenMetadata will first search for tables within the same database service if tables are not found it will search across all database services.
 
+If the table is still not found, for example because dbt-trino writes the Trino catalog name while the table was ingested under its BigQuery project id, OpenMetadata matches on schema and table name alone. That match is used only when exactly one table in OpenMetadata has that schema and table name.
+
 If the option is disabled, the search will be limited to the tables within the same database service.
 $$
 
