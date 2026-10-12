@@ -30,8 +30,17 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
     () => (
       // SlideoutMenu.Header is a plain block, so it must be made a flex row
       // here or `actions` stack under the title instead of beside it.
+      // Its close button is centred on the header box, which includes the
+      // default 24px top padding only, so it sat above the title row. Moving
+      // that space to a margin centres the button on the title and actions.
+      // A caller's className replaces this default: it sets its own padding
+      // (e.g. a bordered header with symmetric `py-*`) and a margin above a
+      // border would leave a gap.
       <SlideoutMenu.Header
-        className={classNames('tw:flex tw:items-center tw:gap-4', className)}
+        className={classNames(
+          'tw:flex tw:items-center tw:gap-4',
+          className ?? 'tw:mt-6 tw:pt-0'
+        )}
         onClose={showCloseButton ? onClose : undefined}>
         <div className="tw:flex tw:items-center tw:gap-2 tw:flex-1">
           {typeof title === 'string' ? (
