@@ -245,7 +245,7 @@ export const createTeam = async (
       response.request().method() === 'POST'
   );
 
-  await page.locator('button[type="submit"]').click();
+  await teamModal.getByRole('button', { name: 'Save' }).click();
 
   const response = await createTeamResponse;
   const createdTeam = await response.json();
@@ -443,7 +443,10 @@ export const addTeamHierarchy = async (
       response.url().includes('fields=') &&
       response.request().method() === 'GET'
   );
-  await page.click('[form="add-team-form"]');
+  await page
+    .getByTestId('add-team-modal')
+    .getByRole('button', { name: 'Save' })
+    .click();
   await saveTeamResponse;
   const teamsListResponseResult = await teamsListResponse;
 

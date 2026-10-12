@@ -167,9 +167,9 @@ test('Query Entity', async ({ page }) => {
     );
     await page.click(`[data-testid="save"]`);
     await updateDescriptionResponse;
-    await page.getByRole('dialog').waitFor({
-      state: 'detached',
-    });
+    await page
+      .locator('[role="dialog"].description-markdown-editor')
+      .waitFor({ state: 'detached' });
 
     // Update Tags
     await page.getByTestId('add-tag').click();

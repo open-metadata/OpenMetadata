@@ -39,6 +39,7 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [form] = useForm();
+  const selectedField = Form.useWatch('field', form);
   const [factor, setFactor] = useState<number>(selectedBoost?.factor ?? 0);
 
   useEffect(() => {
@@ -101,7 +102,7 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
     <SimpleModal
       data-testid="field-value-boost-modal"
       isDismissable={false}
-      isOkDisabled={!form.getFieldValue('field')}
+      isOkDisabled={!selectedField}
       isOpen={open}
       okText={t('label.save')}
       title={
