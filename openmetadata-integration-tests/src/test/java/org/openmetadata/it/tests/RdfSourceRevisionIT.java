@@ -17,17 +17,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.LongStream;
 import org.awaitility.Awaitility;
+import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,14 +51,16 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.RdfUpdater;
 
 /**
  * Writes that reach the serving graph without the live-write queue must still move the enqueued
  * watermark, or reasoning results computed before them would pass for current. Isolated, so no
- * other test enqueues writes while one is measured.
+ * other test records a write outside the queue while one is measured.
  */
 @Execution(ExecutionMode.SAME_THREAD)
 @Isolated
@@ -62,7 +68,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 public class RdfSourceRevisionIT {
   private static final String APP_NAME = "RdfIndexApp";
   private static final String BASE_URI = "https://open-metadata.org/";
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final String GRAPH = BASE_URI + "graph/it/source-revision";
   private static final java.net.http.HttpClient HTTP_CLIENT =
       java.net.http.HttpClient.newHttpClient();
 
@@ -83,21 +89,13 @@ public class RdfSourceRevisionIT {
   }
 
   @Test
-  void anAdminSparqlUpdateMovesTheWatermark() throws Exception {
-    final long before = enqueuedWatermark();
-
-    update(
-        "INSERT DATA { GRAPH <"
-            + BASE_URI
-            + "graph/it/source-revision> { <urn:it:revision> <urn:it:value> \""
-            + UUID.randomUUID()
-            + "\" } }");
-
-    assertTrue(enqueuedWatermark() > before);
+  void anAdminSparqlUpdateRecordsOneUntrackedWrite() {
+    assertEquals(
+        1, untrackedWritesDuring(() -> assertEquals(200, update(insertData()).statusCode())));
   }
 
   @Test
-  void aPipelineRunRecordedInTheGraphMovesTheWatermark(final TestNamespace ns) {
+  void aPipelineRunRecordedInTheGraphRecordsOneUntrackedWrite(final TestNamespace ns) {
     final Pipeline pipeline =
         SdkClients.adminClient()
             .pipelines()
@@ -106,61 +104,105 @@ public class RdfSourceRevisionIT {
                     .withName(ns.prefix("pipeline"))
                     .withService(
                         PipelineServiceTestFactory.createAirflow(ns).getFullyQualifiedName()));
-    final long before = enqueuedWatermark();
 
-    SdkClients.adminClient()
-        .pipelines()
-        .addPipelineStatus(
-            pipeline.getFullyQualifiedName(),
-            new PipelineStatus()
-                .withExecutionStatus(StatusType.Successful)
-                .withTimestamp(System.currentTimeMillis()));
+    final long recorded =
+        untrackedWritesDuring(
+            () ->
+                SdkClients.adminClient()
+                    .pipelines()
+                    .addPipelineStatus(
+                        pipeline.getFullyQualifiedName(),
+                        new PipelineStatus()
+                            .withExecutionStatus(StatusType.Successful)
+                            .withTimestamp(System.currentTimeMillis())));
 
-    assertTrue(enqueuedWatermark() > before);
+    assertEquals(1, recorded);
   }
 
   @Test
-  void anInPlaceReindexMovesTheWatermarkBeforeAndAfterItWrites() {
+  void anInPlaceReindexRecordsAWriteBeforeAndAfterItWrites() {
     assumeFalse(
         TestSuiteBootstrap.isK8sEnabled(), "App trigger is not compatible with K8s pipelines");
     final HttpClient client = SdkClients.adminClient().getHttpClient();
     final AppRunRecord previous = awaitNoRunInFlight(client);
-    final long before = enqueuedWatermark();
+    final AppRunRecord[] run = new AppRunRecord[1];
 
-    trigger(client);
-    final AppRunRecord run = awaitRunAfter(client, previous);
+    final long recorded =
+        untrackedWritesDuring(
+            () -> {
+              trigger(client);
+              run[0] = awaitRunAfter(client, previous);
+            });
 
     assertTrue(
-        Set.of("completed", "success").contains(status(run)), () -> "Reindex failed: " + run);
-    assertTrue(enqueuedWatermark() >= before + 2);
+        Set.of("completed", "success").contains(status(run[0])), () -> "Reindex failed: " + run[0]);
+    assertEquals(2, recorded);
   }
 
-  private static long enqueuedWatermark() {
+  /**
+   * Counts the queue IDs handed out during {@code action} that left no row to deliver. Delivery is
+   * paused by holding the drain guard, so every live write enqueued meanwhile stays in the queue and
+   * is told apart from untracked writes, whose rows are gone as soon as they commit.
+   */
+  private static long untrackedWritesDuring(final Runnable action) {
+    try (Handle drainGuard = TestSuiteBootstrap.getJdbi().open()) {
+      drainGuard.begin();
+      try {
+        drainGuard
+            .createQuery("SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE")
+            .mapTo(String.class)
+            .one();
+        final RdfLiveWriteStore liveWrites =
+            new RdfLiveWriteStore(TestSuiteBootstrap.getJdbi(), Clock.systemUTC());
+        final long before = liveWrites.enqueuedWatermark();
+        action.run();
+        final long after = liveWrites.enqueuedWatermark();
+        final Set<Long> queued = Set.copyOf(queuedAfter(before));
+        return LongStream.rangeClosed(before + 1, after).filter(id -> !queued.contains(id)).count();
+      } finally {
+        drainGuard.rollback();
+      }
+    }
+  }
+
+  private static List<Long> queuedAfter(final long id) {
     return TestSuiteBootstrap.getJdbi()
         .withHandle(
             handle ->
                 handle
-                    .createQuery(
-                        "SELECT GREATEST(enqueuedWatermark, "
-                            + "COALESCE((SELECT MAX(id) FROM rdf_live_write_queue), 0)) "
-                            + "FROM rdf_projection_health WHERE id = 'active'")
+                    .createQuery("SELECT id FROM rdf_live_write_queue WHERE id > :id")
+                    .bind("id", id)
                     .mapTo(Long.class)
-                    .one());
+                    .list());
   }
 
-  private static void update(final String update) throws Exception {
-    final String body = OBJECT_MAPPER.writeValueAsString(new SparqlQuery().withQuery(update));
+  private static String insertData() {
+    return "INSERT DATA { GRAPH <"
+        + GRAPH
+        + "> { <urn:it:revision> <urn:it:value> \""
+        + UUID.randomUUID()
+        + "\" } }";
+  }
+
+  private static HttpResponse<String> update(final String update) {
     final HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(SdkClients.getServerUrl() + "/v1/rdf/sparql/update"))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .header("Content-Type", "application/json")
             .timeout(Duration.ofSeconds(30))
-            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    JsonUtils.pojoToJson(new SparqlQuery().withQuery(update))))
             .build();
-    final HttpResponse<String> response =
-        HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    assertEquals(200, response.statusCode(), response.body());
+    try {
+      return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (IOException exception) {
+      throw new UncheckedIOException(exception);
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException(exception);
+    }
   }
 
   private static void trigger(final HttpClient client) {

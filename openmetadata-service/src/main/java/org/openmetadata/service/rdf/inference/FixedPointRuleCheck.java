@@ -27,6 +27,8 @@ import org.apache.jena.sparql.algebra.walker.Walker;
 import org.apache.jena.sparql.core.TriplePath;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.E_Bound;
+import org.apache.jena.sparql.expr.E_Exists;
+import org.apache.jena.sparql.expr.E_LogicalAnd;
 import org.apache.jena.sparql.expr.E_NotExists;
 import org.apache.jena.sparql.expr.E_Now;
 import org.apache.jena.sparql.expr.Expr;
@@ -95,9 +97,18 @@ final class FixedPointRuleCheck {
   }
 
   private static final class PatternInspector extends ElementVisitorBase {
-    private final Set<String> errors = new LinkedHashSet<>();
+    private final Set<String> errors;
     private final Set<Var> boundVars = new HashSet<>();
-    private final ExpressionInspector expressions = new ExpressionInspector(errors);
+    private final ExpressionInspector expressions;
+
+    private PatternInspector() {
+      this(new LinkedHashSet<>());
+    }
+
+    private PatternInspector(final Set<String> errors) {
+      this.errors = errors;
+      this.expressions = new ExpressionInspector(errors);
+    }
 
     @Override
     public void visit(final ElementPathBlock element) {
@@ -119,9 +130,26 @@ final class FixedPointRuleCheck {
       boundVars.addAll(element.getVars());
     }
 
+    /**
+     * A positive EXISTS that the whole filter requires only ever turns true as data is added, so it
+     * is the one form allowed. Anywhere else, such as under {@code !}, inside IF or COALESCE, or
+     * compared with false, its result can flip from true to false as facts arrive.
+     */
     @Override
     public void visit(final ElementFilter element) {
-      Walker.walk(element.getExpr(), expressions);
+      requiredConditions(element.getExpr()).forEach(this::inspectRequiredCondition);
+    }
+
+    /**
+     * The pattern inside an allowed EXISTS is checked like the rule body, but binds nothing the
+     * template can use: its solutions never leave the filter.
+     */
+    private void inspectRequiredCondition(final Expr condition) {
+      if (condition instanceof E_Exists exists) {
+        ElementWalker.walk(exists.getElement(), new PatternInspector(errors));
+      } else {
+        Walker.walk(condition, expressions);
+      }
     }
 
     @Override
@@ -149,6 +177,13 @@ final class FixedPointRuleCheck {
       errors.add(
           "Nested subqueries are not allowed; they can aggregate or limit results, which a fixed point"
               + " cannot repeat safely");
+    }
+
+    private static Stream<Expr> requiredConditions(final Expr expression) {
+      return expression instanceof E_LogicalAnd conjunction
+          ? Stream.of(conjunction.getArg1(), conjunction.getArg2())
+              .flatMap(PatternInspector::requiredConditions)
+          : Stream.of(expression);
     }
 
     private void bindPathVariables(final TriplePath path) {
@@ -212,6 +247,10 @@ final class FixedPointRuleCheck {
     private void inspect(final ExprFunction function) {
       if (function instanceof E_NotExists) {
         errors.add("NOT EXISTS is not allowed; rules must only add facts as their inputs grow");
+      } else if (function instanceof E_Exists) {
+        errors.add(
+            "EXISTS is only allowed as a condition the whole FILTER requires; negated or computed"
+                + " with, as in !EXISTS, it can turn false as facts arrive");
       } else if (function instanceof E_Bound) {
         errors.add("BOUND is not allowed; testing for missing values makes a rule non-monotone");
       } else if (isNondeterministic(function)) {
