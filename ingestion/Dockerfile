@@ -1,7 +1,3 @@
-FROM golang:1.26.9-bookworm AS patched_flightsql
-COPY ingestion/scripts/patch_adbc_flightsql.sh /tmp/patch_adbc_flightsql.sh
-RUN bash /tmp/patch_adbc_flightsql.sh build
-
 FROM mysql:8.3 AS mysql
 
 FROM apache/airflow:3.3.2-python3.12
@@ -132,17 +128,13 @@ ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0.dev0"
 RUN pip install --upgrade "pip>=26.2,<27" "setuptools>=83"
 RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt"
-# Published ingestion releases bypass this checkout's setup.py pin. Keep the wheel
-# aligned with the native overlay; see ADR:2026-10-12-adbc-flightsql-overlay-matches-wheel.
-RUN printf '%s\n' 'adbc-driver-flightsql==1.12.0' > /tmp/adbc-flightsql-constraints.txt
-RUN pip install --constraint /tmp/adbc-flightsql-constraints.txt "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
-  && pip install --constraint /tmp/adbc-flightsql-constraints.txt "openmetadata-ingestion[db2]~=${RI_VERSION}" \
+  && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
   || echo "DB2 not supported on ARM architectures."
-RUN rm -f /tmp/adbc-flightsql-constraints.txt
 
 # Ship py-spy so a hung worker can be sampled in place
 # (`py-spy dump --pid <pid>`) without first installing anything in the pod.
@@ -159,10 +151,6 @@ RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docke
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
-
-COPY --from=patched_flightsql --chown=airflow:0 /tmp/libadbc_driver_flightsql.so /tmp/libadbc_driver_flightsql.so
-COPY --chown=airflow:0 ingestion/scripts/patch_adbc_flightsql.sh /tmp/patch_adbc_flightsql.sh
-RUN bash /tmp/patch_adbc_flightsql.sh install && rm -f /tmp/patch_adbc_flightsql.sh
 
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.

@@ -1,7 +1,3 @@
-FROM golang:1.26.9-bookworm AS patched_flightsql
-COPY ingestion/scripts/patch_adbc_flightsql.sh /tmp/patch_adbc_flightsql.sh
-RUN bash /tmp/patch_adbc_flightsql.sh build
-
 FROM python:3.12-slim-trixie
 
 # The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
@@ -165,28 +161,20 @@ ENV CFLAGS="-Wno-error=incompatible-pointer-types -Wno-error=implicit-function-d
 
 ARG INGESTION_DEPENDENCY="all"
 ARG RI_VERSION="2.0.0.0.dev0"
-# Published ingestion releases bypass this checkout's setup.py pin. Keep the wheel
-# aligned with the native overlay; see ADR:2026-10-12-adbc-flightsql-overlay-matches-wheel.
-RUN printf '%s\n' 'adbc-driver-flightsql==1.12.0' > /tmp/adbc-flightsql-constraints.txt
-RUN pip install --constraint /tmp/adbc-flightsql-constraints.txt "openmetadata-ingestion[airflow]~=${RI_VERSION}"
-RUN pip install --constraint /tmp/adbc-flightsql-constraints.txt "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
+RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
-  && pip install --constraint /tmp/adbc-flightsql-constraints.txt "openmetadata-ingestion[db2]~=${RI_VERSION}" \
+  && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
   || echo "DB2 not supported on ARM architectures."
-RUN rm -f /tmp/adbc-flightsql-constraints.txt
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
-
-COPY --from=patched_flightsql --chown=openmetadata:openmetadata /tmp/libadbc_driver_flightsql.so /tmp/libadbc_driver_flightsql.so
-COPY --chown=openmetadata:openmetadata ingestion/scripts/patch_adbc_flightsql.sh /tmp/patch_adbc_flightsql.sh
-RUN bash /tmp/patch_adbc_flightsql.sh install && rm -f /tmp/patch_adbc_flightsql.sh
 
 # Drop build-only packages that leaked into the runtime image. libmariadb-dev
 # and libmariadb-dev-compat are only needed to compile mysqlclient (done above);
