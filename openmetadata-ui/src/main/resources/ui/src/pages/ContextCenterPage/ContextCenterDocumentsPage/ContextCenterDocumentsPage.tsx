@@ -441,6 +441,12 @@ const ContextCenterDocumentsPage: FC = () => {
         setAllDocuments(
           results.hits.hits.map((hit) => hit._source as unknown as ContextFile)
         );
+        // The header count has to track the result set it sits above. Without
+        // this it keeps whatever runPagedFetch last wrote, so a search that
+        // matches one file still reads "77 files".
+        setTotalFileCount(
+          results.hits.total?.value ?? results.hits.hits.length
+        );
       };
 
       const runPagedFetch = async () => {

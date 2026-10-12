@@ -85,6 +85,7 @@ import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
 import {
   DIMENSION_FAILURE_POLICY_PARAM,
   getThresholdPreviewTarget,
+  MIN_ROWS_PER_DIMENSION_PARAM,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
@@ -156,7 +157,10 @@ const getHasTestSuite = (
   selectedTableData?: Table
 ): boolean => Boolean(testSuite?.id || selectedTableData?.testSuite?.id);
 
-const DIMENSION_POLICY_ONLY = [DIMENSION_FAILURE_POLICY_PARAM];
+const DIMENSION_ROLL_UP_PARAMS = [
+  DIMENSION_FAILURE_POLICY_PARAM,
+  MIN_ROWS_PER_DIMENSION_PARAM,
+];
 
 const getShowParameterFields = (
   hasParameterDefinition: boolean,
@@ -210,7 +214,7 @@ const DimensionPolicyOnlyField: FC<{
       isDimensionalTest
       definition={definition}
       form={form}
-      onlyParams={DIMENSION_POLICY_ONLY}
+      onlyParams={DIMENSION_ROLL_UP_PARAMS}
       table={table}
       testDefinitionDoc={getFieldDoc(
         fieldDocs[definition.name ?? ''],

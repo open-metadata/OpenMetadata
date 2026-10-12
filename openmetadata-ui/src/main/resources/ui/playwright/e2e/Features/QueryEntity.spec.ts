@@ -328,6 +328,39 @@ test('Query Entity', async ({ page }) => {
   });
 });
 
+test('Load queries from a URL with page zero', async ({ page }) => {
+  await redirectToHomePage(page);
+  await table2.visitEntityPage(page);
+  await page.getByTestId('table_queries').click();
+
+  const queryCard = page.getByTestId('query-card').filter({
+    hasText: `SELECT * FROM SALES-${table2.entity.name}`,
+  });
+  await expect(queryCard).toBeVisible();
+
+  const url = new URL(page.url());
+  url.searchParams.set('queryFrom', '0');
+  url.searchParams.set('pageSize', '25');
+
+  const queryResponse = page.waitForResponse((response) => {
+    const requestUrl = new URL(response.url());
+
+    return (
+      response.request().method() === 'GET' &&
+      requestUrl.pathname === '/api/v1/search/query' &&
+      requestUrl.searchParams.get('index') === 'query' &&
+      requestUrl.searchParams.get('size') === '25'
+    );
+  });
+
+  await page.goto(url.toString(), { waitUntil: 'domcontentloaded' });
+  const response = await queryResponse;
+
+  expect(response.status()).toBe(200);
+  expect(new URL(response.url()).searchParams.get('from')).toBe('0');
+  await expect(queryCard).toBeVisible();
+});
+
 test('Verify query duration', async ({ page }) => {
   await redirectToHomePage(page);
   await table2.visitEntityPage(page);

@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Grid } from '@openmetadata/ui-core-components';
-import { Drawer } from 'antd';
+import { SlideoutMenu } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { FC, lazy, useMemo } from 'react';
+import { FC, lazy, ReactNode, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ActivityPanelBody from '../ActivityFeedPanel/ActivityPanelBody';
 import ActivityPanelHeader from '../ActivityFeedPanel/ActivityPanelHeader';
@@ -26,7 +25,9 @@ import TaskPanelHeader from '../ActivityFeedPanel/TaskPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-drawer.less';
 
-const ACTIVITY_FEED_DRAWER_CLASS = 'activity-feed-drawer';
+const PANEL_HEADER_CLASS_NAME =
+  'tw:px-4 tw:shrink-0 tw:text-md tw:font-medium tw:leading-snug tw:text-(color:--om-heading-color)';
+const DRAWER_WIDTH = 576;
 
 const TaskTabNew = withSuspenseFallback(
   lazy(() =>
@@ -45,6 +46,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   open,
   className,
 }) => {
+  const { t } = useTranslation();
   const { hideDrawer, selectedThread, selectedTask, selectedActivity } =
     useActivityFeedProvider();
 
@@ -56,102 +58,82 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
     return EntityType.TABLE;
   }, [selectedTask]);
 
-  if (!selectedThread && !selectedTask && !selectedActivity) {
-    return null;
-  }
-
-  if (selectedTask) {
-    return (
-      <Drawer
-        className={classNames(ACTIVITY_FEED_DRAWER_CLASS, className)}
-        closable={false}
-        open={open}
-        title={
+  const panel = useMemo((): { header: ReactNode; body: ReactNode } | null => {
+    if (selectedTask) {
+      return {
+        header: (
           <TaskPanelHeader
-            className="p-x-md"
+            className={PANEL_HEADER_CLASS_NAME}
             task={selectedTask}
             onCancel={hideDrawer}
           />
-        }
-        width={576}
-        onClose={hideDrawer}>
-        <Grid
-          className="layout-row layout-grid"
-          id="feed-panel"
-          style={{ ...getLayoutGutter(0, 16) }}>
-          <Grid.Item className="layout-column" span={24}>
-            <TaskTabNew
-              isForFeedTab
-              isOpenInDrawer
-              entityType={entityType}
-              task={selectedTask}
-            />
-          </Grid.Item>
-        </Grid>
-      </Drawer>
-    );
-  }
+        ),
+        body: (
+          <TaskTabNew
+            isForFeedTab
+            isOpenInDrawer
+            entityType={entityType}
+            task={selectedTask}
+          />
+        ),
+      };
+    }
 
-  if (selectedActivity) {
-    return (
-      <Drawer
-        className={classNames(ACTIVITY_FEED_DRAWER_CLASS, className)}
-        closable={false}
-        open={open}
-        title={
+    if (selectedActivity) {
+      return {
+        header: (
           <ActivityPanelHeader
             activity={selectedActivity}
-            className="p-x-md"
+            className={PANEL_HEADER_CLASS_NAME}
             onCancel={hideDrawer}
           />
-        }
-        width={576}
-        onClose={hideDrawer}>
-        <Grid
-          className="layout-row layout-grid"
-          id="feed-panel"
-          style={{ ...getLayoutGutter(0, 16) }}>
-          <Grid.Item className="layout-column" span={24}>
-            <ActivityPanelBody activity={selectedActivity} />
-          </Grid.Item>
-        </Grid>
-      </Drawer>
-    );
-  }
+        ),
+        body: <ActivityPanelBody activity={selectedActivity} />,
+      };
+    }
 
-  if (!selectedThread) {
-    return null;
-  }
-
-  return (
-    <Drawer
-      className={classNames(ACTIVITY_FEED_DRAWER_CLASS, className)}
-      closable={false}
-      open={open}
-      title={
-        <FeedPanelHeader
-          className="p-x-md"
-          entityLink={selectedThread.about ?? ''}
-          feed={selectedThread}
-          onCancel={hideDrawer}
-        />
-      }
-      width={576}
-      onClose={hideDrawer}>
-      <Grid
-        className="layout-row layout-grid"
-        id="feed-panel"
-        style={{ ...getLayoutGutter(0, 16) }}>
-        <Grid.Item className="layout-column" span={24}>
+    if (selectedThread) {
+      return {
+        header: (
+          <FeedPanelHeader
+            className={PANEL_HEADER_CLASS_NAME}
+            entityLink={selectedThread.about ?? ''}
+            feed={selectedThread}
+            onCancel={hideDrawer}
+          />
+        ),
+        body: (
           <FeedPanelBodyV1
             isForFeedTab
             isOpenInDrawer
             showThread
             feed={selectedThread}
           />
-        </Grid.Item>
-      </Grid>
-    </Drawer>
+        ),
+      };
+    }
+
+    return null;
+  }, [selectedTask, selectedActivity, selectedThread, entityType, hideDrawer]);
+
+  if (!panel) {
+    return null;
+  }
+
+  return (
+    <SlideoutMenu
+      isDismissable
+      aria-label={t('label.activity-feed')}
+      data-testid="activity-feed-drawer"
+      dialogClassName={classNames('tw:items-stretch tw:gap-0', className)}
+      isOpen={open}
+      width={DRAWER_WIDTH}
+      onOpenChange={(isOpen) => !isOpen && hideDrawer()}>
+      {panel.header}
+      <SlideoutMenu.Content className="tw:min-h-0 tw:flex-1 tw:h-auto tw:gap-0 tw:px-0 tw:md:px-0">
+        <div id="feed-panel">{panel.body}</div>
+      </SlideoutMenu.Content>
+    </SlideoutMenu>
   );
 };
 

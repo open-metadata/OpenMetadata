@@ -6441,7 +6441,7 @@ export interface CollateAIAppConfig {
     /**
      * Force cache warmup even if another instance is detected (use with caution).
      *
-     * Materialize every enabled rule even when its durable dirty flag is clear.
+     * Recompute every rule even when no rule is dirty.
      */
     force?: boolean;
     /**
@@ -6479,7 +6479,8 @@ export interface CollateAIAppConfig {
      */
     relationshipIsolationMaxFailures?: number;
     /**
-     * Optional rule name for an on-demand single-rule run.
+     * Optional rule that must exist. The run still computes every rule, because rules read each
+     * other's conclusions.
      */
     ruleName?: string;
     /**

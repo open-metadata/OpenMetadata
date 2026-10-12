@@ -1828,10 +1828,13 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdate(
           "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
       compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
+      // Authorization reads these from the cached user context (e.g. hasDomain() and admin checks)
       compareAndUpdateAny(
           () -> SubjectCache.invalidateUserContext(updated.getName()),
           "personas",
-          "defaultPersona");
+          "defaultPersona",
+          FIELD_DOMAINS,
+          "isAdmin");
       JwtFilter.invalidateResolvedEmailIdentity(original.getEmail());
       JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
     }
