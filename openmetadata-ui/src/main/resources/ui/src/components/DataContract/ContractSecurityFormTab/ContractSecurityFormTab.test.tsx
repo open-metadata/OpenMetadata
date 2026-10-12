@@ -425,9 +425,7 @@ describe('ContractSecurityFormTab', () => {
           />
         );
 
-        const classificationInput = screen.getByTestId(
-          'data-classification-input'
-        );
+        const classificationInput = getTextInput('data-classification-input');
         await act(async () => {
           fireEvent.change(classificationInput, {
             target: { value: 'Public' },
