@@ -124,7 +124,7 @@ const ChangeHeader = ({
 }) => (
   <Box
     align="center"
-    className="tw:h-9 tw:border-b tw:border-secondary tw:bg-secondary_subtle tw:px-3.5"
+    className="tw:h-9 tw:border-b tw:border-secondary tw:px-3.5"
     gap={2}>
     <Typography className="tw:text-secondary" size="text-xs" weight="semibold">
       {label}
