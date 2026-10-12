@@ -44,7 +44,8 @@ export type TaskDetailRowIcon =
 export type TaskDetailRowValue =
   | { kind: 'text'; text: string }
   | { kind: 'date'; timestamp?: number }
-  | { kind: 'users'; refs: EntityReference[] }
+  // `title` heads the "+N" overflow, plural where the row's label is not.
+  | { kind: 'users'; refs: EntityReference[]; title?: string }
   | { kind: 'tags'; tags: TagLabel[] }
   | { kind: 'link'; label: string; to: string }
   // A long list, e.g. requested columns: the first few inline, the rest in a

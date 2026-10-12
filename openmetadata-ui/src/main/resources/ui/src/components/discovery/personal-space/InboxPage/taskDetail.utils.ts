@@ -261,10 +261,11 @@ const usersRow = (
   key: string,
   icon: TaskDetailRow['icon'],
   label: string,
-  refs?: EntityReference[]
+  refs?: EntityReference[],
+  title?: string
 ): TaskDetailRow[] =>
   refs && refs.length > 0
-    ? [{ key, icon, label, value: { kind: 'users', refs } }]
+    ? [{ key, icon, label, value: { kind: 'users', refs, title } }]
     : [];
 
 const tagsRow = (
@@ -312,7 +313,13 @@ const getCommonRows = (
   t: Translate,
   dateLabelKey = 'label.opened-on'
 ): TaskDetailRow[] => [
-  ...usersRow('assignees', 'user', t('label.assignee'), task.assignees),
+  ...usersRow(
+    'assignees',
+    'user',
+    t('label.assignee'),
+    task.assignees,
+    t('label.assignee-plural')
+  ),
   ...usersRow(
     'createdBy',
     'owner',
@@ -497,7 +504,11 @@ const describeOwnershipUpdate = (
             key: 'owner',
             icon: 'owner',
             label: t('label.owner'),
-            value: { kind: 'users', refs: currentOwners },
+            value: {
+              kind: 'users',
+              refs: currentOwners,
+              title: t('label.owner-plural'),
+            },
           }
         : {
             key: 'owner',
