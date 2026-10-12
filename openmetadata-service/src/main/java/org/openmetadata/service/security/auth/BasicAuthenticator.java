@@ -378,7 +378,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
-      throw new BadRequestException("Token Cannot be Null or Empty String");
+      throw new AuthenticationException("Refresh token is required. Please login again.");
     }
     TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
     User storedUser =
@@ -430,10 +430,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     RefreshToken storedRefreshToken =
         (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new CustomExceptionMessage(
-          BAD_REQUEST,
-          PASSWORD_RESET_TOKEN_EXPIRED,
-          "Expired token. Please login again : " + storedRefreshToken.getToken().toString());
+      throw new AuthenticationException("Refresh token expired. Please login again.");
     }
     // TODO: currently allow single login from a place, later multiple login can be added
     // just delete the existing token
@@ -519,15 +516,26 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     if (omUser.getAuthenticationMechanism() == null) {
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
-    @SuppressWarnings("unchecked")
-    LinkedHashMap<String, String> storedData =
-        (LinkedHashMap<String, String>) omUser.getAuthenticationMechanism().getConfig();
-    String storedHashPassword = storedData.get("password");
-    if (!BCrypt.verifyer().verify(reqPassword.toCharArray(), storedHashPassword).verified) {
+    if (!matchesStoredPassword(omUser, reqPassword)) {
       // record Failed Login Attempts
       recordFailedLoginAttempt(omUser.getEmail(), omUser.getName());
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
+  }
+
+  /**
+   * The password check alone, with none of login's failed-attempt bookkeeping — so the Test Login
+   * dry-run can verify a password without ever counting towards locking the account.
+   */
+  static boolean matchesStoredPassword(User omUser, String password) {
+    if (omUser.getAuthenticationMechanism() == null) {
+      return false;
+    }
+    @SuppressWarnings("unchecked")
+    LinkedHashMap<String, String> storedData =
+        (LinkedHashMap<String, String>) omUser.getAuthenticationMechanism().getConfig();
+    String storedHashPassword = storedData.get("password");
+    return BCrypt.verifyer().verify(password.toCharArray(), storedHashPassword).verified;
   }
 
   @Override

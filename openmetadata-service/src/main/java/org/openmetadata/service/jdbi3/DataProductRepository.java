@@ -23,9 +23,7 @@ import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
-import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
@@ -50,12 +48,10 @@ import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.api.domains.PaginatedEntities;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
@@ -78,7 +74,6 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -119,6 +114,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         registerEntity);
     supportsSearch = true;
     renameAllowed = true;
+    onlyReviewersDeleteInReview = true;
+    approvalTaskReviewsEntityStatus = true;
 
     // Initialize inherited field search
     if (searchRepository != null) {
@@ -670,9 +667,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     Map<UUID, EntityWithType> entitiesById = new HashMap<>();
     for (Map.Entry<String, List<EntityReference>> entry : refsByType.entrySet()) {
       String entityType = entry.getKey();
-      List<EntityInterface> entitiesOfType =
+      List<EntityInterface<?>> entitiesOfType =
           Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
-      for (EntityInterface entity : entitiesOfType) {
+      for (EntityInterface<?> entity : entitiesOfType) {
         entitiesById.put(entity.getId(), new EntityWithType(entity, entityType));
       }
     }
@@ -765,14 +762,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     // Fetch all asset entities grouped by type so add-validation can still run during dryRun
-    Map<UUID, EntityInterface> assetEntitiesMap = new HashMap<>();
+    Map<UUID, EntityInterface<?>> assetEntitiesMap = new HashMap<>();
     if (isAdd && !assets.isEmpty()) {
       for (Map.Entry<String, List<EntityReference>> entry : assetsByType.entrySet()) {
-        List<EntityInterface> entitiesOfType =
+        List<EntityInterface<?>> entitiesOfType =
             Entity.getEntities(entry.getValue(), "domains,dataProducts", ALL);
         // Key by each entity's own id; getEntities may reorder or drop rows relative to the
         // request list, so request-index zipping would validate the wrong asset.
-        for (EntityInterface entity : entitiesOfType) {
+        for (EntityInterface<?> entity : entitiesOfType) {
           assetEntitiesMap.put(entity.getId(), entity);
         }
       }
@@ -783,7 +780,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
       try {
         if (isAdd) {
-          EntityInterface assetEntity = assetEntitiesMap.get(ref.getId());
+          EntityInterface<?> assetEntity = assetEntitiesMap.get(ref.getId());
           if (assetEntity == null) {
             throw new IllegalStateException("Asset entity not found for ID: " + ref.getId());
           }
@@ -841,7 +838,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Create a Change Event on successful operations (skip when dryRun makes no changes)
     if (!dryRun && !success.isEmpty()) {
-      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
       List<EntityReference> successfulAssets = new ArrayList<>();
       for (BulkResponse response : success) {
         successfulAssets.add((EntityReference) response.getRequest());
@@ -868,7 +865,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
    * @throws RuleValidationException if validation fails
    */
   private void validateAssetDataProductAssignment(
-      EntityInterface assetEntity, EntityReference dataProductRef) {
+      EntityInterface<?> assetEntity, EntityReference dataProductRef) {
     try {
 
       List<EntityReference> currentDataProducts = listOrEmpty(assetEntity.getDataProducts());
@@ -899,37 +896,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public void restorePatchAttributes(DataProduct original, DataProduct updated) {
     super.restorePatchAttributes(original, updated);
     // Domain CAN now be changed - assets will be migrated to the new domain
-  }
-
-  @Override
-  protected void postUpdate(DataProduct original, DataProduct updated) {
-    super.postUpdate(original, updated);
-    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
-      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
-        closeApprovalTask(updated, "Approved the data product");
-      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
-        closeApprovalTask(updated, "Rejected the data product");
-      }
-    }
-
-    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
-    // will be a Task created.
-    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
-    // Data Product goes back to DRAFT.
-    if (original.getEntityStatus() != EntityStatus.DRAFT
-        && updated.getEntityStatus() == EntityStatus.DRAFT) {
-      try {
-        closeApprovalTask(updated, "Closed due to data product going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-      }
-    }
-    // Note: Search index updates for renamed data products are handled in updateName()
-    // within entitySpecificUpdate() to ensure we capture the correct old FQN before
-    // change consolidation's revert() modifies the 'original' reference.
-    // Similarly, search index updates for domain migration are handled in
-    // updateDataProductDomains()
-    // to capture the correct original domains before mutation.
   }
 
   private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
@@ -1443,47 +1409,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     return expertsMap;
-  }
-
-  @Override
-  protected void preDelete(DataProduct entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
-    }
-  }
-
-  public static void checkUpdatedByReviewer(DataProduct dataProduct, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = dataProduct.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
-    }
-  }
-
-  private void closeApprovalTask(DataProduct entity, String comment) {
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   public org.openmetadata.schema.entity.data.DataContract getDataProductContract(

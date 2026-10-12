@@ -193,7 +193,7 @@ const TestSuiteDetail = () => {
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
-    fetchTestCases,
+    handleTestCasesRemoved,
     handleSortTestCase,
     handleAddTestCaseSubmit,
     onUpdateOwner,
@@ -282,7 +282,7 @@ const TestSuiteDetail = () => {
         {renderDescription()}
         <div className="tw:w-full">
           <DataQualityTab
-            afterDeleteAction={fetchTestCases}
+            afterDeleteAction={handleTestCasesRemoved}
             breadcrumbData={incidentUrlState}
             editVariant="modal"
             fetchTestCases={handleSortTestCase}
@@ -305,7 +305,7 @@ const TestSuiteDetail = () => {
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
     flags,
-    fetchTestCases,
+    handleTestCasesRemoved,
     incidentUrlState,
     handleSortTestCase,
     isLoading,

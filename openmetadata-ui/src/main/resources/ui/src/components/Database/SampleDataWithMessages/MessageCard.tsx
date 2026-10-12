@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Collapse, Tag } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Collapse } from 'antd';
 import { lazy, ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -38,9 +38,15 @@ const MessageCard = ({ message }: { message: string }) => {
   useEffect(() => {
     if (isExpanded) {
       setHeader(
-        <Tag data-testid="expanded-header" id="sampleData-value">
+        <Badge
+          className="tw:mr-2 tw:inline-flex tw:px-3 tw:py-1"
+          color="gray"
+          data-testid="expanded-header"
+          id="sampleData-value"
+          size="md"
+          type="color">
           {t('label.value')}
-        </Tag>
+        </Badge>
       );
     } else {
       setHeader(

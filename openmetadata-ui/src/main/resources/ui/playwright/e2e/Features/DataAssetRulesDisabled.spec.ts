@@ -196,20 +196,18 @@ test.describe(
           page.locator("[data-testid='select-owner-tabs']")
         ).toBeVisible();
 
-        await page
-          .getByRole('tabpanel', { name: /Users/ })
-          .getByTestId('loader')
-          .waitFor({ state: 'hidden' });
+        await waitForAllLoadersToDisappear(
+          page.getByRole('tabpanel', { name: /Users/ })
+        );
 
         await page
           .locator("[data-testid='select-owner-tabs']")
           .getByRole('tab', { name: 'Teams' })
           .click();
 
-        await page
-          .getByRole('tabpanel', { name: 'Teams' })
-          .getByTestId('loader')
-          .waitFor({ state: 'hidden' });
+        await waitForAllLoadersToDisappear(
+          page.getByRole('tabpanel', { name: 'Teams' })
+        );
 
         const teamsSearchBar = page.getByTestId(
           'owner-select-teams-search-bar'

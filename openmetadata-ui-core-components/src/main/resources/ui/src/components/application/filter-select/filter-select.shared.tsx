@@ -18,11 +18,24 @@ import { Button } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
 import { Typography } from '@/components/foundations/typography';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
+import { cx } from '@/utils/cx';
 
 // Narrowed so the icon prop's type doesn't widen to the raw core-ui icons FC.
 export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
   <Search aria-hidden="true" {...props} />
 );
+
+/**
+ * Brand label, icons and (bordered) outline a button trigger takes once a value
+ * is picked. The outline matches the selected tab underline in dark, whose
+ * brand is lighter than `outline-brand` there.
+ */
+export const selectedTriggerClassName = (bordered?: boolean) =>
+  cx(
+    'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary tw:hover:*:data-icon:text-fg-brand-primary',
+    bordered &&
+      'tw:after:outline-brand tw:dark:after:outline-fg-brand-primary_alt'
+  );
 
 export const TriggerCountBadge = ({ count }: { count: number }) => (
   <Typography
@@ -36,6 +49,7 @@ export const TriggerCountBadge = ({ count }: { count: number }) => (
 
 interface DropdownSearchFieldProps {
   value: string;
+  autoFocus?: boolean;
   placeholder: string;
   inputDataTestId?: string;
   isDisabled?: boolean;
@@ -45,6 +59,7 @@ interface DropdownSearchFieldProps {
 
 export const DropdownSearchField = ({
   value,
+  autoFocus,
   placeholder,
   inputDataTestId,
   isDisabled,
@@ -53,6 +68,7 @@ export const DropdownSearchField = ({
 }: DropdownSearchFieldProps) => (
   <div className="tw:px-3 tw:pt-3 tw:pb-2" ref={wrapperRef}>
     <Input
+      autoFocus={autoFocus}
       icon={SearchInputIcon}
       inputDataTestId={inputDataTestId}
       isDisabled={isDisabled}
@@ -116,12 +132,14 @@ export const DropdownStagedFooter = ({
 
 interface DropdownStatusFooterProps {
   count: number;
+  clearLabel?: string;
   isClearDisabled?: boolean;
   onClear: () => void;
 }
 
 export const DropdownStatusFooter = ({
   count,
+  clearLabel,
   isClearDisabled,
   onClear,
 }: DropdownStatusFooterProps) => {
@@ -146,7 +164,7 @@ export const DropdownStatusFooter = ({
         isDisabled={isClearDisabled ?? count === 0}
         size="sm"
         onPress={onClear}>
-        {t('label.clear-all')}
+        {clearLabel ?? t('label.clear-all')}
       </Button>
     </div>
   );

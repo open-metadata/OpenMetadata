@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
-import { Drawer, Select, Space, Tooltip } from 'antd';
+import {
+  Box,
+  Button,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Drawer, Select } from 'antd';
 import { AxiosError } from 'axios';
 import {
   useCallback,
@@ -202,9 +207,11 @@ const ReindexFailures = ({
         render: (text: string) =>
           text ? (
             <Tooltip
-              overlayStyle={{ maxWidth: 500 }}
-              placement="topLeft"
-              title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}>
+              arrow
+              excludeTriggerFromTabOrder
+              placement="top left"
+              title={<pre className="m-0 whitespace-pre-wrap">{text}</pre>}
+              triggerClassName="tw:inline-flex">
               <ErrorMessage text={text} />
             </Tooltip>
           ) : (
@@ -230,8 +237,19 @@ const ReindexFailures = ({
       title={t('label.reindex-failure-plural')}
       width={900}
       onClose={onClose}>
-      <Space className="w-full m-b-md" direction="vertical" size="small">
-        <Space>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space w-full m-b-md"
+        direction="col"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           <Typography>{t('label.filter-by-entity-type')}:</Typography>
           <Select
             allowClear
@@ -245,13 +263,13 @@ const ReindexFailures = ({
               </Select.Option>
             ))}
           </Select>
-        </Space>
+        </Box>
         {total > 0 && (
           <Typography color="secondary">
             {t('label.showing-total-failure-plural', { total })}
           </Typography>
         )}
-      </Space>
+      </Box>
 
       <Table
         columns={columns}

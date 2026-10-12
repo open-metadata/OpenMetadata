@@ -498,8 +498,8 @@ test.describe(
             dropdown
               .getByRole('option')
               .filter({ hasText: new RegExp(`^${status}$`, 'i') })
-              .first()
-          ).toBeVisible();
+              .filter({ visible: true })
+          ).not.toHaveCount(0);
         }
       });
     });

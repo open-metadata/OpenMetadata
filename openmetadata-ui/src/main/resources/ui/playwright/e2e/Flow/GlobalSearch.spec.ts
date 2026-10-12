@@ -13,6 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 const DESCRIPTION_SEARCH =
@@ -36,9 +37,7 @@ test('searching for longer description should work', async ({ page }) => {
 
   await page.keyboard.press('Enter');
 
-  await page.getByTestId('search-container').getByTestId('loader').waitFor({
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page.getByTestId('search-container'));
 
   await page.getByTestId('search-results').waitFor({
     state: 'visible',

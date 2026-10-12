@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
+import { act, renderHook } from '@testing-library/react';
+import { useState } from 'react';
+import {
+  ExploreQuickFilterField,
+  SearchHitCounts,
+} from '../components/Explore/ExplorePage.interface';
 import { FAILED_TO_FIND_INDEX_ERROR } from '../constants/explore.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -798,9 +803,15 @@ describe('fetchEntityData', () => {
   it('runs a count then a results query and maps tab hit counts when a query is present', async () => {
     mockEntityTypeCounts.mockResolvedValueOnce(COUNT_RESPONSE);
     mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
-    const params = buildParams({ searchQueryParam: 'customer' });
+    const { result } = renderHook(() => useState<SearchHitCounts>());
+    const params = buildParams({
+      searchQueryParam: 'customer',
+      setSearchHitCounts: result.current[1],
+    });
 
-    await fetchEntityData(params);
+    await act(async () => {
+      await fetchEntityData(params);
+    });
 
     expect(mockSearchQuery).toHaveBeenCalledTimes(1);
     expect(mockEntityTypeCounts.mock.calls[0][0]).toEqual(
@@ -809,7 +820,7 @@ describe('fetchEntityData', () => {
         searchIndex: [SearchIndex.TABLE],
       })
     );
-    expect(params.setSearchHitCounts).toHaveBeenCalledWith({
+    expect(result.current[0]).toEqual({
       [SearchIndex.TABLE]: 42,
     });
     expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
@@ -974,27 +985,62 @@ describe('fetchEntityData', () => {
         })
     );
     mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
-    const params = buildParams({ searchQueryParam: 'customer', tab: 'tables' });
-
-    const pending = fetchEntityData(params);
-
-    // Results query is already in flight while the count is still pending.
-    expect(mockSearchQuery).toHaveBeenCalledTimes(1);
-
-    await Promise.resolve();
+    const { result } = renderHook(() =>
+      useState<SearchHitCounts>({
+        [SearchIndex.TABLE]: 40,
+        [SearchIndex.DASHBOARD]: 18,
+      } as SearchHitCounts)
+    );
+    const params = buildParams({
+      searchQueryParam: 'customer',
+      tab: 'tables',
+      setSearchHitCounts: result.current[1],
+    });
+    let pending: ReturnType<typeof fetchEntityData>;
+    await act(async () => {
+      pending = fetchEntityData(params);
+    });
 
     expect(params.onResultsSettled).toHaveBeenCalledTimes(1);
     expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
-    expect(params.setSearchHitCounts).toHaveBeenCalledWith({
+    expect(result.current[0]).toEqual({
       [SearchIndex.TABLE]: 42,
+      [SearchIndex.DASHBOARD]: 18,
     });
 
-    resolveCount(COUNT_RESPONSE);
-    await pending;
+    await act(async () => {
+      resolveCount(COUNT_RESPONSE);
+      await pending;
+    });
 
     expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
-    expect(params.setSearchHitCounts).toHaveBeenCalledWith({
+    expect(result.current[0]).toEqual({
       [SearchIndex.TABLE]: 42,
+    });
+  });
+
+  it('preserves other tab counts when the count request fails', async () => {
+    mockEntityTypeCounts.mockRejectedValueOnce(new Error('Count unavailable'));
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
+    const { result } = renderHook(() =>
+      useState<SearchHitCounts>({
+        [SearchIndex.TABLE]: 40,
+        [SearchIndex.DASHBOARD]: 18,
+      } as SearchHitCounts)
+    );
+
+    await act(async () => {
+      await fetchEntityData(
+        buildParams({
+          searchQueryParam: 'customer',
+          setSearchHitCounts: result.current[1],
+        })
+      );
+    });
+
+    expect(result.current[0]).toEqual({
+      [SearchIndex.TABLE]: 42,
+      [SearchIndex.DASHBOARD]: 18,
     });
   });
 
@@ -1046,10 +1092,16 @@ describe('fetchEntityData', () => {
       ...RESULTS_RESPONSE,
       hits: { ...RESULTS_RESPONSE.hits, total: { value: 41 } },
     });
-    const params = buildParams({ searchQueryParam: 'customer' });
-    await fetchEntityData(params);
+    const { result } = renderHook(() => useState<SearchHitCounts>());
+    const params = buildParams({
+      searchQueryParam: 'customer',
+      setSearchHitCounts: result.current[1],
+    });
+    await act(async () => {
+      await fetchEntityData(params);
+    });
 
-    expect(params.setSearchHitCounts).toHaveBeenLastCalledWith({
+    expect(result.current[0]).toEqual({
       [SearchIndex.TABLE]: 41,
     });
   });

@@ -732,6 +732,14 @@ public final class SearchUtils {
     };
   }
 
+  /** Indexes whose free text is searched by the data-asset builder over the configured fields. */
+  public static boolean usesDataAssetSearchBuilder(String indexName) {
+    return isDataAssetIndex(indexName)
+        || isColumnIndex(indexName)
+        || SearchClient.GLOBAL_SEARCH_ALIAS.equals(indexName)
+        || SearchClient.DATA_ASSET_SEARCH_ALIAS.equals(indexName);
+  }
+
   public static boolean isServiceIndex(String indexName) {
     return switch (indexName) {
       case "api_service_search_index",

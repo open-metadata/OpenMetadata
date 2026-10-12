@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import {
+  PieChart,
+  type PieChartProps,
+} from '@openmetadata/ui-core-components/charts';
+import {
   act,
   fireEvent,
   render,
@@ -19,12 +23,14 @@ import {
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
 import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
+import { generatePalette } from '../../../../styles/colorPallet';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -37,11 +43,11 @@ import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 const mockFirstDay = new Date(2022, 0, 1).getTime();
 const mockSecondDay = new Date(2022, 0, 2).getTime();
 
-jest.mock('../../../../hooks/useChartColors', () => ({
-  useChartColors: jest.fn().mockReturnValue({ axis: '#123456' }),
-}));
-
 const mockNavigate = jest.fn();
+
+const mockPieChart = PieChart as unknown as jest.Mock<null, [PieChartProps]>;
+const pieProps = () =>
+  mockPieChart.mock.calls[mockPieChart.mock.calls.length - 1]?.[0];
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -159,27 +165,6 @@ jest.mock('../Common/WidgetEmptyState/WidgetEmptyState', () => {
       </div>
     ));
 });
-
-// Mock Recharts components
-jest.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="responsive-container">{children}</div>
-  ),
-  PieChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="pie-chart">{children}</div>
-  ),
-  Pie: ({ data }: { data: { name: string; value: number }[] }) => (
-    <div data-length={data.length} data-testid="pie">
-      {data.map((item) => (
-        <div data-testid={`pie-cell-${item.name}`} key={item.name}>
-          {item.name}: {item.value}
-        </div>
-      ))}
-    </div>
-  ),
-  Cell: () => <div data-testid="cell" />,
-  Tooltip: () => <div data-testid="tooltip" />,
-}));
 
 // Mock chart data
 const mockChartData: DataInsightCustomChartResult = {
@@ -454,9 +439,53 @@ describe('TotalDataAssetsWidget', () => {
         renderTotalDataAssetsWidget();
       });
 
-      expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
-      expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
-      expect(screen.getByTestId('pie')).toBeInTheDocument();
+      expect(screen.getByTestId('core-pie-chart')).toBeInTheDocument();
+      expect(pieProps()).toEqual(
+        expect.objectContaining({
+          innerRadius: '64%',
+          outerRadius: '94%',
+          padAngle: 1,
+          height: 250,
+          legend: { show: false },
+        })
+      );
+    });
+
+    it('should draw one slice per entity type, highest count first, in brand shades matching the legend', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget({
+          currentLayout: [{ i: 'test-widget-key', x: 0, y: 0, w: 2, h: 4 }],
+        });
+      });
+
+      const slices = pieProps()?.data ?? [];
+      const values = slices.map((slice) => slice.value);
+      const legendDots = screen.getAllByTestId(/^legend-color-/);
+
+      expect(slices.length).toBeGreaterThan(1);
+      expect(values).toEqual([...values].sort((a, b) => b - a));
+      expect(legendDots).toHaveLength(slices.length);
+
+      // Shades of the brand colour, darkest for the largest count; the legend
+      // dot beside each slice takes the same shade.
+      const brandShades = generatePalette(DEFAULT_THEME.primaryColor).reverse();
+
+      slices.forEach((slice, index) => {
+        expect(slice.color).toBe(brandShades[index]);
+        expect(legendDots[index]).toHaveStyle({
+          backgroundColor: brandShades[index],
+        });
+      });
+    });
+
+    it('should label slices with the readable entity name', async () => {
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      expect((pieProps()?.data ?? []).map((slice) => slice.name)).toEqual(
+        expect.arrayContaining(['Table', 'Dashboard', 'Pipeline'])
+      );
     });
 
     it('should display total data assets count in center of donut chart', async () => {
@@ -703,7 +732,7 @@ describe('TotalDataAssetsWidget', () => {
       });
 
       // Should still render without errors
-      expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
+      expect(screen.getByTestId('core-pie-chart')).toBeInTheDocument();
     });
   });
 

@@ -93,6 +93,7 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
@@ -206,14 +207,17 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
-  const fetchDataContract = async (entityId: string) => {
-    try {
-      const contract = await getContractByEntityId(entityId, entityType);
-      setDataContract(contract);
-    } catch {
-      // Do nothing
-    }
-  };
+  const fetchDataContract = useCallback(
+    async (entityId: string) => {
+      try {
+        const contract = await getContractByEntityId(entityId, entityType);
+        setDataContract(contract);
+      } catch {
+        // Do nothing
+      }
+    },
+    [entityType]
+  );
 
   const serviceLogoUrl = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -251,7 +255,7 @@ export const DataAssetsHeader = ({
       deleted: dataAsset.deleted,
       votes: (dataAsset as DataAssetsWithFollowersField).votes,
     }),
-    [dataAsset, USER_ID]
+    [dataAsset, USER_ID, hasFollowers]
   );
 
   const voteStatus = useMemo(
@@ -265,7 +269,7 @@ export const DataAssetsHeader = ({
     AnnouncementEntity[]
   >([]);
 
-  const fetchDQFailureCount = async () => {
+  const fetchDQFailureCount = useCallback(async () => {
     if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
       setDqFailureCount(0);
 
@@ -283,13 +287,13 @@ export const DataAssetsHeader = ({
 
       const updatedNodes =
         data.nodes?.filter(
-          (node) => node?.fullyQualifiedName !== dataAsset?.fullyQualifiedName
+          (node) => node?.fullyQualifiedName !== dataAsset.fullyQualifiedName
         ) ?? [];
       setDqFailureCount(updatedNodes.length);
     } catch {
       setDqFailureCount(0);
     }
-  };
+  }, [isDqAlertSupported, dataAsset.fullyQualifiedName]);
 
   const statusBadge = useMemo(() => {
     const shouldShowStatus =
@@ -340,7 +344,7 @@ export const DataAssetsHeader = ({
     );
   }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, navigate, t]);
 
-  const fetchActiveAnnouncement = async () => {
+  const fetchActiveAnnouncement = useCallback(async () => {
     try {
       const announcements = await getActiveAnnouncements(
         getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
@@ -350,32 +354,43 @@ export const DataAssetsHeader = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  };
+  }, [entityType, dataAsset.fullyQualifiedName]);
 
-  const fetchContainerAncestors = async (fqn: string) => {
-    if (isEmpty(fqn)) {
-      return;
-    }
-    setIsBreadcrumbLoading(true);
-    try {
-      const ancestors = await getContainerAncestors(fqn);
-      setParentContainers(ancestors);
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    } finally {
-      setIsBreadcrumbLoading(false);
-    }
-  };
+  const fetchContainerAncestors = useCallback(
+    async (fqn: string) => {
+      if (isEmpty(fqn)) {
+        return;
+      }
+      setIsBreadcrumbLoading(true);
+      try {
+        const ancestors = await getContainerAncestors(fqn);
+        setParentContainers(ancestors);
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      } finally {
+        setIsBreadcrumbLoading(false);
+      }
+    },
+    [t]
+  );
 
   useEffect(() => {
     if (dataAsset.fullyQualifiedName && !isTourPage && !isCustomizedView) {
-      fetchActiveAnnouncement();
-      fetchDQFailureCount();
+      void fetchActiveAnnouncement();
+      void fetchDQFailureCount();
     }
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
-      fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
+      void fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
-  }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
+  }, [
+    dataAsset.fullyQualifiedName,
+    entityType,
+    isTourPage,
+    isCustomizedView,
+    fetchActiveAnnouncement,
+    fetchDQFailureCount,
+    fetchContainerAncestors,
+  ]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
     () =>
@@ -665,7 +680,7 @@ export const DataAssetsHeader = ({
     } finally {
       setIsAutoPilotTriggering(false);
     }
-  }, [serviceCategory, afterTriggerAction]);
+  }, [serviceCategory, afterTriggerAction, dataAsset.fullyQualifiedName]);
 
   const triggerAutoPilotApplicationButton = useMemo(() => {
     if (
@@ -711,8 +726,9 @@ export const DataAssetsHeader = ({
   ]);
 
   const sourceUrlButton = useMemo(() => {
-    const sourceUrl =
-      get(dataAsset, 'sourceUrl') ?? get(dataAsset, 'endpointURL');
+    const sourceUrl = getSafeHttpUrl(
+      get(dataAsset, 'sourceUrl') ?? get(dataAsset, 'endpointURL')
+    );
     if (!sourceUrl) {
       return null;
     }
@@ -739,9 +755,9 @@ export const DataAssetsHeader = ({
 
   useEffect(() => {
     if (dataAsset.id) {
-      fetchDataContract(dataAsset.id);
+      void fetchDataContract(dataAsset.id);
     }
-  }, [dataAsset?.id]);
+  }, [dataAsset.id, fetchDataContract]);
 
   const hasDisplayName = !isEmpty(dataAsset.displayName);
 
@@ -893,7 +909,7 @@ export const DataAssetsHeader = ({
 
     return (
       <div
-        className="tw:flex tw:min-w-0 tw:items-center tw:gap-3"
+        className="tw:flex tw:min-w-0 tw:items-start tw:gap-3"
         data-testid="entity-header-title">
         <div className="tw:flex tw:min-w-0 tw:flex-col">
           {hasDisplayName && (
@@ -923,27 +939,31 @@ export const DataAssetsHeader = ({
             {dataAsset.name}
           </Typography>
         </div>
-        {deleted && (
-          <span className="deleted-badge-button" data-testid="deleted-badge">
-            {t('label.deleted')}
-          </span>
-        )}
-        <Tooltip placement="top" title={copyTooltipTitle}>
-          <TooltipTrigger className="tw:flex tw:items-center">
-            <Button
-              aria-label={t('label.copy-item', {
-                item: t('label.url-uppercase'),
-              })}
-              color="tertiary"
-              data-testid="entity-header-copy-button"
-              iconLeading={Copy01}
-              size="xs"
-              type="button"
-              onClick={handleCopyEntityUrl}
-            />
-          </TooltipTrigger>
-        </Tooltip>
-        <LearningIcon pageId={entityType} />
+        {/* h-8 = the title line, so the actions stay level with the title
+            rather than centring across title + name. */}
+        <div className="tw:flex tw:h-8 tw:shrink-0 tw:items-center tw:gap-3">
+          {deleted && (
+            <span className="deleted-badge-button" data-testid="deleted-badge">
+              {t('label.deleted')}
+            </span>
+          )}
+          <Tooltip placement="top" title={copyTooltipTitle}>
+            <TooltipTrigger className="tw:flex tw:items-center">
+              <Button
+                aria-label={t('label.copy-item', {
+                  item: t('label.url-uppercase'),
+                })}
+                color="tertiary"
+                data-testid="entity-header-copy-button"
+                iconLeading={Copy01}
+                size="xs"
+                type="button"
+                onClick={handleCopyEntityUrl}
+              />
+            </TooltipTrigger>
+          </Tooltip>
+          <LearningIcon pageId={entityType} />
+        </div>
       </div>
     );
   };
@@ -1031,10 +1051,7 @@ export const DataAssetsHeader = ({
               {t('label.tier')}
             </Typography>
             {editTierPermission && (
-              <TierCard
-                currentTier={tier?.tagFQN}
-                footerActionButtonsClassName="p-x-md"
-                updateTier={onTierUpdate}>
+              <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                 <Pressable>
                   <EditIconButton
                     newLook
@@ -1075,9 +1092,7 @@ export const DataAssetsHeader = ({
             );
 
             return editTierPermission ? (
-              <TierCard
-                footerActionButtonsClassName="p-x-md"
-                updateTier={onTierUpdate}>
+              <TierCard updateTier={onTierUpdate}>
                 <Pressable>
                   <span
                     aria-label={t('label.edit-entity', {
@@ -1200,7 +1215,6 @@ export const DataAssetsHeader = ({
           className="tw:mt-3"
           testId="entity-header-announcements"
           onItemClick={handleOpenAnnouncementDrawer}
-          onViewAll={handleOpenAnnouncementDrawer}
         />
       )}
 

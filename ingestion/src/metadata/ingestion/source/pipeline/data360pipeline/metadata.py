@@ -19,6 +19,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -65,7 +66,6 @@ from metadata.ingestion.source.pipeline.data360pipeline.models import (
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -187,12 +187,7 @@ class Data360PipelineSource(PipelineServiceSource):
             "name": EntityName(pipeline_details.get_name()),
             "displayName": pipeline_details.get_display_name(),
             "service": FullyQualifiedEntityName(self.context.get().pipeline_service),  # pyright: ignore[reportAttributeAccessIssue]
-            "tags": get_tag_labels(
-                self.metadata,
-                pipeline_details.get_tags(),
-                Data360Constant.TAG_CLASSIFICATION_NAME,
-                bool(self.source_config.includeTags),
-            ),
+            "tags": self.get_tag_by_fqn(self.get_pipeline_fqn(pipeline_details)),
             "tasks": [
                 Task(
                     name=pipeline_details.get_name(),
@@ -246,14 +241,16 @@ class Data360PipelineSource(PipelineServiceSource):
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yields tags associated with the pipeline."""
         try:
-            tags = pipeline_details.get_tags()
-            yield from get_ometa_tag_and_classification(
-                tags=tags,
-                classification_name=Data360Constant.TAG_CLASSIFICATION_NAME,
-                tag_description="Data360 Tags",
-                classification_description="Tags associated with Salesforce Data 360",
-                include_tags=bool(self.source_config.includeTags),
-            )
+            for tag_name in pipeline_details.get_tags():
+                yield from self.register_tag(
+                    entity_fqn=self.get_pipeline_fqn(pipeline_details),
+                    definition=TagDefinition(
+                        classification_name=Data360Constant.TAG_CLASSIFICATION_NAME,
+                        tag_name=tag_name,
+                        tag_description="Data360 Tags",
+                        classification_description="Tags associated with Salesforce Data 360",
+                    ),
+                )
         except Exception as exc:
             yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(

@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
+import { GlossarySettings } from '../generated/configuration/glossarySettings';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
@@ -62,6 +63,25 @@ export const updateSettingsConfig = async (payload: Settings) => {
   return response;
 };
 
+export const getGlossarySettings = async (): Promise<GlossarySettings> => {
+  const response = await getSettingsConfigFromConfigType(
+    SettingType.GlossarySettings
+  );
+
+  return response.data.config_value as GlossarySettings;
+};
+
+export const updateGlossarySettings = async (
+  config: GlossarySettings
+): Promise<GlossarySettings> => {
+  const response = await updateSettingsConfig({
+    config_type: SettingType.GlossarySettings,
+    config_value: config,
+  });
+
+  return response.data.config_value as GlossarySettings;
+};
+
 export const getCustomUiThemePreference = async () => {
   const response = await axiosClient.get<UIThemePreference>(
     `system/config/customUiThemePreference`
@@ -93,16 +113,18 @@ export const getAppConfiguration = async (): Promise<AppConfiguration> => {
 };
 
 /**
- * Admin-only. Writes through the generic `/system/settings` PUT, matching
- * the `config_type`/`config_value` shape the backend's `createOrUpdateSetting`
- * expects (see how `updateGlossaryTermRelationSettings` above writes).
+ * Admin-only. Updates only the given keys: the generic `/system/settings` PUT
+ * replaces the whole document, and several pages (Default App Mode, Table &
+ * Schema) each own one key of it, so the stored value is merged first.
+ * See ADR:2026-10-09-app-configuration-keys-are-owned-and-merged-on-write.
  */
 export const patchAppConfiguration = async (
   patch: Partial<AppConfiguration>
 ): Promise<AppConfiguration> => {
+  const current = await getAppConfiguration();
   const response = await axiosClient.put<Settings>(`/system/settings`, {
     config_type: SettingType.AppConfiguration,
-    config_value: patch,
+    config_value: { ...current, ...patch },
   });
 
   return (response.data.config_value as AppConfiguration) ?? {};

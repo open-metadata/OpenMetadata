@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
@@ -19,6 +20,7 @@ import {
   waitForAuditLogEntry,
 } from '../../utils/auditLogs';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { customFormatDateTime } from '../../utils/dateTime';
 import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -52,9 +54,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      // Wait for dropdown to ensure options are visible
-      // Antd dropdowns often render in portal, so we look for text 'Yesterday' globaly or in dropdown
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       await expect(yesterdayOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -105,14 +108,15 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       await yesterdayOption.click();
 
       // Verify Time filter is active
       const timeFilterTag = page.getByTestId('filter-chip-time');
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
       await expect(timeFilterTag).toBeVisible();
     });
 
@@ -181,7 +185,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       // Wait for API response
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
@@ -219,7 +226,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
       );
@@ -238,7 +248,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const last7DaysOption = page.getByText('Last 7 Days').first();
+      const last7DaysOption = page.getByRole('menuitem', {
+        name: 'Last 7 days',
+        exact: true,
+      });
       await expect(last7DaysOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -317,8 +330,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page
         .getByTestId('drop-down-menu')
-        .getByRole('menuitemradio')
-        .first()
+        .getByText('Table', { exact: true })
         .click();
       await page.getByTestId('update-btn').click();
       const response = await auditLogResponse;
@@ -359,10 +371,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await removeUserButton.click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page
-        .locator('.ant-skeleton')
-        .first()
-        .waitFor({ state: 'detached' });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
       await expect(userFilterTag).not.toBeVisible();
 
@@ -385,9 +394,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
     });
 
     await test.step('Verify Clear button appears after search', async () => {
@@ -402,9 +409,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const clearButton = page.getByTestId('clear-filters');
       await clearButton.click();
       await auditLogResponse;
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
       const searchInput = page.getByPlaceholder('Search audit logs');
       await expect(searchInput).toHaveValue('');
@@ -425,9 +430,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
       // Clear search
       const clearButton = page.getByTestId('clear-filters');
@@ -440,9 +443,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
 
       // Search with uppercase term - should return similar results
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
       await searchInput.fill('ADMIN');
 
       const auditLogResponse2 = page.waitForResponse(
@@ -454,9 +455,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response2 = await auditLogResponse2;
       expect(response2.status()).toBe(200);
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
     });
   });
 
@@ -491,15 +490,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
       await pageSizeDropdown.click();
 
-      // Select 50
-
-      // Let's rely on text globally in the portal
-      const option50Global = page
-        .locator(
-          '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu-item'
-        )
-        .filter({ hasText: '50' })
-        .first();
+      const option50Global = page.getByRole('menuitem', { name: /^50 \// });
 
       if (await option50Global.isVisible()) {
         const auditLogResponse = page.waitForResponse(
@@ -554,32 +545,27 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         return;
       }
 
-      const firstItem = listItems.first();
-
-      const avatar = firstItem.getByTestId('item-avatar');
-      await expect(avatar).toBeVisible();
-
-      const profilePic = avatar.locator('[data-avatar]');
-      await expect(profilePic).toBeVisible();
+      // Assert every rendered row carries the element rather than sampling one:
+      // stronger than the old first-row check, and independent of log order.
+      const avatars = listItems.getByTestId('item-avatar');
+      await expect(avatars).toHaveCount(itemCount);
+      await expect(avatars.locator('[data-avatar]')).toHaveCount(itemCount);
     });
 
     await test.step('Verify list item has user info and event type', async () => {
       const listItems = page.getByTestId('audit-log-list-item');
-      const firstItem = listItems.first();
+      const itemCount = await listItems.count();
 
-      const itemHeader = firstItem.getByTestId('item-header');
-      await expect(itemHeader).toBeVisible();
-
-      const eventType = firstItem.getByTestId('event-type');
-      await expect(eventType).toBeVisible();
+      await expect(listItems.getByTestId('item-header')).toHaveCount(itemCount);
+      await expect(listItems.getByTestId('event-type')).toHaveCount(itemCount);
     });
 
     await test.step('Verify list item has metadata section', async () => {
       const listItems = page.getByTestId('audit-log-list-item');
-      const firstItem = listItems.first();
 
-      const itemMeta = firstItem.getByTestId('item-meta');
-      await expect(itemMeta).toBeVisible();
+      await expect(listItems.getByTestId('item-meta')).toHaveCount(
+        await listItems.count()
+      );
     });
   });
 
@@ -611,10 +597,13 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         return;
       }
 
-      const firstItem = listItems.first();
-      const entityTypeBadge = firstItem.getByTestId('entity-type-badge');
-      await expect(entityTypeBadge).toBeVisible();
-      await expect(entityTypeBadge).toContainText('Table');
+      // The step above filtered the log to Table, so every row must say Table.
+      const entityTypeBadges = listItems.getByTestId('entity-type-badge');
+      await expect(entityTypeBadges).toHaveCount(itemCount);
+
+      for (const badge of await entityTypeBadges.all()) {
+        await expect(badge).toContainText('Table');
+      }
     });
   });
 
@@ -634,11 +623,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         return;
       }
 
-      const firstItem = listItems.first();
-      const timestamp = firstItem.getByTestId('timestamp');
-      await expect(timestamp).toBeVisible();
+      const timestamps = listItems.getByTestId('timestamp');
+      await expect(timestamps).toHaveCount(itemCount);
 
-      const timestampText = await timestamp.textContent();
+      const timestampText = (await timestamps.allTextContents())[0];
       const hasRelativeTime =
         timestampText?.includes('ago') ||
         timestampText?.includes('second') ||
@@ -678,9 +666,7 @@ test.describe(
         await searchInput.press('Enter');
         const response = await auditLogResponse;
         expect(response.status()).toBe(200);
-        await page.locator('.ant-skeleton').first().waitFor({
-          state: 'detached',
-        });
+        await expect(page.locator('.ant-skeleton')).toHaveCount(0);
         const responseData = await response.json();
 
         // Verify response has expected structure
@@ -739,9 +725,16 @@ test.describe(
           state: 'visible',
         });
 
-        const todayCell = page
-          .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
-          .first();
+        // RangePicker draws two month panels and each grid also renders the
+        // neighbouring month's days, all carrying a title. Near month end the
+        // next-month panel repeats today, so match only the cell that is
+        // in view for its own panel.
+        const todayCell = page.locator(
+          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
+            Date.now(),
+            'yyyy-MM-dd'
+          )}"]`
+        );
         await todayCell.click();
         await todayCell.click();
       });
@@ -778,7 +771,7 @@ test.describe(
       // job, so the download must not depend on it arriving.
       await test.step('Export completes and downloads the result', async () => {
         const download = await page.waitForEvent('download', {
-          timeout: 120_000,
+          timeout: LONG_ACTION_TIMEOUT,
         });
 
         expect(download.suggestedFilename()).toContain('audit_logs_');
@@ -812,9 +805,7 @@ test.describe(
         );
         await searchInput.press('Enter');
         await auditResponse;
-        await page.locator('.ant-skeleton').first().waitFor({
-          state: 'detached',
-        });
+        await expect(page.locator('.ant-skeleton')).toHaveCount(0);
       });
 
       await test.step('Open Export modal', async () => {
@@ -834,9 +825,16 @@ test.describe(
           state: 'visible',
         });
 
-        const todayCell = page
-          .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
-          .first();
+        // RangePicker draws two month panels and each grid also renders the
+        // neighbouring month's days, all carrying a title. Near month end the
+        // next-month panel repeats today, so match only the cell that is
+        // in view for its own panel.
+        const todayCell = page.locator(
+          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
+            Date.now(),
+            'yyyy-MM-dd'
+          )}"]`
+        );
         await todayCell.click();
         await todayCell.click();
 
@@ -878,9 +876,16 @@ test.describe(
           state: 'visible',
         });
 
-        const todayCell = page
-          .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
-          .first();
+        // RangePicker draws two month panels and each grid also renders the
+        // neighbouring month's days, all carrying a title. Near month end the
+        // next-month panel repeats today, so match only the cell that is
+        // in view for its own panel.
+        const todayCell = page.locator(
+          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
+            Date.now(),
+            'yyyy-MM-dd'
+          )}"]`
+        );
         await todayCell.click();
         await todayCell.click();
       });
@@ -1549,9 +1554,7 @@ test.describe(
           await searchInput.press('Enter');
           const response = await searchResponse;
           expect(response.status()).toBe(200);
-          await page.locator('.ant-skeleton').first().waitFor({
-            state: 'detached',
-          });
+          await expect(page.locator('.ant-skeleton')).toHaveCount(0);
           const responseData = await response.json();
 
           // Should find at least one entry
@@ -1571,23 +1574,24 @@ test.describe(
             .getByTestId('audit-log-list-item')
             .filter({ hasText: glossaryName });
 
-          await expect(glossaryEntry.first()).toBeVisible();
+          // The glossary was created once in this test, so the search above must
+          // surface exactly one row for it — asserting that up front is what
+          // makes every field check below unambiguous.
+          await expect(glossaryEntry).toHaveCount(1);
+
+          await expect(glossaryEntry.getByTestId('event-type')).toContainText(
+            'Entity Created'
+          );
 
           await expect(
-            glossaryEntry.first().getByTestId('event-type')
-          ).toContainText('Entity Created');
-
-          await expect(
-            glossaryEntry.first().getByTestId('entity-type-badge')
+            glossaryEntry.getByTestId('entity-type-badge')
           ).toContainText('Glossary');
 
           await expect(
-            glossaryEntry.first().getByTestId('description-content')
+            glossaryEntry.getByTestId('description-content')
           ).toContainText(glossaryName);
 
-          await expect(
-            glossaryEntry.first().getByTestId('timestamp')
-          ).toBeVisible();
+          await expect(glossaryEntry.getByTestId('timestamp')).toBeVisible();
         });
       } finally {
         if (glossaryId) {

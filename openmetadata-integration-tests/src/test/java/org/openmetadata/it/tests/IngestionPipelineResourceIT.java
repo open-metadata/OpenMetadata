@@ -100,6 +100,7 @@ public class IngestionPipelineResourceIT
 
   // IngestionPipeline only supports owners,followers fields - no tags, no domain
   {
+    supportsEntityStatus = false;
     supportsTags = false;
     supportsDomains = false;
     supportsDataProducts = false;

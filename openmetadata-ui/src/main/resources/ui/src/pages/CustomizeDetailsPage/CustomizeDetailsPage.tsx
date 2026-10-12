@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -82,16 +84,18 @@ export const CustomizeDetailsPage = ({
         pageTitle={t('label.customize-entity', {
           entity: t('label.' + kebabCase(currentPageType)),
         })}>
-        <Row className="customize-details-page" gutter={[0, 20]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid customize-details-page"
+          style={getLayoutGutter(0, 20)}>
+          <Grid.Item className="layout-column" span={24}>
             <CustomizablePageHeader
               disableSave={disableSave}
               personaName={getEntityName(personaDetails)}
               onReset={handleReset}
               onSave={handleSave}
             />
-          </Col>
-          <Col span={24}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <DataAssetsHeader
               isCustomizedView
               dataAsset={entityDummyData as Table}
@@ -104,10 +108,10 @@ export const CustomizeDetailsPage = ({
               onRestoreDataAsset={async () => true}
               onTierUpdate={asyncNoop}
             />
-          </Col>
+          </Grid.Item>
           {/* It will render cols inside the row */}
           <CustomizeTabWidget />
-        </Row>
+        </Grid>
       </PageLayoutV1>
     </NavigationBlocker>
   );

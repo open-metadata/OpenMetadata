@@ -42,6 +42,7 @@ export const mockTextBasedSummaryTitleResponse = (
 
 export const mockLinkBasedSummaryTitleResponse = (
   <Link
+    rel="noopener noreferrer"
     target="_blank"
     to="http://localhost:8080/taskinstance/list/?_flt_3_dag_id=dim_address_task">
     <div className="d-flex items-center">
@@ -168,6 +169,7 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
     name: 'assert_table_exists',
     title: (
       <Link
+        rel="noopener noreferrer"
         target="_blank"
         to="http://localhost:8080/taskinstance/list/?_flt_3_dag_id=assert_table_exists">
         <div className="d-flex items-center">

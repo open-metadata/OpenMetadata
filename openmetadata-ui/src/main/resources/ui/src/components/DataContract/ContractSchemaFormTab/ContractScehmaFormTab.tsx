@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Tag } from 'antd';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -379,12 +379,15 @@ export const ContractSchemaFormTab: React.FC<{
     }
 
     return (
-      <Tag
-        className="cursor-pointer custom-tag"
+      <Badge
+        bordered={false}
+        className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium tw:cursor-pointer"
         color="purple"
-        title={displayValue}>
+        size="sm"
+        title={displayValue}
+        type="color">
         {highlightSearchArrayElement(dataTypeDisplay, '')}
-      </Tag>
+      </Badge>
     );
   };
 
@@ -396,12 +399,15 @@ export const ContractSchemaFormTab: React.FC<{
     }
 
     return (
-      <Tag
-        className="cursor-pointer custom-tag"
+      <Badge
+        bordered={false}
+        className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium tw:cursor-pointer"
         color="blue"
-        title={constraint}>
+        size="sm"
+        title={constraint}
+        type="color">
         {constraint}
-      </Tag>
+      </Badge>
     );
   };
 

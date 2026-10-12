@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import IncidentManager from '../../components/IncidentManager/IncidentManager.component';
@@ -18,6 +19,7 @@ import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import incidentManagerClassBase from './IncidentManagerClassBase';
 
 const IncidentManagerPage = () => {
@@ -37,26 +39,28 @@ const IncidentManagerPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.incident-manager')}>
-      <Row className="m-t-xs" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid m-t-xs"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <Card>
             <PageHeader
               data={pageHeaderData}
               learningPageId={LEARNING_PAGE_IDS.INCIDENT_MANAGER}
             />
           </Card>
-        </Col>
+        </Grid.Item>
 
         {WidgetComponent && (
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <WidgetComponent />
-          </Col>
+          </Grid.Item>
         )}
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <IncidentManager />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

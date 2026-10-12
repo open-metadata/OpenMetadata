@@ -69,8 +69,7 @@ test.describe(
       await page.click('[id="root\\/column"]');
       const columnOption = page
         .getByRole('option')
-        .filter({ hasText: columnName })
-        .first();
+        .filter({ hasText: columnName });
       await columnOption.waitFor({
         state: 'visible',
       });
@@ -437,15 +436,13 @@ test.describe(
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid="loader"]').waitFor({
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       const selectAllSwitch = page
-        .getByRole('switch')
-        .and(page.getByTestId('select-all-test-cases'));
+        .getByTestId('select-all-test-cases')
+        .getByRole('switch');
       await selectAllSwitch.waitFor({ state: 'visible' });
 
-      await expect(selectAllSwitch).toHaveAttribute('aria-checked', 'true');
+      await expect(selectAllSwitch).toBeChecked();
     });
 
     /**

@@ -12,8 +12,9 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from './common/layout.utils';
+
 import { get, isEmpty } from 'lodash';
 import { lazy, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -65,6 +66,7 @@ import {
 import entityUtilClassBase from './EntityUtilClassBase';
 import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
+import { getSafeHttpUrl } from './StringUtils';
 
 const APIEndpointSummary = withSuspenseFallback(
   lazy(
@@ -155,7 +157,7 @@ export const getTitle = (
   const title = highlightedTitle
     ? renderHighlightedText(highlightedTitle)
     : getEntityName(listItem) || NO_DATA_PLACEHOLDER;
-  const sourceUrl = (listItem as Chart | Task).sourceUrl;
+  const sourceUrl = getSafeHttpUrl((listItem as Chart | Task).sourceUrl);
 
   if ((listItem as EntityReference).type === SummaryEntityType.DASHBOARD) {
     return (
@@ -175,7 +177,7 @@ export const getTitle = (
   }
 
   return sourceUrl ? (
-    <Link target="_blank" to={sourceUrl}>
+    <Link rel="noopener noreferrer" target="_blank" to={sourceUrl}>
       <div className="d-flex items-center">
         <Typography
           className="entity-title text-link-color font-medium m-r-xss"
@@ -490,38 +492,38 @@ const getDashboardSummary = (
 
   return (
     <>
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
           <Typography
             className="summary-panel-section-title"
             data-testid="charts-header">
             {t('label.chart-plural')}
           </Typography>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <SummaryList
             formattedEntityData={formattedChartsData}
             loading={loading}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
           <Typography
             className="summary-panel-section-title"
             data-testid="data-model-header">
             {t('label.data-model-plural')}
           </Typography>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <SummaryList formattedEntityData={formattedDataModelData} />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </>
   );
 };
@@ -602,18 +604,20 @@ export const getEntityChildDetails = (
 
   if (childDetails) {
     return (
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
           <Typography
             className="summary-panel-section-title"
             data-testid={childDetails.headingTestId}>
             {childDetails.heading}
           </Typography>
-        </Col>
-        <Col span={24}>{childDetails.childComponent}</Col>
-      </Row>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          {childDetails.childComponent}
+        </Grid.Item>
+      </Grid>
     );
   }
 

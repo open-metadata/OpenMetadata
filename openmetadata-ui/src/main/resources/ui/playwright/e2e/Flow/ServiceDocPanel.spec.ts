@@ -88,7 +88,9 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       const docPanel = page.getByTestId('service-requirements');
 
-      await expect(docPanel.locator('pre code').first()).toBeVisible();
+      await expect(
+        docPanel.locator('pre code').filter({ visible: true })
+      ).not.toHaveCount(0);
       // Raw fence markers should not appear
       await expect(docPanel).not.toContainText('```');
     });

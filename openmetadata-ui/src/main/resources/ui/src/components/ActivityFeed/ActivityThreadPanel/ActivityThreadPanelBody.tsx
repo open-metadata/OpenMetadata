@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Space, Switch } from 'antd';
+import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -302,15 +302,25 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return (
       <Fragment>
         {(showNewConversation || hasNoConversations) && isConversationType && (
-          <Space className="w-full" direction="vertical">
+          <Box
+            inline
+            align="stretch"
+            className="layout-space w-full"
+            direction="col"
+            gap={2}
+            itemClassName="layout-space-item">
             <Typography as="p">{t('message.new-conversation')}</Typography>
             <ActivityFeedEditor
+              // Shown on demand (new conversation, or an empty panel just
+              // opened), so it takes focus as it did before FeedEditor stopped
+              // focusing itself on mount.
+              focused
               placeHolder={t('message.enter-a-field', {
                 field: t('label.message-lowercase'),
               })}
               onSave={onPostConversation}
             />
-          </Space>
+          </Box>
         )}
 
         {isTaskType ? renderTaskList() : renderConversationList()}
@@ -348,20 +358,22 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           />
         )}
         {isTaskType && (
-          <Space
+          <Box
+            inline
             align="center"
-            className="w-full justify-end p-r-xs m-t-xs"
-            size={4}>
-            <Switch
-              size="small"
-              onChange={(checked) =>
+            className="layout-space layout-space-horizontal w-full justify-end p-r-xs m-t-xs"
+            gap={1}
+            itemClassName="layout-space-item">
+            <Toggle
+              label={t('label.closed-task-plural')}
+              size="sm"
+              onChange={(isSelected) =>
                 setTaskStatusGroup(
-                  checked ? TaskStatusGroup.Closed : TaskStatusGroup.Open
+                  isSelected ? TaskStatusGroup.Closed : TaskStatusGroup.Open
                 )
               }
             />
-            <span>{t('label.closed-task-plural')}</span>
-          </Space>
+          </Box>
         )}
 
         {renderMainContent()}
