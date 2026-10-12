@@ -106,36 +106,33 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   );
 
   const getAlertRecentEvents = useCallback(
-    async (paginationOffset = 0) => {
-      try {
-        setLoading(true);
-        const { data, paging } = await getAlertEventsFromId({
-          id,
-          params: {
-            ...(filter === AlertRecentEventFilters.ALL
-              ? { limit: pageSize, paginationOffset }
-              : {
-                  status: filter as Status,
-                  limit: pageSize,
-                  paginationOffset,
-                }),
-          },
-        });
+    (paginationOffset = 0) => {
+      setLoading(true);
+      getAlertEventsFromId({
+        id,
+        params: {
+          ...(filter === AlertRecentEventFilters.ALL
+            ? { limit: pageSize, paginationOffset }
+            : {
+                status: filter as Status,
+                limit: pageSize,
+                paginationOffset,
+              }),
+        },
+      })
+        .then(({ data, paging }) => {
+          // A page restored from the URL can lie past the end, where the empty state hides the paginator.
+          if (isEmpty(data) && paginationOffset > 0) {
+            handlePageChange(INITIAL_PAGING_VALUE);
 
-        // A page restored from the URL can lie past the end, where the empty state hides the paginator.
-        if (isEmpty(data) && paginationOffset > 0) {
-          handlePageChange(INITIAL_PAGING_VALUE);
+            return;
+          }
 
-          return;
-        }
-
-        setAlertRecentEvents(data);
-        handlePagingChange(paging);
-      } catch (e) {
-        showErrorToast(e as AxiosError);
-      } finally {
-        setLoading(false);
-      }
+          setAlertRecentEvents(data);
+          handlePagingChange(paging);
+        })
+        .catch((e: AxiosError) => showErrorToast(e))
+        .finally(() => setLoading(false));
     },
     [id, filter, pageSize, handlePagingChange, handlePageChange]
   );
