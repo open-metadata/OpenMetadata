@@ -388,7 +388,9 @@ const AdminPermissionDebugger: React.FC = () => {
                 </div>
 
                 <div className="tw:w-full tw:max-w-100">
+                  {/* Keep the popup open while the debounced search replaces its empty collection. */}
                   <ComboBox
+                    allowsEmptyCollection
                     aria-label={t('label.search-entity', {
                       entity: t('label.user'),
                     })}

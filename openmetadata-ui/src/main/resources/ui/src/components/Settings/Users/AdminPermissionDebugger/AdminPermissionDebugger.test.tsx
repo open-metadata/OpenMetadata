@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter } from 'react-router-dom';
+import { getPermissionDebugInfo } from '../../../../rest/permissionAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import AdminPermissionDebugger from './AdminPermissionDebugger.component';
 
 jest.mock('../../../../rest/searchAPI');
@@ -44,6 +47,42 @@ const renderWithRouter = (component: React.ReactElement) => {
 describe('AdminPermissionDebugger', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('keeps asynchronously returned users selectable after an empty initial search', async () => {
+    let resolveSearch!: (value: unknown) => void;
+    (searchQuery as jest.Mock).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSearch = resolve;
+        })
+    );
+    (getPermissionDebugInfo as jest.Mock).mockResolvedValue({
+      data: undefined,
+    });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderWithRouter(<AdminPermissionDebugger />);
+    await user.type(screen.getByRole('combobox'), 'visual');
+    act(() => jest.advanceTimersByTime(300));
+    await waitFor(() => expect(searchQuery).toHaveBeenCalled());
+    await act(async () =>
+      resolveSearch({
+        hits: {
+          hits: [
+            { _source: { name: 'visual_user', displayName: 'Visual User' } },
+          ],
+        },
+      })
+    );
+    const option = await screen.findByRole('option', {
+      name: 'Visual User (visual_user)',
+    });
+    await user.click(option);
+    await waitFor(() =>
+      expect(screen.getByText('visual_user')).toBeInTheDocument()
+    );
+
+    expect(getPermissionDebugInfo).toHaveBeenCalledWith('visual_user');
   });
 
   it('should render the component', () => {
