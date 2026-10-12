@@ -15,7 +15,6 @@ import type { Edge } from 'reactflow';
 import {
   LineageBand,
   LineageLevelKind,
-  type LineageScene,
   type LineageSceneEdge,
   type LineageSceneNode,
 } from '../../../generated/api/lineage/lineageScene';
@@ -26,16 +25,12 @@ import {
 import {
   buildLineagePayload,
   FIELD_SEPARATOR,
-  findDeletableSelectedNode,
   getEndpointHandle,
   getEndpointNodeId,
   getRealEntityRef,
-  hasSceneEntityConnection,
-  hasSceneLineageEdge,
   hydrateSelectedEdge,
   isEditableSceneEdge,
   isEditableSceneNode,
-  isRemovableSceneNode,
   toFlowEdge,
   toFlowEdges,
   type LineageMapEdgeData,
@@ -86,133 +81,6 @@ describe('LineageMap edit utils', () => {
       expect(getEndpointNodeId(endpoint)).toBe(sourceNode.id);
       expect(getEndpointHandle(endpoint)).toBe('source.column');
       expect(getEndpointHandle(sourceNode.id)).toBeUndefined();
-    });
-
-    it('matches asset and field connections returned by a refreshed scene', () => {
-      const scene = {
-        nodes: [sourceNode, targetNode],
-        edges: [
-          createEdge(),
-          createEdge({
-            id: 'field-edge',
-            from: `${sourceNode.id}${FIELD_SEPARATOR}source.column`,
-            to: `${targetNode.id}${FIELD_SEPARATOR}target.column`,
-          }),
-        ],
-      } as LineageScene;
-
-      expect(
-        hasSceneEntityConnection(scene, 'source-entity-id', 'target-entity-id')
-      ).toBe(true);
-      expect(
-        hasSceneEntityConnection(
-          scene,
-          'source-entity-id',
-          'target-entity-id',
-          'source.column',
-          'target.column'
-        )
-      ).toBe(true);
-      expect(
-        hasSceneEntityConnection(scene, 'target-entity-id', 'source-entity-id')
-      ).toBe(false);
-    });
-  });
-
-  describe('findDeletableSelectedNode', () => {
-    const flowNode = (
-      sceneNode: LineageSceneNode,
-      flags: { isRootNode?: boolean; isNodeRemovable?: boolean } = {}
-    ) => ({
-      id: sceneNode.id,
-      data: {
-        sceneNode,
-        isNodeEditable: true,
-        isNodeRemovable: flags.isNodeRemovable ?? true,
-        isRootNode: flags.isRootNode ?? false,
-      },
-    });
-
-    it('matches the selected node by entity id', () => {
-      const target = flowNode(targetNode);
-
-      expect(
-        findDeletableSelectedNode(
-          [flowNode(sourceNode), target],
-          'target-entity-id'
-        )
-      ).toBe(target);
-    });
-
-    it('skips root, non-removable and unselected nodes', () => {
-      expect(
-        findDeletableSelectedNode(
-          [flowNode(targetNode, { isRootNode: true })],
-          'target-entity-id'
-        )
-      ).toBeUndefined();
-      expect(
-        findDeletableSelectedNode(
-          [flowNode(targetNode, { isNodeRemovable: false })],
-          'target-entity-id'
-        )
-      ).toBeUndefined();
-      expect(
-        findDeletableSelectedNode([flowNode(targetNode)], undefined)
-      ).toBeUndefined();
-    });
-  });
-
-  describe('hasSceneLineageEdge', () => {
-    const fieldEdge = createEdge({
-      id: 'field-edge',
-      from: `${sourceNode.id}${FIELD_SEPARATOR}source.column`,
-      to: `${targetNode.id}${FIELD_SEPARATOR}target.column`,
-    });
-    const columnPair = {
-      fromColumn: 'source.column',
-      toColumn: 'target.column',
-    };
-
-    it('confirms a column edge from an asset scene entity edge', () => {
-      const scene = {
-        nodes: [sourceNode, targetNode],
-        edges: [createEdge()],
-      } as LineageScene;
-
-      expect(
-        hasSceneLineageEdge(
-          scene,
-          'source-entity-id',
-          'target-entity-id',
-          columnPair
-        )
-      ).toBe(true);
-    });
-
-    it('confirms a column edge from a field scene that has no entity edge', () => {
-      const scene = {
-        nodes: [sourceNode, targetNode],
-        edges: [fieldEdge],
-      } as LineageScene;
-
-      expect(
-        hasSceneLineageEdge(
-          scene,
-          'source-entity-id',
-          'target-entity-id',
-          columnPair
-        )
-      ).toBe(true);
-      expect(
-        hasSceneLineageEdge(scene, 'source-entity-id', 'target-entity-id')
-      ).toBe(false);
-      expect(
-        hasSceneLineageEdge(scene, 'source-entity-id', 'target-entity-id', {
-          fromColumn: 'source.column',
-          toColumn: 'other.column',
-        })
-      ).toBe(false);
     });
   });
 
@@ -280,26 +148,6 @@ describe('LineageMap edit utils', () => {
           nodeById
         )
       ).toBe(true);
-    });
-
-    it('removes only non-focus nodes whose touching edges are editable', () => {
-      expect(isRemovableSceneNode(targetNode, [createEdge()], nodeById)).toBe(
-        true
-      );
-      expect(
-        isRemovableSceneNode(
-          { ...targetNode, isFocus: true },
-          [createEdge()],
-          nodeById
-        )
-      ).toBe(false);
-      expect(
-        isRemovableSceneNode(
-          targetNode,
-          [createEdge({ isRollup: true })],
-          nodeById
-        )
-      ).toBe(false);
     });
   });
 

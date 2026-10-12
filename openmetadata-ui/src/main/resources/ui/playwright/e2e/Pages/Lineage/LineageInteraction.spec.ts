@@ -628,7 +628,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Hierarchical map edit guards', () => {
-    test('disables lineage editing in the LAYER band', async ({ page }) => {
+    test('platform lineage is view only in every band', async ({ page }) => {
       const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
       await sidebarClick(page, SidebarItem.LINEAGE);
       expect((await sceneResponse).ok()).toBeTruthy();
@@ -643,6 +643,16 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
       await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
+
+      // The Asset band shows real tables, where asset tabs offer the menu.
+      const assetScene = page.waitForResponse('**/api/v1/lineage/scene?*');
+      await page.getByTestId('lineage-map-band-ASSET').click();
+      expect((await assetScene).ok()).toBeTruthy();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
+      await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
+      await expect(page.getByTestId('lineage-column-menu')).toHaveCount(0);
     });
 
     test('opening the node menu offers the add-lineage popover', async ({

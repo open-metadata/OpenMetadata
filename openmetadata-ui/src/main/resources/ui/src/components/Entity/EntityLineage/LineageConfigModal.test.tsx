@@ -65,7 +65,7 @@ describe('LineageConfigModal', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onSave with updated values when form is submitted', async () => {
+  it('calls onSave with updated values and keeps the pipeline view mode', async () => {
     render(
       <LineageConfigModal
         visible
@@ -91,6 +91,7 @@ describe('LineageConfigModal', () => {
         upstreamDepth: 5,
         downstreamDepth: 6,
         nodesPerLayer: 7,
+        pipelineViewMode: PipelineViewMode.Node,
       });
     });
   });

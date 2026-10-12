@@ -111,75 +111,6 @@ export const getRealEntityRef = (
   };
 };
 
-export const hasSceneEntityConnection = (
-  scene: LineageScene,
-  fromEntityId: string,
-  toEntityId: string,
-  sourceHandle?: string,
-  targetHandle?: string
-) => {
-  const sourceNode = scene.nodes.find(
-    (node) => getRealEntityRef(node)?.id === fromEntityId
-  );
-  const targetNode = scene.nodes.find(
-    (node) => getRealEntityRef(node)?.id === toEntityId
-  );
-  if (!sourceNode || !targetNode) {
-    return false;
-  }
-
-  return scene.edges.some(
-    (edge) =>
-      getEndpointNodeId(edge.from) === sourceNode.id &&
-      getEndpointNodeId(edge.to) === targetNode.id &&
-      getEndpointHandle(edge.from) === sourceHandle &&
-      getEndpointHandle(edge.to) === targetHandle
-  );
-};
-
-// A refreshed Asset scene shows a new column edge as its entity edge, while a
-// Field scene only carries the column edge, so accept either.
-export const hasSceneLineageEdge = (
-  scene: LineageScene,
-  fromEntityId: string,
-  toEntityId: string,
-  columnPair?: { fromColumn: string; toColumn: string }
-) =>
-  hasSceneEntityConnection(scene, fromEntityId, toEntityId) ||
-  (columnPair !== undefined &&
-    hasSceneEntityConnection(
-      scene,
-      fromEntityId,
-      toEntityId,
-      columnPair.fromColumn,
-      columnPair.toColumn
-    ));
-
-// The selected node is a drawer copy of the flow node, so match it by entity id.
-// Only nodes the ⋮ menu would offer to delete qualify.
-export const findDeletableSelectedNode = <
-  T extends {
-    data: {
-      sceneNode?: LineageSceneNode;
-      isNodeEditable?: boolean;
-      isNodeRemovable?: boolean;
-      isRootNode?: boolean;
-    };
-  }
->(
-  nodes: T[],
-  selectedEntityId?: string
-) =>
-  selectedEntityId
-    ? nodes.find(
-        ({ data }) =>
-          getRealEntityRef(data.sceneNode)?.id === selectedEntityId &&
-          data.isNodeEditable &&
-          data.isNodeRemovable &&
-          !data.isRootNode
-      )
-    : undefined;
-
 export const isEditableSceneNode = (
   node?: LineageSceneNode
 ): node is LineageSceneNode => {
@@ -235,24 +166,6 @@ const getFlowEntityRef = (node?: LineageSceneNode): EdgeFromToData =>
     type: node?.entityType ?? '',
     fullyQualifiedName: node?.fullyQualifiedName,
   };
-
-export const isRemovableSceneNode = (
-  node: LineageSceneNode,
-  edges: LineageSceneEdge[],
-  nodeById: Map<string, LineageSceneNode>
-) => {
-  if (!isEditableSceneNode(node) || node.isOrigin || node.isFocus) {
-    return false;
-  }
-
-  return edges
-    .filter(
-      (edge) =>
-        getEndpointNodeId(edge.from) === node.id ||
-        getEndpointNodeId(edge.to) === node.id
-    )
-    .every((edge) => isEditableSceneEdge(edge, nodeById));
-};
 
 export const toFlowEdge = (
   nodeById: Map<string, LineageSceneNode>,

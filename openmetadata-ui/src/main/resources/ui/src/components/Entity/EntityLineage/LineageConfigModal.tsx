@@ -24,7 +24,6 @@ import { useTranslation } from 'react-i18next';
 import { LINEAGE_CONFIG_FIELDS } from '../../../constants/Lineage.constants';
 import { getLineageConfigFormValues } from '../../../utils/EntityLineagePureUtils';
 import {
-  LineageConfig,
   LineageConfigFormValues,
   LineageConfigModalProps,
 } from './EntityLineage.interface';
@@ -46,13 +45,15 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
     }
   }, [visible, config, form.reset, form]);
 
-  // Only the edited fields are emitted, matching the previous AntD onFinish payload.
+  // Keep the rest of the config (e.g. pipelineViewMode): callers store the
+  // saved object as a whole.
   const onSubmit = (values: LineageConfigFormValues) =>
     onSave({
+      ...config,
       upstreamDepth: Number(values.upstreamDepth),
       downstreamDepth: Number(values.downstreamDepth),
       nodesPerLayer: Number(values.nodesPerLayer),
-    } as LineageConfig);
+    });
 
   return (
     <ModalOverlay

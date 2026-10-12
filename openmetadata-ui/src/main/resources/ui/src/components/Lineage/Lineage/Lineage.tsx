@@ -120,6 +120,7 @@ import {
   addLineageHandler,
   parseLineageData,
   removeLineageHandler,
+  withoutLineageEdges,
 } from '../../../utils/EntityLineagePureUtils';
 import { updateNodeType } from '../../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
@@ -1406,25 +1407,19 @@ export const Lineage = ({
 
       const edgesToRemove = getConnectedEdges([node as Node], nodeEdges);
 
-      const filteredEdges: EdgeDetails[] = [];
-
-      await Promise.all(
+      const removedEdges = await Promise.all(
         edgesToRemove.map(async (edge) => {
           const edgeData = getEdgeDataFromEdge(edge);
           await removeLineageHandler(edgeData);
-
-          filteredEdges.push(
-            ...(entityLineage.edges ?? []).filter(
-              (item) =>
-                !(
-                  item.fromEntity.id === edgeData.fromId &&
-                  item.toEntity.id === edgeData.toId
-                )
-            )
-          );
-
           removeEdgesBySourceTarget(edgeData.fromId, edgeData.toId);
+
+          return edgeData;
         })
+      );
+
+      const filteredEdges = withoutLineageEdges(
+        entityLineage.edges ?? [],
+        removedEdges
       );
 
       const updatedNodes = (entityLineage.nodes ?? []).filter(

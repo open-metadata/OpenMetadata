@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { renderHook } from '@testing-library/react';
 import type { TFunction } from 'i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -42,7 +41,6 @@ import {
   getSceneSearch,
   getScreenFill,
   getSemanticZoomDirection,
-  useCloseOnViewportMove,
 } from './LineageMap.utils';
 
 describe('scene focus validation', () => {
@@ -694,6 +692,38 @@ describe('getDeleteKeyAction', () => {
     ).toBeUndefined();
   });
 
+  it('acts on keys pressed on the canvas', () => {
+    const canvas = document.createElement('div');
+    canvas.className = 'react-flow';
+    const pane = document.createElement('div');
+    canvas.appendChild(pane);
+    document.body.appendChild(canvas);
+
+    expect(
+      getDeleteKeyAction(keyEvent('Delete', pane), {
+        canEdit: true,
+        hasSelectedNode: false,
+        hasSelectedEdge: true,
+      })
+    ).toBe('edge');
+  });
+
+  it('ignores keys pressed in a drawer or other overlay', () => {
+    const drawer = document.createElement('div');
+    drawer.setAttribute('role', 'dialog');
+    const closeButton = document.createElement('button');
+    drawer.appendChild(closeButton);
+    document.body.appendChild(drawer);
+
+    expect(
+      getDeleteKeyAction(keyEvent('Delete', closeButton), {
+        canEdit: true,
+        hasSelectedNode: true,
+        hasSelectedEdge: true,
+      })
+    ).toBeUndefined();
+  });
+
   it('ignores everything without edit permission', () => {
     expect(
       getDeleteKeyAction(keyEvent('Delete'), {
@@ -702,24 +732,6 @@ describe('getDeleteKeyAction', () => {
         hasSelectedEdge: false,
       })
     ).toBeUndefined();
-  });
-});
-
-describe('useCloseOnViewportMove', () => {
-  it('closes the popover when the viewport starts moving', () => {
-    const close = jest.fn();
-    const { result } = renderHook(() => useCloseOnViewportMove(true, close));
-    result.current();
-
-    expect(close).toHaveBeenCalledTimes(1);
-  });
-
-  it('does nothing when closed', () => {
-    const close = jest.fn();
-    const { result } = renderHook(() => useCloseOnViewportMove(false, close));
-    result.current();
-
-    expect(close).not.toHaveBeenCalled();
   });
 });
 

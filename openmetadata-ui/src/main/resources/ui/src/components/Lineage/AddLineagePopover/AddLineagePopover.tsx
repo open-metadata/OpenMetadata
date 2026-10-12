@@ -23,16 +23,17 @@ import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE } from '../../../constants/constants';
 import { entityData } from '../../../constants/Lineage.constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import {
   EdgeFromToData,
   LineageNodeType,
 } from '../../../interface/lineage.interface';
-import { searchQuery } from '../../../rest/searchAPI';
+import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
+import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -191,22 +192,20 @@ const AddLineagePopover = ({
   }, [request]);
 
   // The search hit for the picked asset carries the columns to map to.
+  // Columns come from the picked asset itself, fetched by FQN, so names shared
+  // across services or special characters cannot miss it.
   const loadColumns = useCallback(
     async (picked: EntityHit, index: SearchIndex) => {
+      const fqn = picked.fullyQualifiedName ?? '';
       try {
-        // Search by name, as the asset list does, and keep this asset's hit.
-        const response = await searchQuery({
-          query: picked.name ?? picked.displayName ?? '',
-          searchIndex: index,
-          pageNumber: 1,
-          pageSize: PAGE_SIZE,
-          includeDeleted: false,
-        });
-        const hit = response.hits.hits
-          .map(({ _source }) => _source as unknown as EntityHit)
-          .find((source) => source.id === picked.id);
+        const { columns } =
+          index === SearchIndex.DASHBOARD_DATA_MODEL
+            ? await getDataModelByFqn(fqn, { fields: TabSpecificField.COLUMNS })
+            : await getTableDetailsByFQN(fqn, {
+                fields: TabSpecificField.COLUMNS,
+              });
         setEntity((current) =>
-          current?.id === picked.id && hit ? { ...current, ...hit } : current
+          current?.id === picked.id ? { ...current, columns } : current
         );
       } catch (error) {
         showErrorToast(error as AxiosError);

@@ -51,6 +51,21 @@ import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
 
+/** Lineage edges minus every removed from -> to pair, filtered in one pass. */
+export const withoutLineageEdges = (
+  edges: EdgeDetails[],
+  removed: { fromId: string; toId: string }[]
+): EdgeDetails[] => {
+  const removedKeys = new Set(
+    removed.map(({ fromId, toId }) => `${fromId}->${toId}`)
+  );
+
+  return edges.filter(
+    ({ fromEntity, toEntity }) =>
+      !removedKeys.has(`${fromEntity.id}->${toEntity.id}`)
+  );
+};
+
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
 };

@@ -144,15 +144,20 @@ const EntityLineageCanvas = ({
   const flowNodes = useMemo(
     () =>
       canEdit
-        ? nodes.map((node) => ({
-            ...node,
-            data: {
-              ...node.data,
-              isNodeEditable: true,
-              onSceneLineageEdit: setEditRequest,
-              onSceneNodeRemove: requestNodeDelete,
-            },
-          }))
+        ? nodes.map((node) =>
+            // Temp tables are plain hops in the graph: no menu, no edits.
+            node.data?.node?.isTempTable
+              ? node
+              : {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    isNodeEditable: true,
+                    onSceneLineageEdit: setEditRequest,
+                    onSceneNodeRemove: requestNodeDelete,
+                  },
+                }
+          )
         : nodes,
     [canEdit, nodes, requestNodeDelete]
   );
@@ -163,7 +168,9 @@ const EntityLineageCanvas = ({
       const deletableNode = selectedNode?.id
         ? nodes.find(
             (node) =>
-              node.data?.node?.id === selectedNode.id && !node.data?.isRootNode
+              node.data?.node?.id === selectedNode.id &&
+              !node.data?.isRootNode &&
+              !node.data?.node?.isTempTable
           )
         : undefined;
       const action = getDeleteKeyAction(event, {
@@ -201,13 +208,21 @@ const EntityLineageCanvas = ({
 
   const handleCanvasEdgeClick = useCallback(
     (edge: Edge, event: globalThis.MouseEvent) => {
-      // The edge drawer offers Edit Pipeline / Delete only for editable edges.
+      // The edge drawer offers Edit Pipeline / Delete only for editable edges;
+      // an edge into or out of a temp table stays read-only.
+      const touchesTempTable = nodes.some(
+        (node) =>
+          (node.id === edge.source || node.id === edge.target) &&
+          node.data?.node?.isTempTable
+      );
       onEdgeClick(
-        canEdit ? { ...edge, data: { ...edge.data, isEditable: true } } : edge
+        canEdit && !touchesTempTable
+          ? { ...edge, data: { ...edge.data, isEditable: true } }
+          : edge
       );
       event.stopPropagation();
     },
-    [canEdit]
+    [canEdit, nodes]
   );
 
   const editNode = nodes.find((node) => node.id === editRequest?.nodeId);

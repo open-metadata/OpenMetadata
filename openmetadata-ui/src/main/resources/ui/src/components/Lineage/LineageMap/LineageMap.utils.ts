@@ -13,7 +13,6 @@
 
 import type { TFunction } from 'i18next';
 import Qs from 'qs';
-import { useCallback } from 'react';
 import {
   LineageBand,
   LineageLens,
@@ -653,10 +652,13 @@ export const getDeleteKeyAction = (
     return undefined;
   }
 
+  // Only act while focus is on the page or the canvas: never while typing,
+  // and never from a drawer, modal or menu stacked over the canvas.
   const target = event.target;
   if (
     target instanceof HTMLElement &&
-    target.closest('input, textarea, [contenteditable="true"]')
+    (target.closest('input, textarea, [contenteditable="true"]') ||
+      (target !== document.body && !target.closest('.react-flow')))
   ) {
     return undefined;
   }
@@ -715,17 +717,6 @@ export const getParentSceneRequest = (
 
   return undefined;
 };
-
-/**
- * ReactFlow's `onMoveStart` handler: closes an open edit popover as soon as the
- * user starts panning/zooming, since its trigger anchor moves with the canvas.
- */
-export const useCloseOnViewportMove = (isOpen: boolean, close: () => void) =>
-  useCallback(() => {
-    if (isOpen) {
-      close();
-    }
-  }, [isOpen, close]);
 
 /**
  * Kept out of LineageMap.component.tsx so the upstream/downstream branch does

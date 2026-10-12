@@ -136,9 +136,9 @@ const LineageDrawerOverlay = ({
       )}
       {selectedEdge && (
         <EdgeInfoDrawer
-          hasEditAccess
           visible
           edge={selectedEdge}
+          hasEditAccess={canEditLineage}
           nodes={nodes}
           onClose={onCloseDrawer}
           onDelete={handleDelete}

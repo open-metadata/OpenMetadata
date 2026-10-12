@@ -21,7 +21,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
-import { searchQuery } from '../../../rest/searchAPI';
+import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getAggregationOptions } from '../../../utils/ExploreUtils';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import AddLineagePopover from './AddLineagePopover';
@@ -29,7 +29,12 @@ import AddLineagePopover from './AddLineagePopover';
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-jest.mock('../../../rest/searchAPI', () => ({ searchQuery: jest.fn() }));
+jest.mock('../../../rest/tableAPI', () => ({
+  getTableDetailsByFQN: jest.fn(),
+}));
+jest.mock('../../../rest/dataModelsAPI', () => ({
+  getDataModelByFqn: jest.fn(),
+}));
 jest.mock('../../../utils/ExploreUtils', () => ({
   getAggregationOptions: jest.fn(),
 }));
@@ -168,18 +173,8 @@ describe('AddLineagePopover', () => {
   });
 
   it('asks for a column when opened from a column and submits the column', async () => {
-    (searchQuery as jest.Mock).mockResolvedValue({
-      hits: {
-        hits: [
-          {
-            _source: {
-              id: 'b',
-              entityType: 'table',
-              columns: [{ name: 'id', fullyQualifiedName: 's.d.sc.orders.id' }],
-            },
-          },
-        ],
-      },
+    (getTableDetailsByFQN as jest.Mock).mockResolvedValue({
+      columns: [{ name: 'id', fullyQualifiedName: 's.d.sc.orders.id' }],
     });
     open(LineageDirection.Downstream, 's.d.sc.self.id');
     await pickType();
@@ -201,6 +196,10 @@ describe('AddLineagePopover', () => {
         columnFqn: 's.d.sc.orders.id',
       })
     );
+
+    expect(getTableDetailsByFQN).toHaveBeenCalledWith('s.d.sc.orders', {
+      fields: 'columns',
+    });
   });
 
   it('stays open when submit fails, and ignores duplicate submits', async () => {
