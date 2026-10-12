@@ -79,6 +79,19 @@ jest.mock(
               <div className="ql-toolbar" data-testid="format-bar">
                 <span className="ql-formats">
                   <button
+                    aria-label="bold"
+                    className="ql-bold"
+                    data-testid="bold-control"
+                  />
+                  <button
+                    aria-label="ordered list"
+                    className="ql-list"
+                    data-testid="ordered-list-control"
+                    value="ordered"
+                  />
+                </span>
+                <span className="ql-formats">
+                  <button
                     aria-label="emoji"
                     className="textarea-emoji-control"
                     data-testid="emoji-control"
@@ -268,6 +281,37 @@ describe('InboxCommentComposer', () => {
 
     expect(holder).not.toBeNull();
     expect(holder?.getAttribute('style')).toContain('Reply here');
+  });
+
+  // Quill draws its icons from one app-wide registry; the composer draws the
+  // design's into its own buttons, Quill's and quill-emoji's alike.
+  describe('format bar icons', () => {
+    const iconIn = (button: Element | null) =>
+      button?.querySelector('svg.inbox-comment-composer__icon');
+
+    it("draws the design's icon into each format button", async () => {
+      render(<InboxCommentComposer onSave={jest.fn()} />);
+
+      await waitFor(() =>
+        expect(iconIn(screen.getByTestId('bold-control'))).toBeTruthy()
+      );
+
+      expect(iconIn(screen.getByTestId('ordered-list-control'))).toBeTruthy();
+      expect(iconIn(screen.getByTestId('emoji-control'))).toBeTruthy();
+    });
+
+    it('draws the icons into a format bar rebuilt after mount', async () => {
+      render(<InboxCommentComposer onSave={jest.fn()} />);
+      const newBar = document.createElement('div');
+      newBar.className = 'ql-toolbar';
+      newBar.innerHTML =
+        '<span class="ql-formats"><button class="ql-italic"></button></span>';
+      screen.getByTestId('format-bar').replaceWith(newBar);
+
+      await waitFor(() =>
+        expect(iconIn(newBar.querySelector('.ql-italic'))).toBeTruthy()
+      );
+    });
   });
 
   // quill-emoji adds its picker to the format bar with no horizontal position

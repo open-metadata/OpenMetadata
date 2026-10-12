@@ -12,14 +12,30 @@
  */
 
 import { Box, Button } from '@openmetadata/ui-core-components';
-import { ArrowRight } from '@openmetadata/ui-core-components/icons';
+import {
+  ArrowRight,
+  TextEditorBlockquote,
+  TextEditorBold,
+  TextEditorBulletedList,
+  TextEditorCode,
+  TextEditorEmoji,
+  TextEditorHashtag,
+  TextEditorItalic,
+  TextEditorLink,
+  TextEditorMention,
+  TextEditorNumberedList,
+  TextEditorStrikethrough,
+} from '@openmetadata/ui-core-components/icons';
 import React, {
+  FC,
   RefObject,
+  SVGProps,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedEditorNew from '../../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
@@ -37,11 +53,40 @@ import './inbox-comment-composer.less';
 const EMOJI_PICKER_ABOVE_TOP = '-250px';
 
 /**
- * quill-emoji drops its picker into the format bar with no horizontal
- * position, so it lands at the composer's far edge. Anchor it to its button,
- * above or below as the module chose, and mark the button open while it shows.
+ * The format bar's buttons, by the class Quill or quill-emoji gives each, and
+ * the design's icon for it. Quill draws its icons from one app-wide registry,
+ * so the composer draws these into its own buttons instead and hides Quill's.
  */
-const useEmojiPickerAnchor = (hostRef: RefObject<HTMLElement>) => {
+const FORMAT_BAR_ICONS: ReadonlyArray<
+  readonly [string, FC<SVGProps<SVGSVGElement>>]
+> = [
+  ['.ql-bold', TextEditorBold],
+  ['.ql-italic', TextEditorItalic],
+  ['.ql-strike', TextEditorStrikethrough],
+  ['.ql-blockquote', TextEditorBlockquote],
+  ['.ql-code-block', TextEditorCode],
+  ['.ql-list[value="ordered"]', TextEditorNumberedList],
+  ['.ql-list[value="bullet"]', TextEditorBulletedList],
+  ['.ql-link', TextEditorLink],
+  ['.ql-insertMention', TextEditorMention],
+  ['.ql-insertRef', TextEditorHashtag],
+  ['.textarea-emoji-control', TextEditorEmoji],
+];
+
+const isSameButtons = (a: Array<Element | null>, b: Array<Element | null>) =>
+  a.length === b.length && a.every((button, index) => button === b[index]);
+
+/**
+ * Watches the editor's format bar, which loads lazily, is rebuilt when Quill
+ * re-initialises and gains the emoji button after the rest. Returns its
+ * buttons in {@link FORMAT_BAR_ICONS} order, and anchors the emoji picker:
+ * quill-emoji drops it into the bar with no horizontal position, so it lands
+ * at the composer's far edge. It is pinned to its button, above or below as
+ * the module chose, and the button is marked open while it shows.
+ */
+const useFormatBar = (hostRef: RefObject<HTMLElement>) => {
+  const [buttons, setButtons] = useState<Array<Element | null>>([]);
+
   useEffect(() => {
     const host = hostRef.current;
     if (!host) {
@@ -51,6 +96,10 @@ const useEmojiPickerAnchor = (hostRef: RefObject<HTMLElement>) => {
     // bar when it re-initialises.
     const sync = () => {
       const toolbar = host.querySelector<HTMLElement>('.ql-toolbar');
+      const next = FORMAT_BAR_ICONS.map(
+        ([selector]) => toolbar?.querySelector(selector) ?? null
+      );
+      setButtons((current) => (isSameButtons(current, next) ? current : next));
       const button = toolbar?.querySelector<HTMLElement>(
         '.textarea-emoji-control'
       );
@@ -58,7 +107,12 @@ const useEmojiPickerAnchor = (hostRef: RefObject<HTMLElement>) => {
       button?.classList.toggle('ql-active', Boolean(picker));
       button?.setAttribute('aria-expanded', String(Boolean(picker)));
       if (toolbar && button && picker) {
-        const isAbove = picker.style.top === EMOJI_PICKER_ABOVE_TOP;
+        // Read the module's choice once: the first pass clears that top, and
+        // any later node change (an icon drawn, a palette tab) passes again.
+        picker.dataset.above ??= String(
+          picker.style.top === EMOJI_PICKER_ABOVE_TOP
+        );
+        const isAbove = picker.dataset.above === 'true';
         // Kept inside the bar where the button sits near its far edge.
         const left = Math.min(
           button.offsetLeft,
@@ -76,9 +130,12 @@ const useEmojiPickerAnchor = (hostRef: RefObject<HTMLElement>) => {
     // Node changes only: the styles set above never re-trigger it.
     const observer = new MutationObserver(sync);
     observer.observe(host, { childList: true, subtree: true });
+    sync();
 
     return () => observer.disconnect();
   }, [hostRef]);
+
+  return buttons;
 };
 
 export interface InboxCommentComposerProps {
@@ -109,7 +166,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
   const editorRef = useRef<EditorContentRef>(null);
   const editorHostRef = useRef<HTMLDivElement>(null);
   const [hasText, setHasText] = useState(false);
-  useEmojiPickerAnchor(editorHostRef);
+  const formatBarButtons = useFormatBar(editorHostRef);
 
   // The editor reports its markdown on every change; whitespace alone is not a
   // comment, so it keeps the send button disabled.
@@ -186,6 +243,22 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
           onSave={submit}
           onTextChange={handleTextChange}
         />
+        {formatBarButtons.map((button, index) => {
+          const [selector, Icon] = FORMAT_BAR_ICONS[index];
+
+          return (
+            button &&
+            createPortal(
+              <Icon
+                className="inbox-comment-composer__icon"
+                height={20}
+                width={20}
+              />,
+              button,
+              selector
+            )
+          );
+        })}
       </div>
     </Box>
   );
