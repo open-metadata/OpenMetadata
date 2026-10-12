@@ -333,25 +333,78 @@ export const SecondaryPanel: StoryObj = {
 
 export const HeaderDivider: StoryObj = {
   render: () => (
-    <div style={{ display: 'flex', gap: 16 }}>
-      {([true, false] as const).map((hasDivider) => (
-        <div key={String(hasDivider)} style={{ width: 240 }}>
-          <Card>
-            <Card.Header
-              hasDivider={hasDivider}
-              subtitle="Rule under the header"
-              title={`hasDivider={${hasDivider}}`}
-            />
-            <Card.Content>
-              <p className="tw:text-sm tw:text-secondary">
-                {hasDivider
-                  ? 'The default: a rule in the card\u2019s own border colour.'
-                  : 'No rule, for a header that opens a panel rather than a body.'}
-              </p>
-            </Card.Content>
-          </Card>
+    <div
+      style={{ width: 560, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ display: 'flex', gap: 16 }}>
+        {([true, false] as const).map((hasDivider) => (
+          <div key={String(hasDivider)} style={{ width: 240 }}>
+            <Card>
+              <Card.Header
+                hasDivider={hasDivider}
+                subtitle="Card.Header"
+                title={`hasDivider={${hasDivider}}`}
+              />
+              <Card.Content>
+                <p className="tw:text-sm tw:text-secondary">
+                  {hasDivider
+                    ? 'The default: a rule separating the header from the body.'
+                    : 'No rule, for a header that opens a panel rather than a body.'}
+                </p>
+              </Card.Content>
+            </Card>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <p className="tw:mb-2 tw:text-xs tw:text-tertiary">
+          The rule is `border-inherit`, so it takes the card&rsquo;s own border
+          colour rather than a fixed one.
+        </p>
+        <div style={{ display: 'flex', gap: 16 }}>
+          {(['brand', 'error', 'success'] as const).map((color) => (
+            <div key={color} style={{ width: 170 }}>
+              <Card color={color}>
+                <Card.Header subtitle="inherited rule" title={color} />
+                <Card.Content>
+                  <p className="tw:text-sm tw:text-secondary">
+                    color=&quot;{color}&quot;
+                  </p>
+                </Card.Content>
+              </Card>
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
+
+      <div>
+        <p className="tw:mb-2 tw:text-xs tw:text-tertiary">
+          A ghost card draws no border, so there is no colour to inherit &mdash;
+          this is when to turn the rule off.
+        </p>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <div style={{ width: 240 }}>
+            <Card color="secondary" variant="ghost">
+              <Card.Header subtitle="leaves a stray rule" title="hasDivider" />
+              <Card.Content>
+                <p className="tw:text-sm tw:text-secondary">Default.</p>
+              </Card.Content>
+            </Card>
+          </div>
+          <div style={{ width: 240 }}>
+            <Card color="secondary" variant="ghost">
+              <Card.Header
+                hasDivider={false}
+                subtitle="what a panel wants"
+                title="hasDivider={false}"
+              />
+              <Card.Content>
+                <p className="tw:text-sm tw:text-secondary">Clean panel.</p>
+              </Card.Content>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   ),
 };
