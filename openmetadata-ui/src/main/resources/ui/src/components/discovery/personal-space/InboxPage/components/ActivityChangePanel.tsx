@@ -16,7 +16,7 @@ import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { ActivityChange } from '../inbox.utils';
+import { ActivityChange, INBOX_RECESSED_SURFACE_CLASS } from '../inbox.utils';
 
 type ChangeTone = 'error' | 'success';
 
@@ -42,7 +42,10 @@ const COLUMN_TITLE_KEY = {
 // own. Both titles read alike. The padding leaves room for the arrow on the
 // rule between them.
 const COLUMN_TONE_CLASS: Record<ChangeTone, string> = {
-  error: 'tw:bg-utility-gray-blue-50 tw:pt-3 tw:pr-4.5 tw:pb-3.5 tw:pl-3.5',
+  error: classNames(
+    INBOX_RECESSED_SURFACE_CLASS,
+    'tw:pt-3 tw:pr-4.5 tw:pb-3.5 tw:pl-3.5'
+  ),
   success: 'tw:pt-3 tw:pr-3.5 tw:pb-3.5 tw:pl-5.5',
 };
 
