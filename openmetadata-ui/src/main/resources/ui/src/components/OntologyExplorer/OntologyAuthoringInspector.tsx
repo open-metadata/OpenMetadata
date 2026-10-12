@@ -513,7 +513,7 @@ const OntologyAuthoringInspector = ({
           )}
           color="tertiary"
           data-testid="ontology-concept-edit"
-          iconLeading={Edit01}
+          iconLeading={<Edit01 size={14} />}
           onClick={onRequestEdit}>
           {t('label.edit')}
         </Button>
