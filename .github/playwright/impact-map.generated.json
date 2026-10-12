@@ -3982,6 +3982,7 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditOperationBadges.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
+        "playwright/e2e/Features/CertificationDropdown.spec.ts",
         "playwright/e2e/Features/ChangeSummaryBadge.spec.ts",
         "playwright/e2e/Features/ClassificationTagUsage.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
@@ -4094,6 +4095,7 @@
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
+        "playwright/e2e/Features/SystemCertificationTags.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/TableConstraint.spec.ts",
         "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
@@ -5888,6 +5890,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/PersonaOverviewCardWidgets.spec.ts"
@@ -8988,6 +8991,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertiesWidgetSettingsModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CustomPropertiesPersonaWidget.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertyLayoutEditor.tsx"
       ],
       "specs": [
@@ -12048,6 +12059,7 @@
         "playwright/e2e/Features/BlockEditorEmbedLink.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
+        "playwright/e2e/Features/CertificationDropdown.spec.ts",
         "playwright/e2e/Features/ClassificationTagUsage.spec.ts",
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
@@ -12128,6 +12140,7 @@
         "playwright/e2e/Features/ServiceAgentsRefresh.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
+        "playwright/e2e/Features/SystemCertificationTags.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/TableSearch.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
