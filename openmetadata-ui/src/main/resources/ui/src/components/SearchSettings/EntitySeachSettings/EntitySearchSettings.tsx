@@ -933,29 +933,29 @@ const EntitySearchSettings = () => {
             onExpandedChange={(keys) =>
               handleCollapseChange([...keys].map(String))
             }>
-            <AccordionItem className="" id={String('ranking')} key="ranking">
+            <AccordionItem id="ranking" key="ranking">
               <AccordionHeader className="tw:flex-row-reverse">
                 <Typography className="text-md font-semibold">
                   {t('label.ranking-detail-plural')}
                 </Typography>
               </AccordionHeader>
-              <AccordionPanel className="">
+              <AccordionPanel>
                 <div className="bg-white border-radius-card p-box configuration-container ranking-configuration-container">
                   {renderRankingSettings()}
                 </div>
               </AccordionPanel>
             </AccordionItem>
-            <AccordionItem className="" id={String('1')} key="1">
+            <AccordionItem id="1" key="1">
               <CollapseHeader
                 dataTestId="add-field-btn"
                 menuItems={menuItems}
                 title={
-                  <AccordionHeader className="">
+                  <AccordionHeader>
                     {t('label.matching-fields')}
                   </AccordionHeader>
                 }
               />
-              <AccordionPanel className="">
+              <AccordionPanel>
                 <div className="bg-white configuration-container">
                   <Box
                     className="layout-row p-y-xs"
@@ -1034,17 +1034,15 @@ const EntitySearchSettings = () => {
                 </div>
               </AccordionPanel>
             </AccordionItem>
-            <AccordionItem className="" id={String('2')} key="2">
+            <AccordionItem id="2" key="2">
               <CollapseHeader
                 dataTestId="add-term-boost-btn"
                 handleAddNewBoost={handleAddNewTermBoost}
                 title={
-                  <AccordionHeader className="">
-                    {t('label.term-boost')}
-                  </AccordionHeader>
+                  <AccordionHeader>{t('label.term-boost')}</AccordionHeader>
                 }
               />
-              <AccordionPanel className="">
+              <AccordionPanel>
                 <div className="bg-white border-radius-card p-box configuration-container">
                   <TermBoostList
                     className="flex-column justify-center"
@@ -1057,17 +1055,17 @@ const EntitySearchSettings = () => {
                 </div>
               </AccordionPanel>
             </AccordionItem>
-            <AccordionItem className="" id={String('3')} key="3">
+            <AccordionItem id="3" key="3">
               <CollapseHeader
                 dataTestId="add-field-value-boost-btn"
                 handleAddNewBoost={handleAddNewFieldValueBoost}
                 title={
-                  <AccordionHeader className="">
+                  <AccordionHeader>
                     {t('label.field-value-boost')}
                   </AccordionHeader>
                 }
               />
-              <AccordionPanel className="">
+              <AccordionPanel>
                 <div className="bg-white border-radius-card p-box configuration-container">
                   <FieldValueBoostList
                     entitySearchSettingsPage

@@ -58,7 +58,6 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
 import NextPreviousWithOffset from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset';
 import { PagingHandlerParams } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
-import './alert-recent-events-tab.less';
 import {
   AlertEventDetailsToDisplay,
   AlertRecentEventsTabProps,
@@ -140,22 +139,19 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   const recentEventsList = useMemo(() => {
     if (loading) {
       return (
-        <Accordion
-          allowsMultipleExpanded
-          className={'recent-events-collapse' + '  '}>
+        <Accordion allowsMultipleExpanded>
           {Array.from(
             { length: 5 },
             (_, index) => `alert-event-skeleton-${index}`
           ).map((skeletonKey) => (
             <AccordionItem
-              className=""
               data-testid="skeleton-loading-panel"
               id={String(skeletonKey)}
               key={skeletonKey}>
-              <AccordionHeader className="">
+              <AccordionHeader>
                 <Skeleton height={16} width="100%" />
               </AccordionHeader>
-              <AccordionPanel className="">{null}</AccordionPanel>
+              <AccordionPanel>{null}</AccordionPanel>
             </AccordionItem>
           ))}
         </Accordion>
@@ -201,7 +197,6 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           span={24}>
           <Accordion
             allowsMultipleExpanded
-            className={'recent-events-collapse' + '  '}
             defaultExpandedKeys={new Set(['1'])}>
             {alertRecentEvents?.map((typedEvent) => {
               // Get the change event data from the typedEvent object
@@ -210,12 +205,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
               return (
                 <AccordionItem
-                  className=""
                   id={String(
                     `${changeEventData.id}-${changeEventData.timestamp}`
                   )}
                   key={`${changeEventData.id}-${changeEventData.timestamp}`}>
-                  <AccordionHeader className="">
+                  <AccordionHeader>
                     {
                       <Box
                         className="layout-row"
@@ -270,7 +264,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                       </Box>
                     }
                   </AccordionHeader>
-                  <AccordionPanel className="">
+                  <AccordionPanel>
                     <Box
                       className="layout-row"
                       data-testid={`event-details-${changeEventData.id}`}

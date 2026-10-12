@@ -466,20 +466,16 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
       {!isEmpty(advancedProperties) && (
         <Accordion
           allowsMultipleExpanded
-          className={
-            classNames('sso-advanced-properties-collapse', {
-              'm-t-sm': shouldApplyGrouping,
-            }) + '  '
-          }>
+          className={classNames('sso-advanced-properties-collapse', {
+            'm-t-sm': shouldApplyGrouping,
+          })}>
           {/* Advanced fields must stay mounted: transformErrors discards any error whose
               field is absent from the DOM, so destroying the collapsed panel silently
               swallowed both client and server validation errors for fields like
               tokenValidity instead of surfacing them. */}
-          <AccordionItem className="" id={String('1')} key="1">
-            <AccordionHeader className="">
-              {t('label.advanced-config')}
-            </AccordionHeader>
-            <AccordionPanel className="">
+          <AccordionItem id="1" key="1">
+            <AccordionHeader>{t('label.advanced-config')}</AccordionHeader>
+            <AccordionPanel>
               <div
                 className={classNames({
                   'sso-field-group-box': shouldApplyGrouping,

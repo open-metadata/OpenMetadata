@@ -162,7 +162,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             />
           </Box>
         </Box>
-        <AccordionPanel className="">
+        <AccordionPanel>
           <Divider className="m-0" />
           <div className="m-y-sm" style={{ padding: '10px' }}>
             {/* Highlight Fields Section */}

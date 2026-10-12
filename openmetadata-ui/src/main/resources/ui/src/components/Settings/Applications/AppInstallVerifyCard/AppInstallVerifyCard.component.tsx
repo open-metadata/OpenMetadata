@@ -124,11 +124,11 @@ const AppInstallVerifyCard = ({
           <Accordion
             allowsMultipleExpanded
             className={'w-full m-t-md' + ' tw:outline-0 tw:divide-y-0'}>
-            <AccordionItem className="" id={String('1')} key="1">
-              <AccordionHeader className="">{` ${t('label.all-entity', {
+            <AccordionItem id="1" key="1">
+              <AccordionHeader>{` ${t('label.all-entity', {
                 entity: t('label.metadata'),
               })}`}</AccordionHeader>
-              <AccordionPanel className="">{null}</AccordionPanel>
+              <AccordionPanel>{null}</AccordionPanel>
             </AccordionItem>
           </Accordion>
 

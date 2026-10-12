@@ -142,12 +142,12 @@ export const ObjectFieldTemplate: FunctionComponent<
       {!isEmpty(advancedProperties) && (
         <Accordion
           allowsMultipleExpanded
-          className={'advanced-properties-collapse m-t-sm' + '  '}>
-          <AccordionItem className="" id={String('1')} key="1">
-            <AccordionHeader className="">{`${title} ${t(
+          className="advanced-properties-collapse m-t-sm">
+          <AccordionItem id="1" key="1">
+            <AccordionHeader>{`${title} ${t(
               'label.advanced-config'
             )}`}</AccordionHeader>
-            <AccordionPanel unmountOnCollapse className="">
+            <AccordionPanel unmountOnCollapse>
               {advancedProperties.map((element) => (
                 <div
                   className={classNames('property-wrapper', {

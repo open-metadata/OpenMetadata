@@ -177,7 +177,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         allowsMultipleExpanded
         className={'policy-collapse' + ' tw:outline-0 tw:divide-y-0'}
         key={index}>
-        <AccordionItem className="" id={String(index)} key={index}>
+        <AccordionItem id={String(index)} key={index}>
           <Box align="center" gap={2}>
             <AccordionHeader
               aria-label={t('label.expand')}
@@ -212,7 +212,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
               </Box>
             </Box>
           </Box>
-          <AccordionPanel className="">
+          <AccordionPanel>
             <div className="rules-container">
               {policy.rules.map((rule, ruleIndex) =>
                 renderRule(rule, ruleIndex)

@@ -194,13 +194,10 @@ const ProfilerConfigurationPage = () => {
           <Grid.Item className="layout-column" span={24}>
             <Accordion
               allowsMultipleExpanded
-              className={'profiler-configuration-collapse' + '  '}
+              className="profiler-configuration-collapse"
               defaultExpandedKeys={new Set(['profileConfig'])}>
-              <AccordionItem
-                className=""
-                id={String('profileConfig')}
-                key="profileConfig">
-                <AccordionHeader className="">
+              <AccordionItem id="profileConfig" key="profileConfig">
+                <AccordionHeader>
                   <PageHeader
                     data={{
                       header: t('label.metric-configuration'),
@@ -208,7 +205,7 @@ const ProfilerConfigurationPage = () => {
                     }}
                   />
                 </AccordionHeader>
-                <AccordionPanel className="">
+                <AccordionPanel>
                   <Form.List name="metricConfiguration">
                     {(fields, { add, remove }) => {
                       return (
@@ -333,13 +330,10 @@ const ProfilerConfigurationPage = () => {
           <Grid.Item className="layout-column" span={24}>
             <Accordion
               allowsMultipleExpanded
-              className={'profiler-configuration-collapse' + '  '}
+              className="profiler-configuration-collapse"
               defaultExpandedKeys={new Set(['sampleDataConfig'])}>
-              <AccordionItem
-                className=""
-                id={String('sampleDataConfig')}
-                key="sampleDataConfig">
-                <AccordionHeader className="">
+              <AccordionItem id="sampleDataConfig" key="sampleDataConfig">
+                <AccordionHeader>
                   <PageHeader
                     data={{
                       header: t('label.sample-data-ingestion-configuration'),
@@ -349,7 +343,7 @@ const ProfilerConfigurationPage = () => {
                     }}
                   />
                 </AccordionHeader>
-                <AccordionPanel className="">
+                <AccordionPanel>
                   <Grid
                     className="layout-row layout-grid"
                     data-testid="sample-data-ingestion-config"

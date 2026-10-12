@@ -67,7 +67,6 @@ export default function SummaryList({
                 }
                 key={`${item.name}-collapse`}>
                 <AccordionItem
-                  className=""
                   data-testid={`${item.name}-collapse`}
                   id={String(`${item.name}-collapse-panel`)}
                   key={`${item.name}-collapse-panel`}>
@@ -86,7 +85,7 @@ export default function SummaryList({
                       />
                     </Box>
                   </Box>
-                  <AccordionPanel className="">
+                  <AccordionPanel>
                     <SummaryList
                       entityType={entityType}
                       formattedEntityData={item.children}

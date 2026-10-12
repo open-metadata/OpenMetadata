@@ -68,17 +68,13 @@ const MessageCard = ({ message }: { message: string }) => {
   return (
     <Accordion
       allowsMultipleExpanded
-      className={'message-card-collapse' + '  '}
+      className="message-card-collapse"
       onExpandedChange={toggleExpanded}>
-      <AccordionItem
-        className=""
-        data-testid="message-card"
-        id={String('1')}
-        key="1">
+      <AccordionItem data-testid="message-card" id="1" key="1">
         <AccordionHeader className="tw:flex-row-reverse">
           {header}
         </AccordionHeader>
-        <AccordionPanel className="">
+        <AccordionPanel>
           <SchemaEditor
             className="m-t-xs"
             copyButtonClassName="tw:![top:-4px] tw:!right-1"

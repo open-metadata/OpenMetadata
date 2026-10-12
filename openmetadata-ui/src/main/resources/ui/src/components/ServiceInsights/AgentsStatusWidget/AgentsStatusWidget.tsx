@@ -100,10 +100,10 @@ function AgentsStatusWidget({
   return (
     <Accordion
       allowsMultipleExpanded
-      className={'service-insights-collapse-widget agents-status-widget' + '  '}
+      className="service-insights-collapse-widget agents-status-widget"
       data-testid="agent-status-widget">
-      <AccordionItem className="" id={String('1')} key="1">
-        <AccordionHeader className="">
+      <AccordionItem id="1" key="1">
+        <AccordionHeader>
           <Box align="center" className="tw:w-full" justify="between">
             <div className="flex justify-between items-center">
               <div className="flex flex-col gap-1">
@@ -119,7 +119,7 @@ function AgentsStatusWidget({
             {renderAgentStatusExpandIcon(isLoading, agentStatusSummary, t)}
           </Box>
         </AccordionHeader>
-        <AccordionPanel className="">
+        <AccordionPanel>
           {!isLoading && isEmpty(agentsInfo) && (
             <div className="flex-center p-y-md">
               <ErrorPlaceHolder

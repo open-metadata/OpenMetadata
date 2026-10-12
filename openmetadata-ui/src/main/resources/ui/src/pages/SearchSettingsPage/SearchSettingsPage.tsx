@@ -107,7 +107,7 @@ const SearchBoostsSection = ({
         className={
           'w-full search-settings-collapse' + ' tw:outline-0 tw:divide-y-0'
         }>
-        <AccordionItem className="term-boost-panel" id={String('1')} key="1">
+        <AccordionItem className="term-boost-panel" id="1" key="1">
           <Box align="center" gap={2}>
             <AccordionHeader className="tw:flex-1">
               <Box
@@ -144,7 +144,7 @@ const SearchBoostsSection = ({
               </Box>
             </Box>
           </Box>
-          <AccordionPanel className="">
+          <AccordionPanel>
             <Grid.Item className="layout-column" span={24}>
               <TermBoostList
                 handleDeleteTermBoost={onDeleteTermBoost}
@@ -156,10 +156,7 @@ const SearchBoostsSection = ({
             </Grid.Item>
           </AccordionPanel>
         </AccordionItem>
-        <AccordionItem
-          className="field-value-boost-panel"
-          id={String('2')}
-          key="2">
+        <AccordionItem className="field-value-boost-panel" id="2" key="2">
           <Box align="center" gap={2}>
             <AccordionHeader className="tw:flex-1">
               <Box
@@ -189,7 +186,7 @@ const SearchBoostsSection = ({
               </Box>
             </Box>
           </Box>
-          <AccordionPanel className="">
+          <AccordionPanel>
             <Box className="layout-row p-t-sm w-full" wrap="wrap">
               <div className="field-value-boost-table-container">
                 <FieldValueBoostList

@@ -230,14 +230,14 @@ const LeftSidebar = () => {
     }
 
     return (
-      <AccordionItem className="" id={item.key}>
-        <AccordionHeader className="">
+      <AccordionItem id={item.key}>
+        <AccordionHeader>
           <Box align="center" gap={2}>
             <item.icon className="tw:size-7 tw:text-fg-quaternary" />
             <span data-testid={item.dataTestId}>{t(item.title)}</span>
           </Box>
         </AccordionHeader>
-        <AccordionPanel className="">
+        <AccordionPanel>
           <ul className="tw:m-0 tw:list-none tw:ps-4">
             {item.children?.map((child) => (
               <li data-testid={`side-bar-${child.dataTestId}`} key={child.key}>
