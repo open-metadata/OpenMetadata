@@ -217,7 +217,7 @@ const AppLayoutEditor = ({
 
   return (
     <Box
-      className="tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-5 tw:divide-y-0.5 tw:divide-secondary"
+      className="tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:divide-y-0.5 tw:divide-secondary"
       data-testid="app-layout-editor"
       direction="col"
       tabIndex={-1}>

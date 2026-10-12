@@ -214,7 +214,7 @@ const AiSidebarEditor = ({
 
   return (
     <Box
-      className="tw:w-[40%] tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
+      className="tw:w-[40%] tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface"
       data-testid="ai-sidebar-editor"
       direction="col">
       <Tree

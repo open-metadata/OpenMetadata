@@ -954,7 +954,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
             <Button
               color="primary"
               data-testid="add-rule"
-              size="sm"
+              size="xs"
               onPress={handleStartAdd}>
               {t('label.add-entity', { entity: t('label.rule') })}
             </Button>

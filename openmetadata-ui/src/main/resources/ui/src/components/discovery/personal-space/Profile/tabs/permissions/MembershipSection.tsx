@@ -38,7 +38,7 @@ const MembershipSection: React.FC<MembershipSectionProps> = ({
 
   return (
     <Box
-      className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
+      className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface"
       data-testid="membership-section"
       direction="col">
       <TeamsRow updateUserDetails={updateUserDetails} userData={userData} />

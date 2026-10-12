@@ -51,7 +51,7 @@ interface SectionBlockProps {
 const SectionBlock: React.FC<SectionBlockProps> = ({ title, children }) => (
   <Box direction="col" gap={3}>
     <Typography
-      className="tw:text-primary-900 tw:uppercase"
+      className="tw:text-primary tw:uppercase"
       size="text-xs"
       weight="medium">
       {title}
@@ -74,11 +74,11 @@ const StatTile: React.FC<StatTileProps> = ({
   icon,
 }) => (
   <Box
-    className="tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-4"
+    className="tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-4"
     direction="col"
     gap={2}>
     <Box align="center" gap={2}>
-      <Box className="tw:rounded-md tw:bg-success-50 tw:h-8 tw:w-8 tw:flex tw:items-center tw:justify-center">
+      <Box className="tw:rounded-md tw:bg-success-secondary tw:h-8 tw:w-8 tw:flex tw:items-center tw:justify-center">
         {icon}
       </Box>
       <Box direction="col">
@@ -179,7 +179,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
           count={stats.totalRoles}
           icon={
             <UserCheck01
-              className="tw:text-success-600"
+              className="tw:text-fg-success-primary"
               height={20}
               width={20}
             />
@@ -249,7 +249,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
 
   return (
     <Box
-      className="tw:w-full tw:max-w-[800px] tw:rounded-b-[10px] tw:bg-primary"
+      className="tw:w-full tw:max-w-[800px]"
       data-testid="profile-permissions"
       direction="col"
       gap={6}>

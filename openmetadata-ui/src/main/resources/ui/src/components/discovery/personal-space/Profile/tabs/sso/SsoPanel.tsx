@@ -62,7 +62,7 @@ const ProviderLogo = ({ provider }: { provider: string }) => {
 
   return (
     <span
-      className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-xl tw:border tw:border-secondary tw:bg-primary"
+      className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
       data-testid="sso-provider-logo">
       {icon ? (
         <img alt="" height={24} src={icon} width={24} />
@@ -200,7 +200,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
           data-testid="sso-configure-provider"
           iconTrailing={ArrowUpRight}
           isDisabled={!pickedProvider}
-          size="sm"
+          size="xs"
           onPress={() =>
             pickedProvider &&
             onNavigate({ type: 'new', provider: pickedProvider })
@@ -214,7 +214,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
             <Button
               color="secondary"
               data-testid="change-provider-button"
-              size="sm"
+              size="xs"
               onPress={() => onNavigate({ type: 'providers' })}>
               {t('label.change-provider')}
             </Button>

@@ -58,7 +58,7 @@ const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
 
 const AccessTokenLoadingSkeleton = () => (
   <Box
-    className="ai-profile-page__edit-card tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-5 tw:py-4"
+    className="ai-profile-page__edit-card tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:py-4"
     data-testid="access-token-row"
     direction="col"
     gap={3}>
@@ -87,13 +87,13 @@ const AccessTokenEmptyState = ({
 }) => (
   <Box
     align="center"
-    className="ai-profile-page__edit-card tw:w-full tw:items-center tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-6 tw:py-10 tw:text-center"
+    className="ai-profile-page__edit-card tw:w-full tw:items-center tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:px-6 tw:py-10 tw:text-center"
     data-testid="access-token-row"
     direction="col"
     gap={3}
     justify="center">
     <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
-    <Typography className="tw:text-primary-900" weight="semibold">
+    <Typography className="tw:text-primary" weight="semibold">
       {t('message.no-access-token-title')}
     </Typography>
     <Typography
@@ -164,7 +164,7 @@ const AccessTokenDetails = ({
   handleRevoke: () => void;
 }) => (
   <Box
-    className="ai-profile-page__edit-card tw:w-full tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
+    className="ai-profile-page__edit-card tw:w-full tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface"
     data-testid="access-token-row"
     direction="col">
     <Box
@@ -174,7 +174,7 @@ const AccessTokenDetails = ({
       <Box align="center" gap={2}>
         <FeaturedIcon color="brand" icon={Key01} size="md" theme="light" />
         <Box direction="col">
-          <Typography className="tw:text-primary-900" weight="semibold">
+          <Typography className="tw:text-primary" weight="semibold">
             {t('label.collate-api-token')}
           </Typography>
           <Typography className="tw:text-tertiary" size="text-xs">

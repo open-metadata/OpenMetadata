@@ -887,7 +887,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
               <Button
                 color="primary"
                 data-testid="add-policy"
-                size="sm"
+                size="xs"
                 onPress={handleStartAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}
               </Button>

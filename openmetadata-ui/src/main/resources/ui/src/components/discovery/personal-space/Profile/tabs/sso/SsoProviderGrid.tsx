@@ -48,7 +48,7 @@ const SsoProviderGrid = ({
           <Radio
             className={({ isSelected, isFocusVisible }) =>
               classNames(
-                'tw:flex tw:cursor-pointer tw:items-center tw:gap-4 tw:rounded-xl tw:border tw:bg-primary tw:p-4 tw:transition-colors tw:duration-100',
+                'tw:flex tw:cursor-pointer tw:items-center tw:gap-4 tw:rounded-xl tw:border tw:bg-surface tw:p-4 tw:transition-colors tw:duration-100',
                 isSelected
                   ? 'tw:border-brand tw:bg-brand-primary_alt'
                   : 'tw:border-secondary tw:hover:bg-primary_hover',
@@ -59,7 +59,7 @@ const SsoProviderGrid = ({
             data-testid={`sso-provider-${provider.key}`}
             key={provider.key}
             value={provider.key}>
-            <span className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-primary">
+            <span className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface">
               <img alt="" height={24} src={provider.icon} width={24} />
             </span>
             <Typography size="text-md" weight="semibold">

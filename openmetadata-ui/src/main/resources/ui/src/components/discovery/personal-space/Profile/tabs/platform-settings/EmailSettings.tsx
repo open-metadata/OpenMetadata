@@ -58,7 +58,7 @@ const EmailSettings = ({
           <Button
             color="secondary"
             data-testid="test-email-button"
-            size="sm"
+            size="xs"
             onPress={() => setIsTestEmailOpen(true)}>
             {t('label.test-email')}
           </Button>
@@ -67,7 +67,7 @@ const EmailSettings = ({
           color="primary"
           data-testid="edit-button"
           iconLeading={config ? Edit01 : Plus}
-          size="sm"
+          size="xs"
           onPress={() =>
             onNavigate({ type: 'page', page: 'email', isEditing: true })
           }>

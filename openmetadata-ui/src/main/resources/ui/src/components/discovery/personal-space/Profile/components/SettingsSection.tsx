@@ -52,7 +52,7 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({
 }) => (
   <Box data-testid={testId} direction="col" gap={3}>
     <Typography
-      className="tw:px-1 tw:text-primary-900 tw:uppercase"
+      className="tw:px-1 tw:text-primary tw:uppercase"
       size="text-xs"
       weight="medium">
       {title}

@@ -256,7 +256,7 @@ const PersonaUsersTab = ({
           <Button
             color="primary"
             data-testid="add-persona-user"
-            size="sm"
+            size="xs"
             onPress={() => setIsAdding(true)}>
             {t('label.add-entity', { entity: t('label.user') })}
           </Button>

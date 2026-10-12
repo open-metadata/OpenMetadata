@@ -101,7 +101,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
           <Box align="center" direction="row" gap={1}>
             {titleInput ?? (
               <Typography
-                className="tw:text-primary-900"
+                className="tw:text-primary"
                 data-testid="profile-content-header-title"
                 size="text-lg"
                 weight="bold">

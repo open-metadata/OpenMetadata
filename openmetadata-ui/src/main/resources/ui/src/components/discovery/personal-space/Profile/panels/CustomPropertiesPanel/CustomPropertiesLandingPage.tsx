@@ -163,7 +163,7 @@ const CustomPropertiesLandingPage: React.FC<
                       )}
                       <Box className="tw:min-w-0" direction="col" gap={1}>
                         <Typography
-                          className="tw:text-primary-900"
+                          className="tw:text-primary"
                           size="text-sm"
                           weight="semibold">
                           {item.label}

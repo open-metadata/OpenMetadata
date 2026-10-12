@@ -36,7 +36,7 @@ export const SettingsFormSection = ({
   <Box direction="col" gap={3}>
     {title && (
       <Typography
-        className="tw:px-1 tw:text-primary-900 tw:uppercase"
+        className="tw:px-1 tw:text-primary tw:uppercase"
         size="text-xs"
         weight="medium">
         {title}
@@ -90,7 +90,7 @@ const SettingsFormLayout = <T extends FieldValues>({
         </Box>
       </div>
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-8 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4"
         direction="row"
         gap={3}
         justify="end">
