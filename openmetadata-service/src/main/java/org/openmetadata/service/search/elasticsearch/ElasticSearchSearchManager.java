@@ -68,7 +68,6 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
-import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
@@ -723,17 +722,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       throws IOException {
     Map<String, Map<String, Object>> allNodes = new HashMap<>();
     Map<String, List<EsLineageData>> allEdges = new HashMap<>();
-    Set<String> nodesWithFailures = new HashSet<>();
-
     collectNodesAndEdgesForDQ(
-        fqn,
-        upstreamDepth,
-        queryFilter,
-        deleted,
-        allEdges,
-        allNodes,
-        nodesWithFailures,
-        new HashSet<>());
+        fqn, upstreamDepth, queryFilter, deleted, allEdges, allNodes, new HashSet<>());
+    Set<String> nodesWithFailures = SearchUtils.nodeIdsWithFailingTests(allNodes, deleted);
     for (String nodeWithFailure : nodesWithFailures) {
       traceBackDQLineage(
           nodeWithFailure, nodesWithFailures, allEdges, allNodes, nodes, edges, new HashSet<>());
@@ -747,10 +738,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       boolean deleted,
       Map<String, List<EsLineageData>> allEdges,
       Map<String, Map<String, Object>> allNodes,
-      Set<String> nodesWithFailure,
       Set<String> processedNode)
       throws IOException {
-    TestCaseResultRepository testCaseResultRepository = new TestCaseResultRepository();
     if (upstreamDepth <= 0 || processedNode.contains(fqn)) {
       return;
     }
@@ -765,9 +754,6 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       for (Map<String, Object> doc : docs) {
         String nodeId = doc.get("id").toString();
         allNodes.put(nodeId, doc);
-        if (testCaseResultRepository.hasTestCaseFailure(doc.get("fullyQualifiedName").toString())) {
-          nodesWithFailure.add(nodeId);
-        }
 
         List<EsLineageData> lineageDataList =
             JsonUtils.readOrConvertValues(doc.get("upstreamLineage"), EsLineageData.class);
@@ -782,7 +768,6 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
               deleted,
               allEdges,
               allNodes,
-              nodesWithFailure,
               processedNode);
         }
       }
