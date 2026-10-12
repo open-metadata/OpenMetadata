@@ -55,7 +55,7 @@
       "default": "http://localhost:8585/api"
     },
     "timeout": {
-      "description": "Timeout in seconds for OpenMetadata API requests from the ingestion client.",
+      "description": "Connect and read timeout in seconds for ingestion API requests. If omitted, requests use the existing client behavior without a timeout.",
       "type": "integer",
       "minimum": 1
     },

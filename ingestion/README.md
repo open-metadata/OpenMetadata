@@ -13,6 +13,20 @@ OpenMetadata Ingestion is a simple framework to build connectors and ingest meta
 
 Please refer to the documentation here https://docs.open-metadata.org/connectors
 
+### OpenMetadata API request timeout
+
+Set `timeout` in `workflowConfig.openMetadataServerConfig` to limit each connection and read wait:
+
+```yaml
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    timeout: 60
+```
+
+The value is in seconds. If you omit it, requests keep the existing behavior without a timeout. This setting does not limit the total workflow duration.
+
 <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=c1a30c7c-6dc7-4928-95bf-6ee08ca6aa6a" />
 
 ### TopologyRunner

@@ -1523,6 +1523,11 @@ export interface OpenMetadataConnection {
      */
     tableFilterPattern?: FilterPattern;
     /**
+     * Connect and read timeout in seconds for ingestion API requests. If omitted, requests use
+     * the existing client behavior without a timeout.
+     */
+    timeout?: number;
+    /**
      * Service Type
      */
     type?: OpenmetadataType;

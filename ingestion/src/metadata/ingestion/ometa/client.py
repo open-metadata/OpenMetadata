@@ -14,7 +14,7 @@ Python API REST wrapper and helpers
 import time
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
 from requests.exceptions import HTTPError, JSONDecodeError
@@ -117,8 +117,7 @@ class ClientConfig(ConfigModel):
     verify: Optional[Union[bool, str]] = None
     cookies: Optional[Any] = None
     ttl_cache: int = 60
-    # (connect, read) seconds. Bound waits on stale pooled connections.
-    timeout: Optional[Union[int, Tuple[int, int]]] = (10, 300)
+    timeout: Optional[int] = None
     cert: Optional[Union[str, tuple]] = None
 
 
