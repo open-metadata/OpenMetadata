@@ -230,6 +230,10 @@ public class ReindexingOrchestrator {
 
     DistributedIndexingStrategy strategy = createDistributedStrategy();
     activeStrategy = strategy;
+    // A stop that landed before this strategy existed had nothing to stop yet; hand it on.
+    if (stopped) {
+      strategy.stop();
+    }
     registerProgressListeners(strategy);
 
     ReindexingConfiguration config = buildReindexingConfiguration();

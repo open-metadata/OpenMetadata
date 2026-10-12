@@ -119,7 +119,8 @@ public class DistributedSearchIndexExecutor {
   private final String serverId;
   private final CompositeProgressListener listeners = new CompositeProgressListener();
 
-  @Getter private SearchIndexJob currentJob;
+  // Written by the reindex thread, read by stop() on the request thread that asked for the stop.
+  @Getter private volatile SearchIndexJob currentJob;
   private DistributedJobStatsAggregator statsAggregator;
   private ExecutorService workerExecutor;
   private final Set<UUID> activePartitions = ConcurrentHashMap.newKeySet();
@@ -344,6 +345,9 @@ public class DistributedSearchIndexExecutor {
     }
 
     UUID jobId = currentJob.getId();
+    if (stopped.get()) {
+      return endJobStoppedBeforeStart(jobId);
+    }
     LOG.info("Server {} starting execution of job {}", serverId, jobId);
     boolean startedJob = false;
 
@@ -626,9 +630,26 @@ public class DistributedSearchIndexExecutor {
       LOG.debug("Removed job {} from coordinated jobs set", jobId);
     }
 
-    // Get final job state
-    currentJob = coordinator.getJobWithAggregatedStats(jobId);
+    return finalResult(jobId);
+  }
 
+  /**
+   * {@link #stop()} can land while {@link #createJob} is still building partitions, when there is
+   * no job yet to request a stop for. Starting the job anyway would flip it to RUNNING with none of
+   * our workers on it: peer servers then adopt it as an orphan and reindex what was just stopped,
+   * and nothing ever finishes the app run. Stop it before it starts instead.
+   */
+  private ExecutionResult endJobStoppedBeforeStart(UUID jobId) {
+    LOG.info("Stop was requested before job {} started; not starting it", jobId);
+    if (!isJobTerminalOrStopping(jobId)) {
+      coordinator.requestStop(jobId);
+    }
+    coordinator.releaseReindexLock(jobId);
+    return finalResult(jobId);
+  }
+
+  private ExecutionResult finalResult(UUID jobId) {
+    currentJob = coordinator.getJobWithAggregatedStats(jobId);
     return new ExecutionResult(
         currentJob.getStatus(),
         currentJob.getTotalRecords(),

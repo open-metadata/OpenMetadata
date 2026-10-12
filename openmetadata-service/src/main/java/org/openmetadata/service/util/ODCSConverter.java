@@ -22,7 +22,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.ContractSLA;
@@ -52,6 +54,8 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.datacontract.odcs.ODCSSlaColumn;
+import org.openmetadata.service.datacontract.odcs.ODCSTimeUnits;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +76,19 @@ public class ODCSConverter {
    * @return ODCSDataContract in ODCS v3.1.0 format
    */
   public static ODCSDataContract toODCS(DataContract contract) {
+    return toODCS(contract, List.of());
+  }
+
+  /**
+   * Export an OpenMetadata DataContract to ODCS v3.1.0 format, adding quality rules that are not
+   * stored on the contract, such as the ones describing its own test cases.
+   *
+   * @param contract The OpenMetadata DataContract to export
+   * @param additionalQualityRules Rules exported after the contract's stored ODCS rules
+   * @return ODCSDataContract in ODCS v3.1.0 format
+   */
+  public static ODCSDataContract toODCS(
+      DataContract contract, List<ODCSQualityRule> additionalQualityRules) {
     ODCSDataContract odcs = new ODCSDataContract();
 
     odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
@@ -138,8 +155,11 @@ public class ODCSConverter {
       odcs.setTags(tags);
     }
 
-    if (!nullOrEmpty(contract.getOdcsQualityRules())) {
-      distributeQualityRules(odcs, contract.getOdcsQualityRules());
+    List<ODCSQualityRule> qualityRules =
+        new ArrayList<>(listOrEmpty(contract.getOdcsQualityRules()));
+    qualityRules.addAll(additionalQualityRules);
+    if (!qualityRules.isEmpty()) {
+      distributeQualityRules(odcs, qualityRules);
     }
 
     if (!nullOrEmpty(contract.getOdcsElementExtensions())) {
@@ -649,6 +669,7 @@ public class ODCSConverter {
       if (sla.getRefreshFrequency().getUnit() != null) {
         prop.setUnit(sla.getRefreshFrequency().getUnit().value());
       }
+      prop.setElement(ODCSSlaColumn.toElement(sla.getColumnName()));
       properties.add(prop);
     }
 
@@ -698,16 +719,17 @@ public class ODCSConverter {
           RefreshFrequency rf = new RefreshFrequency();
           rf.setInterval(parseInteger(prop.getValue()));
           if (prop.getUnit() != null) {
-            rf.setUnit(RefreshFrequency.Unit.fromValue(normalizeTimeUnit(prop.getUnit())));
+            rf.setUnit(RefreshFrequency.Unit.fromValue(ODCSTimeUnits.normalize(prop.getUnit())));
           }
           sla.setRefreshFrequency(rf);
+          sla.setColumnName(elementColumn(prop.getElement()));
         }
         case "latency", "maxlatency" -> {
           // ODCS uses "latency", OpenMetadata uses "maxLatency"
           MaxLatency ml = new MaxLatency();
           ml.setValue(parseInteger(prop.getValue()));
           if (prop.getUnit() != null) {
-            ml.setUnit(MaxLatency.Unit.fromValue(normalizeTimeUnit(prop.getUnit())));
+            ml.setUnit(MaxLatency.Unit.fromValue(ODCSTimeUnits.normalize(prop.getUnit())));
           }
           sla.setMaxLatency(ml);
         }
@@ -715,7 +737,7 @@ public class ODCSConverter {
           Retention ret = new Retention();
           ret.setPeriod(parseInteger(prop.getValue()));
           if (prop.getUnit() != null) {
-            ret.setUnit(Retention.Unit.fromValue(normalizeTimeUnit(prop.getUnit())));
+            ret.setUnit(Retention.Unit.fromValue(ODCSTimeUnits.normalize(prop.getUnit())));
           }
           sla.setRetention(ret);
         }
@@ -753,19 +775,12 @@ public class ODCSConverter {
     }
   }
 
-  private static String normalizeTimeUnit(String unit) {
-    if (unit == null) return null;
-    String lower = unit.toLowerCase().trim();
-    return switch (lower) {
-      case "hours", "hrs", "h" -> "hour";
-      case "days", "d" -> "day";
-      case "weeks", "wks", "w" -> "week";
-      case "months", "mos" -> "month";
-      case "years", "yrs", "y" -> "year";
-      case "minutes", "mins", "m" -> "minute";
-      case "seconds", "secs", "s" -> "second";
-      default -> lower;
-    };
+  /**
+   * ODCS names an SLA element {@code object.property}; OpenMetadata keeps only the column, since
+   * the contract already belongs to one object.
+   */
+  private static String elementColumn(String element) {
+    return nullOrEmpty(element) ? null : element.substring(element.lastIndexOf('.') + 1);
   }
 
   private static List<ODCSQualityRule> collectAllQualityRules(ODCSDataContract odcs) {
@@ -1083,6 +1098,13 @@ public class ODCSConverter {
             ? imported.getOdcsQualityRules()
             : existing.getOdcsQualityRules());
 
+    merged.setQualityExpectations(
+        mergeQualityExpectations(
+            existing.getQualityExpectations(), imported.getQualityExpectations()));
+
+    merged.setSemantics(
+        !nullOrEmpty(imported.getSemantics()) ? imported.getSemantics() : existing.getSemantics());
+
     merged.setOdcsElementExtensions(
         !nullOrEmpty(imported.getOdcsElementExtensions())
             ? imported.getOdcsElementExtensions()
@@ -1139,8 +1161,21 @@ public class ODCSConverter {
     // Leaving null would read as "not specified" and be carried forward on the next write.
     replaced.setOdcsQualityRules(listOrEmpty(imported.getOdcsQualityRules()));
     replaced.setOdcsElementExtensions(listOrEmpty(imported.getOdcsElementExtensions()));
+    replaced.setQualityExpectations(listOrEmpty(imported.getQualityExpectations()));
 
     return replaced;
+  }
+
+  /**
+   * Test cases the contract links today stay linked; the ones the import produced are added, and a
+   * test case linked by both is kept once, in the position it already had.
+   */
+  private static List<EntityReference> mergeQualityExpectations(
+      List<EntityReference> existing, List<EntityReference> imported) {
+    Map<UUID, EntityReference> byId = new LinkedHashMap<>();
+    listOrEmpty(existing).forEach(reference -> byId.putIfAbsent(reference.getId(), reference));
+    listOrEmpty(imported).forEach(reference -> byId.putIfAbsent(reference.getId(), reference));
+    return byId.isEmpty() ? existing : new ArrayList<>(byId.values());
   }
 
   private static ContractSLA mergeSLA(ContractSLA existing, ContractSLA imported) {
@@ -1163,46 +1198,9 @@ public class ODCSConverter {
             : existing.getAvailabilityTime());
     merged.setTimezone(
         imported.getTimezone() != null ? imported.getTimezone() : existing.getTimezone());
+    merged.setColumnName(
+        imported.getColumnName() != null ? imported.getColumnName() : existing.getColumnName());
 
     return merged;
-  }
-
-  /**
-   * Maps ODCS quality metric to OpenMetadata test definition name. This mapping is provided for
-   * documentation and future use when creating test cases from ODCS quality rules.
-   *
-   * @param metric ODCS quality metric
-   * @return OpenMetadata test definition name or null if no direct mapping exists
-   */
-  public static String mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric metric) {
-    if (metric == null) return null;
-    return switch (metric) {
-      case NULL_VALUES -> "columnValuesToBeNotNull";
-      case ROW_COUNT -> "tableRowCountToEqual";
-      case UNIQUE_VALUES -> "columnValuesToBeUnique";
-      case MISSING_VALUES -> "columnValuesMissingCountToBeEqual";
-      case COMPLETENESS -> "columnValuesToBeNotNull";
-      default -> null;
-    };
-  }
-
-  /**
-   * Maps OpenMetadata test definition name to ODCS quality metric. This mapping is provided for
-   * documentation and future use when exporting test cases to ODCS quality rules.
-   *
-   * @param testDefinitionName OpenMetadata test definition name
-   * @return ODCS quality metric or null if no direct mapping exists
-   */
-  public static ODCSQualityRule.OdcsQualityMetric mapTestDefinitionToODCSMetric(
-      String testDefinitionName) {
-    if (testDefinitionName == null) return null;
-    return switch (testDefinitionName.toLowerCase()) {
-      case "columnvaluestobenotnull" -> ODCSQualityRule.OdcsQualityMetric.NULL_VALUES;
-      case "tablerowcounttoequal", "tablerowcounttobebetween" -> ODCSQualityRule.OdcsQualityMetric
-          .ROW_COUNT;
-      case "columnvaluestobeunique" -> ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES;
-      case "columnvaluesmissingcounttobeequal" -> ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES;
-      default -> null;
-    };
   }
 }
