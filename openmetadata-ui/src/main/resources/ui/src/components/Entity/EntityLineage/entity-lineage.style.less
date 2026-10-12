@@ -213,6 +213,18 @@
   margin: var(--om-space-16) !important;
 }
 
+// The level rail (138px tall) is centred, but never lower than the controls
+// stacked in the bottom-right corner: the zoom bar, and the minimap (60px up,
+// 150px tall) above it when shown.
+.lineage-map-rail {
+  // Escaped so LESS leaves min() to the browser.
+  top: ~'min(50%, calc(100% - 68px - 69px))';
+
+  &.with-minimap {
+    top: ~'min(50%, calc(100% - 226px - 69px))';
+  }
+}
+
 .react-flow__minimap {
   height: 150px;
   border: 1px solid var(--tw-border-color-secondary);

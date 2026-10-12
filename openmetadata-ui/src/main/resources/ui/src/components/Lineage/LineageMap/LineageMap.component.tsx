@@ -174,7 +174,7 @@ const SCENE_LAYER_NODE_HEIGHT = 66;
 const LINEAGE_MAP_EMPTY_CLASSES =
   'lineage-map-empty tw:absolute tw:inset-0 tw:z-1 tw:grid tw:place-items-center tw:bg-transparent tw:text-tertiary';
 const LINEAGE_MAP_RAIL_CLASSES = [
-  'lineage-map-rail tw:group tw:absolute tw:top-1/2 tw:right-6 tw:z-10 tw:flex tw:-translate-y-1/2',
+  'lineage-map-rail tw:group tw:absolute tw:right-6 tw:z-10 tw:flex tw:-translate-y-1/2',
   'tw:items-stretch tw:gap-2',
 ].join(' ');
 const LINEAGE_MAP_RAIL_TRACK_CLASSES = [
@@ -744,10 +744,12 @@ const LineageMapOnboardingDialog = ({
 
 const LineageMapControls = ({
   canDrill,
+  miniMapVisible,
   scene,
   onStopSelect,
 }: {
   canDrill: boolean;
+  miniMapVisible: boolean;
   scene: LineageScene;
   onStopSelect: (stop: LineageBand) => void;
 }) => {
@@ -761,7 +763,10 @@ const LineageMapControls = ({
   }));
 
   return (
-    <div className={LINEAGE_MAP_RAIL_CLASSES}>
+    <div
+      className={classNames(LINEAGE_MAP_RAIL_CLASSES, {
+        'with-minimap': miniMapVisible,
+      })}>
       <div className="tw:flex tw:h-[138px] tw:flex-col tw:items-end tw:justify-between tw:py-1">
         {stops.map(({ stop, label, isActive, isDisabled }) => (
           <div className="tw:flex tw:h-6 tw:items-center" key={stop}>
@@ -2216,6 +2221,7 @@ const LineageMapCanvas = ({
         <>
           <LineageMapControls
             canDrill={canDrillScene}
+            miniMapVisible={miniMapVisible}
             scene={scene}
             onStopSelect={handleRailStopSelect}
           />

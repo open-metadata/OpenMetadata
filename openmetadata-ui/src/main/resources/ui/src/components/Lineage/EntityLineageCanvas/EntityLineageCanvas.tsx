@@ -156,10 +156,13 @@ const EntityLineageCanvas = ({
 
   const handleCanvasEdgeClick = useCallback(
     (edge: Edge, event: globalThis.MouseEvent) => {
-      onEdgeClick(edge);
+      // The edge drawer offers Edit Pipeline / Delete only for editable edges.
+      onEdgeClick(
+        canEdit ? { ...edge, data: { ...edge.data, isEditable: true } } : edge
+      );
       event.stopPropagation();
     },
-    []
+    [canEdit]
   );
 
   const editNode = nodes.find((node) => node.id === editRequest?.nodeId);
