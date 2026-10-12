@@ -62,6 +62,8 @@ public class ActivityStreamRepository {
   private static final UUID NO_DOMAIN_ACCESS = new UUID(0L, 0L);
   // Stands in for an empty team list, since an empty IN () is invalid SQL.
   private static final String NO_TEAM_ID = new UUID(0L, 0L).toString();
+  // 30-day window cap on `days`, plus one day for a window that starts at the start of a day.
+  public static final int MAX_START_TS_DAYS = 31;
 
   private final CollectionDAO.ActivityStreamDAO activityStreamDAO;
 
@@ -703,15 +705,13 @@ public class ActivityStreamRepository {
   }
 
   /**
-   * Lower bound for the activity window. An absolute {@code startTs} reaches back to a
-   * calendar-aligned window the relative {@code now - days} bound cannot express: the default
-   * "Last 30 days" preset sets {@code startTs} to the start of the UTC day of {@code now - 30d},
-   * which can be up to ~24 hours earlier than {@code now - 30d}. Using {@code startTs} directly
-   * fetches the gap {@code [startTs, now - 30d)} that {@code days} would otherwise drop. Falls
-   * back to {@code now - days} for callers that don't supply a window (issue #31911 regression).
+   * Lower bound for the activity window: {@code startTs} when set, floored at {@link
+   * #MAX_START_TS_DAYS} so it cannot reach past the {@code days} cap; else {@code now - days}.
    */
   private long afterTimestamp(int days, Long startTs) {
-    return startTs != null ? startTs : afterTimestamp(days);
+    return startTs != null
+        ? Math.max(startTs, afterTimestamp(MAX_START_TS_DAYS))
+        : afterTimestamp(days);
   }
 
   private ResultList<ActivityEvent> result(List<ActivityEvent> events) {

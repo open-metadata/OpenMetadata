@@ -91,9 +91,6 @@ describe('fetchInboxActivity', () => {
       200
     );
 
-    // The absolute startTs is forwarded so the backend fetches the full
-    // calendar-aligned window; `days` (clamped to the server's 30-day cap) is
-    // sent only as a fallback for callers that don't supply a window.
     expect(mockGetActivityEvents).toHaveBeenCalledWith({
       days: 1,
       startTs: 100,
@@ -223,17 +220,8 @@ describe('fetchInboxActivity', () => {
     expect(activities.map(({ id }) => id)).toEqual(['old']);
   });
 
-  // Regression for the "Last 30 days" default-preset under-fetch (issue #31911).
-  // The preset's calendar-aligned startTs (start of the UTC day of now-30d) is
-  // up to ~24h earlier than `now - 30d`, the relative bound the server's `days`
-  // hard-caps at @Max(30). `getActivityWindowDays` therefore clamps ceil(31) to
-  // 30, and sending `days: 30` alone dropped the [startTs, now-30d) gap —
-  // events there were never fetched, while conversations in the same sliver
-  // (filtered by absolute startTs) were shown with no matching activity event.
-  // Forwarding the absolute startTs makes the backend fetch the whole window.
   it('forwards the absolute startTs so the default 30-day preset fetches its gap', async () => {
-    // Default-preset shape: a window ~31 days wide (start-of-day 30d ago → end
-    // of today), so getActivityWindowDays clamps ceil(31) → 30.
+    // The default preset's shape: ~31 days wide, so `days` clamps to 30.
     const startTs = Date.now() - 30 * 24 * 60 * 60 * 1000;
     const endTs = startTs + 31 * 24 * 60 * 60 * 1000;
 
@@ -247,8 +235,6 @@ describe('fetchInboxActivity', () => {
     });
   });
 
-  // No window (e.g. a caller that only wants the relative feed) falls back to
-  // the capped `days` bound and sends no startTs, preserving the legacy path.
   it('falls back to days and sends no startTs when the window is unset', async () => {
     await fetchInboxActivity(ActivityFilter.MyAssets, 'u1');
 

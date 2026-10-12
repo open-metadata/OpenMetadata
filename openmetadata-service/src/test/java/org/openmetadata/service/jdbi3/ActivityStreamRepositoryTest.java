@@ -168,34 +168,27 @@ class ActivityStreamRepositoryTest {
     }
   }
 
-  // The default "Last 30 days" Inbox preset sets startTs to the start of the UTC day
-  // of now-30d, which is up to ~24h earlier than now - 30d (the `days` bound the
-  // server hard-caps at @Max(30)). When the absolute startTs is supplied it must
-  // become the DAO lower bound so the [startTs, now-30d) gap is fetched instead of
-  // dropped (issue #31911 regression).
+  // startTs, not now - days, is the DAO lower bound when supplied, so a window
+  // starting at the start of the day 30 days ago is fetched in full.
   @Test
   void listActivityEventsUsesStartTsAsLowerBoundWhenProvided() {
-    CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
-    ActivityStreamRepository repository = new ActivityStreamRepository(dao);
-    SecurityContext securityContext = mock(SecurityContext.class);
-    long startTs = 1_700_000_000_000L;
-    when(dao.list(startTs, 200)).thenReturn(List.of());
+    long startTs =
+        Instant.now().minus(30, ChronoUnit.DAYS).minus(2, ChronoUnit.HOURS).toEpochMilli();
 
-    try (MockedStatic<DefaultAuthorizer> authMock = mockStatic(DefaultAuthorizer.class)) {
-      SubjectContext subject = mock(SubjectContext.class);
-      when(subject.isAdmin()).thenReturn(true);
-      authMock.when(() -> getSubjectContext(securityContext)).thenReturn(subject);
-
-      repository.listActivityEvents(
-          securityContext, null, null, null, null, null, 30, startTs, 200);
-    }
-
-    // The absolute startTs overrides the relative now - 30d bound.
-    verify(dao).list(startTs, 200);
+    assertEquals(startTs, listActivityLowerBound(startTs));
   }
 
   @Test
   void listActivityEventsFallsBackToDaysWhenStartTsAbsent() {
+    assertNear(daysAgo(30), listActivityLowerBound(null));
+  }
+
+  @Test
+  void listActivityEventsFloorsStartTsAtThirtyOneDays() {
+    assertNear(daysAgo(31), listActivityLowerBound(0L));
+  }
+
+  private static long listActivityLowerBound(Long startTs) {
     CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
     ActivityStreamRepository repository = new ActivityStreamRepository(dao);
     SecurityContext securityContext = mock(SecurityContext.class);
@@ -206,17 +199,22 @@ class ActivityStreamRepositoryTest {
       when(subject.isAdmin()).thenReturn(true);
       authMock.when(() -> getSubjectContext(securityContext)).thenReturn(subject);
 
-      repository.listActivityEvents(securityContext, null, null, null, null, null, 30, null, 200);
+      repository.listActivityEvents(
+          securityContext, null, null, null, null, null, 30, startTs, 200);
     }
 
     ArgumentCaptor<Long> after = ArgumentCaptor.forClass(Long.class);
     verify(dao).list(after.capture(), eq(200));
-    // With no absolute window the bound is now - 30d (within a few seconds of the
-    // reading below; tolerate test-runtime slop), not the absolute startTs.
-    long expected = Instant.now().minus(30, ChronoUnit.DAYS).toEpochMilli();
-    assertTrue(
-        Math.abs(after.getValue() - expected) < 5_000,
-        "after bound should be ~now-30d when startTs is absent");
+    return after.getValue();
+  }
+
+  private static long daysAgo(int days) {
+    return Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
+  }
+
+  // Bounds computed from Instant.now() drift by test runtime; a few seconds is plenty.
+  private static void assertNear(long expected, long actual) {
+    assertTrue(Math.abs(actual - expected) < 5_000, "expected ~" + expected + ", got " + actual);
   }
 
   private static ChangeEvent changeEventWith(String userName) {
