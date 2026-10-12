@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **828**.
+Total project tokens: **825**.
 
 ## Spacing (57)
 
@@ -706,11 +706,11 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
 </details>
 
-## Legacy colors (185)
+## Legacy colors (182)
 
 Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.
 
-<details><summary>Show all 185</summary>
+<details><summary>Show all 182</summary>
 
 | Token | Value |
 | --- | --- |
@@ -772,7 +772,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-52c41a` | `#52c41a` |
 | `--om-legacy-color-0056b3` | `#0056b3` |
 | `--om-legacy-color-0066cc` | `#06c` |
-| `--om-legacy-color-82-196-26-0-05` | `rgba(82, 196, 26, 0.05)` |
 | `--om-legacy-color-85-155-238-0-2` | `rgba(85, 155, 238, 0.2)` |
 | `--om-legacy-color-96-167-251-0-2` | `rgba(96, 167, 251, 0.2)` |
 | `--om-legacy-color-102a72` | `#102a72` |
@@ -780,7 +779,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-113-71-232-0-6` | `#7147e899` |
 | `--om-legacy-color-113-71-232-0-35` | `rgba(113, 71, 232, 0.35)` |
 | `--om-legacy-color-113-71-232-0-102` | `#7147e81a` |
-| `--om-legacy-color-117-117-117-0-3` | `rgba(117, 117, 117, 0.3)` |
 | `--om-legacy-color-203-36-49-0-059` | `#cb24310f` |
 | `--om-legacy-color-209-236-241-0-867` | `#d1ecf1dd` |
 | `--om-legacy-color-212-237-218-0-867` | `#d4eddadd` |
@@ -835,7 +833,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-bee5eb` | `#bee5eb` |
 | `--om-legacy-color-c3e6cb` | `#c3e6cb` |
 | `--om-legacy-color-c6c6c6` | `#c6c6c6` |
-| `--om-legacy-color-c9d7ff` | `#c9d7ff` |
 | `--om-legacy-color-c45296` | `#c45296` |
 | `--om-legacy-color-cb2431` | `#cb2431` |
 | `--om-legacy-color-cccccc` | `#cccccc` |
