@@ -1025,6 +1025,12 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .getByRole('button')
       .click();
 
+    // Removing the chip refocuses the field, which reopens the list over Save.
+    await adminPage
+      .getByTestId('default-persona-select-list')
+      .getByRole('combobox')
+      .press('Escape');
+
     const removePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
     await adminPage
       .locator('[data-testid="user-profile-default-persona-edit-save"]')
@@ -1160,9 +1166,15 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.getByTestId('persona-select-list').waitFor();
 
       // Clear all selected personas
-      const selectedPersonaChips = adminPage
-        .getByTestId('persona-select-list')
-        .getByTestId('autocomplete-selected-item');
+      const personaSelect = adminPage.getByTestId('persona-select-list');
+      const selectedPersonaChips = personaSelect.getByTestId(
+        'autocomplete-selected-item'
+      );
+      // The open list hides the chips from the accessibility tree, and each
+      // removal refocuses the field and reopens it.
+      const closePersonaList = () =>
+        personaSelect.getByRole('combobox').press('Escape');
+      await closePersonaList();
       // Only the first few chips render at once, so re-read after each removal.
       let [chipName] = await selectedPersonaChips.allTextContents();
       while (chipName) {
@@ -1170,6 +1182,7 @@ test.describe('User Profile Persona Interactions', () => {
           .filter({ hasText: chipName })
           .getByRole('button')
           .click();
+        await closePersonaList();
         [chipName] = await selectedPersonaChips.allTextContents();
       }
 
@@ -1294,6 +1307,12 @@ test.describe('User Profile Persona Interactions', () => {
         .getByTestId('autocomplete-selected-item')
         .getByRole('button')
         .click();
+
+      // Removing the chip refocuses the field, which reopens the list over Save.
+      await adminPage
+        .getByTestId('default-persona-select-list')
+        .getByRole('combobox')
+        .press('Escape');
 
       const defaultPersonaChangeResponse =
         adminPage.waitForResponse('/api/v1/users/*');

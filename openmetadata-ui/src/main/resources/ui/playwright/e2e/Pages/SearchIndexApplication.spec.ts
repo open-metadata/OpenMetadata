@@ -347,10 +347,9 @@ test.describe('Search Index Application', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Need an outside click to close the dropdown
       await clickOutside(page);
-      await page.locator('[for="root/searchIndexMappingLanguage"]').click();
-
       await page
         .getByTestId('select-widget-root/searchIndexMappingLanguage')
+        .getByRole('combobox')
         .click();
 
       await expect(page.getByTestId('select-option-JP')).toBeVisible();

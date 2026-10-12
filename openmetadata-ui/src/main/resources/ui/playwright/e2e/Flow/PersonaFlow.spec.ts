@@ -693,6 +693,12 @@ test.describe.serial('Team persona setting flow', () => {
         .getByRole('button')
         .click();
 
+      // Removing the chip refocuses the field, which reopens the list over Save.
+      await adminPage
+        .getByTestId('default-persona-select-list')
+        .getByRole('combobox')
+        .press('Escape');
+
       const defaultPersonaChangeResponse =
         adminPage.waitForResponse('/api/v1/teams/*');
 

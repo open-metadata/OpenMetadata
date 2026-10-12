@@ -44,12 +44,19 @@ const useEnumItems = ({ options, capitalizeOptionLabel }: WidgetProps) =>
       valueByKey: new Map(
         enumOptions.map((option) => [String(option.value), option.value])
       ),
+      // Test ids keep the raw enum label, before any capitalization.
+      testIdByKey: new Map(
+        enumOptions.map((option) => [
+          String(option.value),
+          `select-option-${option.label}`,
+        ])
+      ),
     };
   }, [options.enumOptions, capitalizeOptionLabel]);
 
 const MultipleSelectWidget: FC<WidgetProps> = (props) => {
   const { id, value, onBlur, onChange, onFocus } = props;
-  const { items, valueByKey } = useEnumItems(props);
+  const { items, valueByKey, testIdByKey } = useEnumItems(props);
   const selectedKeys = ((value as unknown[]) ?? []).map(String);
   const toValues = (keys: string[]) => keys.map((key) => valueByKey.get(key));
 
@@ -74,7 +81,7 @@ const MultipleSelectWidget: FC<WidgetProps> = (props) => {
       }>
       {(item) => (
         <Autocomplete.Item
-          data-testid={`select-option-${item.label}`}
+          data-testid={testIdByKey.get(item.id)}
           id={item.id}
           label={item.label}
         />
@@ -85,7 +92,7 @@ const MultipleSelectWidget: FC<WidgetProps> = (props) => {
 
 const SingleSelectWidget: FC<WidgetProps> = (props) => {
   const { id, value, options, onBlur, onChange, onFocus } = props;
-  const { items, valueByKey } = useEnumItems(props);
+  const { items, valueByKey, testIdByKey } = useEnumItems(props);
   const [inputValue, setInputValue] = useState<string>();
 
   const selectedKey = isNil(value) ? null : String(value);
@@ -125,7 +132,7 @@ const SingleSelectWidget: FC<WidgetProps> = (props) => {
       onSelectionChange={handleSelectionChange}>
       {(item: SelectItemType) => (
         <Select.Item
-          data-testid={`select-option-${item.label}`}
+          data-testid={testIdByKey.get(item.id)}
           id={item.id}
           key={item.id}
           label={item.label}
