@@ -162,7 +162,7 @@ const AccessControlDebuggerPanel: FC = () => {
 
     return (
       <Card
-        className="tw:mt-4 tw:overflow-hidden"
+        className="tw:mt-4 tw:overflow-hidden tw:border-secondary tw:dark:bg-secondary"
         data-testid="evaluation-result">
         <Box
           className={`tw:px-6 tw:py-4 tw:border-b-2 ${

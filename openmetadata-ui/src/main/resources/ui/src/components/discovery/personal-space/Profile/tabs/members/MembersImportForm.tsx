@@ -130,7 +130,7 @@ const SelectedFileCard: FC<{
 
   return (
     <Card
-      className="tw:w-full tw:text-left"
+      className="tw:w-full tw:text-left tw:border-secondary tw:dark:bg-secondary"
       data-testid="selected-file-card"
       variant="elevated">
       <Box align="center" className="tw:p-4" gap={3}>
@@ -194,7 +194,7 @@ const ProcessingBanner: FC<{
   stages?: { key: string; label: string; state: StageState }[];
 }> = ({ title, fileName, rowCountLabel, progress, stages }) => (
   <Card
-    className="tw:mx-auto tw:w-full tw:max-w-[520px]"
+    className="tw:mx-auto tw:w-full tw:max-w-[520px] tw:border-secondary tw:dark:bg-secondary"
     data-testid="import-processing"
     variant="elevated">
     <Box align="center" className="tw:p-10" direction="col" gap={5}>
@@ -251,7 +251,7 @@ const AbortCard: FC<{ reason?: string; onBack: () => void }> = ({
 
   return (
     <Card
-      className="tw:mx-auto tw:w-full tw:max-w-[520px]"
+      className="tw:mx-auto tw:w-full tw:max-w-[520px] tw:border-secondary tw:dark:bg-secondary"
       data-testid="import-aborted"
       variant="elevated">
       <Box align="center" className="tw:p-10" direction="col" gap={4}>

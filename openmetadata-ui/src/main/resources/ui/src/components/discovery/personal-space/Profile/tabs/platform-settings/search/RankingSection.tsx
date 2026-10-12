@@ -101,6 +101,7 @@ const RankingSection = ({ ranking, onChange }: RankingSectionProps) => {
 
     return (
       <Card
+        className="tw:border-secondary tw:dark:bg-secondary"
         data-testid={
           name ? `ranking-stage-${name}` : `ranking-stage-unnamed-${index}`
         }
