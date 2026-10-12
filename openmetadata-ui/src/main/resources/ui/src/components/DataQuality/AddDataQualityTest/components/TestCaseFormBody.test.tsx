@@ -279,7 +279,7 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('selectedTable')).toBeInTheDocument();
   });
 
-  it('reports the table field as active when it is clicked without taking focus', async () => {
+  it('reports the active field for a click on the table select and keyboard focus on a test level card', async () => {
     const onActiveFieldChange = jest.fn();
     const Wrapper = () => {
       const form = useForm<FormValues>({
@@ -307,6 +307,14 @@ describe('TestCaseFormBody', () => {
     });
 
     expect(onActiveFieldChange).toHaveBeenLastCalledWith('root/table');
+
+    // Tabbing back onto a Test Level card must move the active field off the
+    // table too, or the drawer keeps the table summary under that hint.
+    await act(async () => {
+      screen.getAllByRole('radio')[0].focus();
+    });
+
+    expect(onActiveFieldChange).toHaveBeenLastCalledWith('root/testLevel');
   });
 
   it('labels the table field Selected Table once a table is picked', async () => {

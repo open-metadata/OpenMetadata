@@ -28,14 +28,9 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
 
   const drawerHeader = useMemo(
     () => (
-      // SlideoutMenu.Header is a plain block, so it must be made a flex row
-      // here or `actions` stack under the title instead of beside it.
-      // Its close button is centred on the header box, which includes the
-      // default 24px top padding only, so it sat above the title row. Moving
-      // that space to a margin centres the button on the title and actions.
-      // A caller's className replaces this default: it sets its own padding
-      // (e.g. a bordered header with symmetric `py-*`) and a margin above a
-      // border would leave a gap.
+      // Flex row so actions sit beside the title; top spacing as a margin so
+      // the close button centres on the row. A caller's className brings its
+      // own padding instead (a margin above a bordered header leaves a gap).
       <SlideoutMenu.Header
         className={classNames(
           'tw:flex tw:items-center tw:gap-4',

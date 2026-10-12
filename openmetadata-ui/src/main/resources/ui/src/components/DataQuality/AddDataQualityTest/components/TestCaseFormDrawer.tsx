@@ -182,7 +182,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const [showHint, setShowHint] = useState<boolean>(true);
   // The selected table's summary belongs to the Select Table hint only; once
   // another field is focused, its hint shows on its own.
-  const [activeField, setActiveField] = useState<string>();
+  const [isTableFieldActive, setIsTableFieldActive] = useState(false);
   const [editDefinition, setEditDefinition] = useState<TestDefinition>();
   // Id of the test case whose edit prefill has finished. Until this matches the
   // open test case, the body renders a loader so the form appears fully
@@ -376,15 +376,13 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const handleActiveFieldChange = useCallback(
     (fieldId: string) => {
-      setActiveField(fieldId);
+      setIsTableFieldActive(
+        fieldId === ROOT_TABLE_PATH || fieldId === ROOT_SELECTED_ENTITY_PATH
+      );
       onActiveFieldChange?.(fieldId);
     },
     [onActiveFieldChange]
   );
-
-  const isTableFieldActive =
-    activeField === ROOT_TABLE_PATH ||
-    activeField === ROOT_SELECTED_ENTITY_PATH;
 
   const testCaseFormBody = (
     <TestCaseFormBody
@@ -435,6 +433,18 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const closeDrawerRef = useRef<() => void>(() => undefined);
 
+  const renderHintLabel = (label: string) => (
+    <>
+      <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
+      <Typography
+        className="tw:whitespace-nowrap tw:text-secondary"
+        size="text-sm"
+        weight="medium">
+        {label}
+      </Typography>
+    </>
+  );
+
   // Memoized: the summary panel derives its permission lookup from this
   // object's identity, so a fresh object per render would redo that work.
   const selectedTableDetails = useMemo(() => {
@@ -463,13 +473,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       fieldDocDisplay="panel"
       fieldDocHeader={
         <Box align="center" className="tw:gap-2" direction="row">
-          <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
-          <Typography
-            className="tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {t('label.form-hint')}
-          </Typography>
+          {renderHintLabel(t('label.form-hint'))}
         </Box>
       }
       form={form}
@@ -514,13 +518,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   // button.
   const hintToggle = (
     <Box align="center" className="tw:gap-2 tw:pr-10" direction="row">
-      <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
-      <Typography
-        className="tw:whitespace-nowrap tw:text-secondary"
-        size="text-sm"
-        weight="medium">
-        {t('label.show-hint')}
-      </Typography>
+      {renderHintLabel(t('label.show-hint'))}
       <Toggle
         aria-label={t('label.show-hint')}
         data-testid="show-hint-toggle"
@@ -552,13 +550,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       title: resolvedTitle,
       hookForm: form,
       form: formBody,
-      headerActions: showDocPanel ? (
+      headerActions: (
         <>
           {headerActions}
-          {hintToggle}
+          {showDocPanel && hintToggle}
         </>
-      ) : (
-        headerActions
       ),
       // Each panel column scrolls on its own, so the body must not pad, gap
       // or stack them. tailwind-merge drops the SlideoutMenu.Content defaults

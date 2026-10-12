@@ -145,11 +145,6 @@ const isColumnFieldDisabled = (
   isEditMode: boolean
 ): boolean => !selectedTableFqn || isEditMode;
 
-// The table field's label doubles as its Form Hint heading, which shows the
-// selected table's summary once one is picked.
-const getTableFieldLabelKey = (selectedTableFqn: string | undefined): string =>
-  selectedTableFqn ? 'label.selected-entity' : 'label.select-entity';
-
 const getTestTypeFieldId = (selectedTestType: string | undefined): string =>
   selectedTestType ? `root/${selectedTestType}` : ROOT_TEST_TYPE_PATH;
 
@@ -267,7 +262,7 @@ const TestLevelAndTableCard: FC<{
     <Card className="form-card-section" data-testid="select-table-card">
       <Card.Content className="tw:flex tw:flex-col tw:gap-4">
         {!isEditMode && (
-          <div {...testLevelDoc}>
+          <div id="root/testLevel" {...testLevelDoc}>
             <FormField control={form.control} name="testLevel">
               {({ field }) => (
                 <>
@@ -660,30 +655,17 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     [testCase?.Create, getEntityPermissionByFqn, t]
   );
 
-  // Report the focused field to the doc panel. Rendered controls carry
-  // `root/<fieldName>` ids, so one capture handler covers every field the
-  // same way the legacy antd form's form-level onFocus did.
-  const handleFormFocusCapture = useCallback(
-    (event: React.FocusEvent<HTMLDivElement>) => {
-      const fieldId = (event.target as HTMLElement).closest?.(
-        '[id^="root/"]'
+  // Report the focused or clicked field to the doc panel. Rendered controls
+  // carry `root/<fieldName>` ids. A select holding a value hides its input, so
+  // a click there takes no focus while the core hint panel still switches on
+  // pointer-down; fall back to the id inside the clicked field's doc wrapper.
+  const handleFieldActivation = useCallback(
+    (event: React.SyntheticEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement;
+      const fieldId = (
+        target.closest?.('[id^="root/"]') ??
+        target.closest?.('[data-field-doc]')?.querySelector('[id^="root/"]')
       )?.id;
-      if (fieldId) {
-        handleActiveField(fieldId);
-      }
-    },
-    [handleActiveField]
-  );
-
-  // A select holding a value hides its input, so clicking it moves no focus
-  // and the handler above never fires, while the core hint panel still
-  // switches on pointer-down. Report the clicked field on pointer-down too,
-  // so the active field keeps following the hint.
-  const handleFormPointerDownCapture = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      const fieldId = (event.target as HTMLElement)
-        .closest('[data-field-doc]')
-        ?.querySelector('[id^="root/"]')?.id;
       if (fieldId) {
         handleActiveField(fieldId);
       }
@@ -1240,9 +1222,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const selectedTableField = {
     name: 'selectedTable',
-    label: t(getTableFieldLabelKey(selectedTableFqn), {
-      entity: t('label.table'),
-    }),
+    // Doubles as the Form Hint heading, above the selected table's summary.
+    label: t(
+      selectedTableFqn ? 'label.selected-entity' : 'label.select-entity',
+      {
+        entity: t('label.table'),
+      }
+    ),
     type: FieldTypes.ASYNC_SELECT,
     required: true,
     rules: {
@@ -1550,8 +1536,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       className="test-case-form-v1 drawer-mode test-case-form-body"
       data-testid="test-case-form-v1"
       ref={formBodyRef}
-      onFocusCapture={handleFormFocusCapture}
-      onPointerDownCapture={handleFormPointerDownCapture}>
+      onFocusCapture={handleFieldActivation}
+      onPointerDownCapture={handleFieldActivation}>
       {errorMessage && (
         <div className="floating-error-alert">
           <Alert
