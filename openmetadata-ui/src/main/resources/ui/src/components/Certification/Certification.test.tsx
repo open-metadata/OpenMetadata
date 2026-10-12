@@ -258,6 +258,66 @@ describe('Certification', () => {
     expect(mockSearchQuery).toHaveBeenCalledTimes(2);
   });
 
+  it('should drop the results of a search the user has moved past', async () => {
+    let finishFirstSearch!: (value: unknown) => void;
+    mockSearchQuery
+      .mockResolvedValueOnce(searchResponse(mockCertifications))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishFirstSearch = resolve;
+          })
+      )
+      .mockResolvedValueOnce(searchResponse([mockCertifications[2]]));
+
+    render(<Certification {...defaultProps} currentCertificate="" />);
+
+    await screen.findByTestId('Certification.Bronze');
+    const searchInput = screen.getByTestId('search-input');
+    fireEvent.change(searchInput, { target: { value: 'bro' } });
+    await waitFor(() => expect(mockSearchQuery).toHaveBeenCalledTimes(2));
+    fireEvent.change(searchInput, { target: { value: 'sil' } });
+    await screen.findByTestId('Certification.Silver');
+
+    await act(async () => {
+      finishFirstSearch(searchResponse([mockCertifications[0]]));
+    });
+
+    expect(screen.getByTestId('Certification.Silver')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('Certification.Bronze')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should keep the selected label when a search no longer lists it', async () => {
+    render(
+      <Certification
+        {...defaultProps}
+        currentCertificate="Certification.Gold"
+        popoverProps={undefined}>
+        {undefined}
+      </Certification>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Gold' }));
+    await screen.findByTestId('Certification.Gold');
+    mockSearchQuery.mockResolvedValueOnce(
+      searchResponse([mockCertifications[2]])
+    );
+    fireEvent.change(screen.getByTestId('search-input'), {
+      target: { value: 'sil' },
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId('Certification.Gold')).not.toBeInTheDocument()
+    );
+
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+
+    expect(
+      await screen.findByRole('button', { name: 'Gold' })
+    ).toBeInTheDocument();
+  });
+
   it('should not report a pick as a dismissal to onClose', async () => {
     render(<Certification {...defaultProps} />);
 

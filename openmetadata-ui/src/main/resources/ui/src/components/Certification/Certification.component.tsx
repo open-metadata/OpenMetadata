@@ -12,8 +12,16 @@
  */
 import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { debounce, isNil } from 'lodash';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { isNil } from 'lodash';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
 import {
@@ -66,6 +74,31 @@ const CERTIFICATION_ORDER: Record<string, number> = {
   Bronze: 2,
 };
 
+// ADR:2026-10-12-certification-picker-searches-the-tag-index-a-page-at-a-time
+const SEARCH_DEBOUNCE_MS = 300;
+
+const fetchCertificationPage = async (search: string, pageNumber: number) => {
+  const res = await searchQuery({
+    query: search
+      ? `*${getEncodedFqn(escapeESReservedCharacters(search))}*`
+      : '',
+    pageNumber,
+    pageSize: PAGE_SIZE_LARGE,
+    queryFilter: getTermQuery({
+      'classification.name.keyword': CERTIFICATION_CATEGORY,
+      disabled: 'false',
+    }),
+    searchIndex: SearchIndex.TAG,
+    sortField: 'name.keyword',
+    sortOrder: 'asc',
+  });
+
+  return {
+    tags: res.hits.hits.map(({ _source }) => _source as Tag),
+    total: res.hits.total.value,
+  };
+};
+
 const Certification = ({
   currentCertificate = '',
   children,
@@ -85,6 +118,8 @@ const Certification = ({
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [searchText, setSearchText] = useState('');
+  // Keeps the selected certification's label once a later search no longer lists it.
+  const [selectedCertification, setSelectedCertification] = useState<Tag>();
   const isOpen = popoverProps?.open ?? isPopupOpen;
   const isFormField = isNil(children);
   // A pick or clear closes the picker itself; only a dismissal calls onClose.
@@ -93,91 +128,65 @@ const Certification = ({
   const searchGeneration = useRef(0);
   // Scroll fires several times before a re-render, so the guard can't wait for state.
   const isFetchingMore = useRef(false);
-  // Every certification seen, so the selected one keeps its label under any search.
-  const knownCertifications = useRef(new Map<string, Tag>());
+  const hasLoaded = useRef(false);
 
-  const fetchPage = async (search: string, pageNumber: number) => {
-    const res = await searchQuery({
-      query: search
-        ? `*${getEncodedFqn(escapeESReservedCharacters(search))}*`
-        : '',
-      pageNumber,
-      pageSize: PAGE_SIZE_LARGE,
-      queryFilter: getTermQuery({
-        'classification.name.keyword': CERTIFICATION_CATEGORY,
-        disabled: 'false',
-      }),
-      searchIndex: SearchIndex.TAG,
-      sortField: 'name.keyword',
-      sortOrder: 'asc',
-    });
-    const tags = res.hits.hits.map(({ _source }) => _source as Tag);
-    tags.forEach((tag) =>
-      knownCertifications.current.set(tag.fullyQualifiedName ?? '', tag)
-    );
+  const showFetchError = useCallback(
+    (err: unknown) =>
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.certification-plural-lowercase'),
+        })
+      ),
+    [t]
+  );
 
-    return { tags, total: res.hits.total.value };
-  };
-
-  const showFetchError = (err: unknown) =>
-    showErrorToast(
-      err as AxiosError,
-      t('server.entity-fetch-error', {
-        entity: t('label.certification-plural-lowercase'),
-      })
-    );
-
-  const loadFirstPage = async (search: string, generation: number) => {
-    try {
-      const res = await fetchPage(search, 1);
-      if (generation !== searchGeneration.current) {
-        return;
-      }
-      setCertifications(res.tags);
-      setTotal(res.total);
-      setPage(1);
-      setSearchText(search);
-    } catch (err) {
-      if (generation === searchGeneration.current) {
-        // Rows from the previous search must not read as this one's results.
-        setCertifications([]);
-        setTotal(0);
-        showFetchError(err);
-      }
-    } finally {
-      if (generation === searchGeneration.current) {
-        setIsLoading(false);
-      }
+  // A form field also loads on mount, so its trigger can show the label.
+  useEffect(() => {
+    if (!isOpen && !(isFormField && !hasLoaded.current)) {
+      return;
     }
-  };
-
-  // Built once: loadFirstPage reads only refs and state setters.
-  const debouncedLoad = useMemo(() => debounce(loadFirstPage, 300), []);
-
-  const beginSearch = (search: string, immediate = false) => {
     const generation = ++searchGeneration.current;
     setIsLoading(true);
     setIsLoadingMore(false);
     isFetchingMore.current = false;
-    debouncedLoad.cancel();
-    if (immediate) {
-      void loadFirstPage(search, generation);
-    } else {
-      debouncedLoad(search, generation);
-    }
-  };
+    const timer = setTimeout(
+      async () => {
+        try {
+          const res = await fetchCertificationPage(searchText, 1);
+          if (generation === searchGeneration.current) {
+            setCertifications(res.tags);
+            setTotal(res.total);
+            setPage(1);
+            hasLoaded.current = true;
+          }
+        } catch (err) {
+          if (generation === searchGeneration.current) {
+            // Rows from the previous search must not read as this one's results.
+            setCertifications([]);
+            setTotal(0);
+            showFetchError(err);
+          }
+        } finally {
+          if (generation === searchGeneration.current) {
+            setIsLoading(false);
+          }
+        }
+      },
+      searchText ? SEARCH_DEBOUNCE_MS : 0
+    );
 
-  // A form field also loads on mount, so its trigger can show the label.
+    return () => clearTimeout(timer);
+  }, [isOpen, isFormField, searchText, showFetchError]);
+
   useEffect(() => {
-    if (isOpen || (isFormField && knownCertifications.current.size === 0)) {
-      beginSearch('', true);
+    const loaded = certifications.find(
+      (certification) => certification.fullyQualifiedName === currentCertificate
+    );
+    if (loaded) {
+      setSelectedCertification(loaded);
     }
-
-    return () => {
-      ++searchGeneration.current;
-      debouncedLoad.cancel();
-    };
-  }, [isOpen]);
+  }, [certifications, currentCertificate]);
 
   const handleLoadMore = async () => {
     if (isLoading || isFetchingMore.current || certifications.length >= total) {
@@ -187,7 +196,7 @@ const Certification = ({
     isFetchingMore.current = true;
     setIsLoadingMore(true);
     try {
-      const res = await fetchPage(searchText, page + 1);
+      const res = await fetchCertificationPage(searchText, page + 1);
       if (generation !== searchGeneration.current) {
         return;
       }
@@ -225,6 +234,7 @@ const Certification = ({
 
   const handleOpenChange = (open: boolean) => {
     setIsPopupOpen(open);
+    setSearchText('');
     popoverProps?.onOpenChange?.(open);
     if (!open && !isCommitRef.current) {
       onClose?.();
@@ -234,14 +244,17 @@ const Certification = ({
 
   const handleChange = async ([value]: string[]) => {
     isCommitRef.current = true;
-    await onCertificationUpdate?.(knownCertifications.current.get(value));
+    await onCertificationUpdate?.(
+      certifications.find(
+        (certification) => certification.fullyQualifiedName === value
+      )
+    );
   };
 
-  const resolveLabel = (fqn: string) => {
-    const certification = knownCertifications.current.get(fqn);
-
-    return certification ? getEntityName(certification) : fqn;
-  };
+  const resolveLabel = (fqn: string) =>
+    selectedCertification?.fullyQualifiedName === fqn
+      ? getEntityName(selectedCertification)
+      : fqn;
 
   return (
     <FilterSelect
@@ -271,7 +284,7 @@ const Certification = ({
       onChange={handleChange}
       onLoadMore={handleLoadMore}
       onOpenChange={handleOpenChange}
-      onSearch={(search) => beginSearch(search)}
+      onSearch={setSearchText}
     />
   );
 };

@@ -17,6 +17,12 @@ would have hidden every certification on a page that had not loaded yet.
   `name.keyword` ascending so pages never overlap or skip.
 - It requests `PAGE_SIZE_LARGE` (50) per page: the first on open, the next through `FilterSelect`'s
   `onLoadMore`. Typing replaces the list with the server's matches for the search.
+- The search fires 300 ms after the last keystroke (`SEARCH_DEBOUNCE_MS`). That is shorter than the
+  data product picker's 800 ms: certification names are short words picked from a small set, so a
+  user stops typing sooner and waits on each result. A response for a search the user has moved
+  past, or a page from an earlier search, is dropped.
+- Only the loaded rows and the selected certification are kept; the selected one keeps its label
+  on the trigger after a search stops listing it.
 - Gold, Silver and Bronze are moved to the top of the loaded rows. The rest keep the server's order.
 
 ## Consequences
