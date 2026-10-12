@@ -16,16 +16,24 @@
 // editor behaviour is untouched — these are purely visual overrides: one white
 // input line with the send button inside it on the right.
 .inbox-comment-composer__editor {
-  // `--om-*` tokens, not the raw `--color-*` theme vars: those are
-  // self-referential in this plain-CSS/Quill context and resolve to nothing,
-  // while the `--om-*` aliases carry a fallback and still follow dark mode.
-  @composer-border: var(--om-color-border-primary);
+  // `--om-*` and `--tw-color-*` tokens, not the raw `--color-*` theme vars:
+  // those are self-referential in this plain-CSS/Quill context and resolve to
+  // nothing, while these follow dark mode. The frame takes the design's
+  // gray-blue in light; in dark that scale turns navy, so the frame keeps the
+  // neutral surfaces there.
+  @composer-border: var(--tw-color-utility-gray-blue-100);
   @composer-bg: var(--om-color-bg-primary);
+  @composer-band-bg: var(--tw-color-utility-gray-blue-50);
+  @composer-divider: var(--tw-color-border-primary);
 
   .editor-container {
     border: 1px solid @composer-border;
-    border-radius: 10px;
+    border-radius: 12px;
     background-color: @composer-bg;
+
+    .dark-mode & {
+      border-color: var(--om-color-border-primary);
+    }
   }
 
   // Quill's snow theme sets 13px Helvetica on the container; comments read in
@@ -37,21 +45,25 @@
     font-size: 14px;
   }
 
-  // The format bar, in the design's editor style: a tinted band over the
-  // text, its groups split by short dividers, each button one muted 20px
-  // icon. It anchors the emoji picker, which the composer places by its button.
+  // The format bar, in the design's text-editor style: a tinted band over the
+  // text, 32px buttons 2px apart with a muted 20px icon each, and a short
+  // divider between groups. It anchors the emoji picker, which the composer
+  // places by its button.
   .ql-toolbar.ql-snow {
     position: relative;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    row-gap: 4px;
-    padding: 6px 10px;
+    gap: 2px;
+    padding: 12px 20px;
     border: none;
-    border-bottom: 1px solid var(--om-color-border-secondary);
-    // Inside the container's 1px border, so 1px tighter than its 10px.
-    border-radius: 9px 9px 0 0;
-    background-color: var(--om-color-bg-secondary);
+    // Inside the container's 1px border, so 1px tighter than its 12px.
+    border-radius: 11px 11px 0 0;
+    background-color: @composer-band-bg;
+
+    .dark-mode & {
+      background-color: var(--om-color-bg-secondary);
+    }
 
     .ql-formats {
       display: flex;
@@ -59,10 +71,18 @@
       gap: 2px;
       margin-right: 0;
 
-      & + .ql-formats {
-        margin-left: 6px;
-        padding-left: 6px;
-        border-left: 1px solid var(--om-color-border-secondary);
+      // Quill's clearfix would be an empty flex item here, adding a gap.
+      &::after {
+        display: none;
+      }
+
+      // The divider: a 20px rule centred in a 12px slot.
+      & + .ql-formats::before {
+        content: '';
+        width: 1px;
+        height: 20px;
+        margin: 0 5.5px;
+        background-color: @composer-divider;
       }
     }
 
@@ -71,11 +91,11 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
-      padding: 0;
+      width: 32px;
+      height: 32px;
+      padding: 6px;
       border-radius: 6px;
-      color: var(--om-color-text-quaternary);
+      color: var(--tw-color-fg-quaternary);
 
       // Quill's and quill-emoji's own icons, and the @ / # glyphs, give way to
       // the composer's.
@@ -105,14 +125,16 @@
     }
   }
 
-  // `.editor-container` matches the FeedEditor's own 100px minimum, which
-  // otherwise wins once the editor holds any text.
+  // The text sits 28px in from the frame, as in the design; the right padding
+  // keeps it clear of the send button. `.editor-container` matches the
+  // FeedEditor's own 100px minimum, which otherwise wins once the editor holds
+  // any text.
   .editor-container .ql-editor,
   .ql-editor.ql-blank {
-    min-height: 44px;
-    padding: 12px 48px 12px 14px;
+    min-height: 76px;
+    padding: 28px 56px 28px 28px;
     background-color: transparent;
-    border-radius: 10px;
+    border-radius: 0 0 12px 12px;
   }
 
   // A list starts at the text's edge: the item's own padding holds the
@@ -157,10 +179,10 @@
   .ql-editor.ql-blank::before {
     content: var(--inbox-composer-placeholder, 'Add Comment');
     font-style: normal;
-    left: 14px;
+    left: 28px;
+    color: var(--tw-color-utility-gray-400);
 
-    // Quill's default placeholder is rgba(0, 0, 0, 0.6), invisible on a dark
-    // surface; light keeps it.
+    // In dark the gray scale inverts; the placeholder token stays legible.
     .dark-mode & {
       color: var(--om-color-text-placeholder);
     }
