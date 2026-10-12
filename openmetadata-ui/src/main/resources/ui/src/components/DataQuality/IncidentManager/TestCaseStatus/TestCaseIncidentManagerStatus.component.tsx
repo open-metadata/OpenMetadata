@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
-import { Space, Tooltip } from 'antd';
+import {
+  Box,
+  Tooltip,
+  Typography as CoreTypography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -104,10 +107,16 @@ const TestCaseIncidentManagerStatus = ({
             />
           )}
         </div>
-        <Tooltip placement="bottom" title={tooltipTitle}>
-          <Space
+        <Tooltip
+          excludeTriggerFromTabOrder
+          isDisabled={!tooltipTitle}
+          placement="bottom"
+          title={tooltipTitle}>
+          <Box
+            inline
             align="center"
-            data-testid={`${data.testCaseReference?.name}-status`}>
+            data-testid={`${data.testCaseReference?.name}-status`}
+            gap={2}>
             <AppBadge
               className={classNames(
                 'resolution',
@@ -115,7 +124,7 @@ const TestCaseIncidentManagerStatus = ({
               )}
               label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
             />
-          </Space>
+          </Box>
         </Tooltip>
 
         {isEditStatus && (
@@ -143,14 +152,25 @@ const TestCaseIncidentManagerStatus = ({
 
   return (
     <>
-      <Space
+      <Box
+        inline
         align="center"
-        data-testid={`${data.testCaseReference?.name}-status`}>
-        <Tooltip placement="bottom" title={tooltipTitle}>
-          <AppBadge
-            className={classNames('resolution', statusType.toLocaleLowerCase())}
-            label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
-          />
+        data-testid={`${data.testCaseReference?.name}-status`}
+        gap={2}>
+        <Tooltip
+          excludeTriggerFromTabOrder
+          isDisabled={!tooltipTitle}
+          placement="bottom"
+          title={tooltipTitle}>
+          <span>
+            <AppBadge
+              className={classNames(
+                'resolution',
+                statusType.toLocaleLowerCase()
+              )}
+              label={TEST_CASE_RESOLUTION_STATUS_LABELS[statusType]}
+            />
+          </span>
         </Tooltip>
 
         {hasEditPermission && (
@@ -166,7 +186,7 @@ const TestCaseIncidentManagerStatus = ({
             onClick={onEditStatus}
           />
         )}
-      </Space>
+      </Box>
 
       {isEditStatus && (
         <TestCaseStatusModal

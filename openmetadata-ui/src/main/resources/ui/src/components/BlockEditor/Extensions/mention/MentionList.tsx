@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { SuggestionProps } from '@tiptap/suggestion';
-import { Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
@@ -105,15 +104,20 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
     }));
 
     return (
-      <Space
+      <Box
+        inline
         className="suggestion-menu-wrapper"
-        direction="vertical"
+        direction="col"
+        gap={2}
         id="mention-viewport">
         {items.map((item, index) => (
-          <Space
+          <Box
+            inline
+            align="center"
             className={classNames('w-full cursor-pointer mention-item', {
               'bg-grey-2': index === selectedIndex,
             })}
+            gap={2}
             id={`mention-item-${item.id}`}
             key={item.id}
             onClick={() => selectItem(index)}>
@@ -121,9 +125,9 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
             <Typography as="article" className="truncate w-max-200">
               {item.label}
             </Typography>
-          </Space>
+          </Box>
         ))}
-      </Space>
+      </Box>
     );
   }
 );

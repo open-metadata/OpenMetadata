@@ -42,7 +42,12 @@ const waitForLandingState = async (page: Page): Promise<'app' | 'login'> => {
   await expect
     .poll(
       async () => {
-        if ((await page.getByTestId('left-sidebar').count()) > 0) {
+        if (
+          (await page
+            .getByTestId('left-sidebar')
+            .or(page.getByTestId('ask-sidebar'))
+            .count()) > 0
+        ) {
           landingState = 'app';
 
           return true;
@@ -59,7 +64,7 @@ const waitForLandingState = async (page: Page): Promise<'app' | 'login'> => {
       {
         timeout: ACTION_TIMEOUT,
         message:
-          'Neither the app shell (left-sidebar) nor the login form (input[name="email"]) appeared after navigating to /my-data',
+          'Neither the app shell (left-sidebar or ask-sidebar) nor the login form (input[name="email"]) appeared after navigating to /my-data',
       }
     )
     .toBe(true);

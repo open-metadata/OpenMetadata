@@ -16,6 +16,7 @@ import traceback
 from collections.abc import Iterable
 from urllib.parse import quote
 
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -55,7 +56,6 @@ from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceS
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -216,12 +216,7 @@ class AirflowApiSource(PipelineServiceSource):
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 owners=self.get_owners(pipeline_details.owners),
                 scheduleInterval=pipeline_details.schedule_interval,
-                tags=get_tag_labels(
-                    metadata=self.metadata,
-                    tags=pipeline_details.tags or [],
-                    classification_name=AIRFLOW_TAG_CATEGORY,
-                    include_tags=self.source_config.includeTags,
-                ),
+                tags=self.get_tag_by_fqn(self.get_pipeline_fqn(pipeline_details)),
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
@@ -304,10 +299,13 @@ class AirflowApiSource(PipelineServiceSource):
         return []
 
     def yield_tag(self, pipeline_details: AirflowApiDagDetails) -> Iterable[Either[OMetaTagAndClassification]]:
-        yield from get_ometa_tag_and_classification(
-            tags=pipeline_details.tags or [],
-            classification_name=AIRFLOW_TAG_CATEGORY,
-            tag_description="Airflow Tag",
-            classification_description="Tags associated with airflow entities.",
-            include_tags=self.source_config.includeTags,
-        )
+        for tag_name in pipeline_details.tags or []:
+            yield from self.register_tag(
+                entity_fqn=self.get_pipeline_fqn(pipeline_details),
+                definition=TagDefinition(
+                    classification_name=AIRFLOW_TAG_CATEGORY,
+                    tag_name=tag_name,
+                    tag_description="Airflow Tag",
+                    classification_description="Tags associated with airflow entities.",
+                ),
+            )

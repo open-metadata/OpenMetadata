@@ -19,7 +19,9 @@ import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import SettingsSourceBanner from '../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import EmailConfigForm from '../../components/Settings/Email/EmailConfigForm/EmailConfigForm.component';
+import { EMAIL_CONFIG_FORM_FIELDS } from '../../constants/EmailConfig.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -33,12 +35,20 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useSettingsSource } from '../../hooks/platform/useSettingsSource';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import {
+  findSettingSource,
+  isPathManaged,
+  toJsonPointer,
+} from '../../utils/platform/settingsSource.utils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+
+const EMAIL_SETTING_TYPES = [SettingType.EmailConfiguration];
 
 const withoutMaskedPassword = (configValues: SMTPSettings) => {
   const updateValues = { ...configValues };
@@ -56,6 +66,19 @@ function EditEmailConfigPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
+  const { sources, refetch: refetchSources } =
+    useSettingsSource(EMAIL_SETTING_TYPES);
+
+  const managedFields = useMemo(() => {
+    const emailSource = findSettingSource(
+      sources,
+      SettingType.EmailConfiguration
+    );
+
+    return EMAIL_CONFIG_FORM_FIELDS.filter((field) =>
+      isPathManaged(emailSource, toJsonPointer(field))
+    );
+  }, [sources]);
 
   const slashedBreadcrumb = useMemo(
     () => [
@@ -152,6 +175,12 @@ function EditEmailConfigPage() {
     <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
+        <SettingsSourceBanner
+          className="tw:mb-4"
+          sources={sources}
+          onAdopted={fetchEmailConfigValues}
+          onRefetch={refetchSources}
+        />
         {loading ? (
           <div className="tw:flex tw:flex-col tw:gap-3">
             <Skeleton animation={false} height={16} width="40%" />
@@ -168,6 +197,7 @@ function EditEmailConfigPage() {
           <EmailConfigForm
             emailConfigValues={emailConfigValues}
             isLoading={isSaveLoading}
+            managedFields={managedFields}
             onCancel={handleRedirectionToSettingsPage}
             onFocus={handleFieldFocus}
             onSubmit={updateEmailConfigValues}

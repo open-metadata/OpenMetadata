@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import base, { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { ACTION_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
@@ -27,6 +27,7 @@ import {
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { test as base } from '../../support/fixtures/isolatedUser';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -42,6 +43,7 @@ import {
   clickOutside,
   getApiContext,
   getDescriptionBox,
+  getWorkerAdminAPIContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -108,12 +110,22 @@ const test = base.extend<{
   page: Page;
   userPage: Page;
 }>({
-  page: async ({ browser }, setPage) => {
-    const { page, afterAction } = await performAdminLogin(browser, {
-      navigate: true,
-    });
-    await setPage(page);
-    await afterAction();
+  page: async ({ browser, isolatedUser }, setPage) => {
+    // These cases cover classic domain layouts without changing the shared
+    // admin's saved app mode or depending on its cached AI routes.
+    const apiContext = await getWorkerAdminAPIContext();
+    const preference = await apiContext.put(
+      `/api/v1/users/${isolatedUser.responseData.id}/preferences/appMode`,
+      { data: { type: 'appMode', config: { value: 'classic' } } }
+    );
+    expect(preference.ok()).toBeTruthy();
+    const page = await browser.newPage();
+    try {
+      await isolatedUser.signIn(page);
+      await setPage(page);
+    } finally {
+      await page.close();
+    }
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
@@ -123,6 +135,8 @@ const test = base.extend<{
   },
 });
 
+test.use({ isolatedUserOptions: { isAdmin: true } });
+
 test.describe('Domains', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
@@ -130,7 +144,6 @@ test.describe('Domains', () => {
     user = new UserClass();
     domain = new Domain();
     classification = new ClassificationClass({
-      provider: 'system',
       mutuallyExclusive: true,
     });
     tag = new TagClass({ classification: classification.data.name });
@@ -166,9 +179,10 @@ test.describe('Domains', () => {
     test.slow(true);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain.delete(apiContext);
     await user.delete(apiContext);
-    await classification.delete(apiContext);
     await tag.delete(apiContext);
+    await classification.delete(apiContext);
     await glossaryTerm.delete(apiContext);
     await glossary.delete(apiContext);
     await afterAction();
@@ -200,52 +214,57 @@ test.describe('Domains', () => {
   test('Create domains and add assets', async ({ page }) => {
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
+    const { apiContext, afterAction } = await getApiContext(page);
 
-    await test.step('Create domain', async () => {
-      await sidebarClick(page, SidebarItem.DOMAIN);
+    try {
+      await test.step('Create domain', async () => {
+        await sidebarClick(page, SidebarItem.DOMAIN);
 
-      // Wait for loaders to disappear and verify page is ready
-      await waitForAllLoadersToDisappear(page);
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+        // Wait for loaders to disappear and verify page is ready
+        await waitForAllLoadersToDisappear(page);
+        await expect(page.getByTestId('add-domain')).toBeVisible();
 
-      await createDomain(page, domain.data, false);
-      await verifyDomain(page, domain.data);
-    });
+        await createDomain(page, domain.data, false);
+        await verifyDomain(page, domain.data);
+      });
 
-    await test.step('Add assets to domain', async () => {
-      const assetsTab = page.getByTestId('assets');
-      await expect(assetsTab).toBeVisible();
-      await assetsTab.click();
-      await addAssetsToDomain(page, domain, assets, false);
-    });
+      await test.step('Add assets to domain', async () => {
+        const assetsTab = page.getByTestId('assets');
+        await expect(assetsTab).toBeVisible();
+        await assetsTab.click();
+        await addAssetsToDomain(page, domain, assets, false);
+      });
 
-    await test.step('Delete domain using delete modal', async () => {
-      const manageButton = page.getByTestId('manage-button');
-      await expect(manageButton).toBeVisible();
-      await manageButton.click();
+      await test.step('Delete domain using delete modal', async () => {
+        const manageButton = page.getByTestId('manage-button');
+        await expect(manageButton).toBeVisible();
+        await manageButton.click();
 
-      const deleteButton = page.getByTestId('delete-button-title');
-      await expect(deleteButton).toBeVisible();
-      await deleteButton.click();
+        const deleteButton = page.getByTestId('delete-button-title');
+        await expect(deleteButton).toBeVisible();
+        await deleteButton.click();
 
-      // Verify delete modal is visible
-      await expect(page.getByTestId('delete-modal')).toBeVisible();
+        // Verify delete modal is visible
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-      const deleteRes = page.waitForResponse('/api/v1/domains/*');
-      const confirmButton = page.getByTestId('confirm-button');
-      await expect(confirmButton).toBeVisible();
-      await expect(confirmButton).toBeEnabled();
-      await confirmButton.click();
+        const deleteRes = page.waitForResponse('/api/v1/domains/*');
+        const confirmButton = page.getByTestId('confirm-button');
+        await expect(confirmButton).toBeVisible();
+        await expect(confirmButton).toBeEnabled();
+        await confirmButton.click();
 
-      await deleteRes;
+        await deleteRes;
 
-      // Verify UI shows deletion success
-      await expect(
-        page.getByText(`"${domain.data.displayName}" deleted`)
-      ).toBeVisible();
-    });
-
-    await assetCleanup();
+        // Verify UI shows deletion success
+        await expect(
+          page.getByText(`"${domain.data.displayName}" deleted`)
+        ).toBeVisible();
+      });
+    } finally {
+      await domain.delete(apiContext);
+      await assetCleanup();
+      await afterAction();
+    }
   });
 
   test('Add-Assets drawer quick filter - behaviour matrix', async ({
@@ -329,142 +348,144 @@ test.describe('Domains', () => {
     const domain = new Domain();
     const dataProduct1 = new DataProduct([domain]);
     const dataProduct2 = new DataProduct([domain]);
-    await domain.create(apiContext);
-    await page.reload();
-
-    await test.step('Add assets to domain', async () => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await addAssetsToDomain(page, domain, assets);
-    });
-
-    await test.step('Opening an asset from its card shows the full breadcrumb', async () => {
-      // Regression: navigating via the asset card used to pass a truncated
-      // breadcrumb in route state, so the asset page dropped the schema and
-      // the asset name (only service / database showed). The crumb must match
-      // a direct visit: service > database > schema > table.
-      const table = assets[0] as TableClass;
-      const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-      // The breadcrumb current crumb renders the entity name, not displayName.
-      const tableName = table.entityResponseData.name ?? '';
-
-      const tableRes = page.waitForResponse(
-        `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
-      );
-      await page
-        .locator(`[data-testid="table-data-card_${tableFqn}"]`)
-        .getByTestId('entity-link')
-        .click();
-      await tableRes;
-      await waitForAllLoadersToDisappear(page);
-
-      // The trail auto-collapses: the schema ancestor sits in the overflow
-      // menu while the current crumb (aria-current) stays inline. Both were
-      // dropped before the fix.
-      await expectBreadcrumbToContainAncestor(page, table.schema.name);
-      await expect(
-        page.getByTestId('breadcrumb').locator('[aria-current="page"]')
-      ).toContainText(tableName);
-
-      // Return to the domain page so the next step can create data products.
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain.data);
-    });
-
-    await test.step('Create DataProducts', async () => {
-      await createDataProduct(page, dataProduct1.data);
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify first data product card is visible
-      await expect(
-        page.getByTestId(
-          `table-data-card_${dataProduct1.data.fullyQualifiedName}`
-        )
-      ).toBeVisible();
-
-      await createDataProduct(page, dataProduct2.data);
-    });
-
-    await test.step('Follow & Un-follow DataProducts', async () => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct1.data);
-      await followEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
-
-      await validateFollowedEntityToWidget(
-        page,
-        dataProduct1.data.displayName,
-        true
-      );
-
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct1.data);
-      await unFollowEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
-      await validateFollowedEntityToWidget(
-        page,
-        dataProduct1.data.displayName,
-        false
-      );
-    });
-
-    await test.step('Verify empty assets message and Add Asset button', async () => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct1.data);
-      await waitForAllLoadersToDisappear(page);
-
-      const assetsTab = page.getByTestId('assets').getByText('Assets');
-      await expect(assetsTab).toBeVisible();
-      await assetsTab.click();
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify empty state message
-      await expect(page.getByTestId('empty-placeholder')).toBeVisible();
-
-      // `CreatePlaceholder` applies the action's `data-assets-add-button` as the
-      // button's DOM id, so this CTA has no testid to select it by.
-      const addButton = page.locator('#data-assets-add-button');
-      await expect(addButton).toBeVisible();
-      await addButton.click();
-
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify Add Assets modal is displayed (migrated to the core-ui Dialog
-      // `asset-selection-modal`; the old `form-heading` testid no longer applies)
-      await expect(page.getByTestId('asset-selection-modal')).toBeVisible();
-
-      await expect(page.getByTestId('cancel-btn')).toBeVisible();
-      await expect(page.getByTestId('save-btn')).toBeDisabled();
-    });
-
-    await test.step('Add assets to DataProducts', async () => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct1.data);
-      await addAssetsToDataProduct(
-        page,
-        dataProduct1.data.fullyQualifiedName ?? '',
-        assets
-      );
-    });
-
-    await test.step('Remove assets from DataProducts', async () => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProduct1.data);
-      await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
+    try {
+      await domain.create(apiContext);
       await page.reload();
-      await waitForAllLoadersToDisappear(page);
-      // Verify assets count is 0 after removal
-      await checkAssetsCount(page, 0);
-    });
 
-    await dataProduct1.delete(apiContext);
-    await dataProduct2.delete(apiContext);
-    await domain.delete(apiContext);
-    await assetCleanup();
-    await afterAction();
+      await test.step('Add assets to domain', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await addAssetsToDomain(page, domain, assets);
+      });
+
+      await test.step('Opening an asset from its card shows the full breadcrumb', async () => {
+        // Regression: navigating via the asset card used to pass a truncated
+        // breadcrumb in route state, so the asset page dropped the schema and
+        // the asset name (only service / database showed). The crumb must match
+        // a direct visit: service > database > schema > table.
+        const table = assets[0] as TableClass;
+        const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
+        // The breadcrumb current crumb renders the entity name, not displayName.
+        const tableName = table.entityResponseData.name ?? '';
+
+        const tableRes = page.waitForResponse(
+          `/api/v1/tables/name/${encodeURIComponent(tableFqn)}?**`
+        );
+        await page
+          .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+          .getByTestId('entity-link')
+          .click();
+        await tableRes;
+        await waitForAllLoadersToDisappear(page);
+
+        // The trail auto-collapses: the schema ancestor sits in the overflow
+        // menu while the current crumb (aria-current) stays inline. Both were
+        // dropped before the fix.
+        await expectBreadcrumbToContainAncestor(page, table.schema.name);
+        await expect(
+          page.getByTestId('breadcrumb').locator('[aria-current="page"]')
+        ).toContainText(tableName);
+
+        // Return to the domain page so the next step can create data products.
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
+      });
+
+      await test.step('Create DataProducts', async () => {
+        await createDataProduct(page, dataProduct1.data);
+        await waitForAllLoadersToDisappear(page);
+
+        // Verify first data product card is visible
+        await expect(
+          page.getByTestId(
+            `table-data-card_${dataProduct1.data.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+
+        await createDataProduct(page, dataProduct2.data);
+      });
+
+      await test.step('Follow & Un-follow DataProducts', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct1.data);
+        await followEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
+
+        await validateFollowedEntityToWidget(
+          page,
+          dataProduct1.data.displayName,
+          true
+        );
+
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct1.data);
+        await unFollowEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
+        await validateFollowedEntityToWidget(
+          page,
+          dataProduct1.data.displayName,
+          false
+        );
+      });
+
+      await test.step('Verify empty assets message and Add Asset button', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct1.data);
+        await waitForAllLoadersToDisappear(page);
+
+        const assetsTab = page.getByTestId('assets').getByText('Assets');
+        await expect(assetsTab).toBeVisible();
+        await assetsTab.click();
+        await waitForAllLoadersToDisappear(page);
+
+        // Verify empty state message
+        await expect(page.getByTestId('empty-placeholder')).toBeVisible();
+
+        // `CreatePlaceholder` applies the action's `data-assets-add-button` as the
+        // button's DOM id, so this CTA has no testid to select it by.
+        const addButton = page.locator('#data-assets-add-button');
+        await expect(addButton).toBeVisible();
+        await addButton.click();
+
+        await waitForAllLoadersToDisappear(page);
+
+        // Verify Add Assets modal is displayed (migrated to the core-ui Dialog
+        // `asset-selection-modal`; the old `form-heading` testid no longer applies)
+        await expect(page.getByTestId('asset-selection-modal')).toBeVisible();
+
+        await expect(page.getByTestId('cancel-btn')).toBeVisible();
+        await expect(page.getByTestId('save-btn')).toBeDisabled();
+      });
+
+      await test.step('Add assets to DataProducts', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct1.data);
+        await addAssetsToDataProduct(
+          page,
+          dataProduct1.data.fullyQualifiedName ?? '',
+          assets
+        );
+      });
+
+      await test.step('Remove assets from DataProducts', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct1.data);
+        await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
+        await page.reload();
+        await waitForAllLoadersToDisappear(page);
+        // Verify assets count is 0 after removal
+        await checkAssetsCount(page, 0);
+      });
+    } finally {
+      await dataProduct1.delete(apiContext);
+      await dataProduct2.delete(apiContext);
+      await domain.delete(apiContext);
+      await assetCleanup();
+      await afterAction();
+    }
   });
 
   test('Follow & Un-follow domain', async ({ page }) => {

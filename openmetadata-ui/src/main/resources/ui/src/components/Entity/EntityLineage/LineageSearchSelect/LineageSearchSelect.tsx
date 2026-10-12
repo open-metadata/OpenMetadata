@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Select, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -65,7 +65,13 @@ const LineageSearchSelect = () => {
 
       const nodeOption = {
         label: (
-          <Space data-testid={`option-${node.fullyQualifiedName}`} size={0}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            data-testid={`option-${node.fullyQualifiedName}`}
+            gap={0}
+            itemClassName="layout-space-item">
             <img
               alt={node.serviceType}
               className="m-r-xss"
@@ -74,7 +80,7 @@ const LineageSearchSelect = () => {
               width="16px"
             />
             <Typography>{getEntityName(node)}</Typography>
-          </Space>
+          </Box>
         ),
         value: node.fullyQualifiedName,
         dataLabel: getEntityName(node),

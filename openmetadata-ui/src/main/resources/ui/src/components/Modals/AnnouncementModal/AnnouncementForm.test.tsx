@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CalendarDate, getLocalTimeZone } from '@internationalized/date';
 import {
   act,
   fireEvent,
@@ -26,62 +27,82 @@ import {
   AnnouncementType,
 } from '../../../generated/entity/feed/announcement';
 import AnnouncementForm from './AnnouncementForm.component';
-import { toDateInputValue } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
+
+/**
+ * What the picker's trigger reads for a timestamp. Mirrors the formatter the
+ * design system's `DatePicker` uses, so the case is not tied to a timezone or
+ * to a locale's month spelling. Built independently of the conversion under
+ * test, so a bug there cannot make this agree with itself.
+ */
+const triggerLabel = (timestamp: number): string => {
+  const local = DateTime.fromMillis(timestamp);
+  const day = new CalendarDate(local.year, local.month, local.day);
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(day.toDate(getLocalTimeZone()));
+};
+
+/**
+ * Pick a day from one of the two pickers. The popover portals out of the
+ * field, so the cell is looked up at document level; the clickable node is a
+ * `role="button"` inside the grid cell, not the cell itself.
+ */
+const openAndPickDay = async (testId: string, day: string) => {
+  await act(async () => {
+    // `hidden` because the surrounding modal marks its subtree inaccessible to
+    // the role query, which would otherwise match nothing.
+    fireEvent.click(
+      within(screen.getByTestId(testId)).getByRole('button', { hidden: true })
+    );
+  });
+
+  const cell = screen
+    .queryAllByRole('gridcell', { hidden: true })
+    .find((candidate) => candidate.textContent === day);
+  const target = cell?.firstElementChild;
+
+  if (!(target instanceof HTMLElement)) {
+    throw new Error(`No day cell "${day}" in the open calendar`);
+  }
+
+  await act(async () => {
+    fireEvent.click(target);
+  });
+};
+
+/** Dismiss the open popover through one of its two footer buttons. */
+const dismissPopover = async (label: 'Apply' | 'Cancel') => {
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { hidden: true, name: label }));
+  });
+};
+
+/** Dismiss by Escape — the exit react-aria reports without calling `onCancel`. */
+const escapePopover = async () => {
+  await act(async () => {
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: 'Escape',
+      code: 'Escape',
+    });
+  });
+};
+
+const pickDay = async (testId: string, day: string) => {
+  await openAndPickDay(testId, day);
+
+  // The picker keeps its popover open after a selection, so it has to be
+  // dismissed before the next field is touched -- otherwise this grid is still
+  // mounted and would shadow the next one's cells.
+  await dismissPopover('Apply');
+};
 
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
   useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-// The calendar popover is react-aria's concern; a native date input keeps
-// these cases about the form's own value handling.
-jest.mock('@openmetadata/ui-core-components', () => {
-  const actual = jest.requireActual('@openmetadata/ui-core-components');
-
-  return {
-    ...actual,
-    DatePicker: ({
-      value,
-      onChange,
-      'aria-label': ariaLabel,
-      'data-testid': testId,
-    }: {
-      value: { toString: () => string } | null;
-      onChange: (value: unknown) => void;
-      'aria-label'?: string;
-      'data-testid'?: string;
-    }) => (
-      <input
-        aria-label={ariaLabel}
-        data-testid={testId}
-        type="date"
-        value={value?.toString() ?? ''}
-        onChange={(e) =>
-          onChange(e.target.value ? actual.parseDate(e.target.value) : null)
-        }
-      />
-    ),
-  };
-});
-
-// The block editor is heavy and irrelevant to what this form owns.
-jest.mock('../../common/RichTextEditor/RichTextEditor', () => ({
-  __esModule: true,
-  default: ({
-    initialValue,
-    onTextChange,
-  }: {
-    initialValue?: string;
-    onTextChange: (value: string) => void;
-  }) => (
-    <textarea
-      aria-label="description"
-      data-testid="description"
-      value={initialValue}
-      onChange={(e) => onTextChange(e.target.value)}
-    />
-  ),
 }));
 
 const START = 1700000000000;
@@ -131,10 +152,10 @@ describe('AnnouncementForm', () => {
     expect(screen.getByLabelText(/label\.title/)).toHaveValue('A title');
     expect(screen.getByTestId('announcement-type-select')).toBeInTheDocument();
     // Asserted through the same helper so the case is not tied to a timezone.
-    expect(screen.getByTestId('startTime')).toHaveValue(
-      toDateInputValue(START)
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(START)
     );
-    expect(screen.getByTestId('endTime')).toHaveValue(toDateInputValue(END));
+    expect(screen.getByTestId('endTime')).toHaveTextContent(triggerLabel(END));
   });
 
   it('should reveal the colour swatches only for a Custom announcement', () => {
@@ -151,16 +172,17 @@ describe('AnnouncementForm', () => {
     expect(screen.getByTestId('announcement-color-select')).toBeInTheDocument();
   });
 
-  it('should clear the date and block submit when the input is emptied', async () => {
-    render(<Harness onSubmit={jest.fn()} />);
+  it('should block submit while a date is unset', () => {
+    // The state the add modal opens in. The picker has no clear affordance, so
+    // an unset date is only reachable before the first pick -- which is also
+    // the only moment the required rule has to hold.
+    render(
+      <Harness defaultValues={{ startTime: null }} onSubmit={jest.fn()} />
+    );
 
-    const startInput = screen.getByTestId('startTime');
-    await act(async () => {
-      fireEvent.change(startInput, { target: { value: '' } });
-    });
-
-    // Empty rather than a NaN timestamp, and the form knows it is incomplete.
-    expect(startInput).toHaveValue('');
+    // Core's own catalogue is not registered under the i18n mock above, so the
+    // picker falls back to its built-in English copy.
+    expect(screen.getByTestId('startTime')).toHaveTextContent('Select date');
     expect(screen.getByTestId('announcement-submit')).toBeDisabled();
   });
 
@@ -337,17 +359,20 @@ describe('AnnouncementForm', () => {
 
   it('should include the chosen end day, so a one-day announcement is possible', async () => {
     const onSubmit = jest.fn();
-    render(<Harness onSubmit={onSubmit} />);
+    // Both defaults sit in the month the day below is picked from, so each
+    // calendar opens on it.
+    const october = DateTime.fromISO('2026-10-10').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={onSubmit}
+      />
+    );
 
     // Same day in both fields — the window must still be non-empty.
-    await act(async () => {
-      fireEvent.change(screen.getByTestId('startTime'), {
-        target: { value: '2026-10-01' },
-      });
-      fireEvent.change(screen.getByTestId('endTime'), {
-        target: { value: '2026-10-01' },
-      });
-    });
+    await pickDay('startTime', '15');
+    await pickDay('endTime', '15');
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('announcement-submit'));
     });
@@ -357,7 +382,10 @@ describe('AnnouncementForm', () => {
     expect(endTime).toBeGreaterThan(startTime);
     // The end is the last instant of the chosen day, not the first.
     expect(DateTime.fromMillis(endTime).toFormat('yyyy-MM-dd HH:mm')).toBe(
-      '2026-10-01 23:59'
+      '2026-10-15 23:59'
+    );
+    expect(DateTime.fromMillis(startTime).toFormat('yyyy-MM-dd HH:mm')).toBe(
+      '2026-10-15 00:00'
     );
   });
 
@@ -387,5 +415,162 @@ describe('AnnouncementForm', () => {
     expect(
       screen.getByRole('radio', { name: 'label.color-purple' })
     ).toBeChecked();
+  });
+
+  it('should discard a mis-picked day when the popover is cancelled', async () => {
+    const october = DateTime.fromISO('2026-10-10').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    await openAndPickDay('startTime', '12');
+
+    // The pick is already committed while the popover is open -- core's
+    // DatePicker has no draft state of its own.
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(DateTime.fromISO('2026-10-12').toMillis())
+    );
+
+    await dismissPopover('Cancel');
+
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(october)
+    );
+  });
+
+  it('should keep a day that was confirmed with Apply', async () => {
+    const october = DateTime.fromISO('2026-10-10').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    await pickDay('startTime', '12');
+
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(DateTime.fromISO('2026-10-12').toMillis())
+    );
+  });
+
+  it('should reject an end date that lands before the start, in place', async () => {
+    const onSubmit = jest.fn();
+    const october = DateTime.fromISO('2026-10-20').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await pickDay('endTime', '12');
+
+    // Named on the field the user can fix, rather than only surfacing as a
+    // toast once the create request has already been attempted.
+    await waitFor(() =>
+      expect(screen.getByTestId('endTime-error')).toHaveTextContent(
+        'message.announcement-invalid-start-time'
+      )
+    );
+
+    expect(screen.getByTestId('announcement-submit')).toBeDisabled();
+
+    // Moving the start back under the end clears it: the end is re-judged when
+    // the start changes, not only when the end is touched again.
+    await pickDay('startTime', '5');
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('endTime-error')).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('announcement-submit')).toBeEnabled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('should discard a mis-picked day when the popover is dismissed with Escape', async () => {
+    const october = DateTime.fromISO('2026-10-10').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    await openAndPickDay('startTime', '12');
+
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(DateTime.fromISO('2026-10-12').toMillis())
+    );
+
+    // Escape and an outside click close the popover through `onOpenChange`;
+    // react-aria calls `onCancel` only for the Cancel button, so hanging the
+    // revert off Cancel alone would let this mis-click through.
+    await escapePopover();
+
+    expect(screen.getByTestId('startTime')).toHaveTextContent(
+      triggerLabel(october)
+    );
+  });
+
+  it('should not fault the untouched end date when a start date is picked', async () => {
+    // The state the add modal opens in: neither date set.
+    render(
+      <Harness
+        defaultValues={{ startTime: null, endTime: null }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    await pickDay('startTime', '15');
+
+    // The end date is still required and submit stays disabled -- but the
+    // message belongs to a field the user has not reached yet, so it must not
+    // be printed under it.
+    expect(screen.queryByTestId('endTime-error')).not.toBeInTheDocument();
+    expect(screen.getByTestId('announcement-submit')).toBeDisabled();
+  });
+
+  it('should mark the picker invalid, not just print a line under it', async () => {
+    const onSubmit = jest.fn();
+    const october = DateTime.fromISO('2026-10-20').toMillis();
+    render(
+      <Harness
+        defaultValues={{ startTime: october, endTime: october }}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await pickDay('endTime', '12');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('endTime-error')).toBeInTheDocument()
+    );
+
+    // An `Input` in error turns its border red; the picker has to match, or the
+    // two controls disagree in the same row.
+    expect(
+      within(screen.getByTestId('endTime')).getByRole('button', {
+        hidden: true,
+      })
+    ).toHaveClass('tw:outline-error_subtle');
+  });
+
+  it('should render the description through the design system, not the block editor', () => {
+    render(<Harness onSubmit={jest.fn()} />);
+
+    const description = screen.getByLabelText(/label\.description/);
+
+    // A real textarea with the field's own placeholder -- the block editor
+    // rendered a contenteditable and silently dropped the placeholder prop.
+    expect(description.tagName).toBe('TEXTAREA');
+    expect(description).toHaveAttribute(
+      'placeholder',
+      'message.enter-a-description'
+    );
+    expect(description).toHaveValue('Scheduled downtime');
   });
 });

@@ -121,6 +121,21 @@ public class Fernet {
     throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
   }
 
+  /**
+   * Decrypts a value with the primary key only, the one {@link #encrypt} uses. A value encrypted
+   * with an older key of a rotation list does not decrypt here.
+   */
+  public String decryptWithPrimaryKey(String tokenized) {
+    if (!isKeyDefined()) {
+      throw new IllegalArgumentException(FERNET_KEY_NULL);
+    }
+    if (!isTokenized(tokenized)) {
+      throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
+    }
+    Token token = Token.fromString(tokenized.split(FERNET_PREFIX, 2)[1]);
+    return token.validateAndDecrypt(cachedKeys.getFirst(), validator);
+  }
+
   /** Decrypts value without throwing an Exception in case it is not a Fernet encrypted value */
   public String decryptIfApplies(String value) {
     return Fernet.isTokenized(value) ? decrypt(value) : value;
