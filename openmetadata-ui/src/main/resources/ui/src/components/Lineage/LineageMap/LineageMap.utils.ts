@@ -744,3 +744,62 @@ export const getLineageEditColumnPair = (
     ? { fromColumn: pickedColumnFqn, toColumn: requestColumnFqn }
     : { fromColumn: requestColumnFqn, toColumn: pickedColumnFqn };
 };
+
+// Semantic zoom switches level by how much of the screen the graph or a card
+// fills, not by a zoom value, so it behaves the same for 5 nodes or 500.
+export const ZOOM_OUT_SCREEN_FILL = 1 / 3;
+export const ZOOM_IN_SCREEN_FILL = 0.6;
+
+interface Size {
+  width: number;
+  height: number;
+}
+
+/** Largest share of the screen's width or height that `size` covers at `zoom`. */
+export const getScreenFill = (size: Size, zoom: number, screen: Size) =>
+  Math.max(
+    (size.width * zoom) / screen.width,
+    (size.height * zoom) / screen.height
+  );
+
+/**
+ * Zooming out goes up a level once the whole graph fits and fills less than a
+ * third of the screen, or once it reaches the minimum zoom (a graph too large
+ * to shrink that far); zooming in goes down a level once a card fills most of
+ * the screen, or once it reaches the maximum zoom (a card too narrow to fill
+ * a wide screen). Anything else is a plain zoom.
+ */
+export const getSemanticZoomDirection = ({
+  previousZoom,
+  zoom,
+  graph,
+  card,
+  screen,
+  minZoom,
+  maxZoom,
+}: {
+  previousZoom: number;
+  zoom: number;
+  minZoom: number;
+  maxZoom: number;
+  graph: Size;
+  card: Size;
+  screen: Size;
+}): 'in' | 'out' | undefined => {
+  if (
+    zoom > previousZoom &&
+    (getScreenFill(card, zoom, screen) >= ZOOM_IN_SCREEN_FILL ||
+      zoom >= maxZoom)
+  ) {
+    return 'in';
+  }
+  if (
+    zoom < previousZoom &&
+    (getScreenFill(graph, zoom, screen) < ZOOM_OUT_SCREEN_FILL ||
+      zoom <= minZoom)
+  ) {
+    return 'out';
+  }
+
+  return undefined;
+};

@@ -138,6 +138,7 @@ import {
   getSceneOriginFocus,
   getSceneRequestFromSearch,
   getSceneSearch,
+  getSemanticZoomDirection,
   isContainerSceneNode,
   LINEAGE_MAP_RAIL_STOPS,
   useCloseOnViewportMove,
@@ -159,17 +160,12 @@ import {
 import { LineageSceneCache } from './LineageSceneCache.utils';
 
 const LINEAGE_MAP_ONBOARDING_COOKIE = 'lineageMapsOnboardingSeen';
-const ZOOM_IN_THRESHOLD = 1.9;
-const ZOOM_OUT_THRESHOLD = 0.5;
 const SEMANTIC_ZOOM_COOLDOWN = 450;
 const PROGRAMMATIC_ZOOM_SUPPRESSION_MS = 1200;
 const SCENE_MUTATION_MAX_ATTEMPTS = 5;
 const SCENE_MUTATION_RETRY_DELAY_MS = 500;
 const MAX_SCENE_DEPTH = 3;
 const CONTROL_INSET_PADDING = 0.2;
-const SCENE_LAYER_FIT_VIEW_MIN_ZOOM = MIN_ZOOM_VALUE;
-const SCENE_ASSET_FIT_VIEW_MIN_ZOOM = 0.55;
-const SCENE_FIELD_FIT_VIEW_MIN_ZOOM = 0.9;
 const SCENE_FIT_VIEW_MAX_ZOOM = 1;
 // Containers carry a name, a subtitle and a count pill, so they take one width
 // in every band; assets keep the wider default for their column lists.
@@ -351,22 +347,11 @@ const getSceneNodeBounds = (
 const getActiveLayersFromBand = (band: LineageBand) =>
   band === LineageBand.Field ? [LineageLayer.ColumnLevelLineage] : [];
 
-const getSceneFitViewMinZoom = (band?: LineageBand) => {
-  if (band === LineageBand.Layer) {
-    return SCENE_LAYER_FIT_VIEW_MIN_ZOOM;
-  }
-
-  return band === LineageBand.Field
-    ? SCENE_FIELD_FIT_VIEW_MIN_ZOOM
-    : SCENE_ASSET_FIT_VIEW_MIN_ZOOM;
-};
-
-const getSceneFitViewOptions = (
-  band?: LineageBand,
-  nodeIds?: string[]
-): FitViewOptions => ({
+// Fit may zoom out as far as the graph needs: semantic zoom reads screen fill,
+// so a small fit zoom no longer switches level by itself.
+const getSceneFitViewOptions = (nodeIds?: string[]): FitViewOptions => ({
   maxZoom: SCENE_FIT_VIEW_MAX_ZOOM,
-  minZoom: getSceneFitViewMinZoom(band),
+  minZoom: MIN_ZOOM_VALUE,
   nodes: nodeIds?.map((id) => ({ id })),
   padding: CONTROL_INSET_PADDING,
 });
@@ -442,18 +427,11 @@ const prefetchSceneBands = (
 
 const fitSceneBounds = (
   instance: ReactFlowInstance,
-  bounds: SceneNodeBounds,
-  band?: LineageBand
+  bounds: SceneNodeBounds
 ) => {
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
-      instance.fitBounds(bounds, getSceneFitViewOptions(band));
-      window.requestAnimationFrame(() => {
-        const minZoom = getSceneFitViewMinZoom(band);
-        if (instance.getZoom() < minZoom) {
-          instance.zoomTo(minZoom);
-        }
-      });
+      instance.fitBounds(bounds, getSceneFitViewOptions());
     });
   });
 };
@@ -480,16 +458,36 @@ const getHydratedSceneEdge = async (
 const getSemanticZoomBand = (
   band: LineageBand,
   previousZoom: number,
-  zoom: number
+  zoom: number,
+  flowNodes: Node<SceneFlowNodeData>[],
+  screen?: DOMRect
 ) => {
-  if (zoom >= ZOOM_IN_THRESHOLD && previousZoom < ZOOM_IN_THRESHOLD) {
+  const graph = getSceneNodeBounds(flowNodes);
+  if (!graph || !screen) {
+    return band;
+  }
+  const card = {
+    width: Math.max(
+      ...flowNodes.map(
+        (node) => node.width ?? getNodeWidth(node.data.sceneNode)
+      )
+    ),
+    height: 0,
+  };
+  const direction = getSemanticZoomDirection({
+    previousZoom,
+    zoom,
+    graph,
+    card,
+    screen,
+    minZoom: MIN_ZOOM_VALUE,
+    maxZoom: MAX_ZOOM_VALUE,
+  });
+  if (direction === 'in') {
     return getNextZoomBand(band);
   }
-  if (zoom <= ZOOM_OUT_THRESHOLD && previousZoom > ZOOM_OUT_THRESHOLD) {
-    return getPreviousZoomBand(band);
-  }
 
-  return band;
+  return direction === 'out' ? getPreviousZoomBand(band) : band;
 };
 
 const getSceneChildren = (node: LineageSceneNode): EntityChildren =>
@@ -1492,9 +1490,9 @@ const LineageMapCanvas = ({
         return;
       }
       suppressSemanticZoom();
-      fitSceneBounds(reactFlowInstance, nodeBounds, scene?.band);
+      fitSceneBounds(reactFlowInstance, nodeBounds);
     },
-    [nodes, reactFlowInstance, scene?.band, suppressSemanticZoom]
+    [nodes, reactFlowInstance, suppressSemanticZoom]
   );
 
   useEffect(
@@ -1812,7 +1810,9 @@ const LineageMapCanvas = ({
       const nextBand = getSemanticZoomBand(
         scene.band,
         previousZoom,
-        viewport.zoom
+        viewport.zoom,
+        nodesRef.current,
+        wrapperRef.current?.getBoundingClientRect()
       );
       if (nextBand === scene.band) {
         return;
@@ -2166,7 +2166,7 @@ const LineageMapCanvas = ({
       edgeTypes={{}}
       edges={[]}
       fitViewOptions={{
-        ...getSceneFitViewOptions(scene.band),
+        ...getSceneFitViewOptions(),
       }}
       maxZoom={MAX_ZOOM_VALUE}
       minZoom={MIN_ZOOM_VALUE}

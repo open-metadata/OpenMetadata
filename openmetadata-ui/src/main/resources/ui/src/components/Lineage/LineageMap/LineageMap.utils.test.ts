@@ -40,6 +40,8 @@ import {
   getSceneOriginFocus,
   getSceneRequestFromSearch,
   getSceneSearch,
+  getScreenFill,
+  getSemanticZoomDirection,
   useCloseOnViewportMove,
 } from './LineageMap.utils';
 
@@ -718,5 +720,125 @@ describe('useCloseOnViewportMove', () => {
     result.current();
 
     expect(close).not.toHaveBeenCalled();
+  });
+});
+
+describe('semantic zoom by screen fill', () => {
+  const screen = { width: 1200, height: 800 };
+  const card = { width: 400, height: 0 };
+  // A large graph: 6000 x 4000 flow units.
+  const bigGraph = { width: 6000, height: 4000 };
+
+  it('measures the larger of the width and height share', () => {
+    expect(getScreenFill({ width: 600, height: 100 }, 1, screen)).toBe(0.5);
+    expect(getScreenFill({ width: 100, height: 800 }, 0.5, screen)).toBe(0.5);
+  });
+
+  it('keeps zooming out a large graph until it fits in a third of the screen', () => {
+    // 0.15 zoom: 900 of 1200 wide, still most of the screen.
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 0.2,
+        zoom: 0.15,
+        graph: bigGraph,
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBeUndefined();
+    // 0.06 zoom: 360 of 1200 wide, under a third.
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 0.07,
+        zoom: 0.06,
+        graph: bigGraph,
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBe('out');
+  });
+
+  it('goes up a level for a small graph that already fits', () => {
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 1,
+        zoom: 0.9,
+        graph: { width: 400, height: 100 },
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBe('out');
+  });
+
+  it('goes down a level only once a card fills most of the screen', () => {
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 1,
+        zoom: 1.5,
+        graph: bigGraph,
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBeUndefined();
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 1.5,
+        zoom: 1.9,
+        graph: bigGraph,
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBe('in');
+  });
+
+  it('goes up a level when zooming out reaches the minimum zoom', () => {
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 0.12,
+        zoom: 0.1,
+        graph: { width: 60000, height: 40000 },
+        card,
+        screen,
+        minZoom: 0.1,
+        maxZoom: 10,
+      })
+    ).toBe('out');
+  });
+
+  it('goes down a level when zooming in reaches the maximum zoom', () => {
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 2,
+        zoom: 2.5,
+        graph: bigGraph,
+        card: { width: 100, height: 0 },
+        screen,
+        minZoom: 0.1,
+        maxZoom: 2.5,
+      })
+    ).toBe('in');
+  });
+
+  it('never switches level while the zoom holds still', () => {
+    expect(
+      getSemanticZoomDirection({
+        previousZoom: 0.05,
+        zoom: 0.05,
+        graph: bigGraph,
+        card,
+        screen,
+        minZoom: 0.01,
+        maxZoom: 10,
+      })
+    ).toBeUndefined();
   });
 });
