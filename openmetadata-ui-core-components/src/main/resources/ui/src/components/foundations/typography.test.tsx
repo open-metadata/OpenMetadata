@@ -13,7 +13,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Typography } from './typography';
 
 describe('Typography', () => {
@@ -143,7 +143,145 @@ describe('Typography', () => {
   });
 });
 
+const mockOverflow = (overflowing: boolean) => {
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
+  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+    overflowing ? 200 : 100
+  );
+};
+
 describe('Typography ellipsis tooltip', () => {
+  beforeEach(() => mockOverflow(true));
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('does not show the tooltip when the text is not truncated', async () => {
+    mockOverflow(false);
+    const user = userEvent.setup();
+
+    render(
+      <Typography ellipsis={{ tooltip: 'Full text' }}>Short text</Typography>
+    );
+
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByText('Short text'));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(screen.queryByText('Full text')).not.toBeInTheDocument();
+  });
+
+  it('keeps an inline ellipsis in the text flow', () => {
+    render(<Typography ellipsis>Inline text</Typography>);
+
+    const wrapper = screen.getByText('Inline text').parentElement;
+
+    expect(wrapper?.tagName).toBe('SPAN');
+    expect(wrapper).toHaveClass('tw:inline-block', 'tw:max-w-full');
+  });
+
+  it('clips an inline ellipsis on the text element so the "…" takes its color', () => {
+    render(
+      <Typography ellipsis className="tw:text-white">
+        Inline text
+      </Typography>
+    );
+
+    expect(screen.getByText('Inline text')).toHaveClass(
+      'tw:block',
+      'tw:truncate',
+      'tw:text-white'
+    );
+  });
+
+  it('shows the tooltip when only a block inner element overflows', async () => {
+    vi.restoreAllMocks();
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(
+      function (this: HTMLElement) {
+        return this.tagName === 'P' ? 200 : 100;
+      }
+    );
+    const user = userEvent.setup();
+
+    render(
+      <Typography as="p" ellipsis={{ tooltip: 'Full text' }}>
+        Clipped paragraph
+      </Typography>
+    );
+
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByText('Clipped paragraph'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Full text')).toBeInTheDocument();
+    });
+  });
+
+  it('keeps a block wrapper for block elements', () => {
+    render(
+      <Typography ellipsis as="p">
+        Block text
+      </Typography>
+    );
+
+    expect(screen.getByText('Block text').parentElement?.tagName).toBe('DIV');
+  });
+
+  it('renders no nested button inside a link when the trigger is excluded from the tab order', () => {
+    render(
+      <a href="/target">
+        <Typography
+          ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
+          Linked text
+        </Typography>
+      </a>
+    );
+
+    const link = screen.getByRole('link');
+
+    expect(link.querySelector('button')).toBeNull();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('still opens the tooltip on hover when the trigger is excluded from the tab order', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Typography
+        ellipsis={{ tooltip: 'Full text', excludeTriggerFromTabOrder: true }}>
+        Clipped text
+      </Typography>
+    );
+
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByText('Clipped text'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Full text')).toBeInTheDocument();
+    });
+  });
+
+  it('lets a click reach the enclosing link when the trigger is excluded from the tab order', () => {
+    const handleLinkClick = vi.fn((e: { preventDefault: () => void }) =>
+      e.preventDefault()
+    );
+
+    render(
+      <a href="/target" onClick={handleLinkClick}>
+        <Typography
+          ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
+          Linked text
+        </Typography>
+      </a>
+    );
+
+    fireEvent.click(screen.getByText('Linked text'));
+
+    expect(handleLinkClick).toHaveBeenCalledTimes(1);
+  });
+
   it('propagates a click through to an ancestor onClick handler', () => {
     const handleAncestorClick = vi.fn();
 
@@ -243,5 +381,34 @@ describe('Typography ellipsis tooltip', () => {
     fireEvent.click(el);
 
     expect(handleAncestorClick).toHaveBeenCalledTimes(1);
+  });
+  it('keeps the parent text alignment inside the tooltip trigger button', () => {
+    render(<Typography ellipsis={{ tooltip: true }}>Left text</Typography>);
+
+    expect(screen.getByText('Left text').closest('button')).toHaveClass(
+      'tw:[text-align:inherit]'
+    );
+  });
+
+  it('lays out an inline ellipsis trigger as inline-flex', () => {
+    render(<Typography ellipsis={{ tooltip: true }}>Inline text</Typography>);
+
+    const trigger = screen.getByText('Inline text').closest('button');
+
+    expect(trigger).toHaveClass('tw:inline-flex');
+    expect(trigger).not.toHaveClass('tw:inline-block');
+  });
+
+  it('marks the root so nested links skip prose link styling', () => {
+    render(
+      <Typography>
+        <a href="/x">Link</a>
+      </Typography>
+    );
+
+    expect(screen.getByText('Link').parentElement).toHaveClass(
+      'prose',
+      'prose-typography'
+    );
   });
 });

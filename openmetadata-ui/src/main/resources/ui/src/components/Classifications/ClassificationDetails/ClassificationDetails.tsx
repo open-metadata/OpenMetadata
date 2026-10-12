@@ -757,6 +757,7 @@ const ClassificationDetails = forwardRef(
         <Table
           className={TAG_TABLE_FILL_CLASSNAME}
           columns={tableColumn}
+          containerClassName="tw:rounded-xl tw:border-subtle"
           customPaginationProps={{
             currentPage,
             isLoading,

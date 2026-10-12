@@ -73,6 +73,7 @@ function AlertAiFormFields({
   isViewOnly,
   inlineAlert,
   onChange,
+  recipientCategories,
   showBasicFields = true,
   shouldShowActionsSection,
   shouldShowFiltersSection,
@@ -198,12 +199,12 @@ function AlertAiFormFields({
       return;
     }
 
-    onChange({
-      ...(value as Parameters<NonNullable<typeof onChange>>[0]),
+    onChange((prev) => ({
+      ...prev,
       input: {},
       destinations: [],
       resources: nextSource ? [nextSource] : [],
-    });
+    }));
   };
 
   return (
@@ -318,6 +319,7 @@ function AlertAiFormFields({
       <div {...destinationsDoc}>
         <AlertAiDestinationSection
           isViewOnly={isViewOnly}
+          recipientCategories={recipientCategories}
           selectedSource={selectedSource}
           validationErrors={validationErrors}
           value={value}

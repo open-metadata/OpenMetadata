@@ -332,7 +332,9 @@ test.describe(
 
       await test.step('Their controls are held shut', async () => {
         await expect(
-          page.getByTestId(`enable-switch-${TOGGLEABLE_RULE}`)
+          page
+            .getByTestId(`enable-switch-${TOGGLEABLE_RULE}`)
+            .getByRole('switch')
         ).toBeDisabled();
         await expect(
           page.getByTestId(`edit-test-definition-${TOGGLEABLE_RULE}`)
@@ -362,7 +364,9 @@ test.describe(
           page.getByTestId('test-definition-table-container')
         ).toHaveAttribute('aria-busy', 'false');
         await expect(
-          page.getByTestId(`enable-switch-${TOGGLEABLE_RULE}`)
+          page
+            .getByTestId(`enable-switch-${TOGGLEABLE_RULE}`)
+            .getByRole('switch')
         ).toBeEnabled();
       });
     });

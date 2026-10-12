@@ -154,6 +154,8 @@ export PW_POSTGRES_IMAGE
 export PW_OPENSEARCH_IMAGE
 PW_POSTGRES_IMAGE=$(jq -r .postgresImage "$manifest")
 PW_OPENSEARCH_IMAGE=$(jq -r .opensearchImage "$manifest")
+# Read by start_playwright_autopilot_mysql.sh.
+export PW_AUTOPILOT_MYSQL_IMAGE=mysql:8.0.42
 
 if [[ -n "$ingestion_image_path" ]]; then
   ingestion_manifest_path="${ingestion_image_path%.tar.zst}.manifest.json"
@@ -228,10 +230,21 @@ pull_image_with_retry "$PW_POSTGRES_IMAGE" &
 postgres_pull_pid=$!
 pull_image_with_retry "$PW_OPENSEARCH_IMAGE" &
 opensearch_pull_pid=$!
+# The AutoPilot MySQL source is started only after the server is healthy, so a
+# bare `docker run` there pulled it late with no retry (run 36851901152 failed
+# on `network is unreachable` after everything else was up).
+autopilot_mysql_pull_pid=
+if [[ -n "$ingestion_image_path" ]]; then
+  pull_image_with_retry "$PW_AUTOPILOT_MYSQL_IMAGE" &
+  autopilot_mysql_pull_pid=$!
+fi
 
 pull_failed=0
 wait "$postgres_pull_pid" || pull_failed=1
 wait "$opensearch_pull_pid" || pull_failed=1
+if [[ -n "$autopilot_mysql_pull_pid" ]]; then
+  wait "$autopilot_mysql_pull_pid" || pull_failed=1
+fi
 if [[ $pull_failed -ne 0 ]]; then
   exit 1
 fi

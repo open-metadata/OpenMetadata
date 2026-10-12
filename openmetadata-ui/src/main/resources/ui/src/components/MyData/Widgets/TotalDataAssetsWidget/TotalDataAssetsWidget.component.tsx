@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { PieChart } from '@openmetadata/ui-core-components/charts';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -25,13 +26,6 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-} from 'recharts';
 import { ReactComponent as TotalDataAssetsEmptyIcon } from '../../../../assets/svg/no-data-placeholder.svg';
 import { ReactComponent as TotalAssetsWidgetIcon } from '../../../../assets/svg/widget/total-assets.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
@@ -39,7 +33,6 @@ import { ROUTES } from '../../../../constants/constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { SystemChartType } from '../../../../enums/DataInsight.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useChartColors } from '../../../../hooks/useChartColors';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
@@ -56,12 +49,13 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
-import './total-data-assets-widget.less';
 import {
   DATA_ASSETS_SORT_BY_KEYS,
   DATA_ASSETS_SORT_BY_OPTIONS,
 } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
+
+const LEGEND_HIDDEN = { show: false };
 
 const TotalDataAssetsWidget = ({
   isEditView = false,
@@ -71,7 +65,6 @@ const TotalDataAssetsWidget = ({
   handleLayoutUpdate,
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
-  const { axis } = useChartColors();
   const navigate = useNavigate();
   const { applicationConfig } = useApplicationStore();
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -81,16 +74,13 @@ const TotalDataAssetsWidget = ({
     DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS
   );
 
+  // Shades of the brand colour, dark to light, so the largest count is darkest.
   const pieChartColors = useMemo(() => {
     const primaryColor =
       applicationConfig?.customTheme?.primaryColor ??
       DEFAULT_THEME.primaryColor;
 
-    // Generate palette and arrange from dark to light for high-to-low data
-    const fullPalette = generatePalette(primaryColor);
-
-    // Reverse the palette to ensure dark-to-light order for high-to-low data
-    return fullPalette.slice().reverse();
+    return generatePalette(primaryColor).reverse();
   }, [applicationConfig?.customTheme?.primaryColor]);
 
   const widgetData = useMemo(() => {
@@ -170,6 +160,17 @@ const TotalDataAssetsWidget = ({
     };
   }, [selectedDate, dataByDate]);
 
+  // Same order and colours as the legend beside the chart.
+  const pieData = useMemo(
+    () =>
+      sortedEntityList.map((entity, index) => ({
+        name: startCase(entity),
+        value: selectedDateData[entity] ?? 0,
+        color: pieChartColors[index % pieChartColors.length],
+      })),
+    [sortedEntityList, selectedDateData, pieChartColors]
+  );
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -214,118 +215,104 @@ const TotalDataAssetsWidget = ({
 
   const totalDataAssetsContent = useMemo(() => {
     return (
-      <div
-        className={classNames(
-          'total-data-assets-widget-content d-flex flex-column',
-          isFullSizeWidget ? 'gap-1' : 'gap-8'
-        )}>
-        <div className={isFullSizeWidget ? 'd-flex gap-6' : ''}>
+      <Box
+        className="total-data-assets-widget-content tw:my-auto"
+        direction="col"
+        gap={isFullSizeWidget ? 1 : 4}>
+        <Box gap={6}>
           {/* Donut Chart */}
-          <div className="flex-1 donut-chart-wrapper">
-            <ResponsiveContainer height={250} width="100%">
-              <PieChart>
-                <Pie
-                  cx="50%"
-                  cy="50%"
-                  data={Object.entries(selectedDateData).map(
-                    ([name, value]) => ({
-                      name,
-                      value,
-                    })
-                  )}
-                  dataKey="value"
-                  innerRadius={80}
-                  nameKey="name"
-                  outerRadius={117}
-                  paddingAngle={1}>
-                  {sortedEntityList.map((label, index) => (
-                    <Cell
-                      fill={pieChartColors[index % pieChartColors.length]}
-                      key={label}
-                    />
-                  ))}
-                </Pie>
-                <RechartsTooltip
-                  formatter={(value: number, name: string) => [
-                    `(${value})`,
-                    startCase(name),
-                  ]}
-                  separator={' '}
-                />
-                <text
-                  dy={8}
-                  fill={axis}
-                  fontSize={28}
-                  fontWeight={600}
-                  textAnchor="middle"
-                  x="50%"
-                  y="50%">
+          <div className="donut-chart-wrapper tw:relative tw:flex-1 tw:shrink-0">
+            <PieChart
+              ariaLabel={t('label.data-insight-total-entity-summary')}
+              centerLabel={
+                <Typography
+                  className="tw:text-secondary"
+                  size="display-xs"
+                  weight="semibold">
                   {totalDatAssets.toLocaleString()}
-                </text>
-              </PieChart>
-            </ResponsiveContainer>
+                </Typography>
+              }
+              data={pieData}
+              height={250}
+              innerRadius="64%"
+              legend={LEGEND_HIDDEN}
+              outerRadius="94%"
+              padAngle={1}
+            />
           </div>
 
           {/* Right-side Legend */}
           {isFullSizeWidget && (
-            <div
-              className="flex-1 legend-list p-md"
-              data-testid="assets-legend">
+            <Box
+              className="legend-list tw:max-h-75 tw:flex-1 tw:p-4"
+              data-testid="assets-legend"
+              direction="col"
+              gap={3}
+              wrap="wrap">
               {sortedEntityList.map((label, index) => (
-                <div
-                  className="d-flex items-center gap-3 text-sm"
+                <Box
+                  align="center"
+                  className="tw:w-[calc(50%-6px)] tw:flex-none tw:text-sm"
                   data-testid={`legend-item-${label}`}
+                  gap={3}
                   key={label}>
                   <span
-                    className="h-3 w-3"
+                    className="tw:size-3 tw:shrink-0 tw:rounded-full"
                     data-testid={`legend-color-${label}`}
                     style={{
-                      borderRadius: '50%',
                       backgroundColor:
                         pieChartColors[index % pieChartColors.length],
                     }}
                   />
-                  <Typography.Text ellipsis={{ tooltip: true }}>
+                  <Typography ellipsis={{ tooltip: true }}>
                     {startCase(label)}
-                  </Typography.Text>
+                  </Typography>
                   <span
-                    className="text-xs font-medium p-y-xss p-x-xs data-value"
+                    className="data-value tw:rounded-2xl tw:bg-utility-gray-blue-50 tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:text-secondary"
                     data-testid={`legend-count-${label}`}>
                     {selectedDateData[label] ?? 0}
                   </span>
-                </div>
+                </Box>
               ))}
-            </div>
+            </Box>
           )}
-        </div>
+        </Box>
 
         {/* Date Selector */}
-        <div className="date-selector-wrapper m-t-xs">
-          <div className="date-selector-container">
-            {availableDates.map(({ day, dayString }) => (
-              <div
-                aria-label={dayString}
-                className={`date-box ${selectedDate === day ? 'selected' : ''}`}
-                key={day}
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedDate(day)}
-                onKeyDown={handleKeyboardActivation(() =>
-                  setSelectedDate(day)
-                )}>
-                <div className="day font-semibold text-sm">
-                  {dayString.split(' ')[0]}
-                </div>
-                <div className="month text-xs">{dayString.split(' ')[1]}</div>
+        <Box
+          className="date-selector-container tw:mt-2 tw:min-w-0 tw:px-3"
+          gap={2}
+          justify="center"
+          wrap="wrap">
+          {availableDates.map(({ day, dayString }) => (
+            <div
+              aria-label={dayString}
+              className={classNames(
+                'date-box tw:max-w-15 tw:min-w-10 tw:flex-1 tw:cursor-pointer tw:rounded-xl tw:border tw:px-3 tw:py-2 tw:text-center',
+                selectedDate === day
+                  ? 'selected tw:border-utility-brand-600 tw:bg-utility-brand-100'
+                  : 'tw:border-subtle tw:bg-utility-gray-blue-50'
+              )}
+              key={day}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedDate(day)}
+              onKeyDown={handleKeyboardActivation(() => setSelectedDate(day))}>
+              <div className="day tw:text-sm tw:font-semibold tw:text-primary">
+                {dayString.split(' ')[0]}
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
+              <div className="month tw:text-xs tw:text-quaternary">
+                {dayString.split(' ')[1]}
+              </div>
+            </div>
+          ))}
+        </Box>
+      </Box>
     );
   }, [
-    axis,
+    t,
     availableDates,
+    pieData,
     selectedDate,
     selectedDateData,
     totalDatAssets,
@@ -390,11 +377,15 @@ const TotalDataAssetsWidget = ({
       dataTestId="KnowledgePanel.TotalAssets"
       header={widgetHeader}
       loading={isLoading}>
-      <div className="total-data-assets-widget-container">
-        <div className="widget-content flex-1 h-full">
+      <Box
+        className="total-data-assets-widget-container tw:h-full"
+        direction="col">
+        <Box
+          className="widget-content tw:h-full tw:min-h-0 tw:flex-1 tw:overflow-hidden"
+          direction="col">
           {isEmpty(graphData) ? emptyState : totalDataAssetsContent}
-        </div>
-      </div>
+        </Box>
+      </Box>
     </WidgetWrapper>
   );
 };

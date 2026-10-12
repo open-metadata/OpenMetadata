@@ -70,6 +70,10 @@ export class AuthCoordinator {
   // re-check would accept the just-known-stale snapshot
   // (Greptile P1 r4073450836).
   private refreshGeneration = 0;
+  // The token the current refresh cycle is replacing (see
+  // RefreshFailedPayload.staleToken). Set where a cycle starts: a counted
+  // 401 (its bearer) or a fast-path read that found the stored token expired.
+  private cycleStaleToken: string | null = null;
   private disposeCrossTabDone: (() => void) | null = null;
   private readonly bus = new TypedEventBus();
   private readonly queue = new RefreshQueue();
@@ -134,6 +138,7 @@ export class AuthCoordinator {
 
         const countCycle = this.shouldCountNewCycle(error.config);
         if (countCycle) {
+          this.recordCycleStaleToken(error.config);
           if (this.recordCycleAndCheckBreaker()) {
             throw error;
           }
@@ -156,7 +161,7 @@ export class AuthCoordinator {
     );
     this.visibility.start(
       () => {
-        this.onTabVisible().catch(() => undefined);
+        this.syncFromStoredToken().catch(() => undefined);
       },
       () => this.timer.cancel()
     );
@@ -218,13 +223,15 @@ export class AuthCoordinator {
     this.visibility.stop();
   }
 
-  // When the tab regains visibility, browsers may have throttled or suspended
-  // the proactive renewal timer, so we must re-check freshness ourselves.
-  // Refresh only when the stored token is expired or within the pre-expiry
-  // buffer; otherwise reschedule the timer with the correct remaining time.
-  // Blindly calling ensureFreshToken() on every focus hits the IdP even when
-  // the token is still valid.
-  private async onTabVisible(): Promise<void> {
+  // Arms the proactive renewal timer from whatever token is in storage, or
+  // refreshes right away when that token is expired or inside the pre-expiry
+  // buffer. Runs when the tab regains visibility (browsers throttle or suspend
+  // the timer in the background), and after a login or a cold load with a
+  // still-valid token: the timer is otherwise only armed by a completed
+  // refresh, so the first renewal would always wait for a real request to
+  // 401. Blindly calling ensureFreshToken() instead would hit the IdP even
+  // when the token is still valid.
+  async syncFromStoredToken(): Promise<void> {
     try {
       const token = await getOidcToken();
       if (!token) {
@@ -389,7 +396,11 @@ export class AuthCoordinator {
         message.type === 'failed'
           ? message.reason ?? 'leader failed after retries'
           : 'leader broadcast unusable payload after retries';
-      this.bus.emit(REFRESH_FAILED_EVENT, { reason });
+      this.bus.emit(REFRESH_FAILED_EVENT, {
+        reason,
+        source: 'follower',
+        staleToken: this.cycleStaleToken ?? undefined,
+      });
 
       throw new Error(reason);
     }
@@ -432,7 +443,12 @@ export class AuthCoordinator {
     // bounded-retry give-up path: emit `refresh-failed` so downstream
     // consumers (interceptors, the queue drain) see the same signal.
     const reason = err instanceof Error ? err.message : String(err);
-    this.bus.emit(REFRESH_FAILED_EVENT, { reason });
+    this.bus.emit(REFRESH_FAILED_EVENT, {
+      reason,
+      error: err,
+      source: 'renewer',
+      staleToken: this.cycleStaleToken ?? undefined,
+    });
 
     throw err;
   }
@@ -476,6 +492,7 @@ export class AuthCoordinator {
       if (msRemaining > EXPIRY_THRESHOLD_MILLES) {
         return stored;
       }
+      this.cycleStaleToken = stored;
 
       return null;
     } catch {
@@ -485,6 +502,7 @@ export class AuthCoordinator {
   }
 
   private applyRefreshed(result: RenewResult): string {
+    this.cycleStaleToken = null;
     this.lastMintedToken = result.idToken;
     this.refreshGeneration += 1;
     this.bus.emit('refreshed', {
@@ -526,6 +544,7 @@ export class AuthCoordinator {
     if (this.refreshCycleTimestamps.length > MAX_REFRESH_CYCLES_PER_WINDOW) {
       this.bus.emit(REFRESH_FAILED_EVENT, {
         reason: `Auth refresh loop circuit-breaker tripped: > ${MAX_REFRESH_CYCLES_PER_WINDOW} cycles in ${REFRESH_WINDOW_MS}ms`,
+        source: 'circuit-breaker',
       });
 
       return true;
@@ -541,6 +560,11 @@ export class AuthCoordinator {
     const token = (payload as { idToken?: unknown }).idToken;
 
     return typeof token === 'string' && token.length > 0 ? token : null;
+  }
+
+  // A 401-driven cycle replaces the token that 401 carried.
+  private recordCycleStaleToken(config: unknown): void {
+    this.cycleStaleToken = this.extractBearer(config) ?? this.cycleStaleToken;
   }
 
   private extractBearer(config: unknown): string | null {

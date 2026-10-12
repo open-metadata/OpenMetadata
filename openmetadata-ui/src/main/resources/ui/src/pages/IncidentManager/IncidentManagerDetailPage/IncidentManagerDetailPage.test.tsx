@@ -17,6 +17,7 @@ import { MemoryRouter, useParams } from 'react-router-dom';
 import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TestCase } from '../../../generated/tests/testCase';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
@@ -120,6 +121,11 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   isTabExpanded: false,
   setIsTabExpanded: jest.fn(),
 };
+jest.mock('../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
+
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
 }));
@@ -400,6 +406,23 @@ describe('IncidentManagerDetailPage', () => {
     expect(await screen.findByTestId('tabs')).toContainElement(
       await screen.findByTestId(LAST_RUN_SUCCESS_BANNER_TEST_ID)
     );
+  });
+
+  it('puts the tab content on a white panel in classic mode only', async () => {
+    const { rerender } = render(<IncidentManagerDetailPage />, {
+      wrapper: Wrapper,
+    });
+
+    expect(await screen.findByRole('tabpanel')).toHaveClass('tw:bg-surface');
+
+    jest.mocked(useIsAiMode).mockReturnValue(true);
+    rerender(<IncidentManagerDetailPage />);
+
+    expect(await screen.findByRole('tabpanel')).not.toHaveClass(
+      'tw:bg-surface'
+    );
+
+    jest.mocked(useIsAiMode).mockReturnValue(false);
   });
 
   it('should show the next run from the enabled test suite schedule', async () => {

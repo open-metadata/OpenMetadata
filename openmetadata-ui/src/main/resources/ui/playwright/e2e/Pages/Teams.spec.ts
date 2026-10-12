@@ -136,25 +136,25 @@ const test = base.extend<{
 }>({
   editOnlyUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editOnlyUser.login(page);
+    await editOnlyUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   ownerUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await ownerUser.login(page);
+    await ownerUser.signIn(page);
     await use(page);
     await page.close();
   },
   scopedUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
@@ -1070,7 +1070,7 @@ test.describe('Teams Page', () => {
       });
 
       await test.step('Toggle Show Deleted and verify include=deleted is sent', async () => {
-        const deletedToggle = page.getByRole('switch').first();
+        const deletedToggle = page.getByTestId('show-deleted');
         await expect(deletedToggle).toBeVisible();
 
         const teamsResponsePromise = page.waitForResponse(
@@ -1080,7 +1080,7 @@ test.describe('Teams Page', () => {
         );
 
         await deletedToggle.click();
-        await expect(deletedToggle).toHaveAttribute('aria-checked', 'true');
+        await expect(deletedToggle.getByRole('switch')).toBeChecked();
 
         const teamsResponse = await teamsResponsePromise;
         expect(teamsResponse.status()).toBe(200);

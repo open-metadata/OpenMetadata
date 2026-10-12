@@ -812,7 +812,7 @@ export const findTreeNodeKeyByBrowsePath = (
   return result;
 };
 
-const findTreeNodeByKey = (
+export const findTreeNodeByKey = (
   treeNodes: ExploreTreeNode[],
   key: string
 ): ExploreTreeNode | undefined => {

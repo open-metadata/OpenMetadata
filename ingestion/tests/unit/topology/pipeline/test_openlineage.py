@@ -2,14 +2,16 @@ import contextlib
 import copy
 import hashlib
 import json
+import time
 import unittest
+from functools import partial
 from itertools import chain, repeat
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from cachetools import LRUCache
+from cachetools import LRUCache, TTLCache
 from confluent_kafka import KafkaError
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -51,6 +53,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
     KPL_AGGREGATED_MAGIC,
+    MISSING_ENTITY_CACHE_TTL_SECONDS,
     RESOLUTION_CACHE_MAXSIZE,
     OpenlineageSource,
     deaggregate_kinesis_record,
@@ -710,6 +713,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         an unfielded call could silently starve a later, differently-fielded
         call of the data it asked for."""
         self.open_lineage_source._entity_cache = LRUCache(maxsize=10)
+        self.open_lineage_source._missing_entity_cache = TTLCache(maxsize=10, ttl=60)
         bare_table = Mock()
         full_table = Mock()
         full_table.columns = [Mock()]
@@ -2012,7 +2016,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "redshift_prod.warehouse.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
             # MySQL namespace -> scheme resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
@@ -2067,7 +2071,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "mysql_cluster_b.db.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
             # cluster-a namespace -> mapping resolves to mysql_cluster_a
             result_a = source._get_table_fqn(table, namespace="mysql://cluster-a:3306/db")
             assert result_a == "mysql_cluster_a.db.analytics.user_stat"
@@ -2112,7 +2116,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "custom_lakehouse.lake.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
             # mysql:// namespace -> scheme matches Mysql -> resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
@@ -2157,9 +2161,12 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         import logging
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):  # noqa: SIM117
-            with self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm:
-                result = source._get_table_fqn(table, namespace="mysql://some-host:3306/db")
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata"),
+            self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm,
+        ):
+            result = source._get_table_fqn(table, namespace="mysql://some-host:3306/db")
 
         assert result is None
         # The handler now logs the AmbiguousServiceException message itself
@@ -3200,6 +3207,111 @@ class TestKafkaOffsetCommit:
         source, _ = self._source(then=self._error(KafkaError._TRANSPORT))
 
         assert list(source._poll_kafka(self.BROKER)) == []
+
+
+class TestTableResolutionAcrossSameTypeServices:
+    """
+    Issue #22013: a three-part dataset name carries the database, so fqn.build
+    returns a constructed FQN for every configured service, including services
+    that never ingested the table. Only the service holding the table may match,
+    otherwise the table is reported as ambiguous or looked up in the wrong
+    service and the lineage edge is dropped.
+    """
+
+    TABLE_ID = UUID("aaaa1111-1111-1111-1111-111111111111")
+    PIPELINE_ID = UUID("cccc3333-3333-3333-3333-333333333333")
+    TABLE_FQN = "postgres1.postgres.public.source"
+
+    @staticmethod
+    def _spark_write_event(namespace: str) -> OpenLineageEvent:
+        """The Spark JDBC write from the issue: no inputs, one Postgres output."""
+        return OpenLineageEvent(
+            run_facet={"facets": {"parent": {"job": {"namespace": "default", "name": "spark_shell"}}}},
+            job={"namespace": "default", "name": "spark_shell.execute_save_into_data_source_command.public_source"},
+            event_type="COMPLETE",
+            inputs=[],
+            outputs=[{"namespace": namespace, "name": "postgres.public.source", "facets": {}}],
+        )
+
+    def _source(self, db_service_names: list[str], clock=time.monotonic) -> OpenlineageSource:
+        """
+        A prepared source whose server has two Postgres services, only postgres1
+        holding the table. The server holds the FQNs in ``ingested_tables``, which
+        a test can change between events, and records every table it is asked for
+        in ``requested_tables``. ``clock`` drives the expiry of cached misses.
+        """
+        table = Mock()
+        table.id.root = self.TABLE_ID
+        table.fullyQualifiedName.root = self.TABLE_FQN
+        pipeline = Mock()
+        pipeline.id.root = self.PIPELINE_ID
+        self.ingested_tables: set[str] = {self.TABLE_FQN}
+        self.requested_tables: list[str] = []
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Table:
+                self.requested_tables.append(fqn)
+                return table if fqn in self.ingested_tables else None
+            return pipeline if entity == Pipeline else None
+
+        metadata = MagicMock()
+        metadata.client.get.return_value = {"serviceType": "Postgres"}
+        metadata.es_search_from_fqn.side_effect = lambda entity_type, fqn_search_string, **kwargs: (
+            [table] if fqn_search_string in self.ingested_tables else None
+        )
+        metadata.get_by_name.side_effect = get_by_name
+        metadata.get_lineage_by_id.return_value = None
+
+        with patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"):
+            source = OpenlineageSource.create(MOCK_OL_CONFIG["source"], metadata)
+        source.source_config.lineageInformation = LineageInformation(dbServiceNames=db_service_names)
+        source.context.get().pipeline = "default-spark_shell"
+        source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
+        with patch(
+            "metadata.ingestion.source.pipeline.openlineage.metadata.TTLCache",
+            partial(TTLCache, timer=clock),
+        ):
+            source.prepare()
+        return source
+
+    def _lineage_edges(self, source: OpenlineageSource, namespace: str) -> list[tuple[UUID, UUID]]:
+        results = source.yield_pipeline_lineage_details(self._spark_write_event(namespace))
+        return [
+            (result.right.edge.fromEntity.id.root, result.right.edge.toEntity.id.root)
+            for result in results
+            if isinstance(result.right, AddLineageRequest)
+        ]
+
+    def test_scheme_resolved_services_match_only_the_service_holding_the_table(self):
+        source = self._source(["postgres1", "postgres2"])
+
+        assert self._lineage_edges(source, "postgres://pg1:5432") == [(self.PIPELINE_ID, self.TABLE_ID)]
+
+    def test_unresolved_namespace_walks_past_services_without_the_table(self):
+        source = self._source(["postgres2", "postgres1"])
+
+        assert self._lineage_edges(source, "pg1") == [(self.PIPELINE_ID, self.TABLE_ID)]
+
+    def test_repeated_events_request_a_missing_table_once(self):
+        source = self._source(["postgres1", "postgres2"])
+
+        for _ in range(2):
+            assert self._lineage_edges(source, "postgres://pg1:5432") == [(self.PIPELINE_ID, self.TABLE_ID)]
+
+        assert self.requested_tables.count("postgres2.postgres.public.source") == 1
+
+    def test_table_ingested_during_the_run_is_linked_once_the_cached_miss_expires(self):
+        now = [0.0]
+        source = self._source(["postgres1", "postgres2"], clock=lambda: now[0])
+        self.ingested_tables.clear()
+
+        assert self._lineage_edges(source, "postgres://pg1:5432") == []
+
+        self.ingested_tables.add(self.TABLE_FQN)
+        assert self._lineage_edges(source, "postgres://pg1:5432") == []
+
+        now[0] += MISSING_ENTITY_CACHE_TTL_SECONDS + 1
+        assert self._lineage_edges(source, "postgres://pg1:5432") == [(self.PIPELINE_ID, self.TABLE_ID)]
 
 
 if __name__ == "__main__":

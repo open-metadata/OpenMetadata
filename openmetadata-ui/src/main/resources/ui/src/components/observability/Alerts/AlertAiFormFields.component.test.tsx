@@ -60,6 +60,14 @@ import AlertAiRuleSection from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
 
+// The AI form's onChange is a functional updater (prev) => next; apply the latest updater to the
+// value the component rendered with to get the committed value the assertions check.
+const applyLastUpdater = (
+  onChange: jest.Mock,
+  prev: ModifiedCreateEventSubscription
+): ModifiedCreateEventSubscription =>
+  onChange.mock.calls[onChange.mock.calls.length - 1][0](prev);
+
 jest.mock('../../../rest/alertsAPI', () => ({
   testAlertDestination: jest.fn().mockResolvedValue([]),
 }));
@@ -890,7 +898,7 @@ describe('AlertAi form field components', () => {
       { target: { value: 'Success' } }
     );
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         input: expect.objectContaining({
           actions: [
@@ -1073,7 +1081,7 @@ describe('AlertAi form field components', () => {
       key: 'Enter',
     });
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [
           expect.objectContaining({
@@ -1110,7 +1118,7 @@ describe('AlertAi form field components', () => {
     });
     fireEvent.blur(screen.getByTestId('email-input-0'));
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [
           expect.objectContaining({
@@ -1177,8 +1185,14 @@ describe('AlertAi form field components', () => {
     );
 
     const lastConfig = () =>
-      onChange.mock.calls[onChange.mock.calls.length - 1][0].destinations[0]
-        .config;
+      (
+        applyLastUpdater(onChange, value)
+          .destinations?.[0] as ModifiedDestination
+      ).config as {
+        headers?: { key: string; value: string }[];
+        httpMethod?: string;
+        queryParams?: { key: string; value: string }[];
+      };
 
     expect(screen.getByTestId('header-key-input-0-0')).toHaveValue('X-Token');
 
@@ -1234,7 +1248,7 @@ describe('AlertAi form field components', () => {
       screen.getByRole('checkbox', { name: 'label.notify-downstream' })
     );
 
-    expect(onChange).toHaveBeenLastCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [
           expect.objectContaining({
@@ -1301,6 +1315,255 @@ describe('AlertAi form field components', () => {
     );
   });
 
+  it('rebuilds a clean internal row when switching a populated external destination to Owners', () => {
+    const onChange = jest.fn();
+    const populatedSlack: ModifiedDestination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      config: {
+        endpoint: 'https://hooks.slack.com/services/T00/B00/XXX',
+        authType: { type: Type.Bearer, secretKey: 'secret' },
+        headers: [{ key: 'X-Key', value: 'v' }],
+        queryParams: [{ key: 'q', value: '1' }],
+      },
+      notifyDownstream: true,
+      downstreamDepth: 3,
+    } as ModifiedDestination;
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [populatedSlack],
+      resources: ['table'],
+    };
+
+    render(
+      <AlertAiFormFields
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        filterResources={[{ name: 'table' }]}
+        recipientCategories={[SubscriptionCategory.Owners]}
+        value={value}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('destination-category-select-0'), {
+      target: { value: SubscriptionCategory.Owners },
+    });
+
+    const result = applyLastUpdater(onChange, value);
+    const resultDest = result.destinations?.[0] as ModifiedDestination;
+
+    expect(resultDest.category).toBe(SubscriptionCategory.Owners);
+    expect(resultDest.destinationType).toBe(SubscriptionCategory.Owners);
+    expect(resultDest.type).toBeUndefined();
+    expect(resultDest.config).toEqual({ sendToOwners: true });
+    expect(resultDest.config?.endpoint).toBeUndefined();
+    expect(resultDest.notifyDownstream).toBeUndefined();
+    expect(resultDest.downstreamDepth).toBeUndefined();
+  });
+
+  it('does not carry the stale Slack endpoint when switching to another external destination (MSTeams)', () => {
+    const onChange = jest.fn();
+    const populatedSlack: ModifiedDestination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      config: {
+        endpoint: 'https://hooks.slack.com/services/T00/B00/XXX',
+        authType: { type: Type.Bearer, secretKey: 'secret' },
+        headers: [{ key: 'X-Key', value: 'v' }],
+        queryParams: [{ key: 'q', value: '1' }],
+      },
+      notifyDownstream: true,
+      downstreamDepth: 3,
+    } as ModifiedDestination;
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [populatedSlack],
+      resources: ['table'],
+    };
+
+    render(
+      <AlertAiFormFields
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        filterResources={[{ name: 'table' }]}
+        value={value}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('destination-category-select-0'), {
+      target: { value: SubscriptionType.MSTeams },
+    });
+
+    const result = applyLastUpdater(onChange, value);
+    const resultDest = result.destinations?.[0] as ModifiedDestination;
+
+    expect(resultDest.category).toBe(SubscriptionCategory.External);
+    expect(resultDest.destinationType).toBe(SubscriptionType.MSTeams);
+    expect(resultDest.type).toBe(SubscriptionType.MSTeams);
+    expect(resultDest.config).toBeUndefined();
+    expect(resultDest.config?.endpoint).toBeUndefined();
+    expect(resultDest.notifyDownstream).toBeUndefined();
+    expect(resultDest.downstreamDepth).toBeUndefined();
+  });
+
+  it('keeps the configured destination when the destination selection is cleared', () => {
+    const onChange = jest.fn();
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          destinationType: SubscriptionType.Slack,
+          type: SubscriptionType.Slack,
+          config: { endpoint: 'https://hooks.slack.com/services/T00/B00/XXX' },
+        } as ModifiedDestination,
+      ],
+      resources: ['table'],
+    };
+
+    render(
+      <AlertAiFormFields
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        filterResources={[{ name: 'table' }]}
+        value={value}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('destination-category-select-0'), {
+      target: { value: '' },
+    });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('blocks submit of a switched-but-unconfigured destination so stale fields never reach onSubmit', async () => {
+    const onChange = jest.fn();
+    const onSubmit = jest.fn();
+    const populatedSlack: ModifiedDestination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+      config: {
+        endpoint: 'https://hooks.slack.com/services/T00/B00/XXX',
+        authType: { type: Type.Bearer, secretKey: 'secret' },
+      },
+      notifyDownstream: true,
+      downstreamDepth: 3,
+    } as ModifiedDestination;
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [populatedSlack],
+      resources: ['table'],
+    };
+
+    const { rerender } = render(
+      <AlertAiForm
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        filterResources={[{ name: 'table' }]}
+        mode="edit"
+        value={value}
+        onChange={onChange}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('destination-category-select-0'), {
+      target: { value: SubscriptionType.MSTeams },
+    });
+
+    // Simulate the parent persisting the functional updater into state before the save.
+    const switchedValue = applyLastUpdater(onChange, value);
+    onChange.mockClear();
+
+    rerender(
+      <AlertAiForm
+        shouldShowActionsSection
+        shouldShowFiltersSection
+        filterResources={[{ name: 'table' }]}
+        mode="edit"
+        value={switchedValue}
+        onChange={onChange}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.submit(screen.getByTestId('alert-ai-form'));
+
+    await waitFor(() => expect(onSubmit).not.toHaveBeenCalled());
+
+    const submittedDestination = onSubmit.mock.calls[0]?.[0]?.destinations?.[0];
+
+    // No payload reached onSubmit, and there is no stale Slack endpoint or downstream state to leak.
+    expect(submittedDestination).toBeUndefined();
+  });
+
+  it('still submits a freshly-configured webhook destination after a category switch (no webhook regression)', async () => {
+    const onSubmit = jest.fn();
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          destinationType: SubscriptionType.MSTeams,
+          type: SubscriptionType.MSTeams,
+          config: { endpoint: 'https://outlook.example/webhook' },
+        } as ModifiedDestination,
+      ],
+      resources: ['table'],
+    };
+
+    render(
+      <AlertAiForm
+        filterResources={[{ name: 'table' }]}
+        mode="edit"
+        shouldShowActionsSection={false}
+        shouldShowFiltersSection={false}
+        value={value}
+        onChange={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    fireEvent.submit(screen.getByTestId('alert-ai-form'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(value));
+
+    expect(onSubmit.mock.calls[0][0].destinations[0].config).toEqual({
+      endpoint: 'https://outlook.example/webhook',
+    });
+  });
+
+  it('shows required errors instead of testing an unconfigured external destination', async () => {
+    const value = {
+      ...baseValue,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          destinationType: SubscriptionType.Slack,
+          type: SubscriptionType.Slack,
+        },
+      ],
+    } as ModifiedCreateEventSubscription;
+
+    render(<AlertAiDestinationSection selectedSource="table" value={value} />);
+
+    fireEvent.click(screen.getByTestId('test-destination-button'));
+
+    expect(
+      await screen.findByText(
+        'message.field-text-is-required:label.endpoint-url'
+      )
+    ).toBeInTheDocument();
+    expect(testAlertDestination).not.toHaveBeenCalled();
+  });
+
   it('resets dependent values when source changes', () => {
     const onChange = jest.fn();
     const value: ModifiedCreateEventSubscription = {
@@ -1333,7 +1596,7 @@ describe('AlertAi form field components', () => {
       target: { value: 'pipeline' },
     });
 
-    expect(onChange).toHaveBeenCalledWith(
+    expect(applyLastUpdater(onChange, value)).toEqual(
       expect.objectContaining({
         destinations: [],
         input: {},

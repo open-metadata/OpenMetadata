@@ -84,71 +84,6 @@ jest.mock('../../../utils/EntityPermissionUtils', () => {
   };
 });
 
-// Mock antd Menu component and Typography
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Menu: jest.fn().mockImplementation(({ items, onClick, selectedKeys }) => {
-      // Mirrors antd's real ul/li menu DOM; the interactive menu roles on these
-      // list elements are inherent to that markup (test relies on <li> + role).
-      /* eslint-disable jsx-a11y/no-noninteractive-element-to-interactive-role */
-      return (
-        <ul
-          className="ant-menu ant-menu-root ant-menu-vertical ant-menu-light vertical-nav-menu"
-          role="menu">
-          {items.map(
-            (item: { key: string; icon: React.ReactNode; label: string }) => (
-              <li
-                className={`ant-menu-item ${
-                  selectedKeys.includes(item.key)
-                    ? 'ant-menu-item-selected'
-                    : ''
-                }`}
-                key={item.key}
-                role="menuitem"
-                tabIndex={0}
-                onClick={() => onClick({ key: item.key })}
-                onKeyDown={() => onClick({ key: item.key })}>
-                <span className="ant-menu-item-icon">{item.icon}</span>
-                <span className="ant-menu-title-content">{item.label}</span>
-              </li>
-            )
-          )}
-        </ul>
-      );
-      /* eslint-enable jsx-a11y/no-noninteractive-element-to-interactive-role */
-    }),
-    Typography: actual.Typography
-      ? {
-          ...actual.Typography,
-          Text: jest
-            .fn()
-            .mockImplementation(({ children, className, ...props }) => (
-              <span
-                className={className}
-                data-testid="typography-text"
-                {...props}>
-                {children}
-              </span>
-            )),
-        }
-      : {
-          Text: jest
-            .fn()
-            .mockImplementation(({ children, className, ...props }) => (
-              <span
-                className={className}
-                data-testid="typography-text"
-                {...props}>
-                {children}
-              </span>
-            )),
-        },
-  };
-});
-
 describe('EntityRightPanelVerticalNav', () => {
   const mockOnTabChange = jest.fn();
 
@@ -166,21 +101,26 @@ describe('EntityRightPanelVerticalNav', () => {
     it('should render without crashing', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      expect(screen.getByRole('menu')).toBeInTheDocument();
+      expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
     it('should render with correct CSS classes', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      expect(screen.getByRole('menu')).toHaveClass('vertical-nav-menu');
+      expect(screen.getByRole('tablist')).toHaveAttribute(
+        'aria-orientation',
+        'vertical'
+      );
     });
 
     it('should show overview tab as selected when activeTab is OVERVIEW', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      const overviewTab = screen.getByText('label.overview').closest('li');
+      const overviewTab = screen
+        .getByText('label.overview')
+        .closest('[role="tab"]');
 
-      expect(overviewTab).toHaveClass('ant-menu-item-selected');
+      expect(overviewTab).toHaveAttribute('aria-selected', 'true');
     });
 
     it('should show schema tab as selected when activeTab is SCHEMA', () => {
@@ -191,9 +131,11 @@ describe('EntityRightPanelVerticalNav', () => {
         />
       );
 
-      const schemaTab = screen.getByText('label.schema').closest('li');
+      const schemaTab = screen
+        .getByText('label.schema')
+        .closest('[role="tab"]');
 
-      expect(schemaTab).toHaveClass('ant-menu-item-selected');
+      expect(schemaTab).toHaveAttribute('aria-selected', 'true');
     });
   });
 
@@ -548,7 +490,7 @@ describe('EntityRightPanelVerticalNav', () => {
     it('should render tabs in correct order for TABLE entity', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      const menuItems = screen.getAllByRole('menuitem');
+      const menuItems = screen.getAllByRole('tab');
       const tabLabels = menuItems.map((item) => item.textContent);
 
       expect(tabLabels).toEqual([
@@ -568,7 +510,7 @@ describe('EntityRightPanelVerticalNav', () => {
         />
       );
 
-      const menuItems = screen.getAllByRole('menuitem');
+      const menuItems = screen.getAllByRole('tab');
       const tabLabels = menuItems.map((item) => item.textContent);
 
       expect(tabLabels).toEqual([
@@ -587,7 +529,7 @@ describe('EntityRightPanelVerticalNav', () => {
         />
       );
 
-      const menuItems = screen.getAllByRole('menuitem');
+      const menuItems = screen.getAllByRole('tab');
       const tabLabels = menuItems.map((item) => item.textContent);
 
       expect(tabLabels).toEqual([
@@ -604,7 +546,7 @@ describe('EntityRightPanelVerticalNav', () => {
         <EntityRightPanelVerticalNav {...defaultProps} />
       );
 
-      const icons = container.querySelectorAll('.ant-menu-item-icon');
+      const icons = container.querySelectorAll('[role="tab"] > :first-child');
 
       expect(icons).toHaveLength(5); // overview, schema, lineage, data-quality, custom-property
     });
@@ -617,7 +559,7 @@ describe('EntityRightPanelVerticalNav', () => {
         />
       );
 
-      const icons = container.querySelectorAll('.ant-menu-item-icon');
+      const icons = container.querySelectorAll('[role="tab"] > :first-child');
 
       expect(icons).toHaveLength(4); // overview, schema, lineage, custom-property
     });

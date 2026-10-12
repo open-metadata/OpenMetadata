@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Affix, Button, Card, Skeleton, Space, Typography } from 'antd';
+import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Affix, Button, Card } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -127,14 +128,23 @@ const GithubStarCard = () => {
       }
       `}>
       <Card data-testid="github-star-popup-card">
-        <Space align="center" className="d-flex justify-between">
-          <Space>
+        <Box
+          align="center"
+          className="layout-space layout-space-horizontal d-flex justify-between"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <StarIcon className="github-star-icon" />
 
-            <Typography.Text className="github-star-popup-header">
+            <Typography className="github-star-popup-header">
               {t('label.star-us-on-github')}
-            </Typography.Text>
-          </Space>
+            </Typography>
+          </Box>
           <Button
             className="flex-center m--t-xss"
             data-testid="close-github-star-popup-card"
@@ -142,32 +152,42 @@ const GithubStarCard = () => {
             type="text"
             onClick={handleClosePopup}
           />
-        </Space>
+        </Box>
 
-        <Typography.Paragraph className="github-star-popup-description">
+        <Typography as="p" className="github-star-popup-description">
           {t('message.star-on-github-description')}
-        </Typography.Paragraph>
+        </Typography>
 
         <ButtonGroup className="github-action-button-group">
-          <Typography.Link href={OMD_REPOSITORY_LINK} target="_blank">
-            <Button
-              className="github-star-button github-modal-action-button"
-              icon={<Icon component={StarGithubIcon} size={12} />}>
-              {t('label.star')}
-            </Button>
-          </Typography.Link>
+          <Typography>
+            <a
+              href={OMD_REPOSITORY_LINK}
+              rel="noopener noreferrer"
+              target="_blank">
+              <Button
+                className="github-star-button github-modal-action-button"
+                icon={<Icon component={StarGithubIcon} size={12} />}>
+                {t('label.star')}
+              </Button>
+            </a>
+          </Typography>
 
-          <Typography.Link href={OMD_REPOSITORY_LINK} target="_blank">
-            <Button className="github-modal-action-button">
-              {isLoading ? (
-                <div data-testid="skeleton-loader">
-                  <Skeleton.Button active size="small" />
-                </div>
-              ) : (
-                starredCount
-              )}
-            </Button>
-          </Typography.Link>
+          <Typography>
+            <a
+              href={OMD_REPOSITORY_LINK}
+              rel="noopener noreferrer"
+              target="_blank">
+              <Button className="github-modal-action-button">
+                {isLoading ? (
+                  <div data-testid="skeleton-loader">
+                    <Skeleton height={36} variant="rounded" width={72} />
+                  </div>
+                ) : (
+                  starredCount
+                )}
+              </Button>
+            </a>
+          </Typography>
         </ButtonGroup>
       </Card>
     </Affix>

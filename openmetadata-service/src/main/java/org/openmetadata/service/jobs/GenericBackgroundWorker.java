@@ -209,7 +209,10 @@ public class GenericBackgroundWorker implements Managed {
   }
 
   private boolean isMemoryJob(BackgroundJob job) {
-    return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION;
+    // Collate can load an older generated JobType enum while running this worker.
+    return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION
+        || (job.getJobType() != null
+            && JobDAO.ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE.equals(job.getJobType().name()));
   }
 
   private void processJob(BackgroundJob job) {

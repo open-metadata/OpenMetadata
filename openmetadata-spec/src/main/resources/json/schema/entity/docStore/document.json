@@ -5,7 +5,7 @@
   "description": "This schema defines Document. A Generic entity to capture any kind of Json Payload.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entities.docStore.Document",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.DocStoreEntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>", "org.openmetadata.schema.DocStoreEntityInterface"],
   "definitions": {
     "data": {
       "javaType": "org.openmetadata.schema.entities.docStore.Data",

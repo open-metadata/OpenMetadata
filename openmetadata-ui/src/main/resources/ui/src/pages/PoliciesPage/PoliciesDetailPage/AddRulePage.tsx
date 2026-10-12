@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Form } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
@@ -147,11 +148,12 @@ const AddRulePage = () => {
       <Card className="m-x-auto w-800">
         <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
 
-        <Typography.Paragraph
-          className="text-base"
+        <Typography
+          as="p"
+          className="text-base tw:mb-4!"
           data-testid="add-rule-title">
           {t('label.add-new-entity', { entity: t('label.rule') })}
-        </Typography.Paragraph>
+        </Typography>
         <Form
           data-testid="rule-form"
           id="rule-form"
@@ -161,7 +163,12 @@ const AddRulePage = () => {
           layout="vertical"
           onFinish={handleSubmit}>
           <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
-          <Space align="center" className="w-full justify-end">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full justify-end"
+            gap={2}
+            itemClassName="layout-space-item">
             <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
               {t('label.cancel')}
             </Button>
@@ -172,7 +179,7 @@ const AddRulePage = () => {
               type="primary">
               {t('label.create')}
             </Button>
-          </Space>
+          </Box>
         </Form>
       </Card>
     </PageLayoutV1>

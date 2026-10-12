@@ -25,17 +25,8 @@
  */
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Checkbox,
-  Empty,
-  Form,
-  Input,
-  Select,
-  Space,
-  Typography,
-} from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card, Checkbox, Empty, Form, Input, Select } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
@@ -116,13 +107,17 @@ const TaskFormBuilderSection = ({
     <div className="task-form-builder-section">
       <div className="task-form-builder-section__header">
         <div>
-          <Typography.Title className="m-b-xs" level={5}>
+          <Typography
+            as="h5"
+            className="m-b-xs"
+            size="text-md"
+            weight="semibold">
             {title}
-          </Typography.Title>
+          </Typography>
           {description ? (
-            <Typography.Paragraph className="m-b-0 text-grey-muted">
+            <Typography as="p" className="m-b-0" color="secondary">
               {description}
-            </Typography.Paragraph>
+            </Typography>
           ) : null}
         </div>
         <Button
@@ -173,12 +168,12 @@ const TaskFormBuilderSection = ({
                   size="small"
                   title={
                     <div className="task-form-builder-section__field-heading">
-                      <Typography.Text className="task-form-builder-section__field-title">
+                      <Typography className="task-form-builder-section__field-title">
                         {field.label || field.name || `Field ${index + 1}`}
-                      </Typography.Text>
-                      <Typography.Text className="task-form-builder-section__field-meta">
+                      </Typography>
+                      <Typography className="task-form-builder-section__field-meta">
                         {summary}
-                      </Typography.Text>
+                      </Typography>
                     </div>
                   }>
                   <div className="d-grid gap-3">
@@ -283,7 +278,12 @@ const TaskFormBuilderSection = ({
                       />
                     </Form.Item>
 
-                    <Space size="large">
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={6}
+                      itemClassName="layout-space-item">
                       <Checkbox
                         checked={field.required}
                         data-testid={`${testIdPrefix}-field-required-${index}`}
@@ -306,7 +306,7 @@ const TaskFormBuilderSection = ({
                         }>
                         {t('label.hidden')}
                       </Checkbox>
-                    </Space>
+                    </Box>
                   </div>
                 </Card>
               );
@@ -335,9 +335,9 @@ const TaskFormBuilderSection = ({
               />
             </div>
           ) : (
-            <Typography.Text className="text-grey-muted">
+            <Typography color="secondary">
               {t('message.add-fields-to-preview-form')}
-            </Typography.Text>
+            </Typography>
           )}
         </Card>
       </div>

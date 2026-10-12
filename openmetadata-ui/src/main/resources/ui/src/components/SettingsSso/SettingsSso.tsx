@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
-import { Switch, Typography } from 'antd';
+import { Tabs, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -140,18 +139,16 @@ const SettingsSso = () => {
           <div className="enable-sso-card-container">
             <div className="flex justify-between items-start">
               <div className="flex flex-col">
-                <Typography.Title className="enable-self-signup-header m-b-xs">
+                <Typography
+                  as="h1"
+                  className="enable-self-signup-header m-b-xs">
                   {t('label.enable-sso')}
-                </Typography.Title>
-                <Typography.Text className="enable-self-signup-desc">
+                </Typography>
+                <Typography className="enable-self-signup-desc">
                   {t('message.allow-user-to-login-via-sso')}
-                </Typography.Text>
+                </Typography>
               </div>
-              <Switch
-                checked={ssoEnabled}
-                size="default"
-                onChange={handleSSOToggle}
-              />
+              <Toggle isSelected={ssoEnabled} onChange={handleSSOToggle} />
             </div>
           </div>
         </div>
@@ -381,9 +378,9 @@ const SettingsSso = () => {
                     />
                   )}
                 </div>
-                <Typography.Title className="m-0 sso-form-header text-md">
+                <Typography as="h1" className="m-0 sso-form-header text-md">
                   {getProviderDisplayName(currentProvider)}
-                </Typography.Title>
+                </Typography>
               </div>
             </div>
           </div>

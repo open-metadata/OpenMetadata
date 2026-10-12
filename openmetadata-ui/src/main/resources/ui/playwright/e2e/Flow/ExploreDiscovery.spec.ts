@@ -262,12 +262,27 @@ test.describe('Explore Assets Discovery', () => {
 
     await redirectToHomePage(page);
 
+    const suggestionsRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('exclude_source_fields=dataModel')
+    );
+
     await page.getByTestId('searchBox').click();
     await page.getByTestId('searchBox').fill(table1.entityResponseData.name);
+    await suggestionsRes;
 
-    await expect(page.locator('.ant-popover-inner-content')).not.toContainText(
-      table1.entityResponseData.name
-    );
+    const suggestionsPopover = page.getByTestId('customise-search-popover');
+
+    await expect(suggestionsPopover).toBeVisible();
+    // Each suggestion is a `data-name` link labelled with the entity's FQN;
+    // the popover's "Press Enter to find …" hint also echoes the typed name,
+    // so assert on the suggestion links, not the popover text.
+    await expect(
+      suggestionsPopover
+        .getByTestId('data-name')
+        .filter({ hasText: table1.entityResponseData.fullyQualifiedName })
+    ).toHaveCount(0);
   });
 
   test('Should not display domain and owner of deleted asset in suggestions when showDeleted is off', async ({
@@ -424,10 +439,7 @@ test.describe('Explore Assets Discovery', () => {
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
     await page.click('[data-testid="search-dropdown-Data Assets"]');
-    await page
-      .getByTestId('drop-down-menu')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
     await expect(
       page.getByTestId('drop-down-menu').getByTestId('table')

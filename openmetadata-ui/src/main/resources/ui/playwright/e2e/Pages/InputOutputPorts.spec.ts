@@ -201,8 +201,12 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify lineage section shows zero counts', async () => {
-        await expect(page.locator('text=0 input').first()).toBeVisible();
-        await expect(page.locator('text=0 output').first()).toBeVisible();
+        await expect(
+          page.locator('text=0 input').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=0 output').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -255,11 +259,19 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port counts', async () => {
-        await expect(page.locator('text=(2)').first()).toBeVisible();
-        await expect(page.locator('text=(3)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(2)').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=(3)').filter({ visible: true })
+        ).not.toHaveCount(0);
 
-        await expect(page.locator('text=2 input').first()).toBeVisible();
-        await expect(page.locator('text=3 output').first()).toBeVisible();
+        await expect(
+          page.locator('text=2 input').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=3 output').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -308,7 +320,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was added', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -392,7 +406,8 @@ test.describe('Input Output Ports', () => {
         await searchRes1;
 
         await page
-          .locator(`[data-testid="table-data-card_${table1Fqn}"] input`)
+          .locator(`[data-testid="table-data-card_${table1Fqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         const searchRes2 = page.waitForResponse(
@@ -404,7 +419,8 @@ test.describe('Input Output Ports', () => {
         await searchRes2;
 
         await page
-          .locator(`[data-testid="table-data-card_${table2Fqn}"] input`)
+          .locator(`[data-testid="table-data-card_${table2Fqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         const addRes = page.waitForResponse(
@@ -417,7 +433,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify both ports were added', async () => {
-        await expect(page.locator('text=(2)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(2)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -566,7 +584,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was added', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -907,7 +927,9 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-        await expect(page.getByRole('dialog')).toBeVisible();
+        await expect(
+          page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+        ).toBeVisible();
         await expect(
           page.getByText('Are you sure you want to remove')
         ).toBeVisible();
@@ -920,7 +942,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was removed', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -1010,7 +1034,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port still exists', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -1052,7 +1078,9 @@ test.describe('Input Output Ports', () => {
         await expect(
           page.getByTestId('no-input-ports-placeholder')
         ).toBeVisible();
-        await expect(page.locator('text=(0)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(0)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
   });
@@ -1634,9 +1662,13 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
-        await page.locator('.ant-alert-warning').waitFor({ state: 'visible' });
+        await page
+          .getByTestId('output-port-removal-warning')
+          .waitFor({ state: 'visible' });
 
-        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).toBeVisible();
         await expect(
           page.locator('text=This asset is also configured as an Output Port')
         ).toBeVisible();
@@ -1682,7 +1714,9 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
-        await expect(page.locator('.ant-alert-warning')).not.toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).not.toBeVisible();
         await expect(
           page.getByText('Are you sure you want to remove')
         ).toBeVisible();
@@ -1719,11 +1753,14 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Select all assets and click bulk delete', async () => {
-        await page.getByRole('checkbox', { name: 'Select All' }).click();
+        // The core checkbox's <input> is visually hidden; the label takes the click.
+        await page.getByTestId('select-all-assets').click();
 
         await page.getByTestId('delete-all-button').click();
 
-        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).toBeVisible();
         await expect(
           page.locator(
             'text=The following asset(s) are also configured as Output Ports'
@@ -1734,7 +1771,7 @@ test.describe('Input Output Ports', () => {
         const table2Name = get(tables[1], 'entityResponseData.displayName');
         const table3Name = get(tables[2], 'entityResponseData.displayName');
 
-        const warningAlert = page.locator('.ant-alert-warning');
+        const warningAlert = page.getByTestId('output-port-removal-warning');
 
         await expect(
           warningAlert.locator(`li:has-text("${table1Name}")`)
@@ -1776,7 +1813,9 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
-        await expect(page.locator('.ant-alert-warning')).not.toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).not.toBeVisible();
       });
     });
 
@@ -1825,13 +1864,16 @@ test.describe('Input Output Ports', () => {
           'entityResponseData.fullyQualifiedName'
         );
         await page
-          .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
+          .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+          .getByTestId('asset-checkbox')
           .check();
 
         await page.getByTestId('delete-all-button').click();
 
         // Confirmation modal with output port warning should appear
-        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).toBeVisible();
 
         const dialog = page.getByRole('dialog');
         await waitForAntOverlayToOpen(dialog);

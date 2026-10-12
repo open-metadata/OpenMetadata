@@ -30,6 +30,7 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../../generated/events/eventSubscription';
+import { useAlertSelectionContext } from '../../../../hooks/useAlertSelection';
 import { getDestinationStatusAlertData } from '../../../../utils/Alerts/AlertsUtil';
 import {
   getSubscriptionTypeOptions,
@@ -58,7 +59,7 @@ function DestinationSelectItem({
 
   const destinationItem =
     useWatch({ name: `destinations.${id}`, control }) ?? {};
-  const [selectedSource = ''] = useWatch({ name: 'resources', control }) ?? [];
+  const { support } = useAlertSelectionContext();
   const [isSelectionWarningDismissed, setIsSelectionWarningDismissed] =
     useState(false);
 
@@ -76,9 +77,15 @@ function DestinationSelectItem({
       buildGroupedOptions(
         t('label.internal'),
         t('label.external'),
-        selectedSource
+        support.recipientCategories,
+        isInternalDestinationSelected ? destinationType : undefined
       ),
-    [selectedSource, t]
+    [
+      support.recipientCategories,
+      isInternalDestinationSelected,
+      destinationType,
+      t,
+    ]
   );
 
   const destinationStatusDetails = useMemo(() => {

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import { Select, Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -64,7 +65,13 @@ const LineageSearchSelect = () => {
 
       const nodeOption = {
         label: (
-          <Space data-testid={`option-${node.fullyQualifiedName}`} size={0}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            data-testid={`option-${node.fullyQualifiedName}`}
+            gap={0}
+            itemClassName="layout-space-item">
             <img
               alt={node.serviceType}
               className="m-r-xss"
@@ -72,8 +79,8 @@ const LineageSearchSelect = () => {
               src={serviceUtilClassBase.getServiceTypeLogo(node)}
               width="16px"
             />
-            <Typography.Text>{getEntityName(node)}</Typography.Text>
-          </Space>
+            <Typography>{getEntityName(node)}</Typography>
+          </Box>
         ),
         value: node.fullyQualifiedName,
         dataLabel: getEntityName(node),
@@ -103,9 +110,9 @@ const LineageSearchSelect = () => {
                   src={serviceUtilClassBase.getServiceTypeLogo(node)}
                   width="16px"
                 />
-                <Typography.Text className="text-grey-muted text-xs">
+                <Typography className="text-xs" color="secondary">
                   {getEntityName(node)}
-                </Typography.Text>
+                </Typography>
                 <RightOutlined className="text-grey-muted text-xss" />
               </div>
               <div className="d-flex items-center gap-1 ">
@@ -113,7 +120,7 @@ const LineageSearchSelect = () => {
                   node.entityType ?? '',
                   EntityIconSize.Size14
                 )}
-                <Typography.Text>{getEntityName(column)}</Typography.Text>
+                <Typography>{getEntityName(column)}</Typography>
               </div>
             </div>
           ),

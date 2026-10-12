@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import {
+  LineChart,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
+import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import {
   first,
@@ -28,7 +33,6 @@ import {
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ResponsiveContainer } from 'recharts';
 import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
 import {
   DI_STRUCTURE,
@@ -38,23 +42,31 @@ import {
   INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER,
   NO_OWNER_ADVANCE_SEARCH_FILTER,
 } from '../../constants/explore.constants';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
-import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightProvider';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
 } from '../../rest/DataInsightAPI';
-import { updateActiveChartFilter } from '../../utils/ChartUtils';
-import { entityChartColor } from '../../utils/ColorUtils';
-import { renderDataInsightLineChart } from '../../utils/DataInsightChartUtils';
+import {
+  axisTickFormatter,
+  updateActiveChartFilter,
+} from '../../utils/ChartUtils';
+import {
+  dataInsightColor,
+  getDataInsightLineSeries,
+  getDataInsightTooltip,
+  HIDDEN_CHART_LEGEND,
+} from '../../utils/DataInsightChartUtils';
 import {
   getQueryFilterForDataInsightChart,
   isPercentageSystemGraph,
 } from '../../utils/DataInsightPureUtils';
+import { customFormatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -255,7 +267,7 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
     type === SystemChartType.PercentageOfDataAssetWithDescription;
 
   return (
-    <Col className="d-flex justify-end" span={24}>
+    <Grid.Item className="layout-column d-flex justify-end" span={24}>
       <Link
         data-testid={`explore-asset-with-no-${
           isDescriptionType ? 'description' : 'owner'
@@ -283,7 +295,7 @@ const ExploreAssetsLink = ({ type, tabsInfo, t }: ExploreAssetsLinkProps) => {
           <RightArrowIcon height={12} width={12} />
         </Button>
       </Link>
-    </Col>
+    </Grid.Item>
   );
 };
 
@@ -314,65 +326,71 @@ export const DataInsightChartCard = ({
     entitiesSummary,
   } = useDataInsightProvider();
   const isPercentageGraph = isPercentageSystemGraph(type);
-  const chartColors = useDataInsightChartColors();
+  const palette = useChartPalette();
 
-  const { rightSideEntityList, latestData, graphData, changeInValue } =
-    useMemo(() => {
-      let changeInValue = 0;
+  const {
+    rankedEntities,
+    rightSideEntityList,
+    latestData,
+    graphData,
+    changeInValue,
+  } = useMemo(() => {
+    let changeInValue = 0;
 
-      const results = chartData.results ?? [];
-      const timeStampResults = groupBy(results, 'day');
+    const results = chartData.results ?? [];
+    const timeStampResults = groupBy(results, 'day');
 
-      const graphResults = Object.entries(timeStampResults).map(
-        ([key, value]) => {
-          const keys = value.reduce((acc, curr) => {
-            return { ...acc, [curr.group ?? 'count']: curr.count };
-          }, {});
+    const graphResults = Object.entries(timeStampResults).map(
+      ([key, value]) => {
+        const keys = value.reduce((acc, curr) => {
+          return { ...acc, [curr.group ?? 'count']: curr.count };
+        }, {});
 
-          return {
-            day: +key,
-            ...keys,
-          };
-        }
-      );
-
-      const finalData = sortBy(graphResults, 'day');
-
-      const latestData: Record<string, number> = omit(
-        last(finalData ?? {}),
-        'day'
-      );
-
-      const uniqueLabels = Object.entries(latestData)
-        .sort(([, valueA], [, valueB]) => valueB - valueA)
-        .map(([key]) => key);
-
-      if (type === SystemChartType.TotalDataAssets) {
-        changeInValue = computeTotalDataAssetsChange(latestData, finalData);
-      } else if (type === SystemChartType.TotalDataAssetsByTier) {
-        // TotalDataAssetsByTier when Considering NoTier as well it has the TotalAssets
-        changeInValue = computeTotalDataAssetsByTierChange(
-          latestData,
-          finalData,
-          timeStampResults
-        );
-      } else {
-        // Process TotalAssets and Absolute Values
-        changeInValue = computeDefaultChange(
-          totalAssets.results,
-          absoluteValues.results
-        );
+        return {
+          day: +key,
+          ...keys,
+        };
       }
+    );
 
-      return {
-        rightSideEntityList: uniqueLabels.filter((entity) =>
-          includes(toLower(entity), toLower(searchEntityKeyWord))
-        ),
+    const finalData = sortBy(graphResults, 'day');
+
+    const latestData: Record<string, number> = omit(
+      last(finalData ?? {}),
+      'day'
+    );
+
+    const uniqueLabels = Object.entries(latestData)
+      .sort(([, valueA], [, valueB]) => valueB - valueA)
+      .map(([key]) => key);
+
+    if (type === SystemChartType.TotalDataAssets) {
+      changeInValue = computeTotalDataAssetsChange(latestData, finalData);
+    } else if (type === SystemChartType.TotalDataAssetsByTier) {
+      // TotalDataAssetsByTier when Considering NoTier as well it has the TotalAssets
+      changeInValue = computeTotalDataAssetsByTierChange(
         latestData,
-        graphData: finalData,
-        changeInValue,
-      };
-    }, [chartData.results, searchEntityKeyWord]);
+        finalData,
+        timeStampResults
+      );
+    } else {
+      // Process TotalAssets and Absolute Values
+      changeInValue = computeDefaultChange(
+        totalAssets.results,
+        absoluteValues.results
+      );
+    }
+
+    return {
+      rankedEntities: uniqueLabels,
+      rightSideEntityList: uniqueLabels.filter((entity) =>
+        includes(toLower(entity), toLower(searchEntityKeyWord))
+      ),
+      latestData,
+      graphData: finalData,
+      changeInValue,
+    };
+  }, [chartData.results, searchEntityKeyWord]);
 
   const targetValue = useMemo(() => {
     if (
@@ -532,6 +550,49 @@ export const DataInsightChartCard = ({
     );
   }, [type, isPercentageGraph, t]);
 
+  const series = useMemo(
+    () =>
+      getDataInsightLineSeries({
+        keys: rankedEntities,
+        palette,
+        activeKeys,
+        hoverKey: activeMouseHoverKey,
+        visibleKeys: rightSideEntityList,
+      }),
+    [
+      rankedEntities,
+      palette,
+      activeKeys,
+      activeMouseHoverKey,
+      rightSideEntityList,
+    ]
+  );
+  const xAxis = useMemo(
+    () => ({
+      formatter: (value: string | number) =>
+        customFormatDateTime(Number(value), 'MMM dd'),
+    }),
+    []
+  );
+  const yAxis = useMemo(
+    () =>
+      isPercentageGraph
+        ? {
+            formatter: (value: string | number) =>
+              axisTickFormatter(Number(value), '%'),
+          }
+        : undefined,
+    [isPercentageGraph]
+  );
+  const tooltip = useMemo(
+    () =>
+      getDataInsightTooltip<FinalDataPoint>({
+        timeKey: 'day',
+        isPercentage: isPercentageGraph,
+      }),
+    [isPercentageGraph]
+  );
+
   if (
     getChartLoadingState(isLoading, kpi.isLoading, chartData.results.length)
   ) {
@@ -560,32 +621,37 @@ export const DataInsightChartCard = ({
       className="data-insight-card data-insight-card-chart"
       data-testid={`${type}-graph`}
       id={type}>
-      <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-        <Col span={DI_STRUCTURE.leftContainerSpan}>
+      <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
+        <Grid.Item
+          className="layout-column"
+          span={DI_STRUCTURE.leftContainerSpan}>
           <PageHeader
             data={{
               header,
               subHeader,
             }}
           />
-          <ResponsiveContainer
-            className="m-t-lg"
-            debounce={1}
-            height={GRAPH_HEIGHT}
-            id={`${type}-graph`}>
-            {renderDataInsightLineChart(
-              graphData,
-              rightSideEntityList,
-              activeKeys,
-              activeMouseHoverKey,
-              isPercentageGraph,
-              chartColors
-            )}
-          </ResponsiveContainer>
-        </Col>
-        <Col span={DI_STRUCTURE.rightContainerSpan}>
-          <Row gutter={[8, 16]}>
-            <Col span={24}>
+          <div className="m-t-lg" id={`${type}-graph`}>
+            <LineChart
+              ariaLabel={typeof header === 'string' ? header : type}
+              data={graphData}
+              height={GRAPH_HEIGHT}
+              legend={HIDDEN_CHART_LEGEND}
+              series={series}
+              tooltip={tooltip}
+              xAxis={xAxis}
+              xKey="day"
+              yAxis={yAxis}
+            />
+          </div>
+        </Grid.Item>
+        <Grid.Item
+          className="layout-column"
+          span={DI_STRUCTURE.rightContainerSpan}>
+          <Grid
+            className="layout-row layout-grid"
+            style={getLayoutGutter(8, 16)}>
+            <Grid.Item className="layout-column" span={24}>
               <DataInsightProgressBar
                 changeInValue={changeInValue}
                 duration={selectedDays}
@@ -595,20 +661,24 @@ export const DataInsightChartCard = ({
                 suffix={getProgressBarSuffix(isPercentageGraph, type)}
                 target={targetValue}
               />
-            </Col>
-            <Col span={24}>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
               <Searchbar
                 removeMargin
                 searchValue={searchEntityKeyWord}
                 onSearch={setSearchEntityKeyWord}
               />
-            </Col>
-            <Col className="chart-card-right-panel-container" span={24}>
-              <Row gutter={[8, 8]}>
-                {rightSideEntityList.map((entity, i) => {
+            </Grid.Item>
+            <Grid.Item
+              className="layout-column chart-card-right-panel-container"
+              span={24}>
+              <Grid
+                className="layout-row layout-grid"
+                style={getLayoutGutter(8, 8)}>
+                {rightSideEntityList.map((entity) => {
                   return (
-                    <Col
-                      className="entity-summary-container"
+                    <Grid.Item
+                      className="layout-column entity-summary-container"
                       key={entity}
                       span={24}
                       onClick={() => handleLegendClick(entity)}
@@ -630,26 +700,30 @@ export const DataInsightChartCard = ({
                           ].includes(type)
                         }
                         progress={latestData[entity]}
-                        strokeColor={entityChartColor(i)}
+                        strokeColor={dataInsightColor(
+                          palette,
+                          rankedEntities,
+                          entity
+                        )}
                       />
-                    </Col>
+                    </Grid.Item>
                   );
                 })}
-              </Row>
-            </Col>
+              </Grid>
+            </Grid.Item>
             {activeKeys.length > 0 && (
-              <Col className="flex justify-end" span={24}>
+              <Grid.Item className="layout-column flex justify-end" span={24}>
                 <Button type="link" onClick={() => setActiveKeys([])}>
                   {t('label.clear')}
                 </Button>
-              </Col>
+              </Grid.Item>
             )}
-          </Row>
-        </Col>
+          </Grid>
+        </Grid.Item>
         {listAssets && (
           <ExploreAssetsLink t={t} tabsInfo={tabsInfo} type={type} />
         )}
-      </Row>
+      </Grid>
     </Card>
   );
 };

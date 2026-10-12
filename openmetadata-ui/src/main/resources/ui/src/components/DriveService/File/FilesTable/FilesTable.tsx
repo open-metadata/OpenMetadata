@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -192,15 +195,14 @@ function FilesTable({
       defaultVisibleColumns={DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS}
       entityType="dashboardDataModelTable"
       extraTableFilters={
-        <span>
-          <Switch
-            checked={showDeleted}
+        <span className="tw:inline-flex tw:items-center">
+          <Toggle
             data-testid="show-deleted"
-            onClick={handleShowDeletedChange}
+            isSelected={showDeleted}
+            size="sm"
+            onChange={handleShowDeletedChange}
           />
-          <Typography.Text className="m-l-xs">
-            {t('label.deleted')}
-          </Typography.Text>
+          <Typography className="m-l-xs">{t('label.deleted')}</Typography>
         </span>
       }
       loading={isLoading}

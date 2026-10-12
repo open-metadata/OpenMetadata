@@ -42,7 +42,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
   }
 
   @Override
-  public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+  public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
     if (entity == null) {
       LOG.warn("Received null entity in onEntityCreated");
       return;
@@ -61,7 +61,9 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
 
   @Override
   public void onEntityUpdated(
-      EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
+      EntityInterface<?> entity,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
     if (entity == null) {
       LOG.warn("Received null entity in onEntityUpdated");
       return;
@@ -101,7 +103,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
   }
 
   @Override
-  public void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
+  public void onEntityDeleted(EntityInterface<?> entity, SubjectContext subjectContext) {
     if (entity == null) {
       LOG.warn("Received null entity in onEntityDeleted");
       return;
@@ -120,7 +122,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
 
   @Override
   public void onEntitySoftDeletedOrRestored(
-      EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {
+      EntityInterface<?> entity, boolean isDeleted, SubjectContext subjectContext) {
     if (entity == null) {
       LOG.warn("Received null entity in onEntitySoftDeletedOrRestored");
       return;
@@ -157,22 +159,22 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
     return false;
   }
 
-  public void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
+  public void onEntitiesCreated(List<EntityInterface<?>> entities, SubjectContext subjectContext) {
     if (entities == null || entities.isEmpty()) {
       LOG.warn("Received null entities in onEntitiesCreated");
       return;
     }
 
     try {
-      Map<String, List<EntityInterface>> entitiesByType =
+      Map<String, List<EntityInterface<?>>> entitiesByType =
           entities.stream().collect(Collectors.groupingBy(e -> e.getEntityReference().getType()));
 
-      for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
+      for (Map.Entry<String, List<EntityInterface<?>>> entry : entitiesByType.entrySet()) {
         searchRepository.createEntitiesIndex(entry.getValue());
       }
     } catch (Exception e) {
       LOG.error("Failed to create search indexes for {} entities", entities.size(), e);
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         onEntityCreated(entity, subjectContext);
       }
     }
@@ -184,7 +186,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
    */
   @Override
   public void onEntitiesUpdated(
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       ChangeDescription changeDescription,
       SubjectContext subjectContext) {
     onEntitiesUpdated(entities, changeDescription, subjectContext, EntityUpdateContext.empty());
@@ -192,7 +194,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
 
   @Override
   public void onEntitiesUpdated(
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       ChangeDescription changeDescription,
       SubjectContext subjectContext,
       EntityUpdateContext updateContext) {
@@ -210,7 +212,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
       LOG.debug("Successfully updated search indexes for {} entities", entities.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk update search indexes for {} entities", entities.size(), e);
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         Long relationshipRevision = effectiveContext.relationshipRevisions().get(entity.getId());
         if (relationshipRevision == null) {
           onEntityUpdated(

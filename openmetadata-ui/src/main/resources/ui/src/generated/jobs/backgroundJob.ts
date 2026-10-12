@@ -220,6 +220,7 @@ export enum JobType {
     DeleteEntity = "DELETE_ENTITY",
     DeleteToken = "DELETE_TOKEN",
     OntologyBulk = "ONTOLOGY_BULK",
+    OntologyMemoryDerivation = "ONTOLOGY_MEMORY_DERIVATION",
 }
 
 /**

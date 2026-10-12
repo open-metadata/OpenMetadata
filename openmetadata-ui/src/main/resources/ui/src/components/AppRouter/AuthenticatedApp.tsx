@@ -15,7 +15,7 @@ import { FC, ReactNode } from 'react';
 import { RouterProvider } from 'react-aria-components';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { useNavigate } from 'react-router-dom';
+import { useHref, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import AirflowStatusProvider from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import AsyncDeleteProvider from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
@@ -31,10 +31,23 @@ import ApplicationsProvider from '../Settings/Applications/ApplicationsProvider/
 import WebAnalyticsProvider from '../WebAnalytics/WebAnalyticsProvider';
 import { ThemeProvider as UntitledUIThemeProvider } from './../../context/UntitledUIThemeProvider/theme-provider';
 
+// react-aria resolves every link href through this hook, including external
+// URLs. Only app paths get the router basename; absolute URLs, mailto: and
+// anchors pass through untouched (useHref would treat them as relative paths).
+const useRouterHref = (href: string) => {
+  const resolvedHref = useHref(href);
+
+  return href.startsWith('/') && !href.startsWith('//') ? resolvedHref : href;
+};
+
 const ReactAriaRouterBridge = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
-  return <RouterProvider navigate={navigate}>{children}</RouterProvider>;
+  return (
+    <RouterProvider navigate={navigate} useHref={useRouterHref}>
+      {children}
+    </RouterProvider>
+  );
 };
 
 interface AuthenticatedAppProps {

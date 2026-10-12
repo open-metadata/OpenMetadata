@@ -136,6 +136,12 @@ public interface CoreRelationshipDAOs {
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @SqlQuery(
+        "SELECT extension FROM entity_extension WHERE id = :id AND extension "
+            + "LIKE CONCAT (:extensionPrefix, '.%')")
+    List<String> getExtensionNames(
+        @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
+
+    @SqlQuery(
         "SELECT id, extension, json "
             + "FROM entity_extension "
             + "WHERE id IN (<ids>) AND extension LIKE :extension "
@@ -235,11 +241,23 @@ public interface CoreRelationshipDAOs {
       return EntityDAO.queryInChunks(extensions, chunk -> getExtensionsByKeysInternal(id, chunk));
     }
 
-    // The keyset condition and the LIMIT are applied inside each UNION branch so that neither
-    // side materialises more than one page: the global top-:limit under this ORDER BY is always a
-    // subset of the union of each branch's own top-:limit. UNION ALL is safe because
-    // entity_extension only ever holds superseded versions while <table> holds the current one, so
-    // the same (id, updatedAt) cannot appear in both.
+    // Bulk updates can commit history before replacing the current row. Prefer the current copy
+    // of an overlapping snapshot; hydrated history JSON need not equal the current storage JSON.
+    String MYSQL_HISTORY_WITHOUT_CURRENT =
+        "AND NOT EXISTS (SELECT 1 FROM <table> current_entity "
+            + "WHERE current_entity.id = entity_extension.id "
+            + "AND current_entity.updatedAt = entity_extension.updatedAt "
+            + "AND JSON_EXTRACT(current_entity.json, '$.version') = "
+            + "JSON_EXTRACT(entity_extension.json, '$.version')) ";
+
+    String POSTGRES_HISTORY_WITHOUT_CURRENT =
+        "AND NOT EXISTS (SELECT 1 FROM <table> current_entity "
+            + "WHERE current_entity.id = entity_extension.id "
+            + "AND current_entity.updatedAt = entity_extension.updatedAt "
+            + "AND current_entity.json::jsonb -> 'version' = entity_extension.json -> 'version') ";
+
+    // Filter overlaps before each branch's LIMIT so pages remain full. Keeping the keyset and
+    // LIMIT inside each branch bounds the JSON materialised for the final UNION ALL to two pages.
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
@@ -247,6 +265,7 @@ public interface CoreRelationshipDAOs {
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
+                + MYSQL_HISTORY_WITHOUT_CURRENT
                 + "<cursorCondition> "
                 + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit) "
@@ -268,6 +287,7 @@ public interface CoreRelationshipDAOs {
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
+                + POSTGRES_HISTORY_WITHOUT_CURRENT
                 + "<cursorCondition> "
                 + "ORDER BY updatedAt <sortOrder>, id <sortOrder> "
                 + "LIMIT :limit) "
@@ -294,18 +314,34 @@ public interface CoreRelationshipDAOs {
         @Bind("cursorId") String cursorId,
         @Bind("limit") int limit);
 
-    @SqlQuery(
+    @ConnectionAwareSqlQuery(
         value =
             "SELECT SUM(cnt) FROM ("
                 + "SELECT COUNT(*) AS cnt FROM entity_extension "
                 + "WHERE updatedAt >= :startTs "
                 + "AND updatedAt <= :endTs "
                 + "AND jsonSchema = :entityType "
+                + MYSQL_HISTORY_WITHOUT_CURRENT
                 + "UNION ALL "
                 + "SELECT COUNT(*) AS cnt FROM <table> "
                 + "WHERE updatedAt >= :startTs AND "
                 + "updatedAt <= :endTs"
-                + ") total_counts")
+                + ") total_counts",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT SUM(cnt) FROM ("
+                + "SELECT COUNT(*) AS cnt FROM entity_extension "
+                + "WHERE updatedAt >= :startTs "
+                + "AND updatedAt <= :endTs "
+                + "AND jsonSchema = :entityType "
+                + POSTGRES_HISTORY_WITHOUT_CURRENT
+                + "UNION ALL "
+                + "SELECT COUNT(*) AS cnt FROM <table> "
+                + "WHERE updatedAt >= :startTs AND "
+                + "updatedAt <= :endTs"
+                + ") total_counts",
+        connectionType = POSTGRES)
     int getEntityHistoryByTimestampRangeCount(
         @Define("table") String table,
         @Bind("startTs") long startTs,
@@ -434,6 +470,9 @@ public interface CoreRelationshipDAOs {
     private String json;
     private String jsonSchema;
   }
+
+  /** An edge into a context memory from an entity that may anchor it. */
+  record MemoryAnchorEdge(UUID fromId, String fromEntity, int relation) {}
 
   record OntologyRelationshipRow(
       UUID fromId,
@@ -938,6 +977,24 @@ public interface CoreRelationshipDAOs {
       return EntityDAO.queryInChunks(
           fromIds, chunk -> findToBatchByToEntityInternal(chunk, relation, toEntityType));
     }
+
+    /**
+     * The distinct (entity, relation) pairs among {@code fromIds} with a live edge of one of {@code
+     * relations} into a context memory, one row per pair however many memories it points at. The
+     * target type is a literal so that PostgreSQL can use idx_entity_relationship_memory_anchor;
+     * MySQL serves the query from idx_entity_rel_cascade. Without either, a pinned domain or team
+     * would scan one edge per asset or user it holds.
+     */
+    @SqlQuery(
+        "SELECT DISTINCT fromId, fromEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation IN (<relations>) "
+            + "AND toEntity = 'contextMemory' "
+            + "AND deleted = FALSE")
+    @UseRowMapper(MemoryAnchorEdgeMapper.class)
+    List<MemoryAnchorEdge> findMemoryAnchorEdges(
+        @BindList("fromIds") List<String> fromIds, @BindList("relations") List<Integer> relations);
 
     @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
@@ -1831,6 +1888,16 @@ public interface CoreRelationshipDAOs {
         return new RelationshipTypeUsage()
             .withRelationshipType(relationshipType)
             .withCount(rs.getInt("cnt"));
+      }
+    }
+
+    class MemoryAnchorEdgeMapper implements RowMapper<MemoryAnchorEdge> {
+      @Override
+      public MemoryAnchorEdge map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new MemoryAnchorEdge(
+            UUID.fromString(rs.getString("fromId")),
+            rs.getString("fromEntity"),
+            rs.getInt("relation"));
       }
     }
 

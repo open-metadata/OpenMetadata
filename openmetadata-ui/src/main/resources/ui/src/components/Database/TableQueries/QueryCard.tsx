@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { Card } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Card,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
@@ -37,6 +44,7 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
@@ -50,8 +58,6 @@ import { QueryCardProp } from './TableQueries.interface';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../SchemaEditor/SchemaEditor'))
 );
-
-const { Text } = Typography;
 
 const QueryCard: FC<QueryCardProp> = ({
   isExpanded = false,
@@ -175,33 +181,51 @@ const QueryCard: FC<QueryCardProp> = ({
   };
 
   const renderCardTitle = () => (
-    <Space className="font-normal p-y-xs" size={8}>
-      <Text className="text-sm">{queryDate}</Text>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal font-normal p-y-xs"
+      gap={2}
+      itemClassName="layout-space-item">
+      <Typography className="text-sm">{queryDate}</Typography>
       {duration && (
         <>
-          <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
-          <Text className="text-sm" data-testid="query-run-duration">
+          <Typography className="text-gray-400">{PIPE_SYMBOL}</Typography>
+          <Typography className="text-sm" data-testid="query-run-duration">
             {duration}
-          </Text>
+          </Typography>
         </>
       )}
-    </Space>
+    </Box>
   );
 
   const renderExpandIcon = () =>
     isExpanded ? (
-      <Tooltip title={t('label.exit-fit-to-screen')}>
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={t('label.exit-fit-to-screen')}
+        triggerClassName="tw:inline-flex">
         <ExitFullScreen height={16} width={16} />
       </Tooltip>
     ) : (
-      <Tooltip title={t('label.fit-to-screen')}>
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={t('label.fit-to-screen')}
+        triggerClassName="tw:inline-flex">
         <FullScreen height={16} width={16} />
       </Tooltip>
     );
 
   const renderEditActions = () =>
     isEditMode && (
-      <Space align="end" className="w-full justify-end p-r-md" size={16}>
+      <Box
+        inline
+        align="end"
+        className="layout-space layout-space-horizontal w-full justify-end p-r-md"
+        gap={4}
+        itemClassName="layout-space-item">
         <Button
           data-testid="cancel-query-btn"
           key="cancel"
@@ -219,12 +243,16 @@ const QueryCard: FC<QueryCardProp> = ({
           onClick={updateSqlQuery}>
           {t('label.save')}
         </Button>
-      </Space>
+      </Box>
     );
 
   return (
-    <Row gutter={[0, 8]}>
-      <Col span={isExpanded && QueryExtras ? 12 : 24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 8) }}>
+      <Grid.Item
+        className="layout-column"
+        span={isExpanded && QueryExtras ? 12 : 24}>
         {/* Light values reproduce the antd Card head this replaced. */}
         <Card
           className={classNames(
@@ -254,22 +282,28 @@ const QueryCard: FC<QueryCardProp> = ({
             </div>
           </div>
           <div className="tw:pt-px">
-            <Space className="query-entity-button" size={8}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal query-entity-button"
+              gap={2}
+              itemClassName="layout-space-item">
               <Button
                 className="flex-center"
                 data-testid="query-entity-expand-button"
                 icon={renderExpandIcon()}
                 onClick={handleExpandClick}
               />
-              <Tooltip title={t('message.copy-to-clipboard')}>
-                <Button
-                  className="flex-center"
+              <Tooltip arrow title={t('message.copy-to-clipboard')}>
+                <ButtonUtility
+                  color="secondary"
                   data-testid="query-entity-copy-button"
-                  icon={<Copy01 size={16} />}
+                  icon={Copy01}
+                  size="sm"
                   onClick={onCopyToClipBoard}
                 />
               </Tooltip>
-            </Space>
+            </Box>
 
             <div
               className={classNames(
@@ -294,21 +328,23 @@ const QueryCard: FC<QueryCardProp> = ({
                 onChange={handleQueryChange}
               />
             </div>
-            <Row align="middle" className="p-y-md border-top">
-              <Col className="p-l-md" span={20}>
+            <Grid className="layout-row layout-grid tw:items-center p-y-md border-top">
+              <Grid.Item className="layout-column p-l-md" span={20}>
                 <QueryUsedByOtherTable
                   isEditMode={isEditMode}
                   query={query}
                   onChange={(value) => setSelectedTables(value)}
                 />
-              </Col>
-              <Col span={4}>{renderEditActions()}</Col>
-            </Row>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={4}>
+                {renderEditActions()}
+              </Grid.Item>
+            </Grid>
           </div>
         </Card>
-      </Col>
+      </Grid.Item>
       {isExpanded && QueryExtras && <QueryExtras />}
-    </Row>
+    </Grid>
   );
 };
 

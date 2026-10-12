@@ -109,7 +109,7 @@ const test = base.extend<{
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
     try {
-      await adminUser.login(adminPage);
+      await adminUser.signIn(adminPage);
       await use(adminPage);
     } finally {
       await adminPage.close();
@@ -118,7 +118,7 @@ const test = base.extend<{
   testUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await testUser.login(page);
+      await testUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -159,7 +159,7 @@ const headerPermTest = base.extend<{
   editAllPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await editAllUser.login(page);
+      await editAllUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -168,7 +168,7 @@ const headerPermTest = base.extend<{
   specificEditsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await specificEditsUser.login(page);
+      await specificEditsUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -269,7 +269,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
     test.describe('Allow permissions', () => {
       test.beforeAll('Initialize allow permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        await adminUser.login(page);
+        await adminUser.signIn(page);
         await initializePermissions(page, 'allow', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
         await page.close();
@@ -305,7 +305,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
 
       test.afterAll('Cleanup allow permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        await adminUser.login(page);
+        await adminUser.signIn(page);
         const { apiContext } = await getApiContext(page);
         await cleanupPermissions(apiContext);
         await page.close();
@@ -316,7 +316,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
     test.describe('Deny permissions', () => {
       test.beforeAll('Initialize deny permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        await adminUser.login(page);
+        await adminUser.signIn(page);
         await initializePermissions(page, 'deny', ALL_OPERATIONS);
         await assignRoleToUser(page, testUser);
         await page.close();
@@ -352,7 +352,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
 
       test.afterAll('Cleanup deny permissions', async ({ browser }) => {
         const page = await browser.newPage();
-        await adminUser.login(page);
+        await adminUser.signIn(page);
         const { apiContext } = await getApiContext(page);
         await cleanupPermissions(apiContext);
         await page.close();
