@@ -165,14 +165,18 @@ ENV CFLAGS="-Wno-error=incompatible-pointer-types -Wno-error=implicit-function-d
 
 ARG INGESTION_DEPENDENCY="all"
 ARG RI_VERSION="2.0.0.0.dev0"
-RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
+# Published ingestion releases bypass this checkout's setup.py pin. Keep the wheel
+# aligned with the native overlay; see ADR:2026-10-12-adbc-flightsql-overlay-matches-wheel.
+RUN printf '%s\n' 'adbc-driver-flightsql==1.12.0' > /tmp/adbc-flightsql-constraints.txt
+RUN pip install --constraint /tmp/adbc-flightsql-constraints.txt "openmetadata-ingestion[airflow]~=${RI_VERSION}"
+RUN pip install --constraint /tmp/adbc-flightsql-constraints.txt "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
-  && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
+  && pip install --constraint /tmp/adbc-flightsql-constraints.txt "openmetadata-ingestion[db2]~=${RI_VERSION}" \
   || echo "DB2 not supported on ARM architectures."
+RUN rm -f /tmp/adbc-flightsql-constraints.txt
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
