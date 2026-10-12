@@ -307,7 +307,9 @@ const ProfilerConfigurationPage = () => {
                             <Button
                               className="text-primary p-0"
                               data-testid="add-fields"
-                              icon={<Plus />}
+                              icon={
+                                <Plus className="tw:size-3.5 tw:shrink-0" />
+                              }
                               type="text"
                               onClick={() => add()}>
                               {t('label.add-new-field')}

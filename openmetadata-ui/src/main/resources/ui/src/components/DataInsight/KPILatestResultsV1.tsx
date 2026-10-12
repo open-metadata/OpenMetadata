@@ -101,7 +101,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                     <Typography
                       className="days-remaining"
                       data-testid="kpi-success">
-                      <CheckCircle style={{ fontSize: '20px' }} />
+                      <CheckCircle className="tw:size-5 tw:shrink-0" />
                     </Typography>
                   </>
                 ) : (
@@ -137,7 +137,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                         Boolean(isTargetMet)
                       )}
                       triggerClassName="tw:inline-flex">
-                      <InfoCircle style={{ fontSize: '14px' }} />
+                      <InfoCircle className="tw:size-3.5 tw:shrink-0" />
                     </Tooltip>
                   ) : null}
                 </Box>

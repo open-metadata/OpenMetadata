@@ -51,7 +51,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
           type="primary"
           onClick={handleConfigureClick}>
           {t('label.configure')}
-          <ArrowUp className="configure-arrow" height={12} width={12} />
+          <ArrowUp className="configure-arrow tw:ml-2" height={12} width={12} />
         </Button>
       </div>
 

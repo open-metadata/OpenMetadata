@@ -45,7 +45,12 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         {schema.additionalProperties && (
           <Button
             data-testid={`add-item-${title}`}
-            icon={<Plus style={{ color: 'white', fontSize: '12px' }} />}
+            icon={
+              <Plus
+                className="tw:size-3 tw:shrink-0"
+                style={{ color: 'white', fontSize: '12px' }}
+              />
+            }
             id={`${idSchema.$id}`}
             size="small"
             type="primary"

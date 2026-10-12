@@ -130,7 +130,10 @@ const FormBuilder = forwardRef<Form, Props>(
             disabled
             className="p-x-md p-y-xxs h-auto rounded-6"
             type="primary">
-            <Check data-testid="success-icon" />
+            <Check
+              className="tw:size-3.5 tw:shrink-0"
+              data-testid="success-icon"
+            />
           </Button>
         );
       } else {

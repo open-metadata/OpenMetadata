@@ -51,9 +51,9 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
             setIsActive((prev) => !prev)
           )}>
           {isActive ? (
-            <ChevronDown className="text-xs text-primary cursor-pointer" />
+            <ChevronDown className="text-xs text-primary cursor-pointer tw:size-3.5 tw:shrink-0" />
           ) : (
-            <ChevronRight className="text-xs text-primary cursor-pointer" />
+            <ChevronRight className="text-xs text-primary cursor-pointer tw:size-3.5 tw:shrink-0" />
           )}
         </span>
         <Typography className="font-medium m-y-0">

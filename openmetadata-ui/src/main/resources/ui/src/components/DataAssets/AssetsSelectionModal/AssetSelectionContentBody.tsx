@@ -154,7 +154,7 @@ const AssetSelectionHeader = ({
           }
           message={
             <div className="d-flex items-center gap-3">
-              <AlertCircle className="tw:text-2xl tw:text-error-primary" />
+              <AlertCircle className="tw:text-2xl tw:text-error-primary tw:size-3.5 tw:shrink-0" />
               <Typography as="span" size="text-sm" weight="semibold">
                 {t('label.validation-error-plural')}
               </Typography>
@@ -243,7 +243,7 @@ const AssetSelectionList = ({
                           <CoreDivider className="tw:mt-0 tw:my-2" />
                         </div>
                         <div className="d-flex gap-3 p-x-sm p-b-sm">
-                          <AlertCircle className="tw:text-2xl tw:text-error-primary" />
+                          <AlertCircle className="tw:text-2xl tw:text-error-primary tw:size-3.5 tw:shrink-0" />
                           <Typography as="span" className="tw:break-all">
                             {errorMessage}
                           </Typography>

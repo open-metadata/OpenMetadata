@@ -62,7 +62,11 @@ interface InspectorRelation {
 
 const EXTERNAL_SCHEME_SUGGESTIONS = ['schema', 'wikidata', 'fibo', 'snomed'];
 const SearchInputIcon = ({ className }: { className?: string }) => (
-  <Search aria-hidden="true" className={className} />
+  <Search
+    aria-hidden="true"
+    className={className}
+    className="tw:size-3.5 tw:shrink-0"
+  />
 );
 
 function toConceptSlug(label: string): string {

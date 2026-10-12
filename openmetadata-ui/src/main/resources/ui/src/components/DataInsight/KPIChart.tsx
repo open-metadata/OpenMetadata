@@ -308,7 +308,9 @@ const KPIChart: FC<Props> = ({
                   button={
                     <Button
                       ghost
-                      icon={<Plus />}
+                      icon={
+                        <Plus className="tw:size-3.5 tw:shrink-0 tw:mr-2" />
+                      }
                       type="primary"
                       onClick={handleAddKpi}>
                       {t('label.add-entity', {

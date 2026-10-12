@@ -175,7 +175,7 @@ const TeamsHeadingLabel = ({
             disabled={isLoading}
             type="primary"
             onMouseDown={handleClose}>
-            <XClose />
+            <XClose className="tw:size-3.5 tw:shrink-0" />
           </Button>
           <Button
             className="rounded-4 text-sm p-xss"
@@ -183,7 +183,7 @@ const TeamsHeadingLabel = ({
             loading={isLoading}
             type="primary"
             onMouseDown={onHeadingSave}>
-            <Check />
+            <Check className="tw:size-3.5 tw:shrink-0" />
           </Button>
         </Box>
       </div>

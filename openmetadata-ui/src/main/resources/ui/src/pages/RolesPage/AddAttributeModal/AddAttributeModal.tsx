@@ -166,7 +166,12 @@ const AddAttributeModal: FC<Props> = ({
                 placeholder={t('label.search-entity', {
                   entity: type,
                 })}
-                prefix={<Search style={{ color: '#37352F4D' }} />}
+                prefix={
+                  <Search
+                    className="tw:size-3.5 tw:shrink-0"
+                    style={{ color: '#37352F4D' }}
+                  />
+                }
                 onChange={(e) => handleSearch(e.target.value)}
               />
             </Grid.Item>
@@ -201,7 +206,7 @@ const AddAttributeModal: FC<Props> = ({
                 </Grid.Item>
                 <Grid.Item className="layout-column" span={2}>
                   {selectedValues.includes(option.id) && (
-                    <Check className="text-primary" />
+                    <Check className="text-primary tw:size-3.5 tw:shrink-0" />
                   )}
                 </Grid.Item>
               </Grid>

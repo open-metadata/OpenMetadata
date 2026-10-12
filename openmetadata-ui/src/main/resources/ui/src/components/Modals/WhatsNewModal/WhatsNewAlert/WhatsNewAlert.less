@@ -98,6 +98,10 @@
 }
 
 .whats-new-alert-close {
+  // the padding used to sit on antd's wrapper span; on the <svg> itself a
+  // border-box 16px padding would eat the whole 14px box, so keep the glyph
+  // at its own size and let the padding add the hit area around it.
+  box-sizing: content-box;
   padding: var(--om-space-16);
   color: @grey-400;
 }

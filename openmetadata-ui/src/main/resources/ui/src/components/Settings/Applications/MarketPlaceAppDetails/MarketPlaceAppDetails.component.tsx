@@ -162,7 +162,7 @@ const MarketPlaceAppDetails = () => {
       <div className="p-x-md p-t-md">
         <Button
           className="p-0"
-          icon={<ChevronLeft />}
+          icon={<ChevronLeft className="tw:size-3.5 tw:shrink-0 tw:mr-2" />}
           size="small"
           type="text"
           onClick={onBrowseAppsClick}>

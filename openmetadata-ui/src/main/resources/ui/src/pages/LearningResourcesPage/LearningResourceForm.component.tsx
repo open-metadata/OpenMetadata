@@ -147,7 +147,10 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       <span className="drawer-title">
         {resource ? t('label.edit-resource') : t('label.add-resource')}
       </span>
-      <XClose className="drawer-close" onClick={onClose} />
+      <XClose
+        className="drawer-close tw:size-3.5 tw:shrink-0"
+        onClick={onClose}
+      />
     </div>
   );
 

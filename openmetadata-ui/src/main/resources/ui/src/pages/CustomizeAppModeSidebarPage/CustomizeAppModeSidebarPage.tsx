@@ -364,7 +364,9 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="secondary"
                     data-testid="reset-button"
-                    iconLeading={<RefreshCw01 />}
+                    iconLeading={
+                      <RefreshCw01 className="tw:size-3.5 tw:shrink-0" />
+                    }
                     isDisabled={isSaving}
                     onPress={handleReset}>
                     {t('label.reset')}
@@ -372,7 +374,7 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="primary"
                     data-testid="save-button"
-                    iconLeading={<Save />}
+                    iconLeading={<Save className="tw:size-3.5 tw:shrink-0" />}
                     isDisabled={disableSave}
                     isLoading={isSaving}
                     onPress={handleSave}>

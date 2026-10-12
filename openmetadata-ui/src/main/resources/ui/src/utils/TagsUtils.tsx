@@ -142,7 +142,12 @@ export const getDeleteIcon = (arg: {
   const { deleteTagId, id, status } = arg;
   if (deleteTagId === id) {
     if (status === 'success') {
-      return <Check data-testid="check-outline" />;
+      return (
+        <Check
+          className="tw:size-3.5 tw:shrink-0"
+          data-testid="check-outline"
+        />
+      );
     }
 
     return <Loader size="small" type="default" />;

@@ -201,7 +201,12 @@ const NodeChildren = ({
             placeholder={t('label.search-entity', {
               entity: childrenHeading,
             })}
-            suffix={<Search color={BORDER_COLOR} />}
+            suffix={
+              <Search
+                className="tw:size-3.5 tw:shrink-0"
+                color={BORDER_COLOR}
+              />
+            }
             value={searchValue}
             onChange={handleSearchChange}
             onClick={(e) => e.stopPropagation()}

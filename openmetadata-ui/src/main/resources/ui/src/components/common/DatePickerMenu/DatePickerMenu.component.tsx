@@ -343,7 +343,7 @@ const DatePickerMenu = ({
             'tw:hover:bg-transparent tw:hover:text-secondary'
           )}
           data-testid="clear-date-picker"
-          icon={<CloseCircleFilled />}
+          icon={<CloseCircleFilled className="tw:size-3.5 tw:shrink-0" />}
           size="small"
           type="text"
           onClick={(event) => {

@@ -163,7 +163,12 @@ export const AddEditPersonaForm = ({
         children: (
           <Button
             data-testid="add-users"
-            icon={<Plus style={{ color: 'white', fontSize: '12px' }} />}
+            icon={
+              <Plus
+                className="tw:size-3 tw:shrink-0"
+                style={{ color: 'white', fontSize: '12px' }}
+              />
+            }
             size="small"
             type="primary"
           />
