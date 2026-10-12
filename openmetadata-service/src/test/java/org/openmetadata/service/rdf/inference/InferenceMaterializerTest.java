@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf.inference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -106,6 +107,27 @@ class InferenceMaterializerTest {
   }
 
   @Test
+  void runThatRunsOutOfPassesWhileInputsChangeIsSupersededWithoutAnError() {
+    rules.upsert(REACHABILITY, reachabilityRule());
+    chain("urn:n1", "urn:n2", "urn:n3", "urn:n4", "urn:n5");
+    store.afterNextUpdate(rules::markAllDirty);
+
+    final WebApplicationException exception =
+        assertThrows(
+            WebApplicationException.class,
+            () ->
+                new InferenceMaterializer(store, rules, runLock, CLOCK, 2)
+                    .materialize(false, null));
+
+    final InferenceRuleStatus reachability = rules.get(REACHABILITY);
+    assertEquals(409, exception.getResponse().getStatus());
+    assertInstanceOf(InferenceRunSupersededException.class, exception);
+    assertNull(reachability.getLastError());
+    assertTrue(reachability.getDirty());
+    assertFalse(runLock.isHeld());
+  }
+
+  @Test
   void changesArrivingDuringARunLeaveRulesDirty() {
     rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
     store.assertFact("urn:x", "urn:a", "urn:y");
@@ -174,14 +196,18 @@ class InferenceMaterializerTest {
   }
 
   @Test
-  void aRunThatLosesItsLockToAnotherRunFails() {
+  void aRunThatLosesItsLockLeavesTheRuleStatusToTheRunThatTookOver() {
     rules.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b", 100));
-    store.afterNextUpdate(runLock::holdForAnotherRun);
+    store.afterNextUpdate(this::anotherRunTakesOverAndCompletes);
 
-    final InferenceMaterializationResult result = materializer().materialize(false, null);
+    final WebApplicationException exception =
+        assertThrows(WebApplicationException.class, () -> materializer().materialize(false, null));
 
-    assertEquals(1, result.getFailedRules());
-    assertTrue(status(result, COPY_A_TO_B).getLastError().contains("took over"));
+    final InferenceRuleStatus copy = rules.get(COPY_A_TO_B);
+    assertEquals(409, exception.getResponse().getStatus());
+    assertTrue(exception.getMessage().contains("took over"), exception.getMessage());
+    assertNull(copy.getLastError(), "The run that took over recorded success; it must stay");
+    assertFalse(copy.getDirty());
     assertTrue(runLock.isHeld(), "The run must not release a lock another run now holds");
   }
 
@@ -243,6 +269,11 @@ class InferenceMaterializerTest {
 
     assertFalse(runLock.isHeld());
     assertNull(status(materializer().materialize(true, null), COPY_A_TO_B).getLastError());
+  }
+
+  private void anotherRunTakesOverAndCompletes() {
+    runLock.holdForAnotherRun();
+    rules.listForRun().forEach(snapshot -> rules.recordMaterialized(snapshot, CLOCK.millis(), 0));
   }
 
   private InferenceMaterializer materializer() {

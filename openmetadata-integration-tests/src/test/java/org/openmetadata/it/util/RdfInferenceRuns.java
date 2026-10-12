@@ -29,7 +29,8 @@ public final class RdfInferenceRuns {
 
   /**
    * The server schedules {@code RdfInferenceApp}, so an on-demand run can meet one in progress and
-   * get a 409; retry until this run holds the lock.
+   * get a 409, as it does when writes from concurrent tests supersede it; retry until a run
+   * completes.
    */
   public static InferenceMaterializationResult materializeWhenIdle(
       final boolean force, final String ruleName) {

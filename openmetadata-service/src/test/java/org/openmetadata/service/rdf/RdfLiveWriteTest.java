@@ -59,10 +59,12 @@ class RdfLiveWriteTest {
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String BROADER = "http://www.w3.org/2004/02/skos/core#broader";
+  private static final String PROV_WAS_DERIVED_FROM = "http://www.w3.org/ns/prov#wasDerivedFrom";
   private final Dataset dataset = DatasetFactory.create();
   private final AtomicBoolean unavailable = new AtomicBoolean();
   private Table currentEntity;
   private LineageDetails currentLineageDetails;
+  private boolean lineageEdgeExists = true;
   private final RdfRepository repository = repository();
 
   @AfterEach
@@ -131,6 +133,32 @@ class RdfLiveWriteTest {
             null, toColumn, graph.createResource(RdfUtils.columnUri(BASE, targetColumn))));
     replay(RdfLiveWrite.RelationshipChange.capture(lineage, true));
     assertTrue(graph.isEmpty());
+  }
+
+  @Test
+  void replayedLineageWithoutStoredDetailsStillProjectsTheEdge() {
+    final UUID from = UUID.randomUUID();
+    final UUID to = UUID.randomUUID();
+    replay(RdfLiveWrite.RelationshipChange.capture(lineage(from, to), false));
+    final Model graph = dataset.getNamedModel(GRAPH);
+    assertTrue(
+        graph.contains(
+            graph.createResource(BASE + "entity/table/" + to),
+            graph.createProperty(PROV_WAS_DERIVED_FROM),
+            graph.createResource(BASE + "entity/table/" + from)));
+  }
+
+  @Test
+  void lineageAdditionReplayedAfterTheEdgeWasDeletedDoesNotResurrectIt() {
+    final EntityRelationship lineage = lineage(UUID.randomUUID(), UUID.randomUUID());
+    final RdfLiveWrite addition = RdfLiveWrite.RelationshipChange.capture(lineage, false);
+    replay(addition);
+    lineageEdgeExists = false;
+    replay(RdfLiveWrite.RelationshipChange.capture(lineage, true));
+
+    replay(addition);
+
+    assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
   }
 
   @Test
@@ -228,7 +256,10 @@ class RdfLiveWriteTest {
               }
               return currentEntity;
             },
-            (fromId, toId) -> Optional.ofNullable(currentLineageDetails)));
+            (fromId, toId) ->
+                lineageEdgeExists
+                    ? Optional.of(new RdfProjectionLoaders.StoredLineageEdge(currentLineageDetails))
+                    : Optional.empty()));
   }
 
   private static EntityRelationship lineage(final UUID fromId, final UUID toId) {

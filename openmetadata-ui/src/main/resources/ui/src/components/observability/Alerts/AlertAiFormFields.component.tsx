@@ -127,6 +127,7 @@ function AlertAiFormFields({
     shouldDisplayActionsSection,
   } = getAlertAiSectionInputs({
     value,
+    isViewOnly,
     selectedSource,
     selectedFilterResource,
     supportedFilters,

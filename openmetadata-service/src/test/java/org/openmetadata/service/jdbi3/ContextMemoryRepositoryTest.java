@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,6 +51,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.security.AuthorizationException;
 
 /**
  * ContextMemory is indexed whatever its {@code shareConfig.visibility}; privacy is enforced at
@@ -79,6 +81,58 @@ class ContextMemoryRepositoryTest {
   @AfterEach
   void tearDown() {
     Entity.cleanup();
+  }
+
+  @Test
+  void serverWritesWithoutAPrincipalAreRefused() {
+    assertThrows(
+        AuthorizationException.class,
+        () -> repository.prepare(new ContextMemory().withName("unstamped"), false));
+    assertThrows(
+        AuthorizationException.class,
+        () -> repository.prepare(new ContextMemory().withName("unstamped"), true));
+  }
+
+  /** The anchor edge getPrimaryEntity reads: APPLIED_TO from anything, the older HAS but from a domain. */
+  @Test
+  void findAnchors_readsTheEdgeThatMakesAnEntityAMemorysAnchor() {
+    UUID table = UUID.randomUUID();
+    UUID legacy = UUID.randomUUID();
+    UUID assignedDomain = UUID.randomUUID();
+    UUID anchoringDomain = UUID.randomUUID();
+    when(relationshipDAO.findMemoryAnchorEdges(anyList(), anyList()))
+        .thenReturn(
+            List.of(
+                edge(table, Entity.TABLE, Relationship.APPLIED_TO),
+                edge(table, Entity.TABLE, Relationship.HAS),
+                edge(legacy, Entity.DASHBOARD, Relationship.HAS),
+                edge(assignedDomain, Entity.DOMAIN, Relationship.HAS),
+                edge(anchoringDomain, Entity.DOMAIN, Relationship.APPLIED_TO)));
+
+    List<EntityReference> anchors =
+        repository.findAnchors(List.of(table, legacy, assignedDomain, anchoringDomain));
+
+    assertEquals(
+        List.of(
+            anchorRef(table, Entity.TABLE),
+            anchorRef(legacy, Entity.DASHBOARD),
+            anchorRef(anchoringDomain, Entity.DOMAIN)),
+        anchors);
+  }
+
+  @Test
+  void findAnchors_neverQueriesForNoCandidates() {
+    assertTrue(repository.findAnchors(List.of()).isEmpty());
+    verify(relationshipDAO, never()).findMemoryAnchorEdges(anyList(), anyList());
+  }
+
+  private static CollectionDAO.MemoryAnchorEdge edge(
+      UUID fromId, String fromEntity, Relationship relation) {
+    return new CollectionDAO.MemoryAnchorEdge(fromId, fromEntity, relation.ordinal());
+  }
+
+  private static EntityReference anchorRef(UUID id, String type) {
+    return new EntityReference().withId(id).withType(type);
   }
 
   @Test

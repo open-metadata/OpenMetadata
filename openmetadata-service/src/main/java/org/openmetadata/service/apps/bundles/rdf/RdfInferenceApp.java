@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.rdf;
 
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 
+import jakarta.ws.rs.ClientErrorException;
 import java.time.Clock;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.inference.InferenceRuleService;
 import org.openmetadata.service.rdf.inference.InferenceRunInProgressException;
+import org.openmetadata.service.rdf.inference.InferenceRunSupersededException;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobExecutionContext;
 
@@ -61,7 +63,7 @@ public final class RdfInferenceApp extends AbstractNativeApplication {
     initializeRun();
     try {
       completeRun(runConfiguredMaterialization());
-    } catch (InferenceRunInProgressException exception) {
+    } catch (InferenceRunInProgressException | InferenceRunSupersededException exception) {
       skipRun(exception);
     } catch (RuntimeException exception) {
       failRun(exception);
@@ -72,7 +74,7 @@ public final class RdfInferenceApp extends AbstractNativeApplication {
     final RdfRepository repository = RdfRepository.getInstanceOrNull();
     final InferenceMaterializationResult result;
     if (repository == null
-        || !Boolean.TRUE.equals(repository.getConfig().getMaterializedInferenceEnabled())) {
+        || !RdfRepository.supportsMaterializedInference(repository.getConfig())) {
       final long now = System.currentTimeMillis();
       result = emptyResult(now);
     } else {
@@ -114,10 +116,11 @@ public final class RdfInferenceApp extends AbstractNativeApplication {
   }
 
   /**
-   * A run that finds another one in progress is redundant rather than broken, so it ends STOPPED
-   * with the reason, as an overlapping RDF reindex does, and does not trip failure alerting.
+   * A run that finds another one in progress, or whose inputs changed before it converged, is
+   * redundant rather than broken, so it ends STOPPED with the reason, as an overlapping RDF reindex
+   * does, and does not trip failure alerting.
    */
-  private void skipRun(final InferenceRunInProgressException exception) {
+  private void skipRun(final ClientErrorException exception) {
     LOG.warn(exception.getMessage());
     stats.setJobStats(stepStats(0, 0, 0));
     updateRunRecord(AppRunRecord.Status.STOPPED, exception.getMessage());

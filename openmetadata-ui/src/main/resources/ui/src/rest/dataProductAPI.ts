@@ -357,20 +357,6 @@ export const exportDataProductToODPSYaml = async (
   return response.data;
 };
 
-export const exportDataProductToODPSYamlByFqn = async (
-  fqn: string
-): Promise<string> => {
-  const response = await APIClient.get<string>(
-    `${BASE_URL}/name/${getEncodedFqn(fqn)}/odps/yaml`,
-    {
-      headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
-      responseType: 'text',
-    }
-  );
-
-  return response.data;
-};
-
 export const importDataProductFromODPSYaml = async (
   yamlContent: string,
   domainFqn?: string,

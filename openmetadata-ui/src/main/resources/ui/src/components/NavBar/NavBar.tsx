@@ -13,12 +13,14 @@
 
 import {
   Button as CoreButton,
+  ButtonUtility,
   Dropdown,
   Popover,
   PopoverTrigger,
   Tooltip as CoreTooltip,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Alert, Badge, Button, InputRef, Tooltip } from 'antd';
+import { Alert, Badge, Button, InputRef } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
@@ -586,19 +588,16 @@ const NavBar = () => {
       <Header style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
-            <Tooltip placement="right" title={sidebarTooltipTitle}>
-              <Button
-                className="w-6 h-6 p-0 flex-center"
+            <Tooltip arrow placement="right" title={sidebarTooltipTitle}>
+              <ButtonUtility
+                color="tertiary"
                 data-testid="sidebar-toggle"
                 icon={
-                  isSidebarCollapsed ? (
-                    <SidebarCollapsedIcon height={20} width={20} />
-                  ) : (
-                    <SidebarExpandedIcon height={20} width={20} />
-                  )
+                  isSidebarCollapsed
+                    ? SidebarCollapsedIcon
+                    : SidebarExpandedIcon
                 }
-                size="middle"
-                type="text"
+                size="sm"
                 onClick={() =>
                   setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
                 }
