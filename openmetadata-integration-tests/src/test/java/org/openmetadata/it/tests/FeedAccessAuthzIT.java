@@ -180,6 +180,22 @@ class FeedAccessAuthzIT {
   }
 
   @Test
+  void getMentionsByEntityLink_callerDeniedViewOnTarget_forbidden(TestNamespace ns)
+      throws Exception {
+    Table table = createTestTable(ns, "mentions-link");
+    OpenMetadataClient denied = clientDeniedViewOn(ns, "mentions-link", "table");
+    RequestOptions options =
+        RequestOptions.builder().queryParam("entityLink", entityLink(table)).build();
+
+    assertForbidden(
+        () ->
+            denied
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, ACTIVITY_PATH + "/mentions", null, options),
+        "Mentions narrowed to an entity must honour the caller's view permission");
+  }
+
+  @Test
   void listConversationsByEntityLink_callerDeniedViewOnTarget_forbidden(TestNamespace ns)
       throws Exception {
     Table table = createTestTable(ns, "conv-link");

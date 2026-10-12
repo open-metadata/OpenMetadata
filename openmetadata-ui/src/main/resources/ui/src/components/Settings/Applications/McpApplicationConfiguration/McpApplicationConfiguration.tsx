@@ -15,17 +15,26 @@ import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
 import { isEmpty, pick } from 'lodash';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClientErrors } from '../../../../enums/Axios.enum';
 import { MCPConfiguration } from '../../../../generated/configuration/mcpConfiguration';
+import { SettingType } from '../../../../generated/settings/settings';
+import { useSettingsSource } from '../../../../hooks/platform/useSettingsSource';
 import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
+import {
+  applyManagedPathsToUiSchema,
+  findSettingSource,
+  isPathManaged,
+  toJsonPointer,
+} from '../../../../utils/platform/settingsSource.utils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
+import SettingsSourceBanner from '../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 
 export interface McpApplicationConfigurationProps {
@@ -47,6 +56,8 @@ const EDITABLE_MCP_CONFIG_FIELDS: (keyof MCPConfiguration)[] = [
   'maxResponseChars',
 ];
 
+const MCP_SETTING_TYPES = [SettingType.MCPConfiguration];
+
 /**
  * The MCP app entity holds no configuration of its own. Everything the MCP server actually reads
  * lives in the `mcpConfiguration` system setting, so this tab talks to `/system/mcp/config`
@@ -57,7 +68,6 @@ const McpApplicationConfiguration = ({
   jsonSchema,
 }: McpApplicationConfigurationProps) => {
   const { t } = useTranslation();
-  const UiSchema = applicationsClassBase.getJSONUISchema();
   const [activeField, setActiveField] = useState<string>('');
   const [formConfig, setFormConfig] = useState<MCPConfiguration>({});
   const [isFetching, setIsFetching] = useState<boolean>(true);
@@ -65,6 +75,29 @@ const McpApplicationConfiguration = ({
   // Fields outside the form are not rendered but must survive a save, since the PUT replaces the
   // whole setting. Held in a ref because they never affect rendering.
   const storedConfig = useRef<MCPConfiguration>({});
+  const { sources, refetch: refetchSources } =
+    useSettingsSource(MCP_SETTING_TYPES);
+
+  const { managedFields, isEveryFieldManaged } = useMemo(() => {
+    const mcpSource = findSettingSource(sources, SettingType.MCPConfiguration);
+    const fields = EDITABLE_MCP_CONFIG_FIELDS.filter((field) =>
+      isPathManaged(mcpSource, toJsonPointer(field))
+    );
+
+    return {
+      managedFields: fields,
+      isEveryFieldManaged: fields.length === EDITABLE_MCP_CONFIG_FIELDS.length,
+    };
+  }, [sources]);
+
+  const formUiSchema = useMemo(
+    () =>
+      applyManagedPathsToUiSchema(
+        applicationsClassBase.getJSONUISchema(),
+        managedFields.map((field) => toJsonPointer(field))
+      ),
+    [managedFields]
+  );
 
   const applyConfig = useCallback((config: MCPConfiguration) => {
     storedConfig.current = config;
@@ -129,17 +162,28 @@ const McpApplicationConfiguration = ({
   }
 
   const formPanel = (
-    <FormBuilderV1
-      hideCancelButton
-      cancelText={t('label.back')}
-      formData={formConfig}
-      isLoading={isSaving}
-      okText={t('label.save')}
-      schema={jsonSchema}
-      uiSchema={UiSchema}
-      onFocus={handleFieldFocus}
-      onSubmit={handleSubmit}
-    />
+    <>
+      <SettingsSourceBanner
+        className="tw:mb-4"
+        sources={sources}
+        onAdopted={fetchMcpConfig}
+        onRefetch={refetchSources}
+      />
+      <FormBuilderV1
+        hideCancelButton
+        cancelText={t('label.back')}
+        disabled={isEveryFieldManaged}
+        formData={formConfig}
+        hideFooter={isEveryFieldManaged}
+        isLoading={isSaving}
+        okText={t('label.save')}
+        readonly={isEveryFieldManaged}
+        schema={jsonSchema}
+        uiSchema={formUiSchema}
+        onFocus={handleFieldFocus}
+        onSubmit={handleSubmit}
+      />
+    </>
   );
 
   const docPanel = (
