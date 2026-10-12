@@ -41,6 +41,8 @@ import {
   isValidNonBasicProvider,
 } from '../../../../../../utils/SSOUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
+import { useSecuritySettingsSource } from '../../../../../SettingsSso/useSecuritySettingsSource';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
 import SsoConfigureForm from './SsoConfigureForm';
@@ -85,6 +87,14 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [pickedProvider, setPickedProvider] = useState<AuthProvider>();
   const [showHint, setShowHint] = useState(false);
+  const {
+    sources,
+    refetch: refetchSources,
+    managedPaths,
+    isReadOnly,
+    isProviderManaged,
+    isSelfSignupManaged,
+  } = useSecuritySettingsSource();
 
   const hasExistingConfig = Boolean(config && isValidNonBasicProvider(config));
   const savedProvider = hasExistingConfig
@@ -120,6 +130,12 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
   useEffect(() => {
     void fetchConfig();
   }, [fetchConfig]);
+
+  // The deployment values may name a different identity provider than the one being set up.
+  const handleSettingsAdopted = useCallback(() => {
+    void fetchConfig();
+    onNavigate({ type: 'overview' });
+  }, [fetchConfig, onNavigate]);
 
   const handleSelfSignupChange = useCallback(
     async (enabled: boolean) => {
@@ -160,6 +176,9 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
   };
   const headerProvider = getHeaderProvider();
   const showsForm = view.type === 'new' || view.type === 'configure';
+  const canPickProvider = view.type === 'providers' && !isProviderManaged;
+  const canChangeProvider =
+    hasExistingConfig && view.type !== 'new' && !isProviderManaged;
 
   useEffect(() => {
     if (!onHeaderChange) {
@@ -193,34 +212,33 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       </Box>
     );
 
-    const actions =
-      view.type === 'providers' ? (
-        <Button
-          color="primary"
-          data-testid="sso-configure-provider"
-          iconTrailing={ArrowUpRight}
-          isDisabled={!pickedProvider}
-          size="sm"
-          onPress={() =>
-            pickedProvider &&
-            onNavigate({ type: 'new', provider: pickedProvider })
-          }>
-          {t('label.configure')}
-        </Button>
-      ) : (
-        <Box align="center" direction="row" gap={4}>
-          {showsForm && hintToggle}
-          {hasExistingConfig && view.type !== 'new' && (
-            <Button
-              color="secondary"
-              data-testid="change-provider-button"
-              size="sm"
-              onPress={() => onNavigate({ type: 'providers' })}>
-              {t('label.change-provider')}
-            </Button>
-          )}
-        </Box>
-      );
+    const actions = canPickProvider ? (
+      <Button
+        color="primary"
+        data-testid="sso-configure-provider"
+        iconTrailing={ArrowUpRight}
+        isDisabled={!pickedProvider}
+        size="sm"
+        onPress={() =>
+          pickedProvider &&
+          onNavigate({ type: 'new', provider: pickedProvider })
+        }>
+        {t('label.configure')}
+      </Button>
+    ) : (
+      <Box align="center" direction="row" gap={4}>
+        {showsForm && hintToggle}
+        {canChangeProvider && (
+          <Button
+            color="secondary"
+            data-testid="change-provider-button"
+            size="sm"
+            onPress={() => onNavigate({ type: 'providers' })}>
+            {t('label.change-provider')}
+          </Button>
+        )}
+      </Box>
+    );
 
     onHeaderChange({
       breadcrumbs,
@@ -238,7 +256,8 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       actions: isLoading ? undefined : actions,
     });
   }, [
-    hasExistingConfig,
+    canChangeProvider,
+    canPickProvider,
     headerProvider,
     isLoading,
     onHeaderChange,
@@ -247,7 +266,6 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     showHint,
     showsForm,
     t,
-    view.type,
   ]);
 
   const content = (() => {
@@ -256,6 +274,23 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
         <div className="tw:px-8">
           <SettingsSkeleton rows={6} />
         </div>
+      );
+    }
+
+    // A provider the deployment configuration sets cannot be replaced from here, so there is
+    // nothing to choose and no new configuration to start.
+    if (
+      isProviderManaged &&
+      (view.type === 'providers' || view.type === 'new')
+    ) {
+      return (
+        <Typography
+          as="p"
+          className="tw:px-8 tw:text-tertiary"
+          data-testid="sso-provider-set-by-deployment"
+          size="text-sm">
+          {t('message.sso-provider-set-by-deployment')}
+        </Typography>
       );
     }
 
@@ -273,7 +308,9 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     if (view.type === 'new') {
       return (
         <SsoConfigureForm
+          isReadOnly={isReadOnly}
           key={view.provider}
+          managedPaths={managedPaths}
           selectedProvider={view.provider}
           showHint={showHint}
           onChangeProvider={() => onNavigate({ type: 'providers' })}
@@ -305,6 +342,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
             isSelfSignupEnabled={Boolean(
               config?.authenticationConfiguration.enableSelfSignup
             )}
+            isSelfSignupManaged={isSelfSignupManaged}
             onSelfSignupChange={handleSelfSignupChange}
           />
         </Tabs.Panel>
@@ -312,6 +350,8 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
           className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
           id="configure">
           <SsoConfigureForm
+            isReadOnly={isReadOnly}
+            managedPaths={managedPaths}
             securityConfig={config}
             showHint={showHint}
             onChangeProvider={() => onNavigate({ type: 'providers' })}
@@ -326,6 +366,12 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       className="tw:min-h-0 tw:flex-1 tw:overflow-hidden"
       data-testid="sso-panel"
       direction="col">
+      <SettingsSourceBanner
+        className="tw:mx-8 tw:mb-4"
+        sources={sources}
+        onAdopted={handleSettingsAdopted}
+        onRefetch={refetchSources}
+      />
       {content}
     </Box>
   );
