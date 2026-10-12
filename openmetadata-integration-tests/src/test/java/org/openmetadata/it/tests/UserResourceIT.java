@@ -708,10 +708,23 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                     .withName(ns.prefix("doomed"))
                     .withDomainType(CreateDomain.DomainType.AGGREGATE)
                     .withDescription("will be deleted"));
+    Domain subDomain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("doomedchild"))
+                    .withParent(domain.getFullyQualifiedName())
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("deleted with its parent"));
     User user = createEntity(selfLoginUserRequest());
     user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
     patchDefaultDomainAsSelf(user);
     assertNotNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
+    User subDomainUser = createEntity(selfLoginUserRequest());
+    subDomainUser.setDefaultDomain(
+        new EntityReference().withId(subDomain.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(subDomainUser);
 
     SdkClients.adminClient()
         .domains()
@@ -722,6 +735,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertNull(
         Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain(),
         "a deleted domain must not linger as the user's selection");
+    assertNull(
+        Users.get(subDomainUser.getId().toString(), "defaultDomain").getDefaultDomain(),
+        "a sub-domain deleted with its parent must not linger as a selection");
   }
 
   @Test
