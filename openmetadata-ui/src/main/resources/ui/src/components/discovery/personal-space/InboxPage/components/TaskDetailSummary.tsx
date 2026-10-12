@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  AvatarGroup,
+  Box,
+  Button,
+  toOwnerRefs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   Calendar,
   Clock,
@@ -58,37 +64,50 @@ const ROW_ICON: Record<TaskDetailRowIcon, typeof User01> = {
   user: User01,
 };
 
+// Past this many, a row's people collapse into "+N".
+const MAX_VISIBLE_PEOPLE = 3;
+
 /** Renders one row's value; the union keeps the descriptor free of JSX. */
-const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
+const RowValue: React.FC<{ value: TaskDetailRowValue; label: string }> = ({
+  value,
+  label,
+}) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
 
   switch (value.kind) {
+    // A date reads on one line, however long its neighbour's value.
     case 'date':
       return (
-        <Typography size="text-sm">
+        <Typography className="tw:whitespace-nowrap" size="text-sm">
           {formatInboxDate(value.timestamp)}
         </Typography>
       );
 
+    // Several people stack as owners do everywhere else: a hover card per
+    // avatar and a "+N" listing the rest under the row's own label.
     case 'users':
-      return (
-        <Box align="center" className="tw:flex-wrap" gap={2}>
-          {value.refs.map((ref) => (
-            <Box align="center" gap={1} key={ref.id}>
-              <ProfilePicture
-                matchRingToFill
-                displayName={getEntityName(ref)}
-                name={ref.name ?? ''}
-                width="20"
-              />
-              <Typography size="text-sm">
-                {getEntityName(ref)}
-                {/* The viewer is named as themselves, e.g. "harsh.soni (You)". */}
-                {ref.id === currentUser?.id && ` (${t('label.you')})`}
-              </Typography>
-            </Box>
-          ))}
+      return value.refs.length > 1 ? (
+        <AvatarGroup
+          maxCount={MAX_VISIBLE_PEOPLE}
+          overflowTeamsLabel={t('label.team-plural')}
+          overflowTitleLabel={label}
+          overflowUsersLabel={t('label.user-plural')}
+          owners={toOwnerRefs(value.refs)}
+        />
+      ) : (
+        <Box align="center" gap={1}>
+          <ProfilePicture
+            matchRingToFill
+            displayName={getEntityName(value.refs[0])}
+            name={value.refs[0]?.name ?? ''}
+            width="20"
+          />
+          <Typography size="text-sm">
+            {getEntityName(value.refs[0])}
+            {/* The viewer is named as themselves, e.g. "harsh.soni (You)". */}
+            {value.refs[0]?.id === currentUser?.id && ` (${t('label.you')})`}
+          </Typography>
         </Box>
       );
 
@@ -134,9 +153,9 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
           const Icon = ROW_ICON[row.icon];
 
           return (
-            <Box align="start" gap={2} key={row.key}>
+            <Box align="center" gap={2} key={row.key}>
               <Icon
-                className="tw:mt-0.5 tw:shrink-0 tw:text-fg-quaternary"
+                className="tw:shrink-0 tw:text-fg-quaternary"
                 height={16}
                 width={16}
               />
@@ -146,7 +165,7 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
                 {row.label}
               </Typography>
               <div className="tw:min-w-0 tw:flex-1 tw:break-words">
-                <RowValue value={row.value} />
+                <RowValue label={row.label} value={row.value} />
               </div>
             </Box>
           );
