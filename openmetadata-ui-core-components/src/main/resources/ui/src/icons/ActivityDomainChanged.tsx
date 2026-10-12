@@ -29,13 +29,19 @@ export const ActivityDomainChanged: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 12 12"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g stroke="currentColor">
-      <path d="M10.05 6.552a4.449 4.449 0 1 1-4.449-4.448" />
-      <path d="M7.38 6.552c0 2.457-.797 4.449-1.78 4.449S3.82 9.009 3.82 6.552s.797-4.448 1.78-4.448M1.152 6.55h8.898M9.015 1.785a1.308 1.308 0 1 1 0 2.617m1.137-1.958.695-.397m-.695 1.696.695.397M9.015 1.785a1.308 1.308 0 1 0 0 2.617m0 0v.785M7.88 2.444l-.695-.397m.695 1.696-.695.397m1.831-2.355V1" />
-    </g>
+    <path
+      d="M16.918 9.28a7.28 7.28 0 1 0-7.28 7.279"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M12.546 9.28c0-4.02-1.303-7.28-2.912-7.28S6.723 5.26 6.723 9.28s1.303 7.279 2.911 7.279M2.36 9.281h14.558m-2.272 7.435a2.14 2.14 0 1 0 0-4.282m1.859 3.203 1.138.65m-1.138-2.774 1.138-.65m-2.997 3.852a2.14 2.14 0 1 1 0-4.281m0 0v-1.285m-1.86 4.488-1.138.65m1.139-2.774-1.139-.65m2.998 3.852V18"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 ActivityDomainChanged.displayName = 'ActivityDomainChanged';

@@ -29,12 +29,13 @@ export const ActivityAssetCreated: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 12 12"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M9.5 6.5V4c0-1.414 0-2.121-.44-2.56C8.622 1 7.915 1 6.5 1h-2c-1.414 0-2.121 0-2.56.44C1.5 1.878 1.5 2.585 1.5 4v4c0 1.414 0 2.121.44 2.56.439.44 1.146.44 2.56.44H7M3.5 5.5h2m-2-2h4m3 6H9m0 0H7.5m1.5 0V11m0-1.5V8"
+      d="M15.6 10.8v-4c0-2.263 0-3.394-.702-4.097C14.195 2 13.063 2 10.8 2H7.6c-2.263 0-3.394 0-4.097.703S2.8 4.537 2.8 6.8v6.4c0 2.262 0 3.393.703 4.096s1.834.703 4.097.703h4M6 9.2h3.2M6 6h6.4m4.802 9.601h-2.4m0 0h-2.4m2.4 0v2.4m0-2.4v-2.4"
       stroke="currentColor"
+      strokeWidth={1.3}
     />
   </svg>
 );

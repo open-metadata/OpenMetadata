@@ -29,13 +29,19 @@ export const ActivityAssetRestored: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 12 12"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g stroke="currentColor">
-      <path d="M1.277 7.648A5.002 5.002 0 0 0 11 6a5 5 0 0 0-5-5C3.944 1 2.055 2.486 1.383 4.056" />
-      <path d="M6 3.223V6l1.667 1.112M3.499 4.191s-2.046.31-2.357 0c-.31-.31 0-2.357 0-2.357" />
-    </g>
+    <path
+      d="M2.441 12.636A8 8 0 0 0 17.995 10a8 8 0 0 0-7.999-8c-3.289 0-6.31 2.378-7.385 4.889"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
+    <path
+      d="M10 5.557V10l2.666 1.778m-6.67-4.671s-3.274.497-3.771 0 0-3.771 0-3.771"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 ActivityAssetRestored.displayName = 'ActivityAssetRestored';
