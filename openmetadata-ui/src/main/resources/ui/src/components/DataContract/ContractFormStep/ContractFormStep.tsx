@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   ChevronLeft,
   ChevronRight,
 } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -49,26 +53,24 @@ export const ContractFormStep = ({
 
   return (
     <>
-      <Box
-        className={classNames(
-          'tw:rounded-xl tw:bg-secondary tw:p-5',
-          className
-        )}
-        direction="col"
-        gap={5}>
-        <Box align="center" gap={4} justify="between">
-          <Box className="tw:gap-0.5" direction="col">
-            <Typography className="tw:block" size="text-lg" weight="semibold">
-              {title}
-            </Typography>
+      <Card className={className} color="secondary" variant="ghost">
+        <Card.Header
+          className="tw:items-center"
+          extra={extra}
+          hasDivider={false}
+          subtitle={
             <Typography as="p" className="tw:text-tertiary" size="text-sm">
               {description}
             </Typography>
-          </Box>
-          {extra}
-        </Box>
-        {children}
-      </Box>
+          }
+          title={
+            <Typography className="tw:block" size="text-lg" weight="semibold">
+              {title}
+            </Typography>
+          }
+        />
+        <Card.Content>{children}</Card.Content>
+      </Card>
       {(onPrev || showNext) && (
         <Box className="tw:mt-4" justify={onPrev ? 'between' : 'end'}>
           {onPrev && (
