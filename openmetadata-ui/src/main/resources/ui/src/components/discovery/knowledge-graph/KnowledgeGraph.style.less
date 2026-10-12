@@ -55,11 +55,9 @@
     min-height: 0;
     min-width: 0;
     position: relative;
-    // The parent `.kg-content` row uses `minmax(min-content, 1fr)`, which
-    // treats its content's intrinsic height as the floor. The details pane's
-    // table is tall and would push that floor past the viewport; capping the
-    // stage to its grid cell with overflow:hidden stops the ReflexContainer
-    // inside from inflating up through the chain.
+    // Belt-and-braces with `.kg-content`'s `minmax(0, 1fr)` stage row: pin
+    // the stage to its grid cell so the ReflexContainer's details pane can
+    // never size the stage to its intrinsic table height.
     height: 100%;
     overflow: hidden;
   }
@@ -72,14 +70,6 @@
     height: 100%;
   }
 
-  // Drawer-closed shape: canvas owns the whole stage, no ReflexContainer in
-  // play. We re-create the display/flex contract the ReflexContainer gave us
-  // so `.knowledge-graph-body` can stretch to fill without extra wrappers.
-  .kg-stage-single {
-    display: flex;
-    flex-direction: column;
-  }
-
   // react-reflex's base styles set `overflow: auto` on every `.reflex-element`;
   // the canvas pane embeds a G6-managed `<canvas>` that paints larger than the
   // viewport, so `overflow: auto` would let that canvas prop the pane open.
@@ -89,7 +79,6 @@
     overflow: hidden;
   }
 
-  .kg-stage-single > .knowledge-graph-body,
   .kg-stage-canvas-pane > .knowledge-graph-body {
     height: 100%;
   }
@@ -338,9 +327,14 @@
   }
 
   @media (max-width: 900px) {
+    // At this width the inspector drops below the stage into row 3. The
+    // stage's own `overflow: hidden` would clip the inspector + its action
+    // footer when the viewport is short; let the stage scroll instead so
+    // the inspector always reaches its max-height.
     .kg-stage:has(.kg-inspector) {
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: minmax(calc(var(--om-space-40) * 4), 1fr) auto auto;
+      overflow: auto;
     }
 
     .kg-inspector {

@@ -391,15 +391,9 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     );
   }
 
-  // Canvas content extracted so we can render it in two shapes without
-  // duplicating markup: standalone (drawer closed) and inside a ReflexElement
-  // (drawer open, splitter active). react-reflex's ReflexContainer renders
-  // every child as an empty placeholder on its first commit (before its
-  // `componentDidMount` populates flexData), which means our canvas ref would
-  // not be attached when `useKnowledgeGraphCanvas`'s init effect runs — the
-  // effect would bail with a null container and never retry because its deps
-  // don't change. Keeping the canvas unwrapped by default dodges that; we only
-  // pay the one-time G6 re-init when the drawer actually opens.
+  // Lifted out of the JSX so stageChildren below can slot it into the
+  // first ReflexElement without duplicating the bands + canvas + loader +
+  // empty + view-controls block.
   const canvasContent = (
     <div className="knowledge-graph-body">
       <KnowledgeGraphBands
@@ -463,9 +457,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       />
     ) : null;
   // Precomputed children for ReflexContainer: canvas always, splitter +
-  // details pane only when the drawer is open. React.Children flattens the
-  // array for react-reflex's prop-injection pass, and the canvas slot stays
-  // stable so G6 isn't re-initialised every time the drawer toggles.
+  // details pane only when the drawer is open. react-reflex iterates its
+  // direct children with React.Children.map (which flattens an array) to
+  // clone each with `events`/`index`; the splitter and details element
+  // have to be direct children for that injection to reach them. If G6
+  // ever has to re-attach because the ReflexElement remounts the canvas
+  // container, `useKnowledgeGraphCanvas`'s callback ref drives a fresh
+  // init + draw via its `containerNode` dep.
   const stageChildren: ReactNode[] = [
     <ReflexElement
       className="kg-stage-canvas-pane"

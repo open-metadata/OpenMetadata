@@ -465,10 +465,12 @@ export const useKnowledgeGraphCanvas = (
       const firstDraw = !drawn.current;
       if (firstDraw) {
         await graph.render();
-        containerNodeRef.current?.querySelectorAll('canvas').forEach((canvas) => {
-          canvas.tabIndex = -1;
-          canvas.setAttribute('aria-hidden', 'true');
-        });
+        containerNodeRef.current
+          ?.querySelectorAll('canvas')
+          .forEach((canvas) => {
+            canvas.tabIndex = -1;
+            canvas.setAttribute('aria-hidden', 'true');
+          });
       } else {
         await graph.draw();
       }
@@ -495,7 +497,12 @@ export const useKnowledgeGraphCanvas = (
         focusId,
         latest.current.onSelectionChange
       );
-      await focusPendingNode(graph, nodes, pendingFocus, containerNodeRef.current);
+      await focusPendingNode(
+        graph,
+        nodes,
+        pendingFocus,
+        containerNodeRef.current
+      );
       setError(null);
       setStatus('ready');
       updateRings();
@@ -512,7 +519,15 @@ export const useKnowledgeGraphCanvas = (
     return () => {
       cancelled = true;
     };
+    // `containerNode` is a proxy for graph identity: the init effect above
+    // destroys and re-creates the G6 graph whenever the DOM node changes
+    // (ReflexContainer's placeholder first commit, or a parent remounting
+    // the canvas into a different subtree). Without it in the deps list,
+    // `drawn.current` resets to false but `data`/`unfiltered` haven't
+    // changed, so this draw effect never re-fires and the canvas stays
+    // blank until the next data change.
   }, [
+    containerNode,
     data,
     unfiltered,
     layout,
