@@ -479,7 +479,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     stageChildren.push(
       <ReflexSplitter
         aria-label={t('label.kg-resize-details')}
-        className="kg-stage-splitter"
+        className={classNames(
+          'kg-stage-splitter',
+          'tw:relative tw:h-px tw:cursor-row-resize tw:border-0',
+          'tw:bg-border-secondary tw:hover:bg-border-brand',
+          'tw:[&.active]:bg-border-brand',
+          "tw:before:absolute tw:before:inset-x-0 tw:before:-inset-y-1 tw:before:content-['']"
+        )}
         key="splitter"
         propagate={false}
       />,
