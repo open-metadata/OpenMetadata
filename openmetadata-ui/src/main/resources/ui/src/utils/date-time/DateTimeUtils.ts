@@ -61,11 +61,11 @@ export const DATE_TIME_WITH_OFFSET_SHORT = "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"; 
  * NOTE: Per-user override was removed from the UI. All users now see the
  * tenant-wide default configured by admins in Settings > Preferences.
  */
-export const getActiveTimeFormat = (): '12h' | '24h' => {
-  const { timeFormat: globalTimeFormat } = useApplicationStore.getState();
-
-  return globalTimeFormat ?? '12h';
-};
+export const getActiveTimeFormat = (): '12h' | '24h' =>
+  // Optional call: these formatters are pure helpers reached from every
+  // component that renders a timestamp, so they must never throw when the
+  // store is unavailable (e.g. a test that mocks the hook without `getState`).
+  useApplicationStore.getState?.().timeFormat ?? '12h';
 
 /**
  * Reactive hook that returns the active time format, re-evaluating whenever
