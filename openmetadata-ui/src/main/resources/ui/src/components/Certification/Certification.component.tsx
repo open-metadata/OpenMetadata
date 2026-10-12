@@ -30,6 +30,7 @@ import {
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
+import { useDebouncedValue } from '../../hooks/common/useDebouncedValue';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getTermQuery } from '../../utils/SearchPureUtils';
@@ -67,15 +68,6 @@ const renderCertificationIcon = (certification: Tag) => {
     fallback
   );
 };
-
-const CERTIFICATION_ORDER: Record<string, number> = {
-  Gold: 0,
-  Silver: 1,
-  Bronze: 2,
-};
-
-// ADR:2026-10-12-certification-picker-searches-the-tag-index-a-page-at-a-time
-const SEARCH_DEBOUNCE_MS = 300;
 
 const fetchCertificationPage = async (search: string, pageNumber: number) => {
   const res = await searchQuery({
@@ -118,6 +110,7 @@ const Certification = ({
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [searchText, setSearchText] = useState('');
+  const debouncedSearchText = useDebouncedValue(searchText, 300);
   // Keeps the selected certification's label once a later search no longer lists it.
   const [selectedCertification, setSelectedCertification] = useState<Tag>();
   const isOpen = popoverProps?.open ?? isPopupOpen;
@@ -150,34 +143,29 @@ const Certification = ({
     setIsLoading(true);
     setIsLoadingMore(false);
     isFetchingMore.current = false;
-    const timer = setTimeout(
-      async () => {
-        try {
-          const res = await fetchCertificationPage(searchText, 1);
-          if (generation === searchGeneration.current) {
-            setCertifications(res.tags);
-            setTotal(res.total);
-            setPage(1);
-            hasLoaded.current = true;
-          }
-        } catch (err) {
-          if (generation === searchGeneration.current) {
-            // Rows from the previous search must not read as this one's results.
-            setCertifications([]);
-            setTotal(0);
-            showFetchError(err);
-          }
-        } finally {
-          if (generation === searchGeneration.current) {
-            setIsLoading(false);
-          }
+    fetchCertificationPage(debouncedSearchText, 1)
+      .then((res) => {
+        if (generation === searchGeneration.current) {
+          setCertifications(res.tags);
+          setTotal(res.total);
+          setPage(1);
+          hasLoaded.current = true;
         }
-      },
-      searchText ? SEARCH_DEBOUNCE_MS : 0
-    );
-
-    return () => clearTimeout(timer);
-  }, [isOpen, isFormField, searchText, showFetchError]);
+      })
+      .catch((err) => {
+        if (generation === searchGeneration.current) {
+          // Rows from the previous search must not read as this one's results.
+          setCertifications([]);
+          setTotal(0);
+          showFetchError(err);
+        }
+      })
+      .finally(() => {
+        if (generation === searchGeneration.current) {
+          setIsLoading(false);
+        }
+      });
+  }, [isOpen, isFormField, debouncedSearchText, showFetchError]);
 
   useEffect(() => {
     const loaded = certifications.find(
@@ -196,7 +184,7 @@ const Certification = ({
     isFetchingMore.current = true;
     setIsLoadingMore(true);
     try {
-      const res = await fetchCertificationPage(searchText, page + 1);
+      const res = await fetchCertificationPage(debouncedSearchText, page + 1);
       if (generation !== searchGeneration.current) {
         return;
       }
@@ -215,22 +203,21 @@ const Certification = ({
     }
   };
 
-  // Gold, Silver, Bronze first; the rest keep the server's name order.
-  const options = useMemo(
-    () =>
-      [...certifications]
-        .sort(
-          (a, b) =>
-            (CERTIFICATION_ORDER[getEntityName(a)] ?? 3) -
-            (CERTIFICATION_ORDER[getEntityName(b)] ?? 3)
-        )
-        .map((certification) => ({
-          value: certification.fullyQualifiedName ?? '',
-          label: getEntityName(certification),
-          icon: renderCertificationIcon(certification),
-        })),
-    [certifications]
-  );
+  const options = useMemo(() => {
+    // Sort certifications with Gold, Silver, Bronze first
+    const order: Record<string, number> = { Gold: 0, Silver: 1, Bronze: 2 };
+
+    return [...certifications]
+      .sort(
+        (a, b) =>
+          (order[getEntityName(a)] ?? 3) - (order[getEntityName(b)] ?? 3)
+      )
+      .map((certification) => ({
+        value: certification.fullyQualifiedName ?? '',
+        label: getEntityName(certification),
+        icon: renderCertificationIcon(certification),
+      }));
+  }, [certifications]);
 
   const handleOpenChange = (open: boolean) => {
     setIsPopupOpen(open);
@@ -245,9 +232,7 @@ const Certification = ({
   const handleChange = async ([value]: string[]) => {
     isCommitRef.current = true;
     await onCertificationUpdate?.(
-      certifications.find(
-        (certification) => certification.fullyQualifiedName === value
-      )
+      certifications.find((cert) => cert.fullyQualifiedName === value)
     );
   };
 

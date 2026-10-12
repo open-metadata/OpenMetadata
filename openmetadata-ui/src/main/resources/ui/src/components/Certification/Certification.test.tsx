@@ -308,9 +308,15 @@ describe('Certification', () => {
       target: { value: 'sil' },
     });
     await waitFor(() =>
-      expect(screen.queryByTestId('Certification.Gold')).not.toBeInTheDocument()
+      expect(mockSearchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: '*sil*' })
+      )
     );
-
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('Certification.Bronze')
+      ).not.toBeInTheDocument()
+    );
     fireEvent.keyDown(document.body, { key: 'Escape' });
 
     expect(
