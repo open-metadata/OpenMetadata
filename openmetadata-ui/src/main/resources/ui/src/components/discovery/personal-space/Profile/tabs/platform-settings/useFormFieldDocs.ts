@@ -19,12 +19,15 @@ import { loadFormFieldDocs } from '../../../../../../utils/DataQuality/FormField
  * settings doc panel (`public/locales/en-US/OpenMetadata/<formName>.md`), so
  * both experiences show identical copy.
  */
-export const useFormFieldDocs = (formName: string): Record<string, string> => {
+export const useFormFieldDocs = (
+  formName: string,
+  folder?: string
+): Record<string, string> => {
   const [docs, setDocs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
-    void loadFormFieldDocs(formName).then((loaded) => {
+    void loadFormFieldDocs(formName, folder).then((loaded) => {
       if (!cancelled) {
         setDocs(loaded);
       }
@@ -33,7 +36,7 @@ export const useFormFieldDocs = (formName: string): Record<string, string> => {
     return () => {
       cancelled = true;
     };
-  }, [formName]);
+  }, [formName, folder]);
 
   return docs;
 };

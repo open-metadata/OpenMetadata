@@ -10,14 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, renderHook, screen } from '@testing-library/react';
+import { act, renderHook, screen } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
+import { SettingType } from '../../../generated/settings/settings';
 import {
   LabelType,
   State,
   TagSource,
   type TagLabel,
 } from '../../../generated/type/tagLabel';
+import { renderWithQueryClient as render } from '../../../test/unit/test-utils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import {
   useTagsUpdateHandler,
@@ -27,6 +30,13 @@ import {
 import { GenericEntity } from './CommonWidgets.types';
 
 jest.mock('../../Customization/GenericProvider/GenericContext');
+jest.mock('../../../utils/ToastUtils', () => ({ showErrorToast: jest.fn() }));
+
+const mockGetGlossarySettings = jest.fn();
+
+jest.mock('../../../rest/settingConfigAPI', () => ({
+  getGlossarySettings: () => mockGetGlossarySettings(),
+}));
 
 jest.mock('../../../utils/EntityVersionUtilsPure', () => ({
   getEntityVersionByField: jest.fn(
@@ -101,6 +111,7 @@ const TagsHarness = () => {
 describe('CommonWidgets hooks', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetGlossarySettings.mockResolvedValue({ enableTagPropagation: true });
   });
 
   describe('useUpdatedEntityData', () => {
@@ -141,6 +152,77 @@ describe('CommonWidgets hooks', () => {
   });
 
   describe('useTagsUpdateHandler', () => {
+    it('allows confirmation after a settings read failure', async () => {
+      mockContext(EntityType.GLOSSARY_TERM);
+      const error = new Error('Settings unavailable');
+      mockGetGlossarySettings.mockRejectedValueOnce(error);
+      render(<TagsHarness />);
+
+      await act(async () => {
+        screen.getByText('change tags').click();
+      });
+
+      expect(showErrorToast).toHaveBeenCalledWith(error);
+      expect(mockOnUpdate).not.toHaveBeenCalled();
+
+      await act(async () => {
+        (await screen.findByText('confirm')).click();
+      });
+
+      expect(mockOnUpdate).toHaveBeenCalledWith({
+        ...entity,
+        tags: [tier, { ...pii, state: State.Confirmed }],
+      });
+    });
+
+    it('reuses the preference across saves and honors settings cache updates', async () => {
+      mockContext(EntityType.GLOSSARY_TERM);
+      mockGetGlossarySettings.mockResolvedValue({
+        enableTagPropagation: false,
+      });
+      const { queryClient } = render(<TagsHarness />);
+
+      for (let save = 0; save < 2; save++) {
+        await act(async () => {
+          screen.getByText('change tags').click();
+        });
+      }
+
+      expect(mockGetGlossarySettings).toHaveBeenCalledTimes(1);
+      expect(mockOnUpdate).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        queryClient.setQueryData(['settings', SettingType.GlossarySettings], {
+          enableTagPropagation: true,
+        });
+        screen.getByText('change tags').click();
+      });
+
+      expect(await screen.findByText('confirm')).toBeInTheDocument();
+      expect(mockOnUpdate).toHaveBeenCalledTimes(2);
+      expect(mockGetGlossarySettings).toHaveBeenCalledTimes(1);
+    });
+
+    it('saves glossary tags without a propagation warning when propagation is disabled', async () => {
+      mockContext(EntityType.GLOSSARY_TERM);
+      mockGetGlossarySettings.mockResolvedValue({
+        enableTagPropagation: false,
+      });
+      render(<TagsHarness />);
+
+      await act(async () => {
+        screen.getByText('change tags').click();
+      });
+
+      expect(mockOnUpdate).toHaveBeenCalledWith({
+        ...entity,
+        tags: [tier, { ...pii, state: State.Confirmed }],
+      });
+      expect(
+        screen.queryByTestId('glossary-confirmation-modal')
+      ).not.toBeInTheDocument();
+    });
+
     it('saves the selected tags immediately and keeps the tier for non-glossary entities', async () => {
       mockContext(EntityType.TABLE);
       render(<TagsHarness />);
@@ -156,6 +238,7 @@ describe('CommonWidgets hooks', () => {
       expect(
         screen.queryByTestId('glossary-confirmation-modal')
       ).not.toBeInTheDocument();
+      expect(mockGetGlossarySettings).not.toHaveBeenCalled();
     });
 
     it('asks for confirmation before saving tags on a glossary term', async () => {

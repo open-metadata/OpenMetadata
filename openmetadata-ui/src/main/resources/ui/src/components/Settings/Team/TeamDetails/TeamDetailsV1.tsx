@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
+  Button as CoreButton,
   Grid,
   Tabs,
   ToggleBase,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Avatar, Button, Modal, Tooltip } from 'antd';
+import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Avatar, Button, Modal } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -741,16 +742,16 @@ const TeamDetailsV1 = ({
             }}
           />
         </Typography>
-        <Tooltip placement="top" title={addTeamButtonTitle}>
-          <Button
-            ghost
+        <Tooltip arrow placement="top" title={addTeamButtonTitle}>
+          <CoreButton
+            color="secondary"
             data-testid="add-placeholder-button"
-            disabled={!entityPermissions.Create || isTeamDeleted}
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={handleAddTeamButtonClick}>
+            iconLeading={Plus}
+            isDisabled={!entityPermissions.Create || isTeamDeleted}
+            size="sm"
+            onPress={handleAddTeamButtonClick}>
             {t('label.add')}
-          </Button>
+          </CoreButton>
         </Tooltip>
       </ErrorPlaceHolder>
     ) : (
@@ -851,29 +852,27 @@ const TeamDetailsV1 = ({
           type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
           button: (
             <Tooltip
-              placement="bottomRight"
+              arrow
+              placement="bottom right"
               title={
                 isTeamDeleted
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.role') })
               }>
-              <Button
-                ghost
-                className={classNames({
-                  'p-x-lg': canEditAll,
-                })}
+              <CoreButton
+                color="secondary"
                 data-testid="add-placeholder-button"
-                disabled={isTeamDeleted}
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={() =>
+                iconLeading={Plus}
+                isDisabled={isTeamDeleted}
+                size="sm"
+                onPress={() =>
                   setAddAttribute({
                     type: EntityType.ROLE,
                     selectedData: currentTeam.defaultRoles ?? [],
                   })
                 }>
                 {t('label.add')}
-              </Button>
+              </CoreButton>
             </Tooltip>
           ),
         })
@@ -925,29 +924,27 @@ const TeamDetailsV1 = ({
           type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
           button: (
             <Tooltip
-              placement="bottomRight"
+              arrow
+              placement="bottom right"
               title={
                 isTeamDeleted
                   ? t('message.this-action-is-not-allowed-for-deleted-entities')
                   : t('label.add-entity', { entity: t('label.policy') })
               }>
-              <Button
-                ghost
-                className={classNames({
-                  'p-x-lg': canEditAll,
-                })}
+              <CoreButton
+                color="secondary"
                 data-testid="add-placeholder-button"
-                disabled={isTeamDeleted}
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={() =>
+                iconLeading={Plus}
+                isDisabled={isTeamDeleted}
+                size="sm"
+                onPress={() =>
                   setAddAttribute({
                     type: EntityType.POLICY,
                     selectedData: currentTeam.policies ?? [],
                   })
                 }>
                 {t('label.add')}
-              </Button>
+              </CoreButton>
             </Tooltip>
           ),
         })
@@ -1282,7 +1279,9 @@ const TeamDetailsV1 = ({
                 count={tab.count}
                 id={tab.key}
                 isActive={currentTab === tab.key}
-                name={tab.label}
+                // Contributions may carry an i18n key or a literal; `t` returns
+                // the input unchanged when it isn't a known key.
+                name={t(tab.label)}
               />
             ) : (
               tab.label
@@ -1291,7 +1290,7 @@ const TeamDetailsV1 = ({
           children: <TabComponent {...extensionContext} />,
         };
       });
-  }, [extensionRegistry, currentTeam.id, currentTab]);
+  }, [extensionRegistry, currentTeam.id, currentTab, t]);
 
   const allTabs = useMemo(() => [...tabs, ...pluginTabs], [tabs, pluginTabs]);
 

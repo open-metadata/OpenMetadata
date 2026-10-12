@@ -57,6 +57,7 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 5. /test-enforcement   — Verify Jest coverage + Playwright E2E if user-facing
 6. /verification       — Show lint + test output
 7. /code-review        — Run frontend-reviewer agent
+8. /ui-pr-recording    — When creating a UI feature/task PR: run Docker, record the feature, upload
 ```
 
 **Key rules:**
@@ -107,6 +108,7 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 | `/connector-review` | Reviewing connector PRs | Multi-agent review against golden standards |
 | `/scaffold-connector` | Building a new connector | Generates JSON Schema, Python boilerplate, AI context |
 | `/test-locally` | Testing in full environment | Builds and deploys local Docker stack |
+| `/ui-pr-recording` | Creating a PR for a UI feature or feature task | Runs the PR build in Docker with sample data and embeds a verified GitHub-hosted recording in the PR description |
 
 ### Workflow Routing
 

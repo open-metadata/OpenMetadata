@@ -220,6 +220,33 @@ class GlossaryRdfImporterTest {
   }
 
   @Test
+  void ignoresVocabularyDeclarationsTheExportEmits() {
+    Model model = ModelFactory.createDefaultModel();
+    model.read(
+        new StringReader(
+            """
+            @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+            @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+            @prefix om:   <https://open-metadata.org/ontology/> .
+            @prefix hcp:  <http://example.com/ontology/hcp#> .
+
+            skos:Concept a owl:Class .
+            om:GlossaryTerm a owl:Class .
+            om:fullyQualifiedName a owl:DatatypeProperty .
+            hcp:Drug a owl:Class, skos:Concept, om:GlossaryTerm ;
+                om:fullyQualifiedName "HCP.Drug" .
+            """),
+        null,
+        "TURTLE");
+    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+    List<TermIntent> intents = importer.buildTermIntents(model);
+
+    assertEquals(List.of(HCP + "Drug"), intents.stream().map(intent -> intent.iri).toList());
+    assertTrue(importer.buildDatatypeIntents(model).isEmpty());
+  }
+
+  @Test
   void rejectsOversizedPayload() {
     String huge = "x".repeat(10 * 1024 * 1024 + 1);
     GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);

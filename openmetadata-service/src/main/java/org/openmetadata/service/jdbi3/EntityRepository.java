@@ -883,6 +883,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     store(entity, update, expectedVersion);
   }
 
+  /** Repositories with consolidated versions may also guard the last modification timestamp. */
+  protected void storeEntityWithVersion(
+      T entity, boolean update, Double expectedVersion, Long expectedUpdatedAt) {
+    storeEntityWithVersion(entity, update, expectedVersion);
+  }
+
   protected void storeEntities(List<T> entities) {
     // Default: store entities directly. Override if fields need nullification before storage.
     storeMany(entities);
@@ -1441,6 +1447,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected T restorePatchSecrets(T original, T updated) {
     return updated;
   }
+
+  /**
+   * Rejects {@code updated}, the result of applying {@code patch} to {@code original}, when the
+   * patch breaks a rule that depends on the patch operations themselves. Runs on every PATCH before
+   * the entity is prepared; does nothing unless a repository overrides it.
+   */
+  protected void validatePatch(T original, T updated, JsonPatch patch) {}
 
   /**
    * This function updates the Elasticsearch indexes wherever the specific entity is present.
@@ -3852,6 +3865,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     deferOrInvalidateRedisL2(entityType, id, fqn);
   }
 
+  /**
+   * Call after a direct {@code tag_usage} write commits. Bulk tag and glossary operations bypass
+   * {@code EntityUpdater}, so they must evict the asset before reindexing; column writes pass the
+   * parent table reference.
+   */
+  protected static void invalidateCacheAfterTagMutation(EntityReference entityReference) {
+    String type = entityReference.getType();
+    UUID id = entityReference.getId();
+    String fqn = entityReference.getFullyQualifiedName();
+    RequestEntityCache.invalidate(type, id, fqn);
+    invalidateCacheForEntity(type, id, fqn);
+  }
+
   private static void recordCacheInvalidation(
       Map<CacheInvalidationKey, CacheInvalidationKey> deferred,
       String entityType,
@@ -4147,6 +4173,34 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public final PutResponse<T> createOrUpdate(
       UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
+    return createOrUpdate(uriInfo, updated, updatedBy, impersonatedBy, null);
+  }
+
+  /**
+   * Create or update an entity, scoping the update diff to {@code patchedFields} so the
+   * relationship-backed collections the caller did not load are neither compared nor rewritten.
+   *
+   * <p>This is the programmatic equivalent of a field-scoped PATCH: it still routes through the PUT
+   * update pipeline (so session-change consolidation, which only fires for {@link
+   * Operation#PATCH}, never replays a whole-entity diff) but sets {@link
+   * EntityUpdater#setPatchedFields(Set) patchedFields} so that {@link
+   * EntityUpdater#shouldCompare(String)} returns {@code false} for every untouched field. A caller
+   * that loads a partial entity (only the field being edited), mutates it, and stores it back must
+   * use this overload with the edited field name — routing such a partial entity through {@link
+   * #createOrUpdate(UriInfo, Object, String)} runs the whole-entity PUT diff with {@code
+   * patchedFields == null}, which compares nulled-out relationship collections against the stored
+   * values and unconditionally deletes them (e.g. glossary-term attribute edits wiping
+   * reviewers/relatedTerms/realizedIn).
+   *
+   * @param patchedFields field names to compare and persist; {@code null} diffs every field
+   *     (whole-entity PUT semantics, identical to {@link #createOrUpdate(UriInfo, Object, String)})
+   */
+  public final PutResponse<T> createOrUpdate(
+      UriInfo uriInfo,
+      T updated,
+      String updatedBy,
+      String impersonatedBy,
+      Set<String> patchedFields) {
     // Check if parent entity is being deleted
     if (lockManager != null) {
       try {
@@ -4171,7 +4225,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return new PutResponse<>(Status.CREATED, created, ENTITY_CREATED);
     }
     try (var ignored = phase("upsertUpdate")) {
-      return update(uriInfo, original, updated, updatedBy, impersonatedBy);
+      return update(uriInfo, original, updated, updatedBy, impersonatedBy, patchedFields);
     }
   }
 
@@ -4483,12 +4537,27 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public final PutResponse<T> update(
       UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
-    return updateInternal(uriInfo, original, updated, updatedBy, impersonatedBy, false);
+    return update(uriInfo, original, updated, updatedBy, impersonatedBy, null);
+  }
+
+  /**
+   * Update an existing entity, scoping the update diff to {@code patchedFields}. See {@link
+   * #createOrUpdate(UriInfo, Object, String, String, Set)} for the semantics and rationale.
+   */
+  public final PutResponse<T> update(
+      UriInfo uriInfo,
+      T original,
+      T updated,
+      String updatedBy,
+      String impersonatedBy,
+      Set<String> patchedFields) {
+    return updateInternal(
+        uriInfo, original, updated, updatedBy, impersonatedBy, false, patchedFields);
   }
 
   public final PutResponse<T> updateIfCurrent(
       UriInfo uriInfo, T original, T updated, String updatedBy) {
-    return updateInternal(uriInfo, original, updated, updatedBy, null, true);
+    return updateInternal(uriInfo, original, updated, updatedBy, null, true, null);
   }
 
   private PutResponse<T> updateInternal(
@@ -4498,6 +4567,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       String updatedBy,
       String impersonatedBy,
       boolean requireCurrentVersion) {
+    return updateInternal(
+        uriInfo, original, updated, updatedBy, impersonatedBy, requireCurrentVersion, null);
+  }
+
+  private PutResponse<T> updateInternal(
+      UriInfo uriInfo,
+      T original,
+      T updated,
+      String updatedBy,
+      String impersonatedBy,
+      boolean requireCurrentVersion,
+      Set<String> patchedFields) {
     // Get all the fields in the original entity that can be updated during PUT operation
     try (var ignored = phase("putHydrateOriginal")) {
       setFieldsInternal(original, putFields);
@@ -4513,11 +4594,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
-    // Update the attributes and relationships of an entity
+    // Update the attributes and relationships of an entity. When patchedFields is non-null, only
+    // those fields are compared and persisted (EntityUpdater.shouldCompare returns false for the
+    // rest), so a partial-entity load-mutate-store can edit a single field without wiping the
+    // relationship-backed collections the loader never populated.
     EntityUpdater entityUpdater =
         requireCurrentVersion
             ? getUpdater(original, updated, Operation.PUT, null, true)
             : getUpdater(original, updated, Operation.PUT, null);
+    entityUpdater.setPatchedFields(patchedFields);
     try (var ignored = phase("putEntityUpdate")) {
       if (requireCurrentVersion) {
         entityUpdater.updateWithOptimisticLocking();
@@ -4713,6 +4798,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try (var ignored = phase("patchRestoreSecrets")) {
       updated = restorePatchSecrets(original, updated);
     }
+    validatePatch(original, updated, patch);
 
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -6833,39 +6919,46 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return null;
     }
 
-    Optional<List<TagLabel>> bundleTags = getTagsFromReadBundle(entity);
-    if (bundleTags.isPresent()) {
-      return bundleTags.get();
-    }
-
-    // Try to get from cache first
-    var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+    // Tag-cache eligibility must match Redis invalidation; uncached types read fresh tags instead.
+    var cachedTagUsageDao =
+        isCacheableEntityType(entityType) ? CacheBundle.getCachedTagUsageDao() : null;
+    boolean propagationEnabled = SettingsCache.isGlossaryTagPropagationEnabled();
     if (cachedTagUsageDao != null) {
-      List<TagLabel> cached = cachedTagUsageDao.getTags(entityType, entity.getId());
+      List<TagLabel> cached =
+          cachedTagUsageDao.getTags(entityType, entity.getId(), propagationEnabled);
       if (cached != null) {
         LOG.debug("CACHE HIT: Retrieved tags from cache for {} {}", entityType, entity.getId());
         return cached;
       }
     }
 
-    // Fall back to database
-    List<TagLabel> tags = getTags(entity.getFullyQualifiedName());
+    List<TagLabel> tags =
+        getTagsFromReadBundle(entity)
+            .map(bundleTags -> addDerivedTagsGracefully(bundleTags, propagationEnabled))
+            .orElseGet(() -> getTags(entity.getFullyQualifiedName(), propagationEnabled));
 
     // Cache the result for next time
-    if (cachedTagUsageDao != null && tags != null) {
+    if (cachedTagUsageDao != null
+        && tags != null
+        && propagationEnabled == SettingsCache.isGlossaryTagPropagationEnabled()) {
       String tagsJson = JsonUtils.pojoToJson(tags);
-      cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson);
+      cachedTagUsageDao.putTags(entityType, entity.getId(), tagsJson, propagationEnabled);
     }
 
     return tags;
   }
 
   protected List<TagLabel> getTags(String fqn) {
+    return getTags(fqn, SettingsCache.isGlossaryTagPropagationEnabled());
+  }
+
+  private List<TagLabel> getTags(String fqn, boolean propagationEnabled) {
     if (!supportsTags) {
       return null;
     }
 
-    List<TagLabel> tags = addDerivedTagsGracefully(daoCollection.tagUsageDAO().getTags(fqn));
+    List<TagLabel> tags =
+        addDerivedTagsGracefully(daoCollection.tagUsageDAO().getTags(fqn), propagationEnabled);
     String certClassification = getCertificationClassification();
     if (certClassification != null && tags != null) {
       tags = new ArrayList<>(tags);
@@ -11199,7 +11292,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     private void storeNewVersionWithOptimisticLocking() {
       // Pass the original version to enable optimistic locking
       // This ensures no other process has modified the entity between read and write
-      EntityRepository.this.storeEntityWithVersion(updated, true, original.getVersion());
+      EntityRepository.this.storeEntityWithVersion(
+          updated, true, original.getVersion(), original.getUpdatedAt());
       entityStored = true;
     }
 

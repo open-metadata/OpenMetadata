@@ -23,10 +23,13 @@ import { Node } from 'reactflow';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
 import { EntityLifecycleStages } from '../../../../generated/api/governance/entityLifecycleStages';
 import { getEntityLifecycleStages } from '../../../../rest/metadataTypeAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { SetActionForm } from './SetActionForm';
 
 jest.mock('../../../../rest/metadataTypeAPI');
+jest.mock('../../../../rest/searchAPI');
+jest.mock('../../../../rest/tagAPI');
 jest.mock('../../../../utils/ToastUtils');
 
 const lifecycle: EntityLifecycleStages = {
@@ -56,12 +59,16 @@ const node: Node = {
   },
 };
 
-const form = (entityTypes: string[], onSave = jest.fn()) => (
+const form = (
+  entityTypes: string[],
+  onSave = jest.fn(),
+  formNode: Node = node
+) => (
   <MemoryRouter initialEntries={['/?mode=edit']}>
     <WorkflowModeProvider>
       <SetActionForm
         entityTypes={entityTypes}
-        node={node}
+        node={formNode}
         onClose={jest.fn()}
         onSave={onSave}
       />
@@ -161,5 +168,53 @@ describe('workflow lifecycle status options', () => {
     await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
 
     expect(screen.getByTestId('save-node-configuration-button')).toBeDisabled();
+  });
+});
+
+describe('workflow certification value', () => {
+  const certificationNode: Node = {
+    id: 'set-certification',
+    position: { x: 0, y: 0 },
+    data: {
+      displayName: 'Set certification',
+      config: { fieldName: 'certification', fieldValue: 'Certification.Gold' },
+    },
+  };
+
+  beforeEach(() => {
+    const tags = [
+      { name: 'Gold', fullyQualifiedName: 'Certification.Gold' },
+      { name: 'Silver', fullyQualifiedName: 'Certification.Silver' },
+    ];
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: tags.map((tag) => ({ _source: tag })),
+        total: { value: tags.length },
+      },
+    });
+  });
+
+  it('picks the value through the shared certification picker', async () => {
+    const onSave = jest.fn();
+    render(form(['table'], onSave, certificationNode));
+
+    // Named by the form's "Field value" label, then by the selected value.
+    // jsdom applies no CSS, so it also reads the label's hidden required "*".
+    const trigger = await screen.findByRole('button', {
+      name: /^label\.field-value( \*)? Gold$/,
+    });
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByTestId('Certification.Silver'));
+    fireEvent.click(screen.getByTestId('save-node-configuration-button'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      'set-certification',
+      expect.objectContaining({
+        config: expect.objectContaining({
+          fieldName: 'certification',
+          fieldValue: 'Certification.Silver',
+        }),
+      })
+    );
   });
 });

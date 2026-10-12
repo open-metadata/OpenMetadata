@@ -343,3 +343,122 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
     expect(screen.queryByTestId('explore-with-query')).not.toBeInTheDocument();
   });
 });
+
+describe('FailedTestCaseSampleData - re-run that stays Failed with the same id', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getTestCaseFailedSampleData as jest.Mock).mockResolvedValue({
+      columns: ['c1'],
+      rows: [['r1']],
+    });
+  });
+
+  it('re-fetches the failed-rows sample when a re-run stays Failed with the same id (new timestamp)', async () => {
+    const runOne: TestCase = {
+      ...mockTestCase,
+      testCaseResult: { testCaseStatus: TestCaseStatus.Failed, timestamp: 1 },
+    } as TestCase;
+    const runTwo: TestCase = {
+      ...mockTestCase,
+      testCaseResult: { testCaseStatus: TestCaseStatus.Failed, timestamp: 2 },
+    } as TestCase;
+
+    const { rerender } = render(
+      <FailedTestCaseSampleData testCaseData={runOne} />
+    );
+
+    // Run one's sample loads.
+    await screen.findByTestId('explore-with-query');
+
+    expect(getTestCaseFailedSampleData).toHaveBeenCalledTimes(1);
+
+    // Re-run completes: same id, still Failed, but a new run timestamp.
+    rerender(<FailedTestCaseSampleData testCaseData={runTwo} />);
+
+    // The sample must be re-requested for the new run, not left stale.
+    await waitFor(() =>
+      expect(getTestCaseFailedSampleData).toHaveBeenCalledTimes(2)
+    );
+
+    expect(getTestCaseFailedSampleData).toHaveBeenLastCalledWith(runTwo.id);
+  });
+
+  it('does not spuriously refetch when only the testCaseData object reference changes (same timestamp)', async () => {
+    const runOne: TestCase = {
+      ...mockTestCase,
+      testCaseResult: { testCaseStatus: TestCaseStatus.Failed, timestamp: 1 },
+    } as TestCase;
+    const runOneRefreshed: TestCase = {
+      ...mockTestCase,
+      // A brand-new object (e.g. owner/tag edits pushed by setEntityDetails)
+      // carrying an equal run timestamp — the run identity is unchanged, so no
+      // refetch is expected.
+      testCaseResult: { testCaseStatus: TestCaseStatus.Failed, timestamp: 1 },
+    } as TestCase;
+
+    const { rerender } = render(
+      <FailedTestCaseSampleData testCaseData={runOne} />
+    );
+
+    await screen.findByTestId('explore-with-query');
+
+    expect(getTestCaseFailedSampleData).toHaveBeenCalledTimes(1);
+
+    rerender(<FailedTestCaseSampleData testCaseData={runOneRefreshed} />);
+
+    // Flush any pending effects; the call count must stay at 1.
+    await screen.findByTestId('explore-with-query');
+
+    expect(getTestCaseFailedSampleData).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops the previous run's late response when a still-Failed re-run refetches", async () => {
+    let resolveRunOne: (value: unknown) => void = (_value) => undefined;
+    (getTestCaseFailedSampleData as jest.Mock)
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRunOne = resolve;
+        })
+      )
+      .mockResolvedValueOnce({ columns: ['c1', 'c2'], rows: [['a', 'b']] });
+
+    const runOne: TestCase = {
+      ...mockTestCase,
+      testCaseResult: { testCaseStatus: TestCaseStatus.Failed, timestamp: 1 },
+    } as TestCase;
+    const runTwo: TestCase = {
+      ...mockTestCase,
+      testCaseResult: { testCaseStatus: TestCaseStatus.Failed, timestamp: 2 },
+    } as TestCase;
+
+    const { container, rerender } = render(
+      <FailedTestCaseSampleData testCaseData={runOne} />
+    );
+
+    // Run one's request is in flight.
+    await waitFor(() =>
+      expect(getTestCaseFailedSampleData).toHaveBeenCalledTimes(1)
+    );
+
+    // Re-run with a new timestamp triggers a refetch while run one is pending.
+    rerender(<FailedTestCaseSampleData testCaseData={runTwo} />);
+    await waitFor(() =>
+      expect(getTestCaseFailedSampleData).toHaveBeenCalledTimes(2)
+    );
+
+    // Run two resolves first; the table must reflect run two's columns (2 th).
+    await waitFor(() =>
+      expect(container.querySelectorAll('thead th')).toHaveLength(2)
+    );
+
+    // Run one's late response now resolves — its isStale guard must drop it.
+    resolveRunOne({ columns: ['c1'], rows: [['r1']] });
+
+    // The table must still reflect run two (2 th), not run one (1 th).
+    await waitFor(() =>
+      expect(container.querySelectorAll('thead th')).toHaveLength(2)
+    );
+
+    expect(container.querySelectorAll('thead th')).toHaveLength(2);
+  });
+});

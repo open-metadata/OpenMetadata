@@ -13,11 +13,12 @@
 
 import {
   Box,
+  Card,
   Grid,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Card, Collapse } from 'antd';
+import { Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
@@ -134,28 +135,30 @@ function AgentsStatusWidget({
               ).map((skeletonKey) => (
                 <Grid.Item className="layout-column" key={skeletonKey} span={6}>
                   <Card className="agent-status-card">
-                    <Skeleton height={32} variant="rounded" width={160} />
+                    <Card.Content>
+                      <Skeleton height={32} variant="rounded" width={160} />
+                    </Card.Content>
                   </Card>
                 </Grid.Item>
               ))
             : agentsInfo.map((agent) => (
                 <Grid.Item className="layout-column" key={agent.label} span={6}>
                   <Card
-                    className={classNames(
-                      'agent-status-card',
-                      agent.isCollateAgent ? 'collate-agent' : ''
-                    )}
+                    className="agent-status-card"
+                    color={agent.isCollateAgent ? 'brand' : 'default'}
                     data-testid={`agent-status-card-${agent.label}`}>
-                    <Box
-                      inline
-                      align="center"
-                      className="layout-space layout-space-horizontal"
-                      gap={2}
-                      itemClassName="layout-space-item">
-                      {agent.agentIcon}
-                      <Typography>{agent.label}</Typography>
-                    </Box>
-                    {getIconFromStatus(agent.status)}
+                    <Card.Content className="tw:flex tw:items-center tw:justify-between tw:gap-2">
+                      <Box
+                        inline
+                        align="center"
+                        className="layout-space layout-space-horizontal"
+                        gap={2}
+                        itemClassName="layout-space-item">
+                        {agent.agentIcon}
+                        <Typography>{agent.label}</Typography>
+                      </Box>
+                      {getIconFromStatus(agent.status)}
+                    </Card.Content>
                   </Card>
                 </Grid.Item>
               ))}

@@ -17,21 +17,21 @@ import {
 } from '@ant-design/icons';
 import {
   Box,
+  ButtonUtility,
   Divider,
   Owner,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Tooltip } from 'antd';
+import { Button, Form, Input } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
   GRAYED_OUT_COLOR,
-  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
@@ -148,6 +148,7 @@ const TeamsInfo = ({
       const updatedData: Team = {
         ...currentTeam,
         profile: {
+          ...currentTeam.profile,
           subscription: isEmpty(data)
             ? undefined
             : {
@@ -191,21 +192,15 @@ const TeamsInfo = ({
           )}`}</Typography>
           {hasEditPermission && (
             <Tooltip
+              arrow
               title={t('label.edit-entity', {
                 entity: t('label.email'),
               })}>
-              <Button
-                className="flex-center teams-info-email-edit-button p-0"
+              <ButtonUtility
+                color="secondary"
                 data-testid="edit-email"
-                icon={
-                  <EditIcon
-                    color={DE_ACTIVE_COLOR}
-                    {...ICON_DIMENSION}
-                    width="12px"
-                  />
-                }
-                size="small"
-                type="text"
+                icon={EditIcon}
+                size="xs"
                 onClick={(e) => {
                   // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                   e.stopPropagation();
@@ -314,22 +309,16 @@ const TeamsInfo = ({
             </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
               <Tooltip
+                arrow
                 title={t('label.edit-entity', {
                   entity: t('label.team-type'),
                 })}>
-                <Button
-                  className="flex-center edit-team-type-icon p-0"
+                <ButtonUtility
+                  color="secondary"
                   data-testid="edit-team-type-icon"
-                  icon={
-                    <EditIcon
-                      color={DE_ACTIVE_COLOR}
-                      {...ICON_DIMENSION}
-                      width={12}
-                    />
-                  }
-                  size="small"
-                  type="text"
-                  onClick={(e) => {
+                  icon={EditIcon}
+                  size="xs"
+                  onClick={(e: MouseEvent) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
                     setShowTypeSelector(true);
@@ -483,8 +472,10 @@ const TeamsInfo = ({
           weight="medium">
           {t('label.total-user-plural')}
           <Tooltip
-            destroyTooltipOnHide
-            title={t('message.team-distinct-user-description')}>
+            arrow
+            excludeTriggerFromTabOrder
+            title={t('message.team-distinct-user-description')}
+            triggerClassName="tw:inline-flex">
             <InfoCircleOutlined
               className="m-x-xss"
               data-testid="helper-icon"

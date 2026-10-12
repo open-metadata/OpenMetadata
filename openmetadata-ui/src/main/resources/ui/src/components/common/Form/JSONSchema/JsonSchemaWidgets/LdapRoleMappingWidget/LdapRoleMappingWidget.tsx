@@ -12,9 +12,9 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Box, Card, Grid, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Button, Card, Input, Select } from 'antd';
+import { Button, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -302,7 +302,8 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
             className="mapping-card"
             data-testid={`mapping-card-${mapping.id}`}
             key={mapping.id}
-            size="small">
+            size="sm"
+            variant="ghost">
             <Grid gap="2">
               <Grid.Item span={11}>
                 <Input

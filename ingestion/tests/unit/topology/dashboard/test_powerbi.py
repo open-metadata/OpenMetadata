@@ -1638,7 +1638,7 @@ class PowerBIUnitTest(TestCase):
         from the report datasources API response by parsing the
         connectionDetails.database field with pattern sobe_wowvirtualserver-{DATASET_ID}
         """
-        from unittest.mock import MagicMock, PropertyMock
+        from unittest.mock import MagicMock
 
         mock_api_client = MagicMock()
         self.powerbi.client = MagicMock()
@@ -1647,8 +1647,8 @@ class PowerBIUnitTest(TestCase):
         mock_context = MagicMock()
         mock_context.workspace.id = "test-workspace-id"
 
-        with patch.object(type(self.powerbi), "context", new_callable=PropertyMock) as mock_ctx:
-            mock_ctx.return_value.get.return_value = mock_context
+        with patch.object(self.powerbi, "context") as mock_ctx:
+            mock_ctx.get.return_value = mock_context
 
             mock_api_client.fetch_report_datasources.return_value = [
                 Datasource(
