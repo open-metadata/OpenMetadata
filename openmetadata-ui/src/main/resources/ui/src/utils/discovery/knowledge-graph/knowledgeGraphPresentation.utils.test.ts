@@ -233,13 +233,7 @@ it('filters confirmed gaps while retaining the selected entity and metadata cont
         .map((node) => node.id),
     ])
   );
-  const result = filterGraphPresentation(
-    data,
-    'root',
-    [],
-    coverage,
-    'unmapped'
-  );
+  const result = filterGraphPresentation(data, 'root', coverage, 'unmapped');
 
   expect(result?.nodes.some((node) => node.id === 'root')).toBe(true);
   expect(result?.nodes.some((node) => node.id === 'owner')).toBe(true);

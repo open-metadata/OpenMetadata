@@ -549,9 +549,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       await expect(
         page.getByTestId('graph-level-rings').locator('rect')
       ).toHaveCount(2);
-      await page.getByTestId('graph-filters-toggle').click();
-      // Baseline after the filter row opens: it resizes the canvas, and reading
-      // across that reflow compares two different canvas sizes.
+      // Entity Type is now inline in the toolbar — the Filters tray is gone,
+      // so there is no popover to open before clicking it.
       const outer = await nodePosition(page, 'Extended table');
       const framingBeforeFilter = await graphFraming(page);
       await page
@@ -901,12 +900,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
           )
       )
       .toBe(true);
-    for (const id of [
-      'graph-mode-chooser',
-      'level-chooser',
-      'graph-filters-toggle',
-      'graph-view-menu',
-    ])
+    for (const id of ['graph-mode-chooser', 'level-chooser', 'graph-view-menu'])
       await expect(page.getByTestId(id)).toBeVisible();
     await page.getByTestId('level-chooser').getByRole('button').focus();
     await page.keyboard.press('Enter');
@@ -1333,10 +1327,9 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       '316 entities'
     );
     await details.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.getByTestId('graph-filters-toggle').click();
-    await page
-      .getByRole('button', { name: 'Clear Filters', exact: true })
-      .click();
+    // Filters tray + Clear-Filters button are gone with the toolbar refactor;
+    // the preceding coverage-mode toggles never persist, so level/entity
+    // counts are already at their default here.
     await expect(page.getByTestId('level-chooser')).toContainText(
       '3 · Extended'
     );

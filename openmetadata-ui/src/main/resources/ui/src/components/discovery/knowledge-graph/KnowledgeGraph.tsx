@@ -61,7 +61,6 @@ import {
   KnowledgeGraphPresentation,
   KnowledgeGraphProps,
 } from './KnowledgeGraph.interface';
-import { RelationCategory } from './KnowledgeGraph.relations';
 import './KnowledgeGraph.style.less';
 import KnowledgeGraphBands from './KnowledgeGraphBands';
 import KnowledgeGraphDetails from './KnowledgeGraphDetails';
@@ -100,12 +99,8 @@ const getGraphViewState = (
   };
 };
 
-const hasGraphFilters = (
-  filters: KnowledgeGraphFilters,
-  families: RelationCategory[],
-  coverage: string
-) =>
-  [filters.entityTypes, filters.relationshipTypes, families].some(
+const hasGraphFilters = (filters: KnowledgeGraphFilters, coverage: string) =>
+  [filters.entityTypes, filters.relationshipTypes].some(
     (items) => items.length > 0
   ) || coverage !== 'all';
 
@@ -170,15 +165,11 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     label: string;
     edgeIds: string[];
   } | null>(null);
-  const [excludedFamilies, setExcludedFamilies] = useState<RelationCategory[]>(
-    []
-  );
   const [coverageMode, setCoverageMode] = useState<
     'all' | 'mapped' | 'unmapped' | 'highlight'
   >('all');
   const clearFilters = () => {
     setFilters(EMPTY_FILTERS);
-    setExcludedFamilies([]);
     setCoverageMode('all');
   };
   const [refresh, setRefresh] = useState(0);
@@ -194,7 +185,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     coverage,
     scene,
     counts,
-    familyCounts,
     detailCounts,
   } = useKnowledgeGraphExplorer({
     entityId: entity?.id ?? '',
@@ -203,7 +193,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     mode,
     filters,
     refresh,
-    excludedFamilies,
     coverageMode,
     presentation,
     expanded,
@@ -235,7 +224,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       selectedLevel,
       presentation,
       ontology.concept?.id,
-      excludedFamilies,
       expanded,
     ]),
     viewportKey: JSON.stringify([isFullscreen, drawer !== null]),
@@ -261,7 +249,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       canvas.selectNode(id);
     }
   };
-  const hasFilters = hasGraphFilters(filters, excludedFamilies, coverageMode);
+  const hasFilters = hasGraphFilters(filters, coverageMode);
   useEffect(() => {
     setSelection(null);
     setExpanded([]);
@@ -523,8 +511,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             className="kg-toolbar-header tw:block tw:shrink-0 tw:px-3!"
             extra={
               <KnowledgeGraphToolbar
-                excludedFamilies={excludedFamilies}
-                familyCounts={familyCounts}
                 filterOptions={result.unfiltered?.filterOptions}
                 filters={filters}
                 hasFilters={hasFilters}
@@ -554,13 +540,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 onModeChange={handleModeChange}
                 onPresentationChange={setPresentation}
                 onToggleBands={() => setShowBands((value) => !value)}
-                onToggleFamily={(family) =>
-                  setExcludedFamilies((current) =>
-                    current.includes(family)
-                      ? current.filter((item) => item !== family)
-                      : [...current, family]
-                  )
-                }
               />
             }
           />
@@ -621,7 +600,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
               onCollapse={() => setExpanded([])}>
               <KnowledgeGraphLegend
                 counts={counts}
-                hiddenCount={excludedFamilies.length}
                 isCollapsed={legendCollapsed}
                 selectedCategory={selectedFamily(selection)}
                 onSelectCategory={(category) =>

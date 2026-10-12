@@ -13,7 +13,6 @@
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RelationCategory } from '../../../interface/discovery/knowledge-graph-relations.interface';
 import {
   GraphData,
   KnowledgeGraphFilters,
@@ -51,7 +50,6 @@ interface ExplorerOptions {
   mode: KnowledgeGraphMode;
   filters: KnowledgeGraphFilters;
   refresh: number;
-  excludedFamilies: RelationCategory[];
   coverageMode: string;
   presentation: KnowledgeGraphPresentation;
   expanded: string[];
@@ -85,7 +83,6 @@ export const useKnowledgeGraphExplorer = ({
   mode,
   filters,
   refresh,
-  excludedFamilies,
   coverageMode,
   presentation,
   expanded,
@@ -199,15 +196,8 @@ export const useKnowledgeGraphExplorer = ({
     return getMappingCoverage(allData, inspectedIds);
   }, [allData, rootId, result.appliedQuery?.depth]);
   const displayData = useMemo(
-    () =>
-      filterGraphPresentation(
-        filteredData,
-        rootId,
-        excludedFamilies,
-        coverage,
-        coverageMode
-      ),
-    [filteredData, rootId, excludedFamilies, coverage, coverageMode]
+    () => filterGraphPresentation(filteredData, rootId, coverage, coverageMode),
+    [filteredData, rootId, coverage, coverageMode]
   );
   const presented = useMemo(() => {
     if (!displayData || !allData) {
@@ -268,10 +258,6 @@ export const useKnowledgeGraphExplorer = ({
     () => countRelationCategories(displayData),
     [displayData]
   );
-  const familyCounts = useMemo(
-    () => countRelationCategories(allData),
-    [allData]
-  );
   const detailCounts = useMemo(
     () => ({
       columns:
@@ -303,7 +289,6 @@ export const useKnowledgeGraphExplorer = ({
     coverage,
     scene,
     counts,
-    familyCounts,
     detailCounts,
   };
 };
