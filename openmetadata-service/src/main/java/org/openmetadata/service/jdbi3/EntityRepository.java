@@ -4586,7 +4586,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         ApprovalGate.admit(original, updated, updatedBy, impersonatedBy);
     return staged
         .map(change -> stagedPutResponse(uriInfo, original, change))
-        .orElseGet(() -> putAndStore(uriInfo, original, updated, requireCurrentVersion));
+        .orElseGet(
+            () -> putAndStore(uriInfo, original, updated, requireCurrentVersion, patchedFields));
   }
 
   private PutResponse<T> stagedPutResponse(UriInfo uriInfo, T original, StagedChange change) {
@@ -4596,7 +4597,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private PutResponse<T> putAndStore(
-      UriInfo uriInfo, T original, T updated, boolean requireCurrentVersion) {
+      UriInfo uriInfo,
+      T original,
+      T updated,
+      boolean requireCurrentVersion,
+      Set<String> patchedFields) {
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       try (var ignored = phase("putRestoreEntity")) {
