@@ -148,6 +148,28 @@ test(
       );
       await page.getByTestId('add-test-case-btn').click();
       await modalListResponse;
+      const submit = page
+        .getByRole('dialog', ADD_TEST_CASES_DIALOG)
+        .getByTestId('submit');
+      await expect(submit).toBeInViewport();
+      expect(
+        await submit.evaluate((button) => {
+          for (
+            let parent = button.parentElement;
+            parent;
+            parent = parent.parentElement
+          ) {
+            if (
+              /auto|scroll/.test(getComputedStyle(parent).overflowY) &&
+              parent.scrollHeight > parent.clientHeight
+            ) {
+              return true;
+            }
+          }
+
+          return false;
+        })
+      ).toBe(false);
       await page
         .getByRole('dialog', ADD_TEST_CASES_DIALOG)
         .locator(

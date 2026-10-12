@@ -26,6 +26,7 @@ import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
 import {
+  ReactNode,
   UIEventHandler,
   useCallback,
   useEffect,
@@ -156,6 +157,17 @@ const buildTestCaseSearchParams = ({
   return { ...testCaseParams, ...requestParams };
 };
 
+const renderDefaultLayout = (content: ReactNode, actions: ReactNode) => (
+  <Box direction="col" gap={2}>
+    {content}
+    {actions && (
+      <Box align="center" className="p-y-sm" gap={4} justify="end">
+        {actions}
+      </Box>
+    )}
+  </Box>
+);
+
 export const AddTestCaseList = ({
   onCancel,
   onSubmit,
@@ -166,6 +178,7 @@ export const AddTestCaseList = ({
   existingTest,
   onChange,
   showButton = true,
+  renderLayout = renderDefaultLayout,
   testCaseParams,
   hideTableFilter = false,
   getPopupContainer,
@@ -899,8 +912,22 @@ export const AddTestCaseList = ({
     ]
   );
 
-  return (
-    <Box direction="col" gap={2}>
+  const actions = showButton ? (
+    <>
+      <Button color="link-color" data-testid="cancel" onPress={onCancel}>
+        {cancelText ?? t('label.cancel')}
+      </Button>
+      <Button
+        color="primary"
+        data-testid="submit"
+        isLoading={isLoading}
+        onPress={handleSubmit}>
+        {submitText ?? t('label.create')}
+      </Button>
+    </>
+  ) : null;
+  const content = (
+    <>
       <Searchbar
         removeMargin
         showClearSearch
@@ -956,20 +983,8 @@ export const AddTestCaseList = ({
         </Box>
       )}
       {renderList}
-      {showButton && (
-        <Box align="center" className="p-y-sm" gap={4} justify="end">
-          <Button color="link-color" data-testid="cancel" onPress={onCancel}>
-            {cancelText ?? t('label.cancel')}
-          </Button>
-          <Button
-            color="primary"
-            data-testid="submit"
-            isLoading={isLoading}
-            onPress={handleSubmit}>
-            {submitText ?? t('label.create')}
-          </Button>
-        </Box>
-      )}
-    </Box>
+    </>
   );
+
+  return renderLayout(content, actions);
 };
