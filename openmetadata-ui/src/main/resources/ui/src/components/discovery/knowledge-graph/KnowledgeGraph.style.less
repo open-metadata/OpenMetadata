@@ -11,22 +11,11 @@
  *  limitations under the License.
  */
 
-/*
- * Every token here resolves against core-components globals.css:
- *   - Colours → --tw-* mirrors (dark-mode safe).
- *   - Shadows → --shadow-* ramp.
- *   - Radius  → --radius-* ramp.
- *   - Spacing → calc(var(--spacing) * N) — var(--spacing) is 4px, Tailwind's base.
- *   - Font sizes → --text-* ramp; a few custom values (11 px drawer micro-label,
- *     290 px tooltip cap) are inlined with a note.
- * No --om-* aliases: this file consumes the core design system directly.
- */
-
 @import (reference) '../../../styles/variables.less';
 
 .knowledge-graph-container {
   height: @asset-details-tab-pane-height;
-  min-height: calc(var(--spacing) * 140); /* 40 × 14 */
+  min-height: calc(var(--spacing) * 140);
   position: relative;
   display: grid;
   // Row 2 must be `minmax(0, 1fr)` so the ReflexContainer stage inside
@@ -56,9 +45,6 @@
     min-width: 0;
   }
 
-  // Canvas and details share the stage via a horizontal ReflexContainer
-  // (`.kg-stage-main`); overlays like the right-side inspector sit as siblings
-  // of that container inside `.kg-stage` and get positioned via CSS below.
   .kg-stage {
     display: grid;
     grid-template-rows: minmax(0, 1fr);
@@ -100,8 +86,8 @@
   }
 
   .kg-find {
-    flex: 1 1 calc(var(--spacing) * 50); /* 200px */
-    min-width: ~'min(calc(var(--spacing) * 32.5), 100%)'; /* 130px */
+    flex: 1 1 calc(var(--spacing) * 50);
+    min-width: ~'min(calc(var(--spacing) * 32.5), 100%)';
     max-width: 100%;
   }
 
@@ -113,20 +99,18 @@
 
   .knowledge-graph-body {
     flex: 1;
-    min-height: calc(var(--spacing) * 80); /* 320px */
+    min-height: calc(var(--spacing) * 80);
     min-width: 0;
     position: relative;
     overflow: hidden;
     isolation: isolate;
     background-color: var(--tw-background-color-primary);
-    // 24px dotted grid so the canvas reads as an infinite plane; dot colour is
-    // the border-secondary token so it flips with the theme.
     background-image: radial-gradient(
       circle,
       var(--tw-border-color-secondary) 1px,
       transparent 1px
     );
-    background-size: calc(var(--spacing) * 6) calc(var(--spacing) * 6); /* 24px */
+    background-size: calc(var(--spacing) * 6) calc(var(--spacing) * 6);
   }
 
   .knowledge-graph-canvas {
@@ -145,8 +129,6 @@
     pointer-events: none;
   }
 
-  // Design: the direct band is a tinted brand surface, the extended band a
-  // neutral dashed outline; labels sit in the band's top padding.
   .kg-band {
     stroke-width: 1px;
   }
@@ -201,7 +183,7 @@
   .kg-details-tabs [role='tablist'] {
     background: var(--tw-background-color-secondary);
     border-radius: var(--radius-md);
-    padding: calc(var(--spacing) / 2); /* 2px */
+    padding: calc(var(--spacing) / 2);
     gap: calc(var(--spacing) / 2);
   }
 
@@ -220,7 +202,7 @@
   }
 
   &.kg-details-open .knowledge-graph-body {
-    min-height: calc(var(--spacing) * 40); /* 160px */
+    min-height: calc(var(--spacing) * 40);
   }
 
   .knowledge-graph-loading {
@@ -234,17 +216,15 @@
 
   .kg-empty-hint {
     position: absolute;
-    top: calc(var(--spacing) * 4); /* 16px */
+    top: calc(var(--spacing) * 4);
     left: calc(var(--spacing) * 4);
     right: calc(var(--spacing) * 4);
     display: flex;
     align-items: center;
-    gap: calc(var(--spacing) * 2); /* 8px */
+    gap: calc(var(--spacing) * 2);
     flex-wrap: wrap;
   }
 
-  // Design: a 352px side panel with a titled header, a scrolling body and a
-  // footer of actions that stays in reach.
   .kg-inspector {
     grid-column: 2;
     grid-row-start: 1;
@@ -262,7 +242,7 @@
   .kg-inspector-header {
     flex-shrink: 0;
     padding: calc(var(--spacing) * 3.5) calc(var(--spacing) * 3.5)
-      calc(var(--spacing) * 3); /* 14px 14px 12px */
+      calc(var(--spacing) * 3);
     border-bottom: 1px solid var(--tw-border-color-secondary);
   }
 
@@ -271,7 +251,7 @@
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
-    padding: calc(var(--spacing) * 3.5); /* 14px */
+    padding: calc(var(--spacing) * 3.5);
     gap: calc(var(--spacing) * 3.5);
   }
 
@@ -284,33 +264,30 @@
   }
 
   .kg-inspector-tile-md {
-    width: calc(var(--spacing) * 8); /* 32px */
+    width: calc(var(--spacing) * 8);
     height: calc(var(--spacing) * 8);
   }
 
   .kg-inspector-tile-sm {
-    width: calc(var(--spacing) * 6.5); /* 26px */
+    width: calc(var(--spacing) * 6.5);
     height: calc(var(--spacing) * 6.5);
     border-radius: var(--radius-sm);
   }
 
   .kg-inspector-statement {
-    padding: calc(var(--spacing) * 3); /* 12px */
+    padding: calc(var(--spacing) * 3);
     background: var(--tw-background-color-secondary);
     border: 1px solid var(--tw-border-color-secondary);
     border-radius: var(--radius-lg);
   }
 
   .kg-inspector-dot {
-    width: calc(var(--spacing) * 1.75); /* 7px */
+    width: calc(var(--spacing) * 1.75);
     height: calc(var(--spacing) * 1.75);
     flex-shrink: 0;
     border-radius: var(--radius-full);
   }
 
-  // Micro-label at 11 px / semibold with wide tracking for the drawer section
-  // titles ("Relationships", "Members"). 11 px sits one step below text-xs on
-  // purpose so the label reads as supporting text rather than body copy.
   .kg-inspector-section-title {
     font-size: 11px;
     font-weight: 600;
@@ -320,11 +297,9 @@
   }
 
   .kg-inspector-row {
-    padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2); /* 6px 8px */
+    padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2);
   }
 
-  // 352 px side panel: `min(352px, 36%)` so it compresses on narrow viewports
-  // instead of pushing the canvas out of the grid.
   .kg-stage:has(.kg-inspector) {
     grid-template-columns: ~'minmax(0, 1fr) min(calc(var(--spacing) * 88), 36%)';
 
@@ -336,7 +311,7 @@
 
   .kg-inspector-actions {
     flex-shrink: 0;
-    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 3.5); /* 12px 14px */
+    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 3.5);
     background: var(--tw-background-color-surface);
     border-top: 1px solid var(--tw-border-color-secondary);
 
@@ -352,7 +327,7 @@
     // the inspector always reaches its max-height.
     .kg-stage:has(.kg-inspector) {
       grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: minmax(calc(var(--spacing) * 40), 1fr) auto auto; /* 160px min canvas */
+      grid-template-rows: minmax(calc(var(--spacing) * 40), 1fr) auto auto;
       overflow: auto;
     }
 
@@ -365,12 +340,9 @@
     }
   }
 
-  // Position the Lineage-style Card (elevated, hosts the zoom/fit/refresh row)
-  // at the canvas's bottom-right. Card owns the surface, border and spacing;
-  // the only responsibility left here is where it floats.
   .knowledge-graph-action-buttons {
     position: absolute;
-    bottom: calc(var(--spacing) * 4); /* 16px */
+    bottom: calc(var(--spacing) * 4);
     right: calc(var(--spacing) * 4);
     z-index: 1001;
   }
@@ -381,7 +353,7 @@
   flex-direction: column;
   position: fixed;
   inset: 0;
-  padding: calc(var(--spacing) * 4); /* 16px */
+  padding: calc(var(--spacing) * 4);
   background: var(--tw-background-color-primary);
   // Keep `overflow: auto` as a short-viewport safety net: once the toolbar +
   // canvas floor + drawer min stack past the viewport, the page can still
@@ -402,24 +374,21 @@
   }
 }
 
-// Edge tooltips float above Antd overlays (z-index 1500 > 1001) and above the
-// inspector; the 290 px cap keeps long predicate strings from spilling across
-// the canvas.
 .kg-edge-tooltip {
   z-index: 1500;
   pointer-events: none;
   background: var(--tw-background-color-surface);
   border: 1px solid var(--tw-border-color-primary);
   border-radius: var(--radius-md);
-  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2.5); /* 6px 10px */
+  padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2.5);
   box-shadow: var(--shadow-lg);
-  max-width: 290px; /* custom cap, no ramp step */
-  font-size: var(--text-xs); /* 12px */
+  max-width: 290px;
+  font-size: var(--text-xs);
   line-height: 1.5;
 
   &__direction {
     color: var(--tw-text-color-tertiary);
-    margin-bottom: var(--spacing); /* 4px */
+    margin-bottom: var(--spacing);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

@@ -11,18 +11,6 @@
  *  limitations under the License.
  */
 
-/*
- * Every token here resolves against core-components globals.css:
- *   - Colours → --tw-* mirrors (dark-mode safe).
- *   - Shadows → --shadow-* ramp.
- *   - Radius  → --radius-* ramp (fallback to the px literal where no ramp step matches).
- *   - Spacing → calc(var(--spacing) * N) — var(--spacing) is 4px, Tailwind's base.
- *   - Font sizes → --text-* ramp (xs = 12px); card off-ramp values (10 / 11 / 11.5 / 13 / 15 px)
- *     are inlined with a note because they sit between the standard steps on
- *     purpose so cards read a half-step lighter than body copy at canvas zoom.
- * No --om-* aliases: this file consumes the core design system directly.
- */
-
 .knowledge-graph-custom-node {
   display: flex;
   align-items: stretch;
@@ -30,7 +18,7 @@
   position: relative;
   user-select: none;
   box-shadow: var(--shadow-xs);
-  border-radius: 10px; /* custom card radius — between radius-lg (8) and radius-xl (12) */
+  border-radius: 10px;
   background-color: var(--tw-background-color-surface);
   border: 1px solid var(--tw-border-color-primary);
   box-sizing: border-box;
@@ -42,9 +30,9 @@
 
   .kg-node-select {
     width: 100%;
-    min-height: calc(var(--spacing) * 12); /* 48px */
+    min-height: calc(var(--spacing) * 12);
     height: auto;
-    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3); /* 8px 12px */
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
     border-radius: 10px;
     box-shadow: none;
     white-space: normal;
@@ -62,18 +50,16 @@
     &::after {
       content: '';
       position: absolute;
-      inset: calc(var(--spacing) * -1) var(--spacing) 0; /* -4px 4px 0 */
+      inset: calc(var(--spacing) * -1) var(--spacing) 0;
       border: 1px solid var(--tw-border-color-secondary);
       border-radius: 10px;
       z-index: -1;
     }
     &::after {
-      inset: calc(var(--spacing) * -2) calc(var(--spacing) * 2) 0; /* -8px 8px 0 */
+      inset: calc(var(--spacing) * -2) calc(var(--spacing) * 2) 0;
     }
   }
 
-  // Design: the subject card carries a brand border with a soft brand halo so
-  // it reads as the centre of the graph at any zoom.
   &.kg-node-root {
     border-color: var(--tw-color-fg-brand-primary);
     box-shadow: 0 0 0 var(--spacing) var(--tw-color-utility-brand-100),
@@ -88,7 +74,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: calc(var(--spacing) * 2); /* 8px */
+    gap: calc(var(--spacing) * 2);
     width: 100%;
     min-width: 0;
   }
@@ -96,14 +82,11 @@
   .node-icon {
     display: flex;
     flex-shrink: 0;
-    width: calc(var(--spacing) * 7); /* 28px */
+    width: calc(var(--spacing) * 7);
     height: calc(var(--spacing) * 7);
     color: var(--tw-text-color-tertiary);
   }
 
-  // Card typography is 13 / 11 / 11.5 / 15 px — between the Untitled text ramp
-  // steps (xs = 12, sm = 14) on purpose so cards read a half-step lighter than
-  // body copy at canvas zoom. 500 = medium, 600 = semibold on the Tailwind scale.
   .kg-node-name {
     display: block;
     font-size: 13px;
@@ -134,7 +117,7 @@
 
   .kg-node-member {
     display: block;
-    font-size: var(--text-xs); /* 12px */
+    font-size: var(--text-xs);
     line-height: 1.625;
     color: var(--tw-text-color-secondary);
   }
@@ -150,12 +133,12 @@
   }
 
   &.kg-node-root .node-icon {
-    width: calc(var(--spacing) * 8); /* 32px */
+    width: calc(var(--spacing) * 8);
     height: calc(var(--spacing) * 8);
   }
 
   .asset-type-tag {
-    padding: calc(var(--spacing) / 2) var(--spacing); /* 2px 4px */
+    padding: calc(var(--spacing) / 2) var(--spacing);
     border-radius: var(--radius-sm);
     border-width: 1px;
     border-style: solid;
@@ -168,14 +151,12 @@
     border-color: var(--tw-border-color-brand);
   }
 
-  // Non-focused nodes stay visible as context but stop competing with the
-  // highlighted path for attention.
   &.dimmed {
     opacity: 0.55;
   }
 
   &:focus-visible {
-    outline: calc(var(--spacing) / 2) solid var(--tw-border-color-brand); /* 2px */
+    outline: calc(var(--spacing) / 2) solid var(--tw-border-color-brand);
     outline-offset: calc(var(--spacing) / 2);
   }
 
