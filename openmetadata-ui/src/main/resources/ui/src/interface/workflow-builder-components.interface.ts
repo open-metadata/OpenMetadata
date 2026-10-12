@@ -337,4 +337,5 @@ export interface NodeConfigSidebarProps {
   triggerFieldsConfig: WorkflowTriggerFieldsConfig;
   /** The start node holds edits for approval, so an approval task can allow partial decisions. */
   isEnforceMode?: boolean;
+  hasGitSinkNode?: boolean;
 }

@@ -200,6 +200,24 @@ public class WorkflowInstanceStateRepository
   }
 
   /**
+   * Marks the stages still RUNNING as FAILURE with the given reason. Stages that already finished
+   * keep their recorded outcome.
+   */
+  public void markRunningStatesAsFailed(UUID workflowInstanceId, String reason) {
+    listAllStatesForInstance(workflowInstanceId).stream()
+        .filter(state -> state.getStatus() == WorkflowInstance.WorkflowStatus.RUNNING)
+        .forEach(
+            state ->
+                getTimeSeriesDao()
+                    .update(
+                        JsonUtils.pojoToJson(
+                            state
+                                .withStatus(WorkflowInstance.WorkflowStatus.FAILURE)
+                                .withException(reason)),
+                        state.getId()));
+  }
+
+  /**
    * Marks all states of a workflow instance as SUPERSEDED when a newer run replaces it. The
    * exception field is left untouched — supersede is not a failure, so the reason lives on the
    * WorkflowInstance's variables map, not in an exception field.

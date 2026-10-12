@@ -18,9 +18,11 @@ import {
   Tabs,
 } from '@openmetadata/ui-core-components';
 import {
-  Announcement02 as IconAnnouncementsBlack,
+  Announcement02,
   ChevronDown,
-  RefreshCcw01,
+  Edit01,
+  Trash01,
+  Version,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -29,8 +31,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
@@ -820,7 +820,7 @@ const DomainDetails = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.announcement-action-description')}
-                icon={IconAnnouncementsBlack}
+                icon={Announcement02}
                 id="announcement-button"
                 name={t('label.announcement-plural')}
               />
@@ -842,7 +842,7 @@ const DomainDetails = ({
                 description={t('message.rename-entity', {
                   entity: t('label.domain'),
                 })}
-                icon={EditIcon}
+                icon={Edit01}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -889,7 +889,7 @@ const DomainDetails = ({
                     entityType: t('label.domain'),
                   }
                 )}
-                icon={DeleteIcon}
+                icon={Trash01}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -1094,7 +1094,7 @@ const DomainDetails = ({
                   {domain?.version && (
                     <StatItem
                       count={toString(domain.version)}
-                      icon={RefreshCcw01}
+                      icon={Version}
                       isActive={Boolean(version)}
                       testId="version-button"
                       tooltip={t(

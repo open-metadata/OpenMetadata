@@ -1455,6 +1455,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * Rejects {@code updated}, the result of applying {@code patch} to {@code original}, when the
+   * patch breaks a rule that depends on the patch operations themselves. Runs on every PATCH before
+   * the entity is prepared; does nothing unless a repository overrides it.
+   */
+  protected void validatePatch(T original, T updated, JsonPatch patch) {}
+
+  /**
    * This function updates the Elasticsearch indexes wherever the specific entity is present.
    * It is typically invoked when there are changes in the entity that might affect its indexing in Elasticsearch.
    * The function ensures that the indexes are kept up-to-date with the latest state of the entity across all relevant Elasticsearch indexes.
@@ -3871,6 +3878,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     deferOrInvalidateRedisL2(entityType, id, fqn);
   }
 
+  /**
+   * Call after a direct {@code tag_usage} write commits. Bulk tag and glossary operations bypass
+   * {@code EntityUpdater}, so they must evict the asset before reindexing; column writes pass the
+   * parent table reference.
+   */
+  protected static void invalidateCacheAfterTagMutation(EntityReference entityReference) {
+    String type = entityReference.getType();
+    UUID id = entityReference.getId();
+    String fqn = entityReference.getFullyQualifiedName();
+    RequestEntityCache.invalidate(type, id, fqn);
+    invalidateCacheForEntity(type, id, fqn);
+  }
+
   private static void recordCacheInvalidation(
       Map<CacheInvalidationKey, CacheInvalidationKey> deferred,
       String entityType,
@@ -4863,6 +4883,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try (var ignored = phase("patchRestoreSecrets")) {
       updated = restorePatchSecrets(original, updated);
     }
+    validatePatch(original, updated, patch);
 
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -7038,8 +7059,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return null;
     }
 
-    // Try to get from cache first
-    var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+    // Tag-cache eligibility must match Redis invalidation; uncached types read fresh tags instead.
+    var cachedTagUsageDao =
+        isCacheableEntityType(entityType) ? CacheBundle.getCachedTagUsageDao() : null;
     boolean propagationEnabled = SettingsCache.isGlossaryTagPropagationEnabled();
     if (cachedTagUsageDao != null) {
       List<TagLabel> cached =

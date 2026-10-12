@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid } from '@openmetadata/ui-core-components';
+import {
+  Card,
+  Grid,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
 import {
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Button, Card } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import {
   first,
@@ -597,21 +601,28 @@ export const DataInsightChartCard = ({
     getChartLoadingState(isLoading, kpi.isLoading, chartData.results.length)
   ) {
     return (
-      <Card
-        className="data-insight-card"
-        id={type}
-        loading={isLoading}
-        title={
-          <PageHeader
-            data={{
-              header,
-              subHeader: t('message.field-insight', {
-                field: t('label.description-lowercase'),
-              }),
-            }}
-          />
-        }>
-        <EmptyGraphPlaceholder />
+      <Card className="data-insight-card" id={type}>
+        <Card.Header
+          title={
+            <PageHeader
+              data={{
+                header,
+                subHeader: t('message.field-insight', {
+                  field: t('label.description-lowercase'),
+                }),
+              }}
+            />
+          }
+        />
+        <Card.Content>
+          {isLoading ? (
+            <SkeletonParagraph rows={4} />
+          ) : (
+            <>
+              <EmptyGraphPlaceholder />
+            </>
+          )}
+        </Card.Content>
       </Card>
     );
   }
@@ -621,109 +632,113 @@ export const DataInsightChartCard = ({
       className="data-insight-card data-insight-card-chart"
       data-testid={`${type}-graph`}
       id={type}>
-      <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
-        <Grid.Item
-          className="layout-column"
-          span={DI_STRUCTURE.leftContainerSpan}>
-          <PageHeader
-            data={{
-              header,
-              subHeader,
-            }}
-          />
-          <div className="m-t-lg" id={`${type}-graph`}>
-            <LineChart
-              ariaLabel={typeof header === 'string' ? header : type}
-              data={graphData}
-              height={GRAPH_HEIGHT}
-              legend={HIDDEN_CHART_LEGEND}
-              series={series}
-              tooltip={tooltip}
-              xAxis={xAxis}
-              xKey="day"
-              yAxis={yAxis}
+      <Card.Content>
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
+          <Grid.Item
+            className="layout-column"
+            span={DI_STRUCTURE.leftContainerSpan}>
+            <PageHeader
+              data={{
+                header,
+                subHeader,
+              }}
             />
-          </div>
-        </Grid.Item>
-        <Grid.Item
-          className="layout-column"
-          span={DI_STRUCTURE.rightContainerSpan}>
-          <Grid
-            className="layout-row layout-grid"
-            style={getLayoutGutter(8, 16)}>
-            <Grid.Item className="layout-column" span={24}>
-              <DataInsightProgressBar
-                changeInValue={changeInValue}
-                duration={selectedDays}
-                label={rightSidePanelLabel}
-                progress={round(totalValue, 2)}
-                showProgress={isPercentageGraph}
-                suffix={getProgressBarSuffix(isPercentageGraph, type)}
-                target={targetValue}
+            <div className="m-t-lg" id={`${type}-graph`}>
+              <LineChart
+                ariaLabel={typeof header === 'string' ? header : type}
+                data={graphData}
+                height={GRAPH_HEIGHT}
+                legend={HIDDEN_CHART_LEGEND}
+                series={series}
+                tooltip={tooltip}
+                xAxis={xAxis}
+                xKey="day"
+                yAxis={yAxis}
               />
-            </Grid.Item>
-            <Grid.Item className="layout-column" span={24}>
-              <Searchbar
-                removeMargin
-                searchValue={searchEntityKeyWord}
-                onSearch={setSearchEntityKeyWord}
-              />
-            </Grid.Item>
-            <Grid.Item
-              className="layout-column chart-card-right-panel-container"
-              span={24}>
-              <Grid
-                className="layout-row layout-grid"
-                style={getLayoutGutter(8, 8)}>
-                {rightSideEntityList.map((entity) => {
-                  return (
-                    <Grid.Item
-                      className="layout-column entity-summary-container"
-                      key={entity}
-                      span={24}
-                      onClick={() => handleLegendClick(entity)}
-                      onMouseEnter={() => handleLegendMouseEnter(entity)}
-                      onMouseLeave={handleLegendMouseLeave}>
-                      <EntitySummaryProgressBar
-                        entity={startCase(entity)}
-                        isActive={
-                          activeKeys.length ? activeKeys.includes(entity) : true
-                        }
-                        label={`${round(latestData[entity] ?? 0, 2)}${
-                          isPercentageGraph ? '%' : ''
-                        }`}
-                        pluralize={
-                          ![
-                            SystemChartType.TotalDataAssetsByTier,
-                            SystemChartType.PercentageOfServiceWithDescription,
-                            SystemChartType.PercentageOfServiceWithOwner,
-                          ].includes(type)
-                        }
-                        progress={latestData[entity]}
-                        strokeColor={dataInsightColor(
-                          palette,
-                          rankedEntities,
-                          entity
-                        )}
-                      />
-                    </Grid.Item>
-                  );
-                })}
-              </Grid>
-            </Grid.Item>
-            {activeKeys.length > 0 && (
-              <Grid.Item className="layout-column flex justify-end" span={24}>
-                <Button type="link" onClick={() => setActiveKeys([])}>
-                  {t('label.clear')}
-                </Button>
+            </div>
+          </Grid.Item>
+          <Grid.Item
+            className="layout-column"
+            span={DI_STRUCTURE.rightContainerSpan}>
+            <Grid
+              className="layout-row layout-grid"
+              style={getLayoutGutter(8, 16)}>
+              <Grid.Item className="layout-column" span={24}>
+                <DataInsightProgressBar
+                  changeInValue={changeInValue}
+                  duration={selectedDays}
+                  label={rightSidePanelLabel}
+                  progress={round(totalValue, 2)}
+                  showProgress={isPercentageGraph}
+                  suffix={getProgressBarSuffix(isPercentageGraph, type)}
+                  target={targetValue}
+                />
               </Grid.Item>
-            )}
-          </Grid>
-        </Grid.Item>
-        {listAssets && (
-          <ExploreAssetsLink t={t} tabsInfo={tabsInfo} type={type} />
-        )}
-      </Grid>
+              <Grid.Item className="layout-column" span={24}>
+                <Searchbar
+                  removeMargin
+                  searchValue={searchEntityKeyWord}
+                  onSearch={setSearchEntityKeyWord}
+                />
+              </Grid.Item>
+              <Grid.Item
+                className="layout-column chart-card-right-panel-container"
+                span={24}>
+                <Grid
+                  className="layout-row layout-grid"
+                  style={getLayoutGutter(8, 8)}>
+                  {rightSideEntityList.map((entity) => {
+                    return (
+                      <Grid.Item
+                        className="layout-column entity-summary-container"
+                        key={entity}
+                        span={24}
+                        onClick={() => handleLegendClick(entity)}
+                        onMouseEnter={() => handleLegendMouseEnter(entity)}
+                        onMouseLeave={handleLegendMouseLeave}>
+                        <EntitySummaryProgressBar
+                          entity={startCase(entity)}
+                          isActive={
+                            activeKeys.length
+                              ? activeKeys.includes(entity)
+                              : true
+                          }
+                          label={`${round(latestData[entity] ?? 0, 2)}${
+                            isPercentageGraph ? '%' : ''
+                          }`}
+                          pluralize={
+                            ![
+                              SystemChartType.TotalDataAssetsByTier,
+                              SystemChartType.PercentageOfServiceWithDescription,
+                              SystemChartType.PercentageOfServiceWithOwner,
+                            ].includes(type)
+                          }
+                          progress={latestData[entity]}
+                          strokeColor={dataInsightColor(
+                            palette,
+                            rankedEntities,
+                            entity
+                          )}
+                        />
+                      </Grid.Item>
+                    );
+                  })}
+                </Grid>
+              </Grid.Item>
+              {activeKeys.length > 0 && (
+                <Grid.Item className="layout-column flex justify-end" span={24}>
+                  <Button type="link" onClick={() => setActiveKeys([])}>
+                    {t('label.clear')}
+                  </Button>
+                </Grid.Item>
+              )}
+            </Grid>
+          </Grid.Item>
+          {listAssets && (
+            <ExploreAssetsLink t={t} tabsInfo={tabsInfo} type={type} />
+          )}
+        </Grid>
+      </Card.Content>
     </Card>
   );
 };
