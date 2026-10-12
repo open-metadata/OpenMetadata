@@ -26,10 +26,10 @@ import {
   getSettingsSource,
   updateSettingsConfig,
 } from '../../../../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import BrandUrlSettings from './BrandUrlSettings';
 import BrandUrlSettingsForm from './BrandUrlSettingsForm';
 import { deploymentOwnedSource } from './PlatformSettings.mock';
-import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

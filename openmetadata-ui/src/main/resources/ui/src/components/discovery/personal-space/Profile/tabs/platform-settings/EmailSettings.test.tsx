@@ -19,9 +19,9 @@ import {
   getSettingsConfigFromConfigType,
   getSettingsSource,
 } from '../../../../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import EmailSettings from './EmailSettings';
 import { deploymentOwnedSource } from './PlatformSettings.mock';
-import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

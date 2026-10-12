@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
-import type { SecurityManagedPaths } from './SSOConfigurationForm/SSOConfigurationForm.interface';
 import { SettingType } from '../../generated/settings/settings';
 import { SettingSource } from '../../generated/system/settingsSourceResponse';
+import { useSettingsSource } from '../../hooks/platform/useSettingsSource';
 import {
   findSettingSource,
   getManagedPaths,
   isPathManaged,
   isWholeSettingManaged,
 } from '../../utils/platform/settingsSource.utils';
-import { useSettingsSource } from '../../hooks/platform/useSettingsSource';
+import type { SecurityManagedPaths } from './SSOConfigurationForm/SSOConfigurationForm.interface';
 
 const SECURITY_SETTING_TYPES = [
   SettingType.AuthenticationConfiguration,

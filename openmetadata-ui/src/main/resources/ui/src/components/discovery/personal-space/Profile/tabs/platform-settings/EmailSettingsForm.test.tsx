@@ -25,13 +25,13 @@ import {
   getSettingsSource,
   updateSettingsConfig,
 } from '../../../../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import { showSuccessToast } from '../../../../../../utils/ToastUtils';
 import EmailSettingsForm, {
   toEmailFormValues,
   toSmtpSettings,
 } from './EmailSettingsForm';
 import { deploymentOwnedSource } from './PlatformSettings.mock';
-import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

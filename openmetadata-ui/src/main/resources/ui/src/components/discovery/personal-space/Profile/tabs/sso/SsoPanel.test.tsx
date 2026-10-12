@@ -24,11 +24,11 @@ import {
   patchSecurityConfiguration,
 } from '../../../../../../rest/securityConfigAPI';
 import { getSettingsSource } from '../../../../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import { deploymentOwnedSource } from '../platform-settings/PlatformSettings.mock';
 import SsoPanel from './SsoPanel';
-import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

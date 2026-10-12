@@ -20,8 +20,8 @@ import {
   getSettingsSource,
   patchAppConfiguration,
 } from '../../../rest/settingConfigAPI';
-import DefaultAppModePage from './DefaultAppModePage';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
+import DefaultAppModePage from './DefaultAppModePage';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),

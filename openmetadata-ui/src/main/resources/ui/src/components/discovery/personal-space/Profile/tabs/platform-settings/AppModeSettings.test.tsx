@@ -20,10 +20,10 @@ import {
   getSettingsSource,
   patchAppConfiguration,
 } from '../../../../../../rest/settingConfigAPI';
+import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import AppModeSettings from './AppModeSettings';
 import AppModeSettingsForm from './AppModeSettingsForm';
 import { deploymentOwnedSource } from './PlatformSettings.mock';
-import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
