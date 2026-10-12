@@ -3254,21 +3254,25 @@ public class OpenMetadataOperations implements Callable<Integer> {
   // Report pipelines of soft-deleted services as skipped rather than failing the whole run
   static List<IngestionPipeline> skipPipelinesOfDeletedServices(
       final List<IngestionPipeline> pipelines, final List<List<String>> pipelineStatuses) {
-    final List<IngestionPipeline> deployable = new ArrayList<>();
-    for (IngestionPipeline pipeline : pipelines) {
-      final EntityReference service = pipeline.getService();
-      if (service != null && Boolean.TRUE.equals(service.getDeleted())) {
-        pipelineStatuses.add(
-            Arrays.asList(
-                pipeline.getName(),
-                pipeline.getPipelineType().value(),
-                service.getName(),
-                STATUS_SKIPPED_DELETED_SERVICE));
-      } else {
-        deployable.add(pipeline);
-      }
-    }
-    return deployable;
+    final var byServiceDeleted =
+        pipelines.stream()
+            .collect(Collectors.partitioningBy(OpenMetadataOperations::isServiceDeleted));
+    byServiceDeleted
+        .get(true)
+        .forEach(
+            pipeline ->
+                pipelineStatuses.add(
+                    Arrays.asList(
+                        pipeline.getName(),
+                        pipeline.getPipelineType().value(),
+                        pipeline.getService().getName(),
+                        STATUS_SKIPPED_DELETED_SERVICE)));
+    return byServiceDeleted.get(false);
+  }
+
+  private static boolean isServiceDeleted(final IngestionPipeline pipeline) {
+    return pipeline.getService() instanceof EntityReference service
+        && Boolean.TRUE.equals(service.getDeleted());
   }
 
   static boolean hasDeployFailures(final List<List<String>> pipelineStatuses) {
