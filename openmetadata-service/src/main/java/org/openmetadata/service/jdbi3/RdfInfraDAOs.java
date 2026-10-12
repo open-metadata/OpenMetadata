@@ -645,44 +645,6 @@ public interface RdfInfraDAOs {
 
     @SqlQuery("SELECT datasetName FROM rdf_active_dataset WHERE id = '" + POINTER_ID + "'")
     String getActiveDataset();
-
-    /**
-     * Points serving at {@code datasetName} under a new generation, as every switch must: results
-     * computed from the previous dataset must never pass for current, even when the name repeats.
-     */
-    default void setActiveDataset(
-        final String datasetName, final long updatedAt, final String updatedBy) {
-      upsertActiveDataset(datasetName, UUID.randomUUID().toString(), updatedAt, updatedBy);
-    }
-
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO rdf_active_dataset (id, datasetName, generation, updatedAt, updatedBy) "
-                + "VALUES ('"
-                + POINTER_ID
-                + "', :datasetName, :generation, :updatedAt, :updatedBy) "
-                + "ON DUPLICATE KEY UPDATE datasetName = VALUES(datasetName), "
-                + "generation = VALUES(generation), updatedAt = VALUES(updatedAt), "
-                + "updatedBy = VALUES(updatedBy)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO rdf_active_dataset (id, datasetName, generation, updatedAt, updatedBy) "
-                + "VALUES ('"
-                + POINTER_ID
-                + "', :datasetName, :generation, :updatedAt, :updatedBy) "
-                + "ON CONFLICT (id) DO UPDATE SET datasetName = EXCLUDED.datasetName, "
-                + "generation = EXCLUDED.generation, updatedAt = EXCLUDED.updatedAt, "
-                + "updatedBy = EXCLUDED.updatedBy",
-        connectionType = POSTGRES)
-    void upsertActiveDataset(
-        @Bind("datasetName") String datasetName,
-        @Bind("generation") String generation,
-        @Bind("updatedAt") long updatedAt,
-        @Bind("updatedBy") String updatedBy);
-
-    @SqlUpdate("DELETE FROM rdf_active_dataset WHERE id = '" + POINTER_ID + "'")
-    void clearActiveDataset();
   }
 
   /**

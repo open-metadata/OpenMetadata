@@ -12,10 +12,6 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-.edit-icon {
-  cursor: pointer;
-  height: 20px;
-}
 .tier-section {
   display: flex;
   flex-direction: column;
@@ -42,15 +38,6 @@
       align-items: center;
       justify-content: center;
       min-height: 40px;
-
-      .tier-loading-spinner {
-        .loading-spinner {
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          animation: spin var(--om-duration-1000) linear infinite;
-        }
-      }
     }
 
     .tier-display {
@@ -59,14 +46,5 @@
         font-size: var(--om-font-size-xs);
       }
     }
-  }
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
   }
 }

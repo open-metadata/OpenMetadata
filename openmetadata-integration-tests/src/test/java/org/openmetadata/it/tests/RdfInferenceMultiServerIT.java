@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -153,6 +154,34 @@ public class RdfInferenceMultiServerIT {
     final long expired = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
     locks.updateHeartbeat(lockKey, lease.jobId(), expired, expired);
     assertEquals(0, materializer(SERVER_B, fuseki).materialize(true, null).getFailedRules());
+  }
+
+  @Test
+  void aRunWhoseLeaseIsTakenOverLeavesTheRuleStatusToTheServerThatTookItOver() {
+    final AtomicReference<InferenceMaterializationResult> serverB = new AtomicReference<>();
+    final InferenceGraphStore serverAStore =
+        new InterceptingStore(
+            fuseki,
+            () -> {
+              expireLease();
+              serverB.set(materializer(SERVER_B, fuseki).materialize(true, null));
+            });
+
+    final InferenceRunInProgressException serverA =
+        assertThrows(
+            InferenceRunInProgressException.class,
+            () -> materializer(SERVER_A, serverAStore).materialize(true, null));
+
+    assertTrue(serverA.getMessage().contains("took over"), serverA.getMessage());
+    assertEquals(0, serverB.get().getFailedRules());
+    assertNull(rules.get(ruleName).getLastError(), "Server B's successful run must stand");
+    assertFalse(rules.get(ruleName).getDirty());
+  }
+
+  private void expireLease() {
+    final RdfReindexLockDAO.RdfReindexLockRecord lease = locks.findByKey(lockKey);
+    final long expired = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
+    locks.updateHeartbeat(lockKey, lease.jobId(), expired, expired);
   }
 
   /** Waits out a scheduled run already in progress, then keeps the next one from starting. */

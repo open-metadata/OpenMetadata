@@ -19,8 +19,10 @@ import java.net.URI;
 import java.time.Clock;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
@@ -49,7 +51,12 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
       final RdfInferenceRuleDAO ruleDAO, final Clock clock, final String rdfBaseUri) {
     this.ruleDAO = Objects.requireNonNull(ruleDAO);
     this.clock = Objects.requireNonNull(clock);
-    this.inferredGraphBaseUri = normalizeBaseUri(rdfBaseUri) + INFERRED_GRAPH_PATH;
+    this.inferredGraphBaseUri = inferredGraphPrefix(rdfBaseUri);
+  }
+
+  /** The IRI prefix shared by every rule's materialized graph. */
+  public static String inferredGraphPrefix(final String rdfBaseUri) {
+    return normalizeBaseUri(rdfBaseUri) + INFERRED_GRAPH_PATH;
   }
 
   /** A rule as a materialization run read it, with the version it must still have to end clean. */
@@ -127,6 +134,17 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
     return findActive(snapshot.name());
   }
 
+  /** Whether any rule was edited, added, deleted or invalidated after a run read {@code run}. */
+  public boolean hasChangedSince(final List<RuleSnapshot> run) {
+    final Map<String, Long> versionsReadByRun =
+        run.stream().collect(Collectors.toMap(RuleSnapshot::name, RuleSnapshot::dirtyVersion));
+    final Map<String, Long> currentVersions =
+        ruleDAO.listActive().stream()
+            .collect(
+                Collectors.toMap(RdfInferenceRuleRow::name, RdfInferenceRuleRow::dirtyVersion));
+    return !versionsReadByRun.equals(currentVersions);
+  }
+
   @Override
   public void markAllDirty() {
     ruleDAO.markAllDirty();
@@ -186,7 +204,7 @@ public final class InferenceRuleRepository implements InferenceDirtyMarker {
             .withGraphUri(URI.create(graphUri(row.name())))
             .withSystemRule(row.systemRule())
             .withDirty(row.dirty())
-            .withTripleCount(Math.toIntExact(row.lastTripleCount()));
+            .withTripleCount(row.lastTripleCount());
     Optional.ofNullable(row.lastMaterializedAt()).ifPresent(status::setLastMaterializedAt);
     Optional.ofNullable(row.lastError()).ifPresent(status::setLastError);
     return status;
