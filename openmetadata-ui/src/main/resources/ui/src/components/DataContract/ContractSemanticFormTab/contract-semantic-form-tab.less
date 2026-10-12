@@ -155,50 +155,6 @@
     padding: var(--om-space-16) var(--om-space-24);
     border-top: 1px solid @grey-200;
   }
-
-  .query-builder-form-field {
-    .ant-card {
-      border: none;
-      &.query-builder-card.jsonlogic
-        .query-builder-container
-        .group-or-rule-container.group-container
-        > .group.group-or-rule
-        > .group--header
-        .group--conjunctions {
-        top: -48px;
-        transform: none;
-        left: auto;
-        right: 0;
-      }
-    }
-    .ant-card-body {
-      padding: 0;
-
-      .ant-divider {
-        display: none;
-      }
-
-      .query-filter-label {
-        margin-bottom: var(--om-space-8);
-        display: inline-block;
-        line-height: 40px;
-      }
-
-      .ant-btn-group {
-        .action--DELETE {
-          border: 1px solid @grey-34;
-
-          .anticon {
-            color: @grey-400;
-          }
-        }
-
-        .action--ADD-RULE {
-          display: none !important;
-        }
-      }
-    }
-  }
 }
 
 .semantic-rule-editor-view-only {
@@ -210,10 +166,6 @@
     .group--conjunctions {
       display: none;
     }
-  }
-
-  .ant-card-body {
-    padding: 0;
   }
 
   .query-builder-card {

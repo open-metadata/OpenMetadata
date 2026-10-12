@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -45,6 +46,9 @@ import org.openmetadata.schema.utils.JsonUtils;
  * The reasoning protocol between OpenMetadata and the RDF store. Each example under {@code
  * rdf/reasoning/} must satisfy its JSON Schema and survive the generated Java model unchanged,
  * because the store implements the protocol from the schemas, not from these classes.
+ *
+ * <p>The per-operation rules are recorded in
+ * ADR:2026-10-11-rdf-reasoning-job-requests-carry-the-fields-their-operation-needs.
  */
 class RdfReasoningContractTest {
   private static final String SCHEMA_BASE = "https://open-metadata.org/schema/";
@@ -137,6 +141,62 @@ class RdfReasoningContractTest {
             request -> request.put("ontologyUrl", "https://example.org/remote.owl"),
             "additionalProperties"),
         violation(
+            "a REFRESH without a rule bundle digest",
+            "refresh-request",
+            Contract.REQUEST,
+            request -> request.remove("ruleBundleDigest"),
+            "required"),
+        violation(
+            "a CHECK without an ontology",
+            "check-subsumption-request",
+            Contract.REQUEST,
+            request -> request.remove("ontologyIri"),
+            "required"),
+        violation(
+            "a CHECK without a question",
+            "check-subsumption-request",
+            Contract.REQUEST,
+            request -> request.remove("check"),
+            "required"),
+        violation(
+            "an EXPLAIN without an ontology",
+            "explain-request",
+            Contract.REQUEST,
+            request -> request.remove("ontologyIri"),
+            "required"),
+        violation(
+            "an EXPLAIN without a statement to justify",
+            "explain-request",
+            Contract.REQUEST,
+            request -> request.remove("explain"),
+            "required"),
+        violation(
+            "a SUBSUMPTION without a superclass",
+            "check-subsumption-request",
+            Contract.REQUEST,
+            request -> object(request, "check").remove("superClassExpression"),
+            "required"),
+        violation(
+            "a SATISFIABILITY without a class",
+            "check-subsumption-request",
+            Contract.REQUEST,
+            request -> {
+              final ObjectNode check = object(request, "check");
+              check.put("kind", "SATISFIABILITY");
+              check.remove(List.of("classExpression", "superClassExpression"));
+            },
+            "required"),
+        violation(
+            "an ENTAILMENT without a statement",
+            "check-subsumption-request",
+            Contract.REQUEST,
+            request -> {
+              final ObjectNode check = object(request, "check");
+              check.put("kind", "ENTAILMENT");
+              check.remove(List.of("classExpression", "superClassExpression"));
+            },
+            "required"),
+        violation(
             "more rules than one bundle may carry",
             "refresh-request-with-rule",
             Contract.REQUEST,
@@ -178,6 +238,16 @@ class RdfReasoningContractTest {
             Contract.CAPABILITIES,
             capabilities -> capabilities.put("protocolVersion", "v1"),
             "pattern"));
+  }
+
+  @Test
+  void aConsistencyCheckTakesNoExpression() {
+    final ObjectNode request = (ObjectNode) read("check-subsumption-request");
+    final ObjectNode check = object(request, "check");
+    check.put("kind", "CONSISTENCY");
+    check.remove(List.of("classExpression", "superClassExpression"));
+
+    assertEquals(List.of(), messages(Contract.REQUEST.validate(request)));
   }
 
   @ParameterizedTest(name = "{0}")

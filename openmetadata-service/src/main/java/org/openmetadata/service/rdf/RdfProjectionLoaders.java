@@ -33,9 +33,12 @@ record RdfProjectionLoaders(
 
   @FunctionalInterface
   interface LineageDetailsLoader {
-    /** Returns the stored details of the lineage edge, or empty when the edge no longer exists. */
-    Optional<LineageDetails> load(UUID fromId, UUID toId);
+    /** Returns the stored lineage edge, or empty when the edge no longer exists. */
+    Optional<StoredLineageEdge> load(UUID fromId, UUID toId);
   }
+
+  /** A lineage edge that still exists; {@code details} is null when none were stored for it. */
+  record StoredLineageEdge(LineageDetails details) {}
 
   static RdfProjectionLoaders defaults() {
     return new RdfProjectionLoaders(
@@ -51,13 +54,18 @@ record RdfProjectionLoaders(
         false);
   }
 
-  private static Optional<LineageDetails> loadLineageDetails(final UUID fromId, final UUID toId) {
+  private static Optional<StoredLineageEdge> loadLineageDetails(
+      final UUID fromId, final UUID toId) {
     final EntityRelationshipObject edge =
         Entity.getCollectionDAO()
             .relationshipDAO()
             .getRecord(fromId, toId, Relationship.UPSTREAM.ordinal());
-    return Optional.ofNullable(edge)
-        .map(EntityRelationshipObject::getJson)
-        .map(json -> JsonUtils.readValue(json, LineageDetails.class));
+    return Optional.ofNullable(edge).map(RdfProjectionLoaders::storedLineageEdge);
+  }
+
+  private static StoredLineageEdge storedLineageEdge(final EntityRelationshipObject edge) {
+    final String json = edge.getJson();
+    return new StoredLineageEdge(
+        json == null ? null : JsonUtils.readValue(json, LineageDetails.class));
   }
 }

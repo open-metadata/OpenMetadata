@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button, Card } from 'antd';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Affix, Button } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -171,7 +171,7 @@ const WhatsNewAlert = () => {
                 className="layout-column tw:block"
                 style={{ flex: '0 0 48px' }}>
                 <CloseIcon
-                  className="whats-new-alert-close tw:size-3 tw:shrink-0"
+                  className="whats-new-alert-close tw:size-3.5 tw:shrink-0"
                   onClick={handleCancel}
                 />
               </Box>

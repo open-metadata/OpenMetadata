@@ -13,12 +13,13 @@
 
 import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import {
+  Card,
   Grid,
   SkeletonParagraph,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
@@ -66,43 +67,45 @@ function AlertDiagnosticInfoTab() {
 
   return (
     <Card>
-      {diagnosticIsLoading ? (
-        <SkeletonParagraph rows={3} />
-      ) : (
-        <Grid
-          className="layout-row layout-grid w-full"
-          style={{ ...getLayoutGutter(16, 16) }}>
-          {diagnosticItems.map((item) => (
-            <Grid.Item className="layout-column" key={item.key} span={12}>
-              <Grid className="layout-row layout-grid tw:items-center">
-                <Grid.Item
-                  className="layout-column d-flex items-center"
-                  span={12}>
-                  <Typography className="d-flex items-center gap-1">
-                    <Typography className="m-0" color="secondary">
-                      {`${item.key}:`}
+      <Card.Content>
+        {diagnosticIsLoading ? (
+          <SkeletonParagraph rows={3} />
+        ) : (
+          <Grid
+            className="layout-row layout-grid w-full"
+            style={{ ...getLayoutGutter(16, 16) }}>
+            {diagnosticItems.map((item) => (
+              <Grid.Item className="layout-column" key={item.key} span={12}>
+                <Grid className="layout-row layout-grid tw:items-center">
+                  <Grid.Item
+                    className="layout-column d-flex items-center"
+                    span={12}>
+                    <Typography className="d-flex items-center gap-1">
+                      <Typography className="m-0" color="secondary">
+                        {`${item.key}:`}
+                      </Typography>
+                      <Tooltip
+                        arrow
+                        excludeTriggerFromTabOrder
+                        placement="bottom"
+                        title={item.description}
+                        triggerClassName="tw:inline-flex">
+                        <InfoCircle
+                          className="info-icon"
+                          style={{ color: GRAYED_OUT_COLOR }}
+                        />
+                      </Tooltip>
                     </Typography>
-                    <Tooltip
-                      arrow
-                      excludeTriggerFromTabOrder
-                      placement="bottom"
-                      title={item.description}
-                      triggerClassName="tw:inline-flex">
-                      <InfoCircle
-                        className="info-icon"
-                        style={{ color: GRAYED_OUT_COLOR }}
-                      />
-                    </Tooltip>
-                  </Typography>
-                </Grid.Item>
-                <Grid.Item className="layout-column" span={12}>
-                  <Typography>{formatValue(item.value)}</Typography>
-                </Grid.Item>
-              </Grid>
-            </Grid.Item>
-          ))}
-        </Grid>
-      )}
+                  </Grid.Item>
+                  <Grid.Item className="layout-column" span={12}>
+                    <Typography>{formatValue(item.value)}</Typography>
+                  </Grid.Item>
+                </Grid>
+              </Grid.Item>
+            ))}
+          </Grid>
+        )}
+      </Card.Content>
     </Card>
   );
 }

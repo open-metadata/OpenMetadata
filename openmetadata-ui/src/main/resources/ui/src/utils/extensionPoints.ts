@@ -45,6 +45,11 @@ export const EXTENSION_POINTS = {
   // only its built-in cards when nothing is contributed.
   MEMBERS_LANDING_SECTIONS: 'members.landing-sections',
 
+  // Platform Settings landing — a downstream build contributes extra pages
+  // (e.g. ingestion runners) that get a card after the built-in ones and
+  // render at `#platform-settings/<id>`.
+  PLATFORM_SETTINGS_PAGES: 'platform-settings.pages',
+
   // Team Details Page
   TEAM_DETAILS_TABS: 'team-details.tabs',
 

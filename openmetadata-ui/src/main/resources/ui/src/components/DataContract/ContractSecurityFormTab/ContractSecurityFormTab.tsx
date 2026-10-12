@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form, Input, Select } from 'antd';
+import {
+  Card,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Select } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
@@ -300,7 +305,7 @@ const ContractPolicyCard: React.FC<ContractPolicyCardProps> = ({
                                     <Button
                                       className="contract-consumer-security-card-rule-delete-button"
                                       icon={
-                                        <CloseIcon className="tw:size-3 tw:shrink-0" />
+                                        <CloseIcon className="tw:size-3.5 tw:shrink-0" />
                                       }
                                       size="small"
                                       type="text"
@@ -514,7 +519,7 @@ export const ContractSecurityFormTab: React.FC<{
                 className="add-policy-button"
                 data-testid="add-policy-button"
                 disabled={!isNull(editingKey) || !addFunctionRef.current}
-                icon={<PlusIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
+                icon={<PlusIcon className="anticon tw:size-3.5 tw:shrink-0" />}
                 type="link"
                 onClick={handleAddPolicy}>
                 {t('label.add-entity', { entity: t('label.policy') })}

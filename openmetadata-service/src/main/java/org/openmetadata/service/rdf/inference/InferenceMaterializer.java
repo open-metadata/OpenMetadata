@@ -30,7 +30,8 @@ import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
  * graph, then applies the enabled rules in passes until a pass derives nothing new. Rules may
  * therefore read each other's conclusions in any order, and nothing derived from a fact that has
  * since been removed survives the run. A run that does not converge within its pass budget fails
- * rather than reporting a partial result as complete.
+ * rather than reporting a partial result as complete, unless writes changed its inputs meanwhile:
+ * then it stops and leaves the rules dirty for the next run.
  */
 @Slf4j
 public final class InferenceMaterializer {
@@ -47,8 +48,12 @@ public final class InferenceMaterializer {
       "The rules did not reach a fixed point within %d passes; the last pass derived %d new"
           + " triples";
   private static final String RUN_FAILED = "Inference run failed: %s";
+  private static final String SUPERSEDED =
+      "Inference inputs changed while the run was converging, so it stopped after %d passes. The"
+          + " rules stay dirty and the next run recomputes them.";
   private static final String LEASE_LOST =
-      "Another inference run took over the materialization lock, so this run stopped";
+      "Another inference run took over the materialization lock, so this run stopped and left the"
+          + " rule status to that run";
   private static final String LEASE_KEPT =
       "Keeping the inference materialization lock of run {} until it expires: Fuseki may still be"
           + " applying an update whose outcome is unknown, and the next run must not clear the rule"
@@ -84,6 +89,11 @@ public final class InferenceMaterializer {
   /**
    * Recomputes every rule when any rule is dirty, or when forced. A requested rule must exist, but
    * the whole bundle still runs because rules read each other's conclusions.
+   *
+   * @throws InferenceRunInProgressException when another run holds the lock, or takes it over
+   *     while this one is running
+   * @throws InferenceRunSupersededException when the pass budget runs out while writes keep
+   *     changing the rules' inputs
    */
   public InferenceMaterializationResult materialize(
       final boolean force, final String requestedRule) {
@@ -122,13 +132,17 @@ public final class InferenceMaterializer {
       store.update(InferenceMaterializationQueryBuilder.clear(rules.graphUrisOfAllRules()));
       computeFixedPoint(snapshots.stream().filter(RuleSnapshot::isEnabled).toList(), lease);
       outcome = new RunOutcome(recordSuccess(snapshots), 0);
+    } catch (NoFixedPointException exception) {
+      outcome = failUnlessSuperseded(snapshots, exception);
+    } catch (LeaseLostException exception) {
+      // The run that took over owns the rule rows now; recording a failure here would overwrite
+      // whatever it has written.
+      throw new InferenceRunInProgressException(exception.getMessage());
     } catch (RuntimeException exception) {
-      LOG.error("Inference materialization run failed", exception);
       if (RdfWriteOutcomeUnknownException.isPresent(exception)) {
         lease.keepUntilExpiry();
       }
-      final List<InferenceRuleStatus> failed = recordFailure(snapshots, exception);
-      outcome = new RunOutcome(failed, failed.size());
+      outcome = failedRun(snapshots, exception);
     }
     return outcome;
   }
@@ -144,8 +158,29 @@ public final class InferenceMaterializer {
       passes++;
     }
     if (derivedByLastPass != 0) {
-      throw new IllegalStateException(NO_FIXED_POINT.formatted(maxPasses, derivedByLastPass));
+      throw new NoFixedPointException(derivedByLastPass);
     }
+  }
+
+  /**
+   * Writes landing during the run add facts the passes keep deriving from, so running out of passes
+   * then says nothing about the rules. Recording that as a rule failure would blame them for the
+   * write rate; the rules are left dirty without an error instead.
+   */
+  private RunOutcome failUnlessSuperseded(
+      final List<RuleSnapshot> snapshots, final NoFixedPointException exception) {
+    if (rules.hasChangedSince(snapshots)) {
+      rules.markAllDirty();
+      throw new InferenceRunSupersededException(SUPERSEDED.formatted(maxPasses));
+    }
+    return failedRun(snapshots, exception);
+  }
+
+  private RunOutcome failedRun(
+      final List<RuleSnapshot> snapshots, final RuntimeException exception) {
+    LOG.error("Inference materialization run failed", exception);
+    final List<InferenceRuleStatus> failed = recordFailure(snapshots, exception);
+    return new RunOutcome(failed, failed.size());
   }
 
   /**
@@ -256,7 +291,7 @@ public final class InferenceMaterializer {
 
     private void renew() {
       if (!runLock.renew(runId)) {
-        throw new IllegalStateException(LEASE_LOST);
+        throw new LeaseLostException();
       }
     }
 
@@ -268,6 +303,18 @@ public final class InferenceMaterializer {
       } else {
         runLock.release(runId);
       }
+    }
+  }
+
+  private final class NoFixedPointException extends IllegalStateException {
+    private NoFixedPointException(final long derivedByLastPass) {
+      super(NO_FIXED_POINT.formatted(maxPasses, derivedByLastPass));
+    }
+  }
+
+  private static final class LeaseLostException extends IllegalStateException {
+    private LeaseLostException() {
+      super(LEASE_LOST);
     }
   }
 

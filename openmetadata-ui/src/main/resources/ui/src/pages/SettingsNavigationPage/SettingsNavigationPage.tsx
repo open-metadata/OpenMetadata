@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Drag } from '@openmetadata/ui-core-components/icons';
-import { Grid, Toggle } from '@openmetadata/ui-core-components';
-import { Card, Tree, TreeDataNode, TreeProps } from 'antd';
+import { Card, Grid, Toggle } from '@openmetadata/ui-core-components';
+import { Tree, TreeDataNode, TreeProps } from 'antd';
 import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -170,22 +170,24 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
           </Grid.Item>
 
           <Grid.Item className="layout-column" span={24}>
-            <Card
-              bordered={false}
-              className="custom-navigation-tree-container"
-              title="Navigation Menus">
-              <Tree
-                autoExpandParent
-                blockNode
-                defaultExpandAll
-                showIcon
-                draggable={{ icon: <Drag className="tw:size-4 tw:shrink-0" /> }}
-                itemHeight={48}
-                switcherIcon={switcherIcon}
-                titleRender={titleRenderer}
-                treeData={treeData}
-                onDrop={onDrop}
-              />
+            <Card className="custom-navigation-tree-container" variant="ghost">
+              <Card.Header title="Navigation Menus" />
+              <Card.Content>
+                <Tree
+                  autoExpandParent
+                  blockNode
+                  defaultExpandAll
+                  showIcon
+                  draggable={{
+                    icon: <Drag className="tw:size-4 tw:shrink-0" />,
+                  }}
+                  itemHeight={48}
+                  switcherIcon={switcherIcon}
+                  titleRender={titleRenderer}
+                  treeData={treeData}
+                  onDrop={onDrop}
+                />
+              </Card.Content>
             </Card>
           </Grid.Item>
         </Grid>

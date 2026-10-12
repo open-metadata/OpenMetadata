@@ -246,6 +246,18 @@ class InferenceRuleValidatorTest {
     }
 
     @Test
+    @DisplayName("EXISTS required by the whole filter is accepted")
+    void requiredExistsIsAccepted() {
+      final String body =
+          "CONSTRUCT { ?s <urn:p> ?o } WHERE { ?s <urn:q> ?o "
+              + "FILTER(EXISTS { ?o <urn:r> ?x } && ?o != <urn:excluded>) }";
+
+      final List<String> errors = validate(rule("exists-rule", body));
+
+      assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
+    }
+
+    @Test
     @DisplayName("Graph-name variables and three-argument functions are accepted")
     void graphNameVariablesAndThreeArgumentFunctionsAreAccepted() {
       final String body =
@@ -273,6 +285,26 @@ class InferenceRuleValidatorTest {
         Arguments.of("OPTIONAL", head + "OPTIONAL { ?s <urn:r> ?x } }", "OPTIONAL"),
         Arguments.of("MINUS", head + "MINUS { ?s <urn:r> ?o } }", "MINUS"),
         Arguments.of("NOT EXISTS", head + "FILTER NOT EXISTS { ?s <urn:r> ?o } }", "NOT EXISTS"),
+        Arguments.of(
+            "negated EXISTS",
+            head + "FILTER(!EXISTS { ?s <urn:r> ?o }) }",
+            "EXISTS is only allowed"),
+        Arguments.of(
+            "parenthesized negated EXISTS",
+            head + "FILTER(!(EXISTS { ?s <urn:r> ?o })) }",
+            "EXISTS is only allowed"),
+        Arguments.of(
+            "EXISTS chosen by IF",
+            head + "FILTER(IF(EXISTS { ?s <urn:r> ?o }, false, true)) }",
+            "EXISTS is only allowed"),
+        Arguments.of(
+            "EXISTS bound to a variable",
+            head + "BIND(EXISTS { ?s <urn:r> ?o } AS ?seen) }",
+            "EXISTS is only allowed"),
+        Arguments.of(
+            "MINUS inside EXISTS",
+            head + "FILTER EXISTS { ?s <urn:r> ?o MINUS { ?s <urn:t> ?o } } }",
+            "MINUS"),
         Arguments.of("BOUND", head + "FILTER(!BOUND(?o)) }", "BOUND"),
         Arguments.of(
             "subquery",

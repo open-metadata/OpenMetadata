@@ -13,11 +13,12 @@
 
 import {
   Button as CoreButton,
+  Card,
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-import { Button, Card } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';

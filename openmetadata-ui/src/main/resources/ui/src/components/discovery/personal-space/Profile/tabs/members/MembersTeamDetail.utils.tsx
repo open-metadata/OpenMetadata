@@ -42,6 +42,9 @@ export const TEAM_FIELDS = [
   TabSpecificField.OWNS,
   TabSpecificField.DOMAINS,
   TabSpecificField.OWNERS,
+  // Resolved recursively on read (excludes the team itself); needed to scope the
+  // users search to the whole subtree, mirroring the legacy UserTab search.
+  TabSpecificField.DESCENDANT_TEAMS,
 ].join(',');
 
 export const TEAM_USER_FIELDS = [

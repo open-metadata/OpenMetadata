@@ -11,10 +11,14 @@
  *  limitations under the License.
  */
 
-import { Grid, Toggle, Typography } from '@openmetadata/ui-core-components';
+import {
+  Card,
+  Grid,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import { Button, Form, FormListFieldData, Input } from 'antd';
-import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import { isEmpty, isNull, isNumber } from 'lodash';
@@ -188,7 +192,7 @@ export const ContractSemanticFormTab: React.FC<{
             className="add-semantic-button"
             data-testid="add-semantic-button"
             disabled={!isNull(editingKey) || !addFunctionRef.current}
-            icon={<PlusIcon className="tw:size-3.5 tw:mr-2 tw:shrink-0" />}
+            icon={<PlusIcon className="anticon tw:size-3.5 tw:shrink-0" />}
             type="link"
             onClick={handleAddSemantic}>
             {t('label.add-entity', {

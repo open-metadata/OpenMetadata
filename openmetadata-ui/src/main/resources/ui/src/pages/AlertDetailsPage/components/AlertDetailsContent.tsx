@@ -16,12 +16,13 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Owner,
   Skeleton,
   Tabs,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -92,147 +93,149 @@ function AlertDetailsContent({
     <Card
       className="steps-form-container"
       data-testid="alert-details-container">
-      <Box className="add-notification-container" direction="col" gap={4}>
-        <div>
-          <TitleBreadcrumb titleLinks={breadcrumb} />
-        </div>
+      <Card.Content>
+        <Box className="add-notification-container" direction="col" gap={4}>
+          <div>
+            <TitleBreadcrumb titleLinks={breadcrumb} />
+          </div>
 
-        <div>
-          <Box justify="between">
-            <div className="tw:w-5/6">
-              <Box direction="col" gap={4}>
-                <div>
-                  <EntityHeaderTitle
-                    displayName={alertDetails?.displayName}
-                    icon={alertIcon}
-                    name={alertDetails?.name ?? ''}
-                    serviceName=""
-                  />
-                </div>
-                <div>
-                  <div className="d-flex items-center flex-wrap gap-2">
-                    {ownerLoading ? (
-                      <Skeleton height={40} variant="rounded" width={80} />
-                    ) : (
-                      <Owner
-                        hasPermission={editOwnersPermission}
-                        isCompactView={false}
-                        owners={alertDetails?.owners ?? []}
-                        selectorContent={
-                          <UserTeamSelectableList
-                            hasPermission={Boolean(editOwnersPermission)}
-                            multiple={{ user: true, team: false }}
-                            owner={alertDetails?.owners}
-                            onUpdate={onOwnerUpdate}
-                          />
-                        }
-                      />
-                    )}
-                    {extraInfo}
+          <div>
+            <Box justify="between">
+              <div className="tw:w-5/6">
+                <Box direction="col" gap={4}>
+                  <div>
+                    <EntityHeaderTitle
+                      displayName={alertDetails?.displayName}
+                      icon={alertIcon}
+                      name={alertDetails?.name ?? ''}
+                      serviceName=""
+                    />
                   </div>
-                </div>
-              </Box>
-            </div>
-            <div>
-              <Box
-                inline
-                align="center"
-                className="layout-space layout-space-horizontal"
-                gap={2}
-                itemClassName="layout-space-item">
-                <Tooltip
-                  arrow
-                  title={t('label.sync-alert-offset', {
-                    entity: t('label.alert'),
-                  })}>
-                  <Button
-                    color="secondary"
-                    data-testid="sync-button"
-                    iconLeading={<RefreshCcw02 height={16} width={16} />}
-                    isLoading={isSyncing}
-                    size="sm"
-                    onPress={handleAlertSync}
-                  />
-                </Tooltip>
-                {editPermission &&
-                  alertDetails?.provider !== ProviderType.System && (
-                    <Tooltip
-                      arrow
-                      title={t('label.edit-entity', {
-                        entity: t('label.alert'),
-                      })}>
-                      <ButtonUtility
-                        color="secondary"
-                        data-testid="edit-button"
-                        icon={EditIcon}
-                        size="sm"
-                        onClick={handleAlertEdit}
-                      />
-                    </Tooltip>
-                  )}
-                {deletePermission &&
-                  alertDetails?.provider !== ProviderType.System && (
-                    <Tooltip
-                      arrow
-                      title={t('label.delete-entity', {
-                        entity: t('label.alert'),
-                      })}>
-                      <ButtonUtility
-                        color="secondary"
-                        data-testid="delete-button"
-                        icon={DeleteIcon}
-                        size="sm"
-                        onClick={() => setShowDeleteModal(true)}
-                      />
-                    </Tooltip>
-                  )}
-              </Box>
-            </div>
-          </Box>
-        </div>
+                  <div>
+                    <div className="d-flex items-center flex-wrap gap-2">
+                      {ownerLoading ? (
+                        <Skeleton height={40} variant="rounded" width={80} />
+                      ) : (
+                        <Owner
+                          hasPermission={editOwnersPermission}
+                          isCompactView={false}
+                          owners={alertDetails?.owners ?? []}
+                          selectorContent={
+                            <UserTeamSelectableList
+                              hasPermission={Boolean(editOwnersPermission)}
+                              multiple={{ user: true, team: false }}
+                              owner={alertDetails?.owners}
+                              onUpdate={onOwnerUpdate}
+                            />
+                          }
+                        />
+                      )}
+                      {extraInfo}
+                    </div>
+                  </div>
+                </Box>
+              </div>
+              <div>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <Tooltip
+                    arrow
+                    title={t('label.sync-alert-offset', {
+                      entity: t('label.alert'),
+                    })}>
+                    <Button
+                      color="secondary"
+                      data-testid="sync-button"
+                      iconLeading={<RefreshCcw02 height={16} width={16} />}
+                      isLoading={isSyncing}
+                      size="sm"
+                      onPress={handleAlertSync}
+                    />
+                  </Tooltip>
+                  {editPermission &&
+                    alertDetails?.provider !== ProviderType.System && (
+                      <Tooltip
+                        arrow
+                        title={t('label.edit-entity', {
+                          entity: t('label.alert'),
+                        })}>
+                        <ButtonUtility
+                          color="secondary"
+                          data-testid="edit-button"
+                          icon={EditIcon}
+                          size="sm"
+                          onClick={handleAlertEdit}
+                        />
+                      </Tooltip>
+                    )}
+                  {deletePermission &&
+                    alertDetails?.provider !== ProviderType.System && (
+                      <Tooltip
+                        arrow
+                        title={t('label.delete-entity', {
+                          entity: t('label.alert'),
+                        })}>
+                        <ButtonUtility
+                          color="secondary"
+                          data-testid="delete-button"
+                          icon={DeleteIcon}
+                          size="sm"
+                          onClick={() => setShowDeleteModal(true)}
+                        />
+                      </Tooltip>
+                    )}
+                </Box>
+              </div>
+            </Box>
+          </div>
 
-        <div className="alert-description" data-testid="alert-description">
-          <Description
-            description={alertDetails?.description}
-            entityType={EntityType.EVENT_SUBSCRIPTION}
-            hasEditAccess={editDescriptionPermission}
-            showCommentsIcon={false}
-            onDescriptionUpdate={onDescriptionUpdate}
-          />
-        </div>
+          <div className="alert-description" data-testid="alert-description">
+            <Description
+              description={alertDetails?.description}
+              entityType={EntityType.EVENT_SUBSCRIPTION}
+              hasEditAccess={editDescriptionPermission}
+              showCommentsIcon={false}
+              onDescriptionUpdate={onDescriptionUpdate}
+            />
+          </div>
 
-        <Tabs
-          className="tw:gap-3"
-          selectedKey={activeTab}
-          onSelectionChange={(key) => handleTabChange(String(key))}>
-          <Tabs.List size="sm" type="underline" variant="card">
-            {tabItems.map(({ key, label }) => (
-              <Tabs.Item id={key} key={key}>
-                {label}
-              </Tabs.Item>
+          <Tabs
+            className="tw:gap-3"
+            selectedKey={activeTab}
+            onSelectionChange={(key) => handleTabChange(String(key))}>
+            <Tabs.List size="sm" type="underline" variant="card">
+              {tabItems.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {tabItems.map(({ key, children }) => (
+              <Tabs.Panel
+                className="tw:data-inert:hidden"
+                id={key}
+                key={key}
+                shouldForceMount={visitedTabs.has(key)}>
+                {children}
+              </Tabs.Panel>
             ))}
-          </Tabs.List>
-          {tabItems.map(({ key, children }) => (
-            <Tabs.Panel
-              className="tw:data-inert:hidden"
-              id={key}
-              key={key}
-              shouldForceMount={visitedTabs.has(key)}>
-              {children}
-            </Tabs.Panel>
-          ))}
-        </Tabs>
-      </Box>
-      <DeleteModal
-        entityTitle={getEntityName(alertDetails)}
-        isDeleting={isDeleting}
-        message={t('message.permanently-delete-common-message', {
-          entity: getEntityName(alertDetails)?.toLowerCase?.() ?? '',
-        })}
-        open={showDeleteModal}
-        onCancel={hideDeleteModal}
-        onDelete={handleAlertHardDelete}
-      />
+          </Tabs>
+        </Box>
+        <DeleteModal
+          entityTitle={getEntityName(alertDetails)}
+          isDeleting={isDeleting}
+          message={t('message.permanently-delete-common-message', {
+            entity: getEntityName(alertDetails)?.toLowerCase?.() ?? '',
+          })}
+          open={showDeleteModal}
+          onCancel={hideDeleteModal}
+          onDelete={handleAlertHardDelete}
+        />
+      </Card.Content>
     </Card>
   );
 }

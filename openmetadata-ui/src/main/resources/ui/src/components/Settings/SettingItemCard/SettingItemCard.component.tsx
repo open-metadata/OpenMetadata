@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Badge, Card } from 'antd';
+import { Card, Typography } from '@openmetadata/ui-core-components';
+import { Badge } from 'antd';
 import classNames from 'classnames';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,28 +36,32 @@ const SettingItemCard = ({
     [onClick, data.key]
   );
 
+  const SettingIcon = data.icon;
+
   return (
     <Card
       className={classNames('setting-card-item', className)}
       data-testid={data.key}
       onClick={handleOnClick}>
-      <div className="setting-card-icon">
-        <data.icon className="tw:size-3.5 tw:shrink-0" />
-        {Boolean(data?.isBeta) && (
-          <Badge className="service-beta-tag" count={t('label.beta')} />
-        )}
-      </div>
-      <div className="setting-card-content">
-        <Typography className="setting-card-title font-semibold">
-          {data.category ?? data.label}
-        </Typography>
-        <Typography
-          as="p"
-          className="setting-card-description font-normal text-sm"
-          ellipsis={{ rows: 2 }}>
-          {data.description}
-        </Typography>
-      </div>
+      <Card.Content className="tw:flex tw:items-center tw:gap-4">
+        <div className="setting-card-icon">
+          <SettingIcon className="tw:size-3.5 tw:shrink-0" />
+          {Boolean(data?.isBeta) && (
+            <Badge className="service-beta-tag" count={t('label.beta')} />
+          )}
+        </div>
+        <div className="setting-card-content">
+          <Typography className="setting-card-title font-semibold">
+            {data.category ?? data.label}
+          </Typography>
+          <Typography
+            as="p"
+            className="setting-card-description font-normal text-sm"
+            ellipsis={{ rows: 2 }}>
+            {data.description}
+          </Typography>
+        </div>
+      </Card.Content>
     </Card>
   );
 };

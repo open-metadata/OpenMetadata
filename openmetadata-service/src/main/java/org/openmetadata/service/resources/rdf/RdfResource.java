@@ -495,7 +495,11 @@ public class RdfResource {
         @ApiResponse(responseCode = "200", description = "Materialization completed"),
         @ApiResponse(responseCode = "403", description = "Forbidden"),
         @ApiResponse(responseCode = "404", description = "The requested rule does not exist"),
-        @ApiResponse(responseCode = "409", description = "Another run is in progress"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Another run is in progress or took this run over, or writes kept changing the"
+                    + " rules' inputs until the run ran out of passes; the rules stay dirty"),
         @ApiResponse(responseCode = "503", description = "Materialized inference is disabled")
       })
   public Response materializeInferenceRules(

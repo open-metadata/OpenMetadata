@@ -12,8 +12,8 @@
  */
 
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
-import { Box } from '@openmetadata/ui-core-components';
-import { Button, Card, Select } from 'antd';
+import { Box, Card } from '@openmetadata/ui-core-components';
+import { Button, Select } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -84,80 +84,82 @@ const RolesCard = ({
 
   if (isAdminUser) {
     return (
-      <Card
-        className="bot-page-roles-card-header"
-        extra={
-          !isRolesEdit && (
-            <EditIconButton
-              newLook
-              data-testid="edit-roles"
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.role-plural'),
-              })}
-              onClick={() => setIsRolesEdit(true)}
-            />
-          )
-        }
-        key="roles-card"
-        title={t('label.role-plural')}>
-        <div className="mb-4">
-          {isRolesEdit ? (
-            <Box
-              inline
-              align="stretch"
-              className="layout-space w-full"
-              direction="col"
-              gap={2}
-              itemClassName="layout-space-item">
-              <Select
-                showSearch
-                aria-label="Select roles"
-                className="w-full"
-                defaultValue={selectedRoles}
-                filterOption={false}
-                id="select-role"
-                loading={isRolesLoading}
-                mode="multiple"
-                options={userRolesOption}
-                placeholder={`${t('label.role-plural')}...`}
-                onChange={handleOnRolesChange}
-                onSearch={searchRolesOptions}
+      <Card className="bot-page-roles-card-header" key="roles-card">
+        <Card.Header
+          extra={
+            !isRolesEdit && (
+              <EditIconButton
+                newLook
+                data-testid="edit-roles"
+                size="small"
+                title={t('label.edit-entity', {
+                  entity: t('label.role-plural'),
+                })}
+                onClick={() => setIsRolesEdit(true)}
               />
-              <div className="flex justify-end" data-testid="buttons">
-                <Button
-                  className="text-sm mr-1"
-                  data-testid="cancel-roles"
-                  icon={<XClose />}
-                  size="small"
-                  type="primary"
-                  onMouseDown={() => setIsRolesEdit(false)}
+            )
+          }
+          title={t('label.role-plural')}
+        />
+        <Card.Content>
+          <div className="mb-4">
+            {isRolesEdit ? (
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={2}
+                itemClassName="layout-space-item">
+                <Select
+                  showSearch
+                  aria-label="Select roles"
+                  className="w-full"
+                  defaultValue={selectedRoles}
+                  filterOption={false}
+                  id="select-role"
+                  loading={isRolesLoading}
+                  mode="multiple"
+                  options={userRolesOption}
+                  placeholder={`${t('label.role-plural')}...`}
+                  onChange={handleOnRolesChange}
+                  onSearch={searchRolesOptions}
                 />
-                <Button
-                  className="text-sm"
-                  data-testid="save-roles"
-                  icon={<Check />}
-                  size="small"
-                  type="primary"
-                  onClick={handleRolesChange}
-                />
-              </div>
-            </Box>
-          ) : (
-            <RolesElement userData={userData} />
-          )}
-        </div>
+                <div className="flex justify-end" data-testid="buttons">
+                  <Button
+                    className="text-sm mr-1"
+                    data-testid="cancel-roles"
+                    icon={<XClose />}
+                    size="small"
+                    type="primary"
+                    onMouseDown={() => setIsRolesEdit(false)}
+                  />
+                  <Button
+                    className="text-sm"
+                    data-testid="save-roles"
+                    icon={<Check />}
+                    size="small"
+                    type="primary"
+                    onClick={handleRolesChange}
+                  />
+                </div>
+              </Box>
+            ) : (
+              <RolesElement userData={userData} />
+            )}
+          </div>
+        </Card.Content>
       </Card>
     );
   } else {
     return (
-      <Card
-        className="new-header-border-card"
-        key="roles-card"
-        title={t('label.role-plural')}>
-        <div className="flex items-center justify-between mb-4">
-          <RolesElement userData={userData} />
-        </div>
+      <Card className="new-header-border-card" key="roles-card">
+        <Card.Header title={t('label.role-plural')} />
+        <Card.Content>
+          <div className="flex items-center justify-between mb-4">
+            <RolesElement userData={userData} />
+          </div>
+        </Card.Content>
       </Card>
     );
   }

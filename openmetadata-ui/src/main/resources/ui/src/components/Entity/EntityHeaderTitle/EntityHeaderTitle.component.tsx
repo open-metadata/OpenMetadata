@@ -19,6 +19,7 @@ import {
 import {
   Copy01,
   ExclamationCircleFilled,
+  Star01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -26,7 +27,6 @@ import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
-import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -129,7 +129,7 @@ const EntityHeaderTitle = ({
         {deleted && (
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled className="m-r-xss" size={14} />
+              <ExclamationCircleFilled className="m-r-xss font-medium text-xs tw:size-3.5 tw:shrink-0" />
               {t('label.deleted')}
             </span>
           </div>
@@ -196,7 +196,7 @@ const EntityHeaderTitle = ({
           color="tertiary"
           data-testid="entity-follow-button"
           iconLeading={
-            <StarFilledIcon className="tw:size-3.5 tw:text-utility-brand-600" />
+            <Star01 className="tw:size-3.5 tw:text-utility-brand-600" />
           }
           isDisabled={deleted}
           isLoading={isFollowingLoading}
