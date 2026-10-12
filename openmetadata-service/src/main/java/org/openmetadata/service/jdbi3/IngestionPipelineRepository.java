@@ -495,7 +495,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       UUID pipelineId = UUID.fromString(record.getToId());
       EntityReference serviceRef =
           Entity.getEntityReferenceById(
-              record.getFromEntity(), UUID.fromString(record.getFromId()), Include.NON_DELETED);
+              record.getFromEntity(), UUID.fromString(record.getFromId()), ALL);
       serviceMap.put(pipelineId, serviceRef);
     }
 
