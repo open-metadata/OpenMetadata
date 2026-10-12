@@ -24,6 +24,7 @@ from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_vertica.base import VerticaDialect, ischema_names
+from sqlalchemy_vertica.dialect_vertica_python import VerticaDialect as VerticaPythonDialect
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableType
@@ -48,7 +49,6 @@ from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
     VERTICA_GET_COLUMNS_WITHOUT_COMMENTS,
     VERTICA_GET_CURRENT_SCHEMA,
-    VERTICA_GET_PRIMARY_KEYS,
     VERTICA_GET_SERVER_VERSION,
     VERTICA_LIST_DATABASES,
     VERTICA_SCHEMA_COMMENTS,
@@ -148,6 +148,10 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
 
     ``include_comments=False`` skips the per-table comments join, for callers that
     attach comments themselves from a batch (see `VerticaSource`).
+
+    Primary keys are not looked up here: nothing reads a per-column primary-key flag,
+    since they are reflected through `get_pk_constraint`, so the query only cost a
+    catalog read per table (issue #29429).
     """
     if schema is not None:
         schema_condition = f"lower(table_schema) = '{schema.lower()}'"
@@ -162,14 +166,10 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
     )
     sql_query = sql.text(dedent(columns_query.format(table=table_name.lower(), schema_condition=schema_condition)))
 
-    spk = sql.text(dedent(VERTICA_GET_PRIMARY_KEYS.format(table=table_name.lower(), schema_condition=schema_condition)))
-
-    pk_columns = [x[0] for x in connection.execute(spk)]
     columns = {}
     for row in connection.execute(sql_query):
         name = row.column_name
         dtype = row.data_type.lower()
-        primary_key = name in pk_columns
         default = row.column_default
         nullable = row.is_nullable
         comment = row.comment
@@ -182,7 +182,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
             schema,
             comment,
         )
-        column_info.update({"primary_key": primary_key})
         if columns.get(name) is None or comment:
             columns[name] = column_info
     return columns.values()
@@ -356,6 +355,13 @@ VerticaDialect.get_all_table_comments = get_all_table_comments
 VerticaDialect.get_table_comment = get_table_comment  # pyright: ignore[reportAttributeAccessIssue]
 VerticaDialect._get_server_version_info = _get_server_version_info  # pylint: disable=protected-access
 VerticaDialect._get_default_schema_name = _get_default_schema_name  # pylint: disable=protected-access
+
+# The reflection statements embed their literal values in the statement text or
+# use bound parameters, so SQLAlchemy's compiled-statement cache is safe to enable
+# and avoids recompiling every statement (matching the MSSQL dialect). SQLAlchemy
+# reads the flag from the concrete dialect class only, so it has to be set on the
+# one the vertica+vertica_python scheme builds, not on the base class it extends.
+VerticaPythonDialect.supports_statement_cache = True
 
 # get_schema_definition only reaches for table DDL when the inspector carries
 # these, and they are registered globally rather than per dialect. Vertica does

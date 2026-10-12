@@ -124,16 +124,6 @@ VERTICA_BATCH_COMMENTS = textwrap.dedent(
     """
 )
 
-VERTICA_GET_PRIMARY_KEYS = textwrap.dedent(
-    """
-        SELECT column_name
-        FROM v_catalog.primary_keys
-        WHERE lower(table_name) = '{table}'
-        AND constraint_type = 'p'
-        AND {schema_condition}
-    """
-)
-
 VERTICA_VIEW_DEFINITION = textwrap.dedent(
     """
       SELECT VIEW_DEFINITION
