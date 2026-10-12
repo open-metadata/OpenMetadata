@@ -328,4 +328,5 @@ export interface NodeConfigSidebarProps {
   onWorkflowUpdate: (workflowDefinition: WorkflowDefinition) => void;
   setNodes?: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges?: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
+  hasGitSinkNode?: boolean;
 }
