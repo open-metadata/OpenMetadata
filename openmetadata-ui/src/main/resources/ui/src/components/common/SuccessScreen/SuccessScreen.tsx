@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Space } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -78,12 +78,14 @@ const SuccessScreen = ({
           </p>
         </div>
       ) : (
-        <Space
+        <Box
+          inline
           align="center"
-          className="justify-center w-full m-t-sm"
+          className="layout-space justify-center w-full m-t-sm"
           data-testid="argo-platform-message"
-          direction="vertical"
-          size={16}>
+          direction="col"
+          gap={4}
+          itemClassName="layout-space-item">
           <IconCollateSupport
             data-testid="collate-support"
             height={100}
@@ -92,7 +94,7 @@ const SuccessScreen = ({
           <Typography as="article">
             {t('message.pipeline-scheduler-message')}
           </Typography>
-        </Space>
+        </Box>
       ),
     [isAirflowPlatform]
   );
@@ -102,7 +104,12 @@ const SuccessScreen = ({
       className="d-flex flex-col mt-14 mb-24 mx-8 p-x-xss"
       data-testid="success-screen-container">
       <Card>
-        <Space>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           <IconSuccessBadge data-testid="success-icon" width="20px" />
           <Typography as="p" className="m-b-0" data-testid="success-line">
             {isUndefined(successMessage) ? (
@@ -117,7 +124,7 @@ const SuccessScreen = ({
               successMessage
             )}
           </Typography>
-        </Space>
+        </Box>
       </Card>
       <div className="m-t-sm">
         {isFetchingStatus ? (

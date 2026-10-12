@@ -557,7 +557,7 @@ public class PersonaContextBuilder {
     String entityType = rule.getEntityType();
     String fqn = stringValue(document.get("fullyQualifiedName"));
     try {
-      EntityInterface entity = loadKnowledgeEntity(entityType, fqn);
+      EntityInterface<?> entity = loadKnowledgeEntity(entityType, fqn);
       KnowledgeItem item = fullKnowledgeItem(entityType, entity);
       if (item == null) {
         return null;
@@ -578,8 +578,8 @@ public class PersonaContextBuilder {
     }
   }
 
-  private static EntityInterface loadKnowledgeEntity(String entityType, String fqn) {
-    EntityInterface entity =
+  private static EntityInterface<?> loadKnowledgeEntity(String entityType, String fqn) {
+    EntityInterface<?> entity =
         Entity.getEntityByName(entityType, fqn, knowledgeFields(entityType), Include.NON_DELETED);
     if (entity instanceof Metric metric) {
       MetricRepository repository = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
@@ -801,7 +801,7 @@ public class PersonaContextBuilder {
     return values.stream().flatMap(Collection::stream).distinct().toList();
   }
 
-  static <T extends EntityInterface> Map<UUID, T> entitiesById(
+  static <T extends EntityInterface<?>> Map<UUID, T> entitiesById(
       String entityType, List<UUID> ids, Class<T> entityClass) {
     Map<UUID, T> entitiesById = new HashMap<>();
     if (ids.isEmpty()) {
@@ -829,7 +829,7 @@ public class PersonaContextBuilder {
     }
   }
 
-  static KnowledgeItem fullKnowledgeItem(String entityType, EntityInterface entity) {
+  static KnowledgeItem fullKnowledgeItem(String entityType, EntityInterface<?> entity) {
     if (entity instanceof GlossaryTerm term && term.getEntityStatus() != EntityStatus.APPROVED) {
       return null;
     }
@@ -1012,7 +1012,7 @@ public class PersonaContextBuilder {
       Map<String, Object> document,
       AIContext context,
       KnowledgeItem knowledgeItem,
-      EntityInterface knowledgeEntity) {}
+      EntityInterface<?> knowledgeEntity) {}
 
   record RuleMaterialization(ContextRule rule, int matched, List<SelectedEntity> entities) {}
 

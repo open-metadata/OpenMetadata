@@ -78,6 +78,18 @@
     "testSideSources": [
       "openmetadata-sdk/src/main/java/"
     ],
+    "generatedSources": [
+      {
+        "module": "openmetadata-spec",
+        "inputs": [
+          "openmetadata-spec/src/main/resources/json/schema",
+          "common/src/main/java/org/openmetadata/annotations",
+          "openmetadata-spec/pom.xml",
+          "pom.xml"
+        ],
+        "output": "openmetadata-spec/target/generated-sources/jsonschema2pojo"
+      }
+    ],
     "ciWorkflows": {
       "mysql-elasticsearch": {
         "workflow": "Integration Tests - MySQL + Elasticsearch",

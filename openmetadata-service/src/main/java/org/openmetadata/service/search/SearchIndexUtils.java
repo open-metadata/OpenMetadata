@@ -721,7 +721,7 @@ public final class SearchIndexUtils {
   }
 
   private static void processEntityTagSources(
-      EntityInterface entity, TagAndTierSources tagAndTierSources) {
+      EntityInterface<?> entity, TagAndTierSources tagAndTierSources) {
     processTagAndTierSources(entity.getTags(), tagAndTierSources);
   }
 
@@ -732,7 +732,7 @@ public final class SearchIndexUtils {
     }
   }
 
-  public static TagAndTierSources processTagAndTierSources(EntityInterface entity) {
+  public static TagAndTierSources processTagAndTierSources(EntityInterface<?> entity) {
     TagAndTierSources tagAndTierSources = new TagAndTierSources();
     processEntityTagSources(entity, tagAndTierSources);
     if (SearchIndexUtils.hasColumns(entity)) {
@@ -742,7 +742,7 @@ public final class SearchIndexUtils {
   }
 
   public static void processDescriptionSource(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Map<String, ChangeSummary> changeSummaryMap,
       Map<String, Integer> descriptionSources) {
     Optional.ofNullable(
@@ -768,12 +768,12 @@ public final class SearchIndexUtils {
     }
   }
 
-  public static boolean hasColumns(EntityInterface entity) {
+  public static boolean hasColumns(EntityInterface<?> entity) {
     return List.of(entity.getClass().getInterfaces()).contains(ColumnsEntityInterface.class);
   }
 
   public static Map<String, Integer> processDescriptionSources(
-      EntityInterface entity, Map<String, ChangeSummary> changeSummaryMap) {
+      EntityInterface<?> entity, Map<String, ChangeSummary> changeSummaryMap) {
     Map<String, Integer> descriptionSources = new HashMap<>();
     processDescriptionSource(entity, changeSummaryMap, descriptionSources);
     if (hasColumns(entity)) {
@@ -783,7 +783,7 @@ public final class SearchIndexUtils {
     return descriptionSources;
   }
 
-  public static Map<String, ChangeSummary> getChangeSummaryMap(EntityInterface entity) {
+  public static Map<String, ChangeSummary> getChangeSummaryMap(EntityInterface<?> entity) {
     return Optional.ofNullable(entity.getChangeDescription())
         .map(ChangeDescription::getChangeSummary)
         .map(ChangeSummaryMap::getAdditionalProperties)

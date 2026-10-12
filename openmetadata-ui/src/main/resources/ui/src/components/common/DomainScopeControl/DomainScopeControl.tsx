@@ -11,94 +11,58 @@
  *  limitations under the License.
  */
 
-import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { Dropdown, Tooltip } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   Globe01 as DomainIcon,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import React, { lazy, useCallback, useMemo, useState } from 'react';
+import React, {
+  lazy,
+  ReactNode,
+  Suspense,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { getDomainDisplayName } from '../../../utils/EntityNameUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 
-const DomainSelectableList = withSuspenseFallback(
-  lazy(() => import('../DomainSelectableList/DomainSelectableList.component'))
+// Each usage renders its own trigger as the Suspense fallback, so the control
+// is visible before the picker chunk arrives instead of popping in.
+const MENU_PICKER_OFFSET = 20;
+
+const DomainSelectableList = lazy(
+  () => import('../DomainSelectableList/DomainSelectableList.component')
 );
 
 export interface DomainScopeControlProps {
   /**
-   * `card` is the expanded AI-sidebar card (globe + caption + domain name);
-   * `icon` is the collapsed icon-only trigger with a tooltip; `pill` is the
-   * pill on the customisable landing-page header. All three open the same menu
-   * and write the same global scope.
+   * `menu` is a row inside the AI-sidebar profile menu (its look comes from
+   * `children`); `pill` is the pill on the customisable landing-page header.
+   * Both open the same picker and write the same global scope.
    */
-  variant?: 'card' | 'icon' | 'pill';
-  /** * `pill` only — the header renders it inert while not on the home page. */
+  variant?: 'menu' | 'pill';
+  /** `pill` only — the header renders it inert while not on the home page. */
   disabled?: boolean;
+  /** `menu` only — the row content the picker opens from. */
+  children?: ReactNode;
 }
 
 /**
- * Domain scope filter docked at the bottom of the AI-mode sidebar. It shares the
- * global `useDomainStore` with the classic navbar selector, so picking a domain
- * here changes the app-wide active domain — and, like the navbar, reloads via
- * `navigate(0)` so every domain-scoped view refetches.
+ * Global domain scope switcher. It shares `useDomainStore` with the classic
+ * navbar selector, so picking a domain here changes the app-wide active domain
+ * — and, like the navbar, reloads via `navigate(0)` so every domain-scoped view
+ * refetches.
  */
-/**
- * Restricted (single-domain) users cannot switch scope, so there is no menu to
- * open. Renders a disabled, non-interactive affordance that still explains the
- * restriction — mirroring the navbar's disabled selector.
- */
-const RestrictedScopeAffordance = ({
-  isIconOnly,
-  cardClassName,
-  children,
-}: {
-  isIconOnly: boolean;
-  cardClassName: string;
-  children: React.ReactNode;
-}) => {
-  const { t } = useTranslation();
-  const restrictedMessage = t('message.domain-access-restricted');
-
-  if (isIconOnly) {
-    return (
-      <ButtonUtility
-        isDisabled
-        aria-label={t('label.domain-scope')}
-        className="ask-domain-scope__icon-btn"
-        color="tertiary"
-        data-testid="ask-domain-scope-icon"
-        icon={DomainIcon}
-        size="sm"
-        tooltip={restrictedMessage}
-        tooltipPlacement="right"
-      />
-    );
-  }
-
-  return (
-    <Tooltip placement="top" title={restrictedMessage}>
-      <span
-        aria-disabled
-        className={classNames(
-          cardClassName,
-          'tw:cursor-not-allowed tw:opacity-60'
-        )}
-        data-testid="ask-domain-scope-card">
-        {children}
-      </span>
-    </Tooltip>
-  );
-};
-
 const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
-  variant = 'card',
+  variant = 'menu',
   disabled,
+  children,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -133,47 +97,8 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     [navigate, updateActiveDomain]
   );
 
-  const cardClassName = classNames(
-    'ask-domain-scope__card tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-left',
-    isActiveScope
-      ? 'tw:border-brand tw:bg-brand-primary'
-      : 'tw:border-secondary tw:bg-surface tw:hover:bg-secondary'
-  );
-
-  const cardInner = (
-    <>
-      <DomainIcon
-        className="tw:shrink-0 tw:text-brand-secondary"
-        height={20}
-        width={20}
-      />
-      <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-        <span className="tw:text-xs tw:font-medium tw:text-brand-secondary">
-          {t('label.domain-scope')}
-        </span>
-        <span
-          className="tw:truncate tw:text-sm tw:font-semibold tw:text-primary"
-          data-testid="ask-domain-scope-name">
-          {domainDisplayName}
-        </span>
-      </span>
-      {isActiveScope && (
-        <span
-          aria-hidden
-          className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-fg-success-primary"
-          data-testid="ask-domain-scope-dot"
-        />
-      )}
-      <ChevronDown
-        aria-hidden
-        className="tw:size-4 tw:shrink-0 tw:text-quaternary"
-      />
-    </>
-  );
-
-  // The pill is checked first: a single-domain user on the landing header must
-  // still get the pill, not the AI-sidebar card. The pill renders disabled for
-  // them, since there is no other scope to switch to.
+  // A single-domain user still gets the pill, rendered disabled, since there is
+  // no other scope to switch to.
   if (variant === 'pill') {
     const isLocked = Boolean(disabled) || isSingleDomainUser;
 
@@ -209,78 +134,79 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     );
 
     return (
-      <DomainSelectableList
-        hasPermission
-        // `isLocked`, not `disabled`: a disabled <button> still receives
-        // pointerdown, and DomainSelectTrigger opens on capture-phase
-        // pointerdown — so a locked pill would still open the picker.
-        disabled={isLocked}
-        popoverProps={{ open: isOpen, onOpenChange: setIsOpen }}
-        restrictedDomains={restrictedDomains}
-        selectedDomain={activeDomainEntityRef}
-        showAllDomains={showAllDomains}
-        onCancel={() => setIsOpen(false)}
-        onUpdate={handleUpdate}>
-        {landingTrigger}
-      </DomainSelectableList>
+      <Suspense fallback={landingTrigger}>
+        <DomainSelectableList
+          hasPermission
+          // `isLocked`, not `disabled`: a disabled <button> still receives
+          // pointerdown, and DomainSelectTrigger opens on capture-phase
+          // pointerdown — so a locked pill would still open the picker.
+          disabled={isLocked}
+          popoverProps={{ open: isOpen, onOpenChange: setIsOpen }}
+          restrictedDomains={restrictedDomains}
+          selectedDomain={activeDomainEntityRef}
+          showAllDomains={showAllDomains}
+          onCancel={() => setIsOpen(false)}
+          onUpdate={handleUpdate}>
+          {landingTrigger}
+        </DomainSelectableList>
+      </Suspense>
     );
   }
 
   if (isSingleDomainUser) {
     return (
-      <RestrictedScopeAffordance
-        cardClassName={cardClassName}
-        isIconOnly={variant === 'icon'}>
-        {cardInner}
-      </RestrictedScopeAffordance>
+      <Dropdown.Item
+        isDisabled
+        className="tw:*:rounded-xl"
+        data-testid="ask-domain-scope"
+        textValue={t('label.domain-scope')}>
+        <Tooltip
+          excludeTriggerFromTabOrder
+          placement="top"
+          title={t('message.domain-access-restricted')}
+          triggerClassName="tw:block tw:w-full tw:opacity-60">
+          {children}
+        </Tooltip>
+      </Dropdown.Item>
     );
   }
 
-  const trigger =
-    variant === 'icon' ? (
-      <ButtonUtility
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        aria-label={t('label.domain-scope')}
-        className={classNames('ask-domain-scope__icon-btn', {
-          'ask-domain-scope__icon-btn--active': isActiveScope,
-        })}
-        color="tertiary"
-        data-testid="ask-domain-scope-icon"
-        icon={DomainIcon}
-        size="sm"
-        tooltip={domainDisplayName}
-        tooltipPlacement="right"
-        onClick={() => setIsOpen((open) => !open)}
-      />
-    ) : (
-      <button
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        className={cardClassName}
-        data-testid="ask-domain-scope-card"
-        type="button"
-        onClick={() => setIsOpen((open) => !open)}>
-        {cardInner}
-      </button>
-    );
-
   return (
-    <DomainSelectableList
-      hasPermission
-      className={variant === 'icon' ? undefined : 'tw:w-full'}
-      fullWidthTrigger={variant !== 'icon'}
-      popoverProps={{
-        open: isOpen,
-        onOpenChange: setIsOpen,
-      }}
-      restrictedDomains={restrictedDomains}
-      selectedDomain={activeDomainEntityRef}
-      showAllDomains={showAllDomains}
-      onCancel={() => setIsOpen(false)}
-      onUpdate={handleUpdate}>
-      {trigger}
-    </DomainSelectableList>
+    <Dropdown.Item
+      className="tw:*:rounded-xl"
+      data-testid="ask-domain-scope"
+      // The picker anchors to this row, so the profile menu must stay open.
+      shouldCloseOnSelect={false}
+      textValue={t('label.domain-scope')}
+      onPress={(e) => {
+        // Mouse and touch reach the picker through its own trigger; opening
+        // here as well would undo that toggle. Keyboard and assistive-tech
+        // presses land on the menu item alone.
+        if (e.pointerType === 'keyboard' || e.pointerType === 'virtual') {
+          setIsOpen(true);
+        }
+      }}>
+      <Suspense fallback={children}>
+        <DomainSelectableList
+          fullWidthTrigger
+          hasPermission
+          className="tw:w-full"
+          // Opens beside the menu like its submenus. The picker anchors to the
+          // row's content, so the offset clears the row's 16px inset plus the
+          // submenus' 4px gap.
+          offset={MENU_PICKER_OFFSET}
+          placement="right top"
+          popoverClassName="tw:w-75 tw:rounded-xl tw:outline-secondary"
+          popoverProps={{ open: isOpen, onOpenChange: setIsOpen }}
+          restrictedDomains={restrictedDomains}
+          selectedDomain={activeDomainEntityRef}
+          showAllDomains={showAllDomains}
+          onCancel={() => setIsOpen(false)}
+          onUpdate={handleUpdate}>
+          {children}
+        </DomainSelectableList>
+      </Suspense>
+    </Dropdown.Item>
   );
 };
 

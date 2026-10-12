@@ -20,6 +20,7 @@ import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProdu
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import {
+  CUSTOM_PROPERTIES_WIDGET,
   DESCRIPTION_WIDGET,
   GridSizes,
   KNOWLEDGE_ARTICLE_WIDGET,
@@ -267,6 +268,7 @@ class DomainClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      CUSTOM_PROPERTIES_WIDGET,
       KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }

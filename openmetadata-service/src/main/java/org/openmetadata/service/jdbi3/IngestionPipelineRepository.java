@@ -378,7 +378,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return;
     }
     try {
-      EntityInterface parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
+      EntityInterface<?> parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
       inheritOwners(ingestionPipeline, fields, parent);
       inheritDomains(ingestionPipeline, fields, parent);
     } catch (EntityNotFoundException e) {
@@ -897,7 +897,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public EntityInterface getParentEntity(IngestionPipeline entity, String fields) {
+  public EntityInterface<?> getParentEntity(IngestionPipeline entity, String fields) {
     if (entity.getService() == null) {
       // Try to load the service if it's not set
       LOG.warn(
@@ -920,7 +920,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   protected ChangeEvent getChangeEvent(
-      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
+      EntityInterface<?> updated, ChangeDescription change, String entityType, Double prevVersion) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEntity(updated)

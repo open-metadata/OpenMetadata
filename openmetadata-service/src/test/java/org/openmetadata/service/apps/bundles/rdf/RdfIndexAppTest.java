@@ -874,9 +874,9 @@ class RdfIndexAppTest {
       jobDataField.set(testApp, jobConfig);
 
       @SuppressWarnings("unchecked")
-      EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+      EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
       @SuppressWarnings("unchecked")
-      EntityDAO<EntityInterface> entityDAO = mock(EntityDAO.class);
+      EntityDAO<EntityInterface<?>> entityDAO = mock(EntityDAO.class);
       when(repository.getDao()).thenReturn(entityDAO);
       when(entityDAO.listTotalCount()).thenReturn(0);
 
@@ -960,9 +960,9 @@ class RdfIndexAppTest {
       jobDataField.set(testApp, jobConfig);
 
       @SuppressWarnings("unchecked")
-      EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+      EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
       @SuppressWarnings("unchecked")
-      EntityDAO<EntityInterface> entityDAO = mock(EntityDAO.class);
+      EntityDAO<EntityInterface<?>> entityDAO = mock(EntityDAO.class);
       lenient().when(repository.getDao()).thenReturn(entityDAO);
       lenient().when(entityDAO.listTotalCount()).thenReturn(0);
 
@@ -996,9 +996,9 @@ class RdfIndexAppTest {
       jobDataField.set(testApp, jobConfig);
 
       @SuppressWarnings("unchecked")
-      EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+      EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
       @SuppressWarnings("unchecked")
-      EntityDAO<EntityInterface> entityDAO = mock(EntityDAO.class);
+      EntityDAO<EntityInterface<?>> entityDAO = mock(EntityDAO.class);
       lenient().when(repository.getDao()).thenReturn(entityDAO);
       lenient().when(entityDAO.listTotalCount()).thenReturn(0);
 
@@ -1037,9 +1037,9 @@ class RdfIndexAppTest {
       jobDataField.set(testApp, jobConfig);
 
       @SuppressWarnings("unchecked")
-      EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+      EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
       @SuppressWarnings("unchecked")
-      EntityDAO<EntityInterface> entityDAO = mock(EntityDAO.class);
+      EntityDAO<EntityInterface<?>> entityDAO = mock(EntityDAO.class);
       lenient().when(repository.getDao()).thenReturn(entityDAO);
       lenient().when(entityDAO.listTotalCount()).thenReturn(0);
 
@@ -1081,9 +1081,9 @@ class RdfIndexAppTest {
       jobDataField.set(testApp, jobConfig);
 
       @SuppressWarnings("unchecked")
-      EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+      EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
       @SuppressWarnings("unchecked")
-      EntityDAO<EntityInterface> entityDAO = mock(EntityDAO.class);
+      EntityDAO<EntityInterface<?>> entityDAO = mock(EntityDAO.class);
       lenient().when(repository.getDao()).thenReturn(entityDAO);
       lenient().when(entityDAO.listTotalCount()).thenReturn(0);
 
