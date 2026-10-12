@@ -36,6 +36,7 @@ import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.HealthyDataAssetsChartMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
@@ -72,12 +73,16 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<SearchTermBoostRepair> searchTermBoostRepair =
             mockStatic(SearchTermBoostRepair.class);
         MockedStatic<AlertBacklogMigration> alertBacklogMigration =
-            mockStatic(AlertBacklogMigration.class)) {
+            mockStatic(AlertBacklogMigration.class);
+        MockedStatic<HealthyDataAssetsChartMigration> healthyDataAssetsChartMigration =
+            mockStatic(HealthyDataAssetsChartMigration.class)) {
       migration.runDataMigration();
 
       ingestionPipelineMigration.verify(
           () -> IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO));
       searchTermBoostRepair.verify(SearchTermBoostRepair::repairTermBoostSettings);
+      healthyDataAssetsChartMigration.verify(
+          HealthyDataAssetsChartMigration::repairHealthyDataAssetsCharts);
     }
   }
 
