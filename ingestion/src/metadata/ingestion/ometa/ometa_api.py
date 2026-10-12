@@ -331,8 +331,6 @@ class OpenMetadata(
         if self.config.extraHeaders:
             extra_headers = self.config.extraHeaders.root
 
-        client_config_arguments = {"timeout": self.config.timeout}
-        client_config_arguments.update(additional_client_config_arguments or {})
         client_config = ClientConfig(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
@@ -340,7 +338,7 @@ class OpenMetadata(
             extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
-            **client_config_arguments,
+            **(additional_client_config_arguments or {}),
         )
 
         self.client = REST(client_config)
