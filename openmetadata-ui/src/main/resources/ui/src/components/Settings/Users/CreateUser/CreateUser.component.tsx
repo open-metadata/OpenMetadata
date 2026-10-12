@@ -13,7 +13,12 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Button, Toggle } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Form, FormProps, Input, Radio, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
@@ -401,7 +406,7 @@ const AdminOnlyFields = ({
           className="layout-space layout-space-horizontal"
           gap={2}
           itemClassName="layout-space-item">
-          <span> {t('label.admin')}</span>
+          <Typography> {t('label.admin')}</Typography>
           <Toggle
             data-testid="admin"
             isSelected={isAdmin}

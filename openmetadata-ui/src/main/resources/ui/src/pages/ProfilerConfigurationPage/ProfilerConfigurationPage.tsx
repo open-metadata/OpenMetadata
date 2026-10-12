@@ -211,7 +211,7 @@ const ProfilerConfigurationPage = () => {
                         style={{ ...getLayoutGutter(16, 16) }}>
                         <Grid.Item className="layout-column" span={10}>
                           {t('label.data-type')}
-                          <span className="text-failure">*</span>
+                          <Typography color="danger">*</Typography>
                         </Grid.Item>
                         <Grid.Item className="layout-column" span={11}>
                           {t('label.metric-type')}

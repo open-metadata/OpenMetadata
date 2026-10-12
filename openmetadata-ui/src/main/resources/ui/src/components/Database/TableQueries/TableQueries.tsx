@@ -640,7 +640,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                           setIsClickedCalendar(true);
                         }}>
                         <span>
-                          <span>{t('label.created-date')}</span>
+                          <Typography>{t('label.created-date')}</Typography>
                           <DatePicker.RangePicker
                             allowClear
                             showNow

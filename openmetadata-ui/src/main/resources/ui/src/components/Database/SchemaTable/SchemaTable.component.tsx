@@ -768,10 +768,10 @@ const SchemaTable = () => {
             color="tertiary"
             data-testid="name-column-header"
             onClick={handleColumnHeaderSortToggle}>
-            <span
+            <Typography
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
               {t('label.name')}
-            </span>
+            </Typography>
             <IconSortIndicator
               className="m-l-xss"
               data-testid="sort-indicator"
@@ -1005,17 +1005,17 @@ const SchemaTable = () => {
                     <Dropdown.Item
                       id="name"
                       textValue={t('label.alphabetical')}>
-                      <span data-testid="sort-alphabetical">
+                      <Typography data-testid="sort-alphabetical">
                         {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
                         {t('label.alphabetical')} (A → Z)
-                      </span>
+                      </Typography>
                     </Dropdown.Item>
                     <Dropdown.Item
                       id="ordinalPosition"
                       textValue={t('label.original-order')}>
-                      <span data-testid="sort-original-order">
+                      <Typography data-testid="sort-original-order">
                         {t('label.original-order')}
-                      </span>
+                      </Typography>
                     </Dropdown.Item>
                   </Dropdown.Menu>
                 </Dropdown.Popover>

@@ -96,9 +96,9 @@ const AuthMechanism: FC<Props> = ({
             component={IconError}
             style={{ fontSize: '16px' }}
           />
-          <span className="align-middle">
+          <Typography className="align-middle">
             {t('message.token-has-no-expiry')}
-          </span>
+          </Typography>
         </>
       );
     }

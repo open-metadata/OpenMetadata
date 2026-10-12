@@ -447,24 +447,24 @@ const TaskFeedCardFromTask = ({
               <UserPopOverCard
                 key={task.createdBy?.name}
                 userName={task.createdBy?.name ?? ''}>
-                <span
+                <Typography
                   className="task-created-by-text p-r-xss"
                   data-testid="task-created-by">
                   {getEntityName(user)}
-                </span>
+                </Typography>
               </UserPopOverCard>
-              <span className="task-timestamp-text">
+              <Typography className="task-timestamp-text">
                 {t('message.created-this-task-lowercase')}
-              </span>
+              </Typography>
               {task.createdAt && (
                 <Tooltip
                   excludeTriggerFromTabOrder
                   title={formatDateTime(task.createdAt)}>
-                  <span
+                  <Typography
                     className="p-l-xss task-timestamp-text"
                     data-testid="timestamp">
                     {getRelativeTime(task.createdAt)}
-                  </span>
+                  </Typography>
                 </Tooltip>
               )}
             </Typography>

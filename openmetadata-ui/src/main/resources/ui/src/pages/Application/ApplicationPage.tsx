@@ -17,6 +17,7 @@ import {
   Grid,
   SkeletonParagraph,
   Toggle,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
@@ -188,7 +189,7 @@ const ApplicationPage = () => {
                 isSelected={showDisabled}
                 onChange={onShowDisabledAppsChange}
               />
-              <span>{t('label.disabled')}</span>
+              <Typography>{t('label.disabled')}</Typography>
             </div>
             <LimitWrapper resource="app">
               <Button

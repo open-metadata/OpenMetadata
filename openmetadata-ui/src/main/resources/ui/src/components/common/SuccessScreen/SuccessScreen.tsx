@@ -119,11 +119,15 @@ const SuccessScreen = ({
             <Typography as="p" className="m-b-0" data-testid="success-line">
               {isUndefined(successMessage) ? (
                 <span>
-                  <span className="m-r-xss font-semibold">
+                  <Typography className="m-r-xss" weight="semibold">
                     {`"${name || 'demo_mysql'}"`}
-                  </span>
-                  {suffix && <span className="m-r-xss">{suffix}</span>}
-                  <span>{t('message.has-been-created-successfully')}</span>
+                  </Typography>
+                  {suffix && (
+                    <Typography className="m-r-xss">{suffix}</Typography>
+                  )}
+                  <Typography>
+                    {t('message.has-been-created-successfully')}
+                  </Typography>
                 </span>
               ) : (
                 successMessage
@@ -154,10 +158,10 @@ const SuccessScreen = ({
           color="secondary-brand"
           data-testid="view-service-button"
           onClick={handleViewServiceClick}>
-          <span>
+          <Typography>
             {viewServiceText ??
               t('label.view-entity', { entity: t('label.service') })}
-          </span>
+          </Typography>
         </Button>
 
         {showIngestionButton && (
@@ -166,9 +170,9 @@ const SuccessScreen = ({
             data-testid="add-ingestion-button"
             isDisabled={!isAirflowAvailable}
             onClick={handleIngestionClick}>
-            <span>
+            <Typography>
               {t('label.add-entity', { entity: t('label.ingestion') })}
-            </span>
+            </Typography>
           </Button>
         )}
 
@@ -178,7 +182,7 @@ const SuccessScreen = ({
             data-testid="deploy-ingestion-button"
             isDisabled={!isAirflowAvailable}
             onClick={handleDeployClick}>
-            <span>{t('label.deploy')}</span>
+            <Typography>{t('label.deploy')}</Typography>
           </Button>
         )}
       </div>

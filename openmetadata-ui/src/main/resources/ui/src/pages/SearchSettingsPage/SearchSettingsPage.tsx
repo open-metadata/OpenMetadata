@@ -114,9 +114,9 @@ const SearchBoostsSection = ({
                 <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.term-boost')}
                 </Typography>
-                <span className="count-label">
+                <Typography className="count-label">
                   {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
-                </span>
+                </Typography>
               </Box>
               <Box className="layout-column d-flex items-center gap-2">
                 <Button
@@ -158,9 +158,9 @@ const SearchBoostsSection = ({
                 <Typography className="text-sm font-semibold m-0 tw:text-primary">
                   {t('label.field-value-boost')}
                 </Typography>
-                <span className="count-label">
+                <Typography className="count-label">
                   {searchConfig?.globalSettings?.fieldValueBoosts?.length ?? 0}
-                </span>
+                </Typography>
               </Box>
               <Box className="layout-column d-flex items-center gap-2">
                 <Button

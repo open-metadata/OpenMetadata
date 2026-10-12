@@ -83,7 +83,7 @@ const ProviderSelector: React.FC<ProviderSelectorProps> = ({
                 )}
               </div>
             </div>
-            <span className="provider-name">{provider.label}</span>
+            <Typography className="provider-name">{provider.label}</Typography>
           </div>
         ))}
       </div>

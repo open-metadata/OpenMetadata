@@ -16,7 +16,7 @@ import {
   ArrowRightOutlined,
   DownOutlined,
 } from '@ant-design/icons';
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -75,17 +75,17 @@ const NextPreviousWithOffset = ({
         iconLeading={<ArrowLeftOutlined />}
         isDisabled={currentPage === 1 || isLoading}
         onClick={onPreviousHandler}>
-        <span>{t('label.previous')}</span>
+        <Typography>{t('label.previous')}</Typography>
       </Button>
-      <span data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
+      <Typography data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
         'label.page'
-      )}`}</span>
+      )}`}</Typography>
       <Button
         color="secondary-brand"
         data-testid="next"
         isDisabled={nextButtonDisabled || isLoading}
         onClick={onNextHandler}>
-        <span> {t('label.next')}</span>
+        <Typography> {t('label.next')}</Typography>
         <ArrowRightOutlined />
       </Button>
       {onShowSizeChange && (

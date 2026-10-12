@@ -63,7 +63,9 @@ const renderMaxTagPlaceholder = (
   count: number,
   t: ReturnType<typeof useTranslation>['t']
 ) => (
-  <span className="max-tag-text">{t('label.plus-count-more', { count })}</span>
+  <Typography className="max-tag-text">
+    {t('label.plus-count-more', { count })}
+  </Typography>
 );
 
 export const PersonaSelectableList = ({

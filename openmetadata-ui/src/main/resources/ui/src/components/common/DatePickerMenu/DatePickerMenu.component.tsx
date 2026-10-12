@@ -16,6 +16,7 @@ import {
   Button,
   ButtonUtility,
   Dropdown,
+  Typography,
 } from '@openmetadata/ui-core-components';
 
 import { ChevronRight } from '@openmetadata/ui-core-components/icons';
@@ -255,14 +256,14 @@ const DatePickerMenu = ({
         data-testid="date-picker-menu"
         iconTrailing={<DropdownIcon height={14} width={14} />}
         size={size === 'small' ? 'sm' : 'md'}>
-        <span
+        <Typography
           className={classNames(
             'tw:min-w-0',
             isCustomRangeSelected ? 'tw:whitespace-nowrap' : 'tw:truncate',
             !selectedTimeRangeKey && 'tw:text-disabled'
           )}>
           {selectedTimeRange}
-        </span>
+        </Typography>
       </Button>
       <Dropdown.Popover
         className="tw:w-auto tw:min-w-44 tw:overflow-visible"

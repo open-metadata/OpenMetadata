@@ -197,12 +197,12 @@ const SchemaSidebarCard: FC<{
                   key={schema.id ?? schema.name}
                   type="button"
                   onClick={() => onSelectSchema(schema)}>
-                  <span className="task-form-settings-schema-item__title">
+                  <Typography className="task-form-settings-schema-item__title">
                     {schema.displayName ?? schema.name}
-                  </span>
-                  <span className="task-form-settings-schema-item__meta">
+                  </Typography>
+                  <Typography className="task-form-settings-schema-item__meta">
                     {`${schema.taskType} / ${schema.taskCategory ?? '-'}`}
-                  </span>
+                  </Typography>
                 </button>
               );
             })

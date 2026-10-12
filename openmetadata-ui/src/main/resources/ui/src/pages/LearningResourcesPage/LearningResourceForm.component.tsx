@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { Drawer, Form, Input, Select } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -144,9 +144,9 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
 
   const drawerTitle = (
     <div className="drawer-title-container">
-      <span className="drawer-title">
+      <Typography className="drawer-title">
         {resource ? t('label.edit-resource') : t('label.add-resource')}
-      </span>
+      </Typography>
       <CloseOutlined className="drawer-close" onClick={onClose} />
     </div>
   );

@@ -304,13 +304,17 @@ const PoliciesDetailPage = () => {
                 icon={EditIcon}
                 id="edit-button"
                 textValue={t('label.edit')}>
-                <span data-testid="edit-rule">{t('label.edit')}</span>
+                <Typography data-testid="edit-rule">
+                  {t('label.edit')}
+                </Typography>
               </Dropdown.Item>
               <Dropdown.Item
                 icon={IconDelete}
                 id="delete-button"
                 textValue={t('label.delete')}>
-                <span data-testid="delete-rule">{t('label.delete')}</span>
+                <Typography data-testid="delete-rule">
+                  {t('label.delete')}
+                </Typography>
               </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown.Popover>

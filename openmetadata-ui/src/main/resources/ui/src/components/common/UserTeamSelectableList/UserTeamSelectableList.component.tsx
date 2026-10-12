@@ -17,6 +17,7 @@ import {
   Tag,
   TagGroup,
   TagList,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -52,7 +53,7 @@ export const TeamListItemRenderer = (props: EntityReference) => {
   return (
     <span className="tw:flex tw:items-center tw:gap-2">
       <Avatar placeholderIcon={Users01} size="xxs" />
-      <span className="tw:text-sm">{getEntityName(props)}</span>
+      <Typography size="text-sm">{getEntityName(props)}</Typography>
     </span>
   );
 };
@@ -421,11 +422,11 @@ export const UserTeamSelectableList = ({
   const renderPreviewSection = () =>
     previewSelected ? (
       <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:py-3 tw:bg-secondary tw:border-b tw:border-primary">
-        <span className="tw:text-sm tw:text-tertiary">
+        <Typography color="secondary" size="text-sm">
           {t('label.selected-entity', {
             entity: label ?? t('label.owner-plural'),
           })}
-        </span>
+        </Typography>
         <TagGroup label={label ?? t('label.owner-plural')} size="sm">
           <TagList className="tw:flex tw:max-h-24 tw:flex-wrap tw:gap-1 tw:overflow-y-auto">
             {selectedUsers.map((user) => (

@@ -170,11 +170,12 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                         )}
                         showLabel={false}
                       />
-                      <span
-                        className="self-center text-grey-muted"
+                      <Typography
+                        className="self-center"
+                        color="secondary"
                         data-testid="updated-at">
                         {formatDate(knowledgePage.updatedAt)}
-                      </span>
+                      </Typography>
                     </Box>
                   </Box>
                 </Box>

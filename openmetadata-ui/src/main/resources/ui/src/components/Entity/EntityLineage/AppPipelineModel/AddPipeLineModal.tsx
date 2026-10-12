@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, SimpleModal } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Input } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -180,12 +184,14 @@ const AddPipeLineModal = ({
               )}
               <div>
                 <div className="d-flex flex-wrap">
-                  <span className="truncate breadcrumb">{breadcrumb}</span>
+                  <Typography className="truncate breadcrumb">
+                    {breadcrumb}
+                  </Typography>
                 </div>
                 <div className="d-flex flex-col">
-                  <span className="font-medium truncate">
+                  <Typography className="truncate" weight="medium">
                     {getEntityName(item)}
-                  </span>
+                  </Typography>
                 </div>
               </div>
             </div>

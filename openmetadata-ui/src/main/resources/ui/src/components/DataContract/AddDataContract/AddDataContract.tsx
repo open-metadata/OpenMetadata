@@ -371,7 +371,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <ContractIcon className="contract-tab-icon" />
-            <span>{t('label.contract-detail-plural')}</span>
+            <Typography>{t('label.contract-detail-plural')}</Typography>
           </div>
         ),
         key: EDataContractTab.CONTRACT_DETAIL.toString(),
@@ -391,7 +391,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <TermsIcon className="contract-tab-icon" />
-            <span>{t('label.terms-of-service')}</span>
+            <Typography>{t('label.terms-of-service')}</Typography>
           </div>
         ),
         key: EDataContractTab.TERMS_OF_SERVICE.toString(),
@@ -413,7 +413,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <TableIcon className="contract-tab-icon" />
-            <span>{t('label.schema')}</span>
+            <Typography>{t('label.schema')}</Typography>
           </div>
         ),
         key: EDataContractTab.SCHEMA.toString(),
@@ -435,7 +435,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <SemanticsIcon className="contract-tab-icon" />
-            <span>{t('label.semantic-plural')}</span>
+            <Typography>{t('label.semantic-plural')}</Typography>
           </div>
         ),
         key: EDataContractTab.SEMANTICS.toString(),
@@ -457,7 +457,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <SecurityIcon className="contract-tab-icon" />
-            <span>{t('label.security')}</span>
+            <Typography>{t('label.security')}</Typography>
           </div>
         ),
         key: EDataContractTab.SECURITY.toString(),
@@ -479,7 +479,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <QualityIcon className="contract-tab-icon" />
-            <span>{t('label.quality')}</span>
+            <Typography>{t('label.quality')}</Typography>
           </div>
         ),
         key: EDataContractTab.QUALITY.toString(),
@@ -505,7 +505,7 @@ const AddDataContract: React.FC<{
         label: (
           <div className="d-flex items-center">
             <SLAIcon className="contract-tab-icon" />
-            <span>{t('label.sla')}</span>
+            <Typography>{t('label.sla')}</Typography>
           </div>
         ),
         key: EDataContractTab.SLA.toString(),

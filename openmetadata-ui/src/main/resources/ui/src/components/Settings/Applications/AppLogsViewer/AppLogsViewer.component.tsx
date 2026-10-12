@@ -130,9 +130,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                   {showStatus && (
                     <>
                       <div className="flex">
-                        <span className="text-grey-muted">{`${t(
+                        <Typography color="secondary">{`${t(
                           'label.status'
-                        )}:`}</span>
+                        )}:`}</Typography>
 
                         <Box
                           inline
@@ -146,7 +146,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                             }
                             style={ICON_DIMENSION}
                           />
-                          <span>{capitalize(status)}</span>
+                          <Typography>{capitalize(status)}</Typography>
                         </Box>
                       </div>
                       <Divider
@@ -156,9 +156,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                     </>
                   )}
                   <div className="flex">
-                    <span className="text-grey-muted">{`${t(
+                    <Typography color="secondary">{`${t(
                       'label.index-states'
-                    )}:`}</span>
+                    )}:`}</Typography>
                     <span className="m-l-xs">
                       <Box
                         inline
@@ -233,10 +233,12 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                           orientation="vertical"
                         />
                         <div className="flex">
-                          <span className="text-grey-muted">{`${t(
+                          <Typography color="secondary">{`${t(
                             latencyLabelKey ?? 'label.latency'
-                          )}:`}</span>
-                          <span className="m-l-xs" data-testid="stage-latency">
+                          )}:`}</Typography>
+                          <Typography
+                            className="m-l-xs"
+                            data-testid="stage-latency">
                             {`${formatLatencyAverage(
                               timeMs,
                               stepStats.successRecords
@@ -244,7 +246,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                               timeMs,
                               stepStats.successRecords
                             )}`}
-                          </span>
+                          </Typography>
                         </div>
                       </>
                     );
@@ -256,14 +258,14 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                         orientation="vertical"
                       />
                       <div className="flex">
-                        <span className="text-grey-muted">{`${t(
+                        <Typography color="secondary">{`${t(
                           'label.last-updated'
-                        )}:`}</span>
-                        <span className="m-l-xs">
+                        )}:`}</Typography>
+                        <Typography className="m-l-xs">
                           {timestamp
                             ? formatDateTimeWithTimezone(timestamp)
                             : '--'}
-                        </span>
+                        </Typography>
                       </div>
                     </>
                   )}
@@ -577,7 +579,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <span>{t('label.server-stat-plural')}</span>
+              <Typography>{t('label.server-stat-plural')}</Typography>
               {serverCount && (
                 <Badge
                   className="request-badge running"

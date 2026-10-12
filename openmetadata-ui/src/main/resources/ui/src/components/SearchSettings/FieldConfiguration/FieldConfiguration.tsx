@@ -136,9 +136,9 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
             </div>
 
             <div className="d-flex items-center justify-between gap-2 m-y-xss">
-              <span className="text-grey-muted text-xs font-normal">
+              <Typography color="secondary" size="text-xs" weight="regular">
                 {fieldDescription ?? t('label.no-description')}
-              </span>
+              </Typography>
               <span
                 className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
                 data-testid="field-weight">

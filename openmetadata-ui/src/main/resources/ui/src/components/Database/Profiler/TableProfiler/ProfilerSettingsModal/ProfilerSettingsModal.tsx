@@ -744,7 +744,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <Form.Item
                   className="m-b-0"
                   label={
-                    <span className="text-xs">{t('label.interval-type')}</span>
+                    <Typography size="text-xs">
+                      {t('label.interval-type')}
+                    </Typography>
                   }
                   labelCol={PROFILER_MODAL_LABEL_STYLE}
                   name="partitionIntervalType"
@@ -772,11 +774,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <Form.Item
                   className="m-b-0"
                   label={
-                    <span className="text-xs">
+                    <Typography size="text-xs">
                       {t('label.column-entity', {
                         entity: t('label.name'),
                       })}
-                    </span>
+                    </Typography>
                   }
                   labelCol={PROFILER_MODAL_LABEL_STYLE}
                   name="partitionColumnName"
@@ -810,7 +812,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">{t('label.interval')}</span>
+                        <Typography size="text-xs">
+                          {t('label.interval')}
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionInterval"
@@ -835,9 +839,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">
+                        <Typography size="text-xs">
                           {t('label.interval-unit')}
-                        </span>
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionIntervalUnit"
@@ -869,11 +873,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">
+                        <Typography size="text-xs">
                           {t('label.start-entity', {
                             entity: t('label.range'),
                           })}
-                        </span>
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionIntegerRangeStart"
@@ -904,11 +908,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     <Form.Item
                       className="m-b-0"
                       label={
-                        <span className="text-xs">
+                        <Typography size="text-xs">
                           {t('label.end-entity', {
                             entity: t('label.range'),
                           })}
-                        </span>
+                        </Typography>
                       }
                       labelCol={PROFILER_MODAL_LABEL_STYLE}
                       name="partitionIntegerRangeEnd"

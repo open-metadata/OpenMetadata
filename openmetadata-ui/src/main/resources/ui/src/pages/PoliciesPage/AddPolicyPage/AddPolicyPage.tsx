@@ -171,9 +171,9 @@ const AddPolicyPage = () => {
                   className="tw:my-4"
                   data-testid="add-rule-divider"
                   label={
-                    <span className="tw:text-md tw:font-medium tw:text-primary">
+                    <Typography size="text-md" weight="medium">
                       {t('label.add-entity', { entity: t('label.rule') })}
-                    </span>
+                    </Typography>
                   }
                 />
                 <RuleForm ruleData={ruleData} setRuleData={setRuleData} />

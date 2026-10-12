@@ -270,11 +270,11 @@ const NotificationBox = ({
           dataSource={notificationDropDownList}
           footer={
             <Button className="tw:w-full" color="link-color" href={viewAllPath}>
-              <span>
+              <Typography>
                 {t('label.view-entity', {
                   entity: t('label.all-lowercase'),
                 })}
-              </span>
+              </Typography>
             </Button>
           }
           itemLayout="vertical"

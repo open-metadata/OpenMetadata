@@ -1051,7 +1051,9 @@ const APIEndpointSchemaV1: React.FC<{
       width: 200,
       render: (name: string, record: Field) => (
         <div className="d-inline-flex" style={{ maxWidth: '68%' }}>
-          <span className="break-word">{record.displayName || name}</span>
+          <Typography className="break-word">
+            {record.displayName || name}
+          </Typography>
         </div>
       ),
     },
@@ -1073,7 +1075,9 @@ const APIEndpointSchemaV1: React.FC<{
       render: (description: string) => (
         <div className="break-word">
           {description || (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
+            <Typography color="secondary">
+              {t('label.no-description')}
+            </Typography>
           )}
         </div>
       ),

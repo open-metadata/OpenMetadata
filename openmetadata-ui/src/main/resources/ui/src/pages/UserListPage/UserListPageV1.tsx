@@ -19,6 +19,7 @@ import {
   SimpleModal,
   Toggle,
   Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
@@ -558,7 +559,7 @@ const UserListPageV1 = () => {
                   isSelected={isDeleted}
                   onChange={handleShowDeletedUserChange}
                 />
-                <span className="m-l-xs">{t('label.deleted')}</span>
+                <Typography className="m-l-xs">{t('label.deleted')}</Typography>
               </span>
             }
             loading={isDataLoading}

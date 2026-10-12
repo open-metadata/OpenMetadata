@@ -374,7 +374,7 @@ const buildArraySetField = ({
         key={data.name}
         label={
           <>
-            <span>{data.displayName}</span>
+            <Typography>{data.displayName}</Typography>
             <Button
               className="tw:mx-3"
               color="primary"

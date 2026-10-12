@@ -33,13 +33,13 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         className="layout-space layout-space-horizontal w-full justify-between"
         gap={2}
         itemClassName="layout-space-item">
-        <span
+        <Typography
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
           })}
           id={`${idSchema.$id}__title`}>
           {title}
-        </span>
+        </Typography>
 
         {schema.additionalProperties && (
           <Button
