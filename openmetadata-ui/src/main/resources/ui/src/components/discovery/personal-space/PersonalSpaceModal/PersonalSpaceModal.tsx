@@ -45,8 +45,20 @@ const DIALOG_CLASS = 'ai-personal-space__dialog';
 const PersonalSpaceModal: React.FC = () => {
   const { t } = useTranslation();
   const activePanel = usePersonalSpaceStore((state) => state.activePanel);
+  const suppressHashClear = usePersonalSpaceStore(
+    (state) => state.suppressHashClear
+  );
   const open = usePersonalSpaceStore((state) => state.open);
   const close = usePersonalSpaceStore((state) => state.close);
+  const exitGuard = usePersonalSpaceStore((state) => state.exitGuard);
+  const requestClose = useCallback(() => {
+    if (!exitGuard?.(close)) {
+      close();
+    }
+  }, [close, exitGuard]);
+  const clearSuppressHashClear = usePersonalSpaceStore(
+    (state) => state.clearSuppressHashClear
+  );
   const { pathname } = useLocation();
 
   const isOpen = activePanel !== null;
@@ -55,7 +67,12 @@ const PersonalSpaceModal: React.FC = () => {
 
   const { state: hashState } = useSettingsHash();
 
-  useSettingsHashSync(openProfile, isOpen);
+  useSettingsHashSync(
+    openProfile,
+    isOpen,
+    suppressHashClear,
+    clearSuppressHashClear
+  );
 
   // A pathname change while the modal is open means a link inside it navigated
   // away — close the overlay so it doesn't linger over the new page.
@@ -83,7 +100,7 @@ const PersonalSpaceModal: React.FC = () => {
       isKeyboardDismissDisabled
       className="tw:overflow-hidden!"
       isOpen={isOpen}
-      onOpenChange={(isOpen) => !isOpen && close()}>
+      onOpenChange={(isOpen) => !isOpen && requestClose()}>
       <Modal>
         <Dialog
           showCloseButton
@@ -91,7 +108,7 @@ const PersonalSpaceModal: React.FC = () => {
           // Profile draws its own header; My Data has none of its own.
           title={activePanel === 'my-data' ? t('label.my-data') : undefined}
           width={1600}
-          onClose={close}>
+          onClose={requestClose}>
           <PersonalSpaceGate>
             {activePanel === 'profile' && <ProfilePage />}
             {activePanel === 'my-data' && (

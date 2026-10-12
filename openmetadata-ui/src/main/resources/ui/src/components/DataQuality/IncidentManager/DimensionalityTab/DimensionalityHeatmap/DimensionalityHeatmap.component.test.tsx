@@ -22,6 +22,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   Typography: ({
     as: Component = 'span',
     children,
