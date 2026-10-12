@@ -284,6 +284,7 @@ const PlatformLineage = () => {
     return (
       <div className="d-flex justify-between items-center">
         <Select.ComboBox
+          allowsCustomValue
           allowsEmptyCollection
           aria-label={t('label.search-entity-for-lineage', {
             entity: 'entity',

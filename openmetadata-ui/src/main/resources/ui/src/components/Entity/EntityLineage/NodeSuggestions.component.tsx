@@ -189,6 +189,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       <Box className="layout-column tw:block">{entityIcon}</Box>
       <Box className="layout-column tw:block" style={{ flex: '1 1 auto' }}>
         <Select.ComboBox
+          allowsCustomValue
           allowsEmptyCollection
           // eslint-disable-next-line jsx-a11y/no-autofocus -- focus required for inline node search
           autoFocus
