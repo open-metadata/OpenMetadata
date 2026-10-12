@@ -607,7 +607,7 @@ const AddDataContract: React.FC<{
   return (
     <Card className="add-contract-card" data-testid="add-contract-card">
       {cardHeader}
-      <div className="tw:pl-5">{cardContent}</div>
+      <Card.Content>{cardContent}</Card.Content>
     </Card>
   );
 };
