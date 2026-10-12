@@ -419,11 +419,13 @@ test.describe(
 
       await page.getByTestId('test-connection-btn').click();
 
-      const step = page.getByTestId('test-connection-step-GetDatabases');
+      // The row renders while the test is still running, when it cannot be
+      // expanded yet, so wait for the result before clicking it.
+      await expect(page.getByTestId('connection-remediation-card')).toBeVisible(
+        { timeout: 30000 }
+      );
 
-      await expect(step).toBeVisible({ timeout: 30000 });
-
-      await step.click();
+      await page.getByTestId('test-connection-step-GetDatabases').click();
 
       const trace = page.getByTestId('capability-checks-phase').locator('pre');
 
