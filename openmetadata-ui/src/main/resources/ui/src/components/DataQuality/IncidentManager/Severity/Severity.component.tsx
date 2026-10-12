@@ -52,7 +52,7 @@ const Severity = ({
   const onCancel = useCallback(() => setIsEditSeverity(false), []);
 
   const handleSubmit = useCallback(
-    async (data: Severities) => {
+    async (data?: Severities) => {
       await onSubmit?.(data);
       onCancel();
     },

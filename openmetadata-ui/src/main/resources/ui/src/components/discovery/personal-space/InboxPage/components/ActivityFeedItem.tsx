@@ -83,6 +83,7 @@ import {
   getFeedSortTimestamp,
   INBOX_ENTITY_ICON_CLASS,
   INBOX_MESSAGE_CLASS,
+  INBOX_RECESSED_SURFACE_CLASS,
   isSameLocalDay,
   sendReaction,
 } from '../inbox.utils';
@@ -91,6 +92,15 @@ import { writeInboxReactions } from '../useInboxActivity';
 import ActivityChangePanel from './ActivityChangePanel';
 import ActivityThread from './ActivityThread';
 import AuthorPopover from './AuthorPopover';
+
+// The core Card's surface and hover. Its hover tint is translucent in dark,
+// so it is laid over the surface, not swapped in for it: swapped, the page
+// shows through and the card darkens instead of lifting.
+const CARD_CLASS = classNames(
+  'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:pb-4 tw:shadow-xs',
+  'tw:transition-colors tw:hover:border-primary',
+  'tw:hover:bg-[linear-gradient(var(--om-color-bg-primary-hover),var(--om-color-bg-primary-hover))]'
+);
 
 // Repliers shown on the collapsed thread toggle.
 const MAX_REPLY_FACES = 3;
@@ -301,8 +311,8 @@ const RepliesToggle = ({
           {replyFaces.map(({ id, author }) => (
             <ProfilePicture
               borderless
-              // A white edge parts the overlapping faces.
-              className="tw:outline-2 tw:outline-bg-primary"
+              // An edge of the card's surface parts the overlapping faces.
+              className="tw:outline-2 tw:outline-bg-surface"
               displayName={author?.displayName}
               key={id}
               name={author?.name ?? ''}
@@ -505,7 +515,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
   return (
     <Box
-      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:pb-4 tw:shadow-xs tw:transition-colors tw:hover:border-primary"
+      className={CARD_CLASS}
       data-testid="activity-feed-item"
       direction="col"
       gap={4}>
@@ -520,9 +530,12 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                 size="md"
               />
             </AuthorPopover>
+            {/* Glyph and ring take the card's surface, so the badge reads as
+                cut out of it: white in light, and dark on the fill dark mode
+                pales, where a white glyph would wash out. */}
             <span
               className={classNames(
-                'tw:absolute tw:-right-1 tw:-bottom-1 tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:text-white tw:outline-2 tw:outline-bg-primary',
+                'tw:absolute tw:-right-1 tw:-bottom-1 tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:text-bg-surface tw:outline-2 tw:outline-bg-surface',
                 kindClassName
               )}
               data-testid="activity-kind-badge">
@@ -586,7 +599,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             <RichTextEditorPreviewerV1
               className={classNames(
                 INBOX_MESSAGE_CLASS,
-                'tw:rounded-lg tw:bg-utility-gray-blue-50 tw:px-3.5 tw:py-3 tw:text-sm'
+                INBOX_RECESSED_SURFACE_CLASS,
+                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm'
               )}
               markdown={message}
             />

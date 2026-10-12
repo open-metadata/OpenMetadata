@@ -757,6 +757,57 @@ describe('CSV utils ClassBase', () => {
       expect(onClose).toHaveBeenCalledWith(true);
     });
 
+    it('falls back to startCase(name) for custom properties without a displayName', async () => {
+      // A property edited through the custom-property edit form can end up
+      // with displayName: "" (or none) stored on the server. The bulk-edit
+      // editor's label must fall back to startCase(name) instead of rendering
+      // a blank label (the `??` operator kept "" as the label).
+      mockGetTypeByFQN.mockResolvedValueOnce({
+        customProperties: [
+          {
+            name: 'costCenter',
+            description: '',
+            propertyType: { name: 'string' },
+          },
+          {
+            name: 'reviewCadence',
+            displayName: '',
+            description: '',
+            propertyType: { name: 'string' },
+          },
+        ],
+      });
+
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { extension: '' },
+              column: { key: 'extension' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      expect(await screen.findByText('Cost Center')).toBeInTheDocument();
+      expect(screen.getByText('Review Cadence')).toBeInTheDocument();
+    });
+
     it('should use configured entity reference indexes for bulk edit custom properties', async () => {
       mockGetTypeByFQN.mockResolvedValueOnce({
         customProperties: [

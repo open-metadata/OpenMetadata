@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
-import { Space } from 'antd';
+
 import { noop } from 'lodash';
 import { lazy } from 'react';
 import {
@@ -450,11 +450,22 @@ export const getDataProductDetailTabs = ({
 
 export const DataProductListItemRenderer = (props: EntityReference) => {
   return (
-    <Space direction="vertical" size={0}>
-      <Space>
+    <Box
+      inline
+      align="stretch"
+      className="layout-space"
+      direction="col"
+      gap={0}
+      itemClassName="layout-space-item">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={2}
+        itemClassName="layout-space-item">
         <Icon component={DataProductIcon} style={{ fontSize: '16px' }} />
         <Typography>{getEntityName(props)}</Typography>
-      </Space>
+      </Box>
       {props.description && (
         <Typography
           as="div"
@@ -466,6 +477,6 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
           <RichTextEditorPreviewerV1 markdown={props.description} />
         </Typography>
       )}
-    </Space>
+    </Box>
   );
 };

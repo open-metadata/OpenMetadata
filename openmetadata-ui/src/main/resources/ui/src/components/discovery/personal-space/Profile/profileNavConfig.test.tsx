@@ -33,7 +33,15 @@ jest.mock('./tabs/bots/BotsPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('./tabs/preferences/PreferencesPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 jest.mock('./tabs/platform-settings/PlatformSettingsPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('./tabs/sso/SsoPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
@@ -50,14 +58,16 @@ import {
 } from './profileNavConfig';
 
 describe('profileNavConfig', () => {
-  it('exposes exactly the 6 built-in nav items in order', () => {
+  it('exposes exactly the 8 built-in nav items in order', () => {
     expect(PROFILE_NAV_ITEMS.map((i) => i.id)).toEqual([
       'profile',
       'permissions',
+      'preferences',
       'access-token',
       'access-control',
       'bots',
       'platform-settings',
+      'sso',
     ]);
   });
 
@@ -74,7 +84,7 @@ describe('profileNavConfig', () => {
       expect(typeof item.render).toBe('function');
     });
 
-    expect(ids.size).toBe(6);
+    expect(ids.size).toBe(8);
   });
 
   it('places access-control under administration group, not credentials', () => {
@@ -85,11 +95,21 @@ describe('profileNavConfig', () => {
     expect(groupById).toEqual({
       profile: 'account',
       permissions: 'account',
+      preferences: 'account',
       'access-token': 'credentials',
       'access-control': 'administration',
       bots: 'administration',
       'platform-settings': 'administration',
+      sso: 'administration',
     });
+  });
+
+  it('shows SSO settings to admins only', () => {
+    const sso = getProfileNavItem('sso');
+    const permissions = {} as Parameters<NonNullable<typeof sso.isVisible>>[0];
+
+    expect(sso.isVisible?.(permissions, true)).toBe(true);
+    expect(sso.isVisible?.(permissions, false)).toBe(false);
   });
 
   it('includes administration in the group label map', () => {
