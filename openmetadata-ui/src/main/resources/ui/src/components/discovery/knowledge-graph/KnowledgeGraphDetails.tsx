@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Input,
-  Table,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -30,6 +29,8 @@ import { getGraphNodeHref } from '../../../utils/discovery/knowledge-graph/knowl
 import { isCoverageNode } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
+import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import {
   GraphData,
   GraphNode,
@@ -480,6 +481,54 @@ const KnowledgeGraphDetails = ({
     t,
     relationshipScope,
   ]);
+  const tableLocale = useMemo(
+    () => ({
+      emptyText: view.loading ? t('label.loading') : t('label.kg-no-results'),
+    }),
+    [view.loading, t]
+  );
+  const getRowHandlers = useMemo(
+    () => (record: DetailRow) => ({
+      onClick: () => {
+        if (record.kind && record.target) {
+          onSelect(record.kind, record.target);
+        }
+      },
+    }),
+    [onSelect]
+  );
+  const tableColumns = useMemo<ColumnsType<DetailRow>>(
+    () =>
+      model.headings.map((label, columnIndex) => ({
+        key: label,
+        title: label,
+        render: (_: unknown, record: DetailRow) => {
+          const cell = record.cells[columnIndex];
+          if (!cell) {
+            return null;
+          }
+          const className = classNames(
+            cell.tone && CELL_TONES[cell.tone],
+            'tw:text-xs'
+          );
+          if (cell.href) {
+            return (
+              <Button
+                color="link-color"
+                href={cell.href}
+                rel="noopener noreferrer"
+                size="sm"
+                target="_blank">
+                {cell.text}
+              </Button>
+            );
+          }
+
+          return <span className={className}>{cell.text}</span>;
+        },
+      })),
+    [model.headings]
+  );
   const { searched, rows, chips } = filterRows(
     model.rows,
     drawer,
@@ -631,55 +680,15 @@ const KnowledgeGraphDetails = ({
             <Table
               aria-label={titles[drawer]}
               className="kg-details-table"
-              size="sm"
-              onRowAction={(key) => {
-                const row = model.rows.find((item) => item.id === key);
-                if (row?.kind && row.target) {
-                  onSelect(row.kind, row.target);
-                }
-              }}>
-              <Table.Header>
-                {model.headings.map((label, index) => (
-                  <Table.Head
-                    id={String(index)}
-                    isRowHeader={index === 0}
-                    key={label}
-                    label={label}
-                  />
-                ))}
-              </Table.Header>
-              <Table.Body
-                items={rows.slice(0, limit)}
-                renderEmptyState={() =>
-                  view.loading ? t('label.loading') : t('label.kg-no-results')
-                }>
-                {(row) => (
-                  <Table.Row id={row.id}>
-                    {row.cells.map((cell, index) => (
-                      <Table.Cell
-                        className={classNames(
-                          'tw:py-1.5! tw:text-xs!',
-                          cell.tone && CELL_TONES[cell.tone]
-                        )}
-                        key={model.headings[index]}>
-                        {cell.href ? (
-                          <Button
-                            color="link-color"
-                            href={cell.href}
-                            rel="noopener noreferrer"
-                            size="sm"
-                            target="_blank">
-                            {cell.text}
-                          </Button>
-                        ) : (
-                          cell.text
-                        )}
-                      </Table.Cell>
-                    ))}
-                  </Table.Row>
-                )}
-              </Table.Body>
-            </Table>
+              columns={tableColumns}
+              dataSource={rows.slice(0, limit)}
+              loading={view.loading}
+              locale={tableLocale}
+              pagination={false}
+              rowKey="id"
+              size="small"
+              onRow={getRowHandlers}
+            />
           </Box>
           <Box
             align="center"
