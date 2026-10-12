@@ -3858,6 +3858,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     deferOrInvalidateRedisL2(entityType, id, fqn);
   }
 
+  protected static void invalidateCacheAfterTagMutation(EntityReference entityReference) {
+    String type = entityReference.getType();
+    UUID id = entityReference.getId();
+    String fqn = entityReference.getFullyQualifiedName();
+    RequestEntityCache.invalidate(type, id, fqn);
+    invalidateCacheForEntity(type, id, fqn);
+  }
+
   private static void recordCacheInvalidation(
       Map<CacheInvalidationKey, CacheInvalidationKey> deferred,
       String entityType,
@@ -6898,8 +6906,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return null;
     }
 
-    // Try to get from cache first
-    var cachedTagUsageDao = CacheBundle.getCachedTagUsageDao();
+    // Uncached entity types skip Redis invalidation on writes, so their tags must bypass Redis too.
+    var cachedTagUsageDao =
+        isCacheableEntityType(entityType) ? CacheBundle.getCachedTagUsageDao() : null;
     boolean propagationEnabled = SettingsCache.isGlossaryTagPropagationEnabled();
     if (cachedTagUsageDao != null) {
       List<TagLabel> cached =
