@@ -736,6 +736,7 @@ export const TreeSelect = <T = unknown,>({
       loadingNodes,
       disabled,
       multiple,
+      cascadeSelection,
       showCheckbox,
       showExpandIcon,
       showIcon,
