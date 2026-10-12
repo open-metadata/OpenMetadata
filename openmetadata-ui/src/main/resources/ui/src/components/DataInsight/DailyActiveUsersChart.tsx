@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
-import { Grid } from '@openmetadata/ui-core-components';
+import {
+  Card,
+  Grid,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
 import { LineChart } from '@openmetadata/ui-core-components/charts';
-import { Card } from 'antd';
+
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -91,47 +95,58 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
     <Card
       className="data-insight-card data-insight-card-chart"
       data-testid="entity-active-user-card"
-      id={DataInsightChartType.DailyActiveUsers}
-      loading={isLoading}
-      title={
-        <PageHeader
-          data={{
-            header: t('label.daily-active-users-on-the-platform'),
-            subHeader: t('message.active-users'),
-          }}
-        />
-      }>
-      {dailyActiveUsers.length ? (
-        <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
-          <Grid.Item
-            className="layout-column"
-            span={DI_STRUCTURE.leftContainerSpan}>
-            <LineChart
-              ariaLabel={t('label.daily-active-users-on-the-platform')}
-              data={data}
-              height={GRAPH_HEIGHT}
-              legend={HIDDEN_CHART_LEGEND}
-              series={series}
-              tooltip={tooltip}
-              xKey="timestamp"
-            />
-          </Grid.Item>
-          <Grid.Item
-            className="layout-column"
-            span={DI_STRUCTURE.rightContainerSpan}>
-            <CustomStatistic
-              changeInValue={relativePercentage}
-              duration={selectedDays}
-              label={t('label.total-entity', {
-                entity: t('label.active-user'),
-              })}
-              value={total}
-            />
-          </Grid.Item>
-        </Grid>
-      ) : (
-        <EmptyGraphPlaceholder />
-      )}
+      id={DataInsightChartType.DailyActiveUsers}>
+      <Card.Header
+        title={
+          <PageHeader
+            data={{
+              header: t('label.daily-active-users-on-the-platform'),
+              subHeader: t('message.active-users'),
+            }}
+          />
+        }
+      />
+      <Card.Content>
+        {isLoading ? (
+          <SkeletonParagraph rows={4} />
+        ) : (
+          <>
+            {dailyActiveUsers.length ? (
+              <Grid
+                className="layout-row layout-grid"
+                style={getLayoutGutter(32)}>
+                <Grid.Item
+                  className="layout-column"
+                  span={DI_STRUCTURE.leftContainerSpan}>
+                  <LineChart
+                    ariaLabel={t('label.daily-active-users-on-the-platform')}
+                    data={data}
+                    height={GRAPH_HEIGHT}
+                    legend={HIDDEN_CHART_LEGEND}
+                    series={series}
+                    tooltip={tooltip}
+                    xKey="timestamp"
+                  />
+                </Grid.Item>
+                <Grid.Item
+                  className="layout-column"
+                  span={DI_STRUCTURE.rightContainerSpan}>
+                  <CustomStatistic
+                    changeInValue={relativePercentage}
+                    duration={selectedDays}
+                    label={t('label.total-entity', {
+                      entity: t('label.active-user'),
+                    })}
+                    value={total}
+                  />
+                </Grid.Item>
+              </Grid>
+            ) : (
+              <EmptyGraphPlaceholder />
+            )}
+          </>
+        )}
+      </Card.Content>
     </Card>
   );
 };
