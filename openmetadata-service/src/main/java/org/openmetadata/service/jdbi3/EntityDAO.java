@@ -710,6 +710,10 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   int listTotalCount(
       @Define("table") String table, @Define("nameHashColumn") String nameHashColumn);
 
+  /** Rows written after {@code since}, as "id|updatedAt|name" (name last, as it may hold '|'). */
+  @SqlQuery("SELECT CONCAT(id, '|', updatedAt, '|', name) FROM <table> WHERE updatedAt > :since")
+  List<String> listChangedSince(@Define("table") String table, @Bind("since") long since);
+
   @ConnectionAwareSqlQuery(
       value = "SELECT count(distinct(<distinctColumn>)) FROM <table> <mysqlCond>",
       connectionType = MYSQL)
