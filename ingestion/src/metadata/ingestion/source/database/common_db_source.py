@@ -499,6 +499,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         return False, None  # By default the table will be a Regular Table
 
+    def get_table_type_for_partitioned_table(self, table_type: TableType) -> TableType:
+        if table_type in (TableType.View, TableType.MaterializedView):
+            return table_type
+        return TableType.Partitioned
+
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         We don't have a generic source implementation for handling tags.
@@ -626,13 +631,8 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )
-            if is_partitioned and table_type not in (
-                TableType.View,
-                TableType.MaterializedView,
-                TableType.Iceberg,
-            ):
-                table_request.tableType = TableType.Partitioned.value
             if is_partitioned:
+                table_request.tableType = self.get_table_type_for_partitioned_table(table_type)
                 table_request.tablePartition = partition_details
 
             yield Either(right=table_request)
