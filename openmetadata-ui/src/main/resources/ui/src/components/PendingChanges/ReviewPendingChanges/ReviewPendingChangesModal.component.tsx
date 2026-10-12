@@ -565,6 +565,7 @@ const ReviewFooter = ({
 }) => {
   const { t } = useTranslation();
   const accepted = verdicts.filter((v) => v === Verdict.Accepted).length;
+  const rejected = verdicts.filter((v) => v === Verdict.Rejected).length;
   const staged = verdicts.filter((v) => v !== Verdict.Superseded).length;
 
   return (
@@ -579,9 +580,7 @@ const ReviewFooter = ({
         />
         <Tally
           className="tw:text-fg-error-secondary"
-          text={t('label.rejected-count', {
-            count: verdicts.length - accepted,
-          })}
+          text={t('label.rejected-count', { count: rejected })}
         />
         <Tally
           className="tw:text-fg-quaternary"
