@@ -15,12 +15,12 @@ import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import {
   Box,
   Button as CoreButton,
-  Card as CoreCard,
+  Card,
   Owner,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
@@ -407,8 +407,8 @@ const TaskFeedCardFromTask = ({
 
   return (
     // The less `task-feed-card-v1-new` rules (unlayered) own the surface,
-    // border and active state; CoreCard adds the clickable/focus behaviour.
-    <CoreCard
+    // border and active state; Card adds the clickable/focus behaviour.
+    <Card
       isClickable
       aria-label={`#${taskDisplayId} ${t(
         TASK_ENTITY_TYPES[task.type] ?? 'label.task'
@@ -473,10 +473,10 @@ const TaskFeedCardFromTask = ({
         </Box>
         <div className="w-full">
           {isTaskTags && (
-            <Card
-              bordered
-              className="activity-feed-card-message tags-card-container">
-              <TagsTaskFromTask hasEditAccess={false} task={task} />
+            <Card>
+              <Card.Content>
+                <TagsTaskFromTask hasEditAccess={false} task={task} />
+              </Card.Content>
             </Card>
           )}
         </div>
@@ -485,7 +485,7 @@ const TaskFeedCardFromTask = ({
         )}
         {!isOpenInDrawer && renderTaskFooter()}
       </Box>
-    </CoreCard>
+    </Card>
   );
 };
 

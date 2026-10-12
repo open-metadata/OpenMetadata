@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Divider, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form, Input, Select } from 'antd';
+import {
+  Card,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Select } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
