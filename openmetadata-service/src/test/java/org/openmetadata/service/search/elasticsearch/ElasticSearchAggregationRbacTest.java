@@ -168,6 +168,19 @@ class ElasticSearchAggregationRbacTest {
   }
 
   @Test
+  void nonAdminSubjectWhosePoliciesYieldNoQueryMatchesNothing() throws Exception {
+    RBACConditionEvaluator noQueryEvaluator = mock(RBACConditionEvaluator.class);
+    when(noQueryEvaluator.evaluateConditions(any(SubjectContext.class))).thenReturn(null);
+    ElasticSearchAggregationManager manager =
+        new ElasticSearchAggregationManager(client, noQueryEvaluator);
+    aggregate(manager, domainScopedSubject(false));
+    JsonNode json = json(sent.getFirst());
+    assertTrue(
+        json.toString().contains("match_none"),
+        "a non-admin whose policies produce no query must fail closed: " + json);
+  }
+
+  @Test
   void subjectLessOverloadProducesSameQueryAsNullSubject() throws Exception {
     ElasticSearchAggregationManager manager =
         new ElasticSearchAggregationManager(client, evaluator);

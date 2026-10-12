@@ -127,9 +127,10 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
   /**
    * ANDs the caller's RBAC policy and per-subject ContextMemory visibility into the aggregation
    * query, mirroring {@code OpenSearchSearchManager#applyRbacCondition}. A {@code null} or exempt
-   * subject (admin, or access control disabled) is left unfiltered by RBAC; when the per-subject
-   * memory visibility filter is unavailable (admin or unidentifiable subject), the org-wide-only
-   * memory filter is applied instead so the aggregation never leaks private memories.
+   * subject (admin, or access control disabled) is left unfiltered by RBAC. An identifiable subject
+   * gets its own memory visibility filter (admins are limited to searchable statuses only); a
+   * {@code null} or unidentifiable subject falls back to the org-wide-only memory filter so the
+   * aggregation never leaks private memories.
    */
   private Query applySubjectFilters(Query query, SubjectContext subjectContext) {
     Query rbacFiltered = applyRbacQuery(query, subjectContext);

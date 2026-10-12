@@ -11,6 +11,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,9 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.search.AggregationRequest;
+import org.openmetadata.schema.search.TopHits;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Column;
@@ -41,6 +45,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Verifies that the public {@code /v1/search/aggregate} endpoint enforces the caller's RBAC policy.
@@ -54,6 +59,13 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class SearchAggregateRbacIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String TABLE_INDEX = "table_search_index";
+  private static final String ENTITY_TYPE_FIELD = "entityType";
+  private static final String TABLE_ENTITY_TYPE = Entity.TABLE;
+  private static final String MATCH_ALL_VALUE = ".*";
+  private static final int BUCKET_SIZE = 100;
+  private static final int TOP_HITS_SIZE = 10;
+  private static final List<String> SOURCE_FIELDS = List.of("name", "fullyQualifiedName", "domain");
   private static final Column COLUMN = new Column().withName("id").withDataType(ColumnDataType.INT);
 
   @Test
@@ -97,10 +109,10 @@ public class SearchAggregateRbacIT {
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
-                JsonNode aggResults = aggregate(restricted, "table_search_index", "entityType");
+                JsonNode aggResults = aggregate(restricted, TABLE_INDEX, ENTITY_TYPE_FIELD);
                 Set<String> aggKeyNames = new HashSet<>();
                 aggResults.path("aggregations").fieldNames().forEachRemaining(aggKeyNames::add);
-                JsonNode tableBucket = findFirstBucketByKey(aggResults, "table");
+                JsonNode tableBucket = findFirstBucketByKey(aggResults, TABLE_ENTITY_TYPE);
                 long bucketCount =
                     tableBucket != null ? tableBucket.path("doc_count").asLong() : 0L;
                 assertEquals(
@@ -145,8 +157,8 @@ public class SearchAggregateRbacIT {
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
-                JsonNode aggResults = aggregate(admin, "table_search_index", "entityType");
-                JsonNode tableBucket = findFirstBucketByKey(aggResults, "table");
+                JsonNode aggResults = aggregate(admin, TABLE_INDEX, ENTITY_TYPE_FIELD);
+                JsonNode tableBucket = findFirstBucketByKey(aggResults, TABLE_ENTITY_TYPE);
                 long bucketCount =
                     tableBucket != null ? tableBucket.path("doc_count").asLong() : 0L;
                 assertEquals(
@@ -191,8 +203,8 @@ public class SearchAggregateRbacIT {
           .untilAsserted(
               () -> {
                 // First make sure admin can see both.
-                JsonNode adminAgg = aggregatePost(admin, "table_search_index", "entityType");
-                JsonNode adminBucket = findFirstBucketByKey(adminAgg, "table");
+                JsonNode adminAgg = aggregatePost(admin, TABLE_INDEX, ENTITY_TYPE_FIELD);
+                JsonNode adminBucket = findFirstBucketByKey(adminAgg, TABLE_ENTITY_TYPE);
                 long adminCount = adminBucket != null ? adminBucket.path("doc_count").asLong() : 0L;
                 assertEquals(
                     2,
@@ -200,9 +212,8 @@ public class SearchAggregateRbacIT {
                     "Admin POST aggregate must include both tables. Bucket: " + adminBucket);
 
                 // Restricted must only see own.
-                JsonNode restrictedAgg =
-                    aggregatePost(restricted, "table_search_index", "entityType");
-                JsonNode restrictedBucket = findFirstBucketByKey(restrictedAgg, "table");
+                JsonNode restrictedAgg = aggregatePost(restricted, TABLE_INDEX, ENTITY_TYPE_FIELD);
+                JsonNode restrictedBucket = findFirstBucketByKey(restrictedAgg, TABLE_ENTITY_TYPE);
                 long restrictedCount =
                     restrictedBucket != null ? restrictedBucket.path("doc_count").asLong() : 0L;
                 assertEquals(
@@ -226,8 +237,7 @@ public class SearchAggregateRbacIT {
   }
 
   private Set<String> searchListingFqns(OpenMetadataClient client, String prefix) throws Exception {
-    String response =
-        client.search().query(prefix + "*").index("table_search_index").size(1000).execute();
+    String response = client.search().query(prefix + "*").index(TABLE_INDEX).size(1000).execute();
     JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
     Set<String> fqns = new HashSet<>();
     for (JsonNode hit : hits) {
@@ -245,10 +255,10 @@ public class SearchAggregateRbacIT {
         RequestOptions.builder()
             .queryParam("index", index)
             .queryParam("field", field)
-            .queryParam("value", ".*")
+            .queryParam("value", MATCH_ALL_VALUE)
             .queryParam("q", "*")
-            .queryParam("size", "100")
-            .queryParam("sourceFields", "name,fullyQualifiedName,domain")
+            .queryParam("size", String.valueOf(BUCKET_SIZE))
+            .queryParam("sourceFields", String.join(",", SOURCE_FIELDS))
             .build();
     String response =
         client
@@ -259,20 +269,16 @@ public class SearchAggregateRbacIT {
 
   private JsonNode aggregatePost(OpenMetadataClient client, String index, String field)
       throws Exception {
-    String body =
-        "{"
-            + "\"index\":\""
-            + index
-            + "\","
-            + "\"fieldName\":\""
-            + field
-            + "\","
-            + "\"fieldValue\":\".*\","
-            + "\"query\":\"*\","
-            + "\"size\":100,"
-            + "\"sourceFields\":[\"name\",\"fullyQualifiedName\",\"domain\"],"
-            + "\"topHits\":{\"size\":10}"
-            + "}";
+    AggregationRequest request =
+        new AggregationRequest()
+            .withIndex(index)
+            .withFieldName(field)
+            .withFieldValue(MATCH_ALL_VALUE)
+            .withQuery("*")
+            .withSize(BUCKET_SIZE)
+            .withSourceFields(SOURCE_FIELDS)
+            .withTopHits(new TopHits().withSize(TOP_HITS_SIZE));
+    String body = MAPPER.writeValueAsString(request);
     String response =
         client
             .getHttpClient()
@@ -309,13 +315,7 @@ public class SearchAggregateRbacIT {
    */
   private JsonNode findFirstBucketByKey(JsonNode aggregations, String key) {
     JsonNode aggs = aggregations.path("aggregations");
-    for (String aggName :
-        new Iterable<String>() {
-          @Override
-          public java.util.Iterator<String> iterator() {
-            return aggs.fieldNames();
-          }
-        }) {
+    for (String aggName : (Iterable<String>) aggs::fieldNames) {
       JsonNode buckets = aggs.path(aggName).path("buckets");
       for (JsonNode bucket : buckets) {
         if (bucket.hasNonNull("key") && key.equals(bucket.get("key").asText())) {
@@ -334,13 +334,7 @@ public class SearchAggregateRbacIT {
     // The sub-aggregation that returns top hits is named "top_hits#top" in the ES/OS serialized
     // response (a `top_hits` aggregation under key "top"), so find it by suffix.
     JsonNode topHitsAgg = null;
-    for (String fieldName :
-        new Iterable<String>() {
-          @Override
-          public java.util.Iterator<String> iterator() {
-            return bucket.fieldNames();
-          }
-        }) {
+    for (String fieldName : (Iterable<String>) bucket::fieldNames) {
       if (fieldName.contains("top_hits") || fieldName.equals("top")) {
         topHitsAgg = bucket.path(fieldName);
         break;
@@ -377,8 +371,7 @@ public class SearchAggregateRbacIT {
             SdkClients.adminClient()
                 .databaseServices()
                 .delete(
-                    service.getId().toString(),
-                    java.util.Map.of("recursive", "true", "hardDelete", "true")));
+                    service.getId().toString(), Map.of("recursive", "true", "hardDelete", "true")));
     return DatabaseSchemaTestFactory.createSimple(ns, service);
   }
 
@@ -412,7 +405,7 @@ public class SearchAggregateRbacIT {
             .withEmail(email)
             .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
             .withRoles(List.of(domainOnlyRole.getId()));
-    org.openmetadata.schema.entity.teams.User user = admin.users().create(request);
+    User user = admin.users().create(request);
     cleanup.push(() -> admin.users().delete(user.getId()));
     return SdkClients.createClient(email, email, new String[] {});
   }
@@ -440,8 +433,8 @@ public class SearchAggregateRbacIT {
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
-                JsonNode aggResults = aggregate(restricted, "table_search_index", "entityType");
-                JsonNode tableBucket = findFirstBucketByKey(aggResults, "table");
+                JsonNode aggResults = aggregate(restricted, TABLE_INDEX, ENTITY_TYPE_FIELD);
+                JsonNode tableBucket = findFirstBucketByKey(aggResults, TABLE_ENTITY_TYPE);
                 long bucketCount =
                     tableBucket != null ? tableBucket.path("doc_count").asLong() : 0L;
                 assertEquals(
