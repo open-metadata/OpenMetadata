@@ -719,6 +719,36 @@ describe('TestConnectionModal', () => {
     ).toBeInTheDocument();
   });
 
+  it('should render the remediation card when a failed step only carries a diagnosis', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: true, mandatory: true },
+          {
+            name: 'GetSchemas',
+            passed: false,
+            mandatory: true,
+            diagnosis: {
+              title: 'Diagnosis title',
+              remediation: 'Fix this issue',
+            },
+          },
+        ]}
+      />
+    );
+
+    const card = screen.getByTestId('connection-remediation-card');
+
+    expect(within(card).getByText('Diagnosis title')).toBeInTheDocument();
+    expect(within(card).getByText('Fix this issue')).toBeInTheDocument();
+  });
+
   it('should not render a failed step message in the success colour', () => {
     render(
       <TestConnectionModal

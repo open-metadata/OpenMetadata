@@ -1159,7 +1159,7 @@ export function ConnectionRemediationCard(
     getConnectionStepResult
   );
 
-  if (!errorContent) {
+  if (!errorContent && !diagnosis) {
     return null;
   }
 
