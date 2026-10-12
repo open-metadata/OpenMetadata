@@ -200,7 +200,7 @@ const MarketPlaceAppDetails = () => {
 
         {isAppDisabled && (
           <Alert
-            className="m-t-md text-xs d-flex items-start p-xs"
+            className="m-t-md"
             showIcon={false}
             title={
               isCacheWarmupDisabled ? (
