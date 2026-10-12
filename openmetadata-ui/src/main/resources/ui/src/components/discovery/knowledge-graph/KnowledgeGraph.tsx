@@ -476,7 +476,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   if (detailsElement) {
     stageChildren.push(
       <ReflexSplitter
-        aria-label={t('label.kg-resize-details')}
         className={classNames(
           'kg-stage-splitter',
           'tw:relative tw:h-px tw:cursor-row-resize tw:border-0',
@@ -485,8 +484,17 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           "tw:before:absolute tw:before:inset-x-0 tw:before:-inset-y-1 tw:before:content-['']"
         )}
         key="splitter"
-        propagate={false}
-      />,
+        propagate={false}>
+        {/* ReflexSplitter forwards only data-*, className, style, id and
+            children — a11y attrs on the splitter are dropped, so they live
+            on this child element instead. */}
+        <span
+          aria-label={t('label.kg-resize-details')}
+          aria-orientation="horizontal"
+          className="tw:sr-only"
+          role="separator"
+        />
+      </ReflexSplitter>,
       <ReflexElement
         className="kg-stage-details-pane"
         flex={0.4}
