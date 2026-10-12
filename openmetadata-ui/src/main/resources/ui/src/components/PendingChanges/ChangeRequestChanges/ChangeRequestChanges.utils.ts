@@ -70,7 +70,7 @@ const truncate = (text: string): string =>
 const plainText = (text: string): string =>
   truncate(
     text
-      .replace(/<[^>]*>/g, ' ')
+      .replace(/<[^<>]*>/g, ' ')
       .replace(/&nbsp;/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()

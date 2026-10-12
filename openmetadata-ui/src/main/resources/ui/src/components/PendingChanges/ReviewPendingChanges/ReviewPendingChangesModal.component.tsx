@@ -30,7 +30,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
-import { isEmpty, startCase, uniq } from 'lodash';
+import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -109,11 +109,11 @@ const useReviewTasks = (
     : undefined;
 
   useEffect(() => {
-    const ids = uniq(
-      requests.map((request) => request.taskId).filter(Boolean)
-    ) as string[];
+    const ids = [
+      ...new Set(requests.map((request) => request.taskId).filter(Boolean)),
+    ] as string[];
     // A task the user cannot read is one they cannot decide; it does not hide the others.
-    Promise.allSettled(
+    void Promise.allSettled(
       ids.map((id) => getTaskById(id, { fields: 'assignees,createdBy' }))
     ).then((results) =>
       setTasks(
@@ -163,7 +163,7 @@ const useMyVotes = (requests: ChangeRequest[]) => {
 
   useEffect(() => {
     // One read per open request on the asset; there is no bulk decisions endpoint.
-    Promise.allSettled(
+    void Promise.allSettled(
       requests.map((request) => getChangeRequestDecisions(request.id))
     ).then((results) =>
       setVotes(
@@ -194,15 +194,17 @@ const useMyVotes = (requests: ChangeRequest[]) => {
 const usePublishedEntity = (requests: ChangeRequest[]) => {
   const [published, setPublished] = useState<Record<string, unknown>>();
   const [first] = requests;
-  const fields = uniq([
-    'owners',
-    ...(GLOSSARY_ENTITIES.has(first?.entityType) ? ['reviewers'] : []),
-    ...requests.flatMap((request) =>
-      (request.activeRevision?.ops ?? [])
-        .filter((op) => op.op !== MutationOpType.Set)
-        .map((op) => op.field)
-    ),
-  ]).join(',');
+  const fields = [
+    ...new Set([
+      'owners',
+      ...(GLOSSARY_ENTITIES.has(first?.entityType) ? ['reviewers'] : []),
+      ...requests.flatMap((request) =>
+        (request.activeRevision?.ops ?? [])
+          .filter((op) => op.op !== MutationOpType.Set)
+          .map((op) => op.field)
+      ),
+    ]),
+  ].join(',');
 
   useEffect(() => {
     const getEntity = first
@@ -345,11 +347,12 @@ const StagedVerdict = ({
   onUndo: () => void;
 }) => {
   const { t } = useTranslation();
+  const verdictLabel = t(`label.verdict-${verdict}`);
 
   return (
     <>
       <Badge color={VERDICT_COLORS[verdict]} size="sm" type="pill-color">
-        {`${t(`label.verdict-${verdict}`)} · ${t('label.pending-submit')}`}
+        {`${verdictLabel} · ${t('label.pending-submit')}`}
       </Badge>
       <Button color="tertiary" size="sm" onClick={onUndo}>
         {t('label.undo')}
@@ -368,7 +371,7 @@ const SuggestionControls = ({
   canDecide,
   onDecide,
   onWithdraw,
-}: SuggestionRowProps) => {
+}: Omit<SuggestionRowProps, 'taskNumber'>) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const conflicted = isConflicted(suggestion);
@@ -707,7 +710,9 @@ const ReviewPendingChangesModal = ({
     if (incomplete.length > 0) {
       showErrorToast(
         t('message.decide-every-change-of-request', {
-          requesters: uniq(incomplete.map((r) => r.requestedBy)).join(', '),
+          requesters: [...new Set(incomplete.map((r) => r.requestedBy))].join(
+            ', '
+          ),
         })
       );
 
@@ -720,7 +725,8 @@ const ReviewPendingChangesModal = ({
       verdicts
     )) {
       try {
-        await resolveTask(taskId, body);
+        // Requests on one asset publish to it in turn, so they are resolved one at a time.
+        await resolveTask(taskId, body); // NOSONAR resolving in parallel would race on the asset
         submitted.add(request.id);
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -743,7 +749,7 @@ const ReviewPendingChangesModal = ({
     setTimeout(onChange, WORKFLOW_SETTLE_MS);
   };
 
-  const people = uniq(requests.map((request) => request.requestedBy));
+  const people = [...new Set(requests.map((request) => request.requestedBy))];
   const [first] = requests;
   const subtitle = first
     ? [

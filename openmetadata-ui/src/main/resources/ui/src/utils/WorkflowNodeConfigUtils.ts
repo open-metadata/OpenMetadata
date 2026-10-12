@@ -266,7 +266,7 @@ const applyUserApprovalConfig = (
     | undefined;
   // Start from the step's stored config so settings this builder does not edit (partial
   // decisions, transition metadata, task status) survive a save.
-  config.config = { ...(nodeData.config ?? {}) };
+  config.config = { ...nodeData.config };
   config.config.assignees = {
     addReviewers: assigneesFromNode?.addReviewers ?? true,
     addOwners: assigneesFromNode?.addOwners ?? false,

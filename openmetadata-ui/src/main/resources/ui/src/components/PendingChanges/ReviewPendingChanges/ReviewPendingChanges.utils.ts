@@ -65,7 +65,7 @@ const parse = (json?: string): unknown =>
 // Descriptions are stored as HTML; a reviewer compares their words, not their markup.
 const withoutMarkup = (text: string): string =>
   text
-    .replace(/<[^>]*>/g, ' ')
+    .replace(/<[^<>]*>/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
