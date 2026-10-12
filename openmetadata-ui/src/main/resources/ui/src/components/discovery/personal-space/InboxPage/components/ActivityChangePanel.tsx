@@ -38,21 +38,13 @@ const COLUMN_TITLE_KEY = {
   values: { before: 'label.before', after: 'label.after' },
 };
 
-// What was there reads recessed on a subtle surface; what replaced it sits on
-// the panel's own surface, its label a step darker. The padding leaves room
-// for the arrow on the rule between them.
-const COLUMN_TONE_CLASS: Record<ChangeTone, { column: string; title: string }> =
-  {
-    error: {
-      column:
-        'tw:bg-utility-gray-blue-50 tw:pt-3 tw:pr-4.5 tw:pb-3.5 tw:pl-3.5',
-      title: 'tw:text-quaternary',
-    },
-    success: {
-      column: 'tw:pt-3 tw:pr-3.5 tw:pb-3.5 tw:pl-5.5',
-      title: 'tw:text-secondary',
-    },
-  };
+// What was there sits on a subtle surface; what replaced it on the panel's
+// own. Both titles read alike. The padding leaves room for the arrow on the
+// rule between them.
+const COLUMN_TONE_CLASS: Record<ChangeTone, string> = {
+  error: 'tw:bg-utility-gray-blue-50 tw:pt-3 tw:pr-4.5 tw:pb-3.5 tw:pl-3.5',
+  success: 'tw:pt-3 tw:pr-3.5 tw:pb-3.5 tw:pl-5.5',
+};
 
 // Two values can read the same (two owners sharing a display name), so each
 // key carries how many times its value came before it.
@@ -75,17 +67,11 @@ const ChangeColumn = ({
   isText,
 }: ChangeColumnProps) => (
   <Box
-    className={classNames(
-      'tw:min-w-0 tw:flex-1',
-      COLUMN_TONE_CLASS[tone].column
-    )}
+    className={classNames('tw:min-w-0 tw:flex-1', COLUMN_TONE_CLASS[tone])}
     data-testid={`activity-change-${tone}`}
     direction="col"
     gap={2}>
-    <Typography
-      className={COLUMN_TONE_CLASS[tone].title}
-      size="text-xs"
-      weight="medium">
+    <Typography className="tw:text-secondary" size="text-xs" weight="medium">
       {title}
     </Typography>
     {isText ? (
