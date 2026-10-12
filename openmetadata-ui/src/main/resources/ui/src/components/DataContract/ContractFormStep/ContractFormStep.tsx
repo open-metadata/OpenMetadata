@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import {
   ChevronLeft,
   ChevronRight,
@@ -49,30 +49,28 @@ export const ContractFormStep = ({
 
   return (
     <>
-      <section
+      <Box
         className={classNames(
-          'tw:flex tw:flex-col tw:gap-5 tw:rounded-xl tw:bg-secondary tw:p-5',
+          'tw:rounded-xl tw:bg-secondary tw:p-5',
           className
-        )}>
-        <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
-          <div className="tw:flex tw:flex-col tw:gap-0.5">
+        )}
+        direction="col"
+        gap={5}>
+        <Box align="center" gap={4} justify="between">
+          <Box className="tw:gap-0.5" direction="col">
             <Typography className="tw:block" size="text-lg" weight="semibold">
               {title}
             </Typography>
             <Typography as="p" className="tw:text-tertiary" size="text-sm">
               {description}
             </Typography>
-          </div>
+          </Box>
           {extra}
-        </div>
+        </Box>
         {children}
-      </section>
+      </Box>
       {(onPrev || showNext) && (
-        <div
-          className={classNames(
-            'tw:mt-4 tw:flex',
-            onPrev ? 'tw:justify-between' : 'tw:justify-end'
-          )}>
+        <Box className="tw:mt-4" justify={onPrev ? 'between' : 'end'}>
           {onPrev && (
             <Button
               color="secondary"
@@ -91,7 +89,7 @@ export const ContractFormStep = ({
               {nextLabel ?? t('label.next')}
             </Button>
           )}
-        </div>
+        </Box>
       )}
     </>
   );

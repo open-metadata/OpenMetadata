@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Button,
   Card,
   Tabs,
@@ -539,7 +540,7 @@ const AddDataContract: React.FC<{
     <Card.Header
       className="tw:items-center"
       extra={
-        <div className="tw:flex tw:gap-2">
+        <Box gap={2}>
           <Button color="secondary" size="md" onPress={onCancel}>
             {t('label.cancel')}
           </Button>
@@ -551,7 +552,7 @@ const AddDataContract: React.FC<{
             onPress={handleSave}>
             {t('label.save')}
           </Button>
-        </div>
+        </Box>
       }
       subtitle={t('message.add-contract-detail-description')}
       title={
