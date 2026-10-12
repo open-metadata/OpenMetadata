@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SimpleModal } from '@openmetadata/ui-core-components';
+import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
 import { Button, Form } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
@@ -57,55 +57,70 @@ export const ModalWithQueryEditor = ({
   }, [form, visible]);
 
   return (
-    <SimpleModal
-      data-testid="markdown-editor"
-      footer={[
-        <Button
-          data-testid="cancel"
-          disabled={isLoading}
-          key="cancelButton"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>,
-        <Button
-          data-testid="save"
-          key="saveButton"
-          type="primary"
-          onClick={() => form.submit()}>
-          {isSaving ? <Loader size="small" type="white" /> : t('label.save')}
-        </Button>,
-      ]}
+    // Opens from the lineage edge drawer (a z-999 SlideoutMenu), so the
+    // overlay has to sit above it.
+    <ModalOverlay
+      className="tw:z-1000"
       isDismissable={false}
       isOpen={visible}
-      title={header}
-      width={1200}
-      onCancel={() => onCancel?.()}>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish}>
-          <Form.Item
-            data-testid="sql-editor-container"
-            label={t('label.sql-uppercase-query')}
-            name="query"
-            rules={[
-              {
-                required: true,
-                message: t('label.field-required', {
-                  field: t('label.sql-uppercase-query'),
-                }),
-              },
-            ]}
-            trigger="onChange">
-            <SchemaEditor
-              className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
-              mode={{ name: CSMode.SQL }}
-              showCopyButton={false}
-            />
-          </Form.Item>
-        </Form>
-      )}
-    </SimpleModal>
+      onOpenChange={(isOpen) => !isOpen && onCancel?.()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          data-testid="markdown-editor"
+          title={header}
+          width={1200}
+          onClose={() => onCancel?.()}>
+          <Dialog.Content>
+            {isLoading ? (
+              <Loader />
+            ) : (
+              <Form form={form} layout="vertical" onFinish={onFinish}>
+                <Form.Item
+                  data-testid="sql-editor-container"
+                  label={t('label.sql-uppercase-query')}
+                  name="query"
+                  rules={[
+                    {
+                      required: true,
+                      message: t('label.field-required', {
+                        field: t('label.sql-uppercase-query'),
+                      }),
+                    },
+                  ]}
+                  trigger="onChange">
+                  <SchemaEditor
+                    className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+                    mode={{ name: CSMode.SQL }}
+                    showCopyButton={false}
+                  />
+                </Form.Item>
+              </Form>
+            )}
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              data-testid="cancel"
+              disabled={isLoading}
+              key="cancelButton"
+              type="link"
+              onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              data-testid="save"
+              key="saveButton"
+              type="primary"
+              onClick={() => form.submit()}>
+              {isSaving ? (
+                <Loader size="small" type="white" />
+              ) : (
+                t('label.save')
+              )}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
