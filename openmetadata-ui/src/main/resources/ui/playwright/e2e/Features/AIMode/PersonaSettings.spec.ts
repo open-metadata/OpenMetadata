@@ -562,8 +562,34 @@ test.describe(
         const picker = page
           .getByTestId('add-persona-users-select')
           .getByRole('combobox');
+
+        // The picker re-queries the user search index on a 250ms debounce and
+        // replaces its whole option list with the result, so an option found
+        // from the previous result set is torn out mid-click ("element was
+        // detached from the DOM"). Wait for the search that this text triggers
+        // to land before touching the list.
+        const userSearch = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            new URL(response.url()).searchParams.get('index') === 'user' &&
+            response.status() === 200
+        );
         await picker.fill(user.responseData.name ?? '');
-        await page.getByRole('option', { name: userName }).click();
+        await userSearch;
+
+        // Commit with Enter rather than a click: Autocomplete drops a
+        // selection whenever `isLeavingRef` is set, and `onBlurCapture` arms
+        // that ref for a microtask, so a click whose actionability scroll
+        // blurs the input is silently ignored and Save stays disabled.
+        const option = page.getByRole('option', { name: userName });
+        await expect(option).toBeVisible();
+        await picker.press('ArrowDown');
+        await picker.press('Enter');
+
+        // Prove the value committed before relying on Save.
+        await expect(
+          page.getByTestId('add-persona-users-select').getByText(userName)
+        ).toBeVisible();
 
         const addResponse = waitForResponseWithStatus(
           page,
