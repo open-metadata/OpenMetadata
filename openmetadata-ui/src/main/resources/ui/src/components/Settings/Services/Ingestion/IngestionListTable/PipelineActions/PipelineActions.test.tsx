@@ -257,4 +257,55 @@ describe('PipelineAction', () => {
       mockPipelineActionsProps.handleEnableDisableIngestion
     ).toHaveBeenCalledWith(mockPipelineActionsProps.pipeline.id);
   });
+
+  it('should not send another toggle while the previous one is in-flight', async () => {
+    let resolveToggle: () => void = jest.fn();
+    const handleEnableDisableIngestion = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveToggle = resolve;
+        })
+    );
+
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          handleEnableDisableIngestion={handleEnableDisableIngestion}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('resume-button'));
+    });
+
+    expect(screen.getByTestId('resume-button')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('resume-button'));
+    });
+
+    expect(handleEnableDisableIngestion).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveToggle();
+    });
+
+    expect(screen.getByTestId('resume-button')).not.toHaveAttribute(
+      'aria-disabled'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('resume-button'));
+    });
+
+    expect(handleEnableDisableIngestion).toHaveBeenCalledTimes(2);
+  });
 });
