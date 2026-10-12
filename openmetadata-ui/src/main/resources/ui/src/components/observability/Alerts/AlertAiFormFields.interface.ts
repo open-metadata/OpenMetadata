@@ -12,8 +12,8 @@
  */
 
 import { SelectItemType } from '@openmetadata/ui-core-components';
-import { ComponentProps, ReactNode } from 'react';
-import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
+import { ReactNode } from 'react';
+import { InlineAlertProps } from '../../../components/common/InlineAlert/InlineAlert.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
 import {
@@ -42,7 +42,7 @@ export interface AlertAiFormFieldsProps {
   alert?: ModifiedEventSubscription;
   containerEntities?: string[];
   filterResources: ObservabilityFilterResourceDescriptor[];
-  inlineAlert?: ComponentProps<typeof InlineAlert>;
+  inlineAlert?: InlineAlertProps;
   isViewOnly?: boolean;
   // Accepts a value or a functional updater. Prefer the updater — it composes against the latest
   // state so rapid edits don't clobber each other. The value form stays assignable to the
@@ -107,7 +107,7 @@ export interface AlertAiFieldStateProps {
 }
 
 export interface AlertAiFormExternalProps extends AlertAiFieldStateProps {
-  inlineAlert?: ComponentProps<typeof InlineAlert>;
+  inlineAlert?: InlineAlertProps;
 }
 
 export interface AlertAiSectionProps {

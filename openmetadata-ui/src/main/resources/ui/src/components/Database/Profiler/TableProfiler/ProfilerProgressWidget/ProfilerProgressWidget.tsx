@@ -11,49 +11,42 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import { Progress } from 'antd';
-import classNames from 'classnames';
-import React from 'react';
-import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
+import { Box, ProgressBarBase } from '@openmetadata/ui-core-components';
+import { CSSProperties, FC } from 'react';
 import { calculatePercentage } from '../../../../../utils/NumberUtils';
 import { ProfilerProgressWidgetProps } from '../TableProfiler.interface';
 
-const ProfilerProgressWidget: React.FC<ProfilerProgressWidgetProps> = ({
+const ProfilerProgressWidget: FC<ProfilerProgressWidgetProps> = ({
   value,
   strokeColor,
   direction = 'left',
-}) => {
-  const modifiedValue = Math.round(value * 100);
-
-  return (
-    <Box
-      className={`layout-row ${classNames('flex-row', {
-        'flex-row-reverse': direction === 'right',
-      })}`}
-      data-testid="profiler-progress-bar-container"
-      style={{ ...getLayoutGutter(16) }}
-      wrap="wrap">
-      <Box
-        className="layout-column tw:block"
-        style={{ maxWidth: '25%', flex: '0 0 25%' }}>
-        <p className="percent-info" data-testid="percent-info">
-          {calculatePercentage(value, 1, 2, true)}
-        </p>
-      </Box>
-      <Box
-        className="layout-column tw:block"
-        style={{ maxWidth: '75%', flex: '0 0 75%' }}>
-        <Progress
-          data-testid="progress-bar"
-          percent={modifiedValue}
-          showInfo={false}
-          size="small"
-          strokeColor={strokeColor}
-        />
-      </Box>
-    </Box>
-  );
-};
+}) => (
+  <Box
+    align="center"
+    data-testid="profiler-progress-bar-container"
+    direction={direction === 'right' ? 'row-reverse' : 'row'}
+    gap={4}
+    // strokeColor is any CSS color, so it reaches the bar through a custom property.
+    style={
+      strokeColor
+        ? ({ '--progress-stroke': strokeColor } as CSSProperties)
+        : undefined
+    }>
+    <p
+      className="percent-info tw:m-0 tw:w-1/4 tw:shrink-0 tw:text-sm tw:text-primary"
+      data-testid="percent-info">
+      {calculatePercentage(value, 1, 2, true)}
+    </p>
+    <div className="tw:flex-1" data-testid="progress-bar">
+      <ProgressBarBase
+        className="tw:h-1.5"
+        progressClassName={
+          strokeColor ? 'tw:bg-(--progress-stroke)' : undefined
+        }
+        value={Math.min(Math.max(Math.round(value * 100), 0), 100)}
+      />
+    </div>
+  </Box>
+);
 
 export default ProfilerProgressWidget;

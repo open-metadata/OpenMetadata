@@ -231,6 +231,7 @@ const AddNotificationPage = () => {
   const timeout = Form.useWatch('timeout', form);
   const readTimeout = Form.useWatch('readTimeout', form);
   const chosenSoFar = Form.useWatch('input', form);
+  const values = Form.useWatch<ModifiedCreateEventSubscription>([], form);
   const capabilitiesInput = useMemo(
     () => toCapabilitiesInput(chosenSoFar),
     [chosenSoFar]
@@ -528,6 +529,7 @@ const AddNotificationPage = () => {
                                     templateResourcePermission
                                   }
                                   templates={templates}
+                                  values={values}
                                 />
                               )
                             )}

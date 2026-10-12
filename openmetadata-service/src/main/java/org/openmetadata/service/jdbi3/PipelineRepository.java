@@ -1363,8 +1363,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       sparql.append("}");
 
-      // Execute the SPARQL update
-      rdfRepository.executeSparqlUpdate(sparql.toString());
+      try {
+        rdfRepository.executeSparqlUpdate(sparql.toString());
+      } finally {
+        // A failure can arrive after Fuseki applied the update, such as a timeout on the response.
+        RdfUpdater.recordUntrackedWrite();
+      }
 
     } catch (Exception e) {
       LOG.error("Failed to store pipeline execution in RDF", e);

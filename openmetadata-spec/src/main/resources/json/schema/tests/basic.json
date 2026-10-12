@@ -324,6 +324,10 @@
           "description": "Upper bound this dimension was evaluated against: the configured bound, widened by the failure threshold or learned by dynamic assertion when either applies.",
           "type": "number"
         },
+        "excludedFromRollUp": {
+          "description": "Whether this dimension has fewer rows than the test case's `minRowsPerDimension`. Its status is still reported, but it does not fail the test case under the `ANY_DIMENSION` policy.",
+          "type": "boolean"
+        },
         "impactScore": {
           "description": "Impact score indicating the significance of this dimension for revealing data quality variations. Higher scores indicate dimensions with more significant quality issues considering both failure rate and data volume.",
           "type": "number",

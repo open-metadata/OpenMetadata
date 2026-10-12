@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -1341,6 +1342,85 @@ class VectorSearchQueryBuilderTest {
     assertNotNull(clause, "admin search must also exclude retired memories");
     assertTrue(clause.toString().contains("\"entityStatus\":\"Approved\""));
     assertFalse(clause.toString().contains("visibility"), "admins bypass visibility");
+  }
+
+  @Test
+  void testReadablePinnedAnchorAdmitsItsMemoriesOnBothEngines() throws Exception {
+    String anchorId = UUID.randomUUID().toString();
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(
+            null,
+            Map.of("primaryEntityId", List.of(anchorId)),
+            5,
+            0,
+            5,
+            0.0,
+            null,
+            nonAdminSubject(),
+            null);
+    float[] vector = {0.1f};
+
+    List<JsonNode> clauses =
+        List.of(
+            memoryVisibilityClause(
+                MAPPER.readTree(
+                    VectorSearchQueryBuilder.buildQuery(vector, parameters, Set.of(anchorId)))),
+            memoryVisibilityClause(
+                MAPPER
+                    .readTree(VectorSearchQueryBuilder.build(vector, parameters, Set.of(anchorId)))
+                    .path("query")),
+            memoryVisibilityClause(
+                MAPPER.readTree(
+                    VectorSearchQueryBuilder.buildNativeESQuery(
+                        vector, parameters, 2, Set.of(anchorId)))));
+
+    for (JsonNode clause : clauses) {
+      JsonNode branches = clause.path("bool").path("should");
+      JsonNode anchored =
+          branches.get(1).path("bool").path("must").get(1).path("bool").path("should").get(3);
+      assertNotNull(anchored, "the memory branch gains an anchored-to clause");
+      JsonNode anchoredMust = anchored.path("bool").path("must");
+      assertTrue(
+          termClauseExists(
+              anchoredMust.get(0).path("bool").path("should"),
+              "visibility",
+              MemoryVisibility.ENTITY.value()));
+      assertTrue(
+          termClauseExists(
+              anchoredMust.get(0).path("bool").path("should"),
+              "visibility",
+              MemoryVisibility.PUBLIC.value()));
+      assertEquals(anchorId, anchoredMust.get(1).path("terms").path("anchorId").get(0).asText());
+      assertFalse(
+          branches.get(2).toString().contains("anchorId"),
+          "a pinned anchor never widens the file branch");
+    }
+  }
+
+  @Test
+  void testUnreadablePinnedAnchorLeavesTheMemoryBranchUnchanged() throws Exception {
+    String anchorId = UUID.randomUUID().toString();
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(
+            null,
+            Map.of("primaryEntityId", List.of(anchorId)),
+            5,
+            0,
+            5,
+            0.0,
+            null,
+            nonAdminSubject(),
+            null);
+
+    JsonNode clause =
+        memoryVisibilityClause(
+            MAPPER.readTree(
+                VectorSearchQueryBuilder.buildQuery(new float[] {0.1f}, parameters, Set.of())));
+
+    JsonNode memoryBranches =
+        clause.path("bool").path("should").get(1).path("bool").path("must").get(1);
+    assertEquals(3, memoryBranches.path("bool").path("should").size());
+    assertFalse(memoryBranches.toString().contains(anchorId));
   }
 
   /** Elasticsearch is a separate public method; a miss here leaks on every ES deployment. */

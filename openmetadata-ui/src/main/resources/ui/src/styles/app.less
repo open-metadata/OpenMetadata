@@ -820,7 +820,7 @@ a[href].link-text-grey,
 }
 
 // Dark-mode bridge for fixed-hex legacy LESS palette vars.
-// Each var in variables.less is `@x: var(--om-x, #originalHex)`, so light
+// Each var in variables.less has a project token and original color fallback, so light
 // mode resolves to the exact original hex (no drift) while dark mode picks up
 // the semantic/utility override below. This themes every consumer of these
 // legacy vars app-wide without per-file edits. Utility tokens auto-invert under

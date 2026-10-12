@@ -18,6 +18,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import GlossarySettings from '../../../../../governance/glossary/GlossarySettings';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import AppModeSettings from './AppModeSettings';
 import AppModeSettingsForm from './AppModeSettingsForm';
@@ -53,6 +54,8 @@ import ProfilerSettings from './ProfilerSettings';
 import ProfilerSettingsForm from './ProfilerSettingsForm';
 import EntitySearchSettings from './search/EntitySearchSettings';
 import SearchSettingsView from './search/SearchSettingsView';
+import TableSchemaSettings from './TableSchemaSettings';
+import TableSchemaSettingsForm from './TableSchemaSettingsForm';
 import ThemeSettings from './ThemeSettings';
 import ThemeSettingsForm from './ThemeSettingsForm';
 
@@ -77,6 +80,8 @@ const VIEW_PAGES: Partial<
   'data-asset-rules': () => <DataAssetRulesSettings />,
   'learning-resources': (props) => <LearningResourcesSettings {...props} />,
   'app-mode': (props) => <AppModeSettings {...props} />,
+  'table-schema': (props) => <TableSchemaSettings {...props} />,
+  glossary: () => <GlossarySettings />,
   search: (props) =>
     props.itemId ? (
       <EntitySearchSettings {...props} />
@@ -101,6 +106,7 @@ const FORM_PAGES: Partial<
   lineage: (props) => <LineageSettingsForm {...props} />,
   'learning-resources': (props) => <LearningResourceSettingsForm {...props} />,
   'app-mode': (props) => <AppModeSettingsForm {...props} />,
+  'table-schema': (props) => <TableSchemaSettingsForm {...props} />,
 };
 
 const isFormView = (view: PlatformSettingsView) =>
