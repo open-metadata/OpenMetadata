@@ -53,7 +53,7 @@ describe('LineageLayers component', () => {
       entity: { domains: [{ id: 'd' }] } as unknown as SourceType,
     });
 
-    expect(screen.getByText('label.none')).toBeInTheDocument();
+    expect(screen.getByText('label.data-asset-level')).toBeInTheDocument();
 
     await user.click(screen.getByTestId('lineage-layer-btn'));
 

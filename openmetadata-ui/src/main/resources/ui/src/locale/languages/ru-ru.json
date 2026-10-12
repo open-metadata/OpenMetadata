@@ -734,6 +734,7 @@
     "data-aggregation": "Агрегация данных",
     "data-asset": "Объект данных",
     "data-asset-filter": "Фильтр актива данных",
+    "data-asset-level": "Уровень объектов данных",
     "data-asset-lowercase-plural": "объекты данных",
     "data-asset-name": "Наименование объекта данных",
     "data-asset-plural": "Объекты данных",

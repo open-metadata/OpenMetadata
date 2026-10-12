@@ -734,6 +734,7 @@
     "data-aggregation": "Datenaggregation",
     "data-asset": "Daten-Asset",
     "data-asset-filter": "Daten-Asset-Filter",
+    "data-asset-level": "Datenasset-Ebene",
     "data-asset-lowercase-plural": "datenanlagen",
     "data-asset-name": "Name des Daten-Assets",
     "data-asset-plural": "Daten-Assets",

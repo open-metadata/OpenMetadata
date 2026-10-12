@@ -309,7 +309,7 @@ const LineageLayers = ({
       .filter(({ key }) => assetSelectedKeys.has(key))
       .map(({ labelKey }) => t(labelKey));
     triggerLabel = isEmpty(selectedLabels)
-      ? t('label.none')
+      ? t('label.data-asset-level')
       : selectedLabels.join(', ');
     menu = (
       <Dropdown.Menu
