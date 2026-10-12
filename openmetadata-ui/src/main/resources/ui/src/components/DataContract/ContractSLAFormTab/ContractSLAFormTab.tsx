@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Form, InputNumber, Select, TimePicker } from 'antd';
+import {
+  Card,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, InputNumber, Select, TimePicker } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import moment from 'moment';
