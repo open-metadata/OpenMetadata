@@ -42,6 +42,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
+import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -83,6 +85,7 @@ import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.BulkTaskOperationParams;
 import org.openmetadata.schema.type.BulkTaskOperationResult;
 import org.openmetadata.schema.type.BulkTaskOperationType;
+import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
@@ -3984,6 +3987,161 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         SdkClients.adminClient().dashboards().getByName(dashboard.getFullyQualifiedName());
 
     assertEquals(newDescription, updatedDashboard.getDescription());
+  }
+
+  @Test
+  void testResolveDashboardChartDescriptionUpdateTask_doesNotChangeChart(TestNamespace ns) {
+    // Regression guard for the silent no-op bug: an approved per-chart DescriptionUpdate task on
+    // a Dashboard (fieldPath "charts::<chartName>::description", about = Dashboard) used to report
+    // success while prepare() reverted the only meaningful change, leaving the Chart description
+    // unchanged. FieldPathUtils now refuses the List<EntityReference> container, so the task
+    // resolution must still complete (the handler logs failure, does not throw) while the Chart's
+    // stored description remains the pre-task value.
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+    String originalChartDesc = "Original chart description";
+    String chartName = ns.prefix("revenue_chart");
+    CreateChart chartRequest = new CreateChart();
+    chartRequest.setName(chartName);
+    chartRequest.setService(service.getFullyQualifiedName());
+    chartRequest.setChartType(ChartType.Bar);
+    chartRequest.setDescription(originalChartDesc);
+    Chart chart = SdkClients.adminClient().charts().create(chartRequest);
+
+    CreateDashboard dashboardRequest =
+        new CreateDashboard()
+            .withName(ns.prefix("dashboard_chart_desc_task"))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Dashboard hosting the chart")
+            .withCharts(List.of(chart.getFullyQualifiedName()));
+    Dashboard dashboard = SdkClients.adminClient().dashboards().create(dashboardRequest);
+
+    String newDescription = "Task-proposed chart description - " + ns.shortPrefix();
+    org.openmetadata.schema.type.DescriptionUpdatePayload payload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("charts::" + chartName + "::description")
+            .withCurrentDescription(originalChartDesc)
+            .withNewDescription(newDescription);
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("dashboard-chart-desc-task"))
+            .withDescription("Update dashboard chart description")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withAbout(entityLink("dashboard", dashboard.getFullyQualifiedName()))
+            .withPayload(payload);
+
+    Task task = SdkClients.adminClient().tasks().create(request);
+    awaitTaskReadyForWorkflowResolution(task.getId());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withNewValue(newDescription)
+            .withComment("Approved");
+
+    Task resolvedTask =
+        SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
+
+    // Resolution completes: the handler logs failure but does not throw.
+    assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
+
+    // The Chart's stored description must NOT have the task-proposed value — the no-op is no
+    // longer masked by a false success signal.
+    Chart updatedChart = SdkClients.adminClient().charts().getByName(chart.getFullyQualifiedName());
+    assertEquals(
+        originalChartDesc,
+        updatedChart.getDescription(),
+        "Chart description must remain unchanged when the parent-side patch is a silent no-op");
+
+    // The Dashboard's chart reference projection must also carry the original description.
+    Dashboard updatedDashboard =
+        SdkClients.adminClient()
+            .dashboards()
+            .getByName(dashboard.getFullyQualifiedName(), "charts");
+    String refDesc =
+        updatedDashboard.getCharts().stream()
+            .filter(c -> c.getId().equals(chart.getId()))
+            .findFirst()
+            .map(c -> c.getDescription())
+            .orElse(null);
+    assertEquals(
+        originalChartDesc,
+        refDesc,
+        "Dashboard chart reference must retain the original description");
+  }
+
+  @Test
+  void testApplyDashboardChartDescriptionSuggestion_doesNotChangeChart(TestNamespace ns) {
+    // Sibling path: applySuggestion calls the same FieldPathUtils.updateFieldDescription. A
+    // Suggestion task on a Dashboard chart description (about = Dashboard, fieldPath =
+    // "charts::<chartName>::description") must not silently no-op while reporting Approved;
+    // the Chart description must remain the pre-suggestion value.
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+    String originalChartDesc = "Original chart description for suggestion";
+    String chartName = ns.prefix("suggested_chart");
+    CreateChart chartRequest = new CreateChart();
+    chartRequest.setName(chartName);
+    chartRequest.setService(service.getFullyQualifiedName());
+    chartRequest.setChartType(ChartType.Bar);
+    chartRequest.setDescription(originalChartDesc);
+    Chart chart = SdkClients.adminClient().charts().create(chartRequest);
+
+    CreateDashboard dashboardRequest =
+        new CreateDashboard()
+            .withName(ns.prefix("dashboard_chart_suggestion"))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Dashboard hosting the suggested chart")
+            .withCharts(List.of(chart.getFullyQualifiedName()));
+    Dashboard dashboard = SdkClients.adminClient().dashboards().create(dashboardRequest);
+
+    String suggestedDescription = "Suggested chart description - " + ns.shortPrefix();
+    Map<String, Object> rawSuggestionPayload =
+        Map.of(
+            "suggestionType",
+            "Description",
+            "fieldPath",
+            "charts::" + chartName + "::description",
+            "suggestedValue",
+            suggestedDescription,
+            "source",
+            "Agent",
+            "confidence",
+            90.0);
+
+    Task task =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/tasks",
+                Map.of(
+                    "name", ns.prefix("dashboard-chart-suggestion"),
+                    "description", "Suggest dashboard chart description",
+                    "category", TaskCategory.MetadataUpdate.value(),
+                    "type", TaskEntityType.Suggestion.value(),
+                    "about", entityLink("dashboard", dashboard.getFullyQualifiedName()),
+                    "payload", rawSuggestionPayload),
+                Task.class);
+
+    Task appliedTask =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/tasks/" + task.getId() + "/suggestion/apply",
+                null,
+                Task.class);
+
+    assertEquals(TaskEntityStatus.Approved, appliedTask.getStatus());
+
+    Chart updatedChart = SdkClients.adminClient().charts().getByName(chart.getFullyQualifiedName());
+    assertEquals(
+        originalChartDesc,
+        updatedChart.getDescription(),
+        "Chart description must remain unchanged when the suggestion targets a chart via the parent");
   }
 
   @Test

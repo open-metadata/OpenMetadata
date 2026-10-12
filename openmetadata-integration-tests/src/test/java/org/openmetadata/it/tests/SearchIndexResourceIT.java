@@ -904,6 +904,137 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
             + "lost");
   }
 
+  // ===================================================================
+  // FIELD TAG CARRY-FORWARD ON dataType CHANGE (re-ingestion)
+  // ===================================================================
+  // Mirrors put_searchIndexFieldDescriptionCarriedForwardOnDataTypeChange_200 for the
+  // tag branch of the same carry-forward block in
+  // SearchIndexRepository.SearchIndexUpdater.updateSearchIndexFields. When a field's
+  // dataType changes between two ingestion runs the field is routed through the
+  // deleted+added path (EntityUtil.searchIndexFieldMatch matches on name AND dataType).
+  // The re-added (new-datatype) field must carry forward the user-applied tags from the
+  // deleted (old-datatype) field when the re-ingested field supplies no tags of its own —
+  // otherwise deleteTagsByTarget drops the tag_usage rows and applyTags re-applies only
+  // the (empty) re-ingested tags, silently losing user-applied tags. See the matching unit
+  // test carryForwardPreservesUserTagsWhenDataTypeChanges in openmetadata-service.
+  @Test
+  void put_searchIndexFieldTagsCarriedForwardOnDataTypeChange_200(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
+    SharedEntities shared = SharedEntities.get();
+    TagLabel userTag = shared.PII_SENSITIVE_TAG_LABEL;
+
+    // 1. First ingestion: field "title" with dataType=TEXT and no tags.
+    CreateSearchIndex firstRequest = new CreateSearchIndex();
+    firstRequest.setName(ns.prefix("searchindex_tag_carryforward"));
+    firstRequest.setService(service.getFullyQualifiedName());
+    firstRequest.setFields(
+        Arrays.asList(
+            new SearchIndexField().withName("title").withDataType(SearchIndexDataType.TEXT),
+            new SearchIndexField().withName("body").withDataType(SearchIndexDataType.TEXT)));
+
+    SearchIndex created = createEntity(firstRequest);
+    SearchIndex fetched = getEntityWithFields(created.getId().toString(), "tags,fields");
+
+    // 2. User applies a MANUAL tag to the "title" field via the patch path.
+    fetched.getFields().get(0).setTags(new ArrayList<>(List.of(userTag)));
+    SearchIndex tagged = patchEntity(fetched.getId().toString(), fetched);
+    SearchIndex verifiedTag = getEntityWithFields(tagged.getId().toString(), "tags,fields");
+    List<TagLabel> fieldTagsBefore = verifiedTag.getFields().get(0).getTags();
+    assertNotNull(fieldTagsBefore);
+    assertFalse(fieldTagsBefore.isEmpty());
+    assertTrue(fieldTagsBefore.stream().anyMatch(t -> t.getTagFQN().equals(userTag.getTagFQN())));
+
+    // 3. Simulated re-ingestion after a mapping change: "title" is now KEYWORD and, as the
+    //    ES/OS parser emits, carries no tags. The field is routed through the deleted+added
+    //    carry-forward branch.
+    SearchIndex update = new SearchIndex();
+    update.setId(verifiedTag.getId());
+    update.setName(verifiedTag.getName());
+    update.setService(verifiedTag.getService());
+    update.setUpdatedBy("admin");
+    searchindexFieldsForReingest(update);
+    SearchIndex reUpdated = patchEntity(verifiedTag.getId().toString(), update);
+
+    // 4. The re-added (KEYWORD) field must carry forward the user-applied tag.
+    SearchIndex verified = getEntityWithFields(reUpdated.getId().toString(), "tags,fields");
+    SearchIndexField titleField =
+        verified.getFields().stream()
+            .filter(f -> "title".equals(f.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("title field missing after re-ingestion"));
+    assertEquals(
+        SearchIndexDataType.KEYWORD,
+        titleField.getDataType(),
+        "The re-added field must have the new dataType after re-ingestion");
+    List<TagLabel> fieldTagsAfter = titleField.getTags();
+    assertNotNull(fieldTagsAfter, "User-applied tags must be carried forward, not dropped to null");
+    assertFalse(fieldTagsAfter.isEmpty(), "User-applied tags must survive the dataType change");
+    assertTrue(
+        fieldTagsAfter.stream().anyMatch(t -> t.getTagFQN().equals(userTag.getTagFQN())),
+        "User-applied tag must be carried forward from the deleted (old-datatype) field onto "
+            + "the added (new-datatype) field after re-ingestion — it must NOT be lost");
+  }
+
+  // Non-regression for the tag carry-forward: when the re-added field already carries its
+  // own (connector-supplied) tag, the deleted field's user tags must NOT overwrite it.
+  @Test
+  void put_searchIndexFieldTagsNotOverwrittenByCarryForwardOnDataTypeChange_200(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
+    SharedEntities shared = SharedEntities.get();
+    TagLabel userTag = shared.PII_SENSITIVE_TAG_LABEL;
+    TagLabel incomingTag = shared.PERSONAL_DATA_TAG_LABEL;
+
+    // 1. First ingestion: field "title" with dataType=TEXT and a user-applied tag.
+    CreateSearchIndex firstRequest = new CreateSearchIndex();
+    firstRequest.setName(ns.prefix("searchindex_tag_no_overwrite"));
+    firstRequest.setService(service.getFullyQualifiedName());
+    firstRequest.setFields(
+        Arrays.asList(
+            new SearchIndexField()
+                .withName("title")
+                .withDataType(SearchIndexDataType.TEXT)
+                .withTags(new ArrayList<>(List.of(userTag))),
+            new SearchIndexField().withName("body").withDataType(SearchIndexDataType.TEXT)));
+
+    SearchIndex created = createEntity(firstRequest);
+    SearchIndex fetched = getEntityWithFields(created.getId().toString(), "tags,fields");
+    List<TagLabel> tagsBefore = fetched.getFields().get(0).getTags();
+    assertNotNull(tagsBefore);
+    assertTrue(tagsBefore.stream().anyMatch(t -> t.getTagFQN().equals(userTag.getTagFQN())));
+
+    // 2. Re-ingestion: "title" is now KEYWORD and carries its own (connector-supplied) tag.
+    SearchIndex update = new SearchIndex();
+    update.setId(fetched.getId());
+    update.setName(fetched.getName());
+    update.setService(fetched.getService());
+    update.setUpdatedBy("admin");
+    update.setFields(
+        Arrays.asList(
+            new SearchIndexField()
+                .withName("title")
+                .withDataType(SearchIndexDataType.KEYWORD)
+                .withTags(new ArrayList<>(List.of(incomingTag))),
+            new SearchIndexField().withName("body").withDataType(SearchIndexDataType.TEXT)));
+    SearchIndex reUpdated = patchEntity(fetched.getId().toString(), update);
+
+    // 3. The re-added field must keep the incoming tag, NOT the deleted field's user tag.
+    SearchIndex verified = getEntityWithFields(reUpdated.getId().toString(), "tags,fields");
+    SearchIndexField titleField =
+        verified.getFields().stream()
+            .filter(f -> "title".equals(f.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("title field missing after re-ingestion"));
+    assertEquals(SearchIndexDataType.KEYWORD, titleField.getDataType());
+    List<TagLabel> fieldTags = titleField.getTags();
+    assertNotNull(fieldTags);
+    assertTrue(
+        fieldTags.stream().anyMatch(t -> t.getTagFQN().equals(incomingTag.getTagFQN())),
+        "The incoming (connector-supplied) tag must be preserved on the re-added field");
+    assertFalse(
+        fieldTags.stream().anyMatch(t -> t.getTagFQN().equals(userTag.getTagFQN())),
+        "The deleted field's user tag must NOT overwrite the incoming tag on the re-added field");
+  }
+
   private void searchindexFieldsForReingest(SearchIndex update) {
     // Mirror what the ES/OS parser emits on re-ingest after the index is recreated with a
     // different mapping for "title" (TEXT -> KEYWORD): description is None for every field.

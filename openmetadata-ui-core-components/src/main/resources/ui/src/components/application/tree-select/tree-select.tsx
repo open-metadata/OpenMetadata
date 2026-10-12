@@ -60,8 +60,9 @@ import {
 const LOAD_MORE_SUFFIX = '__more';
 /** Row id of the root listing's load-more item. Null byte: no node can collide. */
 const ROOT_LOAD_MORE_ID = '\u0000root__more';
+
 /** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
-const DROPDOWN_CHROME_WIDTH = 320;
+export const DROPDOWN_CHROME_WIDTH = 320;
 /** Matches react-aria's default overlay `containerPadding`. */
 const VIEWPORT_PADDING = 12;
 
@@ -69,7 +70,7 @@ type DropdownPlacement = 'bottom left' | 'bottom right';
 
 // Left edge of the trigger, mirrored right when there is no room on screen.
 // Width is measured: `--trigger-width` is unset for a bare Popover + triggerRef.
-const useDropdownPlacement = (
+export const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   width?: number
@@ -194,11 +195,18 @@ const collectSelectableNodes = <T,>(
 ): TreeSelectNode<T>[] => {
   const result: TreeSelectNode<T>[] = [];
   for (const node of nodes) {
-    if (node.allowSelection !== false) {
+    if (node.allowSelection !== false && !hasExclusiveChildren(node)) {
       result.push(node);
     }
     if (node.children) {
-      result.push(...collectSelectableNodes(node.children));
+      result.push(
+        ...collectSelectableNodes(
+          node.children.filter(
+            (child) =>
+              !child.isParentMutuallyExclusive && !hasExclusiveChildren(child)
+          )
+        )
+      );
     }
   }
 

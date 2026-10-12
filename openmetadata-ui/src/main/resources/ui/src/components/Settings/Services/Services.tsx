@@ -14,11 +14,12 @@
 import {
   Box,
   Button,
+  Button as CoreButton,
   EmptyPlaceholder,
   Grid,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
 import { isEmpty, map, startCase } from 'lodash';
@@ -576,6 +577,8 @@ const Services = ({ serviceName }: ServicesProps) => {
             <ButtonSkeleton size="default" />
           ) : (
             <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
               placement="left"
               title={
                 addServicePermission
@@ -583,18 +586,20 @@ const Services = ({ serviceName }: ServicesProps) => {
                       entity: t('label.service'),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
-              }>
+              }
+              triggerClassName="tw:inline-flex">
               {addServicePermission && (
                 <LimitWrapper resource="dataAssets">
-                  <Button
+                  <CoreButton
                     className="m-b-xs"
+                    color="primary"
                     data-testid="add-service-button"
-                    type="primary"
-                    onClick={handleAddServiceClick}>
+                    size="sm"
+                    onPress={handleAddServiceClick}>
                     {t('label.add-new-entity', {
                       entity: t('label.service'),
                     })}
-                  </Button>
+                  </CoreButton>
                 </LimitWrapper>
               )}
             </Tooltip>
