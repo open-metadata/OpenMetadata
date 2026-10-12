@@ -261,7 +261,7 @@ const RuleCard: FC<RuleCardProps> = ({
 
   return (
     <Box
-      className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
+      className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-4"
       data-testid={`rule-${rule.name}`}
       direction="col"
       gap={2}>
@@ -963,7 +963,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
 
         {(isAddingRule || editingRule) && (
           <Box
-            className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
+            className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-4"
             direction="col"
             gap={4}>
             <Typography

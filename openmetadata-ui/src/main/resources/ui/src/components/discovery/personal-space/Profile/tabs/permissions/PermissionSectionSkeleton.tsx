@@ -29,7 +29,7 @@ const PermissionSectionSkeleton: React.FC<PermissionSectionSkeletonProps> = ({
   <Box direction="col" gap={4}>
     {Array.from({ length: rows }).map((_, index) => (
       <Box
-        className="tw:rounded-xl tw:border tw:border-secondary tw:p-4"
+        className="tw:rounded-xl tw:border tw:border-secondary tw:dark:bg-secondary tw:p-4"
         direction="col"
         gap={3}
         // eslint-disable-next-line react/no-array-index-key -- static skeleton, never reordered

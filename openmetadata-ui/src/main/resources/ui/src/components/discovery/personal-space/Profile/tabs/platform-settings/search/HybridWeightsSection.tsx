@@ -57,7 +57,7 @@ const HybridWeightsSection = ({
       </Box>
       <Box
         align="center"
-        className="tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:py-4"
+        className="tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:px-5 tw:py-4"
         direction="row"
         gap={6}>
         <Typography data-testid="keyword-weight" size="text-sm">

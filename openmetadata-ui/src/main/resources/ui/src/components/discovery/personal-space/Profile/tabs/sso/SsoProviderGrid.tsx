@@ -51,8 +51,8 @@ const SsoProviderGrid = ({
               classNames(
                 'tw:flex tw:cursor-pointer tw:items-center tw:gap-4 tw:rounded-xl tw:border tw:bg-surface tw:p-4 tw:transition-colors tw:duration-100',
                 isSelected
-                  ? 'tw:border-brand tw:bg-brand-primary_alt'
-                  : 'tw:border-secondary tw:hover:bg-primary_hover',
+                  ? 'tw:border-brand tw:bg-brand-primary_alt tw:dark:bg-secondary'
+                  : 'tw:border-secondary tw:dark:bg-secondary tw:hover:bg-primary_hover',
                 isFocusVisible &&
                   'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring'
               )

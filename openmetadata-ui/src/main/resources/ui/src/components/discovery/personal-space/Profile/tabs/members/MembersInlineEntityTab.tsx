@@ -51,7 +51,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
     <Box direction="col" gap={3}>
       {isAdding && (
         <Box
-          className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
+          className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-4"
           direction="col"
           gap={4}>
           <Typography

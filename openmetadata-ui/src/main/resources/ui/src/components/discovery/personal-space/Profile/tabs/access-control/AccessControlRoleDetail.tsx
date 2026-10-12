@@ -823,7 +823,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
       <Box className="tw:w-full" direction="col" gap={3}>
         {isAddingPolicy && (
           <Box
-            className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
+            className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-4"
             direction="col"
             gap={4}>
             <Typography

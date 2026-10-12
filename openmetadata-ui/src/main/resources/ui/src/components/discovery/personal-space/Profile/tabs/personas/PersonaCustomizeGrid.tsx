@@ -15,6 +15,7 @@ import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { getCustomizePageCategories } from '../../../../../../utils/Persona/PersonaUtils';
 import { PERSONA_CATEGORY_ICONS } from './personaCategoryIcons';
+import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 
 interface PersonaCustomizeGridProps {
   onSelectCategory: (category: string) => void;
@@ -36,6 +37,7 @@ const PersonaCustomizeGrid = ({
         return (
           <Card
             isClickable
+            className={LANDING_CARD_CLASS}
             data-testid={`customize-card-${category.key}`}
             key={category.key}
             role="button"
@@ -52,7 +54,7 @@ const PersonaCustomizeGrid = ({
               <Box align="start" direction="row" gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  className="tw:shrink-0 tw:rounded-lg tw:bg-tertiary tw:h-10 tw:w-10"
                   justify="center">
                   {Icon && <Icon className="tw:size-6" />}
                 </Box>

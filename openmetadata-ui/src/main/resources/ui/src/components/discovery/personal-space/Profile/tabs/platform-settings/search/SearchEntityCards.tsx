@@ -21,6 +21,7 @@ import { getEntityIconWithBg } from '../../../../../../../utils/Assets/AssetsUti
 import { getSearchSettingCategories } from '../../../../../../../utils/SearchSettingsUtils';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SearchSectionTitle } from './SearchSection';
+import { LANDING_CARD_CLASS } from '../../../ProfilePage.constants';
 
 /** One card per entity type, opening that entity's search settings. */
 const SearchEntityCards = ({
@@ -55,6 +56,7 @@ const SearchEntityCards = ({
           return (
             <Card
               isClickable
+              className={LANDING_CARD_CLASS}
               data-testid={`search-entity-card-${itemId}`}
               key={category.key}
               role="button"

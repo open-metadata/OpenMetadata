@@ -41,14 +41,15 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
     'tw:min-h-[137px] tw:rounded-xl tw:border tw:border-secondary tw:p-[18px]',
   autocompleteField:
     'tw:[&_[role=group]>div>span]:min-w-0 tw:[&_[role=group]>div>span]:max-w-full',
-  card: 'tw:rounded-lg tw:bg-secondary tw:px-4 tw:py-3',
+  card: 'tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-4 tw:py-3',
   columnSpanFull: 'tw:col-span-2',
   descriptionTextArea: 'tw:min-h-[140px]',
   destinationAlert: 'tw:px-4',
-  // Stays bg-primary: on bg-surface the core Toggle off-track (bg-tertiary) is the
-  // same colour in dark and the Notify Downstream toggle vanishes (core fix: collate issue 6549).
+  // Never bg-surface: the core Toggle off-track (bg-tertiary) is the same colour
+  // in dark and the Notify Downstream toggle vanishes (core fix: collate issue 6549).
+  // Dark uses bg-secondary so the near-black inputs stay visible inside the card.
   destinationCard:
-    'tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-4 tw:py-3',
+    'tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:dark:bg-secondary tw:px-4 tw:py-3',
   downstreamDepthField: 'tw:w-1/2 tw:pr-1.5',
   field: 'tw:min-w-0',
   fieldFill: 'tw:flex-1',
@@ -60,7 +61,8 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   ruleControlGroup: 'tw:w-full',
   ruleControlGroupFull: 'tw:w-full',
   ruleControlRow: 'tw:w-full tw:items-end',
-  sectionCard: 'tw:rounded-lg tw:bg-secondary tw:px-4 tw:py-3',
+  sectionCard:
+    'tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-4 tw:py-3',
   sectionHeader: 'tw:gap-0.5',
   sectionRequiredMarker: 'tw:ml-0.5 tw:text-error-primary',
   sectionRoot: 'tw:w-full tw:items-stretch tw:gap-1.5',

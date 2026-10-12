@@ -116,7 +116,7 @@ const TermBoostCard = ({
 
   return (
     <Box
-      className="tw:w-64 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-4"
+      className="tw:w-64 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:p-4"
       data-testid={`term-boost-${draft.value || 'new'}`}
       direction="col"
       gap={4}>

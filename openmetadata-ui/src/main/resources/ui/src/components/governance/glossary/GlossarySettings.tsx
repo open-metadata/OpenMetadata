@@ -30,7 +30,8 @@ import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 
 const QUERY_KEY = ['settings', SettingType.GlossarySettings];
 
-const GlossarySettings = () => {
+// The settings modal already pads its content; the standalone settings route does not.
+const GlossarySettings = ({ className = 'tw:p-6' }: { className?: string }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, isPending, isError, refetch } = useQuery({
@@ -49,9 +50,9 @@ const GlossarySettings = () => {
   });
 
   return (
-    <Box className="tw:p-6" data-testid="glossary-settings" direction="col">
+    <Box className={className} data-testid="glossary-settings" direction="col">
       <DocumentTitle title={t('label.glossary')} />
-      <Card>
+      <Card className="tw:border-secondary tw:dark:bg-secondary">
         <Card.Header title={t('label.glossary')} />
         <Card.Content>
           {isPending && (

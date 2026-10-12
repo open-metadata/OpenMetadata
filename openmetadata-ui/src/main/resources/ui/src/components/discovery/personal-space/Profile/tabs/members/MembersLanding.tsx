@@ -21,6 +21,7 @@ import type { MembersSectionContribution } from '../../../../../../utils/Extensi
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { LANDING_CARDS } from './Members.constants';
 import type { MembersLandingCard, MembersSubPanelProps } from './Members.types';
+import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 
 const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
@@ -52,6 +53,7 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
         return (
           <Card
             isClickable
+            className={LANDING_CARD_CLASS}
             key={card.id}
             size="md"
             onClick={() => onNavigate(card.view)}>
@@ -63,7 +65,7 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
                 gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  className="tw:shrink-0 tw:rounded-lg tw:bg-tertiary tw:h-10 tw:w-10"
                   justify="center">
                   <Icon className="tw:size-6 tw:text-secondary" />
                 </Box>

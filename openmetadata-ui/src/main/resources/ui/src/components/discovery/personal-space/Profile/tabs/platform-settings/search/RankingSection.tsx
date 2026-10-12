@@ -150,7 +150,7 @@ const RankingSection = ({ ranking, onChange }: RankingSectionProps) => {
 
   return (
     <Box data-testid="ranking-settings" direction="col" gap={3}>
-      <Card size="sm">
+      <Card className="tw:border-secondary tw:dark:bg-secondary" size="sm">
         <Card.Content>
           <Box align="center" direction="row" justify="between">
             <Labelled label={t('label.algorithm')}>
@@ -173,7 +173,10 @@ const RankingSection = ({ ranking, onChange }: RankingSectionProps) => {
       {(ranking.stages ?? []).map((stage, index) => renderStage(stage, index))}
 
       {signals && (
-        <Card data-testid="ranking-signals" size="sm">
+        <Card
+          className="tw:border-secondary tw:dark:bg-secondary"
+          data-testid="ranking-signals"
+          size="sm">
           <Card.Content>
             <Box direction="col" gap={3}>
               {signals.purpose && (

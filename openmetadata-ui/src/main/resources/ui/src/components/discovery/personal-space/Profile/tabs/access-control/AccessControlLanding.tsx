@@ -22,6 +22,7 @@ import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { AccessControlView, LandingCard } from './AccessControl.types';
+import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 
 const LANDING_CARDS: LandingCard[] = [
   {
@@ -73,6 +74,7 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
         return (
           <Card
             isClickable
+            className={LANDING_CARD_CLASS}
             key={card.id}
             role="button"
             size="md"
@@ -92,7 +94,7 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
                 gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  className="tw:shrink-0 tw:rounded-lg tw:bg-tertiary tw:h-10 tw:w-10"
                   justify="center">
                   <Icon className="tw:size-6 tw:text-secondary" />
                 </Box>

@@ -202,7 +202,7 @@ const BotDescriptionSection: FC<BotDescriptionSectionProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="tw:border tw:border-subtle tw:rounded-xl tw:p-5 tw:px-6">
+    <div className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-5 tw:px-6">
       <Box align="center" direction="row" justify="between">
         <Typography size="text-sm" weight="medium">
           {t('label.description')}
@@ -299,7 +299,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
         weight="medium">
         {t('label.access')}
       </Typography>
-      <div className="tw:border tw:border-subtle tw:rounded-xl">
+      <div className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl">
         {/* Roles */}
         <div className="tw:p-4 tw:px-6 tw:border-b tw:border-subtle">
           <Box align="center" direction="row" justify="between">

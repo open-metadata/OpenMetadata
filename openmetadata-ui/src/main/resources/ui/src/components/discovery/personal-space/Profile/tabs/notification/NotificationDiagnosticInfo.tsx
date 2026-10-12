@@ -79,7 +79,7 @@ function NotificationDiagnosticInfo({
   if (diagnosticIsLoading) {
     return (
       <Grid
-        className="tw:border tw:border-secondary tw:rounded-lg tw:p-4"
+        className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-lg tw:p-4"
         colGap="4"
         gap="4">
         {Array.from({ length: 6 }, (_, i) => (
@@ -93,7 +93,7 @@ function NotificationDiagnosticInfo({
 
   return (
     <Grid
-      className="tw:w-full tw:border tw:border-secondary tw:rounded-lg tw:p-4"
+      className="tw:w-full tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-lg tw:p-4"
       colGap="4"
       data-testid="diagnostic-info-container"
       gap="4">

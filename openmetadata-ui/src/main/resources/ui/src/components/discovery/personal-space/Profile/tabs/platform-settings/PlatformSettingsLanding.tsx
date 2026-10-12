@@ -17,6 +17,7 @@ import type {
   PlatformSettingsPage,
   PlatformSettingsView,
 } from './PlatformSettings.types';
+import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 
 interface PlatformSettingsLandingProps {
   pages: PlatformSettingsPage[];
@@ -41,6 +42,7 @@ const PlatformSettingsLanding = ({
         return (
           <Card
             isClickable
+            className={LANDING_CARD_CLASS}
             data-testid={`platform-settings-card-${page.id}`}
             key={page.id}
             role="button"
@@ -57,7 +59,7 @@ const PlatformSettingsLanding = ({
               <Box align="start" direction="row" gap={4}>
                 <Box
                   align="center"
-                  className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-secondary"
+                  className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-tertiary"
                   justify="center">
                   <Icon className="tw:size-5 tw:text-secondary" />
                 </Box>

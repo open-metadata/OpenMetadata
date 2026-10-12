@@ -52,7 +52,7 @@ const toCoreRenderer = (fieldUiSchema: UiSchema): UiSchema => {
 };
 
 const CARD_CLASS_NAME =
-  'tw:flex tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-secondary tw:p-5';
+  'tw:flex tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-secondary tw:dark:bg-secondary tw:p-5';
 
 /**
  * The cards each SSO section is split into, from the groups the classic

@@ -44,7 +44,7 @@ const InheritedPermissionsSection: React.FC<
     <Box direction="col" gap={4}>
       {items.map((item) => (
         <Box
-          className="tw:rounded-xl tw:border tw:border-secondary tw:p-4"
+          className="tw:rounded-xl tw:border tw:border-secondary tw:dark:bg-secondary tw:p-4"
           gap={3}
           key={`${item.permissionType}-${
             item.source?.fullyQualifiedName ?? item.source?.name ?? ''

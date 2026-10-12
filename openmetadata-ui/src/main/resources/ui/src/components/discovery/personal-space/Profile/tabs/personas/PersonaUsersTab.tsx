@@ -224,7 +224,7 @@ const PersonaUsersTab = ({
     <Box data-testid="persona-users-tab" direction="col" gap={4}>
       {isAdding && (
         <Box
-          className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
+          className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl tw:p-4"
           direction="col"
           gap={4}>
           <Typography

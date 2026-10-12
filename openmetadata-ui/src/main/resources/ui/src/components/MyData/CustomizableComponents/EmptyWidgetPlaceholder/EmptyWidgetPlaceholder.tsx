@@ -49,7 +49,7 @@ function EmptyWidgetPlaceholder({
 
   return (
     <Card
-      className="empty-widget-placeholder tw:flex tw:h-full tw:flex-col tw:p-6"
+      className="empty-widget-placeholder tw:flex tw:h-full tw:flex-col tw:border-secondary tw:bg-secondary tw:p-6"
       data-testid={widgetKey}>
       {isEditable && (
         <Box align="center" direction="row" gap={2} justify="end">

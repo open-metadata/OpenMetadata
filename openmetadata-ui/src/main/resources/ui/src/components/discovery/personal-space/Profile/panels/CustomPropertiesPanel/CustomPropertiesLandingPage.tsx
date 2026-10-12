@@ -37,6 +37,7 @@ import {
   GROUP_ORDER,
 } from './CustomPropertiesPanel.constants';
 import { CustomPropertiesLandingPageProps } from './CustomPropertiesPanel.types';
+import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 
 const CustomPropertiesLandingPage: React.FC<
   CustomPropertiesLandingPageProps
@@ -144,6 +145,7 @@ const CustomPropertiesLandingPage: React.FC<
                 <Card
                   isClickable
                   aria-busy={isCurrentLoading}
+                  className={LANDING_CARD_CLASS}
                   data-testid={`entity-type-card-${entityTypeName}`}
                   key={item.key}
                   role="button"

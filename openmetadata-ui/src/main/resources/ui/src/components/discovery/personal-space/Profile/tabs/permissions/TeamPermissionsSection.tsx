@@ -32,7 +32,7 @@ const TeamCard: React.FC<{ team: TeamPermission }> = ({ team }) => {
 
   return (
     <Box
-      className="tw:rounded-xl tw:border tw:border-secondary tw:p-4"
+      className="tw:rounded-xl tw:border tw:border-secondary tw:dark:bg-secondary tw:p-4"
       direction="col"
       gap={3}>
       <Box align="center" className="tw:flex-wrap tw:gap-2">

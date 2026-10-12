@@ -651,7 +651,7 @@ const AccessControlAuditLogsPanel: React.FC<
       data-testid="audit-logs-page"
       direction="col">
       {/* Card wrapping filters + log list */}
-      <Card className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden tw:mb-3">
+      <Card className="tw:border-secondary tw:dark:bg-secondary tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden tw:mb-3">
         {/* Filters row inside card */}
         <Box
           className="tw:shrink-0 tw:p-4 tw:border-b tw:border-secondary"

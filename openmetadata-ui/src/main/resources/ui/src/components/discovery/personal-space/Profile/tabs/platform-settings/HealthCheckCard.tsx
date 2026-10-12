@@ -120,7 +120,7 @@ const HealthCheckCard = ({ name, validation }: HealthCheckCardProps) => {
   return (
     <Box
       className={classNames(
-        'tw:overflow-hidden tw:rounded-[10px] tw:border',
+        'tw:overflow-hidden tw:rounded-[10px] tw:border tw:dark:bg-secondary',
         status.border
       )}
       data-testid={name}

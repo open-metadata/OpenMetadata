@@ -50,7 +50,7 @@ const DirectRolesSection: React.FC<DirectRolesSectionProps> = ({
     <Box direction="col" gap={4}>
       {roles.map((item) => (
         <Box
-          className="tw:rounded-xl tw:border tw:border-secondary tw:p-4"
+          className="tw:rounded-xl tw:border tw:border-secondary tw:dark:bg-secondary tw:p-4"
           direction="col"
           key={item.role.fullyQualifiedName ?? item.role.name}>
           <RoleCard policies={item.policies} role={item.role} />

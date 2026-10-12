@@ -58,7 +58,7 @@ const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
 
 const AccessTokenLoadingSkeleton = () => (
   <Box
-    className="ai-profile-page__edit-card tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:py-4"
+    className="ai-profile-page__edit-card tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:px-5 tw:py-4"
     data-testid="access-token-row"
     direction="col"
     gap={3}>
@@ -87,7 +87,7 @@ const AccessTokenEmptyState = ({
 }) => (
   <Box
     align="center"
-    className="ai-profile-page__edit-card tw:w-full tw:items-center tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:px-6 tw:py-10 tw:text-center"
+    className="ai-profile-page__edit-card tw:w-full tw:items-center tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:px-6 tw:py-10 tw:text-center"
     data-testid="access-token-row"
     direction="col"
     gap={3}
@@ -164,7 +164,7 @@ const AccessTokenDetails = ({
   handleRevoke: () => void;
 }) => (
   <Box
-    className="ai-profile-page__edit-card tw:w-full tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface"
+    className="ai-profile-page__edit-card tw:w-full tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary"
     data-testid="access-token-row"
     direction="col">
     <Box

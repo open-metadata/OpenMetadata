@@ -128,7 +128,7 @@
 .dark-mode .ai-profile-page__edit-card {
   // Read-only view-mode chips (override the hardcoded light values above).
   .chip-container a.chip-tag-link {
-    background: var(--color-bg-secondary);
+    background: var(--color-bg-tertiary);
     color: var(--color-text-secondary) !important;
     border-color: var(--color-border-secondary);
   }
@@ -145,7 +145,7 @@
   // `.ant-select-multiple` so single selects (Token Expiration, Default Persona)
   // — whose selection-item is plain value text — are untouched.
   .ant-select-multiple .ant-select-selection-item {
-    background: var(--color-bg-secondary) !important;
+    background: var(--color-bg-tertiary) !important;
     color: var(--color-text-primary) !important;
     border-color: var(--color-border-secondary) !important;
   }
@@ -188,4 +188,10 @@
     margin-top: 4px;
     margin-bottom: 4px;
   }
+}
+
+// Search settings preview reuses ExploreSearchCard; match the settings-modal
+// card fill (bg-secondary in dark), as Explore does for its result list.
+.dark-mode [data-testid='search-preview'] .explore-search-card {
+  background-color: var(--om-color-bg-secondary);
 }

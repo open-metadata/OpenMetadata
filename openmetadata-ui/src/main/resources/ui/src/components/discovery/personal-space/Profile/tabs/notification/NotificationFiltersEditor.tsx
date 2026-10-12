@@ -174,7 +174,9 @@ function NotificationFiltersEditor({
     filters.length < (supportedFilters?.length ?? 1) && !isViewMode;
 
   return (
-    <Card className="tw:w-full" size="md">
+    <Card
+      className="tw:border-secondary tw:dark:bg-secondary tw:w-full"
+      size="md">
       <Card.Content>
         <Box direction="col" gap={3}>
           <Box direction="col" gap={1}>

@@ -19,6 +19,7 @@ import {
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GovernanceView } from './Governance.types';
+import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 
 interface LandingCard {
   descriptionKey: string;
@@ -62,6 +63,7 @@ const GovernanceLanding: FC<GovernanceLandingProps> = ({ onNavigate }) => {
         return (
           <Card
             isClickable
+            className={LANDING_CARD_CLASS}
             key={card.id}
             role="button"
             size="md"
@@ -81,7 +83,7 @@ const GovernanceLanding: FC<GovernanceLandingProps> = ({ onNavigate }) => {
                 gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  className="tw:shrink-0 tw:rounded-lg tw:bg-tertiary tw:h-10 tw:w-10"
                   justify="center">
                   <Icon className="tw:size-6 tw:text-secondary" />
                 </Box>

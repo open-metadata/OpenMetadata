@@ -74,7 +74,7 @@ const StatTile: React.FC<StatTileProps> = ({
   icon,
 }) => (
   <Box
-    className="tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-4"
+    className="tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary tw:p-4"
     direction="col"
     gap={2}>
     <Box align="center" gap={2}>

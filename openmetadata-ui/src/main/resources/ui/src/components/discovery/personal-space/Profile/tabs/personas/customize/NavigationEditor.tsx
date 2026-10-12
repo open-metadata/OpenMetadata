@@ -181,7 +181,7 @@ const NavigationEditor = ({
 
   return (
     <Box
-      className="tw:w-[40%] tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface"
+      className="tw:w-[40%] tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:dark:bg-secondary"
       data-testid="navigation-editor"
       direction="col">
       <Tree

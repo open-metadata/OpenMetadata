@@ -525,7 +525,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
       {/* Owners + event-stats summary row */}
       <Box
         align="center"
-        className="tw:border tw:border-secondary tw:mb-2 tw:rounded-lg tw:p-3"
+        className="tw:border tw:border-secondary tw:dark:bg-secondary tw:mb-2 tw:rounded-lg tw:p-3"
         direction="row"
         gap={6}
         wrap="wrap">

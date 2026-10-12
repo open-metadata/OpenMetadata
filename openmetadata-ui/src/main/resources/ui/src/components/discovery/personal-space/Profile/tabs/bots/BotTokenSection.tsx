@@ -138,7 +138,7 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
 
   return (
     <div
-      className="tw:border tw:border-subtle tw:rounded-xl"
+      className="tw:border tw:border-secondary tw:dark:bg-secondary tw:rounded-xl"
       data-testid="token-section">
       {/* Header */}
       <Box
