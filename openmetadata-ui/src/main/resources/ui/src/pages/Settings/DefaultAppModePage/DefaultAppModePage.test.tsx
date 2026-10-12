@@ -10,24 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+  ConfigSourceMode,
+  SettingType,
+} from '../../../generated/system/settingsSourceResponse';
 import {
   getAppConfiguration,
+  getSettingsSource,
   patchAppConfiguration,
 } from '../../../rest/settingConfigAPI';
 import DefaultAppModePage from './DefaultAppModePage';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 jest.mock('../../../rest/settingConfigAPI', () => ({
+  getSettingsSource: jest.fn().mockResolvedValue({ settings: [] }),
+  adoptDeploymentConfig: jest.fn(),
   getAppConfiguration: jest.fn().mockResolvedValue({ defaultAppMode: null }),
   patchAppConfiguration: jest.fn().mockResolvedValue({ defaultAppMode: 'ai' }),
 }));
@@ -46,7 +48,7 @@ const mockPatchAppConfiguration = patchAppConfiguration as jest.Mock;
 
 const renderPage = async () => {
   await act(async () => {
-    render(<DefaultAppModePage />);
+    renderWithQueryClient(<DefaultAppModePage />);
   });
 };
 
@@ -104,5 +106,29 @@ describe('DefaultAppModePage', () => {
         defaultAppMode: null,
       })
     );
+  });
+
+  it('locks the choice and offers no save when the deployment sets the default', async () => {
+    (getSettingsSource as jest.Mock).mockResolvedValueOnce({
+      settings: [
+        {
+          configType: SettingType.AppConfiguration,
+          source: ConfigSourceMode.Env,
+          sourceVariable: 'APP_CONFIG_SOURCE',
+          editable: false,
+          managedPaths: ['/defaultAppMode'],
+        },
+      ],
+    });
+
+    await renderPage();
+
+    expect(
+      await screen.findByTestId('settings-source-env-alert')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'label.ai' })).toBeDisabled();
+    expect(
+      screen.queryByTestId('save-app-mode-settings')
+    ).not.toBeInTheDocument();
   });
 });

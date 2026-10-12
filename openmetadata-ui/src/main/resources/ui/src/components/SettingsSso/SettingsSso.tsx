@@ -16,8 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { AuthProvider, SettingType } from '../../generated/settings/settings';
-import { useSettingsSource } from '../../hooks/platform/useSettingsSource';
+import { AuthProvider } from '../../generated/settings/settings';
 import {
   getSecurityConfiguration,
   patchSecurityConfiguration,
@@ -26,12 +25,6 @@ import {
 import '../../styles/variables.less';
 import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
-import {
-  findSettingSource,
-  getManagedPaths,
-  isPathManaged,
-  isWholeSettingManaged,
-} from '../../utils/platform/settingsSource.utils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { getProviderDisplayName, getProviderIcon } from '../../utils/SSOUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -42,11 +35,7 @@ import SettingsSourceBanner from '../platform/settings/SettingsSourceBanner/Sett
 import ProviderSelector from './ProviderSelector/ProviderSelector';
 import './settings-sso.less';
 import SSOConfigurationForm from './SSOConfigurationForm/SSOConfigurationForm';
-
-const SECURITY_SETTING_TYPES = [
-  SettingType.AuthenticationConfiguration,
-  SettingType.AuthorizerConfiguration,
-];
+import { useSecuritySettingsSource } from './useSecuritySettingsSource';
 
 const SettingsSso = () => {
   const { t } = useTranslation();
@@ -62,36 +51,14 @@ const SettingsSso = () => {
     useState<SecurityConfiguration | null>(null);
   const [configReloadKey, setConfigReloadKey] = useState<number>(0);
   const configFetched = useRef<boolean>(false);
-  const { sources, refetch: refetchSources } = useSettingsSource(
-    SECURITY_SETTING_TYPES
-  );
-
-  const { managedPaths, isReadOnly, isProviderManaged, isSelfSignupManaged } =
-    useMemo(() => {
-      const authenticationSource = findSettingSource(
-        sources,
-        SettingType.AuthenticationConfiguration
-      );
-      const authorizerSource = findSettingSource(
-        sources,
-        SettingType.AuthorizerConfiguration
-      );
-
-      return {
-        managedPaths: {
-          authenticationConfiguration: getManagedPaths(authenticationSource),
-          authorizerConfiguration: getManagedPaths(authorizerSource),
-        },
-        isReadOnly:
-          isWholeSettingManaged(authenticationSource) &&
-          isWholeSettingManaged(authorizerSource),
-        isProviderManaged: isPathManaged(authenticationSource, '/provider'),
-        isSelfSignupManaged: isPathManaged(
-          authenticationSource,
-          '/enableSelfSignup'
-        ),
-      };
-    }, [sources]);
+  const {
+    sources,
+    refetch: refetchSources,
+    managedPaths,
+    isReadOnly,
+    isProviderManaged,
+    isSelfSignupManaged,
+  } = useSecuritySettingsSource();
 
   const handleSSOToggle = useCallback(async (checked: boolean) => {
     setSsoEnabled(checked);

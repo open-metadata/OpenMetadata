@@ -52,6 +52,11 @@ import {
 } from '../../rest/securityConfigAPI';
 import { createScrollToErrorHandler } from '../../utils/formPureUtils';
 import {
+  applyManagedPathsToUiSchema,
+  isPointerManaged,
+  pinManagedFields,
+} from '../../utils/platform/settingsSource.utils';
+import {
   applySamlConfiguration,
   cleanupProviderSpecificFields,
   clearFieldError,
@@ -66,11 +71,6 @@ import {
   removeSchemaFields,
   updateLoadingState,
 } from '../../utils/SSOUtils';
-import {
-  applyManagedPathsToUiSchema,
-  isPointerManaged,
-  pinManagedFields,
-} from '../../utils/platform/settingsSource.utils';
 import { getErrorText } from '../../utils/StringUtils';
 import { setOidcToken, setRefreshToken } from '../../utils/SwTokenStorageUtils';
 import {
