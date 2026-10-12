@@ -47,11 +47,14 @@ export const selectTestType = async (page: Page, label: string) => {
 
 /**
  * The test case drawer's Form Hint panel titles its doc with the active
- * field's label.
+ * field's label. includeHidden: an open select's listbox aria-hides the rest
+ * of the page, the hint included, while it is still on screen.
  */
 export const expectFormHint = async (page: Page, heading: string) => {
   await expect(
-    page.getByRole('note').getByRole('heading', { name: heading, exact: true })
+    page
+      .getByRole('note', { includeHidden: true })
+      .getByRole('heading', { name: heading, exact: true, includeHidden: true })
   ).toBeVisible();
 };
 
