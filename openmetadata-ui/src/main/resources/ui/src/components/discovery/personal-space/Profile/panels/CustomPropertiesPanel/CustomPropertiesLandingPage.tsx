@@ -31,13 +31,13 @@ import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClass
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 import {
   ENTITY_GROUP_MAP,
   GROUP_LABEL_KEYS,
   GROUP_ORDER,
 } from './CustomPropertiesPanel.constants';
 import { CustomPropertiesLandingPageProps } from './CustomPropertiesPanel.types';
-import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 
 const CustomPropertiesLandingPage: React.FC<
   CustomPropertiesLandingPageProps

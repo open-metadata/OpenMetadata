@@ -18,8 +18,8 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GovernanceView } from './Governance.types';
 import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
+import { GovernanceView } from './Governance.types';
 
 interface LandingCard {
   descriptionKey: string;

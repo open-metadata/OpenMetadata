@@ -13,11 +13,11 @@
 
 import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
+import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 import type {
   PlatformSettingsPage,
   PlatformSettingsView,
 } from './PlatformSettings.types';
-import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 
 interface PlatformSettingsLandingProps {
   pages: PlatformSettingsPage[];

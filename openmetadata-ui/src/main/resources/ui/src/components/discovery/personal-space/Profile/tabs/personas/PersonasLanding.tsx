@@ -36,8 +36,8 @@ import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import type { PersonaView } from './Personas.types';
 import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
+import type { PersonaView } from './Personas.types';
 
 const MAX_CURSOR_CACHE_PAGES = 100;
 

@@ -22,6 +22,7 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 import type {
   NotificationLandingCard,
   NotificationLandingProps,
@@ -30,7 +31,6 @@ import {
   buildSectionCards,
   getNotificationMenuItems,
 } from './Notification.utils';
-import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
 
 const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
   const { t } = useTranslation();

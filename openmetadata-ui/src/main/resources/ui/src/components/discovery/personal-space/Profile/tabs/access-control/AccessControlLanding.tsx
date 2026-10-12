@@ -21,8 +21,8 @@ import {
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { AccessControlView, LandingCard } from './AccessControl.types';
 import { LANDING_CARD_CLASS } from '../../ProfilePage.constants';
+import type { AccessControlView, LandingCard } from './AccessControl.types';
 
 const LANDING_CARDS: LandingCard[] = [
   {

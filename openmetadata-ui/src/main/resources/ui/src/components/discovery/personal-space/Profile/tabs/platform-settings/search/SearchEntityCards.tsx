@@ -19,9 +19,9 @@ import { usePermissionProvider } from '../../../../../../../context/PermissionPr
 import { useAuth } from '../../../../../../../hooks/authHooks';
 import { getEntityIconWithBg } from '../../../../../../../utils/Assets/AssetsUtils';
 import { getSearchSettingCategories } from '../../../../../../../utils/SearchSettingsUtils';
+import { LANDING_CARD_CLASS } from '../../../ProfilePage.constants';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SearchSectionTitle } from './SearchSection';
-import { LANDING_CARD_CLASS } from '../../../ProfilePage.constants';
 
 /** One card per entity type, opening that entity's search settings. */
 const SearchEntityCards = ({
