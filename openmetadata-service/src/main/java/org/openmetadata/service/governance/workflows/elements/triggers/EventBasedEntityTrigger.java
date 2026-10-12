@@ -67,12 +67,23 @@ public class EventBasedEntityTrigger implements TriggerInterface {
   public EventBasedEntityTrigger(
       String mainWorkflowName,
       String triggerWorkflowId,
-      EventBasedEntityTriggerDefinition triggerDefinition,
-      boolean changeRequestHook) {
-    this(mainWorkflowName, triggerWorkflowId, triggerDefinition, changeRequestHook, Set.of());
+      EventBasedEntityTriggerDefinition triggerDefinition) {
+    this(mainWorkflowName, triggerWorkflowId, triggerDefinition, Set.of());
   }
 
   /** {@code excludedEntityTypes} are configured entity types that get no start event. */
+  public EventBasedEntityTrigger(
+      String mainWorkflowName,
+      String triggerWorkflowId,
+      EventBasedEntityTriggerDefinition triggerDefinition,
+      Set<String> excludedEntityTypes) {
+    this(mainWorkflowName, triggerWorkflowId, triggerDefinition, false, excludedEntityTypes);
+  }
+
+  /**
+   * {@code changeRequestHook} starts the trigger from submitted change requests instead of entity
+   * change events, for a workflow that holds edits for approval.
+   */
   public EventBasedEntityTrigger(
       String mainWorkflowName,
       String triggerWorkflowId,
