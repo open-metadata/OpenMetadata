@@ -80,6 +80,7 @@ ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
 
 ICEBERG_TABLE_TYPE = "ICEBERG"
 GLUE_VIEW_TABLE_TYPE = "VIRTUAL_VIEW"
+MAX_HIVE_VIEW_WARNINGS = 100
 
 ATHENA_INTERVAL_TYPE_MAP = {
     **dict.fromkeys(["enum", "string", "VARCHAR"], PartitionIntervalTypes.COLUMN_VALUE),
@@ -116,6 +117,7 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
         self.external_location_map = {}
         self.schema_description_map = {}
         self.glue_client = None
+        self._hive_view_warning_count = 0
         self._init_custom_properties()
 
     def prepare(self):
@@ -212,6 +214,64 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
             )
             return True, partition_details
         return False, None
+
+    def _is_hive_view(self, table_name: str, schema_name: str) -> bool:
+        if not self.glue_client:
+            return False
+        get_table_params = {"DatabaseName": schema_name, "Name": table_name}
+        if self.service_connection.catalogId:
+            get_table_params["CatalogId"] = self.service_connection.catalogId
+        try:
+            table = self.glue_client.get_table(**get_table_params).get("Table") or {}
+        except Exception:
+            logger.debug("Could not identify Glue view format for [%s.%s]", schema_name, table_name)
+            return False
+        if table.get("TableType") != GLUE_VIEW_TABLE_TYPE or table.get("ViewDefinition"):
+            return False
+        parameters = table.get("Parameters") or {}
+        original_text = table.get("ViewOriginalText") or ""
+        return bool(
+            (original_text or table.get("ViewExpandedText"))
+            and str(parameters.get("presto_view", "")).lower() != "true"
+            and "spark.sql.create.version" not in parameters
+            and not original_text.lstrip().startswith("/* Presto View:")
+        )
+
+    def get_schema_definition(
+        self,
+        table_type: TableType,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> str | None:
+        if table_type == TableType.View and self._is_hive_view(table_name, schema_name):
+            context = self.context.get()
+            if self._hive_view_warning_count < MAX_HIVE_VIEW_WARNINGS:
+                table_fqn = cast(
+                    "str",
+                    fqn.build(
+                        self.metadata,
+                        Table,
+                        service_name=context.database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                        database_name=context.database,  # pyright: ignore[reportAttributeAccessIssue]
+                        schema_name=schema_name,
+                        table_name=table_name,
+                        skip_es_search=True,
+                    ),
+                )
+                self.status.warning(
+                    key=table_fqn,
+                    reason="Athena cannot retrieve this Hive view definition with SHOW CREATE VIEW. "
+                    "The view was ingested without SQL; recreate it in Athena to make its definition available.",
+                )
+            elif self._hive_view_warning_count == MAX_HIVE_VIEW_WARNINGS:
+                self.status.warning(
+                    key=context.database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    reason=f"Additional Hive view definition warnings omitted after {MAX_HIVE_VIEW_WARNINGS} views.",
+                )
+            self._hive_view_warning_count += 1
+            return None
+        return super().get_schema_definition(table_type, table_name, schema_name, inspector)
 
     def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """

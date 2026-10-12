@@ -629,6 +629,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             if is_partitioned and table_type not in (
                 TableType.View,
                 TableType.MaterializedView,
+                TableType.Iceberg,
             ):
                 table_request.tableType = TableType.Partitioned.value
             if is_partitioned:
