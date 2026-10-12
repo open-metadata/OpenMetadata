@@ -156,7 +156,7 @@ def violation_sentence(
     )
 
 
-def _bounds_phrase(min_bound: float | None, max_bound: float | None, lead: bool = True) -> str:
+def bounds_phrase(min_bound: float | None, max_bound: float | None, lead: bool = True) -> str:
     """ "between 90 and 110", "at least 90", "at most 110" -- whichever bounds are set
 
     `lead` drops the "between" so the phrase can follow one that already introduced the window,
@@ -196,13 +196,13 @@ def statistic_sentence(
         str: e.g. "Mean of `amount` is 87.4. Expected between 90 and 110, widened by a 5%
              tolerance to 85.5 and 115.5, so this test passed."
     """
-    expected = f"Expected {_bounds_phrase(*configured_bounds)}"
+    expected = f"Expected {bounds_phrase(*configured_bounds)}"
 
     if not threshold.value:
         tolerance = ", with no tolerance applied"
     elif effective_bounds != configured_bounds:
         tolerance = (
-            f", widened by a {format_threshold(threshold)} tolerance to {_bounds_phrase(*effective_bounds, lead=False)}"
+            f", widened by a {format_threshold(threshold)} tolerance to {bounds_phrase(*effective_bounds, lead=False)}"
         )
     else:
         # A threshold that widened nothing: no finite bound to widen, or bounds a numeric
@@ -352,3 +352,74 @@ def _threshold_caveat(threshold: FailureThreshold | None) -> str | None:
             "carry over to the full table."
         )
     return None
+
+
+def dimension_rollup_sentence(failed_groups: list[str], listed: int = 5) -> str:
+    """Why a test case whose aggregate passed is reported as failed under `ANY_DIMENSION`.
+
+    The aggregate verdict earlier in the message still says the test passed, so without this the
+    message contradicts the status it is attached to.
+
+    Args:
+        failed_groups: dimension keys of the failing groups, e.g. "country=Spain"
+        listed: how many of them to name before summarising the rest
+
+    Returns:
+        str: e.g. "1 dimension group failed (country=Spain), and the ANY_DIMENSION policy fails
+             the test case when any group fails."
+    """
+    return (
+        f"{_count_groups(failed_groups)} failed ({_name_groups(failed_groups, listed)}), and the "
+        "ANY_DIMENSION policy fails the test case when any group fails."
+    )
+
+
+def excluded_dimensions_sentence(failed_groups: list[str], min_rows: float, listed: int = 5) -> str:
+    """Name the failing groups `minRowsPerDimension` kept out of the `ANY_DIMENSION` roll-up.
+
+    Their own status still says they failed, so without this the test case status contradicts the
+    groups reported under it.
+
+    Args:
+        failed_groups: dimension keys of the failing groups below the minimum, e.g. "country=Spain"
+        min_rows: rows a group needs to take part in the roll-up
+        listed: how many of them to name before summarising the rest
+
+    Returns:
+        str: e.g. "1 dimension group failed with fewer than 30 rows (country=Andorra), below the
+             minRowsPerDimension the ANY_DIMENSION policy rolls up, so it does not fail the test
+             case."
+    """
+    pronoun = "it does" if len(failed_groups) == 1 else "they do"
+    return (
+        f"{_count_groups(failed_groups)} failed with fewer than {min_rows:g} rows "
+        f"({_name_groups(failed_groups, listed)}), below the minRowsPerDimension the ANY_DIMENSION "
+        f"policy rolls up, so {pronoun} not fail the test case."
+    )
+
+
+def _count_groups(groups: list[str]) -> str:
+    return f"{len(groups)} {'dimension group' if len(groups) == 1 else 'dimension groups'}"
+
+
+def _name_groups(groups: list[str], listed: int) -> str:
+    named = ", ".join(groups[:listed])
+    if len(groups) > listed:
+        named = f"{named} and {len(groups) - listed} more"
+    return named
+
+
+def unevaluated_dimensions_sentence(dimension_columns: list[str]) -> str:
+    """Name the dimension columns whose grouped query did not run.
+
+    Args:
+        dimension_columns: dimension columns that reported an aborted row
+
+    Returns:
+        str: e.g. "Dimension region could not be evaluated, so its groups are not part of this
+             result."
+    """
+    named = ", ".join(dimension_columns)
+    if len(dimension_columns) == 1:
+        return f"Dimension {named} could not be evaluated, so its groups are not part of this result."
+    return f"Dimensions {named} could not be evaluated, so their groups are not part of this result."

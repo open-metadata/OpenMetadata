@@ -29,6 +29,12 @@
   border-top: 1px solid var(--om-legacy-color-dde3ea);
 }
 
+// The legacy #dde3ea edge is a bright line on the dark overlay surface.
+.dark-mode .ant-modal-header,
+.dark-mode .ant-modal-footer {
+  border-color: var(--om-color-border-secondary);
+}
+
 .ant-modal-footer .ant-btn-default {
   border: none;
   color: @primary-color;

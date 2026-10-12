@@ -208,7 +208,8 @@ public final class ChangePreviewUtils {
    * change description; returns a payload with the {@code proposedChanges} key removed when the
    * merged map is empty (e.g. all changes cancelled out across re-edits).
    */
-  public static Object buildProposedChangesPayload(EntityInterface entity, Object existingPayload) {
+  public static Object buildProposedChangesPayload(
+      EntityInterface<?> entity, Object existingPayload) {
     if (entity == null) return existingPayload;
     ChangeDescription changeDescription = pickIncrementalOrFull(entity);
     if (hasNoChanges(changeDescription)) {
@@ -261,7 +262,7 @@ public final class ChangePreviewUtils {
    * Incremental change description always reflects just the latest patch, which is the right
    * unit of work to fold into the running merge.
    */
-  private static ChangeDescription pickIncrementalOrFull(EntityInterface entity) {
+  private static ChangeDescription pickIncrementalOrFull(EntityInterface<?> entity) {
     ChangeDescription incremental = entity.getIncrementalChangeDescription();
     if (!hasNoChanges(incremental)) {
       return incremental;

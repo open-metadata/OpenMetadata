@@ -28,7 +28,7 @@ import {
   Clock,
   Database01,
   Terminal,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';

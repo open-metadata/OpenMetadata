@@ -12,9 +12,8 @@
  */
 
 import '@github/g-emoji-element';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { uniqueId } from 'lodash';
 import { createElement, FC } from 'react';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { ReactionType } from '../../../generated/type/reaction';
@@ -30,7 +29,7 @@ interface ReactionProps {
   onReactionSelect: (
     reaction: ReactionType,
     operation: ReactionOperation
-  ) => void;
+  ) => void | Promise<void>;
   onHide: () => void;
 }
 
@@ -65,14 +64,13 @@ const Reaction: FC<ReactionProps> = ({
   return (
     <Button
       aria-label={reaction.reaction}
-      className={classNames('ant-btn-popover-reaction', {
-        'ant-btn-popover-isReacted': isReacted,
+      className={classNames('tw:px-1! tw:py-0.5! tw:text-md', {
+        'tw:bg-brand-primary': isReacted,
       })}
+      color="tertiary"
       data-testid="reaction-button"
-      key={uniqueId()}
-      size="small"
+      size="xs"
       title={reaction.reaction}
-      type="text"
       onClick={handleOnClick}>
       {element}
     </Button>

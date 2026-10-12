@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { EntityTags } from 'Models';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { useEntityRules } from '../../../hooks/useEntityRules';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
 import EntityRightPanel from './EntityRightPanel';
 
@@ -91,7 +92,7 @@ describe('EntityRightPanel component test', () => {
   } as Table;
 
   it('Component should render', () => {
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -108,7 +109,7 @@ describe('EntityRightPanel component test', () => {
   });
 
   it('Component should not render DataProductsContainer when showDataProductContainer is false', () => {
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -125,7 +126,7 @@ describe('EntityRightPanel component test', () => {
   });
 
   it('Component should render before and after slot', () => {
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -145,7 +146,7 @@ describe('EntityRightPanel component test', () => {
   });
 
   it('Component should not render before and after slot when not provided', () => {
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -169,7 +170,7 @@ describe('EntityRightPanel component test', () => {
     const spy = jest
       .spyOn(entityRightPanelClassBase, 'getKnowLedgeArticlesWidget')
       .mockImplementation(() => KnowledgeArticles);
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -191,7 +192,7 @@ describe('EntityRightPanel component test', () => {
     const spy = jest
       .spyOn(entityRightPanelClassBase, 'getKnowLedgeArticlesWidget')
       .mockImplementation(() => null);
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -210,7 +211,7 @@ describe('EntityRightPanel component test', () => {
   });
 
   it('should not render CustomPropertyTable when no custom properties', () => {
-    render(
+    renderWithQueryClient(
       <EntityRightPanel
         editGlossaryTermsPermission
         editTagPermission
@@ -238,7 +239,7 @@ describe('EntityRightPanel component test', () => {
     });
 
     const renderPanel = () =>
-      render(
+      renderWithQueryClient(
         <EntityRightPanel
           editGlossaryTermsPermission
           editTagPermission

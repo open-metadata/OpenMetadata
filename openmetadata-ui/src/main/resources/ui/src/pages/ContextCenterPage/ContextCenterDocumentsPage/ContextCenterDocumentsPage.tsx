@@ -16,7 +16,7 @@ import {
   EmptyPlaceholder,
   PageLayout,
 } from '@openmetadata/ui-core-components';
-import { Stars01 } from '@untitledui/icons';
+import { Stars01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
@@ -49,10 +49,8 @@ import {
 } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
@@ -443,6 +441,12 @@ const ContextCenterDocumentsPage: FC = () => {
         setAllDocuments(
           results.hits.hits.map((hit) => hit._source as unknown as ContextFile)
         );
+        // The header count has to track the result set it sits above. Without
+        // this it keeps whatever runPagedFetch last wrote, so a search that
+        // matches one file still reads "77 files".
+        setTotalFileCount(
+          results.hits.total?.value ?? results.hits.hits.length
+        );
       };
 
       const runPagedFetch = async () => {
@@ -617,6 +621,10 @@ const ContextCenterDocumentsPage: FC = () => {
       setIsDeletingFile(false);
     }
   }, [fileToDelete, t, fetchFolders]);
+
+  const handleFileUpdated = useCallback((file: ContextFile) => {
+    setAllDocuments((prev) => prev.map((d) => (d.id === file.id ? file : d)));
+  }, []);
 
   const handleFileMoved = useCallback(
     (file: ContextFile, targetFolderId: string | null) => {
@@ -873,7 +881,7 @@ const ContextCenterDocumentsPage: FC = () => {
 
   return (
     <Box
-      className={`tw:w-full tw:h-full tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:w-full tw:h-full tw:bg-canvas ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-documents-page"
       direction="col">
       <DocumentTitle title={t('label.document-plural')} />
@@ -963,6 +971,7 @@ const ContextCenterDocumentsPage: FC = () => {
                     onDeleteFile={handleDeleteFile}
                     onDownload={handleAssetDownload}
                     onFileMoved={handleFileMoved}
+                    onFileUpdated={handleFileUpdated}
                     onLoadMoreFolders={fetchMoreFolders}
                     onOpenPreview={setFilePreviewModalFile}
                     onPreview={handlePreview}

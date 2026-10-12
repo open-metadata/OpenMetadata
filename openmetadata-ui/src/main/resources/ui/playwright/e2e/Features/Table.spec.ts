@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { TaskClass } from '../../support/entity/TaskClass';
@@ -101,11 +102,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.click('[data-testid="test-cases"]');
 
     await listTestCasesResponse;
-    await page
-      .getByTestId('test-case-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
 
     await page.getByText('Name', { exact: true }).click();
     await page.locator('[data-testid="searchbar-component"] input').click();
@@ -126,11 +123,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .fill(searchTerm);
 
     await testSearchResponse;
-    await page
-      .getByTestId('test-case-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
 
     await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
@@ -146,11 +139,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.click('[data-testid="test-cases"]');
 
     await listTestCasesResponse;
-    await page
-      .getByTestId('test-case-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
 
     await page.getByText('Name', { exact: true }).click();
 
@@ -163,11 +152,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.getByTitle('Queued').locator('div').click();
 
     await filteredResults;
-    await page
-      .getByTestId('test-case-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
 
     // Migration static data seeds test cases across every status (including
     // Queued), so the status filter alone no longer yields an empty list.
@@ -188,11 +173,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .locator('[data-testid="searchbar-component"] input')
       .fill(noMatchSearch);
     await emptySearchResponse;
-    await page
-      .getByTestId('test-case-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page.getByTestId('test-case-container'));
 
     await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
@@ -210,7 +191,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test('should persist current page', async ({ dataConsumerPage: page }) => {
-    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify', {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
@@ -227,10 +210,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
     const firstLinkInColumn = getFirstRowColumnLink(page);
     await firstLinkInColumn.click();
 
-    await page.waitForURL('**/table/**');
+    await page.waitForURL('**/table/**', { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -243,10 +226,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
     const secondLinkInColumn = getFirstRowColumnLink(page);
     await secondLinkInColumn.click();
 
-    await page.waitForURL('**/table/**');
+    await page.waitForURL('**/table/**', { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -257,7 +240,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test('should persist page size', async ({ dataConsumerPage: page }) => {
-    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -295,7 +280,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await entityApiResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
     await page
       .getByTestId('page-size-selection-dropdown')
@@ -312,7 +297,9 @@ test.describe('Table & Data Model columns table pagination', () => {
     page,
   }) => {
     test.slow();
-    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -393,7 +380,8 @@ test.describe('Table & Data Model columns table pagination', () => {
     page,
   }) => {
     await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table',
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -465,7 +453,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     const glossaryTagsCell = page.locator(
       `${glossaryRowSelector} [data-testid*="glossary-tags"]`
     );
-    await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
+    await expect(glossaryTagsCell).toBeVisible({ timeout: ACTION_TIMEOUT });
 
     // Check if add button exists and is visible
     const rowSelector =
@@ -493,7 +481,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         response.ok()
     );
     await waitForAllLoadersToDisappear(page);
-    await expect(glossaryTagsCell).toBeVisible({ timeout: 30000 });
+    await expect(glossaryTagsCell).toBeVisible({ timeout: ACTION_TIMEOUT });
 
     // Scoped to the cell: the select keeps its overlay mounted after closing, so the
     // matching dropdown option carries the same testid and an unscoped locator is
@@ -508,13 +496,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .getByTestId('search-bar-container')
       .getByTestId('searchbar')
       .fill('customer_id');
-    await page
-      .getByTestId('entity-table')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
+    await waitForAllLoadersToDisappear(page.getByTestId('entity-table'));
 
     await expect(
       page
@@ -556,7 +538,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
     );
 
-    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer', {
+      waitUntil: 'domcontentloaded',
+    });
 
     // Wait for page to be fully loaded
     await columnsResponse;
@@ -602,7 +586,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     // Wait for page to be fully loaded
     await waitForAllLoadersToDisappear(page);
     const getRequest = page.waitForResponse(
@@ -724,7 +708,9 @@ test.describe('Large Table Column Search & Copy Link', () => {
       `/api/v1/tables/name/${createdTable.fullyQualifiedName}/columns?*`
     );
     // 1. Visit the table page directly
-    await page.goto(`/table/${createdTable.fullyQualifiedName}`);
+    await page.goto(`/table/${createdTable.fullyQualifiedName}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await columnsResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -776,7 +762,7 @@ test.describe('Large Table Column Search & Copy Link', () => {
           'tags,customMetrics,extension,profile'
       );
     });
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
     const columnGetResponse = await columnGetResponsePromise;
 
     expect(columnGetResponse.status()).toBe(200);
@@ -984,7 +970,9 @@ test.describe('Table open-task header stat', () => {
 
     await openTaskStat.click();
 
-    await page.waitForURL('**/activity_feed/tasks');
+    await page.waitForURL('**/activity_feed/tasks', {
+      waitUntil: 'domcontentloaded',
+    });
     await expect(page).toHaveURL(/\/activity_feed\/tasks/);
   });
 });

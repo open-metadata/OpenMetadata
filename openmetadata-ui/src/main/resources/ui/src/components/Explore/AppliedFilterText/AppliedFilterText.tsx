@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Edit05, XCircle } from '@untitledui/icons';
+import { Edit05, XCircle } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
@@ -46,12 +45,12 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
         className="advanced-filter-text tw:flex-1"
         justify="between">
         <Box className="w-full" colGap={2}>
-          <Icon
-            alt="success-badge"
-            className="align-middle m-l-xs"
-            component={IconSuccessBadge}
-            style={{ fontSize: '16px' }}
-          />
+          <span
+            aria-label="success-badge"
+            className="align-middle m-l-xs tw:inline-flex tw:items-center tw:leading-none"
+            role="img">
+            <IconSuccessBadge height={16} width={16} />
+          </span>
           <Typography data-testid="advance-search-filter-text">
             {filterText}
           </Typography>

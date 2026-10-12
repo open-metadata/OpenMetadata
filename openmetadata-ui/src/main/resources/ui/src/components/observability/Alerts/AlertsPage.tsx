@@ -12,8 +12,8 @@
  */
 
 import { Button, PageLayout } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

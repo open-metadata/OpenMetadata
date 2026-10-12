@@ -19,6 +19,7 @@ from metadata.data_quality.validations.table.sqlalchemy import tableDiff
 from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
     DuplicateKeyError,
     TableDiffValidator,
+    UnsupportedDialectError,
 )
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -119,6 +120,22 @@ def validator(
         )
         validator.runtime_params = parameters
         yield validator
+
+
+class TestAbortedRun:
+    def test_an_unsupported_dialect_carries_the_error_details(
+        self, validator: TableDiffValidator, parameters: TableDiffRuntimeParameters
+    ) -> None:
+        validator.get_runtime_parameters = Mock(return_value=parameters)
+        validator._validate_dialects = Mock(side_effect=UnsupportedDialectError("table2", "oracle"))
+
+        result = validator._run_validation()
+
+        assert result.testCaseStatus is TestCaseStatus.Aborted
+        assert result.result == "Unsupported dialect in param table2: oracle"
+        assert result.errorDetails.errorType == "UnsupportedDialectError"
+        assert result.errorDetails.message == result.result
+        assert "UnsupportedDialectError" in result.errorDetails.stackTrace
 
 
 class TestGetColumnDiff:

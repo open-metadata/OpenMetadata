@@ -12,11 +12,11 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {
   LimitConfig,
   ResourceLimit,
-  useLimitStore,
-} from '../../../../context/LimitsProvider/useLimitsStore';
+} from '../../../../interface/platform/limits.interface';
 import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageMenu, toManageMenuItems } from './ManageMenu';
 

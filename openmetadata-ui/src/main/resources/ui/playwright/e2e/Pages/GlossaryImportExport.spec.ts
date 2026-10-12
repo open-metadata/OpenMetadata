@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
@@ -132,7 +133,7 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await glossaryExportUser.login(page);
+    await glossaryExportUser.signIn(page);
     await redirectToHomePage(page);
   });
 
@@ -307,7 +308,9 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
       for (const propertyName of Object.values(propertyListName)) {
         await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
 
-        await page.waitForURL('**/settings/customProperties/glossaryTerm');
+        await page.waitForURL('**/settings/customProperties/glossaryTerm', {
+          waitUntil: 'domcontentloaded',
+        });
 
         await waitForAllLoadersToDisappear(page);
 
@@ -424,6 +427,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           failed: '1',
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- glossary grid rows are not keyed by row index
         const firstRow = page.locator('.rdg-row').first();
         const errorText = await firstRow
           .locator('.rdg-cell-details')
@@ -900,7 +904,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           .locator('.rdg-row')
           .first()
           .locator('.rdg-cell-details');
-        await errorCell.waitFor({ state: 'visible', timeout: 30000 });
+        await errorCell.waitFor({ state: 'visible', timeout: ACTION_TIMEOUT });
         await expect(errorCell).toContainText('Invalid relation type');
       });
     } finally {

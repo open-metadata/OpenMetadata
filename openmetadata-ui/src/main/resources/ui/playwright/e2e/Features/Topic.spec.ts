@@ -68,6 +68,7 @@ test.describe('Topic entity specific tests ', () => {
       page,
       buttonTestId: 'copy-field-link-button',
       containerTestId: 'topic-schema-fields-table',
+      rowName: topic.children[0].name,
       expectedUrlPath: '/topic/',
       entityFqn: topic.entityResponseData?.['fullyQualifiedName'] ?? '',
     });
@@ -95,7 +96,7 @@ test.describe('Topic entity specific tests ', () => {
     expect(validationResult.pathname).toContain('topic');
 
     // Visit the copied link to verify it opens the side panel
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
     // Verify side panel is open
     const sidePanel = page.locator('.column-detail-panel');
@@ -147,7 +148,7 @@ test.describe('Topic entity specific tests ', () => {
         );
 
         // Visit the copied link to verify it opens the side panel
-        await page.goto(clipboardText);
+        await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
 
         // Verify side panel is open - wait for it to appear with a longer timeout
         const sidePanel = page.locator('.column-detail-panel');

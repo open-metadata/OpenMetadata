@@ -19,7 +19,12 @@ import {
   NavList,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Grid01, Plus, Star01, Tag01 } from '@untitledui/icons';
+import {
+  Grid01,
+  Plus,
+  Star01,
+  Tag01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -39,8 +44,8 @@ import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { CreateTag } from '../../generated/api/classification/createTag';
 import { ProviderType } from '../../generated/entity/bot';

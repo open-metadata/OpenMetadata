@@ -731,34 +731,39 @@ public interface EntityDataDAOs {
 
     @Override
     default int listCount(ListFilter filter) {
-      String condition = addHierarchyCondition(filter, filter.getCondition());
+      String condition =
+          addHierarchyCondition(filter, filter.getConditionForEntity(getTableName()));
       return listCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      String condition = addHierarchyCondition(filter, filter.getCondition());
+      String condition =
+          addHierarchyCondition(filter, filter.getConditionForEntity(getTableName()));
       return listBefore(
           getTableName(), filter.getQueryParams(), condition, limit, beforeName, beforeId);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String condition = addHierarchyCondition(filter, filter.getCondition());
+      String condition =
+          addHierarchyCondition(filter, filter.getConditionForEntity(getTableName()));
       return listAfter(
           getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, int offset) {
-      String condition = addHierarchyCondition(filter, filter.getCondition());
+      String condition =
+          addHierarchyCondition(filter, filter.getConditionForEntity(getTableName()));
       return listAfter(getTableName(), filter.getQueryParams(), condition, limit, offset);
     }
 
     @Override
     default CursorRow getCursorAtOffset(ListFilter filter, int offset) {
-      String condition = addHierarchyCondition(filter, filter.getCondition());
+      String condition =
+          addHierarchyCondition(filter, filter.getConditionForEntity(getTableName()));
       return getCursorAtOffset(getTableName(), filter.getQueryParams(), condition, offset);
     }
 
@@ -830,7 +835,7 @@ public interface EntityDataDAOs {
 
     @Override
     default int listCount(ListFilter filter) {
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
       if (!nullOrEmpty(directChildrenOf)) {
@@ -848,7 +853,7 @@ public interface EntityDataDAOs {
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
       if (!nullOrEmpty(directChildrenOf)) {
@@ -866,7 +871,7 @@ public interface EntityDataDAOs {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String condition = filter.getCondition();
+      String condition = filter.getConditionForEntity(getTableName());
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
       if (!nullOrEmpty(directChildrenOf)) {
@@ -1078,7 +1083,7 @@ public interface EntityDataDAOs {
     default String displayNameSortCondition(ListFilter filter) {
       // Unqualified: a table prefix on the pipelineType JSON expression reads as a routine call.
       return nullOrEmpty(filter.getQueryParam("serviceType"))
-          ? filter.getCondition()
+          ? filter.getConditionForEntity(getTableName())
           : serviceTypeJoinCondition(filter);
     }
 

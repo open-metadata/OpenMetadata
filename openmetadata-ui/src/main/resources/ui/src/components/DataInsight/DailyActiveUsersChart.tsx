@@ -11,33 +11,26 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { LineChart } from '@openmetadata/ui-core-components/charts';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  CartesianGrid,
-  Legend,
-  LegendProps,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
-  BAR_CHART_MARGIN,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { DailyActiveUsers } from '../../generated/dataInsight/type/dailyActiveUsers';
-import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
-import { CustomTooltip, renderLegend } from '../../utils/DataInsightChartUtils';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+import {
+  getDataInsightTooltip,
+  HIDDEN_CHART_LEGEND,
+} from '../../utils/DataInsightChartUtils';
 import { getFormattedActiveUsersData } from '../../utils/DataInsightPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../PageHeader/PageHeader.component';
@@ -57,12 +50,19 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { t } = useTranslation();
-  const { axis, dataInsightSeries, grid, inactive } =
-    useDataInsightChartColors();
 
   const { data, total, relativePercentage } = useMemo(
     () => getFormattedActiveUsersData(dailyActiveUsers),
     [dailyActiveUsers]
+  );
+
+  const series = useMemo(
+    () => [{ key: 'activeUsers', name: t('label.active-user') }],
+    [t]
+  );
+  const tooltip = useMemo(
+    () => getDataInsightTooltip({ timeKey: 'timestampValue' }),
+    []
   );
 
   const fetchPageViewsByEntities = async () => {
@@ -102,37 +102,23 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
         />
       }>
       {dailyActiveUsers.length ? (
-        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-          <Col span={DI_STRUCTURE.leftContainerSpan}>
-            <ResponsiveContainer debounce={1} height={GRAPH_HEIGHT}>
-              <LineChart data={data} margin={BAR_CHART_MARGIN}>
-                <CartesianGrid stroke={grid} vertical={false} />
-                <Legend
-                  align="left"
-                  content={() =>
-                    renderLegend(
-                      { payload: [] } as LegendProps,
-                      [],
-                      undefined,
-                      inactive
-                    )
-                  }
-                  layout="vertical"
-                  verticalAlign="top"
-                  wrapperStyle={{ left: '0px', top: '0px' }}
-                />
-                <XAxis dataKey="timestamp" tick={{ fill: axis }} />
-                <YAxis tick={{ fill: axis }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line
-                  dataKey="activeUsers"
-                  stroke={dataInsightSeries[3]}
-                  type="monotone"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </Col>
-          <Col span={DI_STRUCTURE.rightContainerSpan}>
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
+          <Grid.Item
+            className="layout-column"
+            span={DI_STRUCTURE.leftContainerSpan}>
+            <LineChart
+              ariaLabel={t('label.daily-active-users-on-the-platform')}
+              data={data}
+              height={GRAPH_HEIGHT}
+              legend={HIDDEN_CHART_LEGEND}
+              series={series}
+              tooltip={tooltip}
+              xKey="timestamp"
+            />
+          </Grid.Item>
+          <Grid.Item
+            className="layout-column"
+            span={DI_STRUCTURE.rightContainerSpan}>
             <CustomStatistic
               changeInValue={relativePercentage}
               duration={selectedDays}
@@ -141,8 +127,8 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
               })}
               value={total}
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
       ) : (
         <EmptyGraphPlaceholder />
       )}

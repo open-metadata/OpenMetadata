@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -100,7 +101,9 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'entityType',
         width: 140,
         render: (entityType: string) => (
-          <Typography.Text>{entityType || NO_DATA_PLACEHOLDER}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {entityType || NO_DATA_PLACEHOLDER}
+          </Typography>
         ),
       },
       {
@@ -109,11 +112,12 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'entityFqn',
         ellipsis: true,
         render: (entityFqn: string) => (
-          <Typography.Text
+          <Typography
+            className="tw:text-primary"
             ellipsis={{ tooltip: entityFqn }}
             style={{ maxWidth: 300 }}>
             {entityFqn || NO_DATA_PLACEHOLDER}
-          </Typography.Text>
+          </Typography>
         ),
       },
       {
@@ -134,7 +138,9 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         dataIndex: 'retryCount',
         key: 'retryCount',
         width: 120,
-        render: (count: number) => <Typography.Text>{count}</Typography.Text>,
+        render: (count: number) => (
+          <Typography className="tw:text-primary">{count}</Typography>
+        ),
       },
       {
         title: t('label.failure-reason'),
@@ -142,11 +148,12 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'failureReason',
         ellipsis: true,
         render: (reason: string) => (
-          <Typography.Text
+          <Typography
+            className="tw:text-primary"
             ellipsis={{ tooltip: reason }}
             style={{ maxWidth: 300 }}>
             {reason || NO_DATA_PLACEHOLDER}
-          </Typography.Text>
+          </Typography>
         ),
       },
     ],
@@ -163,9 +170,9 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
       locale={{
         emptyText: (
           <div className="tw:py-8 tw:text-center">
-            <Typography.Text className="tw:text-text-secondary">
+            <Typography className="tw:text-text-secondary">
               {t('message.no-retry-queue-records')}
-            </Typography.Text>
+            </Typography>
           </div>
         ),
       }}

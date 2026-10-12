@@ -11,22 +11,21 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Bell01 } from '@untitledui/icons';
 import {
+  Box,
   Button,
-  Col,
-  Collapse,
   Dropdown,
-  Row,
+  EmptyPlaceholder,
+  Grid,
   Skeleton,
   Tooltip,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Bell01 } from '@openmetadata/ui-core-components/icons';
+import { Collapse } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
@@ -47,6 +46,7 @@ import {
   getChangeEventDataFromTypedEvent,
   getLabelsForEventDetails,
 } from '../../../../utils/Alerts/AlertsUtilPure';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -97,7 +97,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   );
 
   const handleFilterSelect = useCallback(
-    (item: MenuInfo) => setFilter(item.key as AlertRecentEventFilters),
+    (key: Key) => setFilter(key as AlertRecentEventFilters),
     [filter]
   );
 
@@ -145,7 +145,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           ).map((skeletonKey) => (
             <Panel
               data-testid="skeleton-loading-panel"
-              header={<Skeleton active paragraph={false} />}
+              header={<Skeleton height={16} width="100%" />}
               key={skeletonKey}
             />
           ))}
@@ -183,8 +183,13 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     }
 
     return (
-      <Row gutter={[16, 16]}>
-        <Col data-testid="recent-events-list" span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item
+          className="layout-column"
+          data-testid="recent-events-list"
+          span={24}>
           <Collapse
             className="recent-events-collapse"
             defaultActiveKey={['1']}
@@ -197,91 +202,115 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
               return (
                 <Panel
                   header={
-                    <Row
+                    <Box
+                      className="layout-row"
                       data-testid={`event-collapse-${changeEventData.id}`}
-                      justify="space-between">
-                      <Col>
-                        <Row align="middle" gutter={[16, 16]}>
-                          <Col>
+                      justify="between"
+                      wrap="wrap">
+                      <Box className="layout-column tw:block">
+                        <Box
+                          align="center"
+                          className="layout-row"
+                          style={{ ...getLayoutGutter(16, 16) }}
+                          wrap="wrap">
+                          <Box className="layout-column tw:block">
                             {/* Display icon for the status of the alert event */}
                             <Tooltip
-                              className="flex-center"
-                              title={startCase(typedEvent.status)}>
+                              arrow
+                              excludeTriggerFromTabOrder
+                              title={startCase(typedEvent.status)}
+                              triggerClassName="tw:inline-flex flex-center">
                               {getAlertStatusIcon(typedEvent.status)}{' '}
                             </Tooltip>
-                          </Col>
-                          <Col>
+                          </Box>
+                          <Box className="layout-column tw:block">
                             {/* Display icon for the asset the change event is related to */}
                             <Tooltip
-                              className="flex-center"
-                              title={startCase(changeEventData.entityType)}>
+                              arrow
+                              excludeTriggerFromTabOrder
+                              title={startCase(changeEventData.entityType)}
+                              triggerClassName="tw:inline-flex flex-center">
                               {searchClassBase.getEntityIcon(
                                 changeEventData.entityType ?? '',
                                 'h-4 w-4'
                               )}
                             </Tooltip>
-                          </Col>
-                          <Col>
+                          </Box>
+                          <Box className="layout-column tw:block">
                             {/* Display the change event id */}
-                            <Typography.Text>
-                              {changeEventData.id}
-                            </Typography.Text>
-                          </Col>
-                        </Row>
-                      </Col>
-                      <Col>
+                            <Typography>{changeEventData.id}</Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                      <Box className="layout-column tw:block">
                         {/* Display the event timestamp */}
-                        <Typography.Text className="text-grey-muted">
+                        <Typography color="secondary">
                           {formatDateTime(typedEvent.timestamp)}
-                        </Typography.Text>
-                      </Col>
-                    </Row>
+                        </Typography>
+                      </Box>
+                    </Box>
                   }
                   key={`${changeEventData.id}-${changeEventData.timestamp}`}>
-                  <Row
+                  <Box
+                    className="layout-row"
                     data-testid={`event-details-${changeEventData.id}`}
-                    gutter={[16, 16]}>
-                    <Col>
-                      <Row gutter={[16, 16]}>
+                    style={{ ...getLayoutGutter(16, 16) }}
+                    wrap="wrap">
+                    <Box className="layout-column tw:block">
+                      <Grid
+                        className="layout-row layout-grid"
+                        style={{ ...getLayoutGutter(16, 16) }}>
                         {Object.entries(changeEventDataToDisplay).map(
                           ([key, value]) =>
                             isUndefined(value) ? null : (
-                              <Col key={key} span={key === 'reason' ? 24 : 8}>
-                                <Row
+                              <Grid.Item
+                                className="layout-column"
+                                key={key}
+                                span={key === 'reason' ? 24 : 8}>
+                                <Grid
+                                  className="layout-row layout-grid"
                                   data-testid={`event-data-${key}`}
-                                  gutter={[4, 4]}>
-                                  <Col span={24}>
-                                    <Typography.Text
-                                      className="text-grey-muted"
+                                  style={{ ...getLayoutGutter(4, 4) }}>
+                                  <Grid.Item
+                                    className="layout-column"
+                                    span={24}>
+                                    <Typography
+                                      color="secondary"
                                       data-testid="event-data-key">
                                       {`${getLabelsForEventDetails(
                                         key as keyof AlertEventDetailsToDisplay
                                       )}:`}
-                                    </Typography.Text>
-                                  </Col>
-                                  <Col span={24}>
-                                    <Typography.Text
+                                    </Typography>
+                                  </Grid.Item>
+                                  <Grid.Item
+                                    className="layout-column"
+                                    span={24}>
+                                    <Typography
                                       className="font-medium"
                                       data-testid="event-data-value">
                                       {value}
-                                    </Typography.Text>
-                                  </Col>
-                                </Row>
-                              </Col>
+                                    </Typography>
+                                  </Grid.Item>
+                                </Grid>
+                              </Grid.Item>
                             )
                         )}
-                      </Row>
-                    </Col>
+                      </Grid>
+                    </Box>
                     {!isEmpty(changeEventData.changeDescription) && (
                       <>
-                        <Col span={24}>
-                          <Typography.Text className="font-medium">
+                        <Box
+                          className="layout-column tw:block"
+                          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                          <Typography className="font-medium">
                             {`${t('label.change-entity', {
                               entity: t('label.description'),
                             })}:`}
-                          </Typography.Text>
-                        </Col>
-                        <Col span={24}>
+                          </Typography>
+                        </Box>
+                        <Box
+                          className="layout-column tw:block"
+                          style={{ maxWidth: '100%', flex: '0 0 100%' }}>
                           <SchemaEditor
                             className="border"
                             mode={{ name: CSMode.JAVASCRIPT }}
@@ -291,17 +320,17 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                               changeEventData.changeDescription
                             )}
                           />
-                        </Col>
+                        </Box>
                       </>
                     )}
-                  </Row>
+                  </Box>
                 </Panel>
               );
             })}
           </Collapse>
-        </Col>
+        </Grid.Item>
         {showPagination && (
-          <Col span={24}>
+          <Grid.Item className="layout-column" span={24}>
             <NextPreviousWithOffset
               currentPage={currentPage}
               isLoading={loading}
@@ -310,9 +339,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
               pagingHandler={pagingHandler}
               onShowSizeChange={handlePageSizeChange}
             />
-          </Col>
+          </Grid.Item>
         )}
-      </Row>
+      </Grid>
     );
   }, [
     loading,
@@ -330,50 +359,64 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   }, [filter, pageSize]);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <Row justify="space-between">
-          <Col>
-            <Row gutter={[8, 8]}>
-              <Col span={24}>
-                <Typography.Text className="font-medium">
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
+        <Box className="layout-row" justify="between" wrap="wrap">
+          <Box className="layout-column tw:block">
+            <Grid
+              className="layout-row layout-grid"
+              style={{ ...getLayoutGutter(8, 8) }}>
+              <Grid.Item className="layout-column" span={24}>
+                <Typography className="font-medium">
                   {`${t('label.description')}:`}
-                </Typography.Text>
-              </Col>
-              <Col span={24}>
-                <Typography.Text className="text-grey-muted">
+                </Typography>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
+                <Typography color="secondary">
                   {t('message.alert-recent-events-description', { alertName })}
-                </Typography.Text>
-              </Col>
-            </Row>
-          </Col>
-          <Col>
-            <Dropdown
-              menu={{
-                items: filterMenuItems,
-                selectedKeys: [filter],
-                onClick: handleFilterSelect,
-              }}
-              placement="bottomRight"
-              trigger={['click']}>
+                </Typography>
+              </Grid.Item>
+            </Grid>
+          </Box>
+          <Box className="layout-column tw:block">
+            <Dropdown.Root>
               <Button
-                className="flex-center"
+                color="secondary"
                 data-testid="filter-button"
-                icon={<FilterIcon height={16} />}>
+                iconLeading={<FilterIcon height={16} width={16} />}
+                size="sm">
                 {filter !== AlertRecentEventFilters.ALL && (
-                  <Typography.Text
+                  <Typography
                     className="font-medium"
                     data-testid="applied-filter-text">{` : ${getAlertEventsFilterLabels(
                     filter as AlertRecentEventFilters
-                  )}`}</Typography.Text>
+                  )}`}</Typography>
                 )}
               </Button>
-            </Dropdown>
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>{recentEventsList}</Col>
-    </Row>
+              <Dropdown.Popover className="tw:w-auto">
+                <Dropdown.Menu
+                  aria-label={t('label.filter-plural')}
+                  selectedKeys={[filter]}
+                  onAction={handleFilterSelect}>
+                  {filterMenuItems.map((item) => (
+                    <Dropdown.Item
+                      id={item.key}
+                      key={item.key}
+                      label={item.label}
+                    />
+                  ))}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
+          </Box>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
+        {recentEventsList}
+      </Grid.Item>
+    </Grid>
   );
 }
 

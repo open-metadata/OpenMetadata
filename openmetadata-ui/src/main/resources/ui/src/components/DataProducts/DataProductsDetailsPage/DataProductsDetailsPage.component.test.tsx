@@ -13,10 +13,8 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useNavigate } from 'react-router-dom';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';

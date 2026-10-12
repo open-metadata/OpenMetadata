@@ -41,7 +41,7 @@
 }
 
 .manage-button {
-  .ant-space-item:first-child {
+  :is(.ant-space-item, .layout-space-item):first-child {
     width: 40px;
     align-self: baseline;
   }
@@ -99,12 +99,14 @@
     margin-bottom: 0;
   }
 
-  .left-panel-content > .ant-col:last-child > .ant-row {
+  .left-panel-content
+    > :is(.ant-col, .layout-column):last-child
+    > :is(.ant-row, .layout-row) {
     flex: 1 1 auto;
     min-height: 0;
     flex-flow: column nowrap;
 
-    > .ant-col {
+    > :is(.ant-col, .layout-column) {
       flex: 1 1 auto;
       min-height: 0;
       display: flex;
@@ -149,12 +151,12 @@
   }
 }
 
-.glossary-page-tabs .left-panel-content.ant-row {
+.glossary-page-tabs .left-panel-content:is(.ant-row, .layout-row) {
   flex-direction: column;
   flex-wrap: nowrap;
   align-content: stretch;
 
-  > .ant-col {
+  > :is(.ant-col, .layout-column) {
     flex: 0 0 auto;
     max-width: 100%;
 

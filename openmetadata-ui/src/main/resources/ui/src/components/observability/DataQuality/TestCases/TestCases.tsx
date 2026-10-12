@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';

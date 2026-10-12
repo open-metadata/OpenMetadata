@@ -19,7 +19,7 @@ type MockDateRangePickerProps = Pick<
   ComponentProps<
     typeof import('@openmetadata/ui-core-components').DateRangePicker
   >,
-  'value' | 'onApply' | 'onCancel' | 'onChange'
+  'value' | 'onApply' | 'onCancel' | 'onChange' | 'size' | 'fullWidth'
 >;
 
 // The core DateRangePicker speaks `@internationalized/date` values. We render a
@@ -31,8 +31,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     onApply,
     onCancel,
     onChange,
+    size,
+    fullWidth,
   }: MockDateRangePickerProps) => (
-    <div data-testid="date-range-picker">
+    <div
+      data-full-width={String(Boolean(fullWidth))}
+      data-size={size}
+      data-testid="date-range-picker">
       <span data-testid="picker-value">
         {value ? JSON.stringify(value) : 'null'}
       </span>
@@ -161,5 +166,31 @@ describe('DqDateRangeFilter', () => {
     fireEvent.click(screen.getByTestId('picker-cancel'));
 
     expect(screen.getByTestId('picker-value')).not.toHaveTextContent('null');
+  });
+
+  it('should leave the core trigger at its default size and width', () => {
+    render(<DqDateRangeFilter onApply={onApply} />);
+
+    expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
+      'data-full-width',
+      'false'
+    );
+    expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
+      'data-size',
+      'md'
+    );
+  });
+
+  it('should pass the size and full width to the core trigger', () => {
+    render(<DqDateRangeFilter fullWidth size="sm" onApply={onApply} />);
+
+    expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
+      'data-full-width',
+      'true'
+    );
+    expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
+      'data-size',
+      'sm'
+    );
   });
 });

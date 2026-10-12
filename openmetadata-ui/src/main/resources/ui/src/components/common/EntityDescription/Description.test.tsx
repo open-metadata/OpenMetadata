@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ChangeSource } from '../../../generated/type/changeSummaryMap';
@@ -38,6 +42,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {props.children}
     </button>
   )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation((props) => (
+      <button
+        aria-label={props.tooltip}
+        data-testid={props['data-testid']}
+        onClick={props.onClick}
+      />
+    )),
   Divider: jest.fn().mockImplementation(() => <hr />),
   Tooltip: jest.fn().mockImplementation((props) => props.children),
   Typography: jest
@@ -172,6 +185,30 @@ describe('Description', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('previewer')).toHaveTextContent(
       'Sample description'
+    );
+  });
+
+  it("should head the card like the rail's widget cards in the widget variant", () => {
+    render(<Description {...defaultProps} wrapInCard headerVariant="widget" />);
+
+    // The widget cards' ghost edit, named by its title, not the bordered button.
+    const edit = screen.getByRole('button', { name: 'label.edit-entity' });
+
+    expect(edit).toHaveAttribute('data-testid', 'edit-description');
+    expect(ButtonUtility).toHaveBeenCalledWith(
+      expect.objectContaining({ color: 'tertiary' }),
+      expect.anything()
+    );
+    expect(Button).not.toHaveBeenCalledWith(
+      expect.objectContaining({ 'data-testid': 'edit-description' }),
+      expect.anything()
+    );
+    expect(Typography).toHaveBeenCalledWith(
+      expect.objectContaining({
+        children: 'label.description',
+        className: 'tw:whitespace-nowrap tw:text-quaternary',
+      }),
+      expect.anything()
     );
   });
 

@@ -37,13 +37,13 @@ public class CommonUtils {
    * is what stops a read path from holding an entity it is not allowed to answer with. The rule is
    * a no-op for entity types that have none, so callers need no per-type knowledge.
    */
-  public static EntityInterface readEntityForCaller(
+  public static EntityInterface<?> readEntityForCaller(
       String entityType,
       String fqn,
       String fields,
       Include include,
       SecurityContext securityContext) {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntityByName(
             entityType, fqn, ContextMemoryVisibility.guardFields(entityType, fields), include);
     ContextMemoryVisibility.enforceVisibility(entity, securityContext);
@@ -244,14 +244,14 @@ public class CommonUtils {
       Authorizer authorizer,
       CatalogSecurityContext securityContext,
       String entityType,
-      EntityInterface entity) {
+      EntityInterface<?> entity) {
     String fqn = entity.getFullyQualifiedName();
     // Include.ALL because createOrUpdate finds the original with ALL: a soft-deleted entity at
     // this name is still updated in place, so it still needs the EDIT_ALL check.
     boolean overwritesExisting = fqn != null && entityExistsByName(entityType, fqn, Include.ALL);
     if (overwritesExisting) {
       OperationContext editContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      ResourceContext<EntityInterface> existing =
+      ResourceContext<EntityInterface<?>> existing =
           new ResourceContext<>(entityType, null, fqn, Include.ALL);
       authorizer.authorize(securityContext, editContext, existing);
     }

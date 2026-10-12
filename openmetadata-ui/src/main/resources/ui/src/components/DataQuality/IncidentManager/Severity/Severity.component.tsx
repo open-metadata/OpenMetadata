@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
@@ -52,7 +52,7 @@ const Severity = ({
   const onCancel = useCallback(() => setIsEditSeverity(false), []);
 
   const handleSubmit = useCallback(
-    async (data: Severities) => {
+    async (data?: Severities) => {
       await onSubmit?.(data);
       onCancel();
     },

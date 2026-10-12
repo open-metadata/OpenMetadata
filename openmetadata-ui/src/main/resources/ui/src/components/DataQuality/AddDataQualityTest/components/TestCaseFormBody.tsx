@@ -24,10 +24,10 @@ import {
   useFieldDoc,
   useFieldDocRegistry,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@untitledui/icons';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { debounce, snakeCase } from 'lodash';
+import { debounce, isEmpty, snakeCase } from 'lodash';
 import {
   FC,
   ReactNode,
@@ -51,7 +51,7 @@ import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { TagSource } from '../../../../generated/entity/data/container';
@@ -82,7 +82,11 @@ import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
 import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
-import { getThresholdPreviewTarget } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import {
+  DIMENSION_FAILURE_POLICY_PARAM,
+  getThresholdPreviewTarget,
+  MIN_ROWS_PER_DIMENSION_PARAM,
+} from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
@@ -153,6 +157,11 @@ const getHasTestSuite = (
   selectedTableData?: Table
 ): boolean => Boolean(testSuite?.id || selectedTableData?.testSuite?.id);
 
+const DIMENSION_ROLL_UP_PARAMS = [
+  DIMENSION_FAILURE_POLICY_PARAM,
+  MIN_ROWS_PER_DIMENSION_PARAM,
+];
+
 const getShowParameterFields = (
   hasParameterDefinition: boolean,
   useDynamicAssertionValue: unknown
@@ -164,7 +173,55 @@ const getCanShowSchedulerSection = (
   selectedTableFqn: string | undefined
 ): boolean => !showOnlyParameter && !isEditMode && Boolean(selectedTableFqn);
 
+// Edit mode lets dimension columns be added to or removed from a column test
+// without changing its test level, so only the columns tell there. Must match
+// what the create and edit submits keep in the payload.
+const getIsDimensionalTest = (
+  isEditMode: boolean,
+  testLevel: TestLevel,
+  dimensionColumns: unknown
+): boolean =>
+  isEditMode
+    ? !isEmpty(unwrapSelectValues(dimensionColumns))
+    : testLevel === TestLevel.COLUMN_DIMENSION;
+
+// A dynamic assertion learns the bounds, which hides the parameter inputs, but
+// the dimension roll-up still applies to the learned bounds.
+const getShowDimensionPolicyOnly = (
+  showParameterFields: boolean,
+  isDimensionalTest: boolean,
+  definition: TestDefinition | undefined
+): boolean =>
+  !showParameterFields &&
+  isDimensionalTest &&
+  Boolean(
+    definition?.parameterDefinition?.some(
+      (param) => param.name === DIMENSION_FAILURE_POLICY_PARAM
+    )
+  );
+
 // ─── Sub-sections (kept in-file: JSX helpers for the large form body) ─────────
+
+const DimensionPolicyOnlyField: FC<{
+  show: boolean;
+  definition?: TestDefinition;
+  form: UseFormReturn<FormValues>;
+  table?: Table;
+  fieldDocs: Record<string, string>;
+}> = ({ show, definition, form, table, fieldDocs }) =>
+  show && definition ? (
+    <ParameterFields
+      isDimensionalTest
+      definition={definition}
+      form={form}
+      onlyParams={DIMENSION_ROLL_UP_PARAMS}
+      table={table}
+      testDefinitionDoc={getFieldDoc(
+        fieldDocs[definition.name ?? ''],
+        definition.description
+      )}
+    />
+  ) : null;
 
 const TestLevelAndTableCard: FC<{
   isEditMode: boolean;
@@ -275,6 +332,8 @@ const TestTypeCard: FC<{
   computeRowCountField: FieldProp;
   dataQualityDimensionField: FieldProp;
   thresholdPreview: ReactNode;
+  isDimensionalTest: boolean;
+  showDimensionPolicyOnly: boolean;
 }> = ({
   isEditMode,
   selectedTestLevel,
@@ -294,6 +353,8 @@ const TestTypeCard: FC<{
   computeRowCountField,
   dataQualityDimensionField,
   thresholdPreview,
+  isDimensionalTest,
+  showDimensionPolicyOnly,
 }) => (
   <div
     className="form-card-section test-type-card test-type-section"
@@ -323,6 +384,7 @@ const TestTypeCard: FC<{
         <ParameterFields
           definition={selectedTestDefinition}
           form={form}
+          isDimensionalTest={isDimensionalTest}
           table={selectedTableData}
           testDefinitionDoc={getFieldDoc(
             fieldDocs[selectedTestDefinition.name ?? ''],
@@ -332,6 +394,14 @@ const TestTypeCard: FC<{
         {thresholdPreview}
       </div>
     )}
+
+    <DimensionPolicyOnlyField
+      definition={selectedTestDefinition}
+      fieldDocs={fieldDocs}
+      form={form}
+      show={showDimensionPolicyOnly}
+      table={selectedTableData}
+    />
 
     {isComputeRowCountFieldVisible && getField(computeRowCountField)}
 
@@ -624,6 +694,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
     return result;
   }, [testLevelFieldValue]);
+
+  const isDimensionalTest = getIsDimensionalTest(
+    isEditMode,
+    testLevelFieldValue,
+    dimensionColumnsValue
+  );
 
   const hasTestSuite = getHasTestSuite(testSuite, selectedTableData);
 
@@ -1033,6 +1109,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const showParameterFields = getShowParameterFields(
     Boolean(selectedTestDefinition?.parameterDefinition),
     useDynamicAssertionValue
+  );
+  // A dynamic assertion learns the bounds, which hides the parameter inputs,
+  // but the dimension roll-up still applies to the learned bounds.
+  const showDimensionPolicyOnly = getShowDimensionPolicyOnly(
+    showParameterFields,
+    isDimensionalTest,
+    selectedTestDefinition
   );
 
   useEffect(() => {
@@ -1471,11 +1554,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         handleCustomQueryToggle={handleCustomQueryToggle}
         isComputeRowCountFieldVisible={isComputeRowCountFieldVisible}
         isCustomQuery={isCustomQuery}
+        isDimensionalTest={isDimensionalTest}
         isEditMode={isEditMode}
         selectedTableData={selectedTableData}
         selectedTestDefinition={selectedTestDefinition}
         selectedTestLevel={selectedTestLevel}
         selectedTestType={selectedTestType}
+        showDimensionPolicyOnly={showDimensionPolicyOnly}
         showParameterFields={showParameterFields}
         t={t}
         testTypeField={testTypeField}

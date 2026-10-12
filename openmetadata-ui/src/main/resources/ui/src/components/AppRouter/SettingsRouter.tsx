@@ -20,7 +20,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -85,6 +85,10 @@ const DefaultAppModePage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/Settings/DefaultAppModePage/DefaultAppModePage')
   )
+);
+
+const GlossarySettings = withPageSuspenseFallback(
+  React.lazy(() => import('../governance/glossary/GlossarySettings'))
 );
 
 const EditLoginConfiguration = withPageSuspenseFallback(
@@ -833,7 +837,8 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute
-            hasPermission={userPermissions.hasViewPermissions(
+            hasPermission={checkPermission(
+              Operation.AuditLogs,
               ResourceEntity.AUDIT_LOG,
               permissions
             )}>
@@ -999,6 +1004,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.APP_MODE
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <GlossarySettings />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.GLOSSARY
         )}
       />
       <Route

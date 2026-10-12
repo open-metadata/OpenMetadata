@@ -11,13 +11,32 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { buildSync } from 'esbuild';
 import { readFileSync } from 'fs';
 import { createServer } from 'http';
 import { AddressInfo } from 'net';
-import { fillTableColumnInputDetails } from '../utils/customProperty';
 import { fillTextInputDetails, fillTierDetails } from '../utils/importUtils';
+
+// The controller harness renders a single data row, so each column class
+// resolves to exactly one cell inside the modal.
+const fillTableColumnInputDetails = async (
+  page: Page,
+  text: string,
+  columnName: string
+) => {
+  const modal = page.getByTestId('edit-table-type-property-modal');
+  const cell = modal.locator(`div.rdg-cell-${columnName}`);
+  const editor = modal.getByRole('textbox');
+
+  await cell.dblclick();
+
+  if (!(await editor.isVisible())) {
+    await cell.dblclick();
+  }
+  await editor.fill(text);
+  await cell.press('Enter', { delay: 100 });
+};
 
 const bundle = buildSync({
   stdin: {
@@ -146,8 +165,7 @@ for (const selection of ['click', 'keyboard']) {
           useEffect(() => { fetch('/api/v1/tags?parent=Tier').then(() => setReady(true)); }, []);
           return createPortal(<section role="dialog" aria-label="Edit tier">
             <button autoFocus>Cancel</button>
-            {ready ? <><label data-testid="radio-btn-Tier1"><input type="radio" name="tier" />Tier1</label>
-              <button data-testid="update-tier-card" onClick={() => onRowChange({ ...row, tier: 'Tier1' }, true)}>Save</button></>
+            {ready ? <div data-testid="drop-down-menu"><button data-testid="Tier.Tier1" onClick={() => onRowChange({ ...row, tier: 'Tier1' }, true)}>Tier1</button></div>
               : <span role="status">Loading tiers</span>}
           </section>, document.body);
         }

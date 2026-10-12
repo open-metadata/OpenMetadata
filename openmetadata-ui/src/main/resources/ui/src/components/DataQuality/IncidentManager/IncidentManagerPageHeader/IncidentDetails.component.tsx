@@ -12,7 +12,10 @@
  */
 
 import { BadgeWithDot, Button } from '@openmetadata/ui-core-components';
-import { AlertTriangle, ArrowUpRight } from '@untitledui/icons';
+import {
+  AlertTriangle,
+  ArrowUpRight,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -109,7 +112,7 @@ const IncidentDetails = ({
           iconTrailing={ArrowUpRight}
           size="xs"
           onClick={() => navigate(incidentLink.path)}>
-          {t('label.view-entity', { entity: t('label.incident') })}
+          {t('label.view-incident')}
         </Button>
       </div>
     </div>

@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Tag, Typography } from 'antd';
+import { Badge, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,7 +62,7 @@ const ContractSchemaTable: React.FC<{
         dataIndex: 'name',
         key: 'name',
         render: (name: string) => (
-          <Typography.Text className="text-primary">{name}</Typography.Text>
+          <Typography className="text-primary">{name}</Typography>
         ),
       },
       {
@@ -68,9 +70,14 @@ const ContractSchemaTable: React.FC<{
         dataIndex: 'dataType',
         key: 'dataType',
         render: (type: string) => (
-          <Tag className="custom-tag" color="purple">
+          <Badge
+            bordered={false}
+            className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+            color="purple"
+            size="sm"
+            type="color">
             {type}
-          </Tag>
+          </Badge>
         ),
       },
       ...(entityType === EntityType.TABLE
@@ -82,13 +89,20 @@ const ContractSchemaTable: React.FC<{
               render: (constraint: string) => (
                 <div>
                   {constraint ? (
-                    <Tag className="custom-tag" color="blue">
+                    <Badge
+                      bordered={false}
+                      className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                      color="blue"
+                      size="sm"
+                      type="color">
                       {constraint}
-                    </Tag>
+                    </Badge>
                   ) : (
-                    <Typography.Text data-testid="no-constraints">
+                    <Typography
+                      className="tw:text-primary"
+                      data-testid="no-constraints">
                       {NO_DATA_PLACEHOLDER}
-                    </Typography.Text>
+                    </Typography>
                   )}
                 </div>
               ),
@@ -123,8 +137,10 @@ const ContractSchemaTable: React.FC<{
   );
 
   return (
-    <Row className="contract-schema-component-container" gutter={[20, 0]}>
-      <Col span={12}>
+    <Grid
+      className="layout-row layout-grid contract-schema-component-container"
+      style={{ ...getLayoutGutter(20) }}>
+      <Grid.Item className="layout-column" span={12}>
         <Table
           columns={schemaColumns}
           dataSource={schemaDetail}
@@ -132,13 +148,16 @@ const ContractSchemaTable: React.FC<{
           rowKey="name"
           size="small"
         />
-      </Col>
-      <Col className="d-flex justify-end" span={12}>
+      </Grid.Item>
+      <Grid.Item className="layout-column d-flex justify-end" span={12}>
         {contractStatus && (
           <div className="contract-status-container">
-            <Typography.Text>{`${t('label.entity-status', {
-              entity: t('label.schema'),
-            })} :`}</Typography.Text>
+            <Typography className="contract-status-label">{`${t(
+              'label.entity-status',
+              {
+                entity: t('label.schema'),
+              }
+            )} :`}</Typography>
             <StatusBadgeV2
               dataTestId="contract-status-card-item-schema-status"
               label={contractStatus}
@@ -146,8 +165,8 @@ const ContractSchemaTable: React.FC<{
             />
           </div>
         )}
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

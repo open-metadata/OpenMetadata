@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Space, Typography } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -115,18 +117,20 @@ const ContractQualityCard: React.FC<{
   }
 
   return (
-    <Row className="data-quality-card-container" gutter={[20, 0]}>
-      <Col span={12}>
+    <Grid
+      className="layout-row layout-grid data-quality-card-container"
+      style={{ ...getLayoutGutter(20) }}>
+      <Grid.Item className="layout-column" span={12}>
         {showTestCaseSummaryChart && (
           <>
-            <Typography.Text className="data-quality-total-test">
+            <Typography className="data-quality-total-test">
               {`${t('label.total-entity', {
                 entity: t('label.test'),
               })}:`}{' '}
               <span className="data-quality-total-test-value">
                 {testCaseSummary?.total || 8000}
               </span>
-            </Typography.Text>
+            </Typography>
 
             <div className="data-quality-line-chart-container">
               <div
@@ -152,39 +156,42 @@ const ContractQualityCard: React.FC<{
             <div className="data-quality-legends-container">
               <div className="data-quality-legends-item">
                 <div className="data-quality-legends-dot success" />
-                <Typography.Text className="data-quality-legends-label">
+                <Typography className="data-quality-legends-label">
                   {`${t('label.success')}:`}{' '}
                   <span className="data-quality-legends-value">
                     {testCaseSummary?.success}
                   </span>
-                </Typography.Text>
+                </Typography>
               </div>
               <div className="data-quality-legends-item">
                 <div className="data-quality-legends-dot failed" />
-                <Typography.Text className="data-quality-legends-label">
+                <Typography className="data-quality-legends-label">
                   {`${t('label.failed')}:`}{' '}
                   <span className="data-quality-legends-value">
                     {testCaseSummary?.failed}
                   </span>
-                </Typography.Text>
+                </Typography>
               </div>
               <div className="data-quality-legends-item">
                 <div className="data-quality-legends-dot aborted" />
-                <Typography.Text className="data-quality-legends-label">
+                <Typography className="data-quality-legends-label">
                   {`${t('label.aborted')}:`}{' '}
                   <span className="data-quality-legends-value">
                     {testCaseSummary?.aborted}
                   </span>
-                </Typography.Text>
+                </Typography>
               </div>
             </div>
           </>
         )}
 
-        <Space
-          className="data-quality-test-item-container"
-          direction="vertical"
-          size={14}>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space data-quality-test-item-container"
+          direction="col"
+          itemClassName="layout-space-item"
+          style={{ gap: 'var(--om-space-14)' }}>
           {testCaseResult.map((item) => {
             return (
               <div
@@ -203,14 +210,17 @@ const ContractQualityCard: React.FC<{
               </div>
             );
           })}
-        </Space>
-      </Col>
-      <Col className="d-flex justify-end" span={12}>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column d-flex justify-end" span={12}>
         {contractStatus && (
           <div className="contract-status-container">
-            <Typography.Text>{`${t('label.entity-status', {
-              entity: t('label.quality'),
-            })} :`}</Typography.Text>
+            <Typography className="contract-status-label">{`${t(
+              'label.entity-status',
+              {
+                entity: t('label.quality'),
+              }
+            )} :`}</Typography>
             <StatusBadgeV2
               dataTestId="contract-status-card-item-quality-status"
               label={contractStatus}
@@ -218,8 +228,8 @@ const ContractQualityCard: React.FC<{
             />
           </div>
         )}
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

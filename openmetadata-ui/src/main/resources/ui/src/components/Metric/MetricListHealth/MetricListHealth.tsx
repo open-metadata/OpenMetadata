@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Button } from '@openmetadata/ui-core-components';
-import { RefreshCw01 } from '@untitledui/icons';
+import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Health } from '../../../generated/api/data/metricObservability';

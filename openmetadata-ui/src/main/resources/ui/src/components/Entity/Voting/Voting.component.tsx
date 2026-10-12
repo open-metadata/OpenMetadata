@@ -14,8 +14,8 @@
 import { ThumbsDown, ThumbsUp } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
-import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { VotingProps } from './voting.interface';
 
 const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {

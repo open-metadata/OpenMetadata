@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { buildFieldOptions, getFieldDisplayLabel } from './WorkflowConfigUtils';
+import {
+  buildEntityFieldGroups,
+  buildFieldOptions,
+  getFieldDisplayLabel,
+} from './WorkflowConfigUtils';
 
 describe('WorkflowConfigUtils.getFieldDisplayLabel', () => {
   it('shows a standard field by its bare name', () => {
@@ -95,5 +99,49 @@ describe('WorkflowConfigUtils.buildFieldOptions', () => {
     const options = buildFieldOptions(fields, new Set());
 
     expect(options).toEqual(['description']);
+  });
+});
+
+describe('buildEntityFieldGroups', () => {
+  const entitySpecific = {
+    table: ['columns', 'tableType', 'sourceUrl'],
+    dashboardDataModel: ['columns', 'sql'],
+    pipeline: ['tasks', 'sourceUrl'],
+  };
+
+  it('groups every field under its type when a single type is selected', () => {
+    expect(buildEntityFieldGroups(entitySpecific, ['table'])).toEqual({
+      columns: 'table',
+      tableType: 'table',
+      sourceUrl: 'table',
+    });
+  });
+
+  it('leaves fields shared by several selected types ungrouped', () => {
+    const groups = buildEntityFieldGroups(entitySpecific, [
+      'table',
+      'dashboardDataModel',
+      'pipeline',
+    ]);
+
+    expect(groups).toEqual({
+      tableType: 'table',
+      sql: 'dashboardDataModel',
+      tasks: 'pipeline',
+    });
+  });
+
+  it('judges sharing against the selected types only', () => {
+    expect(
+      buildEntityFieldGroups(entitySpecific, ['table', 'pipeline'])
+    ).toEqual({
+      columns: 'table',
+      tableType: 'table',
+      tasks: 'pipeline',
+    });
+  });
+
+  it('ignores selected types missing from the registry', () => {
+    expect(buildEntityFieldGroups(entitySpecific, ['unknownType'])).toEqual({});
   });
 });

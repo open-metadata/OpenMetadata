@@ -192,7 +192,9 @@ export const navigateToCustomizeLandingPage = async (
   page: Page,
   { personaName }: { personaName: string }
 ) => {
-  await page.goto(`/settings/persona/${encodeURIComponent(personaName)}`);
+  await page.goto(`/settings/persona/${encodeURIComponent(personaName)}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
 
   // Navigate to the customize landing page
@@ -221,23 +223,22 @@ export const removeAndCheckWidget = async (
   // Click on remove widget button
   await widget.locator('[data-testid="more-options-button"]').click();
 
-  await page.locator('.ant-dropdown:visible [data-menu-id*="remove"]').click();
+  await page.getByRole('menuitem', { name: 'Remove' }).click();
 
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
 
-// Callers poll this across navigations, and each iteration starts from a fresh page load, so
-// the widget needs a chance to mount inside the iteration — an instant `isVisible()` would
-// never observe it. The assertion inherits the project's expect timeout.
+// Keep each probe non-blocking so the caller can reveal a slot that mounts
+// after this probe. Waiting here would leave that slot below the viewport.
 const isLandingPageWidgetVisible = async (
   page: Page,
   widgetKey: string
 ): Promise<boolean> => {
   await revealLandingPageWidget(page, widgetKey);
 
-  return expect(page.getByTestId(widgetKey))
-    .toBeVisible()
-    .then(() => true)
+  return page
+    .getByTestId(widgetKey)
+    .isVisible()
     .catch(() => false);
 };
 
@@ -464,57 +465,39 @@ export const addCuratedAssetPlaceholder = async ({
   ).toBeVisible();
 };
 
-// Helper function to select asset types in the dropdown
 export const selectAssetTypes = async (
   page: Page,
   assetTypes: string[] | 'all'
 ) => {
-  // Click on asset type selector to open dropdown
-  await page.locator('[data-testid="asset-type-select"]').click();
+  const field = page.getByTestId('asset-type-select');
+  const search = field.getByRole('textbox');
+  await field.click();
+  const tree = page.getByTestId('asset-type-select-popover');
+  await expect(tree.getByTestId('tree-node-all')).toBeVisible();
 
-  // Wait for dropdown to be visible
-  await page.locator('.ant-select-dropdown').waitFor({
-    state: 'visible',
-    timeout: 5000,
-  });
-
-  // Wait for the tree to load
-  await page.locator('.ant-select-tree').waitFor({
-    state: 'visible',
-    timeout: 5000,
-  });
-
-  if (assetTypes === 'all') {
-    // Select all asset types using the checkbox
-    await page.locator('[data-testid="all-option"]').click();
-  } else {
-    // Select specific asset types
-    for (const assetType of assetTypes) {
-      // Find the corresponding config for search term
-      const config = ENTITY_TYPE_CONFIGS.find(
-        (c) => c.name === assetType || c.displayName === assetType
-      );
-      const searchTerm = config?.searchTerm || assetType;
-      const index = config?.index || assetType.toLowerCase();
-
-      // Search for the asset type
-      await page.keyboard.type(searchTerm);
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
-      await page.waitForTimeout(500);
-
-      // Try to click the filtered result
-      const filteredElement = page.locator(`[data-testid="${index}-option"]`);
-
-      if (await filteredElement.isVisible()) {
-        await filteredElement.click();
-      }
-
-      await page.getByText('Select Asset Type').click();
-    }
+  const types = assetTypes === 'all' ? ['all'] : assetTypes;
+  for (const assetType of types) {
+    const config = ENTITY_TYPE_CONFIGS.find(
+      (entry) => entry.name === assetType || entry.displayName === assetType
+    );
+    const index = assetType === 'all' ? 'all' : config?.index;
+    expect(index, `Asset type configuration for ${assetType}`).toBeTruthy();
+    // The search matches the asset type value as well as its display label,
+    // which can differ (the page value is "Article").
+    await search.fill(index ?? '');
+    const option = tree.getByTestId(`tree-node-${index}`);
+    await expect(option).toBeVisible();
+    await option.click();
+    await expect(tree.getByTestId(`checkbox-${index}`)).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
   }
 
-  // Close the dropdown
-  await page.getByText('Select Asset Type').click();
+  // Escape would also dismiss the parent modal, so close the tree by clicking
+  // outside it, on the modal title.
+  await page.getByTestId('curated-assets-modal-title').click();
+  await expect(tree).toBeHidden();
 };
 
 // Helper function to test widget footer "View More" button
@@ -590,7 +573,7 @@ export const verifyWidgetFooterViewMore = async (
 
   if (expectedLink) {
     // Wait for the specific URL
-    await page.waitForURL(expectedLink);
+    await page.waitForURL(expectedLink, { waitUntil: 'domcontentloaded' });
   } else if (link) {
     const currentUrl = page.url();
 
@@ -668,7 +651,7 @@ export const verifyWidgetEntityNavigation = async (
   const hasEntities = (await entityItems.count()) > 0;
 
   if (hasEntities) {
-    await expect(entityItems.first()).toBeVisible();
+    await expect(entityItems.filter({ visible: true })).not.toHaveCount(0);
 
     // Get the first entity item
     const firstEntity = entityItems.first();

@@ -424,5 +424,10 @@ class OntologyAiServiceTest {
       assertEquals(GLOSSARY_FQN, prompt.glossary());
       return domainCompletion;
     }
+
+    @Override
+    public Completion<MemoryTermCandidate> deriveTermsFromMemories(final MemoryTermPrompt prompt) {
+      throw new UnsupportedOperationException("Memory derivation is tested separately");
+    }
   }
 }

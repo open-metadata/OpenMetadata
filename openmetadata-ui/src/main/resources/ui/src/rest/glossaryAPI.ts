@@ -14,10 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
-import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
-import { MoveGlossaryTermWebsocketResponse } from '../components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.interface';
-import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
@@ -37,6 +34,9 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { RelationshipTypeUsage } from '../generated/type/relationshipTypeUsage';
 import { TermRelation } from '../generated/type/termRelation';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
+import { CSVExportResponse } from '../interface/entity/csv.interface';
+import { VotingDataProps } from '../interface/entity/vote.interface';
+import { MoveGlossaryTermWebsocketResponse } from '../interface/governance/glossary.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 
@@ -117,41 +117,6 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   );
 
   return response.data;
-};
-
-export const queryGlossaryTerms = async (
-  glossaryName: string,
-  signal?: AbortSignal
-) => {
-  const apiUrl = `/search/query`;
-
-  const { data } = await APIClient.get(apiUrl, {
-    params: {
-      index: SearchIndex.GLOSSARY_TERM,
-      q: '',
-      from: 0,
-      size: ES_MAX_PAGE_SIZE,
-      deleted: false,
-      track_total_hits: true,
-      query_filter: JSON.stringify({
-        query: {
-          bool: {
-            must: [
-              {
-                term: {
-                  'glossary.name.keyword': glossaryName.toLocaleLowerCase(),
-                },
-              },
-            ],
-          },
-        },
-      }),
-      getHierarchy: true,
-    },
-    signal,
-  });
-
-  return data;
 };
 
 export const getGlossaryTermsById = async (id: string, params?: ListParams) => {
@@ -487,7 +452,9 @@ export const getFirstLevelGlossaryTermsPaginated = async (
 export const getGlossaryTermChildrenLazy = async (
   parentFQN: string,
   limit = 50,
-  after?: string
+  after?: string,
+  // A picker needs the name and the chevron, not the owner/reviewer joins.
+  options?: { fields?: TabSpecificField[]; signal?: AbortSignal }
 ) => {
   const apiUrl = `/glossaryTerms`;
 
@@ -496,7 +463,7 @@ export const getGlossaryTermChildrenLazy = async (
   >(apiUrl, {
     params: {
       directChildrenOf: parentFQN,
-      fields: [
+      fields: options?.fields ?? [
         TabSpecificField.CHILDREN_COUNT,
         TabSpecificField.OWNERS,
         TabSpecificField.REVIEWERS,
@@ -504,6 +471,7 @@ export const getGlossaryTermChildrenLazy = async (
       limit,
       after,
     },
+    signal: options?.signal,
   });
 
   return data;

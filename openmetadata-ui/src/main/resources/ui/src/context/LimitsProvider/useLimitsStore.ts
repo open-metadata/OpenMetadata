@@ -13,52 +13,12 @@
 import { isNil, startCase } from 'lodash';
 import { useCallback } from 'react';
 import { create } from 'zustand';
+import {
+  LimitConfig,
+  ResourceLimit,
+} from '../../interface/platform/limits.interface';
 import { getLimitByResource } from '../../rest/limitsAPI';
 import i18n from '../../utils/i18next/LocalUtil';
-
-export interface ResourceLimit {
-  featureLimitStatuses: Array<{
-    configuredLimit: {
-      name: string;
-      maxVersions?: number;
-      disableFields?: Array<string>;
-      disabledFields?: Array<string>;
-      limits: {
-        softLimit: number;
-        hardLimit: number;
-      };
-    };
-    limitReached: boolean;
-    currentCount: number;
-    name: string;
-  }>;
-}
-
-export type LimitConfig = {
-  enable: boolean;
-  limits: {
-    config: {
-      version: string;
-      plan: string;
-      installationType: string;
-      deployment: string;
-      companyName: string;
-      domain: string;
-      instances: number;
-      featureLimits: Array<{
-        name: string;
-        maxVersions: number;
-        versionHistory: number;
-        limits: {
-          softLimit: number;
-          hardLimit: number;
-        };
-        disableFields: Array<string>;
-        pipelineSchedules?: Array<string>;
-      }>;
-    };
-  };
-};
 
 export type BannerDetails = {
   header: string;
@@ -233,3 +193,6 @@ export const useIsLimitReached = () => {
     [config?.enable, resourceLimit]
   );
 };
+
+// Re-exported because consumers outside this repository import it from this path.
+export type { ResourceLimit } from '../../interface/platform/limits.interface';

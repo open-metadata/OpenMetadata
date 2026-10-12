@@ -12,7 +12,7 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-} from '@untitledui/icons';
+} from '../../../icons';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { PaginationRootProps } from './pagination-base';
@@ -410,6 +410,8 @@ interface PaginationCardWithControlsProps extends PaginationProps {
   pageSizeOptions?: number[];
   /** The function to call when rows per page changes. */
   onPageSizeChange?: (pageSize: number) => void;
+  /** Hide the page input and numbered pages, leaving only prev/next + records. */
+  minimal?: boolean;
 }
 
 export const PaginationCardWithControls = ({
@@ -418,6 +420,7 @@ export const PaginationCardWithControls = ({
   pageSize = 10,
   pageSizeOptions = [10, 25, 50],
   className,
+  minimal = false,
   onPageChange,
   onPageSizeChange,
   ...props
@@ -504,26 +507,32 @@ export const PaginationCardWithControls = ({
       page={currentPage}
       total={totalPages}
       onPageChange={handlePageChange}>
-      <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-5 tw:gap-y-3">
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>
-            {t('label.page', 'Page')}
-          </span>
-          <input
-            aria-label={t('label.current-page', 'Current page')}
-            className={compactPageInputClassName}
-            inputMode="numeric"
-            max={totalPages}
-            min={1}
-            style={{ width: pageInputWidth }}
-            type="text"
-            value={pageInput}
-            onBlur={commitPageInput}
-            onChange={handlePageInputChange}
-            onKeyDown={handlePageInputKeyDown}
-          />
-          <span className={compactTextClassName}>of {totalPages}</span>
-        </div>
+      <div
+        className={cx(
+          'tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:gap-x-5 tw:gap-y-3',
+          minimal ? 'tw:justify-center' : 'tw:justify-between'
+        )}>
+        {!minimal && (
+          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
+            <span className={compactTextClassName}>
+              {t('label.page', 'Page')}
+            </span>
+            <input
+              aria-label={t('label.current-page', 'Current page')}
+              className={compactPageInputClassName}
+              inputMode="numeric"
+              max={totalPages}
+              min={1}
+              style={{ width: pageInputWidth }}
+              type="text"
+              value={pageInput}
+              onBlur={commitPageInput}
+              onChange={handlePageInputChange}
+              onKeyDown={handlePageInputKeyDown}
+            />
+            <span className={compactTextClassName}>of {totalPages}</span>
+          </div>
+        )}
 
         <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-2 tw:px-1">
           <Pagination.PrevTrigger asChild>
@@ -535,29 +544,37 @@ export const PaginationCardWithControls = ({
             </button>
           </Pagination.PrevTrigger>
 
-          <Pagination.Context>
-            {({ pages }) => (
-              <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-1">
-                {pages.map((page, index) =>
-                  page.type === 'page' ? (
-                    <Pagination.Item
-                      className={compactPageItemClassName}
-                      key={index}
-                      {...page}
-                      asChild>
-                      <button type="button">{page.value}</button>
-                    </Pagination.Item>
-                  ) : (
-                    <Pagination.Ellipsis
-                      className="tw:mx-0 tw:flex tw:h-6 tw:w-4 tw:shrink-0 tw:items-center tw:justify-center tw:px-0 tw:text-sm tw:font-medium tw:leading-5 tw:text-quaternary"
-                      key={index}>
-                      &#8230;
-                    </Pagination.Ellipsis>
-                  )
-                )}
-              </div>
-            )}
-          </Pagination.Context>
+          {minimal && (
+            <span className={cx(compactTextClassName, 'tw:whitespace-nowrap')}>
+              {t('label.page', 'Page')} {currentPage} of {totalPages}
+            </span>
+          )}
+
+          {!minimal && (
+            <Pagination.Context>
+              {({ pages }) => (
+                <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-1">
+                  {pages.map((page, index) =>
+                    page.type === 'page' ? (
+                      <Pagination.Item
+                        className={compactPageItemClassName}
+                        key={index}
+                        {...page}
+                        asChild>
+                        <button type="button">{page.value}</button>
+                      </Pagination.Item>
+                    ) : (
+                      <Pagination.Ellipsis
+                        className="tw:mx-0 tw:flex tw:h-6 tw:w-4 tw:shrink-0 tw:items-center tw:justify-center tw:px-0 tw:text-sm tw:font-medium tw:leading-5 tw:text-quaternary"
+                        key={index}>
+                        &#8230;
+                      </Pagination.Ellipsis>
+                    )
+                  )}
+                </div>
+              )}
+            </Pagination.Context>
+          )}
 
           <Pagination.NextTrigger asChild>
             <button

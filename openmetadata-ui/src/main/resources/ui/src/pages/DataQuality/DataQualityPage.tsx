@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Button, Card, Dropdown, Space } from 'antd';
+import { Box, Button, Dropdown, Tabs } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import { Card } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -181,8 +181,8 @@ const DataQualityPage = () => {
                 testSuitePermission?.Create && (
                   <Button
                     data-testid="add-test-suite-btn"
-                    type="primary"
-                    onClick={handleOpenBundleSuiteModal}>
+                    size="sm"
+                    onPress={handleOpenBundleSuiteModal}>
                     {t('label.add-a-entity', {
                       entity: t('label.bundle-suite'),
                     })}
@@ -191,8 +191,8 @@ const DataQualityPage = () => {
               {activeTab === DataQualityPageTabs.TEST_CASES && (
                 <Button
                   data-testid="add-test-case-btn"
-                  type="primary"
-                  onClick={handleOpenTestCaseModal}>
+                  size="sm"
+                  onPress={handleOpenTestCaseModal}>
                   {t('label.add-a-entity', {
                     entity: t('label.test-case'),
                   })}
@@ -202,22 +202,29 @@ const DataQualityPage = () => {
 
               {activeTab === DataQualityPageTabs.DASHBOARD &&
                 !isEmpty(addButtonContent) && (
-                  <Dropdown
-                    className="m-l-md"
-                    menu={{
-                      items: addButtonContent,
-                    }}
-                    placement="bottomRight"
-                    trigger={['click']}>
+                  <Dropdown.Root>
                     <Button
+                      className="m-l-md"
                       data-testid="data-quality-add-button-menu"
-                      type="primary">
-                      <Space>
-                        {t('label.add')}
-                        <DownOutlined />
-                      </Space>
+                      iconTrailing={<ChevronDown size={14} />}
+                      size="sm">
+                      {t('label.add')}
                     </Button>
-                  </Dropdown>
+                    <Dropdown.Popover className="tw:w-auto">
+                      <Dropdown.Menu
+                        aria-label={t('label.add')}
+                        selectionMode="none">
+                        {addButtonContent.map((item) => (
+                          <Dropdown.Item
+                            id={item.key}
+                            key={item.key}
+                            onAction={item.onClick}>
+                            {item.label}
+                          </Dropdown.Item>
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown.Root>
                 )}
             </div>
           </div>

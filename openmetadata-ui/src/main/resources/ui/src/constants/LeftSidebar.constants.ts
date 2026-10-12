@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Cube01 } from '@untitledui/icons';
+import { Cube01 } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';

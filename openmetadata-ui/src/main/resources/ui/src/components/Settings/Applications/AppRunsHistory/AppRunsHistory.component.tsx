@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import validator from '@rjsf/validator-ajv8';
-import { Button, Modal, Space, Typography } from 'antd';
+import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
 import {
@@ -58,6 +60,7 @@ import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHol
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import { ColumnsType } from '../../../common/Table/Table.interface';
@@ -275,12 +278,27 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'runType',
           key: 'runType',
           render: (runType, record) => (
-            <Typography.Text>
+            <Typography className="tw:text-primary">
               {record.isSynthetic
                 ? NO_DATA_PLACEHOLDER
                 : runType ?? NO_DATA_PLACEHOLDER}
-            </Typography.Text>
+            </Typography>
           ),
+        },
+        {
+          title: t('label.triggered-by'),
+          dataIndex: 'triggeredBy',
+          key: 'triggeredBy',
+          render: (triggeredBy: AppRunRecord['triggeredBy'], record) =>
+            !record.isSynthetic && triggeredBy ? (
+              <UserPopOverCard
+                showUserName
+                profileWidth={24}
+                userName={triggeredBy}
+              />
+            ) : (
+              NO_DATA_PLACEHOLDER
+            ),
         },
         {
           title: t('label.duration'),
@@ -407,7 +425,7 @@ const AppRunsHistory = forwardRef(
             item.appId === updatedRecord.appId &&
             item.startTime === updatedRecord.startTime
           ) {
-            return { ...updatedRecord, id: item.id };
+            return { ...item, ...updatedRecord, id: item.id };
           }
 
           return item;
@@ -472,6 +490,7 @@ const AppRunsHistory = forwardRef(
       <>
         <Table
           columns={tableColumn}
+          containerClassName="tw:rounded-xl tw:border-subtle"
           customPaginationProps={{
             isNumberBased: true,
             showPagination: showPagination && paginationVisible,
@@ -534,23 +553,28 @@ const AppRunsHistory = forwardRef(
           closable={false}
           data-testid="edit-table-type-property-modal"
           footer={
-            <Space className="w-full justify-end">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal w-full justify-end"
+              gap={2}
+              itemClassName="layout-space-item">
               <Button
                 data-testid="app-run-config-close"
                 type="primary"
                 onClick={() => setShowConfigModal(false)}>
                 {t('label.close')}
               </Button>
-            </Space>
+            </Box>
           }
           maskClosable={false}
           open={showConfigModal}
           title={
-            <Typography.Text>
+            <Typography>
               {t('label.entity-configuration', {
                 entity: getEntityName(appData) ?? t('label.application'),
               })}
-            </Typography.Text>
+            </Typography>
           }
           width={800}>
           {jsonSchema && (

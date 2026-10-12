@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
-import { Checkbox, Col, Row } from 'antd';
+import { Box, Owner } from '@openmetadata/ui-core-components';
+import { Checkbox } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -167,13 +167,17 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
             handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab),
           true
         )}>
-        <Row className="data-asset-info-row" wrap={false}>
+        <Box className="layout-row data-asset-info-row" wrap="nowrap">
           {showCheckboxes && (
-            <Col className="flex-center" flex="20px">
-              <Checkbox checked={checked} />
-            </Col>
+            <Box
+              className="layout-column tw:block flex-center"
+              style={{ flex: '0 0 20px' }}>
+              {/* Same test id as ExploreSearchCard's checkbox, so Playwright selects
+                assets in this modal and in the asset tabs the same way. */}
+              <Checkbox checked={checked} data-testid="asset-checkbox" />
+            </Box>
           )}
-          <Col flex="auto">
+          <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
             <EntityHeader
               showOnlyDisplayName
               titleIsLink
@@ -189,8 +193,8 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               showName={showName}
               titleColor={theme.primaryColor}
             />
-          </Col>
-        </Row>
+          </Box>
+        </Box>
         {showBody && (
           <div className="p-t-sm">
             <TableDataCardBody

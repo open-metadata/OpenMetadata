@@ -39,7 +39,9 @@ test.describe('Schema definition (views)', () => {
 
     await page.click('[data-testid="schema_definition"]');
 
-    await expect(page.locator(CODE_EDITOR_LINE).first()).toBeVisible();
+    await expect(
+      page.locator(CODE_EDITOR_LINE).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     await expect(page.locator(CODE_EDITOR_CONTENT)).toContainText(query);
   });

@@ -64,8 +64,8 @@ test('Should show loader then render classification content on initial page load
   await expect(page.getByTestId('description-container')).toBeVisible();
   await expect(page.getByTestId('table')).toBeVisible();
   await expect(
-    page.getByTestId('side-panel-classification').first()
-  ).toBeVisible();
+    page.getByTestId('side-panel-classification').filter({ visible: true })
+  ).not.toHaveCount(0);
 });
 
 test('Should render all classification detail sections after loading', async ({
@@ -118,14 +118,14 @@ test('Should render classification correctly after page reload', async ({
   const classificationsResponse = page.waitForResponse(
     '/api/v1/classifications?**'
   );
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await classificationsResponse;
 
   await waitForAllLoadersToDisappear(page);
 
   await expect(
-    page.getByTestId('side-panel-classification').first()
-  ).toBeVisible();
+    page.getByTestId('side-panel-classification').filter({ visible: true })
+  ).not.toHaveCount(0);
   await expect(page.getByTestId('header')).toBeVisible();
   await expect(page.getByTestId('table')).toBeVisible();
 });

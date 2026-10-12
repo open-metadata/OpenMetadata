@@ -42,6 +42,7 @@ import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggrega
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -50,6 +51,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class ElasticSearchAggregationManager implements AggregationManagementClient {
   private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
       new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
+  private static final String MATCH_ALL_TEXT = "*";
 
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
@@ -76,8 +78,14 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
    * {@code ElasticSearchRequestBuilder#build} apply its org-wide-only default instead.
    */
   private void applyContextMemoryVisibility(
-      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
-    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      String queryFilter) {
+    OMQueryBuilder visibilityBuilder =
+        MEMORY_VISIBILITY.buildVisibilityFilter(
+            subjectContext,
+            ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+            ContextMemoryAnchorPins.ofQueryFilters(queryFilter));
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -124,6 +132,27 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
   }
 
+  /**
+   * A bare query_string searches every field in the mapping, which on large data-asset mappings can
+   * exceed the cluster's max_clause_count, so data-asset text goes through the configured fields
+   * instead. {@code *} and other indexes keep the bare query_string.
+   */
+  private static Query plainTextQuery(String index, String text) {
+    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
+    if (!MATCH_ALL_TEXT.equals(text.trim()) && SearchUtils.usesDataAssetSearchBuilder(indexName)) {
+      return configuredFieldsQuery(index, text);
+    }
+    return Query.of(q -> q.queryString(qs -> qs.query(text)));
+  }
+
+  private static Query configuredFieldsQuery(String index, String text) {
+    SearchSettings searchSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    return new ElasticSearchSourceBuilderFactory(searchSettings)
+        .getSearchSourceBuilderV2(index, text, 0, 0, false, false)
+        .query();
+  }
+
   private String praseJsonQuery(String jsonQuery) throws JsonProcessingException {
     JsonNode rootNode = mapper.readTree(jsonQuery);
     String queryToProcess = jsonQuery;
@@ -162,19 +191,12 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
             throw new IOException("Failed to parse JSON query: " + e.getMessage(), e);
           }
         } else {
-          query = Query.of(q -> q.queryString(qs -> qs.query(request.getQuery())));
+          query = plainTextQuery(indexName, request.getQuery());
         }
       }
 
       if (!CommonUtil.nullOrEmpty(request.getQueryText())) {
-        SearchSettings searchSettings =
-            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-        ElasticSearchSourceBuilderFactory searchBuilderFactory =
-            new ElasticSearchSourceBuilderFactory(searchSettings);
-        ElasticSearchRequestBuilder textQueryBuilder =
-            searchBuilderFactory.getSearchSourceBuilderV2(
-                indexName, request.getQueryText(), 0, 0, false, false);
-        Query textQuery = textQueryBuilder.query();
+        Query textQuery = configuredFieldsQuery(indexName, request.getQueryText());
         if (textQuery != null) {
           if (query != null) {
             final Query finalQuery = query;
@@ -694,7 +716,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       String resolvedIndex =
           Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
 
-      applyContextMemoryVisibility(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(subjectContext, requestBuilder, request.getQueryFilter());
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

@@ -4,7 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addOperationsToPolicyRule;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,6 +26,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationTableUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 /**
@@ -247,7 +247,7 @@ public class MigrationUtil {
       if (ref == null || ref.getId() == null) return Collections.emptyList();
 
       Object entity = repo.get(null, ref.getId(), repo.getFields(Entity.FIELD_DOMAINS));
-      if (!(entity instanceof EntityInterface ei)) {
+      if (!(entity instanceof EntityInterface<?> ei)) {
         return Collections.emptyList();
       }
 
@@ -441,21 +441,7 @@ public class MigrationUtil {
   }
 
   private boolean tableExists(String tableName) {
-    try (ResultSet tables =
-        handle
-            .getConnection()
-            .getMetaData()
-            .getTables(null, null, tableName, new String[] {"TABLE"})) {
-      while (tables.next()) {
-        if (tableName.equalsIgnoreCase(tables.getString("TABLE_NAME"))) {
-          return true;
-        }
-      }
-      return false;
-    } catch (Exception e) {
-      LOG.warn("Could not check for table '{}': {}", tableName, e.getMessage());
-      return false;
-    }
+    return MigrationTableUtil.tableExists(handle, tableName);
   }
 
   // ---------------------------------------------------------------------------

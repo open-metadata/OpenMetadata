@@ -21,6 +21,7 @@ import {
   BundleSuiteBulkAddRequestClass,
   Mode as BundleSuiteBulkAddMode,
 } from '../generated/api/tests/bundleSuiteBulkAddRequest';
+import type { BundleSuiteBulkRemoveRequest } from '../generated/api/tests/bundleSuiteBulkRemoveRequest';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
@@ -44,7 +45,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+import { CSVImportAsyncResponse } from '../interface/entity/csv.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 
@@ -301,6 +302,19 @@ export const removeTestCaseFromTestSuite = async (
     AddTestCaseToLogicalTestSuiteType,
     AxiosResponse<TestCase>
   >(`${testCaseUrl}/logicalTestCases/${testSuiteId}/${testCaseId}`);
+
+  return response.data;
+};
+
+export const removeTestCasesFromTestSuiteBulk = async (
+  testSuiteId: string,
+  testCaseIds: string[]
+): Promise<TestSuite> => {
+  const request: BundleSuiteBulkRemoveRequest = { testSuiteId, testCaseIds };
+  const response = await APIClient.post<
+    BundleSuiteBulkRemoveRequest,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/logicalTestCases/bulk/remove`, request);
 
   return response.data;
 };

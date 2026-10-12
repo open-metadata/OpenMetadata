@@ -1,6 +1,7 @@
 package org.openmetadata.it.util;
 
 public final class SharedResourceLocks {
+  public static final String APP_RUN_RECORDS = "appRunRecords";
   public static final String GLOSSARY_TERM_RELATION_SETTINGS = "glossaryTermRelationSettings";
   public static final String OPEN_LINEAGE_SETTINGS = "openLineageSettings";
   public static final String SEARCH_SETTINGS = "searchSettings";

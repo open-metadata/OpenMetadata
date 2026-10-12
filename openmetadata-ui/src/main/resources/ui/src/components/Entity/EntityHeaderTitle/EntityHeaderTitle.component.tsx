@@ -17,12 +17,12 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ROUTES } from '../../../constants/constants';
@@ -263,10 +263,11 @@ const EntityHeaderTitle = ({
               aria-label={t('label.copy-item', {
                 item: t('label.url-uppercase'),
               })}
-              className="copy-button tw:size-[22px] tw:rounded-md tw:border tw:border-solid tw:border-utility-gray-blue-100 tw:bg-surface tw:p-1 tw:hover:bg-surface"
               color="tertiary"
-              iconLeading={<ShareIcon className="tw:size-3.5" />}
+              data-testid="entity-header-copy-button"
+              iconLeading={Copy01}
               size="xs"
+              type="button"
               onClick={handleShareButtonClick}
             />
           </Tooltip>

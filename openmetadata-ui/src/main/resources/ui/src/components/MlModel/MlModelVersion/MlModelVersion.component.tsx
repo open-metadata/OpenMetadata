@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Card, Divider, Space, Typography } from 'antd';
+import {
+  Box,
+  Divider,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -71,17 +76,22 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   const mlFeaturesData = useMemo(
     () => getMlFeatureVersionData(currentVersionData, changeDescription),
@@ -161,9 +171,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                         <Divider className="m-y-md" />
                       </div>
                       <div>
-                        <Typography.Title level={5}>
+                        <Typography as="h5" size="text-md" weight="semibold">
                           {t('label.feature-plural-used')}
-                        </Typography.Title>
+                        </Typography>
                       </div>
 
                       {mlFeaturesData?.map((feature: MlFeature) => (
@@ -175,40 +185,55 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                             key={feature.fullyQualifiedName}>
                             <Box direction="col">
                               <div className="m-b-xs">
-                                <Typography.Text className="font-semibold">
+                                <Typography className="font-semibold">
                                   {feature.name}
-                                </Typography.Text>
+                                </Typography>
                               </div>
                               <div className="m-b-xs">
-                                <Space align="start">
-                                  <Space>
-                                    <Typography.Text className="text-grey-muted">
+                                <Box
+                                  inline
+                                  align="start"
+                                  className="layout-space layout-space-horizontal"
+                                  gap={2}
+                                  itemClassName="layout-space-item">
+                                  <Box
+                                    inline
+                                    align="center"
+                                    className="layout-space layout-space-horizontal"
+                                    gap={2}
+                                    itemClassName="layout-space-item">
+                                    <Typography color="secondary">
                                       {`${t('label.type')}:`}
-                                    </Typography.Text>{' '}
-                                    <Typography.Text>
+                                    </Typography>{' '}
+                                    <Typography>
                                       {feature.dataType || '--'}
-                                    </Typography.Text>
-                                  </Space>
+                                    </Typography>
+                                  </Box>
                                   <Divider
-                                    className="border-gray"
-                                    type="vertical"
+                                    className="tw:mx-2 tw:mt-1 tw:h-[0.9em] tw:min-h-0"
+                                    orientation="vertical"
                                   />
-                                  <Space>
-                                    <Typography.Text className="text-grey-muted">
+                                  <Box
+                                    inline
+                                    align="center"
+                                    className="layout-space layout-space-horizontal"
+                                    gap={2}
+                                    itemClassName="layout-space-item">
+                                    <Typography color="secondary">
                                       {`${t('label.algorithm')}:`}
-                                    </Typography.Text>{' '}
-                                    <Typography.Text>
+                                    </Typography>{' '}
+                                    <Typography>
                                       {feature.featureAlgorithm || '--'}
-                                    </Typography.Text>
-                                  </Space>
-                                </Space>
+                                    </Typography>
+                                  </Box>
+                                </Box>
                               </div>
                               <div className="m-b-xs">
                                 <Box gap={2}>
                                   <div className="tw:flex-[0_0_130px]">
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.glossary-term-plural')} :`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </div>
 
                                   <div className="tw:min-w-0 tw:flex-auto">
@@ -226,9 +251,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                               <div className="m-b-xs">
                                 <Box gap={2}>
                                   <div className="tw:flex-[0_0_130px]">
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.tag-plural')} :`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </div>
                                   <div className="tw:min-w-0 tw:flex-auto">
                                     <TagsViewer
@@ -245,25 +270,30 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                               <div className="m-b-xs">
                                 <Box gap={2}>
                                   <div className="tw:flex-[0_0_120px]">
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography color="secondary">
                                       {`${t('label.description')} :`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </div>
                                   <div className="tw:min-w-0 tw:flex-auto">
-                                    <Space align="start">
+                                    <Box
+                                      inline
+                                      align="start"
+                                      className="layout-space layout-space-horizontal"
+                                      gap={2}
+                                      itemClassName="layout-space-item">
                                       {feature.description ? (
                                         <RichTextEditorPreviewerV1
                                           enableSeeMoreVariant={false}
                                           markdown={feature.description}
                                         />
                                       ) : (
-                                        <Typography.Text className="text-grey-muted">
+                                        <Typography color="secondary">
                                           {t('label.no-entity', {
                                             entity: t('label.description'),
                                           })}
-                                        </Typography.Text>
+                                        </Typography>
                                       )}
-                                    </Space>
+                                    </Box>
                                   </div>
                                 </Box>
                               </div>
@@ -285,7 +315,13 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             <div
               className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
               data-testid="entity-right-panel">
-              <Space className="w-full" direction="vertical" size="large">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -302,7 +338,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
+              </Box>
             </div>
           </Box>
         ),
@@ -347,6 +383,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
+                domains={domainRef}
                 entityType={EntityType.MLMODEL}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

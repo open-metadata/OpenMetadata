@@ -38,13 +38,15 @@ export interface McpApplicationConfigurationProps {
 /**
  * Base URL and allowed origins are the two settings an operator has to be able to correct from
  * the product: an empty allowlist makes the MCP server reject every cross-origin request, and a
- * wrong base URL breaks the OAuth metadata behind a load balancer. Everything else in the stored
+ * wrong base URL breaks the OAuth metadata behind a load balancer. The response cap depends on
+ * which MCP clients connect, so it is set here too. Everything else in the stored
  * `mcpConfiguration` (timeouts, plus fields no code reads) stays out of the form but is merged
  * back on save, because the PUT replaces the whole setting.
  */
 const EDITABLE_MCP_CONFIG_FIELDS: (keyof MCPConfiguration)[] = [
   'baseUrl',
   'allowedOrigins',
+  'maxResponseChars',
 ];
 
 /**

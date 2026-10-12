@@ -339,7 +339,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public EntityInterface getParentEntity(TestSuite entity, String fields) {
+  public EntityInterface<?> getParentEntity(TestSuite entity, String fields) {
     if (entity.getBasic() && entity.getBasicEntityReference() != null) {
       var filteredFields = EntityUtil.getFilteredFields(TABLE, fields);
       return Entity.getEntity(entity.getBasicEntityReference(), filteredFields, ALL);
@@ -601,7 +601,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     super.postCreate(entity);
     if (Boolean.TRUE.equals(entity.getBasic()) && entity.getBasicEntityReference() != null) {
       // Update table index with test suite field
-      EntityInterface entityInterface =
+      EntityInterface<?> entityInterface =
           getEntity(entity.getBasicEntityReference(), "testSuite", ALL);
       IndexMapping indexMapping =
           searchRepository.getIndexMapping(entity.getBasicEntityReference().getType());
@@ -672,7 +672,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     Map<UUID, List<EntityReference>> ingestionPipelineMap =
         entities.stream()
-            .collect(Collectors.toMap(EntityInterface::getId, this::getIngestionPipelines));
+            .collect(Collectors.toMap(EntityInterface<?>::getId, this::getIngestionPipelines));
     setFieldFromMap(true, entities, ingestionPipelineMap, TestSuite::setPipelines);
   }
 
@@ -1056,7 +1056,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private class TestSuitePipelineStatusHandler implements EntityLifecycleEventHandler {
     @Override
     public void onEntityUpdated(
-        EntityInterface entity,
+        EntityInterface<?> entity,
         ChangeDescription changeDescription,
         SubjectContext subjectContext) {
       if (!(entity instanceof IngestionPipeline pipeline)) {

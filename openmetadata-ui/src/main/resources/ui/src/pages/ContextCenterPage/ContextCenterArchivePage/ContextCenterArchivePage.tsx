@@ -24,10 +24,8 @@ import ContextCenterHeader from '../../../components/ContextCenter/ContextCenter
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import { ARCHIVE_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
@@ -235,7 +233,7 @@ const ContextCenterArchivePage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-canvas ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-archive-page">
       <DocumentTitle title={t('label.archive')} />
       <PageLayout

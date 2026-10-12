@@ -445,7 +445,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public EntityInterface getParentEntity(Dashboard entity, String fields) {
+  public EntityInterface<?> getParentEntity(Dashboard entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }

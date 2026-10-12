@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { Button, Card } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -35,15 +36,15 @@ function ObservabilityAlertsHeader({
 
   return (
     <Card>
-      <Row>
-        <Col span={16}>
+      <Grid className="layout-row layout-grid">
+        <Grid.Item className="layout-column" span={16}>
           <PageHeader
             data={pageHeaderData}
             learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
             title={t('label.observability-alert')}
           />
-        </Col>
-        <Col className="d-flex justify-end" span={8}>
+        </Grid.Item>
+        <Grid.Item className="layout-column d-flex justify-end" span={8}>
           {canCreate && (
             <LimitWrapper resource="eventsubscription">
               <Button
@@ -54,8 +55,8 @@ function ObservabilityAlertsHeader({
               </Button>
             </LimitWrapper>
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </Card>
   );
 }

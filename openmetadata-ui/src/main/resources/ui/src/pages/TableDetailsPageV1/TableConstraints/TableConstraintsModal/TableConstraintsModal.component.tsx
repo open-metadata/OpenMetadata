@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Empty, Form, Modal, Select, Space, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Button, Empty, Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -166,27 +167,33 @@ const TableConstraintsModal = ({
       return {
         label: (
           <div className="constraint-breadcrumb">
-            <Space wrap align="start" className="w-full" size={4}>
+            <Box
+              inline
+              align="start"
+              className="layout-space layout-space-horizontal w-full"
+              gap={1}
+              itemClassName="layout-space-item"
+              wrap="wrap">
               {breadcrumbs.slice(0, 4).map((breadcrumb, index) => (
                 <Fragment key={breadcrumb.name}>
-                  <Typography.Text
+                  <Typography
                     className="constraint-breadcrumb-item"
                     ellipsis={{ tooltip: true }}>
                     {breadcrumb.name}
-                  </Typography.Text>
+                  </Typography>
                   {index !== breadcrumbs.length - 2 && (
-                    <Typography.Text className="text-xss">
+                    <Typography className="text-xss">
                       {t('label.slash-symbol')}
-                    </Typography.Text>
+                    </Typography>
                   )}
                 </Fragment>
               ))}
-            </Space>
-            <Typography.Text
+            </Box>
+            <Typography
               className="constraint-breadcrumb-item constraint-column-name"
               ellipsis={{ tooltip: true }}>
               {breadcrumbs[4].name}
-            </Typography.Text>
+            </Typography>
           </div>
         ),
         value: node.value,

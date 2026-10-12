@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Divider, Row, Slider, Typography } from 'antd';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { Button, Slider } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ComponentProps, useEffect, useState } from 'react';
@@ -76,16 +77,15 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
         return {
           label: (
             <div className="d-flex flex-column">
-              <Typography.Text
-                className="text-sm"
-                data-testid="tag-option-label">
+              <Typography className="text-sm" data-testid="tag-option-label">
                 {item.data.displayName ?? item.data.name}
-              </Typography.Text>
-              <Typography.Text
-                className="text-grey-muted text-sm"
+              </Typography>
+              <Typography
+                className="tw:wrap-break-word text-sm"
+                color="secondary"
                 data-testid="tag-option-fully-qualified-name">
                 {fqn}
-              </Typography.Text>
+              </Typography>
             </div>
           ),
           value: fqn,
@@ -132,8 +132,8 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
 
   return (
     <div className={classNames('term-boost', className)}>
-      <Row className="p-box d-flex flex-column">
-        <Col className="p-y-xs p-l-sm p-r-xss border-radius-card m-b-sm bg-white config-section-content">
+      <Box className="layout-row p-box d-flex flex-column" wrap="wrap">
+        <Box className="layout-column tw:block p-y-xs p-l-sm p-r-xss border-radius-card m-b-sm bg-white config-section-content">
           <AsyncSelect
             enableInfiniteScroll
             showSearch
@@ -149,17 +149,17 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             value={termBoostData.value || undefined}
             onChange={handleTagChange}
           />
-        </Col>
-        <Col className="d-flex flex-column gap-1">
+        </Box>
+        <Box className="layout-column d-flex flex-column gap-1">
           <div className="d-flex items-center justify-between p-x-xss">
-            <Typography.Text data-testid="term-boost-impact-label">
+            <Typography data-testid="term-boost-impact-label">
               {t('label.boost')}
-            </Typography.Text>
-            <Typography.Text
+            </Typography>
+            <Typography
               className="font-semibold boost-value"
               data-testid="term-boost-value">
               {termBoostData.boost}
-            </Typography.Text>
+            </Typography>
           </div>
           <div data-testid="term-boost-slider">
             <Slider
@@ -172,16 +172,16 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             />
           </div>
           <Divider className="m-b-md m-t-0" />
-        </Col>
-        <Col className="d-flex items-center justify-end gap-2">
+        </Box>
+        <Box className="layout-column d-flex items-center justify-end gap-2">
           <Button
             className="delete-term-boost"
             data-testid="delete-term-boost"
             icon={<Icon className="text-md" component={Delete} />}
             onClick={() => onDeleteBoost(termBoost.value)}
           />
-        </Col>
-      </Row>
+        </Box>
+      </Box>
     </div>
   );
 };

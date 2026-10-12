@@ -12,6 +12,7 @@
 External Table Lineage Mixin
 """
 
+import re
 import traceback
 from abc import ABC
 from collections.abc import Iterable
@@ -28,10 +29,40 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+# Anchored, so a key that happens to contain "s3a://" further along is left alone.
+_SCHEME_PATTERN = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*)://")
+# Hadoop-era names for the bucket that the S3 storage connector always records as s3://.
+_SCHEME_ALIASES = {"s3a": "s3", "s3n": "s3"}
+
+
+def container_lookup_paths(location: str | None) -> list[str]:
+    """
+    Paths to search for the container behind an external table location, most likely first.
+
+    The search matches a container's fullPath exactly, and the storage connectors record it with
+    a lower case scheme and no trailing separator (s3://bucket/events), while catalogs report
+    locations such as s3a://bucket/events/. Only the scheme and one trailing separator are
+    rewritten, since object keys are case sensitive and a//b is not a/b. The location as reported
+    comes last, so a container that matched it before still does.
+    """
+    if not location or not location.strip():
+        return []
+    canonical = path = location
+    if match := _SCHEME_PATTERN.match(location):
+        scheme = match.group(1).lower()
+        path = location[match.end() :]
+        canonical = f"{_SCHEME_ALIASES.get(scheme, scheme)}://{path}"
+    # A bare scheme or root, such as s3:// or /, names no container.
+    if not path.strip("/"):
+        return []
+    canonical = canonical.removesuffix("/")
+    return list(dict.fromkeys((canonical, f"{canonical}/", location)))
 
 
 class ExternalTableLineageMixin(ABC):  # noqa: B024
@@ -45,8 +76,24 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
         """
         for table_qualified_tuple, location in self.external_location_map.items() or []:
             try:
-                location_entity = self.metadata.es_search_container_by_path(full_path=location, fields="dataModel")
                 database_name, schema_name, table_name = table_qualified_tuple
+                lookup_paths = container_lookup_paths(location)
+                location_entity = None
+                for path in lookup_paths:
+                    location_entity = self.metadata.es_search_container_by_path(full_path=path, fields="dataModel")  # pyright: ignore[reportAttributeAccessIssue]
+                    if location_entity and location_entity[0]:
+                        break
+                if not (location_entity and location_entity[0]):
+                    # The edge starts at the container, so without one the table search is wasted.
+                    if lookup_paths:
+                        logger.debug(
+                            "No container found at [%s] for external table [%s.%s]; ingest the storage service"
+                            " that holds it to get this lineage",
+                            location,
+                            schema_name,
+                            table_name,
+                        )
+                    continue
 
                 table_fqn = fqn.build(
                     self.metadata,
@@ -62,7 +109,7 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
                     fqn_search_string=table_fqn,
                 )
 
-                if location_entity and location_entity[0] and table_entity and table_entity[0]:
+                if table_entity and table_entity[0]:
                     columns_list = [column.name.root for column in table_entity[0].columns]
                     columns_lineage = self._get_column_lineage(
                         location_entity[0].dataModel, table_entity[0], columns_list
@@ -96,8 +143,9 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
         if not data_model_entity:
             return None
         for entity_column in data_model_entity.columns:
-            if entity_column.displayName.lower() == column.lower():
-                return entity_column.fullyQualifiedName.root
+            # Storage connectors leave displayName unset on partition columns, so fall back to the name.
+            if (entity_column.displayName or model_str(entity_column.name)).lower() == column.lower():
+                return model_str(entity_column.fullyQualifiedName) if entity_column.fullyQualifiedName else None
         return None
 
     def _get_column_lineage(
@@ -107,16 +155,16 @@ class ExternalTableLineageMixin(ABC):  # noqa: B024
         columns_list: list[str],
     ) -> list[ColumnLineage]:
         """
-        Get the column lineage
+        Get the column lineage, resolving each column on its own so one that fails costs only its own edge
         """
-        try:
-            column_lineage = []
-            for field in columns_list or []:
+        column_lineage = []
+        for field in columns_list or []:
+            try:
                 from_column = self._get_data_model_column_fqn(data_model_entity=data_model_entity, column=field)
                 to_column = get_column_fqn(table_entity=table_entity, column=field)
                 if from_column and to_column:
                     column_lineage.append(ColumnLineage(fromColumns=[from_column], toColumn=to_column))
-            return column_lineage  # noqa: TRY300
-        except Exception as exc:
-            logger.debug(f"Error to get column lineage: {exc}")
-            logger.debug(traceback.format_exc())
+            except Exception as exc:
+                logger.debug("Error to get column lineage for [%s]: %s", field, exc)
+                logger.debug(traceback.format_exc())
+        return column_lineage

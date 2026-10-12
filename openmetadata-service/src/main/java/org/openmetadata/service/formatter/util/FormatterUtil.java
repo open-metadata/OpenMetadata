@@ -246,7 +246,7 @@ public class FormatterUtil {
     }
 
     // If the response entity is an EntityInterface, then create a ChangeEvent from it
-    if (responseContext.getEntity() instanceof EntityInterface entityInterface) {
+    if (responseContext.getEntity() instanceof EntityInterface<?> entityInterface) {
       return createChangeEventForEntity(updateBy, eventType, entityInterface);
     }
 
@@ -268,7 +268,7 @@ public class FormatterUtil {
   }
 
   public static ChangeEvent createChangeEventForEntity(
-      String updateBy, EventType eventType, EntityInterface entityInterface) {
+      String updateBy, EventType eventType, EntityInterface<?> entityInterface) {
     return getChangeEvent(
             updateBy, eventType, entityInterface.getEntityReference().getType(), entityInterface)
         .withPreviousVersion(
@@ -297,7 +297,7 @@ public class FormatterUtil {
   }
 
   private static ChangeEvent getChangeEvent(
-      String updateBy, EventType eventType, String entityType, EntityInterface entityInterface) {
+      String updateBy, EventType eventType, String entityType, EntityInterface<?> entityInterface) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
         .withEventType(eventType)

@@ -14,6 +14,7 @@ import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { FC } from 'react';
 import { ReactComponent as ConnectionsIcon } from '../../../assets/svg/ask-collate-nav-bar/connections-default.svg';
+import { SERVICE_CATEGORY_TITLE_KEYS } from '../../../constants/ServiceType.constant';
 import { CONNECTIONS_ROUTES } from '../connections.constants';
 import {
   CATEGORY_CONFIGS,
@@ -55,7 +56,9 @@ export const getServiceCategoryBreadcrumb = (
       category.key === (serviceCategory as ConnectionsServiceCategory)
   );
 
-  const label = config ? String(t(config.titleKey)) : '';
+  const label = config
+    ? String(t(SERVICE_CATEGORY_TITLE_KEYS[config.key]))
+    : '';
 
   return config
     ? {

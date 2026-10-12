@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row, Typography } from 'antd';
+import {
+  Box,
+  Divider,
+  Grid,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -23,6 +30,7 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import i18n, { t } from '../../../utils/i18next/LocalUtil';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 
 const SummaryPanelSkeleton = withSuspenseFallback(
@@ -81,37 +89,40 @@ const KnowledgePageSummary = ({
   return (
     <SummaryPanelSkeleton loading={isEmpty(entityDetails)}>
       <>
-        <Row className="m-x-md m-t-0" gutter={[0, 4]}>
-          <Col span={24}>
+        <Grid
+          className="layout-row layout-grid m-x-md m-t-0"
+          style={{ ...getLayoutGutter(0, 4) }}>
+          <Grid.Item className="layout-column" span={24}>
             <CommonEntitySummaryInfo
               componentType={DRAWER_NAVIGATION_OPTIONS.explore}
               entityInfo={entityInfo}
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
         {quickLinkData?.url && (
           <>
-            <Row
-              className="m-x-md m-t-xs"
+            <Grid
+              className="layout-row layout-grid m-x-md m-t-xs"
               data-testid="quick-link-data"
-              gutter={[0, 8]}>
-              <Col span={24}>
-                <Typography.Text
+              style={{ ...getLayoutGutter(0, 8) }}>
+              <Grid.Item className="layout-column" span={24}>
+                <Typography
                   className="summary-panel-section-title"
                   data-testid="tags-header">
                   {t('label.link')}
-                </Typography.Text>
-              </Col>
-              <Col span={24}>
+                </Typography>
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={24}>
                 <Link
                   className="text-primary"
+                  rel="noopener noreferrer"
                   target="_blank"
-                  to={quickLinkData.url}>
+                  to={getSafeHttpUrl(quickLinkData.url) ?? '#'}>
                   {quickLinkData.url}
                 </Link>
-              </Col>
-            </Row>
-            <Divider className="m-y-xs" />
+              </Grid.Item>
+            </Grid>
+            <Divider className="m-y-xs summary-panel-divider" />
           </>
         )}
 
@@ -119,16 +130,19 @@ const KnowledgePageSummary = ({
           entityDetail={entityDetails as EntityUnion}
           tags={entityDetails?.tags ?? []}
         />
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
         {/* read only data assets */}
-        <Row className="m-x-md" gutter={[0, 8]}>
-          <Col>
+        <Box
+          className="layout-row m-x-md"
+          style={{ ...getLayoutGutter(0, 8) }}
+          wrap="wrap">
+          <Box className="layout-column tw:block">
             <RelatedDataAssets
               hasPermission={false}
               relatedDataAssets={entityDetails.relatedEntities ?? []}
             />
-          </Col>
-        </Row>
+          </Box>
+        </Box>
       </>
     </SummaryPanelSkeleton>
   );

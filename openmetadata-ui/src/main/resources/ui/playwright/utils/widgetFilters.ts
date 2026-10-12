@@ -16,7 +16,6 @@ import {
   type Page,
   type Response,
 } from '@playwright/test';
-import { waitForAntdPopupToSettle } from './common';
 import { waitForLandingPageWidget } from './customizeLandingPage';
 import { waitForAllLoadersToDisappear } from './entity';
 
@@ -49,30 +48,27 @@ const searchQueryMatcher =
  * Opens a widget's sort/filter dropdown, picks an option, and returns the response
  * the option was expected to trigger.
  *
- * Two guards make this reliable, and both are load bearing:
+ * The trigger-label assertion guards against a click landing on the wrong option:
+ * it fails immediately with "expected Following, received My Data" instead of
+ * leaving the caller blocked on a response that can never arrive.
  *
- * 1. `waitForAntdPopupToSettle` — without it the click can land on the option *above*
- *    the intended one while the menu is still scaling open, silently selecting the
- *    wrong filter.
- * 2. The trigger-label assertion — if a click still drifts, this fails immediately
- *    with "expected Following, received My Data" instead of leaving the caller blocked
- *    on a response that can never arrive.
- *
- * The response listener is registered after the menu has settled but before the click,
+ * The response listener is registered after the menu is visible but before the click,
  * so a request fired synchronously by the selection cannot be missed.
  */
-const selectWidgetSortOption = async (
+export const selectWidgetSortOption = async (
   page: Page,
   widget: Locator,
   optionName: string,
   responseMatcher: ResponseMatcher
 ): Promise<Response> => {
   const trigger = widget.getByTestId('widget-sort-by-dropdown');
-  const menuItem = page.getByRole('menuitem', { name: optionName });
+  const menuItem = page.getByRole('menuitem', {
+    name: optionName,
+    exact: true,
+  });
 
   await trigger.click();
   await expect(menuItem).toBeVisible();
-  await waitForAntdPopupToSettle(page);
 
   const filterResponse = page.waitForResponse(responseMatcher);
   // Nothing resolves this promise if the selection assertion below fails. Marking it
@@ -82,7 +78,7 @@ const selectWidgetSortOption = async (
 
   await menuItem.click();
 
-  await expect(trigger).toContainText(optionName);
+  await expect(trigger).toHaveText(optionName, { useInnerText: true });
 
   const response = await filterResponse;
 
@@ -263,18 +259,31 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   );
 };
 
+/**
+ * Every My Tasks filter must request the open bucket. The backend applies no
+ * status filter at all when `statusGroup` is absent, so a filter that omits it
+ * silently lists closed tasks — which is what the widget used to do on load,
+ * and what the Mentions branch used to do even after that was fixed. Asserting
+ * the param per filter is what keeps either from regressing independently.
+ */
 export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   const taskFilterMatcher =
     (predicate: (url: URL) => boolean): ResponseMatcher =>
     (response) => {
       const url = new URL(response.url());
 
-      return response.request().method() === 'GET' && predicate(url);
+      return (
+        response.request().method() === 'GET' &&
+        url.searchParams.get('statusGroup') === 'open' &&
+        predicate(url)
+      );
     };
 
   const widget = await getWidgetForFilters(page, widgetKey);
 
-  await expect(widget.getByTestId('task-feed-card').first()).toBeVisible();
+  await expect(
+    widget.getByTestId('task-feed-card').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await selectWidgetSortOption(
     page,
