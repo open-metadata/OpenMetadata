@@ -65,6 +65,10 @@ import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEd
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import TestCaseFormBody from './TestCaseFormBody';
 import {
+  ROOT_SELECTED_ENTITY_PATH,
+  ROOT_TABLE_PATH,
+} from './TestCaseFormBody.constants';
+import {
   FormValues,
   TestCaseFormContext,
   TestCaseFormDrawerProps,
@@ -87,8 +91,18 @@ const EntitySummaryPanel = withSuspenseFallback(
 
 const getResolvedDrawerWidth = (
   width: number | string | undefined,
-  showDocPanel: boolean
-): number | string => width ?? (showDocPanel ? '80vw' : '52vw');
+  showDocPanel: boolean,
+  showHint: boolean
+): number | string => {
+  if (width !== undefined) {
+    return width;
+  }
+  if (!showDocPanel) {
+    return '52vw';
+  }
+
+  return showHint ? '80vw' : '60vw';
+};
 
 const getDefaultDrawerTitle = (
   isEditMode: boolean,
@@ -166,6 +180,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [formContext, setFormContext] = useState<TestCaseFormContext>();
   const [showHint, setShowHint] = useState<boolean>(true);
+  // The selected table's summary belongs to the Select Table hint only; once
+  // another field is focused, its hint shows on its own.
+  const [activeField, setActiveField] = useState<string>();
   const [editDefinition, setEditDefinition] = useState<TestDefinition>();
   // Id of the test case whose edit prefill has finished. Until this matches the
   // open test case, the body renders a loader so the form appears fully
@@ -357,6 +374,18 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     [isEditMode, handleEditSubmit, handleCreateSubmit, t]
   );
 
+  const handleActiveFieldChange = useCallback(
+    (fieldId: string) => {
+      setActiveField(fieldId);
+      onActiveFieldChange?.(fieldId);
+    },
+    [onActiveFieldChange]
+  );
+
+  const isTableFieldActive =
+    activeField === ROOT_TABLE_PATH ||
+    activeField === ROOT_SELECTED_ENTITY_PATH;
+
   const testCaseFormBody = (
     <TestCaseFormBody
       editDefinition={editDefinition}
@@ -366,15 +395,17 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       showOnlyParameter={showOnlyParameter}
       table={table}
       testSuite={testSuite}
-      onActiveFieldChange={onActiveFieldChange}
+      onActiveFieldChange={handleActiveFieldChange}
       onContextChange={setFormContext}
       onErrorDismiss={handleErrorDismiss}
     />
   );
 
-  // Without the hint the form spans the full drawer, so drop the drawer width
-  // to roughly the form's original 65% column and let it fill.
-  const resolvedWidth = getResolvedDrawerWidth(width, showDocPanel);
+  // Without the hint the form spans the full drawer, so narrow the drawer
+  // rather than stretching the form across 80vw: 52vw (the form's original
+  // 65% column) when there is no hint at all, and a little wider than the
+  // hinted form column when the user switches Show Hint off.
+  const resolvedWidth = getResolvedDrawerWidth(width, showDocPanel, showHint);
 
   const scrollToError = useMemo(
     () =>
@@ -447,26 +478,28 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       // `drawer-form-content` marks this column as the scroll-to-error target,
       // since it, not the drawer body, is what scrolls.
       formClassName="drawer-form-content tw:px-4 tw:py-6 tw:md:px-6"
-      renderFieldDoc={(markdown) => (
-        <>
-          {/* Render the full field doc without the "see more" toggle — the
-              column scrolls, so the whole hint is reachable without it. */}
+      renderFieldDoc={(markdown) =>
+        // Once a table is picked, the Select Table hint gives way to that
+        // table's summary; the generic "how to pick a table" text only helps
+        // while nothing is selected.
+        isTableFieldActive && selectedTableDetails ? (
+          <div className="tw:mt-3" data-testid="selected-table-summary">
+            <EntitySummaryPanel
+              entityDetails={selectedTableDetails}
+              handleClosePanel={noop}
+            />
+          </div>
+        ) : (
+          // Render the full field doc without the "see more" toggle — the
+          // column scrolls, so the whole hint is reachable without it.
           <div className="form-hint-doc">
             <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
               markdown={monospaceParameterNames(markdown)}
             />
           </div>
-          {selectedTableDetails && (
-            <div className="tw:mt-4" data-testid="selected-table-summary">
-              <EntitySummaryPanel
-                entityDetails={selectedTableDetails}
-                handleClosePanel={noop}
-              />
-            </div>
-          )}
-        </>
-      )}
+        )
+      }
       showFieldDocs={showDocPanel && showHint}
       onSubmit={form.handleSubmit(
         (data) =>

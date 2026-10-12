@@ -662,22 +662,54 @@ describe('TestCaseFormDrawer', () => {
       );
     });
 
-    it('shows the selected table summary under the hint once a table is selected', async () => {
+    it('shows the selected table summary in place of the hint only while the table field is active', async () => {
       renderDrawer();
 
       await screen.findByTestId('test-case-form-body');
 
-      expect(
-        screen.queryByTestId('entity-summary-panel')
-      ).not.toBeInTheDocument();
-
+      // A table is selected, but focus has not been on the table field.
       await act(async () => {
         fireEvent.click(screen.getByTestId('emit-context-pipeline'));
       });
 
       expect(
+        screen.queryByTestId('entity-summary-panel')
+      ).not.toBeInTheDocument();
+
+      // Picking the table reports the selected entity as the active field.
+      await act(async () => {
+        emitActiveFieldFn?.('root/selected-entity');
+      });
+
+      expect(
         await screen.findByTestId('entity-summary-panel')
       ).toHaveTextContent('service.db.schema.table');
+      // The summary replaces the hint text rather than sitting under it.
+      expect(
+        screen.queryByText(/kind of validation to run/i)
+      ).not.toBeInTheDocument();
+
+      // Moving on to Select Test Type leaves only its own hint.
+      await act(async () => {
+        emitActiveFieldFn?.('root/testType');
+      });
+
+      expect(
+        screen.queryByTestId('entity-summary-panel')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/kind of validation to run/i)
+      ).toBeInTheDocument();
+
+      // Back on the table field the summary returns, and Show Hint off
+      // hides it with the rest of the hint.
+      await act(async () => {
+        emitActiveFieldFn?.('root/table');
+      });
+
+      expect(
+        await screen.findByTestId('entity-summary-panel')
+      ).toBeInTheDocument();
 
       await act(async () => {
         fireEvent.click(

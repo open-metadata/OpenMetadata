@@ -235,6 +235,13 @@
   z-index: 40;
 }
 
+// The drawer narrows when Show Hint is switched off. Animate it with the hint
+// column's own 240ms collapse: snapping narrower while the column is still
+// open would squeeze the form for a moment before it widens again.
+.test-case-form-drawer {
+  transition: max-width var(--om-duration-240) var(--om-ease-standard);
+}
+
 // Test type dropdown: show the full option description instead of a
 // clipped single line (core option spans come with whitespace-nowrap).
 .test-type-popover {

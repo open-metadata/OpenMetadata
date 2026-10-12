@@ -97,6 +97,10 @@ import ThresholdPreview from '../../../observability/data-quality/ThresholdPrevi
 import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import ParameterFields from './ParameterFields';
 import {
+  ROOT_SELECTED_ENTITY_PATH,
+  ROOT_TABLE_PATH,
+} from './TestCaseFormBody.constants';
+import {
   FormValues,
   TablesCache,
   TestCaseFormBodyProps,
@@ -108,7 +112,6 @@ import { toDataQualityDimensionItem } from './transformTestCaseFormData';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const TABLES_CACHE_MAX_SIZE = 100;
-const ROOT_TABLE_PATH = 'root/table';
 const ROOT_TEST_TYPE_PATH = 'root/testType';
 
 const fqnFromSelectItem = (
@@ -141,6 +144,11 @@ const isColumnFieldDisabled = (
   selectedTableFqn: string | undefined,
   isEditMode: boolean
 ): boolean => !selectedTableFqn || isEditMode;
+
+// The table field's label doubles as its Form Hint heading, which shows the
+// selected table's summary once one is picked.
+const getTableFieldLabelKey = (selectedTableFqn: string | undefined): string =>
+  selectedTableFqn ? 'label.selected-entity' : 'label.select-entity';
 
 const getTestTypeFieldId = (selectedTestType: string | undefined): string =>
   selectedTestType ? `root/${selectedTestType}` : ROOT_TEST_TYPE_PATH;
@@ -660,6 +668,22 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       const fieldId = (event.target as HTMLElement).closest?.(
         '[id^="root/"]'
       )?.id;
+      if (fieldId) {
+        handleActiveField(fieldId);
+      }
+    },
+    [handleActiveField]
+  );
+
+  // A select holding a value hides its input, so clicking it moves no focus
+  // and the handler above never fires, while the core hint panel still
+  // switches on pointer-down. Report the clicked field on pointer-down too,
+  // so the active field keeps following the hint.
+  const handleFormPointerDownCapture = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const fieldId = (event.target as HTMLElement)
+        .closest('[data-field-doc]')
+        ?.querySelector('[id^="root/"]')?.id;
       if (fieldId) {
         handleActiveField(fieldId);
       }
@@ -1216,7 +1240,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const selectedTableField = {
     name: 'selectedTable',
-    label: t('label.select-entity', { entity: t('label.table') }),
+    label: t(getTableFieldLabelKey(selectedTableFqn), {
+      entity: t('label.table'),
+    }),
     type: FieldTypes.ASYNC_SELECT,
     required: true,
     rules: {
@@ -1254,7 +1280,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       // legacy option onclick did.
       onItemInserted: () => {
         form.trigger('selectedTable');
-        handleActiveField('root/selected-entity');
+        handleActiveField(ROOT_SELECTED_ENTITY_PATH);
       },
       // Clearing an unauthorized table must clear the stale permission error
       // and switch the doc panel back to the generic table section.
@@ -1524,7 +1550,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       className="test-case-form-v1 drawer-mode test-case-form-body"
       data-testid="test-case-form-v1"
       ref={formBodyRef}
-      onFocusCapture={handleFormFocusCapture}>
+      onFocusCapture={handleFormFocusCapture}
+      onPointerDownCapture={handleFormPointerDownCapture}>
       {errorMessage && (
         <div className="floating-error-alert">
           <Alert
