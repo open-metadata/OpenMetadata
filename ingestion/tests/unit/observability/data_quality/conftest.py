@@ -276,6 +276,32 @@ def test_case_column_value_length_to_be_between_no_min():
 
 
 @pytest.fixture
+def test_case_column_value_length_to_be_between_no_bounds():
+    """A lengths window with neither side set lets every row through"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_FNAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_between_no_bounds():
+    """A values window with neither side set lets every row through"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[],
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_column_value_max_to_be_between():
     """Test case for test column_value_max_to_be_between"""
     return TestCase(
@@ -861,6 +887,21 @@ def test_case_column_value_in_set_boolean():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(name="allowedValues", value="[True, False]"),
+        ],
+        computePassedFailedRowCount=True,
+    )
+
+
+@pytest.fixture
+def test_case_column_value_in_set_boolean_strings():
+    """The allowed set as the UI and generated tests write it: strings"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_IS_ACTIVE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="allowedValues", value='["true", "false"]'),
         ],
         computePassedFailedRowCount=True,
     )

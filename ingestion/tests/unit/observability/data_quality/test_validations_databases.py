@@ -110,6 +110,13 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             None,
         ),
         (
+            "test_case_column_value_length_to_be_between_no_bounds",
+            "columnValueLengthsToBeBetween",
+            "COLUMN",
+            (TestCaseResult, None, None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
+            None,
+        ),
+        (
             "test_case_column_value_max_to_be_between",
             "columnValueMaxToBeBetween",
             "COLUMN",
@@ -323,6 +330,13 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             None,
         ),
         (
+            "test_case_column_values_to_be_between_no_bounds",
+            "columnValuesToBeBetween",
+            "COLUMN",
+            (TestCaseResult, "30", None, TestCaseStatus.Success, 80, 0, 100, 0),
+            None,
+        ),
+        (
             "test_case_column_values_to_be_not_null",
             "columnValuesToBeNotNull",
             "COLUMN",
@@ -522,6 +536,22 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
         ),
         (
             "test_case_column_value_in_set_boolean",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "70",
+                None,
+                TestCaseStatus.Success,
+                70.0,
+                10.0,
+                87.5,
+                12.5,
+            ),
+            None,
+        ),
+        (
+            "test_case_column_value_in_set_boolean_strings",
             "columnValuesToBeInSet",
             "COLUMN",
             (

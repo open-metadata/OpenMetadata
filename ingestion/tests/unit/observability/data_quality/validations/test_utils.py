@@ -1,7 +1,13 @@
-import pytest
+from datetime import datetime
 
+import pytest
+import sqlalchemy as sqa
+
+from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.utils import get_bool_test_case_param
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.profiler.orm.registry import is_boolean
 
 
 @pytest.mark.parametrize(
@@ -20,3 +26,38 @@ from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 )
 def test_get_bool_test_case_param(test_case_param_vals, name, expected):
     assert get_bool_test_case_param(test_case_param_vals, name) == expected
+
+
+@pytest.mark.parametrize(
+    "bound, unbounded",
+    [
+        (None, True),
+        (float("-inf"), True),
+        (float("inf"), True),
+        (3, False),
+        (3.5, False),
+        (datetime(2021, 7, 1), False),
+    ],
+)
+def test_is_unbounded(bound, unbounded):
+    assert utils.is_unbounded(bound) is unbounded
+
+
+@pytest.mark.parametrize("column_type", [sqa.Boolean(), DataType.BOOLEAN])
+def test_true_and_false_strings_become_booleans_on_a_boolean_column(column_type):
+    assert utils.parse_set_values(raw='["true", "False"]', column_type=column_type) == [True, False]
+
+
+@pytest.mark.parametrize("column_type", [sqa.Boolean(), DataType.BOOLEAN])
+def test_python_literals_on_a_boolean_column_are_kept(column_type):
+    assert utils.parse_set_values(raw="[True, False]", column_type=column_type) == [True, False]
+
+
+@pytest.mark.parametrize("column_type", [sqa.String(), DataType.VARCHAR])
+def test_strings_on_a_string_column_stay_strings(column_type):
+    assert utils.parse_set_values(raw='["true", "false"]', column_type=column_type) == ["true", "false"]
+
+
+def test_is_boolean_reads_both_type_systems():
+    assert is_boolean(sqa.Boolean()) and is_boolean(DataType.BOOLEAN)
+    assert not is_boolean(sqa.Integer()) and not is_boolean(DataType.INT)
