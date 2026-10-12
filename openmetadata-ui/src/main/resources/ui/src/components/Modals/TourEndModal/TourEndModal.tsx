@@ -44,7 +44,7 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
         <Grid.Item className="layout-column mt-4" span={24}>
           <BrandLogo
             aria-label={t('label.brand-name-logo')}
-            className="align-middle tw:size-[70px] tw:shrink-0"
+            className="tw:align-middle tw:size-[70px] tw:shrink-0"
             data-testid="omd-logo"
             role="img"
           />

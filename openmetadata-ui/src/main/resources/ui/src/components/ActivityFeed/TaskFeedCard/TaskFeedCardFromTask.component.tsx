@@ -446,7 +446,7 @@ const TaskFeedCardFromTask = ({
         <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
           <div className="tw:w-full">
             <TaskStatusIcon
-              className="m-r-xss m-t-xss tw:size-3.5 tw:shrink-0"
+              className="tw:mr-1 tw:mt-1 tw:size-3.5 tw:shrink-0"
               data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
             />
             {taskLinkTitleElement}

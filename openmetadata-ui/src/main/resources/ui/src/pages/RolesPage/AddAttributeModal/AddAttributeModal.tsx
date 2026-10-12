@@ -168,9 +168,8 @@ const AddAttributeModal: FC<Props> = ({
                 })}
                 prefix={
                   <Search
-                    className="tw:shrink-0"
+                    className="tw:shrink-0 tw:text-placeholder"
                     size={14}
-                    style={{ color: '#37352F4D' }}
                   />
                 }
                 onChange={(e) => handleSearch(e.target.value)}

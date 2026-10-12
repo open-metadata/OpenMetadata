@@ -38,7 +38,7 @@ const getHelpDropdownLabelContentRenderer = (
       className="layout-row layout-grid cursor-pointer"
       onClick={item.handleSupportItemClick}>
       <Grid.Item className="layout-column" span={4}>
-        <item.icon className="align-middle tw:size-[18px] tw:shrink-0" />
+        <item.icon className="tw:align-middle tw:size-[18px] tw:shrink-0" />
       </Grid.Item>
       <Grid.Item className="layout-column flex items-center" span={20}>
         {isVersion ? (

@@ -251,7 +251,7 @@ const NotificationBox = ({
         offset={[5, 0]}>
         <NotificationIcon
           aria-label="notification-icon"
-          className="align-middle m-r-xs tw:size-4 tw:shrink-0"
+          className="tw:align-middle tw:mr-2 tw:size-4 tw:shrink-0"
           role="img"
         />
         {name}

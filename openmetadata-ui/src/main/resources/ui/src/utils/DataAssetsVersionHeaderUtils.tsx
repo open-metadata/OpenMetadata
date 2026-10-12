@@ -44,7 +44,7 @@ export const VersionExtraInfoLink = ({
 }) => (
   <>
     <Divider
-      className="self-center m-x-sm tw:h-[0.9em]"
+      className="tw:self-center tw:mx-3 tw:h-[0.9em]"
       orientation="vertical"
     />
     <div className="d-flex items-center text-xs">
@@ -66,7 +66,7 @@ export const VersionExtraInfoLabel = ({
 }) => (
   <>
     <Divider
-      className="self-center m-x-sm tw:h-[0.9em]"
+      className="tw:self-center tw:mx-3 tw:h-[0.9em]"
       orientation="vertical"
     />
     <Box
@@ -115,7 +115,7 @@ export const getExtraInfoSourceUrl = (
       {isUndefined(changedEntityName) ? (
         <>
           <Divider
-            className="self-center m-x-sm tw:h-[0.9em]"
+            className="tw:self-center tw:mx-3 tw:h-[0.9em]"
             orientation="vertical"
           />
           <div className="d-flex items-center text-xs">

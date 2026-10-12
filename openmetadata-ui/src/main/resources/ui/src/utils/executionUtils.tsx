@@ -48,7 +48,7 @@ const StatusBadge = ({ status }: { status?: StatusType }) => {
   return (
     <Badge
       aria-label="result"
-      className="align-middle tw:size-6 tw:shrink-0"
+      className="tw:align-middle tw:size-6 tw:shrink-0"
       role="img"
       // the badge supplies its own colours; stop currentColor tinting it
       style={{ color: 'transparent' }}
@@ -68,7 +68,7 @@ export const StatusIndicator = ({ status }: StatusIndicatorInterface) => {
       itemClassName="layout-space-item">
       <StatusBadgeIcon
         aria-label="result"
-        className="align-middle tw:size-4 tw:shrink-0"
+        className="tw:align-middle tw:size-4 tw:shrink-0"
         role="img"
         style={{ color: 'transparent' }}
       />

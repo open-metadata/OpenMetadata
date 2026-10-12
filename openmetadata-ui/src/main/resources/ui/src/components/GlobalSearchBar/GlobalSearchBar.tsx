@@ -282,8 +282,8 @@ export const GlobalSearchBar = () => {
     searchValue ? (
       <IconCloseCircleOutlined
         aria-label="icon-cancel"
-        className={classNames('align-middle tw:size-4 tw:shrink-0', {
-          'text-primary': !isSearchBlur,
+        className={classNames('tw:align-middle tw:size-4 tw:shrink-0', {
+          'tw:text-brand-secondary': !isSearchBlur,
         })}
         data-testid="cancel-icon"
         role="img"
@@ -292,9 +292,8 @@ export const GlobalSearchBar = () => {
     ) : (
       <IconSearch
         aria-label="icon-search"
-        className={classNames('align-middle tw:size-4 tw:shrink-0', {
-          'text-color': isSearchBlur,
-          'text-primary': !isSearchBlur,
+        className={classNames('tw:align-middle tw:size-4 tw:shrink-0', {
+          'tw:text-brand-secondary': !isSearchBlur,
         })}
         data-testid="search-icon"
         role="img"
