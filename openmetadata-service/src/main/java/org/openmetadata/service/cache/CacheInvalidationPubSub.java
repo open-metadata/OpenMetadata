@@ -51,6 +51,13 @@ public class CacheInvalidationPubSub {
   public static final String TYPE_PERSONA_CONTEXT = "personaContext";
 
   /**
+   * Non-entity signal: a setting was written, with its name in {@code fqn}. Peers check the stored
+   * settings right away instead of at their next poll. The database stays the source of truth, so
+   * a lost message only delays the change.
+   */
+  public static final String TYPE_SETTINGS = "settings";
+
+  /**
    * Non-entity invalidation type telling peers to drop every cached user authorization context
    * (e.g. a domain rename changes the FQN {@code hasDomain()} matches on without writing any user).
    */

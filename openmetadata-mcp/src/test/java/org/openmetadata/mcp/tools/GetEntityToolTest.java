@@ -26,12 +26,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.ForbiddenException;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
@@ -41,6 +43,7 @@ import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -48,6 +51,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -63,6 +67,9 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * both table and column level.
  */
 class GetEntityToolTest {
+  static final String GIT_TOKEN = "ghp_rawGitToken123";
+  static final String SIGNING_KEY = "rawPgpPrivateKeyMaterial";
+  static final String SIGNING_PASSPHRASE = "rawSigningPassphrase";
 
   @Test
   void contentOnlyPreservesViewBasicAuthorization() throws Exception {
@@ -206,6 +213,71 @@ class GetEntityToolTest {
     }
 
     assertThat(castMap(result.get("content")).get("content")).isEqualTo("the secret answer");
+  }
+
+  /**
+   * A workflow definition's sink credentials sit in a free-form sinkConfig that the generic entity
+   * read returns as stored; the MCP read path masks them the way the REST resource does.
+   */
+  @Test
+  void entityDetailsMaskWorkflowSinkSecrets() throws Exception {
+    String fqn = "gitExport";
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      eq(Entity.WORKFLOW_DEFINITION), eq(fqn), anyString(), any()))
+          .thenReturn(gitSinkWorkflow(fqn));
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  securityContextFor("alice"),
+                  Map.of("entityType", Entity.WORKFLOW_DEFINITION, "fqn", fqn));
+    }
+
+    JsonNode sinkConfig = JsonUtils.valueToTree(result).at("/nodes/0/config/sinkConfig");
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, sinkConfig.at("/credentials/token").asText());
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK, sinkConfig.at("/signingKey/privateKey").asText());
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK, sinkConfig.at("/signingKey/passphrase").asText());
+    assertEquals("https://github.com/org/repo.git", sinkConfig.at("/repositoryUrl").asText());
+    assertThat(JsonUtils.pojoToJson(result))
+        .doesNotContain(GIT_TOKEN)
+        .doesNotContain(SIGNING_KEY)
+        .doesNotContain(SIGNING_PASSPHRASE);
+  }
+
+  static WorkflowDefinition gitSinkWorkflow(String name) {
+    String json =
+        """
+        {
+          "id": "%s",
+          "name": "%s",
+          "fullyQualifiedName": "%s",
+          "nodes": [
+            {
+              "type": "automatedTask",
+              "subType": "sinkTask",
+              "name": "gitSink",
+              "config": {
+                "sinkType": "git",
+                "sinkConfig": {
+                  "repositoryUrl": "https://github.com/org/repo.git",
+                  "credentials": {"type": "token", "token": "%s"},
+                  "signingKey": {"privateKey": "%s", "passphrase": "%s"}
+                }
+              }
+            }
+          ]
+        }
+        """
+            .formatted(UUID.randomUUID(), name, name, GIT_TOKEN, SIGNING_KEY, SIGNING_PASSPHRASE);
+    return JsonUtils.readValue(json, WorkflowDefinition.class);
   }
 
   @Test

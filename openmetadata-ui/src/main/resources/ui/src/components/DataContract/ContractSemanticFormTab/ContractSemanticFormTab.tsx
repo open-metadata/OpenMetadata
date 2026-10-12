@@ -12,10 +12,14 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Grid, Toggle, Typography } from '@openmetadata/ui-core-components';
+import {
+  Card,
+  Grid,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import { Button, Form, FormListFieldData, Input } from 'antd';
-import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import { isEmpty, isNull, isNumber } from 'lodash';
