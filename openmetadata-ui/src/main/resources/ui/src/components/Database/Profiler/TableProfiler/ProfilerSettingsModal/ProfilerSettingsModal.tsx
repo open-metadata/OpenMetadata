@@ -50,7 +50,6 @@ import {
   getTableProfilerConfig,
   putTableProfileConfig,
 } from '../../../../../rest/tableAPI';
-import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -353,7 +352,9 @@ const ProfilerSettingsModal = ({
       id="profiler-setting-form"
       validationBehavior="aria"
       onSubmit={form.handleSubmit(handleSave)}>
-      <Grid className="layout-row layout-grid" style={getLayoutGutter(16, 16)}>
+      <Grid
+        className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+        rowGap="4">
         <Grid.Item
           className="layout-column"
           data-testid="profile-sample-container"
@@ -520,9 +521,8 @@ const ProfilerSettingsModal = ({
               gap={4}>
               {includeColumns.fields.map((row, index) => (
                 <Grid
-                  className="layout-row layout-grid"
-                  key={row.id}
-                  style={getLayoutGutter(16)}>
+                  className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                  key={row.id}>
                   <Grid.Item className="layout-column" span={12}>
                     {selectField({
                       name: `includeColumns.${index}.columnName`,

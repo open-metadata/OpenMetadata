@@ -25,7 +25,6 @@ import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -166,9 +165,9 @@ export const TestCases = () => {
 
   return (
     <Grid
-      className="layout-row layout-grid"
+      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
       data-testid="test-case-container"
-      style={{ ...getLayoutGutter(16, 16) }}>
+      rowGap="4">
       <Grid.Item className="layout-column" span={24}>
         <Box
           inline

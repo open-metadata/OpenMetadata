@@ -79,7 +79,6 @@ import {
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import { toCapabilitiesInput } from '../../utils/Alerts/AlertSelectionUtil';
 import alertsClassBase from '../../utils/AlertsClassBase';
-import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -313,10 +312,7 @@ const AddNotificationPage = () => {
   if (isSystemProvider) {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography
-          as="p"
-          className="tw-max-w-md"
-          style={{ marginBottom: '0' }}>
+        <Typography as="p" className="tw-max-w-md tw:mb-0">
           {t('message.system-alert-edit-message')}
         </Typography>
       </ErrorPlaceHolder>
@@ -334,8 +330,8 @@ const AddNotificationPage = () => {
           <Card className="steps-form-container">
             <Card.Content>
               <Grid
-                className="layout-row layout-grid"
-                style={{ ...getLayoutGutter(16, 16) }}>
+                className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                rowGap="4">
                 <Grid.Item className="layout-column" span={24}>
                   <TitleBreadcrumb titleLinks={breadcrumb} />
                 </Grid.Item>
@@ -364,8 +360,8 @@ const AddNotificationPage = () => {
                         <SkeletonParagraph animation={false} rows={8} />
                       ) : (
                         <Grid
-                          className="layout-row layout-grid"
-                          style={{ ...getLayoutGutter(20, 20) }}>
+                          className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5"
+                          rowGap="5">
                           <Grid.Item className="layout-column" span={24}>
                             <Form.Item
                               label={t('label.name')}
@@ -392,12 +388,7 @@ const AddNotificationPage = () => {
                               className="layout-row"
                               justify="center"
                               wrap="wrap">
-                              <Box
-                                className="layout-column tw:block"
-                                style={{
-                                  maxWidth: '100%',
-                                  flex: '0 0 100%',
-                                }}>
+                              <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                                 <Form.Item
                                   className="m-b-0"
                                   name="resources"
@@ -434,12 +425,7 @@ const AddNotificationPage = () => {
                                       orientation="vertical"
                                     />
                                   </Box>
-                                  <Box
-                                    className="layout-column tw:block"
-                                    style={{
-                                      maxWidth: '100%',
-                                      flex: '0 0 100%',
-                                    }}>
+                                  <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                                     <ObservabilityFormFiltersItem
                                       validationErrors={ruleValidationErrors}
                                       value={
@@ -511,12 +497,7 @@ const AddNotificationPage = () => {
                                   orientation="vertical"
                                 />
                               </Box>
-                              <Box
-                                className="layout-column tw:block"
-                                style={{
-                                  maxWidth: '100%',
-                                  flex: '0 0 100%',
-                                }}>
+                              <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                                 <DestinationFormItemFormBridge
                                   renderValidationField={(validate) => (
                                     <Form.Item
@@ -555,12 +536,7 @@ const AddNotificationPage = () => {
                                             orientation="vertical"
                                           />
                                         </Box>
-                                        <Box
-                                          className="layout-column tw:block"
-                                          style={{
-                                            maxWidth: '100%',
-                                            flex: '0 0 100%',
-                                          }}>
+                                        <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                                           <Widget
                                             alertDetails={alert}
                                             formRef={form}

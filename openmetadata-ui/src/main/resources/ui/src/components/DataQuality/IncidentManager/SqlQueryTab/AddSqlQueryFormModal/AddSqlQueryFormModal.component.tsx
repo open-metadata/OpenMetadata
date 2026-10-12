@@ -239,9 +239,9 @@ const AddSqlQueryFormModal = ({
                       <Box direction="col" gap={2}>
                         <FormItemLabel label={t('label.description')} />
                         <RichTextEditor
+                          className="tw:m-0"
                           initialValue={field.value}
                           placeHolder={t('message.write-your-description')}
-                          style={{ margin: 0 }}
                           onTextChange={field.onChange}
                         />
                       </Box>

@@ -23,7 +23,6 @@ import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { Effect } from '../../generated/events/eventSubscription';
 import { useAlertSelectionContext } from '../../hooks/useAlertSelection';
-import { getLayoutGutter } from '../../utils/common/layout.utils';
 import FormCardSection from '../common/FormCardSection/FormCardSection';
 import { RuleSectionProps } from '../observability/Alerts/AlertAiFormFields.interface';
 import {
@@ -82,9 +81,9 @@ export const ClassicAlertRuleSection = ({
   return (
     <FormCardSection heading={title} subHeading={copy.description}>
       <Grid
-        className="layout-row layout-grid"
+        className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
         data-testid={field === 'filters' ? 'filters-list' : 'triggers-list'}
-        style={getLayoutGutter(16, 16)}>
+        rowGap="4">
         {rules.map((rule, ruleIndex) => {
           const error =
             validationErrors?.[
@@ -101,8 +100,8 @@ export const ClassicAlertRuleSection = ({
               <Box gap={4}>
                 <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={6}>
                   <Grid
-                    className="layout-row layout-grid"
-                    style={getLayoutGutter(8, 8)}>
+                    className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-8)] tw:-mx-1"
+                    rowGap="2">
                     <Grid.Item className="layout-column" span={12}>
                       <Select
                         aria-label={copy.label}

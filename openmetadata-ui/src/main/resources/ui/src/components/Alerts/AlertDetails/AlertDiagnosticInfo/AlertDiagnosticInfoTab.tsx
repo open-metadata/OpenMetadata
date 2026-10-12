@@ -26,7 +26,6 @@ import { EventSubscriptionDiagnosticInfo } from '../../../../generated/events/ap
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDiagnosticInfo } from '../../../../rest/observabilityAPI';
 import { getDiagnosticItems } from '../../../../utils/Alerts/AlertsUtilPure';
-import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 function AlertDiagnosticInfoTab() {
@@ -71,8 +70,8 @@ function AlertDiagnosticInfoTab() {
           <SkeletonParagraph rows={3} />
         ) : (
           <Grid
-            className="layout-row layout-grid w-full"
-            style={{ ...getLayoutGutter(16, 16) }}>
+            className="layout-row layout-grid w-full tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+            rowGap="4">
             {diagnosticItems.map((item) => (
               <Grid.Item className="layout-column" key={item.key} span={12}>
                 <Grid className="layout-row layout-grid tw:items-center">

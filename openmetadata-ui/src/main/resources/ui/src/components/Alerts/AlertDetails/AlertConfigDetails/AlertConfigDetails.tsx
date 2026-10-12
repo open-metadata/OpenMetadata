@@ -167,9 +167,7 @@ function AlertConfigDetails({
       <FormProvider {...form}>
         <Box className="alert-config-details" direction="col">
           <Box className="layout-row" justify="center" wrap="wrap">
-            <Box
-              className="layout-column tw:block"
-              style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+            <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
               <AlertFormSourceItem isViewMode value={values.resources} />
             </Box>
             {!isEmpty(modifiedAlertData.input?.filters) && (
@@ -181,9 +179,7 @@ function AlertConfigDetails({
                     orientation="vertical"
                   />
                 </Box>
-                <Box
-                  className="layout-column tw:block"
-                  style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                   <ObservabilityFormFiltersItem isViewMode value={values} />
                 </Box>
               </>
@@ -197,9 +193,7 @@ function AlertConfigDetails({
                     orientation="vertical"
                   />
                 </Box>
-                <Box
-                  className="layout-column tw:block"
-                  style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                   <ObservabilityFormTriggerItem isViewMode value={values} />
                 </Box>
               </>
@@ -211,9 +205,7 @@ function AlertConfigDetails({
                 orientation="vertical"
               />
             </Box>
-            <Box
-              className="layout-column tw:block"
-              style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+            <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
               <DestinationFormItem isViewMode />
             </Box>
             {!isEmpty(extraFormWidgets) && (
@@ -227,9 +219,7 @@ function AlertConfigDetails({
                         orientation="vertical"
                       />
                     </Box>
-                    <Box
-                      className="layout-column tw:block"
-                      style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                    <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                       <Widget
                         isViewMode
                         alertDetails={alertsClassBase.getModifiedAlertDataForForm(

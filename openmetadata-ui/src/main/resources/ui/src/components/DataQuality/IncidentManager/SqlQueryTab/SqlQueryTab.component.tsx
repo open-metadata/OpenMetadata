@@ -17,7 +17,6 @@ import { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ChangeDescription } from '../../../../generated/tests/testCase';
-import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
@@ -80,8 +79,8 @@ const SqlQueryTab = () => {
 
   return (
     <Grid
-      className="layout-row layout-grid sql-query-tab p-md"
-      style={{ ...getLayoutGutter(16, 16) }}>
+      className="layout-row layout-grid sql-query-tab p-md tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+      rowGap="4">
       {permissions.query?.Create && !isVersionPage && (
         <Grid.Item className="layout-column d-flex justify-end" span={24}>
           <Button

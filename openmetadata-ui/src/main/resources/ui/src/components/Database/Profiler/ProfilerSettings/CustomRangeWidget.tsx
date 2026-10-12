@@ -13,7 +13,6 @@
 import { Grid, NumberInput, Slider } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { useTranslation } from 'react-i18next';
-import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 
 export const CustomRangeWidget = (props: WidgetProps) => {
   const min = props.schema.minimum ?? 0;
@@ -22,9 +21,8 @@ export const CustomRangeWidget = (props: WidgetProps) => {
 
   return (
     <Grid
-      className="layout-row layout-grid"
-      data-testid="percentage-input"
-      style={{ ...getLayoutGutter(20) }}>
+      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5"
+      data-testid="percentage-input">
       <Grid.Item className="layout-column" span={18}>
         <Slider
           showRange

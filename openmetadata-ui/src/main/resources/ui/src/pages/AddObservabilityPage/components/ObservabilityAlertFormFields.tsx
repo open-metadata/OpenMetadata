@@ -123,9 +123,7 @@ function ObservabilityAlertFormFields({
       </Grid.Item>
       <Grid.Item className="layout-column" span={24}>
         <Box className="layout-row" justify="center" wrap="wrap">
-          <Box
-            className="layout-column tw:block"
-            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+          <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
             <AlertFormSourceItem
               error={validationErrors.resources}
               filterResources={filterResources}
@@ -144,9 +142,7 @@ function ObservabilityAlertFormFields({
                   orientation="vertical"
                 />
               </Box>
-              <Box
-                className="layout-column tw:block"
-                style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+              <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                 <ObservabilityFormFiltersItem
                   validationErrors={validationErrors}
                   value={values}
@@ -164,9 +160,7 @@ function ObservabilityAlertFormFields({
                   orientation="vertical"
                 />
               </Box>
-              <Box
-                className="layout-column tw:block"
-                style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+              <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                 <ObservabilityFormTriggerItem
                   validationErrors={validationErrors}
                   value={values}
@@ -182,9 +176,7 @@ function ObservabilityAlertFormFields({
               orientation="vertical"
             />
           </Box>
-          <Box
-            className="layout-column tw:block"
-            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+          <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
             <DestinationFormItem />
           </Box>
 
@@ -199,9 +191,7 @@ function ObservabilityAlertFormFields({
                       orientation="vertical"
                     />
                   </Box>
-                  <Box
-                    className="layout-column tw:block"
-                    style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                  <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                     <Widget
                       alertDetails={alert}
                       loading={isLoading}

@@ -29,7 +29,6 @@ import { AlertAiFormValidationErrors } from '../../../components/observability/A
 import { validateAlertAiForm } from '../../../components/observability/Alerts/AlertAiFormFieldsValidationUtils';
 import { AlertSelectionProvider } from '../../../hooks/useAlertSelection';
 import { getClassicAlertInitialValues } from '../../../utils/Alerts/ClassicAlertForm.utils';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormProps } from '../hooks/useObservabilityAlertForm';
 import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
@@ -87,8 +86,8 @@ function ObservabilityAlertForm({
 
   return (
     <Grid
-      className="layout-row layout-grid"
-      style={{ ...getLayoutGutter(16, 16) }}>
+      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+      rowGap="4">
       <Grid.Item className="layout-column" span={24}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
       </Grid.Item>
@@ -109,8 +108,8 @@ function ObservabilityAlertForm({
             validationBehavior="aria"
             onSubmit={form.handleSubmit(submit, () => setHasSubmitted(true))}>
             <Grid
-              className="layout-row layout-grid"
-              style={{ ...getLayoutGutter(20, 20) }}>
+              className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5"
+              rowGap="5">
               <AlertSelectionProvider value={selection}>
                 <ObservabilityAlertFormFields
                   alert={alert}

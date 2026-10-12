@@ -35,7 +35,6 @@ import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.con
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
-import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getDefaultScheduleValue } from '../../../../utils/CronExpressionUtils';
 import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
@@ -197,8 +196,8 @@ const AddTestSuitePipeline = ({
       validationBehavior="aria"
       onSubmit={form.handleSubmit(onFinish)}>
       <Grid
-        className="layout-row layout-grid"
-        style={{ ...getLayoutGutter(16, 16) }}>
+        className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+        rowGap="4">
         <Grid.Item className="layout-column" span={24}>
           <FormField control={form.control} name="name">
             {({ field }) => (
@@ -243,9 +242,7 @@ const AddTestSuitePipeline = ({
         <Grid.Item className="layout-column" span={24}>
           <Card className="tw:bg-(--om-grey-1)">
             <Card.Content className="tw:p-4">
-              <Grid
-                className="layout-row layout-grid"
-                style={{ ...getLayoutGutter(0, 16) }}>
+              <Grid className="layout-row layout-grid" rowGap="4">
                 <Grid.Item className="layout-column" span={24}>
                   {testCaseFormFields.map((field) => (
                     <Fragment key={field.name}>{getField(field)}</Fragment>

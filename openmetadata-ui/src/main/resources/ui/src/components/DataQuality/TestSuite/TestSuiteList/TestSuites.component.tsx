@@ -23,7 +23,6 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
-import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -107,9 +106,9 @@ export const TestSuites = () => {
 
   return (
     <Grid
-      className="layout-row layout-grid"
+      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
       data-testid="test-suite-container"
-      style={{ ...getLayoutGutter(16, 16) }}>
+      rowGap="4">
       <Grid.Item className="layout-column" span={24}>
         <Box align="center" gap={2}>
           <Typography as="span" size="text-sm">

@@ -51,7 +51,6 @@ import {
   getChangeEventDataFromTypedEvent,
   getLabelsForEventDetails,
 } from '../../../../utils/Alerts/AlertsUtilPure';
-import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -190,8 +189,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
     return (
       <Grid
-        className="layout-row layout-grid"
-        style={{ ...getLayoutGutter(16, 16) }}>
+        className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+        rowGap="4">
         <Grid.Item
           className="layout-column"
           data-testid="recent-events-list"
@@ -215,8 +214,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                       <Box className="layout-column tw:block">
                         <Box
                           align="center"
-                          className="layout-row"
-                          style={{ ...getLayoutGutter(16, 16) }}
+                          className="layout-row tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                          rowGap={4}
                           wrap="wrap">
                           <Box className="layout-column tw:block">
                             {/* Display icon for the status of the alert event */}
@@ -257,14 +256,14 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                   </AccordionHeader>
                   <AccordionPanel unmountOnCollapse>
                     <Box
-                      className="layout-row"
+                      className="layout-row tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
                       data-testid={`event-details-${changeEventData.id}`}
-                      style={{ ...getLayoutGutter(16, 16) }}
+                      rowGap={4}
                       wrap="wrap">
                       <Box className="layout-column tw:block">
                         <Grid
-                          className="layout-row layout-grid"
-                          style={{ ...getLayoutGutter(16, 16) }}>
+                          className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                          rowGap="4">
                           {Object.entries(changeEventDataToDisplay).map(
                             ([key, value]) =>
                               isUndefined(value) ? null : (
@@ -273,9 +272,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                   key={key}
                                   span={key === 'reason' ? 24 : 8}>
                                   <Grid
-                                    className="layout-row layout-grid"
+                                    className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-4)] tw:-mx-0.5"
                                     data-testid={`event-data-${key}`}
-                                    style={{ ...getLayoutGutter(4, 4) }}>
+                                    rowGap="1">
                                     <Grid.Item
                                       className="layout-column"
                                       span={24}>
@@ -304,18 +303,14 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                       </Box>
                       {!isEmpty(changeEventData.changeDescription) && (
                         <>
-                          <Box
-                            className="layout-column tw:block"
-                            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                          <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                             <Typography className="font-medium">
                               {`${t('label.change-entity', {
                                 entity: t('label.description'),
                               })}:`}
                             </Typography>
                           </Box>
-                          <Box
-                            className="layout-column tw:block"
-                            style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+                          <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                             <SchemaEditor
                               className="border"
                               mode={{ name: CSMode.JAVASCRIPT }}
@@ -366,14 +361,14 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
   return (
     <Grid
-      className="layout-row layout-grid"
-      style={{ ...getLayoutGutter(16, 16) }}>
+      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+      rowGap="4">
       <Grid.Item className="layout-column" span={24}>
         <Box className="layout-row" justify="between" wrap="wrap">
           <Box className="layout-column tw:block">
             <Grid
-              className="layout-row layout-grid"
-              style={{ ...getLayoutGutter(8, 8) }}>
+              className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-8)] tw:-mx-1"
+              rowGap="2">
               <Grid.Item className="layout-column" span={24}>
                 <Typography className="font-medium">
                   {`${t('label.description')}:`}

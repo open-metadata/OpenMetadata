@@ -44,7 +44,6 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
-import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../utils/FqnUtils';
@@ -222,8 +221,8 @@ const AddCustomMetricPage = () => {
         children: (
           <div data-testid="add-custom-metric-page-container">
             <Grid
-              className="layout-row layout-grid"
-              style={{ ...getLayoutGutter(16, 16) }}>
+              className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+              rowGap="4">
               <Grid.Item className="layout-column" span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
               </Grid.Item>

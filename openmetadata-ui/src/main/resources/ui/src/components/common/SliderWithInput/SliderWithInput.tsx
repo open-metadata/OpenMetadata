@@ -20,7 +20,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { SliderWithInputProps } from './SliderWithInput.interface';
 const SliderWithInput = ({
   value,
@@ -32,11 +31,10 @@ const SliderWithInput = ({
 
   return (
     <Box
-      className={`layout-row ${className}`}
+      className={`layout-row ${className} tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5`}
       data-testid="percentage-input"
-      style={getLayoutGutter(20)}
       wrap="wrap">
-      <Box className="layout-column tw:block" style={{ flex: 'auto' }}>
+      <Box className="layout-column tw:block tw:flex-auto">
         <Slider
           showRange
           aria-label={t('label.profile-sample')}
