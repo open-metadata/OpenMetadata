@@ -3401,6 +3401,89 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             });
   }
 
+  @Test
+  void test_hierarchySearchKeepsParentOfEveryMatchOnThePage(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    String word = "pagecut" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+    int matchCount = 30;
+    int pageSize = 25;
+
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("hier_page_glossary"))
+                    .withDescription("Glossary for hierarchy search paging"));
+    GlossaryTerm parent =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.prefix("hier_page_parent"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Parent that does not match the search word"));
+    for (int i = 0; i < matchCount; i++) {
+      createEntity(
+          new CreateGlossaryTerm()
+              .withName(ns.prefix("hier_page_child_" + i))
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withParent(parent.getFullyQualifiedName())
+              .withDescription("Child matching " + word));
+    }
+
+    Awaitility.await("all matching terms should be indexed")
+        .atMost(java.time.Duration.ofSeconds(60))
+        .pollInterval(java.time.Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query(word)
+                      .index("glossary_term_search_index")
+                      .size(matchCount)
+                      .execute();
+              assertEquals(
+                  matchCount,
+                  mapper.readTree(response).path("hits").path("total").path("value").asInt());
+            });
+
+    // More matches than the page holds push the non-matching parent out of the ranked page
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("q", word)
+            .queryParam("index", "glossary_term_search_index")
+            .queryParam("from", "0")
+            .queryParam("size", String.valueOf(pageSize))
+            .queryParam("deleted", "false")
+            .queryParam("getHierarchy", "true")
+            .build();
+    JsonNode glossaries =
+        mapper.readTree(
+            client
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, "/v1/search/query", null, options));
+
+    JsonNode glossaryNode = findByFqn(glossaries, glossary.getFullyQualifiedName());
+    assertNotNull(glossaryNode, "Glossary of the matches should be returned");
+    JsonNode parentNode = findByFqn(glossaryNode.path("children"), parent.getFullyQualifiedName());
+    assertNotNull(parentNode, "Parent of the matches should be returned even though it ranks last");
+    assertEquals(
+        pageSize,
+        parentNode.path("children").size(),
+        "Every match on the page should sit under its parent");
+  }
+
+  private static JsonNode findByFqn(JsonNode nodes, String fqn) {
+    for (JsonNode node : nodes) {
+      if (fqn.equals(node.path("fullyQualifiedName").asText())) {
+        return node;
+      }
+    }
+    return null;
+  }
+
   private String getAssetCounts(OpenMetadataClient client, String parent) {
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     if (parent != null) {
