@@ -78,7 +78,7 @@ const StatTile: React.FC<StatTileProps> = ({
     direction="col"
     gap={2}>
     <Box align="center" gap={2}>
-      <Box className="tw:rounded-md tw:bg-success-secondary tw:h-8 tw:w-8 tw:flex tw:items-center tw:justify-center">
+      <Box className="tw:rounded-md tw:bg-utility-success-50 tw:h-8 tw:w-8 tw:flex tw:items-center tw:justify-center">
         {icon}
       </Box>
       <Box direction="col">
@@ -179,7 +179,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
           count={stats.totalRoles}
           icon={
             <UserCheck01
-              className="tw:text-fg-success-primary"
+              className="tw:text-utility-success-600"
               height={20}
               width={20}
             />
