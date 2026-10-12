@@ -88,7 +88,7 @@ const WhatsNewAlert = () => {
       });
     }
     onModalCancel();
-  }, [cookieStorage, onModalCancel, getReleaseVersionExpiry, cookieKey]);
+  }, [onModalCancel, cookieKey]);
 
   useEffect(() => {
     if (cookieKey) {
