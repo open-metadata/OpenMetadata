@@ -545,16 +545,33 @@ def focus_points(catalog: Catalog) -> dict[str, str]:
     }
 
 
+def count_edges(catalog: Catalog) -> tuple[int, int]:
+    """Every lineage edge the seed writes, and how many carry column lineage.
+
+    Exact, unlike plan(): about 11 s per 200k assets, which a seed that takes hours can afford.
+    """
+    edges = 0
+    column_edges = 0
+    for layer in LAYERS:
+        if layer.key == "source":
+            continue
+        for domain in range(len(catalog.domains)):
+            for index in range(catalog.count(layer.key, domain)):
+                for edge in catalog.edges(AssetRef(layer.key, domain, index)):
+                    edges += 1
+                    column_edges += bool(catalog.column_lineage(edge))
+    return edges, column_edges
+
+
 def benchmark_section(catalog: Catalog, focus: dict[str, str]) -> dict[str, Any]:
-    """What LineageScenePerformanceScaleIT needs to benchmark this graph instead of seeding one."""
+    """What LineageScenePerformanceScaleIT needs to benchmark this graph instead of seeding one.
+
+    SeededLineageGraph reads these keys and fails on a missing one, so a key is renamed or removed
+    only together with it:
+    ADR:2026-10-09-nightly-latency-is-trended-on-a-history-branch-and-gated-on-recent-nights.
+    """
     counts = plan(catalog, sample_every=50)
-    edges = sum(
-        len(catalog.upstreams(AssetRef(layer.key, domain, index)))
-        for layer in LAYERS
-        if layer.key != "source"
-        for domain in range(len(catalog.domains))
-        for index in range(catalog.count(layer.key, domain))
-    )
+    edges, column_edges = count_edges(catalog)
     return {
         "cohortFqnPrefix": f"{catalog.prefix}_",
         "services": counts["services"],
@@ -562,7 +579,7 @@ def benchmark_section(catalog: Catalog, focus: dict[str, str]) -> dict[str, Any]
         "schemas": counts["schemas"],
         "tables": counts["tables"],
         "edges": edges,
-        "columnEdges": counts["edgesEstimate"],
+        "columnEdges": column_edges,
         "focus": {key: focus[key] for key in BENCHMARK_FOCUS_KEYS},
     }
 
@@ -584,9 +601,10 @@ def write_manifest(
             "hubLineageTab": f"{ui}/table/{encode_fqn(focus['hubTableFqn'])}/lineage",
             "leafDashboard": f"{ui}/dashboard/{encode_fqn(focus['leafDashboardFqn'])}/lineage",
         },
+        # The password stays out of the manifest and the console; the README documents it.
         "viewer": None
         if args.no_viewer
-        else {"email": f"{VIEWER_NAME.replace('_', '.')}@{VIEWER_EMAIL_DOMAIN}", "password": VIEWER_PASSWORD},
+        else {"email": f"{VIEWER_NAME.replace('_', '.')}@{VIEWER_EMAIL_DOMAIN}"},
     }
     target = Path(args.state_dir) / "manifest.json"
     target.write_text(json.dumps(manifest, indent=2) + "\n")
@@ -594,7 +612,9 @@ def write_manifest(
     for label, url in manifest["open"].items():
         print(f"  {label:22} {url}")
     if manifest["viewer"]:
-        print(f"  non-admin login        {manifest['viewer']['email']} / {VIEWER_PASSWORD}")
+        print(
+            f"  non-admin login        {manifest['viewer']['email']} (password in scripts/lineage_seed/README.md)"
+        )
     if state.failures:
         print(
             f"  failures by phase      {state.failures} (re-run the same command to retry the failed units)"

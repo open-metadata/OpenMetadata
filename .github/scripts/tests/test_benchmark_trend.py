@@ -277,6 +277,32 @@ def test_refuses_a_report_from_an_unknown_schema(tmp_path):
     assert trend.main(["--reports", str(reports), "--history", str(tmp_path / "h"), "--ref", "main"]) == 2
 
 
+def test_a_suite_split_across_two_jvms_is_merged_into_one_series(tmp_path):
+    first = _api("ui-it", {"GET /a": (100, 30), "GET /b": (50, 10)})
+    second = _api("ui-it", {"GET /a": (300, 10), "GET /c": (70, 5)})
+    second["latencies"]["GET /a"]["meanMillis"] = 200.0
+    (tmp_path / "api-latency-ui-it-101.json").write_text(json.dumps(first))
+    (tmp_path / "api-latency-ui-it-202.json").write_text(json.dumps(second))
+
+    [merged] = trend.load_reports([tmp_path])
+
+    route = merged["latencies"]["GET /a"]
+    assert (route["p95Millis"], route["sampleCount"]) == (300, 40)
+    assert route["meanMillis"] == pytest.approx((100 * 30 + 200 * 10) / 40)
+    assert set(merged["latencies"]) == {"GET /a", "GET /b", "GET /c"}
+    assert merged["counters"] == {"requests": 55, "routes": 3, "mergedReports": 2}
+
+
+def test_a_duplicate_lineage_report_keeps_the_last(tmp_path, capsys):
+    (tmp_path / "a.json").write_text(json.dumps(_lineage({"x": 1})))
+    (tmp_path / "b.json").write_text(json.dumps(_lineage({"x": 2})))
+
+    [kept] = trend.load_reports([tmp_path])
+
+    assert kept["latencies"]["x"]["p95Millis"] == 2
+    assert "keeping the last" in capsys.readouterr().err
+
+
 def test_skips_bare_metrics_files(tmp_path):
     (tmp_path / "scale-100k.json").write_text(json.dumps({"tables": 100000, "seconds": 12}))
     (tmp_path / "lineage.json").write_text(json.dumps(_lineage({"a": 1})))

@@ -2,8 +2,8 @@
 """Track nightly benchmark p95s over time, publish the trend, and flag regressions.
 
 The nightly Java IT jobs leave BenchmarkReport envelopes in target/benchmark:
-lineage-scene-scale-<tables>.json from LineageScenePerformanceScaleIT, and api-latency-<suite>.json
-from every suite (ApiLatencyReportListener records each SDK and browser API call). This script
+lineage-scene-scale-<tables>.json from LineageScenePerformanceScaleIT, and api-latency-<suite>-<pid>.json
+from every suite JVM (ApiLatencyReportListener records each SDK and browser API call). This script
 turns one night's reports plus the nights before it into:
 
   * a job-summary table per series: latest p95, the median of the previous nights, the change,
@@ -134,7 +134,7 @@ class SeriesResult:
 
 
 def load_reports(paths: list[Path]) -> list[dict[str, Any]]:
-    """Every enveloped report under `paths`; the older bare metrics files are skipped."""
+    """One enveloped report per series under `paths`; the older bare metrics files are skipped."""
     reports = []
     for path in paths:
         files = sorted(path.rglob("*.json")) if path.is_dir() else [path]
@@ -143,7 +143,59 @@ def load_reports(paths: list[Path]) -> list[dict[str, Any]]:
             if isinstance(report, dict) and "benchmarkId" in report and "latencies" in report:
                 _require_supported_schema(report, file)
                 reports.append(report)
-    return reports
+    return merge_series(reports)
+
+
+def merge_series(reports: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapses reports that share a series key into one.
+
+    Every IT JVM writes its own API latency file, and a suite whose job runs two failsafe
+    executions leaves two, so those are merged. Any other duplicate keeps the last file read.
+    """
+    by_series: dict[str, list[dict[str, Any]]] = {}
+    for report in reports:
+        by_series.setdefault(series_key(report), []).append(report)
+    merged = []
+    for key, group in by_series.items():
+        if len(group) > 1 and group[0]["benchmarkId"] == API_LATENCY_ID:
+            merged.append(_merge_api_reports(group))
+        else:
+            if len(group) > 1:
+                print(f"warning: {len(group)} reports for {key}; keeping the last", file=sys.stderr)
+            merged.append(group[-1])
+    return merged
+
+
+def _merge_api_reports(group: list[dict[str, Any]]) -> dict[str, Any]:
+    latencies: dict[str, dict[str, Any]] = {}
+    for report in group:
+        for route, latency in report["latencies"].items():
+            latencies[route] = _merge_latency(latencies[route], latency) if route in latencies else latency
+    counters: dict[str, Any] = {}
+    for report in group:
+        for name, value in report.get("counters", {}).items():
+            if isinstance(value, (int, float)):
+                counters[name] = counters.get(name, 0) + value
+    counters["routes"] = len(latencies)
+    counters["mergedReports"] = len(group)
+    return {**group[-1], "latencies": latencies, "counters": counters}
+
+
+def _merge_latency(first: dict[str, Any], second: dict[str, Any]) -> dict[str, Any]:
+    """Merges two JVMs' summaries of one route.
+
+    Percentiles cannot be merged exactly from summaries. Each one takes the larger of the two, an
+    upper bound on the merged value, since a mixture's percentile never exceeds its largest
+    component's. Counts and the maximum are exact, and the mean is weighted by samples.
+    """
+    samples = first["sampleCount"] + second["sampleCount"]
+    weighted = first["meanMillis"] * first["sampleCount"] + second["meanMillis"] * second["sampleCount"]
+    return {
+        **{key: max(first[key], second[key]) for key in ("p50Millis", "p95Millis", "p99Millis", "maxMillis")},
+        "meanMillis": weighted / samples if samples else 0.0,
+        "sampleCount": samples,
+        "warmupCount": first.get("warmupCount", 0) + second.get("warmupCount", 0),
+    }
 
 
 def series_key(report: dict[str, Any]) -> str:

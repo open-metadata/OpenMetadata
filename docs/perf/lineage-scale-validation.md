@@ -208,8 +208,10 @@ second-highest. Raise `jpw.lineage.samples` before reading either as a genuine t
 ## Per-API latency from every suite
 
 Every IT JVM records the latency of each OpenMetadata API call it makes and publishes it at the end
-of the run as `target/benchmark/api-latency-<suite>.json`, in the same envelope as the benchmark
-(`benchmarkId = api-latency`). No test code is involved:
+of the run as `target/benchmark/api-latency-<suite>-<pid>.json`, in the same envelope as the
+benchmark (`benchmarkId = api-latency`). The engine profiles run two failsafe executions, so a suite
+can leave two files; `benchmark_trend.py` merges them into one series, taking the larger of the two
+for each percentile, an upper bound. No test code is involved:
 
 - **SDK calls** — the harness registers `ApiLatencyRecorder` on every client it builds
   (`SdkClients`, `ExternalServer`, `ContainerizedServer`) through the SDK's `RequestListener` hook.

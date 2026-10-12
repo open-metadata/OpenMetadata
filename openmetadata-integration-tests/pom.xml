@@ -330,6 +330,10 @@
                      Docker build context, so it has to travel with the published harness. -->
                 <include>opensearch-plugins/**</include>
               </includes>
+              <excludes>
+                <!-- The bench package's own unit tests are not part of the harness. -->
+                <exclude>org/openmetadata/it/bench/*Test*</exclude>
+              </excludes>
             </configuration>
           </execution>
         </executions>

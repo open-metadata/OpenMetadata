@@ -3,9 +3,10 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-09 (initial)
 - **Deciders:** Mohit Yadav
-- **Guard:** `.github/scripts/tests/test_benchmark_trend.py` covers the gate, the baseline and the
-  history layout. `ApiRoutesTest` and `ApiLatencyRecorderTest` cover route keys. A reviewer checks
-  the nightly matrix order.
+- **Guard:** `.github/scripts/tests/test_benchmark_trend.py` covers the gate, the baseline, the
+  history layout and the merge of a suite's files. `ApiRoutesTest` and `ApiLatencyRecorderTest`
+  cover route keys. `SeededLineageGraphTest` and `scripts/lineage_seed/tests/test_seed.py` pin the
+  seed manifest's keys. A reviewer checks the nightly matrix order.
 - **Related:** #32050, PR #34023, `open-metadata/openmetadata-nightly` `k8s-java-it.yml`,
   `docs/perf/lineage-scale-validation.md`
 
@@ -27,9 +28,13 @@ cannot answer either on its own:
      through Playwright's request timing.
    - It keys them `"<sdk|ui> <METHOD> <normalised route>"` and keeps at most 400 routes, each in a
      fixed-size histogram with about 1% precision.
-   - It publishes `target/benchmark/api-latency-<suite>.json` in the `BenchmarkReport` envelope
-     (`benchmarkId` `api-latency`).
+   - Each JVM publishes `target/benchmark/api-latency-<suite>-<pid>.json` in the
+     `BenchmarkReport` envelope (`benchmarkId` `api-latency`).
    - Each nightly job passes a stable `-Djpw.bench.suite`, because that label is the series name.
+   - A job with two failsafe executions leaves two files for its suite, and the trend script
+     merges them. Sample counts add, the maximum is the larger one, and the mean is weighted by
+     samples. Summaries cannot be merged exactly, so each percentile takes the larger of the two;
+     that is an upper bound on the merged value.
 2. **A series is `benchmarkId` plus `params.suite` (API latency) or `params.tables` (lineage
    benchmark), per ref.**
 3. **History lives on the `benchmark-history` branch of `openmetadata-nightly`.**
@@ -45,6 +50,14 @@ cannot answer either on its own:
    - The IT's absolute budgets stay as a backstop.
 5. **`LineageScenePerformanceScaleIT` runs last in the nightly `scale-it` matrix**, after the
    destructive class, with `jpw.lineage.skipCleanup=true`.
+6. **The seed script's manifest is the interface the benchmark attaches through.**
+   - `-Djpw.lineage.seedManifest` points `LineageScenePerformanceScaleIT` at a graph
+     `scripts/lineage_seed` built.
+   - `SeededLineageGraph` reads the manifest's `benchmark` section: `cohortFqnPrefix`, `services`,
+     `databases`, `schemas`, `tables`, `edges`, `columnEdges` and
+     `focus.{serviceFqn,databaseFqn,schemaFqn,hubTableFqn,leafTableFqn,hubColumnFqn}`.
+   - The counts are exact, not estimated. `columnEdges` counts the edges that carry column lineage.
+   - A missing key fails the run.
 
 ## Consequences
 
@@ -58,3 +71,5 @@ cannot answer either on its own:
   from the first week of trend data, are what catch that.
 - Moving the lineage benchmark earlier in `scale-it` lets its seed and cascade slow the classes
   after it. See the matrix comments in the workflow.
+- Renaming or removing a manifest key means changing `seed_lineage_graph.py` and
+  `SeededLineageGraph` in the same PR; the tests on both sides pin the keys.

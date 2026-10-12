@@ -699,9 +699,11 @@ export const getSceneLandingViewport = (
   }
 
   const realBoxes = boxes.filter((box) => !box.isGhost);
-  const firstBox = (realBoxes.length > 0 ? realBoxes : boxes).reduce(
+  const candidates = realBoxes.length > 0 ? realBoxes : boxes;
+  const firstBox = candidates.reduce(
     (first, box) =>
-      box.x < first.x || (box.x === first.x && box.y < first.y) ? box : first
+      box.x < first.x || (box.x === first.x && box.y < first.y) ? box : first,
+    candidates[0]
   );
   const inset = padding / (2 * (1 + padding));
 

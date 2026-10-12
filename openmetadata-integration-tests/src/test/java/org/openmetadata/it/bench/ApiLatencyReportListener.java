@@ -25,16 +25,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Publishes what {@link ApiLatencyRecorder} saw as {@code target/benchmark/api-latency-<suite>.json}
- * when the test JVM's launcher session closes — the same directory the nightly already uploads.
+ * Publishes what {@link ApiLatencyRecorder} saw as {@code
+ * target/benchmark/api-latency-<suite>-<pid>.json} when the test JVM's launcher session closes —
+ * the same directory the nightly already uploads.
  *
  * <p>Registered after {@code TestSuiteBootstrap} in {@code META-INF/services}. JUnit closes session
  * listeners in reverse order, so this runs while the embedded stack is still up.
  *
  * <p>Name the series with {@code -Djpw.bench.suite=<label>}: the nightly gives each job a stable
- * label so its numbers line up night over night. Without one, the file is suffixed with the pid,
- * because the default profiles run two failsafe executions in sequence and the second would
- * otherwise overwrite the first.
+ * label so its numbers line up night over night. Every JVM writes its own file, suffixed with its
+ * pid: the engine profiles run two failsafe executions in sequence, and a shared name would let the
+ * second overwrite the first. {@code benchmark_trend.py} merges a suite's files back into one
+ * series.
  */
 public final class ApiLatencyReportListener implements LauncherSessionListener {
 
@@ -70,9 +72,7 @@ public final class ApiLatencyReportListener implements LauncherSessionListener {
   }
 
   static String fileName() {
-    final boolean labelled = System.getProperty(SUITE_PROPERTY) != null;
-    final String stem = BENCHMARK_ID + "-" + suite();
-    return (labelled ? stem : stem + "-" + ProcessHandle.current().pid()) + ".json";
+    return "%s-%s-%d.json".formatted(BENCHMARK_ID, suite(), ProcessHandle.current().pid());
   }
 
   private static Map<String, Object> params() {

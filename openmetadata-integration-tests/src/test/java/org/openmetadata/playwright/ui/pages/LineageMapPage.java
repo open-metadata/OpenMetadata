@@ -249,9 +249,8 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
       }
     }
     throw new IllegalStateException(
-        "No expandable child of "
-            + focus.orElse("the root scene")
-            + " is rendered, so there is nothing to drill into");
+        "No expandable child of %s is rendered, so there is nothing to drill into"
+            .formatted(focus.orElse("the root scene")));
   }
 
   /**

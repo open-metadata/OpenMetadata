@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import uuid
 from pathlib import Path
@@ -64,9 +65,10 @@ class FakeServer:
         return [path for verb, path, _ in self.calls if verb == method]
 
 
-def run_seed(tmp_path: Path, server: FakeServer, *extra: str) -> seed.State:
+def run_seed(tmp_path: Path, server: FakeServer, *extra: str, viewer: bool = False) -> seed.State:
+    viewer_args = [] if viewer else ["--no-viewer"]
     args = seed.parse_args(
-        ["seed", "--assets", str(ASSETS), "--state-dir", str(tmp_path), "--no-viewer", *extra]
+        ["seed", "--assets", str(ASSETS), "--state-dir", str(tmp_path), *viewer_args, *extra]
     )
     catalog = Catalog(args.assets, args.prefix, args.seed)
     identity = {"assets": args.assets, "prefix": args.prefix, "seed": args.seed, "server": server.ui_root}
@@ -96,6 +98,53 @@ def test_a_full_seed_writes_every_kind_of_entity_and_lineage(tmp_path):
         assert expected in paths
     assert any(path.startswith("/v1/lineage/table/name/") for path in paths)
     assert (tmp_path / "manifest.json").exists()
+
+
+def test_the_manifest_counts_the_edges_and_column_edges_it_wrote(tmp_path):
+    server = FakeServer()
+
+    run_seed(tmp_path, server)
+
+    lineage = [body for verb, path, body in server.calls if verb == "PUT" and path.startswith("/v1/lineage/")]
+    benchmark = json.loads((tmp_path / "manifest.json").read_text())["benchmark"]
+    assert benchmark["edges"] == len(lineage)
+    assert benchmark["columnEdges"] == sum(1 for body in lineage if body.get("columnsLineage"))
+    assert 0 < benchmark["columnEdges"] < benchmark["edges"]
+
+
+def test_the_benchmark_section_carries_exactly_what_seeded_lineage_graph_reads(tmp_path):
+    """SeededLineageGraph.read fails on a missing key, so change both sides together."""
+    run_seed(tmp_path, FakeServer())
+
+    benchmark = json.loads((tmp_path / "manifest.json").read_text())["benchmark"]
+
+    assert set(benchmark) == {
+        "cohortFqnPrefix",
+        "services",
+        "databases",
+        "schemas",
+        "tables",
+        "edges",
+        "columnEdges",
+        "focus",
+    }
+    assert set(benchmark["focus"]) == {
+        "serviceFqn",
+        "databaseFqn",
+        "schemaFqn",
+        "hubTableFqn",
+        "leafTableFqn",
+        "hubColumnFqn",
+    }
+
+
+def test_the_viewer_password_is_neither_printed_nor_written(tmp_path, capsys):
+    run_seed(tmp_path, FakeServer(), viewer=True)
+
+    manifest = (tmp_path / "manifest.json").read_text()
+    assert json.loads(manifest)["viewer"]["email"] == "lineage.viewer@open-metadata.org"
+    assert seed.VIEWER_PASSWORD not in manifest
+    assert seed.VIEWER_PASSWORD not in capsys.readouterr().out
 
 
 def test_a_second_run_resumes_instead_of_resending(tmp_path):

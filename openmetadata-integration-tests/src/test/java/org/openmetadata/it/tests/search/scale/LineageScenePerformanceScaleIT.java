@@ -22,14 +22,17 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntUnaryOperator;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
@@ -169,6 +172,7 @@ class LineageScenePerformanceScaleIT {
   private final Map<String, Latency> latencies = new LinkedHashMap<>();
   private final Map<String, Object> counters = new LinkedHashMap<>();
   private final Map<String, String> interactionFailures = new LinkedHashMap<>();
+  private final Map<String, String> scenarioFailures = new LinkedHashMap<>();
 
   private LineageGraphSpec spec;
   private OpenMetadataClient client;
@@ -232,12 +236,13 @@ class LineageScenePerformanceScaleIT {
 
   @Test
   @Order(1)
-  void sceneApiLatencyStaysWithinBudget() throws Exception {
+  void sceneApiLatencyStaysWithinBudget() throws InterruptedException {
     final List<Scenario> scenarios = scenarios();
     for (final Scenario scenario : scenarios) {
-      latencies.put(
-          scenario.id(), LatencySampler.measure(WARMUPS, SAMPLES, scenario.interaction()));
-      LOG.info("Scenario {} -> {}", scenario.id(), latencies.get(scenario.id()));
+      measureRecordingFailure(
+          scenario.id(),
+          scenarioFailures,
+          () -> LatencySampler.measure(WARMUPS, SAMPLES, scenario.interaction()));
     }
     assertWithinBudget(scenarios);
   }
@@ -288,7 +293,7 @@ class LineageScenePerformanceScaleIT {
    */
   @EnabledIf("org.openmetadata.it.util.OssTestServer#isExternalMode")
   @ExtendWith(UiSessionExtension.class)
-  void lineageMapExplorationStaysWithinBudget(final UiSession ui) {
+  void lineageMapExplorationStaysWithinBudget(final UiSession ui) throws InterruptedException {
     LineageMapPage.suppressOnboarding(ui);
     measureDrillInteractions(ui);
     measureZoomInteractions(ui);
@@ -302,29 +307,67 @@ class LineageScenePerformanceScaleIT {
    * ASSET band — the map only moves to FIELD when the drilled node is a table — which is why each
    * level is measured separately instead of as one "asset to field" hop.
    */
-  private void measureDrillInteractions(final UiSession ui) {
+  private void measureDrillInteractions(final UiSession ui) throws InterruptedException {
+    measureInteraction("drill-service", iteration -> drillStart(ui, 0), this::drill);
+    measureInteraction("drill-database", iteration -> drillStart(ui, 1), this::drill);
+    measureInteraction("drill-schema", iteration -> drillStart(ui, 2), this::drill);
     measureInteraction(
-        ui, "drill-service", iteration -> openSettled(ui, 0), map -> drillIntoChild(map, 0));
+        "drill-table-to-fields",
+        iteration -> drillStart(ui, TABLE_LEVEL),
+        this::drillTableIntoFields);
     measureInteraction(
-        ui, "drill-database", iteration -> openSettled(ui, 1), map -> drillIntoChild(map, 1));
-    measureInteraction(
-        ui, "drill-schema", iteration -> openSettled(ui, 2), map -> drillIntoChild(map, 2));
-    measureInteraction(
-        ui, "drill-table-to-fields", iteration -> openSettled(ui, 3), this::drillTableIntoFields);
-    measureInteraction(
-        ui,
         "breadcrumb-pop-to-layer",
         iteration -> openDrilled(ui, 1),
         map -> map.popBreadcrumb(ROOT_BREADCRUMB_INDEX, LAYER_BAND));
   }
 
+  /** A settled map and the node its timed drill clicks, picked during the untimed setup. */
+  private record DrillStart(LineageMapPage map, String targetFqn) implements AutoCloseable {
+    @Override
+    public void close() {
+      map.close();
+    }
+  }
+
   /**
-   * Drills one level along the benchmark graph's own path — service, database, schema, hub table —
-   * so the scenario measures the same nodes every run. The map falls back to another on-screen
-   * child only when the path's node is not clickable.
+   * Opens a map {@code level} drills deep and picks the node to drill next. Picking costs a count
+   * and a trial click, up to a second per child when it falls back, so it belongs in the setup:
+   * timed, it would skew a p95 drawn from a handful of samples.
    */
+  private DrillStart drillStart(final UiSession ui, final int level) {
+    final LineageMapPage map = openSettled(ui, level);
+    try {
+      return new DrillStart(map, drillTarget(map, level));
+    } catch (final RuntimeException e) {
+      map.close();
+      throw e;
+    }
+  }
+
+  private void drill(final DrillStart start) {
+    start.map().drillIntoNode(start.targetFqn());
+  }
+
   private void drillIntoChild(final LineageMapPage map, final int level) {
-    map.drillIntoNode(map.drillableChildFqn(drillPath().get(level)));
+    map.drillIntoNode(drillTarget(map, level));
+  }
+
+  /**
+   * The next node on the benchmark graph's own path — service, database, schema, hub table — so
+   * every run drills the same nodes. When that node is not clickable the map's first clickable
+   * child stands in, and the drill then measures a different node, so the switch is logged.
+   */
+  private String drillTarget(final LineageMapPage map, final int level) {
+    final String preferred = drillPath().get(level);
+    final String target = map.drillableChildFqn(preferred);
+    if (!preferred.equals(target)) {
+      LOG.warn(
+          "Drill level {} left the benchmark path: {} is not clickable, drilling {} instead",
+          level,
+          preferred,
+          target);
+    }
+    return target;
   }
 
   private List<String> drillPath() {
@@ -333,13 +376,13 @@ class LineageScenePerformanceScaleIT {
   }
 
   /** The post-check keeps the scenario honest: it must really have reached the FIELD band. */
-  private void drillTableIntoFields(final LineageMapPage map) {
-    drillIntoChild(map, TABLE_LEVEL);
-    if (!FIELD_BAND.equals(map.currentBand())) {
+  private void drillTableIntoFields(final DrillStart start) {
+    drill(start);
+    final String band = start.map().currentBand();
+    if (!FIELD_BAND.equals(band)) {
       throw new IllegalStateException(
-          "Drilling a schema's child landed on band "
-              + map.currentBand()
-              + ", not FIELD — the scenario would be mislabelled");
+          "Drilling %s landed on band %s, not FIELD; the scenario would be mislabelled"
+              .formatted(start.targetFqn(), band));
     }
   }
 
@@ -366,14 +409,12 @@ class LineageScenePerformanceScaleIT {
    * viewport centre, so it changes focus as well as band. The suppression window is waited out in
    * setup, outside the timed region — it is the map's own cooldown, not its latency.
    */
-  private void measureZoomInteractions(final UiSession ui) {
+  private void measureZoomInteractions(final UiSession ui) throws InterruptedException {
     measureInteraction(
-        ui,
         "semantic-zoom-in",
         iteration -> LineageMapPage.openPlatformScene(ui, LAYER_BAND).settle(),
         map -> map.semanticZoomIn(ASSET_BAND));
     measureInteraction(
-        ui,
         "semantic-zoom-out",
         iteration -> openDrilled(ui, 1).settle(),
         map -> map.semanticZoomOut(LAYER_BAND));
@@ -385,39 +426,50 @@ class LineageScenePerformanceScaleIT {
    * fetches at all — so both isolate client-side ELK layout cost from the API's. A regression here
    * is a layout regression, not a backend one.
    */
-  private void measureViewInteractions(final UiSession ui) {
+  private void measureViewInteractions(final UiSession ui) throws InterruptedException {
     measureInteraction(
-        ui,
         "band-switch-prefetched",
         iteration -> LineageMapPage.openPlatformScene(ui, ASSET_BAND).settle(),
         map -> map.switchBand(LAYER_BAND));
     measureInteraction(
-        ui,
         "fit-to-screen",
         iteration -> LineageMapPage.openPlatformScene(ui, ASSET_BAND),
         LineageMapPage::fitToScreen);
   }
 
+  private <T extends AutoCloseable> void measureInteraction(
+      final String name, final StagedSetup<T> setup, final StagedAction<T> action)
+      throws InterruptedException {
+    measureRecordingFailure(
+        INTERACTION_PREFIX + name,
+        interactionFailures,
+        () ->
+            LatencySampler.measureStaged(INTERACTION_WARMUPS, INTERACTION_SAMPLES, setup, action));
+  }
+
   /**
-   * Measures one interaction and records, rather than throws, a failure: one interaction the map
-   * cannot complete must not cost the nightly every interaction measured after it. {@link
-   * #assertInteractionsWithinBudget} fails the test on any recorded failure once all have run.
+   * Measures one scenario or interaction and records, rather than throws, a failure: one that the
+   * server or the map cannot complete must not cost the nightly every measurement after it. The
+   * test fails on any recorded failure once all have run. An interrupt still stops the run.
    */
-  private void measureInteraction(
-      final UiSession ui,
-      final String name,
-      final StagedSetup<LineageMapPage> setup,
-      final StagedAction<LineageMapPage> action) {
-    final String id = INTERACTION_PREFIX + name;
+  private void measureRecordingFailure(
+      final String id, final Map<String, String> failures, final Measurement measurement)
+      throws InterruptedException {
     try {
-      latencies.put(
-          id,
-          LatencySampler.measureStaged(INTERACTION_WARMUPS, INTERACTION_SAMPLES, setup, action));
-      LOG.info("Interaction {} -> {}", id, latencies.get(id));
+      latencies.put(id, measurement.measure());
+      LOG.info("Measured {} -> {}", id, latencies.get(id));
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw e;
     } catch (final Exception | AssertionError e) {
-      interactionFailures.put(id, firstLine(e));
-      LOG.warn("Interaction {} could not complete; measuring the rest", id, e);
+      failures.put(id, firstLine(e));
+      LOG.warn("{} could not complete; measuring the rest", id, e);
     }
+  }
+
+  @FunctionalInterface
+  private interface Measurement {
+    Latency measure() throws Exception;
   }
 
   private static String firstLine(final Throwable error) {
@@ -532,7 +584,8 @@ class LineageScenePerformanceScaleIT {
    */
   private List<Scenario> otherLineageApiScenarios() {
     final String hubFqn = graph.focusPoints().hubTableFqn();
-    final String hubEdgePath = String.format(LINEAGE_EDGE_PATH, hubFqn, firstDownstreamOf(hubFqn));
+    final Supplier<String> hubEdgePath =
+        onFirstUse(() -> LINEAGE_EDGE_PATH.formatted(hubFqn, firstDownstreamTableOf(hubFqn)));
     return List.of(
         otherApi("entity-lineage-by-fqn-depth1", ENTITY_LINEAGE_PATH + hubFqn, depths(1, 1)),
         otherApi("entity-lineage-by-fqn-depth3", ENTITY_LINEAGE_PATH + hubFqn, depths(3, 3)),
@@ -557,7 +610,10 @@ class LineageScenePerformanceScaleIT {
                 .queryParam("upstreamDepth", "3")
                 .queryParam("downstreamDepth", "3")
                 .build()),
-        otherApi("lineage-edge-by-name", hubEdgePath, RequestOptions.builder().build()));
+        new Scenario(
+            "lineage-edge-by-name",
+            iteration -> requestGet(hubEdgePath.get(), RequestOptions.builder().build()),
+            OTHER_API_P95_LIMIT_MS));
   }
 
   private Scenario otherApi(final String id, final String path, final RequestOptions options) {
@@ -579,22 +635,42 @@ class LineageScenePerformanceScaleIT {
   }
 
   /**
-   * Read from the server rather than from the edge plan: the loader tolerates individual failed
-   * edges, and a planned edge that was never created would turn this scenario into a 404.
+   * The first downstream table of {@code fqn}. Read from the server rather than from the edge plan,
+   * because the loader tolerates failed edges. A table, because the edge path names both ends as
+   * tables and a seeded hub also feeds ML models.
    */
-  private String firstDownstreamOf(final String fqn) {
+  private String firstDownstreamTableOf(final String fqn) {
     final JsonNode lineage =
         readTree(
             client
                 .getHttpClient()
                 .executeForString(HttpMethod.GET, ENTITY_LINEAGE_PATH + fqn, null, depths(0, 1)));
-    final String downstreamId = lineage.path("downstreamEdges").path(0).path("toEntity").asText("");
-    return StreamSupport.stream(lineage.path("nodes").spliterator(), false)
-        .filter(node -> downstreamId.equals(node.path("id").asText()))
+    final Map<String, JsonNode> nodesById = new HashMap<>();
+    lineage.path("nodes").forEach(node -> nodesById.put(node.path("id").asText(), node));
+    return StreamSupport.stream(lineage.path("downstreamEdges").spliterator(), false)
+        .map(edge -> nodesById.get(edge.path("toEntity").asText()))
+        .filter(node -> node != null && TABLE_ENTITY_TYPE.equals(node.path("type").asText()))
         .map(node -> node.path("fullyQualifiedName").asText())
         .findFirst()
         .orElseThrow(
-            () -> new IllegalStateException("Hub " + fqn + " has no downstream edge to benchmark"));
+            () ->
+                new IllegalStateException(
+                    "Hub %s has no downstream table to benchmark an edge to".formatted(fqn)));
+  }
+
+  /**
+   * Computes {@code value} on its first use and reuses it after, so a lookup a scenario needs runs
+   * inside that scenario rather than while the list is built: if it fails, it fails only that
+   * scenario. The first use falls in a warmup unless {@code jpw.lineage.warmups} is 0.
+   */
+  private static <T> Supplier<T> onFirstUse(final Supplier<T> value) {
+    final AtomicReference<T> computed = new AtomicReference<>();
+    return () -> {
+      if (computed.get() == null) {
+        computed.set(value.get());
+      }
+      return computed.get();
+    };
   }
 
   private static JsonNode readTree(final String json) {
@@ -694,6 +770,11 @@ class LineageScenePerformanceScaleIT {
   // ---------------- assertions, indexing, publishing ----------------
 
   private void assertWithinBudget(final List<Scenario> scenarios) {
+    counters.put("scenarioFailures", scenarioFailures.size());
+    counters.put("failedScenarios", List.copyOf(scenarioFailures.keySet()));
+    assertThat(scenarioFailures)
+        .as("scenarios the server could not complete over %d assets", graph.tables())
+        .isEmpty();
     for (final Scenario scenario : scenarios) {
       assertThat(latencies.get(scenario.id()).p95Millis())
           .as("%s p95 over %d assets / %d edges", scenario.id(), graph.tables(), graph.edges())

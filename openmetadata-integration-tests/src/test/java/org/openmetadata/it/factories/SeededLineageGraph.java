@@ -52,7 +52,7 @@ public final class SeededLineageGraph {
     final JsonNode benchmark = readTree(manifest).path(BENCHMARK_SECTION);
     if (benchmark.isMissingNode()) {
       throw new IllegalArgumentException(
-          manifest + " has no '" + BENCHMARK_SECTION + "' section; re-run the seed script");
+          "%s has no '%s' section; re-run the seed script".formatted(manifest, BENCHMARK_SECTION));
     }
     final JsonNode focus = benchmark.path(FOCUS_SECTION);
     return new LineageGraphSummary(
@@ -79,14 +79,14 @@ public final class SeededLineageGraph {
     try {
       return MAPPER.readTree(Files.readString(manifest));
     } catch (IOException e) {
-      throw new IllegalArgumentException("Cannot read seed manifest " + manifest, e);
+      throw new IllegalArgumentException("Cannot read seed manifest %s".formatted(manifest), e);
     }
   }
 
   private static JsonNode required(final JsonNode node, final String field) {
     final JsonNode value = node.path(field);
     if (value.isMissingNode() || value.isNull()) {
-      throw new IllegalArgumentException("Seed manifest is missing '" + field + "'");
+      throw new IllegalArgumentException("Seed manifest is missing '%s'".formatted(field));
     }
     return value;
   }
