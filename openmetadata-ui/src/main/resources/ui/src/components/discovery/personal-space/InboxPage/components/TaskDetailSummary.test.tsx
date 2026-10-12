@@ -84,8 +84,9 @@ describe('TaskDetailSummary', () => {
     expect(screen.queryByTestId('avatar-group')).not.toBeInTheDocument();
   });
 
-  // Several people stack as owners do, the overflow titled by the row.
-  it('stacks several people under the row label', () => {
+  // Several people stack as owners do; the overflow reads "5 Assignees", not
+  // "5 Assignee".
+  it("stacks several people under the row's plural title", () => {
     render(
       <TaskDetailSummary
         rows={[
@@ -95,6 +96,7 @@ describe('TaskDetailSummary', () => {
             label: 'Assignee',
             value: {
               kind: 'users',
+              title: 'Assignees',
               refs: [
                 { id: 'me', type: 'user', name: 'harsh' },
                 { id: 'other', type: 'user', name: 'dana' },
@@ -108,7 +110,7 @@ describe('TaskDetailSummary', () => {
     const stack = screen.getByTestId('avatar-group');
 
     expect(stack).toHaveTextContent('harsh,dana');
-    expect(stack).toHaveAttribute('data-title', 'Assignee');
+    expect(stack).toHaveAttribute('data-title', 'Assignees');
   });
 
   // Markdown and stored mentions render, not their raw markup.

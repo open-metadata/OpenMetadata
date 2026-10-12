@@ -85,13 +85,13 @@ const RowValue: React.FC<{ value: TaskDetailRowValue; label: string }> = ({
       );
 
     // Several people stack as owners do everywhere else: a hover card per
-    // avatar and a "+N" listing the rest under the row's own label.
+    // avatar and a "+N" listing the rest under the row's plural title.
     case 'users':
       return value.refs.length > 1 ? (
         <AvatarGroup
           maxCount={MAX_VISIBLE_PEOPLE}
           overflowTeamsLabel={t('label.team-plural')}
-          overflowTitleLabel={label}
+          overflowTitleLabel={value.title ?? label}
           overflowUsersLabel={t('label.user-plural')}
           owners={toOwnerRefs(value.refs)}
         />

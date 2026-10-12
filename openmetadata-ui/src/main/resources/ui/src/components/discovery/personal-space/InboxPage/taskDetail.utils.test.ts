@@ -151,6 +151,7 @@ describe('getTaskDetailDescriptor', () => {
     expect(descriptor.rows[0].value).toEqual({
       kind: 'users',
       refs: [{ id: 'u3', name: 'carol' }],
+      title: 'label.owner-plural',
     });
     expect(descriptor.callout?.text).toBe('The previous owner left.');
   });
@@ -175,6 +176,30 @@ describe('getTaskDetailDescriptor', () => {
       label: 'label.new-entity:label.owner-plural',
       value: { kind: 'users', refs: newOwners },
     });
+  });
+
+  // Past three people the row collapses into "+N", headed in the plural.
+  it('titles the assignees overflow in the plural', () => {
+    const assignees = [{ id: 'u1', type: 'user', name: 'ann' }];
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.TestCaseResolution,
+        assignees,
+        payload: {},
+      } as unknown as Partial<Task>),
+      t
+    );
+
+    expect(descriptor.rows.find((row) => row.key === 'assignees')).toEqual(
+      expect.objectContaining({
+        label: 'label.assignee',
+        value: {
+          kind: 'users',
+          refs: assignees,
+          title: 'label.assignee-plural',
+        },
+      })
+    );
   });
 
   it('says "No owner" when nobody holds the asset', () => {
