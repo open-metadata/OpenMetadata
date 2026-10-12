@@ -656,7 +656,7 @@ function renderCapabilityStepLog(
 ): JSX.Element {
   return (
     <div className="tw:border-t tw:border-border-secondary">
-      <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold">
+      <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold tw:max-h-[220px]">
         {result.executedCommand &&
           renderColoredLines(
             `> ${result.executedCommand}`,

@@ -387,6 +387,57 @@ test.describe(
       ).toBe(true);
     });
 
+    test('a long stack trace scrolls inside an expanded capability check', async ({
+      page,
+    }) => {
+      // A failed capability step carries its trace in the step's own log,
+      // not the remediation card, so the cap has to hold there too.
+      const longTrace = Array.from(
+        { length: 40 },
+        (_, index) => `  at some/driver/frame.method StackFrame.go:${index}`
+      ).join('\n');
+
+      const failureResponse = {
+        id: MOCK_WORKFLOW_ID,
+        status: 'Failed',
+        response: {
+          status: 'Failed',
+          steps: [
+            { name: 'CheckAccess', passed: true, mandatory: true },
+            {
+              name: 'GetDatabases',
+              passed: false,
+              mandatory: true,
+              errorLog: `OperationalError: permission denied\n${longTrace}`,
+            },
+          ],
+        },
+      };
+
+      await navigateToMysqlConnectionForm(page);
+      await setupWorkflowApiMocks(page, failureResponse);
+
+      await page.getByTestId('test-connection-btn').click();
+
+      const step = page.getByTestId('test-connection-step-GetDatabases');
+
+      await expect(step).toBeVisible({ timeout: 30000 });
+
+      await step.click();
+
+      const trace = page.getByTestId('capability-checks-phase').locator('pre');
+
+      await expect(trace).toBeVisible();
+
+      const box = await trace.boundingBox();
+
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeLessThanOrEqual(240);
+      expect(
+        await trace.evaluate((el) => el.scrollHeight > el.clientHeight)
+      ).toBe(true);
+    });
+
     test('Edit Connection click dismisses the modal', async ({ page }) => {
       const failureResponse = {
         id: MOCK_WORKFLOW_ID,
