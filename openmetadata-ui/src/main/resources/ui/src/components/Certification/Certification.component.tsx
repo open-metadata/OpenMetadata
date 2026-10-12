@@ -12,7 +12,7 @@
  */
 import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isNil } from 'lodash';
+import { debounce, isNil } from 'lodash';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
@@ -20,9 +20,15 @@ import {
   CERTIFICATION_CATEGORY,
   PAGE_SIZE_LARGE,
 } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
-import { getTags } from '../../rest/tagAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getTermQuery } from '../../utils/SearchPureUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { CertificationProps } from './Certification.interface';
 
@@ -54,6 +60,12 @@ const renderCertificationIcon = (certification: Tag) => {
   );
 };
 
+const CERTIFICATION_ORDER: Record<string, number> = {
+  Gold: 0,
+  Silver: 1,
+  Bronze: 2,
+};
+
 const Certification = ({
   currentCertificate = '',
   children,
@@ -68,64 +80,146 @@ const Certification = ({
   const { t } = useTranslation();
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [certifications, setCertifications] = useState<Tag[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [searchText, setSearchText] = useState('');
   const isOpen = popoverProps?.open ?? isPopupOpen;
   const isFormField = isNil(children);
   // A pick or clear closes the picker itself; only a dismissal calls onClose.
   const isCommitRef = useRef(false);
+  // Drops responses for a search or page the user has already moved past.
+  const searchGeneration = useRef(0);
+  // Scroll fires several times before a re-render, so the guard can't wait for state.
+  const isFetchingMore = useRef(false);
+  // Every certification seen, so the selected one keeps its label under any search.
+  const knownCertifications = useRef(new Map<string, Tag>());
 
-  const fetchCertifications = async () => {
-    setIsLoading(true);
+  const fetchPage = async (search: string, pageNumber: number) => {
+    const res = await searchQuery({
+      query: search
+        ? `*${getEncodedFqn(escapeESReservedCharacters(search))}*`
+        : '',
+      pageNumber,
+      pageSize: PAGE_SIZE_LARGE,
+      queryFilter: getTermQuery({
+        'classification.name.keyword': CERTIFICATION_CATEGORY,
+        disabled: 'false',
+      }),
+      searchIndex: SearchIndex.TAG,
+      sortField: 'name.keyword',
+      sortOrder: 'asc',
+    });
+    const tags = res.hits.hits.map(({ _source }) => _source as Tag);
+    tags.forEach((tag) =>
+      knownCertifications.current.set(tag.fullyQualifiedName ?? '', tag)
+    );
+
+    return { tags, total: res.hits.total.value };
+  };
+
+  const showFetchError = (err: unknown) =>
+    showErrorToast(
+      err as AxiosError,
+      t('server.entity-fetch-error', {
+        entity: t('label.certification-plural-lowercase'),
+      })
+    );
+
+  const loadFirstPage = async (search: string, generation: number) => {
     try {
-      // Every page: the list is searched locally, so a certification past the
-      // first page would never be offered. Cursor pages are sequential by
-      // nature, and a real catalog fits in one.
-      const all: Tag[] = [];
-      let after: string | undefined;
-      do {
-        const { data, paging } = await getTags({
-          parent: CERTIFICATION_CATEGORY,
-          limit: PAGE_SIZE_LARGE,
-          after,
-          disabled: false,
-        });
-        all.push(...data);
-        after = paging.after;
-      } while (after);
-
-      // Sort certifications with Gold, Silver, Bronze first
-      const order: Record<string, number> = { Gold: 0, Silver: 1, Bronze: 2 };
-      setCertifications(
-        all.sort(
-          (a, b) =>
-            (order[getEntityName(a)] ?? 3) - (order[getEntityName(b)] ?? 3)
-        )
-      );
+      const res = await fetchPage(search, 1);
+      if (generation !== searchGeneration.current) {
+        return;
+      }
+      setCertifications(res.tags);
+      setTotal(res.total);
+      setPage(1);
+      setSearchText(search);
     } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.certification-plural-lowercase'),
-        })
-      );
+      if (generation === searchGeneration.current) {
+        // Rows from the previous search must not read as this one's results.
+        setCertifications([]);
+        setTotal(0);
+        showFetchError(err);
+      }
     } finally {
-      setIsLoading(false);
+      if (generation === searchGeneration.current) {
+        setIsLoading(false);
+      }
     }
   };
 
-  useEffect(() => {
-    if (isFormField ? certifications.length === 0 : isOpen) {
-      void fetchCertifications();
+  // Built once: loadFirstPage reads only refs and state setters.
+  const debouncedLoad = useMemo(() => debounce(loadFirstPage, 300), []);
+
+  const beginSearch = (search: string, immediate = false) => {
+    const generation = ++searchGeneration.current;
+    setIsLoading(true);
+    setIsLoadingMore(false);
+    isFetchingMore.current = false;
+    debouncedLoad.cancel();
+    if (immediate) {
+      void loadFirstPage(search, generation);
+    } else {
+      debouncedLoad(search, generation);
     }
+  };
+
+  // A form field also loads on mount, so its trigger can show the label.
+  useEffect(() => {
+    if (isOpen || (isFormField && knownCertifications.current.size === 0)) {
+      beginSearch('', true);
+    }
+
+    return () => {
+      ++searchGeneration.current;
+      debouncedLoad.cancel();
+    };
   }, [isOpen]);
 
+  const handleLoadMore = async () => {
+    if (isLoading || isFetchingMore.current || certifications.length >= total) {
+      return;
+    }
+    const generation = searchGeneration.current;
+    isFetchingMore.current = true;
+    setIsLoadingMore(true);
+    try {
+      const res = await fetchPage(searchText, page + 1);
+      if (generation !== searchGeneration.current) {
+        return;
+      }
+      setCertifications((prev) => [...prev, ...res.tags]);
+      setTotal(res.total);
+      setPage((prev) => prev + 1);
+    } catch (err) {
+      if (generation === searchGeneration.current) {
+        showFetchError(err);
+      }
+    } finally {
+      if (generation === searchGeneration.current) {
+        isFetchingMore.current = false;
+        setIsLoadingMore(false);
+      }
+    }
+  };
+
+  // Gold, Silver, Bronze first; the rest keep the server's name order.
   const options = useMemo(
     () =>
-      certifications.map((certification) => ({
-        value: certification.fullyQualifiedName ?? '',
-        label: getEntityName(certification),
-        icon: renderCertificationIcon(certification),
-      })),
+      [...certifications]
+        .sort(
+          (a, b) =>
+            (CERTIFICATION_ORDER[getEntityName(a)] ?? 3) -
+            (CERTIFICATION_ORDER[getEntityName(b)] ?? 3)
+        )
+        .map((certification) => ({
+          value: certification.fullyQualifiedName ?? '',
+          label: getEntityName(certification),
+          icon: renderCertificationIcon(certification),
+        })),
     [certifications]
   );
 
@@ -140,9 +234,13 @@ const Certification = ({
 
   const handleChange = async ([value]: string[]) => {
     isCommitRef.current = true;
-    await onCertificationUpdate?.(
-      certifications.find((cert) => cert.fullyQualifiedName === value)
-    );
+    await onCertificationUpdate?.(knownCertifications.current.get(value));
+  };
+
+  const resolveLabel = (fqn: string) => {
+    const certification = knownCertifications.current.get(fqn);
+
+    return certification ? getEntityName(certification) : fqn;
   };
 
   return (
@@ -158,18 +256,22 @@ const Certification = ({
       })}
       isDisabled={isDisabled}
       isLoading={isLoading}
+      isLoadingMore={isLoadingMore}
       isOpen={isOpen}
       label={t('label.certification')}
       options={options}
       placeholder={t('label.select-field', {
         field: t('label.certification'),
       })}
+      resolveMissingLabel={resolveLabel}
       selectedValues={currentCertificate ? [currentCertificate] : []}
       selectionMode="single"
       trigger={children}
       triggerVariant="input"
       onChange={handleChange}
+      onLoadMore={handleLoadMore}
       onOpenChange={handleOpenChange}
+      onSearch={(search) => beginSearch(search)}
     />
   );
 };
