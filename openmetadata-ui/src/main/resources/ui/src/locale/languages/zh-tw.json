@@ -1703,6 +1703,7 @@
     "kg-presentation": "呈現方式",
     "kg-range": "值域",
     "kg-relationship-labels": "關係標籤",
+    "kg-resize-details": "拖曳以調整詳細資訊面板大小",
     "kg-returned-counts": "{{nodes}} 個實體 · {{edges}} 個關係",
     "kg-selected-entity": "所選實體",
     "kg-show-more": "再顯示 {{count}} 筆（共 {{total}} 筆）",

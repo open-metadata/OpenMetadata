@@ -1703,6 +1703,7 @@
     "kg-presentation": "Présentation",
     "kg-range": "Plage",
     "kg-relationship-labels": "Étiquettes des relations",
+    "kg-resize-details": "Faites glisser pour redimensionner le panneau de détails",
     "kg-returned-counts": "{{nodes}} entités · {{edges}} relations",
     "kg-selected-entity": "Entité sélectionnée",
     "kg-show-more": "Afficher {{count}} de plus sur {{total}}",
