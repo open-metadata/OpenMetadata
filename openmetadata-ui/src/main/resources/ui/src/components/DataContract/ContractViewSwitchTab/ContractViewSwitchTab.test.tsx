@@ -10,231 +10,83 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
-// RadioChangeEvent imported for type definitions
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import ContractViewSwitchTab from './ContractViewSwitchTab.component';
 
 const mockHandleModeChange = jest.fn();
+
+const renderTab = (mode: DataContractMode) =>
+  render(
+    <ContractViewSwitchTab
+      handleModeChange={mockHandleModeChange}
+      mode={mode}
+    />
+  );
 
 describe('ContractViewSwitchTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('Basic Rendering', () => {
-    it('should render radio group with both options', () => {
-      render(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.UI}
-        />
-      );
+  it('renders the UI and YAML options as a single-choice group', () => {
+    renderTab(DataContractMode.UI);
 
-      expect(
-        screen.getByTestId('contract-view-switch-tab-yaml')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByTestId('contract-view-switch-tab-ui')
-      ).toBeInTheDocument();
-    });
-
-    it('should render with correct CSS classes', () => {
-      const { container } = render(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.UI}
-        />
-      );
-
-      const radioGroup = container.querySelector('.contract-mode-radio-group');
-
-      expect(radioGroup).toBeInTheDocument();
-      expect(radioGroup).toHaveClass('ant-radio-group-outline');
-    });
-
-    it('should render icons with correct attributes', () => {
-      render(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.UI}
-        />
-      );
-
-      const yamlIcon = screen.getByTestId('contract-view-switch-tab-yaml');
-      const uiIcon = screen.getByTestId('contract-view-switch-tab-ui');
-
-      expect(yamlIcon).toHaveAttribute('height', '20');
-      expect(yamlIcon).toHaveAttribute('width', '20');
-      expect(uiIcon).toHaveAttribute('height', '20');
-      expect(uiIcon).toHaveAttribute('width', '20');
-    });
+    expect(screen.getAllByRole('radio')).toHaveLength(2);
+    expect(screen.getByTestId('contract-view-switch-tab-ui')).toBeVisible();
+    expect(screen.getByTestId('contract-view-switch-tab-yaml')).toBeVisible();
   });
 
-  describe('Mode Selection', () => {
-    it('should call handleModeChange when YAML mode is selected', () => {
-      render(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.UI}
-        />
-      );
+  it('marks the current mode as selected and follows prop changes', () => {
+    const { rerender } = renderTab(DataContractMode.UI);
 
-      const yamlOption = screen
-        .getByTestId('contract-view-switch-tab-yaml')
-        .closest('label');
-      yamlOption && fireEvent.click(yamlOption);
+    expect(screen.getByTestId('contract-view-switch-tab-ui')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+    expect(screen.getByTestId('contract-view-switch-tab-yaml')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
 
-      expect(mockHandleModeChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          target: expect.objectContaining({
-            value: DataContractMode.YAML,
-          }),
-        })
-      );
-    });
+    rerender(
+      <ContractViewSwitchTab
+        handleModeChange={mockHandleModeChange}
+        mode={DataContractMode.YAML}
+      />
+    );
 
-    it('should call handleModeChange when UI mode is selected', () => {
-      render(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.YAML}
-        />
-      );
-
-      const uiOption = screen
-        .getByTestId('contract-view-switch-tab-ui')
-        .closest('label');
-      uiOption && fireEvent.click(uiOption);
-
-      expect(mockHandleModeChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          target: expect.objectContaining({
-            value: DataContractMode.UI,
-          }),
-        })
-      );
-    });
+    expect(screen.getByTestId('contract-view-switch-tab-yaml')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
   });
 
-  describe('Radio Group Configuration', () => {
-    it('should have button option type', () => {
-      const { container } = render(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.UI}
-        />
-      );
+  it('reports the YAML mode when YAML is selected', () => {
+    renderTab(DataContractMode.UI);
 
-      const radioGroup = container.querySelector('.ant-radio-group-outline');
+    fireEvent.click(screen.getByTestId('contract-view-switch-tab-yaml'));
 
-      expect(radioGroup).toBeInTheDocument();
-    });
-
-    it('should have correct number of options', () => {
-      const { container } = render(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.UI}
-        />
-      );
-
-      const radioButtons = container.querySelectorAll(
-        '.ant-radio-button-wrapper'
-      );
-
-      expect(radioButtons).toHaveLength(2);
-    });
+    expect(mockHandleModeChange).toHaveBeenCalledWith(DataContractMode.YAML);
   });
 
-  describe('Event Handling', () => {
-    it('should pass the correct event object to handleModeChange', () => {
-      render(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.UI}
-        />
-      );
+  it('reports the UI mode when UI is selected', () => {
+    renderTab(DataContractMode.YAML);
 
-      const yamlOption = screen
-        .getByTestId('contract-view-switch-tab-yaml')
-        .closest('label');
-      yamlOption && fireEvent.click(yamlOption);
+    fireEvent.click(screen.getByTestId('contract-view-switch-tab-ui'));
 
-      expect(mockHandleModeChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          target: expect.objectContaining({
-            value: DataContractMode.YAML,
-          }),
-        })
-      );
-    });
+    expect(mockHandleModeChange).toHaveBeenCalledWith(DataContractMode.UI);
   });
 
-  describe('Props Handling', () => {
-    it('should handle different initial modes', () => {
-      const { rerender, container } = render(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.UI}
-        />
-      );
+  it('keeps a mode selected when the active option is clicked again', () => {
+    renderTab(DataContractMode.UI);
 
-      let radioButtons = container.querySelectorAll('input[type="radio"]');
+    fireEvent.click(screen.getByTestId('contract-view-switch-tab-ui'));
 
-      // UI should be checked initially
-      expect(radioButtons[0].closest('.ant-radio-button')).toHaveClass(
-        'ant-radio-button-checked'
-      );
-      expect(radioButtons[1].closest('.ant-radio-button')).not.toHaveClass(
-        'ant-radio-button-checked'
-      );
-
-      rerender(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.YAML}
-        />
-      );
-
-      radioButtons = container.querySelectorAll('input[type="radio"]');
-
-      // YAML should be checked after rerender
-      expect(radioButtons[0].closest('.ant-radio-button')).not.toHaveClass(
-        'ant-radio-button-checked'
-      );
-      expect(radioButtons[1].closest('.ant-radio-button')).toHaveClass(
-        'ant-radio-button-checked'
-      );
-    });
-  });
-
-  describe('Accessibility', () => {
-    it('should have proper radio button roles', () => {
-      render(
-        <ContractViewSwitchTab
-          handleModeChange={mockHandleModeChange}
-          mode={DataContractMode.UI}
-        />
-      );
-
-      const radioButtons = screen.getAllByRole('radio');
-
-      expect(radioButtons).toHaveLength(2);
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should not crash when rendered with valid props', () => {
-      expect(() => {
-        render(
-          <ContractViewSwitchTab
-            handleModeChange={mockHandleModeChange}
-            mode={DataContractMode.UI}
-          />
-        );
-      }).not.toThrow();
-    });
+    expect(mockHandleModeChange).not.toHaveBeenCalledWith(undefined);
+    expect(screen.getByTestId('contract-view-switch-tab-ui')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
   });
 });

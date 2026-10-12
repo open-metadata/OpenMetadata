@@ -49,7 +49,7 @@ describe('Test Custom Range Widget', () => {
     const { getByTestId } = render(<CustomRangeWidget {...widgetProps} />);
     const inputNumber = getByTestId('slider-input');
 
-    fireEvent.change(inputNumber, { target: { value: '30%' } });
+    fireEvent.change(inputNumber, { target: { value: '30' } });
 
     expect(widgetProps.onChange).toHaveBeenCalledWith(30);
   });

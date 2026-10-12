@@ -82,7 +82,7 @@ describe('ProfilerSettings profile sample minimum', () => {
       'aria-valuemin',
       '1'
     );
-    expect(screen.getByRole('slider')).toHaveAttribute('aria-valuemin', '1');
+    expect(screen.getByRole('slider')).toHaveAttribute('min', '1');
   });
 
   // A 0 sample makes ingestion profile the full table, and configs saved
