@@ -767,6 +767,7 @@
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts",
         "playwright/e2e/Features/BlockEditorEmbedLink.spec.ts",
         "playwright/e2e/Features/BlockEditorMathEquations.spec.ts",
@@ -3364,6 +3365,7 @@
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts",
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAuthGating.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeCrossDevice.spec.ts",
@@ -3853,6 +3855,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/dateTime.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
@@ -4728,6 +4731,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/OnlineUsers.spec.ts",
         "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts",
@@ -5135,6 +5139,7 @@
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
         "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
         "playwright/e2e/Features/BlockEditorMathEquations.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
@@ -5550,6 +5555,14 @@
       "specs": [
         "playwright/e2e/Flow/AlertSeveralSources.spec.ts",
         "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/AnnouncementDeleteDialog.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
       ]
     },
     {
@@ -7583,6 +7596,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/AnnouncementModal/AnnouncementForm.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.component.tsx"
       ],
       "specs": [
@@ -9312,7 +9333,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts"
+        "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts",
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
       ]
     },
     {
@@ -9355,6 +9377,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/ErrorWithPlaceholder/PermissionErrorPlaceholder.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
         "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
@@ -10514,6 +10537,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersPanel.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
         "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
@@ -11194,6 +11218,38 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/announcements/AnnouncementBannerPreview/AnnouncementBannerPreview.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/announcements/AnnouncementsNotificationSection/AnnouncementsNotificationSection.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/announcements/SystemAnnouncementForm/SystemAnnouncementForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/announcements/SystemAnnouncementsTable/SystemAnnouncementsTable.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/enums/DataQuality.enum.ts"
       ],
       "specs": [
@@ -11605,6 +11661,7 @@
         "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts",
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAuthGating.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeCrossDevice.spec.ts",
@@ -13142,6 +13199,14 @@
       ],
       "specs": [
         "playwright/e2e/Features/PersonaAppLayout.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/platform/settings/SystemAnnouncementsPage/SystemAnnouncementsPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
       ]
     },
     {
