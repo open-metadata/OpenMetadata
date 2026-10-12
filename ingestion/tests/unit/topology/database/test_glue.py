@@ -976,8 +976,7 @@ class TestGlueIcebergView:
 
 
 class TestGlueIncludeFlags:
-    """Glue ingested every table and view whatever these flags said, unlike the generic path and
-    unlike Delta Lake, which is the other source that hand-builds its requests."""
+    """Glue ingested every table and view whatever these flags said, unlike the generic path."""
 
     @staticmethod
     def _tables() -> list[GlueTable]:

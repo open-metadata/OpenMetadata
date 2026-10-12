@@ -332,15 +332,8 @@ plugins: dict[str, set[str]] = {
         VERSIONS["aiobotocore"],
         *COMMONS["datalake"],
     },
-    "deltalake": {
-        "delta-spark>=3.0.0,<4.0.0",
-        "deltalake>=0.19.0,<0.20",
-        "pyspark==3.5.9",
-    },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
     "s3": {*COMMONS["storage-archive"]},
     "gcs": {VERSIONS["google-cloud-storage"], *COMMONS["storage-archive"]},
-    "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
-    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.9"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {VERSIONS["pydoris"]},
     "starrocks": {VERSIONS["pymysql"]},
@@ -588,7 +581,6 @@ test = {
     *plugins["pii-processor"],
     "requests>=2.32.4,<3",
     f"{DATA_DIFF['mysql']}",
-    *plugins["deltalake"],
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
     *plugins["clickhouse"],
@@ -673,8 +665,6 @@ setup(
                 "airflow",
                 "db2",
                 "great-expectations",
-                "deltalake",
-                "deltalake-spark",
                 "sklearn",
             }
         ),
