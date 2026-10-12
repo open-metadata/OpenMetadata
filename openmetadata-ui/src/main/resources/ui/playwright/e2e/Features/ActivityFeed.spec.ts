@@ -707,20 +707,26 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await expect(mentionsList).toBeVisible();
 
-      const firstNotificationItem = mentionsList
-        .locator('li.ant-list-item.notification-dropdown-list-btn')
-        .first();
+      const mentionNotificationItem = mentionsList
+        .getByRole('listitem')
+        .filter({
+          has: adminPage.getByTestId(
+            'notification-link-' +
+              (entity.entity.displayName || entity.entity.name)
+          ),
+        });
 
-      const firstNotificationText = await firstNotificationItem.textContent();
+      const mentionNotificationText =
+        await mentionNotificationItem.textContent();
 
-      expect(firstNotificationText?.toLowerCase()).toContain(
+      expect(mentionNotificationText?.toLowerCase()).toContain(
         user1.responseData.name.toLowerCase()
       );
-      expect(firstNotificationText?.toLowerCase()).not.toContain(
+      expect(mentionNotificationText?.toLowerCase()).not.toContain(
         adminUser.responseData.name.toLowerCase()
       );
 
-      const mentionNotificationLink = firstNotificationItem.locator(
+      const mentionNotificationLink = mentionNotificationItem.locator(
         '[data-testid^="notification-link-"]'
       );
 

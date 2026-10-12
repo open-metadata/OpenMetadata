@@ -192,11 +192,16 @@ const LeftSidebar = () => {
                   ? 'secondary'
                   : 'tertiary'
               }
+              data-testid={item.dataTestId}
               icon={item.icon}
               size="sm"
+              // Hover has already opened the group before a pointer press reaches its trigger.
+              onPress={() => setCollapsedMenuKey(item.key)}
             />
           </span>
+          {/* Hover menus must leave their triggers and neighbouring groups interactive. */}
           <Dropdown.Popover
+            isNonModal
             placement={isDirectionRTL ? 'left top' : 'right top'}>
             <div
               ref={collapsedPopover}
