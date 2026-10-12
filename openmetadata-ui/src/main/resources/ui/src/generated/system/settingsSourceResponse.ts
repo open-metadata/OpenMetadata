@@ -74,6 +74,7 @@ export enum SettingType {
     EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
+    GlossarySettings = "glossarySettings",
     GlossaryTermRelationSettings = "glossaryTermRelationSettings",
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
