@@ -29,6 +29,7 @@ import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import {
@@ -97,8 +98,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   );
 
   const handleFilterSelect = useCallback(
-    (key: Key) => setFilter(key as AlertRecentEventFilters),
-    [filter]
+    (key: Key) => {
+      setFilter(key as AlertRecentEventFilters);
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [handlePageChange]
   );
 
   const getAlertRecentEvents = useCallback(
@@ -118,6 +122,13 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           },
         });
 
+        // A page restored from the URL can lie past the end, where the empty state hides the paginator.
+        if (isEmpty(data) && paginationOffset > 0) {
+          handlePageChange(INITIAL_PAGING_VALUE);
+
+          return;
+        }
+
         setAlertRecentEvents(data);
         handlePagingChange(paging);
       } catch (e) {
@@ -126,14 +137,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
         setLoading(false);
       }
     },
-    [id, filter, pageSize, handlePagingChange]
+    [id, filter, pageSize, handlePagingChange, handlePageChange]
   );
 
-  const pagingHandler = ({ offset, page }: PagingHandlerParams) => {
+  const pagingHandler = ({ page }: PagingHandlerParams) =>
     handlePageChange(page);
-    handlePagingChange({ ...paging, offset });
-    getAlertRecentEvents(offset);
-  };
 
   const recentEventsList = useMemo(() => {
     if (loading) {
@@ -355,8 +363,8 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   ]);
 
   useEffect(() => {
-    getAlertRecentEvents();
-  }, [filter, pageSize]);
+    getAlertRecentEvents((currentPage - 1) * pageSize);
+  }, [currentPage, getAlertRecentEvents, pageSize]);
 
   return (
     <Grid
