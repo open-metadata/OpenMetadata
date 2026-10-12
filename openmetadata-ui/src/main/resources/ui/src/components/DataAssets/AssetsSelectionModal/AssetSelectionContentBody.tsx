@@ -119,7 +119,11 @@ const AssetSelectionHeader = ({
         </Alert>
       )}
 
-      {infoBannerText && <Alert variant="brand">{infoBannerText}</Alert>}
+      {infoBannerText && (
+        <Alert data-testid="asset-selection-info-banner" variant="brand">
+          {infoBannerText}
+        </Alert>
+      )}
 
       <Searchbar
         removeMargin
