@@ -353,7 +353,22 @@ const saveLayoutAndReload = async (
 
   // Callers assert the persisted state on page-specific elements; the entity
   // previews keep a placeholder loader, so a global loader wait never settles.
+  //
+  // The reload must not resolve before the customize store has refetched the
+  // saved layout. `disableSave` is `compare(getPage(type), currentPage)`, and
+  // until that GET lands `getPage` returns the empty fallback, so the patch is
+  // non-empty and Save renders *enabled* — a caller asserting it is disabled
+  // samples that pre-hydration frame and fails with "Received: enabled".
+  const layoutLoaded = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/docStore') &&
+        response.request().method() === 'GET',
+      { timeout: 30_000 }
+    )
+    .catch(() => null);
   await page.reload();
+  await layoutLoaded;
 };
 
 test.describe(
