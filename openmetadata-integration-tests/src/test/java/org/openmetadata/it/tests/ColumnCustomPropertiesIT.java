@@ -2106,6 +2106,63 @@ public class ColumnCustomPropertiesIT {
   }
 
   @Test
+  void test_columnsApi_clearsReferenceValueForTablesAndDataModels(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String tableRef =
+        addTeamReferenceProperty(client, TABLE_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    String tableText = ns.prefix("tableText");
+    addCustomPropertyToColumnType(client, TABLE_COLUMN, tableText, STRING_TYPE, null);
+    String modelRef =
+        addTeamReferenceProperty(
+            client, DASHBOARD_DATA_MODEL_COLUMN, ns, ENTITY_REFERENCE_LIST_TYPE);
+    String modelText = ns.prefix("modelText");
+    addCustomPropertyToColumnType(
+        client, DASHBOARD_DATA_MODEL_COLUMN, modelText, STRING_TYPE, null);
+    try {
+      Team team = createTeam(client, ns.prefix("team"));
+      String tableColumn = createTestTable(ns).getFullyQualifiedName() + ".id";
+      updateColumn(
+          client, tableColumn, "table", Map.of(tableRef, List.of(teamRef(team)), tableText, "x"));
+      DashboardDataModel dataModel =
+          client
+              .dashboardDataModels()
+              .create(
+                  new CreateDashboardDataModel()
+                      .withName(ns.prefix("clearRefDataModel"))
+                      .withService(
+                          DashboardServiceTestFactory.createLooker(ns).getFullyQualifiedName())
+                      .withDataModelType(DataModelType.LookMlView)
+                      .withColumns(
+                          List.of(
+                              new Column()
+                                  .withName("metric1")
+                                  .withDataType(ColumnDataType.BIGINT)
+                                  .withExtension(
+                                      Map.of(modelRef, List.of(teamRef(team)), modelText, "x")))));
+      String modelColumn = dataModel.getFullyQualifiedName() + ".metric1";
+
+      updateColumn(client, tableColumn, "table", Map.of(tableText, "x"));
+      updateColumn(client, modelColumn, "dashboardDataModel", Map.of(modelText, "x"));
+
+      Column reloadedTableColumn = getColumnByName(client, tableColumn, "table", "extension");
+      assertTrue(referenceIdsOf(reloadedTableColumn, tableRef).isEmpty());
+      assertEquals(
+          "x", JsonUtils.valueToTree(reloadedTableColumn.getExtension()).path(tableText).asText());
+      Column reloadedModelColumn =
+          getColumnByName(client, modelColumn, "dashboardDataModel", "extension");
+      assertTrue(referenceIdsOf(reloadedModelColumn, modelRef).isEmpty());
+      assertEquals(
+          "x", JsonUtils.valueToTree(reloadedModelColumn.getExtension()).path(modelText).asText());
+    } finally {
+      removeColumnTypeProperty(client, TABLE_COLUMN, tableRef);
+      removeColumnTypeProperty(client, TABLE_COLUMN, tableText);
+      removeColumnTypeProperty(client, DASHBOARD_DATA_MODEL_COLUMN, modelRef);
+      removeColumnTypeProperty(client, DASHBOARD_DATA_MODEL_COLUMN, modelText);
+    }
+  }
+
+  @Test
   void test_columnsApi_filtersDeletedTargetForTablesAndDataModels(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
