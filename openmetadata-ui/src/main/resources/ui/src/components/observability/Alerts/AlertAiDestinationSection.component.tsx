@@ -183,14 +183,16 @@ const AlertAiDestinationSection = ({
               key={index}
               name={index}
               recipientCategories={recipientCategories}
-              remove={(destinationIndex) =>
+              remove={(destinationIndex) => {
+                // Test statuses are aligned by row index, which shifts on removal.
+                setDestinationsWithStatus(undefined);
                 updateAlertAiValue(
                   value,
                   onChange,
                   ['destinations'],
                   destinations.filter((_, i) => i !== destinationIndex)
-                )
-              }
+                );
+              }}
               validationErrors={destinationValidationErrors}
               value={value}
               onChange={onChange}

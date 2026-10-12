@@ -117,8 +117,10 @@ function DestinationFormItem({
     (index: number) => {
       remove(index);
       // Destination indexes shift after removal, so stale UI-only expansion
-      // state must not be applied to a different destination.
+      // state and index-aligned test statuses must not be applied to a
+      // different destination.
       setExpandedDestinationConfigs(new Set());
+      setDestinationsWithStatus(undefined);
     },
     [remove]
   );

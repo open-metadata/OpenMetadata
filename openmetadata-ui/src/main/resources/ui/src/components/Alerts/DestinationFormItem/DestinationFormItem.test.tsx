@@ -556,6 +556,45 @@ describe('DestinationFormItem', () => {
     expect(aligned[2]?.statusDetails?.status).toBe('Failed');
   });
 
+  it('clears index-aligned test statuses when a destination row is removed', async () => {
+    const slackFormatted = {
+      category: SubscriptionCategory.External,
+      type: SubscriptionType.Slack,
+      config: { endpoint: 'https://hooks.slack.com' },
+    };
+    const slackRow = {
+      destinationType: SubscriptionType.Slack,
+      ...slackFormatted,
+    };
+    mockGetFormattedDestinations.mockReturnValue([
+      slackFormatted,
+      slackFormatted,
+    ]);
+    (testAlertDestination as jest.Mock).mockResolvedValue([
+      { statusDetails: { status: 'Failed', statusCode: 500 } },
+      { statusDetails: { status: 'Success', statusCode: 200 } },
+    ]);
+
+    renderWithForm(<DestinationFormItem />, {
+      resources: ['container'],
+      destinations: [slackRow, slackRow],
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-destination-button'));
+    });
+
+    await waitFor(() => expect(testAlertDestination).toHaveBeenCalled());
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('remove-destination-0'));
+    });
+
+    const calls = (DestinationSelectItem as unknown as jest.Mock).mock.calls;
+
+    expect(calls[calls.length - 1][0].destinationsWithStatus).toBeUndefined();
+  });
+
   it('hides add and test buttons in view mode', () => {
     renderWithForm(<DestinationFormItem isViewMode />, {
       resources: ['container'],

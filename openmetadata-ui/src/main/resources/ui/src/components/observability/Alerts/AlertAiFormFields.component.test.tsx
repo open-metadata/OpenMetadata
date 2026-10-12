@@ -1422,6 +1422,38 @@ describe('AlertAi form field components', () => {
     );
   });
 
+  it('clears AI destination test statuses when a destination row is removed', async () => {
+    const destination = {
+      category: SubscriptionCategory.External,
+      config: { endpoint: 'https://hooks.example.com' },
+      destinationType: SubscriptionType.Slack,
+      type: SubscriptionType.Slack,
+    } as ModifiedDestination;
+    const value = {
+      ...baseValue,
+      destinations: [destination, destination],
+    } as ModifiedCreateEventSubscription;
+    (testAlertDestination as jest.Mock).mockResolvedValueOnce([
+      { statusDetails: { status: Status.Failed, statusCode: 500 } },
+      { statusDetails: { status: Status.Success, statusCode: 200 } },
+    ]);
+
+    render(<AlertAiDestinationSection selectedSource="table" value={value} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-destination-button'));
+    });
+
+    expect(await screen.findByTestId('alert-success')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('remove-destination-0'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('alert-success')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+    });
+  });
+
   it('rebuilds a clean internal row when switching a populated external destination to Owners', () => {
     const onChange = jest.fn();
     const populatedSlack: ModifiedDestination = {
