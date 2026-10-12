@@ -25,6 +25,7 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { ServicePageData } from '../../../interface/platform/service.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import ServiceMainTabContent from '../../../pages/ServiceDetailsPage/ServiceMainTabContent';
@@ -33,6 +34,7 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtil
 import Description from '../../common/EntityDescription/Description';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
 import TagsSectionV1 from '../../common/TagsSection/TagsSection';
+import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import './data-assets-tab.less';
 
 interface DataAssetsTabProps {
@@ -69,9 +71,18 @@ const DataAssetsTab = ({
     [serviceCategory]
   );
 
+  const { entityRules, isRulesLoaded } = useEntityRules(entityType);
+
   const allTags = serviceDetails?.tags ?? [];
 
+  // Metadata services carry no data products; classic hides the section for them too.
+  const showDataProducts =
+    serviceCategory !== ServiceCategory.METADATA_SERVICES;
+  const dataProducts =
+    'dataProducts' in serviceDetails ? serviceDetails.dataProducts ?? [] : [];
+
   const {
+    canEditAll: editDataProductPermission,
     canEditTags: editTagsPermission,
     canEditGlossaryTerms: editGlossaryTermsPermission,
     canEditDescription: editDescriptionPermission,
@@ -139,6 +150,22 @@ const DataAssetsTab = ({
                 tags={allTags}
                 onTagsUpdate={handleTagsUpdate}
               />
+              {showDataProducts && (
+                <div data-testid="service-data-products">
+                  <DataProductsContainer
+                    activeDomains={serviceDetails.domains}
+                    dataProducts={dataProducts}
+                    hasPermission={editDataProductPermission}
+                    multiple={
+                      isRulesLoaded && entityRules.canAddMultipleDataProducts
+                    }
+                    requireDomainForDataProduct={
+                      !isRulesLoaded || entityRules.requireDomainForDataProduct
+                    }
+                    onSave={onDataProductUpdate}
+                  />
+                </div>
+              )}
             </div>
           </AccordionPanel>
         </AccordionItem>

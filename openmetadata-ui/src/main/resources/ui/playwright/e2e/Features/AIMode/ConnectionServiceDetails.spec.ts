@@ -17,7 +17,9 @@
  *
  * Its data-assets table lists each asset's owners and tags, pages that move the rows, the Deleted
  * switch, a soft-deleted service's children, the list after a restore and after a search is
- * cleared, only the top level of nesting assets, and drive directories.
+ * cleared, only the top level of nesting assets, and drive directories. Like classic, a drive
+ * service also has Files and Spreadsheets tabs, a dashboard service a Data Model tab, and the
+ * service's data products are shown (#35270).
  *
  * It gates what classic gates: the Connection tab, which shows the connection config, only for
  * users who may edit the service; and no domain / owner / tier edits on a soft-deleted service.
@@ -29,6 +31,10 @@
 import { expect } from '@playwright/test';
 import { EXTENDED_TEST_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { DataProduct } from '../../../support/domain/DataProduct';
+import { Domain } from '../../../support/domain/Domain';
+import { DashboardDataModelClass } from '../../../support/entity/DashboardDataModelClass';
+import { DashboardServiceClass } from '../../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { DriveServiceClass } from '../../../support/entity/service/DriveServiceClass';
 import { StorageServiceClass } from '../../../support/entity/service/StorageServiceClass';
@@ -397,19 +403,32 @@ test.describe(
       let service: DriveServiceClass;
       let serviceFqn = '';
       let directory = '';
+      let file = '';
+      let spreadsheet = '';
 
       test.beforeAll(async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
         service = new DriveServiceClass();
         await service.create(apiContext);
         serviceFqn = service.entityResponseData.fullyQualifiedName;
-        directory = `pw-ai-directory-${uuid()}`;
+        const prefix = `pw-ai-drive-${uuid()}`;
+        directory = `${prefix}-directory`;
+        file = `${prefix}-file`;
+        spreadsheet = `${prefix}-spreadsheet`;
 
-        await okJson(
-          await apiContext.post('/api/v1/drives/directories', {
-            data: { name: directory, service: serviceFqn },
-          }),
-          'Create directory'
+        await Promise.all(
+          [
+            ['directories', directory],
+            ['files', file],
+            ['spreadsheets', spreadsheet],
+          ].map(async ([endpoint, name]) =>
+            okJson(
+              await apiContext.post(`/api/v1/drives/${endpoint}`, {
+                data: { name, service: serviceFqn },
+              }),
+              `Create top-level ${endpoint}`
+            )
+          )
         );
 
         await afterAction();
@@ -429,6 +448,148 @@ test.describe(
         });
 
         await expect(getRowByName(page, directory)).toBeVisible();
+      });
+
+      // #35270: classic lists a drive's top-level files and spreadsheets in tabs of their own.
+      test('lists its top-level files and spreadsheets in their own tabs', async ({
+        page,
+      }) => {
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'driveServices',
+          fqn: serviceFqn,
+        });
+
+        await test.step('the Files tab lists the file', async () => {
+          const filesTab = page.getByTestId('files-tab');
+          await expect(filesTab).toContainText('1');
+
+          const filesList = waitForResponseWithStatus(
+            page,
+            (response) =>
+              response.request().method() === 'GET' &&
+              response.url().includes('/api/v1/drives/files?'),
+            200
+          );
+          await filesTab.click();
+          await filesList;
+
+          await expect(getRowByName(page, file)).toBeVisible();
+          await expect(getRowByName(page, spreadsheet)).toBeHidden();
+        });
+
+        await test.step('the Spreadsheets tab lists the spreadsheet', async () => {
+          const spreadsheetsTab = page.getByTestId('spreadsheets-tab');
+          await expect(spreadsheetsTab).toContainText('1');
+
+          const spreadsheetsList = waitForResponseWithStatus(
+            page,
+            (response) =>
+              response.request().method() === 'GET' &&
+              response.url().includes('/api/v1/drives/spreadsheets?'),
+            200
+          );
+          await spreadsheetsTab.click();
+          await spreadsheetsList;
+
+          await expect(getRowByName(page, spreadsheet)).toBeVisible();
+          await expect(getRowByName(page, file)).toBeHidden();
+        });
+      });
+    });
+
+    test.describe('dashboard service', () => {
+      let service: DashboardServiceClass;
+      let dataModel: DashboardDataModelClass;
+      let domain: Domain;
+      let dataProduct: DataProduct;
+
+      test.beforeAll(async ({ browser }) => {
+        test.setTimeout(EXTENDED_TEST_TIMEOUT);
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        service = new DashboardServiceClass();
+        await service.create(apiContext);
+        dataModel = new DashboardDataModelClass({ service });
+        domain = new Domain();
+        await settleAll([
+          dataModel.create(apiContext),
+          domain.create(apiContext),
+        ]);
+        dataProduct = new DataProduct([domain]);
+        await dataProduct.create(apiContext);
+
+        await okJson(
+          await apiContext.patch(
+            `/api/v1/services/dashboardServices/${service.entityResponseData.id}`,
+            {
+              data: [
+                {
+                  op: 'add',
+                  path: '/domains',
+                  value: [{ id: domain.responseData.id, type: 'domain' }],
+                },
+                {
+                  op: 'add',
+                  path: '/dataProducts',
+                  value: [
+                    { id: dataProduct.responseData.id, type: 'dataProduct' },
+                  ],
+                },
+              ],
+              headers: { 'Content-Type': 'application/json-patch+json' },
+            }
+          ),
+          'Assign the domain and data product to the dashboard service'
+        );
+
+        await afterAction();
+      });
+
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await dataModel.delete(apiContext);
+        await service.delete(apiContext);
+        await dataProduct.delete(apiContext);
+        await domain.delete(apiContext);
+        await afterAction();
+      });
+
+      test.beforeEach(async ({ page }) => {
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'dashboardServices',
+          fqn: service.entityResponseData.fullyQualifiedName,
+        });
+      });
+
+      // #35270: a Power BI service's data models were unreachable from its AI-mode page.
+      test('lists its data models in a Data Model tab', async ({ page }) => {
+        const dataModelTab = page.getByTestId('data-model-tab');
+        await expect(dataModelTab).toContainText('1');
+
+        const dataModelList = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.request().method() === 'GET' &&
+            response.url().includes('/api/v1/dashboard/datamodels?') &&
+            !response.url().includes('limit=0'),
+          200
+        );
+        await dataModelTab.click();
+        await dataModelList;
+
+        await expect(
+          page.getByTestId(`data-model-${dataModel.entity.displayName}`)
+        ).toBeVisible();
+      });
+
+      // #35270: classic shows data products in a right panel AI mode hides.
+      test('shows its data products', async ({ page }) => {
+        await page.getByRole('button', { name: 'Metadata Details' }).click();
+
+        await expect(page.getByTestId('service-data-products')).toContainText(
+          dataProduct.data.displayName
+        );
       });
     });
 

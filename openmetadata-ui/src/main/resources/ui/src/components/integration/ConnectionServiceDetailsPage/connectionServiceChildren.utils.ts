@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 import { PagingResponse, PagingWithoutTotal } from 'Models';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Directory } from '../../../generated/entity/data/directory';
+import { File } from '../../../generated/entity/data/file';
+import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
 import { Include } from '../../../generated/type/include';
 import { ServicePageData } from '../../../interface/platform/service.interface';
 import { getApiCollections } from '../../../rest/apiCollectionsAPI';
-import { getDashboards } from '../../../rest/dashboardAPI';
+import { getDashboards, getDataModels } from '../../../rest/dashboardAPI';
 import { getDatabases } from '../../../rest/databaseAPI';
 import { getDriveAssets } from '../../../rest/driveAPI';
 import { getMlModels } from '../../../rest/mlModelAPI';
@@ -97,4 +99,49 @@ export const fetchServiceChildren = (
 
   // The category is read from the URL, so call only a fetcher the table actually holds.
   return typeof fetcher === 'function' ? fetcher(params) : undefined;
+};
+
+export type ServiceTabCounts = Partial<Record<EntityTabs, number>>;
+
+// `root` matches the lists those tabs render, so a badge never counts rows its tab cannot show.
+const countRootDriveAssets = async (
+  entityType: EntityType.FILE | EntityType.SPREADSHEET,
+  service: string,
+  include: Include
+) => {
+  const { paging } = await getDriveAssets<File | Spreadsheet>(entityType, {
+    service,
+    root: true,
+    include,
+    paging: { limit: 0 },
+  });
+
+  return paging.total;
+};
+
+/** Badge counts for the tabs a category lists beside its data assets; empty for a category with none. */
+export const fetchServiceTabCounts = async (
+  serviceCategory: ServiceCategory,
+  service: string,
+  include: Include
+): Promise<ServiceTabCounts> => {
+  if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
+    const { paging } = await getDataModels({ service, include, limit: 0 });
+
+    return { [EntityTabs.DATA_Model]: paging.total };
+  }
+
+  if (serviceCategory === ServiceCategory.DRIVE_SERVICES) {
+    const [files, spreadsheets] = await Promise.all([
+      countRootDriveAssets(EntityType.FILE, service, include),
+      countRootDriveAssets(EntityType.SPREADSHEET, service, include),
+    ]);
+
+    return {
+      [EntityTabs.FILES]: files,
+      [EntityTabs.SPREADSHEETS]: spreadsheets,
+    };
+  }
+
+  return {};
 };

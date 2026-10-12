@@ -10,21 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Include } from '../../../generated/type/include';
+import { getDataModels } from '../../../rest/dashboardAPI';
 import { getDatabases } from '../../../rest/databaseAPI';
 import { getDriveAssets } from '../../../rest/driveAPI';
 import { getSearchIndexes } from '../../../rest/SearchIndexAPI';
 import { getContainers } from '../../../rest/storageAPI';
-import { fetchServiceChildren } from './connectionServiceChildren.utils';
+import {
+  fetchServiceChildren,
+  fetchServiceTabCounts,
+} from './connectionServiceChildren.utils';
 
 const RESPONSE = { data: [], paging: { total: 0 } };
 
 jest.mock('../../../rest/apiCollectionsAPI', () => ({
   getApiCollections: jest.fn(),
 }));
-jest.mock('../../../rest/dashboardAPI', () => ({ getDashboards: jest.fn() }));
+jest.mock('../../../rest/dashboardAPI', () => ({
+  getDashboards: jest.fn(),
+  getDataModels: jest.fn(),
+}));
 jest.mock('../../../rest/databaseAPI', () => ({
   getDatabases: jest.fn(() => Promise.resolve(RESPONSE)),
 }));
@@ -90,5 +97,79 @@ describe('fetchServiceChildren', () => {
     expect(
       fetchServiceChildren(ServiceCategory.METADATA_SERVICES, PARAMS)
     ).toBeUndefined();
+  });
+});
+
+describe('fetchServiceTabCounts', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('counts the data models of a dashboard service', async () => {
+    (getDataModels as jest.Mock).mockResolvedValueOnce({
+      data: [],
+      paging: { total: 173 },
+    });
+
+    await expect(
+      fetchServiceTabCounts(
+        ServiceCategory.DASHBOARD_SERVICES,
+        'svc',
+        Include.Deleted
+      )
+    ).resolves.toEqual({ [EntityTabs.DATA_Model]: 173 });
+
+    expect(getDataModels).toHaveBeenCalledWith({
+      service: 'svc',
+      include: Include.Deleted,
+      limit: 0,
+    });
+  });
+
+  it('counts the top-level files and spreadsheets of a drive service', async () => {
+    (getDriveAssets as jest.Mock).mockImplementation((entityType) =>
+      Promise.resolve({
+        data: [],
+        paging: { total: entityType === EntityType.FILE ? 4 : 2 },
+      })
+    );
+
+    await expect(
+      fetchServiceTabCounts(
+        ServiceCategory.DRIVE_SERVICES,
+        'svc',
+        Include.NonDeleted
+      )
+    ).resolves.toEqual({
+      [EntityTabs.FILES]: 4,
+      [EntityTabs.SPREADSHEETS]: 2,
+    });
+
+    // Files and spreadsheets inside a directory belong to that directory's page, not the service's.
+    expect(getDriveAssets).toHaveBeenCalledWith(EntityType.FILE, {
+      service: 'svc',
+      root: true,
+      include: Include.NonDeleted,
+      paging: { limit: 0 },
+    });
+    expect(getDriveAssets).toHaveBeenCalledWith(EntityType.SPREADSHEET, {
+      service: 'svc',
+      root: true,
+      include: Include.NonDeleted,
+      paging: { limit: 0 },
+    });
+  });
+
+  it('counts nothing for a category without extra tabs', async () => {
+    await expect(
+      fetchServiceTabCounts(
+        ServiceCategory.DATABASE_SERVICES,
+        'svc',
+        Include.NonDeleted
+      )
+    ).resolves.toEqual({});
+
+    expect(getDataModels).not.toHaveBeenCalled();
+    expect(getDriveAssets).not.toHaveBeenCalled();
   });
 });

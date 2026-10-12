@@ -43,7 +43,11 @@ import {
 import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -86,6 +90,7 @@ import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
 import TestConnection from '../../common/TestConnection/TestConnection';
+import DataModelTable from '../../Dashboard/DataModel/DataModels/DataModelsTable';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -96,9 +101,15 @@ import {
   getConnectionsRootBreadcrumb,
   getServiceCategoryBreadcrumb,
 } from './connectionsBreadcrumb.utils';
-import { fetchServiceChildren } from './connectionServiceChildren.utils';
+import {
+  fetchServiceChildren,
+  fetchServiceTabCounts,
+  ServiceTabCounts,
+} from './connectionServiceChildren.utils';
 import DataAssetHeaderDetailsRow from './DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow';
 import DataAssetsTab from './DataAssetsTab';
+import DriveFilesTab from './DriveFilesTab';
+import DriveSpreadsheetsTab from './DriveSpreadsheetsTab';
 
 type StaticTabKey = 'dataAssets' | 'connection';
 type TabKey = StaticTabKey | string;
@@ -115,6 +126,9 @@ interface DetailsTab {
 // SERVICE_DETAILS_TABS with its own `order`; sorting the merged list ascending is what lets a
 // contribution land before or after these without either side knowing about the other.
 const DATA_ASSETS_TAB_ORDER = 40;
+const FILES_TAB_ORDER = 42;
+const SPREADSHEETS_TAB_ORDER = 44;
+const DATA_MODEL_TAB_ORDER = 45;
 const CONNECTION_TAB_ORDER = 50;
 
 const getActionButtonColor = (action: ActionContribution) => {
@@ -572,6 +586,46 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     getOtherDetails,
   ]);
 
+  const isDashboardService =
+    serviceCategory === ServiceCategory.DASHBOARD_SERVICES;
+  const isDriveService = serviceCategory === ServiceCategory.DRIVE_SERVICES;
+
+  const [tabCounts, setTabCounts] = useState<ServiceTabCounts>({});
+
+  useEffect(() => {
+    if (!serviceDetails.fullyQualifiedName) {
+      return;
+    }
+    let isStale = false;
+
+    const loadTabCounts = async () => {
+      let counts: ServiceTabCounts = {};
+      try {
+        counts = await fetchServiceTabCounts(
+          serviceCategory as ServiceCategory,
+          decodedFqn,
+          showDeleted ? Include.Deleted : Include.NonDeleted
+        );
+      } catch {
+        // A missing badge is not worth a toast; the tab itself lists and reports errors.
+      }
+      if (!isStale) {
+        setTabCounts(counts);
+      }
+    };
+
+    loadTabCounts();
+
+    return () => {
+      isStale = true;
+    };
+  }, [
+    serviceCategory,
+    decodedFqn,
+    showDeleted,
+    serviceDetails.fullyQualifiedName,
+  ]);
+
   const extensionContext: PluginEntityDetailsContext = useMemo(
     () => ({
       serviceCategory: serviceCategory as ServiceCategory,
@@ -647,6 +701,32 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           : t('label.data-asset-plural'),
         order: DATA_ASSETS_TAB_ORDER,
       },
+      ...(isDriveService
+        ? [
+            {
+              key: EntityTabs.FILES,
+              label: t('label.file-plural'),
+              order: FILES_TAB_ORDER,
+              badge: tabCounts[EntityTabs.FILES],
+            },
+            {
+              key: EntityTabs.SPREADSHEETS,
+              label: t('label.spreadsheet-plural'),
+              order: SPREADSHEETS_TAB_ORDER,
+              badge: tabCounts[EntityTabs.SPREADSHEETS],
+            },
+          ]
+        : []),
+      ...(isDashboardService
+        ? [
+            {
+              key: EntityTabs.DATA_Model,
+              label: t('label.data-model'),
+              order: DATA_MODEL_TAB_ORDER,
+              badge: tabCounts[EntityTabs.DATA_Model],
+            },
+          ]
+        : []),
       // The connection config is for those who may edit it; classic hides the tab otherwise.
       ...(canEditAll
         ? [
@@ -669,7 +749,15 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     }));
 
     return [...builtIns, ...contributed].sort((a, b) => a.order - b.order);
-  }, [t, serviceCategory, pluginTabs, canEditAll]);
+  }, [
+    t,
+    serviceCategory,
+    pluginTabs,
+    canEditAll,
+    isDashboardService,
+    isDriveService,
+    tabCounts,
+  ]);
 
   const allTabKeys = useMemo(
     () => tabs.map((detailsTab) => detailsTab.key),
@@ -923,6 +1011,31 @@ const ConnectionServiceDetailsPage: React.FC = () => {
               onDataProductUpdate={onDataProductUpdate}
               onDescriptionUpdate={onDescriptionUpdate}
               onShowDeletedChange={handleShowDeletedChange}
+            />
+          )}
+
+          {/* Category-gated as well: a deep-linked tab key is held while permissions load, and
+                must not mount another category's list in the meantime. */}
+          {isDriveService && activeTab === EntityTabs.FILES && (
+            <DriveFilesTab
+              serviceFqn={decodedFqn}
+              showDeleted={showDeleted}
+              onShowDeletedChange={handleShowDeletedChange}
+            />
+          )}
+
+          {isDriveService && activeTab === EntityTabs.SPREADSHEETS && (
+            <DriveSpreadsheetsTab
+              serviceFqn={decodedFqn}
+              showDeleted={showDeleted}
+              onShowDeletedChange={handleShowDeletedChange}
+            />
+          )}
+
+          {isDashboardService && activeTab === EntityTabs.DATA_Model && (
+            <DataModelTable
+              handleShowDeleted={handleShowDeletedChange}
+              showDeleted={showDeleted}
             />
           )}
 

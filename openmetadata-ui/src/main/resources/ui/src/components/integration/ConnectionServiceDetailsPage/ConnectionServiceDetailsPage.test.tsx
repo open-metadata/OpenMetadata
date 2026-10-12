@@ -19,7 +19,9 @@ import {
   waitFor,
 } from '@testing-library/react';
 import React from 'react';
+import { getDataModels } from '../../../rest/dashboardAPI';
 import { getDatabases } from '../../../rest/databaseAPI';
+import { getDriveAssets } from '../../../rest/driveAPI';
 import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getTopics } from '../../../rest/topicsAPI';
 import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
@@ -124,6 +126,20 @@ jest.mock('../../../rest/topicsAPI', () => ({
 
 jest.mock('../../../rest/dashboardAPI', () => ({
   getDashboards: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  getDataModels: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: { total: 173 } }),
+}));
+
+jest.mock('../../../rest/driveAPI', () => ({
+  getDriveAssets: jest.fn((entityType: string) => {
+    const totals: Record<string, number> = { file: 4, spreadsheet: 2 };
+
+    return Promise.resolve({
+      data: [],
+      paging: { total: totals[entityType] ?? 0 },
+    });
+  }),
 }));
 
 jest.mock('../../../rest/pipelineAPI', () => ({
@@ -363,6 +379,30 @@ jest.mock('./DataAssetsTab', () => ({
         <span key={name}>{name}</span>
       ))}
     </div>
+  ),
+}));
+
+jest.mock('../../Dashboard/DataModel/DataModels/DataModelsTable', () => ({
+  __esModule: true,
+  default: ({ showDeleted }: { showDeleted: boolean }) => (
+    <div
+      data-show-deleted={String(showDeleted)}
+      data-testid="data-models-tab"
+    />
+  ),
+}));
+
+jest.mock('./DriveFilesTab', () => ({
+  __esModule: true,
+  default: ({ serviceFqn }: { serviceFqn: string }) => (
+    <div data-testid="files-tab">{serviceFqn}</div>
+  ),
+}));
+
+jest.mock('./DriveSpreadsheetsTab', () => ({
+  __esModule: true,
+  default: ({ serviceFqn }: { serviceFqn: string }) => (
+    <div data-testid="spreadsheets-tab">{serviceFqn}</div>
   ),
 }));
 
@@ -818,6 +858,120 @@ describe('ConnectionServiceDetailsPage', () => {
       });
 
       expect(screen.queryByTestId('deleted-badge')).not.toBeInTheDocument();
+    });
+  });
+
+  // Issue #35270: these tabs exist on classic service details and were missing in AI mode.
+  describe('category-specific tabs', () => {
+    it('offers a dashboard service its data models, with their count', async () => {
+      mockServiceCategory = 'dashboardServices';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(
+        await screen.findByTestId('tab-badge-data-model')
+      ).toHaveTextContent('173');
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /label\.data-model/ })
+      );
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/connections/dashboardServices/test-service/data-model'
+      );
+      expect(await screen.findByTestId('data-models-tab')).toBeInTheDocument();
+    });
+
+    it('lists the deleted data models of a soft-deleted dashboard service', async () => {
+      mockServiceCategory = 'dashboardServices';
+      mockTabParam = 'data-model';
+      (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
+        ...MOCK_SERVICE,
+        deleted: true,
+      });
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(await screen.findByTestId('data-models-tab')).toHaveAttribute(
+        'data-show-deleted',
+        'true'
+      );
+      expect(getDataModels).toHaveBeenCalledWith(
+        expect.objectContaining({ include: 'deleted' })
+      );
+    });
+
+    it('offers a drive service its files and spreadsheets, with their counts', async () => {
+      mockServiceCategory = 'driveServices';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(await screen.findByTestId('tab-badge-files')).toHaveTextContent(
+        '4'
+      );
+      expect(screen.getByTestId('tab-badge-spreadsheets')).toHaveTextContent(
+        '2'
+      );
+      expect(
+        screen.getByRole('button', { name: /label\.file-plural/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /label\.spreadsheet-plural/ })
+      ).toBeInTheDocument();
+    });
+
+    it.each([
+      ['files', 'files-tab'],
+      ['spreadsheets', 'spreadsheets-tab'],
+    ])(
+      'opens a deep-linked %s tab of a drive service',
+      async (tabKey, testId) => {
+        mockServiceCategory = 'driveServices';
+        mockTabParam = tabKey;
+
+        await act(async () => {
+          render(<ConnectionServiceDetailsPage />);
+        });
+
+        expect(await screen.findByTestId(testId)).toHaveTextContent(
+          'test-service'
+        );
+        expect(screen.queryByTestId('data-assets-tab')).not.toBeInTheDocument();
+      }
+    );
+
+    it('offers neither to a database service, nor fetches their counts', async () => {
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      await screen.findByTestId('data-assets-tab');
+
+      expect(
+        screen.queryByRole('button', { name: /label\.data-model/ })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /label\.file-plural/ })
+      ).not.toBeInTheDocument();
+      expect(getDataModels).not.toHaveBeenCalled();
+      expect(getDriveAssets).not.toHaveBeenCalled();
+    });
+
+    it('lands a data-model deep link on a non-dashboard service on the default tab', async () => {
+      mockTabParam = 'data-model';
+
+      await act(async () => {
+        render(<ConnectionServiceDetailsPage />);
+      });
+
+      expect(await screen.findByTestId('data-assets-tab')).toBeInTheDocument();
+      expect(screen.queryByTestId('data-models-tab')).not.toBeInTheDocument();
     });
   });
 
