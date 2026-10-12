@@ -14,12 +14,13 @@ import Icon from '@ant-design/icons';
 import {
   Button,
   Divider,
+  Select,
   Toggle,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Collapse, Select, Slider } from 'antd';
+import { Badge, Collapse, Slider } from 'antd';
 import { MouseEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -85,10 +86,10 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   };
 
   const matchTypeOptions = [
-    { label: t('label.exact-match'), value: MatchType.Exact },
-    { label: t('label.phrase-match'), value: MatchType.Phrase },
-    { label: t('label.fuzzy-match'), value: MatchType.Fuzzy },
-    { label: t('label.standard-match'), value: MatchType.Standard },
+    { id: MatchType.Exact, label: t('label.exact-match') },
+    { id: MatchType.Phrase, label: t('label.phrase-match') },
+    { id: MatchType.Fuzzy, label: t('label.fuzzy-match') },
+    { id: MatchType.Standard, label: t('label.standard-match') },
   ];
 
   return (
@@ -210,13 +211,14 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
           <div className="m-y-md m-b-lg d-flex items-center justify-between">
             <Typography>{t('label.match-type')}</Typography>
             <Select
-              className="m-l-xlg"
+              aria-label={t('label.match-type')}
+              className="tw:ml-8 tw:w-40"
               data-testid="match-type-select"
-              options={matchTypeOptions}
-              style={{ width: 150 }}
+              items={matchTypeOptions}
               value={fieldMatchType}
-              onChange={handleMatchTypeChange}
-            />
+              onChange={(key) => handleMatchTypeChange(key as MatchType)}>
+              {(item) => <Select.Item id={item.id} label={item.label} />}
+            </Select>
           </div>
         </div>
       </Collapse.Panel>

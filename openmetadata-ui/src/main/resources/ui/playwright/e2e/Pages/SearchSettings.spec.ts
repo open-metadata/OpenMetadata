@@ -265,34 +265,25 @@ test.describe('Search Settings', () => {
       // Match Type
       const matchTypeSelect = page.getByTestId('match-type-select');
       await matchTypeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Fuzzy Match')
-        .click();
+      await page.getByRole('option', { name: 'Fuzzy Match' }).click();
 
       // Score Mode
       const scoreModeSelect = page.getByTestId('score-mode-select');
       await scoreModeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Max')
-        .click();
+      await page.getByRole('option', { name: 'Max' }).click();
 
       // Boost Mode
       const boostModeSelect = page.getByTestId('boost-mode-select');
       await boostModeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Replace')
-        .click();
+      await page.getByRole('option', { name: 'Replace' }).click();
 
       // Save
       await page.getByTestId('save-btn').click();
 
       await toastNotification(page, /Search Settings updated successfully/);
 
-      await expect(scoreModeSelect).toHaveText('Max');
-      await expect(boostModeSelect).toHaveText('Replace');
+      await expect(scoreModeSelect.getByRole('button')).toHaveText('Max');
+      await expect(boostModeSelect.getByRole('button')).toHaveText('Replace');
     });
 
     test('Highlight toggle is offered for analyzed fields', async ({
@@ -817,10 +808,7 @@ test.describe('Search Settings', () => {
 
       const matchTypeSelect = page.getByTestId('match-type-select');
       await matchTypeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Exact Match')
-        .click();
+      await page.getByRole('option', { name: 'Exact Match' }).click();
 
       const saveSettings = page.waitForResponse(
         (response) =>

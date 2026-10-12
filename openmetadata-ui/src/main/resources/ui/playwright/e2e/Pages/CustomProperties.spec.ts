@@ -3377,12 +3377,7 @@ pickEntityMatrix(
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();
-          await page
-            .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
-            .waitFor({ state: 'visible' });
-          await page
-            .locator('.ant-select-item-option[title="Standard Match"]')
-            .click();
+          await page.getByRole('option', { name: 'Standard Match' }).click();
 
           const searchSettingsSaveResponse = page.waitForResponse(
             '/api/v1/system/settings'
@@ -3522,9 +3517,7 @@ pickEntityMatrix(
 
           const matchTypeSelect = page.getByTestId('match-type-select');
           await matchTypeSelect.click();
-          await page
-            .locator('.ant-select-item-option[title="Phrase Match"]')
-            .click();
+          await page.getByRole('option', { name: 'Phrase Match' }).click();
 
           const searchSettingsSaveResponse = page.waitForResponse(
             '/api/v1/system/settings'

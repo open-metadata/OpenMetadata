@@ -156,6 +156,21 @@ const setColumnsInCurrentPagesMock = jest.fn((updater) => {
 });
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Input: ({
+    inputDataTestId,
+    value,
+    onChange,
+  }: {
+    inputDataTestId?: string;
+    value?: string;
+    onChange?: (value: string) => void;
+  }) => (
+    <input
+      data-testid={inputDataTestId}
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
+  ),
   ButtonUtility: jest
     .fn()
     .mockImplementation(
