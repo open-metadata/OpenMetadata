@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TableProps } from 'antd';
 import { ReactNode } from 'react';
 import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
+import { TableProps } from '../Table/Table.interface';
 
 interface SearchProps {
   onSearch: ((search: string) => void) | ((search: string) => Promise<void>);

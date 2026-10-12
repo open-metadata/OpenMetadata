@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Button, Form, Input, Modal, Select, Tooltip } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Button, Form, Input, Modal, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import {
   SUBSCRIPTION_WEBHOOK,
   SUBSCRIPTION_WEBHOOK_OPTIONS,
@@ -148,14 +149,15 @@ const TeamsSubscription = ({
         </Typography>
         {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
           <Tooltip
+            arrow
             title={t('label.edit-entity', {
               entity: t('label.subscription'),
             })}>
-            <Button
-              className="flex-center teams-info-email-edit-button p-0"
+            <ButtonUtility
+              color="secondary"
               data-testid="edit-team-subscription"
-              icon={<EditIcon {...ICON_DIMENSION} width="12px" />}
-              {...ICON_DIMENSION}
+              icon={EditIcon}
+              size="xs"
               onClick={(e) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
@@ -166,19 +168,15 @@ const TeamsSubscription = ({
         )}
         {isEmpty(subscription) && hasEditPermission && (
           <Tooltip
+            arrow
             title={t('label.edit-entity', {
               entity: t('label.subscription'),
             })}>
-            <Button
-              className="flex-center teams-info-email-edit-button p-0"
+            <ButtonUtility
+              color="secondary"
               data-testid="edit-team-subscription"
-              icon={
-                <EditIcon
-                  color={DE_ACTIVE_COLOR}
-                  {...ICON_DIMENSION}
-                  width="12px"
-                />
-              }
+              icon={EditIcon}
+              size="xs"
               onClick={(e) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();

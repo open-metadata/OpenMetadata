@@ -332,6 +332,7 @@ export { ShieldTick } from './ShieldTick';
 export { Shield01 } from './Shield01';
 export { ShoppingBag01 } from './ShoppingBag01';
 export { Signal02 } from './Signal02';
+export { SingleSignOn } from './SingleSignOn';
 export { Size } from './Size';
 export { SlashCircle01 } from './SlashCircle01';
 export { SlashDivider } from './SlashDivider';

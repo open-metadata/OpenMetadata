@@ -820,7 +820,7 @@ a[href].link-text-grey,
 }
 
 // Dark-mode bridge for fixed-hex legacy LESS palette vars.
-// Each var in variables.less is `@x: var(--om-x, #originalHex)`, so light
+// Each var in variables.less has a project token and original color fallback, so light
 // mode resolves to the exact original hex (no drift) while dark mode picks up
 // the semantic/utility override below. This themes every consumer of these
 // legacy vars app-wide without per-file edits. Utility tokens auto-invert under
@@ -1250,13 +1250,6 @@ a[href].link-text-grey,
   .ant-alert-description {
     color: var(--om-color-text-secondary);
   }
-}
-
-// antd Card header text uses antd's heading colour (85% black) and a light
-// divider; both vanish or glare on the dark surface.
-.dark-mode .ant-card-head {
-  color: var(--om-color-text-primary);
-  border-bottom-color: var(--om-color-border-secondary);
 }
 
 // antd DatePicker/RangePicker compile static light values: 25%-black

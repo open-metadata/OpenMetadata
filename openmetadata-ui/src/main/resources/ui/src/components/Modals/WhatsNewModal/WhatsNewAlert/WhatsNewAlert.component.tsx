@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Affix, Button, Card } from 'antd';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Affix, Button } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

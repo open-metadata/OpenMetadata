@@ -59,6 +59,33 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
   );
   const [selectedData, setSelectedData] = useState<KnowledgePage>();
 
+  const fetchActiveVersion = useCallback(async () => {
+    if (!knowledgePage) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await getKnowledgePageVersionData(knowledgePage.id, version);
+      setSelectedData(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  }, [knowledgePage, version]);
+
+  const fetchKnowledgePage = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await getKnowledgePageByFqn(fqn);
+      setKnowledgePage(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  }, [fqn]);
+
   const fetchVersionsInfo = useCallback(async () => {
     if (!knowledgePage) {
       return;
@@ -73,33 +100,6 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
       setLoading(false);
     }
   }, [knowledgePage]);
-
-  const fetchActiveVersion = useCallback(async () => {
-    if (!knowledgePage) {
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await getKnowledgePageVersionData(knowledgePage.id, version);
-      setSelectedData(res);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  }, [knowledgePage]);
-
-  const fetchKnowledgePage = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getKnowledgePageByFqn(fqn);
-      setKnowledgePage(res);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  }, [fqn]);
 
   const onVersionChange = (selectedVersion: string) => {
     navigate(
@@ -131,12 +131,17 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
 
   useEffect(() => {
     fetchKnowledgePage();
-  }, [fqn, version]);
+  }, [fqn]);
 
   useEffect(() => {
     fetchVersionsInfo();
-    fetchActiveVersion();
-  }, [knowledgePage]);
+  }, [knowledgePage?.id]);
+
+  useEffect(() => {
+    if (knowledgePage) {
+      fetchActiveVersion();
+    }
+  }, [version, knowledgePage?.id]);
 
   useEffect(() => {
     onPageChange({

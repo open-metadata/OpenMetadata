@@ -115,6 +115,45 @@ describe('InlineAlert', () => {
     fireEvent.click(closeButton);
 
     expect(mockProps.onClose).toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('should hide itself on close even without an onClose handler', () => {
+    render(<InlineAlert description="Desc" heading="Heading" type="warning" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['error', 'tw:bg-error-primary'],
+    ['warning', 'tw:bg-warning-primary'],
+    ['success', 'tw:bg-success-primary'],
+    ['info', 'tw:bg-utility-blue-50'],
+    [undefined, 'tw:bg-primary'],
+  ] as const)('should style a %s alert with %s', (type, className) => {
+    render(<InlineAlert description="Desc" heading="Heading" type={type} />);
+
+    expect(screen.getByRole('alert')).toHaveClass(className);
+  });
+
+  it('should clamp the description until expanded', () => {
+    render(
+      <InlineAlert
+        {...mockProps}
+        description={'a'.repeat(200)}
+        subDescription="more"
+      />
+    );
+
+    const description = screen.getByTestId('inline-alert-description');
+
+    expect(description).toHaveClass('tw:line-clamp-2');
+
+    fireEvent.click(screen.getByTestId('read-more-button'));
+
+    expect(description).not.toHaveClass('tw:line-clamp-2');
   });
 
   it('should apply custom className when provided', () => {
