@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card } from 'antd';
+import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

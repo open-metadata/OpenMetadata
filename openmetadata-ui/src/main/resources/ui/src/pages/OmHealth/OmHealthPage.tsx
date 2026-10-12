@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import { Box, Grid } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import { map, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -25,6 +26,7 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ValidationResponse } from '../../generated/system/validationResponse';
 import { fetchOMStatus } from '../../rest/miscAPI';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -63,34 +65,44 @@ const OmHealthPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.health-check')}>
-      <Row className="bg-white p-lg border-radius-sm" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid bg-white p-lg border-radius-sm"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Row align="middle" justify="space-between">
-            <Col>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-row"
+            justify="between"
+            wrap="wrap">
+            <Box className="layout-column tw:block">
               <PageHeader
                 data={{
                   header: t(PAGE_HEADERS.OM_HEALTH.header),
                   subHeader: t(PAGE_HEADERS.OM_HEALTH.subHeader),
                 }}
               />
-            </Col>
-            <Col>
+            </Box>
+            <Box className="layout-column tw:block">
               <Button type="primary" onClick={getHealthData}>
                 {t('label.refresh')}
               </Button>
-            </Col>
-          </Row>
-        </Col>
+            </Box>
+          </Box>
+        </Grid.Item>
 
         {validationStatus &&
           map(
             validationStatus,
             (validation, key) =>
               validation && (
-                <Col data-testid={key} key={key} span={24}>
+                <Grid.Item
+                  className="layout-column"
+                  data-testid={key}
+                  key={key}
+                  span={24}>
                   <ConnectionStepCard
                     isTestingConnection={false}
                     testConnectionStep={{
@@ -110,10 +122,10 @@ const OmHealthPage = () => {
                         : {}),
                     }}
                   />
-                </Col>
+                </Grid.Item>
               )
           )}
-      </Row>
+      </Grid>
     </PageLayoutV1>
   );
 };

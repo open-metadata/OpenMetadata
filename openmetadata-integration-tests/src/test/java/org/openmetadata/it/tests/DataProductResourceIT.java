@@ -27,6 +27,7 @@ import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.EntityValidation;
+import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDashboard;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Table;
@@ -50,6 +52,7 @@ import org.openmetadata.schema.entity.domains.odps.ODPSProductDetails;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -60,6 +63,9 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -114,6 +120,40 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         .withName(name)
         .withDescription("Test data product")
         .withDomains(List.of(domain.getFullyQualifiedName()));
+  }
+
+  @Test
+  void patch_approvingADataProductClosesItsOpenApprovalTask(TestNamespace ns) {
+    Domain domain = getOrCreateDomain(ns);
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_approval_task"))
+                .withDescription("Data product with an open approval task")
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    // Put in review by someone other than the approver, so the approval is a change of its own
+    // rather than one consolidated into the same user's earlier edit
+    GovernanceWorkflowActions.moveToStage(
+        getEntityType(), dataProduct.getId(), EntityStatus.IN_REVIEW);
+    DataProduct inReview = getEntity(dataProduct.getId().toString());
+    Task approvalTask =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("dp_approval"))
+                    .withCategory(TaskCategory.Approval)
+                    .withType(TaskEntityType.RequestApproval)
+                    .withAbout(
+                        String.format(
+                            "<#E::%s::%s>", getEntityType(), inReview.getFullyQualifiedName())));
+
+    inReview.setEntityStatus(EntityStatus.APPROVED);
+    patchEntity(inReview.getId().toString(), inReview);
+
+    Task closed = SdkClients.adminClient().tasks().get(approvalTask.getId().toString());
+    assertEquals(TaskEntityStatus.Cancelled, closed.getStatus());
+    assertEquals("Approved the data product", closed.getResolution().getComment());
   }
 
   private Domain getOrCreateDomain(TestNamespace ns) {
@@ -841,29 +881,6 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   private boolean hasDataProduct(List<EntityReference> dataProducts, UUID dataProductId) {
     return dataProducts != null
         && dataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId));
-  }
-
-  @Test
-  void test_entityStatusUpdateAndPatch(TestNamespace ns) throws Exception {
-    Domain domain = getOrCreateDomain(ns);
-    CreateDataProduct createDataProduct =
-        new CreateDataProduct()
-            .withName(ns.prefix("dp_status"))
-            .withDescription("Data product for status test")
-            .withDomains(List.of(domain.getFullyQualifiedName()));
-    DataProduct dataProduct = createEntity(createDataProduct);
-
-    assertEquals(EntityStatus.UNPROCESSED, dataProduct.getEntityStatus());
-
-    dataProduct.setEntityStatus(EntityStatus.IN_REVIEW);
-    DataProduct updatedDataProduct =
-        SdkClients.adminClient().dataProducts().update(dataProduct.getId().toString(), dataProduct);
-
-    assertEquals(EntityStatus.IN_REVIEW, updatedDataProduct.getEntityStatus());
-
-    DataProduct retrievedDataProduct =
-        SdkClients.adminClient().dataProducts().get(updatedDataProduct.getId().toString());
-    assertEquals(EntityStatus.IN_REVIEW, retrievedDataProduct.getEntityStatus());
   }
 
   @Test

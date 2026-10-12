@@ -21,8 +21,6 @@ import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -47,12 +45,9 @@ import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.Relationship;
@@ -75,7 +70,6 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -97,6 +91,8 @@ public class TagRepository extends EntityRepository<Tag> {
         "");
     supportsSearch = true;
     renameAllowed = true;
+    onlyReviewersDeleteInReview = true;
+    approvalTaskReviewsEntityStatus = true;
 
     // Initialize inherited field search
     if (searchRepository != null) {
@@ -532,7 +528,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
 
       try {
@@ -687,7 +683,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
       // Skip the destructive tag_usage delete + ES update on dryRun so the preview
@@ -1181,77 +1177,6 @@ public class TagRepository extends EntityRepository<Tag> {
     private void run() {
       recordChange(
           "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
-    }
-  }
-
-  @Override
-  public void postUpdate(Tag original, Tag updated) {
-    super.postUpdate(original, updated);
-    if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
-      if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Approved the tag");
-      } else if (EntityStatus.REJECTED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Rejected the tag");
-      }
-    }
-
-    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
-    // will be a Task created.
-    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
-    // Tag goes back to DRAFT.
-    if (!EntityStatus.DRAFT.equals(original.getEntityStatus())
-        && EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
-      try {
-        closeApprovalTask(updated, "Closed due to tag going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
-    }
-  }
-
-  @Override
-  protected void preDelete(Tag entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
-    }
-  }
-
-  private void closeApprovalTask(Tag entity, String comment) {
-    if (entity.getUpdatedBy() == null) {
-      LOG.debug(
-          "Skipping task closure for tag {} - updatedBy is null", entity.getFullyQualifiedName());
-      return;
-    }
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  public static void checkUpdatedByReviewer(Tag tag, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = tag.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
     }
   }
 

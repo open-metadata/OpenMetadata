@@ -423,6 +423,7 @@ export const DashboardChartTable = ({
   useEffect(() => {
     if (isCustomizationPage) {
       setCharts(listChartIds as unknown as ChartType[]);
+      setIsChartsLoading(false);
 
       return;
     }

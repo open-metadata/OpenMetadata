@@ -172,6 +172,22 @@ export const LinkColorWithTrailingIcon: StoryObj = {
   ),
 };
 
+export const BoxedLink: StoryObj = {
+  render: () => (
+    <div className="tw:flex tw:items-center tw:gap-3">
+      <Button color="link-color" size="md">
+        Back
+      </Button>
+      <Button boxed color="link-color" size="md">
+        Back
+      </Button>
+      <Button color="primary" size="md">
+        Create
+      </Button>
+    </div>
+  ),
+};
+
 export const AsLink: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

@@ -71,7 +71,7 @@ public class BotMapper implements EntityMapper<Bot, CreateBot> {
   }
 
   private User retrieveUser(Bot bot) {
-    EntityRepository<? extends EntityInterface> userRepository =
+    EntityRepository<? extends EntityInterface<?>> userRepository =
         Entity.getEntityRepository(Entity.USER);
     return (User)
         userRepository.findByNameOrNull(

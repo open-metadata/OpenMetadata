@@ -12,6 +12,8 @@
  */
 package org.openmetadata.service.security.auth;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.Objects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
@@ -21,14 +23,15 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 /**
- * Prepares a candidate configuration for a Test Login.
+ * Prepares a candidate configuration for a dry run: the validate checks a Test Login starts with,
+ * and the Test Login itself.
  *
- * <p>The SSO form holds masked secrets for an existing configuration, so testing an edit that did
- * not retype the client secret or the LDAP bind password would otherwise fail with the mask. The
- * live secret is restored only while the candidate still targets the SAME client at the SAME
- * provider or directory. Restoring it unconditionally — as a save does — would let an admin who
- * cannot read the secret aim a candidate at an endpoint they control and have the server hand the
- * secret over, silently, since a test never changes the live configuration.
+ * <p>The SSO form holds masked secrets for an existing configuration, so checking or testing an
+ * edit that did not retype the client secret or the LDAP bind password would otherwise fail with
+ * the mask. The live secret is restored only while the candidate still targets the SAME client at
+ * the SAME provider or directory. Restoring it unconditionally — as a save does — would let an admin
+ * who cannot read the secret aim a candidate at an endpoint they control and have the server hand
+ * the secret over, silently, since a dry run never changes the live configuration.
  */
 public final class TestLoginCandidates {
 
@@ -42,17 +45,21 @@ public final class TestLoginCandidates {
     AuthenticationConfiguration liveAuth =
         live == null ? null : live.getAuthenticationConfiguration();
     if (candidateAuth != null && liveAuth != null) {
-      restoreOidcSecret(candidateAuth.getOidcConfiguration(), liveAuth.getOidcConfiguration());
+      restoreOidcSecret(candidateAuth, liveAuth);
       restoreLdapPassword(candidateAuth.getLdapConfiguration(), liveAuth.getLdapConfiguration());
     }
     return copy;
   }
 
-  private static void restoreOidcSecret(OidcClientConfig candidate, OidcClientConfig live) {
+  private static void restoreOidcSecret(
+      AuthenticationConfiguration candidateAuth, AuthenticationConfiguration liveAuth) {
+    OidcClientConfig candidate = candidateAuth.getOidcConfiguration();
+    OidcClientConfig live = liveAuth.getOidcConfiguration();
     if (candidate != null
         && live != null
         && isMaskedOrMissing(candidate.getSecret())
-        && isSameOidcClient(candidate, live)) {
+        && isSameOidcClient(candidate, live)
+        && isSameProviderLookup(candidateAuth, liveAuth)) {
       candidate.setSecret(live.getSecret());
     }
   }
@@ -72,6 +79,19 @@ public final class TestLoginCandidates {
         && Objects.equals(candidate.getDiscoveryUri(), live.getDiscoveryUri())
         && Objects.equals(candidate.getTenant(), live.getTenant())
         && Objects.equals(candidate.getType(), live.getType());
+  }
+
+  /**
+   * Without a discovery URI, the validate checks look a custom provider up from the authority, then
+   * the server URL, so those decide where the secret goes as well.
+   */
+  private static boolean isSameProviderLookup(
+      AuthenticationConfiguration candidateAuth, AuthenticationConfiguration liveAuth) {
+    OidcClientConfig candidate = candidateAuth.getOidcConfiguration();
+    OidcClientConfig live = liveAuth.getOidcConfiguration();
+    return !nullOrEmpty(live.getDiscoveryUri())
+        || (Objects.equals(candidateAuth.getAuthority(), liveAuth.getAuthority())
+            && Objects.equals(candidate.getServerUrl(), live.getServerUrl()));
   }
 
   /**

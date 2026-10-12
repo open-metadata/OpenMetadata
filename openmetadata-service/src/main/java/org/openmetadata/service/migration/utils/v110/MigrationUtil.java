@@ -97,14 +97,14 @@ public class MigrationUtil {
       "UPDATE field_relationship SET fromFQNHash = :fromFQNHash, toFQNHash = :toFQNHash where fromFQN= :fromFQN and toFQN = :toFQN";
 
   @SneakyThrows
-  public static <T extends EntityInterface> void updateFQNHashForEntity(
+  public static <T extends EntityInterface<?>> void updateFQNHashForEntity(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam) {
     String nameHashColumn = dao.getNameHashColumn();
     updateFQNHashForEntity(handle, clazz, dao, limitParam, nameHashColumn);
   }
 
   @SneakyThrows
-  public static <T extends EntityInterface> void updateFQNHashForEntity(
+  public static <T extends EntityInterface<?>> void updateFQNHashForEntity(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam, String nameHashColumn) {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       handle.execute(String.format(COLUMN_CHECK, dao.getTableName()));
@@ -129,14 +129,14 @@ public class MigrationUtil {
   }
 
   @SneakyThrows
-  public static <T extends EntityInterface> void updateFQNHashForEntityWithName(
+  public static <T extends EntityInterface<?>> void updateFQNHashForEntityWithName(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam) {
     String nameHashColumn = dao.getNameHashColumn();
     updateFQNHashForEntityWithName(handle, clazz, dao, limitParam, nameHashColumn);
   }
 
   @SneakyThrows
-  public static <T extends EntityInterface> void updateFQNHashForEntityWithName(
+  public static <T extends EntityInterface<?>> void updateFQNHashForEntityWithName(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam, String nameHashColumn) {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       readAndProcessEntity(
@@ -159,7 +159,7 @@ public class MigrationUtil {
     }
   }
 
-  public static <T extends EntityInterface> void readAndProcessEntity(
+  public static <T extends EntityInterface<?>> void readAndProcessEntity(
       Handle handle,
       String updateSql,
       Class<T> clazz,

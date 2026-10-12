@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Owner, Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import {
+  Card,
+  Divider,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import entries from 'lodash/entries';
 import isNumber from 'lodash/isNumber';
 import isUndefined from 'lodash/isUndefined';

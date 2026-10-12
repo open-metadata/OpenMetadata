@@ -16,6 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ExtractionStats;
@@ -68,5 +71,45 @@ class FileContextProcessingEngineTest {
     ArgumentCaptor<ContextFile> updated = ArgumentCaptor.forClass(ContextFile.class);
     verify(repository).update(isNull(), eq(file), updated.capture(), eq(Entity.ADMIN_USER_NAME));
     assertEquals("same-hash", updated.getValue().getExtractionStats().getSourceHash());
+  }
+
+  /** Reused pills stay anchored to the restricted original, hiding them from the copy's readers. */
+  @Test
+  void aCopyOfARestrictedFileIsExtractedInsteadOfReusingItsMemories() {
+    UUID fileId = UUID.randomUUID();
+    UUID contentId = UUID.randomUUID();
+    ContextFile file =
+        new ContextFile()
+            .withId(fileId)
+            .withName("copy.md")
+            .withHeadContentId(contentId.toString());
+    ContextFile restrictedPrior =
+        new ContextFile()
+            .withId(UUID.randomUUID())
+            .withName("private-original.md")
+            .withProcessingStatus(ProcessingStatus.Processed)
+            .withExtractionStats(new ExtractionStats().withChunksTotal(1).withChunksProcessed(1))
+            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    ContextFileContent content =
+        new ContextFileContent()
+            .withId(contentId)
+            .withChecksum("same-hash")
+            .withExtractedText("same facts");
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(file);
+    when(repository.getContentById(contentId.toString())).thenReturn(content);
+    when(repository.listByExtractedSourceHash("same-hash", fileId))
+        .thenReturn(List.of(restrictedPrior));
+    when(extractor.derive(
+            "same facts", file.getEntityReference(), ContextMemorySourceType.FILE_EXTRACTION))
+        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.of(), 1, 1));
+    when(reconciler.reconcile(file.getEntityReference(), Entity.CONTEXT_FILE, List.of()))
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(0, 0, 0, 0));
+
+    new FileContextProcessingEngine(repository, extractor, reconciler).runExtraction(fileId);
+
+    verify(reconciler, never()).reuseExtractedFrom(any(), any());
+    verify(extractor)
+        .derive("same facts", file.getEntityReference(), ContextMemorySourceType.FILE_EXTRACTION);
   }
 }

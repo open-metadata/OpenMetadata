@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import {
-  INGESTION_PIPELINE_NAME,
   TEST_CASE_NAME,
   TEST_SUITE_NAME,
   WEBHOOK_DELIVERY_COLUMN_NAME,
@@ -23,9 +22,11 @@ import {
   AlertDetails,
   ObservabilityCreationDetails,
 } from '../../constant/alert.interface';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { test as base } from '../../support/fixtures/isolatedUser';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -40,7 +41,11 @@ import {
   visitAlertDetailsPage,
 } from '../../utils/alert';
 import { deleteFixtureEntity, settleAll } from '../../utils/apiResponse';
-import { getApiContext, uuid } from '../../utils/common';
+import {
+  getApiContext,
+  getWorkerAdminAPIContext,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addExternalDestination,
@@ -60,7 +65,6 @@ import {
   startWebhookReceiver,
   stopWebhookReceiver,
 } from '../../utils/webhook';
-import { test as base } from '../fixtures/pages';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -80,6 +84,23 @@ const test = base.extend<{
   userWithPermissionsPage: Page;
   userWithoutPermissionsPage: Page;
 }>({
+  page: async ({ browser, isolatedUser }, use) => {
+    // Cover the migrated classic alert layouts without changing shared admin
+    // preferences or relying on a previously cached AI page.
+    const apiContext = await getWorkerAdminAPIContext();
+    const preference = await apiContext.put(
+      `/api/v1/users/${isolatedUser.responseData.id}/preferences/appMode`,
+      { data: { type: 'appMode', config: { value: 'classic' } } }
+    );
+    expect(preference.ok()).toBeTruthy();
+    const page = await browser.newPage();
+    try {
+      await isolatedUser.signIn(page);
+      await use(page);
+    } finally {
+      await page.close();
+    }
+  },
   userWithPermissionsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await user1.signIn(page);
@@ -94,6 +115,8 @@ const test = base.extend<{
   },
 });
 
+test.use({ isolatedUserOptions: { isAdmin: true } });
+
 const data = {
   alertDetails: {
     id: '',
@@ -107,7 +130,7 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(EXTENDED_TEST_TIMEOUT);
   table1 = new TableClass();
   table2 = new TableClass();
   pipeline = new PipelineClass();
@@ -129,7 +152,12 @@ test.beforeAll(async ({ browser }) => {
   });
   await table1.createTestCase(apiContext, { name: TEST_CASE_NAME });
   await pipeline.create(apiContext);
-  await pipeline.createIngestionPipeline(apiContext, INGESTION_PIPELINE_NAME);
+  // Named per run, not per module: under fullyParallel this hook can run
+  // again in the same worker, and the shared pipelineService keeps the name.
+  await pipeline.createIngestionPipeline(
+    apiContext,
+    `0-playwright-ingestion-pipeline-${uuid()}`
+  );
 
   // Wait for the entities used as alert-filter dropdown picks to be searchable.
   // In mode="multiple" the user can only pick options returned by the search API,

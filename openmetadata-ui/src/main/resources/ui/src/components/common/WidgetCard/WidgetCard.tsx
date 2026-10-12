@@ -14,14 +14,12 @@ import {
   ButtonUtility,
   Card,
   Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@openmetadata/ui-core-components/icons';
+import { ChevronUp, InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
 import { WidgetCardProps } from './WidgetCard.interface';
 
 const WidgetCard = ({
@@ -39,6 +37,7 @@ const WidgetCard = ({
   dataTestId,
   className,
   contentClassName,
+  footer,
 }: WidgetCardProps) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(
@@ -54,6 +53,18 @@ const WidgetCard = ({
   useEffect(() => {
     setIsExpanded(isExpandDisabled ? false : defaultExpanded);
   }, [defaultExpanded, isExpandDisabled]);
+
+  const renderBody = () => (
+    <>
+      {children && (
+        <Card.Content
+          className={classNames('tw:pb-4 tw:pt-0', contentClassName)}>
+          {children}
+        </Card.Content>
+      )}
+      {footer && <Card.Footer>{footer}</Card.Footer>}
+    </>
+  );
 
   useEffect(() => {
     if (forceExpand) {
@@ -78,27 +89,17 @@ const WidgetCard = ({
             <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
               {headerActions}
               {!isExpandDisabled && (
-                <Tooltip
-                  title={t(isExpanded ? 'label.collapse' : 'label.expand')}>
-                  <TooltipTrigger>
-                    <ButtonUtility
-                      className={classNames(
-                        'tw:p-0.5 tw:transition-transform tw:duration-200 tw:mt-0.5',
-                        { 'tw:rotate-180': !isExpanded }
-                      )}
-                      color="tertiary"
-                      data-testid="expand-collapse-icon"
-                      disabled={isExpandDisabled}
-                      icon={
-                        <CardExpandCollapseIcon className="tw:h-4 tw:w-4" />
-                      }
-                      title={
-                        isExpanded ? t('label.collapse') : t('label.expand')
-                      }
-                      onClick={handleExpandClick}
-                    />
-                  </TooltipTrigger>
-                </Tooltip>
+                <ButtonUtility
+                  className={classNames(
+                    'tw:p-0.5 tw:transition-transform tw:duration-200 tw:mt-0.5',
+                    { 'tw:rotate-180': !isExpanded }
+                  )}
+                  color="tertiary"
+                  data-testid="expand-collapse-icon"
+                  icon={<ChevronUp size={16} />}
+                  tooltip={t(isExpanded ? 'label.collapse' : 'label.expand')}
+                  onClick={handleExpandClick}
+                />
               )}
             </div>
           }
@@ -116,13 +117,13 @@ const WidgetCard = ({
               )}
               {helperText && (
                 <Tooltip title={helperText}>
-                  <TooltipTrigger className="tw:leading-0">
-                    <InfoCircle
-                      className="tw:cursor-pointer tw:text-utility-gray-400"
-                      size={14}
-                      strokeWidth={2}
-                    />
-                  </TooltipTrigger>
+                  <ButtonUtility
+                    aria-label={t('label.info')}
+                    className="tw:p-1"
+                    color="tertiary"
+                    icon={InfoCircle}
+                    size="xs"
+                  />
                 </Tooltip>
               )}
               {headerExtra}
@@ -130,12 +131,7 @@ const WidgetCard = ({
           }
         />
       )}
-      {isExpanded && children && (
-        <Card.Content
-          className={classNames('tw:pb-4 tw:pt-0', contentClassName)}>
-          {children}
-        </Card.Content>
-      )}
+      {isExpanded && renderBody()}
     </Card>
   );
 };

@@ -15,7 +15,7 @@
 // default import of it the module object instead of the component.
 import ReactEChartsCore from 'echarts-for-react/esm/core';
 import type { ECElementEvent, EChartsType } from 'echarts';
-import { ReactNode, useMemo, useRef } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
@@ -23,6 +23,7 @@ import { applyZoomWindow, ZoomWindow } from './options/common';
 import { REPLACE_MERGE_KEYS } from './options/merge';
 import { echarts, registerChartParts } from './register';
 import { buildChartTheme } from './theme';
+import { HIDE_CHART_TOOLTIPS_EVENT } from './tooltip-events';
 import type { ChartOption, ChartTheme } from './types';
 import { useIsDarkMode } from './use-is-dark-mode';
 
@@ -118,6 +119,22 @@ export const EChart = ({
     }),
     [onEvents]
   );
+  const chartRef = useRef<EChartsType>();
+  const handleChartReady = useCallback(
+    (chart: EChartsType) => {
+      chartRef.current = chart;
+      onChartReady?.(chart);
+    },
+    [onChartReady]
+  );
+  useEffect(() => {
+    const hideTooltip = () =>
+      chartRef.current?.dispatchAction({ type: 'hideTip' });
+    window.addEventListener(HIDE_CHART_TOOLTIPS_EVENT, hideTooltip);
+
+    return () =>
+      window.removeEventListener(HIDE_CHART_TOOLTIPS_EVENT, hideTooltip);
+  }, []);
   const size = { height, width };
   const showChart = !loading && !isEmpty;
 
@@ -148,7 +165,7 @@ export const EChart = ({
           opts={RENDER_OPTS}
           replaceMerge={REPLACE_MERGE_KEYS}
           style={size}
-          onChartReady={onChartReady}
+          onChartReady={handleChartReady}
           onEvents={events}
         />
       )}

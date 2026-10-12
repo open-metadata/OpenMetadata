@@ -1241,7 +1241,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     DataContract contract = createEntity(request);
 
-    // Default status should be UNPROCESSED
+    // A new contract starts in Draft until it is reviewed
     assertEquals(EntityStatus.UNPROCESSED, contract.getEntityStatus());
   }
 

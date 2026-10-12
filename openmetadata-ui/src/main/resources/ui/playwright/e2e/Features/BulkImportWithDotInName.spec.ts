@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { expect, test } from '../../support/fixtures/base';
 
 import { SERVICE_TYPE } from '../../constant/service';
@@ -250,7 +251,7 @@ test.describe(
 
         // Wait for validation to complete
         await page.getByTestId('processed-row').waitFor({
-          timeout: 120000,
+          timeout: LONG_ACTION_TIMEOUT,
         });
 
         // Verify no failures
@@ -431,7 +432,7 @@ test.describe(
 
         // Wait for validation
         await page.getByTestId('processed-row').waitFor({
-          timeout: 120000,
+          timeout: LONG_ACTION_TIMEOUT,
         });
 
         // Verify validation passed with no failures
@@ -521,7 +522,7 @@ test.describe(
         await page.getByRole('button', { name: 'Next' }).click();
 
         await page.getByTestId('processed-row').waitFor({
-          timeout: 120000,
+          timeout: LONG_ACTION_TIMEOUT,
         });
 
         await expect(page.locator('[data-testid="failed-row"]')).toHaveText(
@@ -614,7 +615,7 @@ test.describe(
         await page.getByRole('button', { name: 'Next' }).click();
 
         await page.getByTestId('processed-row').waitFor({
-          timeout: 120000,
+          timeout: LONG_ACTION_TIMEOUT,
         });
 
         // Verify no failures - this confirms column dots are handled
@@ -701,7 +702,7 @@ test.describe(
         await page.getByRole('button', { name: 'Next' }).click();
 
         await page.getByTestId('processed-row').waitFor({
-          timeout: 120000,
+          timeout: LONG_ACTION_TIMEOUT,
         });
 
         await expect(page.locator('[data-testid="failed-row"]')).toHaveText(
@@ -809,7 +810,7 @@ test.describe(
         await page.getByRole('button', { name: 'Next' }).click();
 
         await page.getByTestId('processed-row').waitFor({
-          timeout: 120000,
+          timeout: LONG_ACTION_TIMEOUT,
         });
 
         await expect(page.locator('[data-testid="failed-row"]')).toHaveText(
@@ -918,7 +919,7 @@ test.describe(
         await page.getByRole('button', { name: 'Next' }).click();
 
         await page.getByTestId('processed-row').waitFor({
-          timeout: 120000,
+          timeout: LONG_ACTION_TIMEOUT,
         });
 
         await expect(page.locator('[data-testid="failed-row"]')).toHaveText(
