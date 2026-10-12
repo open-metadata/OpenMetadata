@@ -8127,6 +8127,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem.tsx"
       ],
       "specs": [
@@ -13255,6 +13263,14 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/UserListPage/UserListPageV1.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
       ]
     },
     {

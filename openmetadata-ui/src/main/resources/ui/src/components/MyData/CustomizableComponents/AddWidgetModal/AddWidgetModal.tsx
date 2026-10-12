@@ -37,7 +37,6 @@ import { DetailsTabItem } from '../../../../utils/CustomizePage/CustomizePageEnt
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
-import './add-widget-modal.less';
 import {
   AddWidgetModalProps,
   WidgetSizeInfo,
