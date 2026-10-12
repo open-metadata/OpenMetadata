@@ -152,6 +152,7 @@ const TestConnectionModal = ({
   hostIp,
   connectionType,
   connectionDisplayName,
+  renderFailureAction,
 }: Readonly<TestConnectionModalProps>) => {
   const { t } = useTranslation();
 
@@ -287,6 +288,21 @@ const TestConnectionModal = ({
   };
 
   const message = getConnectionTimeoutMessage(t, serviceType, hostIp);
+  // A test that times out or errors before any step runs has no step log, so
+  // the action gets the text the dialog shows instead.
+  const failureDetails =
+    rawLog ||
+    [
+      errorMessage?.description,
+      errorMessage?.subDescription,
+      isConnectionTimeout ? message : undefined,
+    ]
+      .filter(Boolean)
+      .join('\n');
+  const failureAction =
+    isTestingConnection || isSuccessful
+      ? undefined
+      : renderFailureAction?.(failureDetails, onConfirm);
   const gateDescription = resolveGateDescription(t, gateStep, gateResult);
   const showGateCard = resolveShowGateCard(gateStep, isFailed);
   const showRemediationCard = resolveShowRemediationCard(isComplete, isFailed);
@@ -356,20 +372,24 @@ const TestConnectionModal = ({
                 <div className="tw:max-w-[520px] tw:text-sm tw:leading-5 tw:text-quaternary">
                   {message}
                 </div>
-                <Button
-                  className="tw:flex tw:items-center tw:gap-1.5"
-                  color="primary"
-                  data-testid="try-again-button"
-                  iconLeading={<IconTimeOutButton height={14} width={14} />}
-                  size="sm"
-                  onClick={onTestConnection}>
-                  {t('label.try-again')}
-                </Button>
+                <div className="tw:flex tw:items-center tw:gap-2">
+                  <Button
+                    className="tw:flex tw:items-center tw:gap-1.5"
+                    color="primary"
+                    data-testid="try-again-button"
+                    iconLeading={<IconTimeOutButton height={14} width={14} />}
+                    size="sm"
+                    onClick={onTestConnection}>
+                    {t('label.try-again')}
+                  </Button>
+                  {failureAction}
+                </div>
               </div>
             ) : (
               <>
                 <div className="tw:flex tw:flex-col tw:gap-4 tw:bg-primary tw:px-5 tw:py-4">
                   <ConnectionStatusBanner
+                    action={failureAction}
                     gateResult={gateResult}
                     isFailed={isFailed}
                     isSuccessful={isSuccessful}
