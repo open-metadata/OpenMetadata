@@ -30,6 +30,7 @@ import org.openmetadata.schema.system.OverriddenSettingField;
 import org.openmetadata.schema.system.SettingSource;
 import org.openmetadata.schema.system.SettingsSourceResponse;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
@@ -40,6 +41,8 @@ import org.openmetadata.service.security.auth.ActiveProviderValidator;
  * deployment values on request ("Use deployment value").
  */
 public final class SettingsSourceService {
+  private static final int MAX_ADOPT_ATTEMPTS = 3;
+
   private final SystemDAO dao;
   private final SystemRepository repository;
   private final SettingsRefresher refresher;
@@ -73,24 +76,59 @@ public final class SettingsSourceService {
   public List<String> adopt(SettingsType settingsType, Collection<String> paths) {
     DeploymentSetting setting = requireDeploymentSetting(settingsType);
     requireNotEnvManaged(settingsType);
-    MergeInput comparison = comparisonInput(setting, storedValue(settingsType).orElse(null));
+    Optional<List<String>> adopted = Optional.empty();
+    for (int attempt = 0; attempt < MAX_ADOPT_ATTEMPTS && adopted.isEmpty(); attempt++) {
+      adopted = tryAdopt(setting, paths);
+    }
+    return adopted.orElseThrow(
+        () ->
+            new PreconditionFailedException(
+                settingsType.value() + " kept changing while the deployment values were taken"));
+  }
+
+  /**
+   * Empty when another writer changed the setting after it was read; the caller then starts over
+   * from the new value, so that writer's change is kept.
+   */
+  private Optional<List<String>> tryAdopt(DeploymentSetting setting, Collection<String> paths) {
+    try {
+      return Optional.of(adoptOnce(setting, paths));
+    } catch (PreconditionFailedException changed) {
+      return Optional.empty();
+    }
+  }
+
+  private List<String> adoptOnce(DeploymentSetting setting, Collection<String> paths) {
+    String storedJson = requireStoredJson(setting.settingsType());
+    MergeInput comparison =
+        comparisonInput(
+            setting,
+            SettingsSecrets.decrypted(setting.settingsType(), JsonUtils.readTree(storedJson)));
     MergeContext context = new MergeContext(comparison);
     Set<String> requested = nullOrEmpty(paths) ? overriddenPointers(comparison) : Set.copyOf(paths);
     List<MergeUnit> units = unitsToAdopt(context, requested);
     units.forEach(unit -> adoptUnit(context, unit));
     if (!units.isEmpty()) {
-      store(setting, context.result().stored());
+      store(setting, context.result().stored(), storedJson);
     }
     return units.stream().flatMap(unit -> unit.pointers().stream()).toList();
   }
 
-  private void store(DeploymentSetting setting, JsonNode value) {
+  private String requireStoredJson(SettingsType settingsType) {
+    return Optional.ofNullable(dao.getConfigJsonWithKey(settingsType.value()))
+        .orElseThrow(
+            () -> new IllegalArgumentException(settingsType.value() + " is not stored yet"));
+  }
+
+  /** Writes against the row that was read and fails, rather than reports success, otherwise. */
+  private void store(DeploymentSetting setting, JsonNode value, String storedJson) {
     SettingsType type = setting.settingsType();
     Object adopted = JsonUtils.convertValue(value, setting.setting().valueClass());
     if (adopted instanceof AuthenticationConfiguration authConfig) {
       ActiveProviderValidator.validate(authConfig, authConfig);
     }
-    repository.createOrUpdate(new Settings().withConfigType(type).withConfigValue(adopted));
+    repository.replaceSettingIfCurrent(
+        new Settings().withConfigType(type).withConfigValue(adopted), storedJson);
     refresher.refresh(type);
   }
 

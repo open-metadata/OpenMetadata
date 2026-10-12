@@ -65,7 +65,7 @@ class OpenMetadataOperationsSettingsSourceTest {
               return null;
             })
         .when(repository)
-        .createOrUpdate(any(Settings.class));
+        .replaceSettingIfCurrent(any(Settings.class), anyString());
   }
 
   @AfterEach

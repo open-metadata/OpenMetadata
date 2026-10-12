@@ -499,6 +499,66 @@ class SettingsMergeTest {
     assertEquals("collate", result.stored().get("templates").asText());
   }
 
+  @Test
+  void aDeploymentProviderSwitchReplacesClaimsTheUiSetForTheOldProvider() {
+    String lastApplied =
+        "{'provider':'custom-oidc','clientType':'public','authority':'https://a.example',"
+            + "'clientId':'old-client','emailClaim':'email','jwtPrincipalClaims':['email']}";
+    String uiClaims =
+        lastApplied
+            .replace("'emailClaim':'email'", "'emailClaim':'oldClaim'")
+            .replace("'jwtPrincipalClaims':['email']", "'jwtPrincipalClaims':['oldClaim']");
+    String newProvider =
+        lastApplied
+            .replace("https://a.example", "https://b.example")
+            .replace("old-client", "new-client");
+
+    MergeResult result = auth(ConfigSourceMode.AUTO, newProvider, uiClaims, lastApplied);
+
+    assertEquals("new-client", result.stored().get("clientId").asText());
+    assertEquals("email", result.stored().get("emailClaim").asText());
+    assertEquals("email", result.stored().at("/jwtPrincipalClaims/0").asText());
+  }
+
+  @Test
+  void aValueClearedInTheUiWinsOverALaterDeploymentChange() {
+    DeploymentTemplate email =
+        DeploymentTemplate.parse(
+            "email:\n  supportUrl: ${OM_SUPPORT_URL:-https://default.example}\n", "/email");
+    MergeResult result =
+        merge.merge(
+            input(
+                    email,
+                    ConfigSourceMode.AUTO,
+                    "{'supportUrl':'https://new.example'}",
+                    "{'supportUrl':''}",
+                    "{'supportUrl':'https://old.example'}")
+                .policy(SettingsFieldPolicies.of(SettingsType.EMAIL_CONFIGURATION))
+                .build());
+
+    assertEquals("", result.stored().get("supportUrl").asText());
+    assertTrue(result.report().has(MergeOutcome.CONFLICT));
+  }
+
+  @Test
+  void aFieldAFormLeftOutStillTakesTheDeploymentChange() {
+    DeploymentTemplate email =
+        DeploymentTemplate.parse(
+            "email:\n  supportUrl: ${OM_SUPPORT_URL:-https://default.example}\n", "/email");
+    MergeResult result =
+        merge.merge(
+            input(
+                    email,
+                    ConfigSourceMode.AUTO,
+                    "{'supportUrl':'https://new.example'}",
+                    "{}",
+                    "{'supportUrl':'https://old.example'}")
+                .policy(SettingsFieldPolicies.of(SettingsType.EMAIL_CONFIGURATION))
+                .build());
+
+    assertEquals("https://new.example", result.stored().get("supportUrl").asText());
+  }
+
   private MergeResult auth(
       ConfigSourceMode mode, String deployment, String stored, String lastApplied) {
     return merge.merge(authInput(mode, deployment, stored, lastApplied).build());

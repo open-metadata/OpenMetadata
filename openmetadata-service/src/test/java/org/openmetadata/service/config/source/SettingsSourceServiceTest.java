@@ -44,6 +44,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.OverriddenSettingField;
 import org.openmetadata.schema.system.SettingSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
@@ -77,6 +78,8 @@ class SettingsSourceServiceTest {
   private final Map<String, String> rows = new ConcurrentHashMap<>();
   private final List<Settings> written = new ArrayList<>();
   private final List<SettingsType> refreshed = new ArrayList<>();
+  private Runnable beforeNextWrite = () -> {};
+  private boolean writesFail;
   private SettingsSourceService service;
 
   @BeforeEach
@@ -84,17 +87,9 @@ class SettingsSourceServiceTest {
     SystemDAO dao = mock(SystemDAO.class);
     when(dao.getConfigJsonWithKey(anyString())).thenAnswer(i -> rows.get(i.<String>getArgument(0)));
     SystemRepository repository = mock(SystemRepository.class);
-    doAnswer(
-            i -> {
-              Settings settings = i.getArgument(0);
-              written.add(settings);
-              rows.put(
-                  settings.getConfigType().value(),
-                  JsonUtils.pojoToJson(settings.getConfigValue()));
-              return null;
-            })
+    doAnswer(i -> compareAndSet(i.getArgument(0), i.getArgument(1)))
         .when(repository)
-        .createOrUpdate(any(Settings.class));
+        .replaceSettingIfCurrent(any(Settings.class), anyString());
     service = new SettingsSourceService(dao, repository, refreshed::add);
     installDeployment(DEPLOYMENT);
   }
@@ -360,6 +355,55 @@ class SettingsSourceServiceTest {
     ConfigSources.install(
         DeploymentConfig.of(
             List.of(setting), new ConfigSourceConfiguration().withSecurity(ConfigSourceMode.AUTO)));
+  }
+
+  @Test
+  void keepsAChangeSavedElsewhereWhileTheDeploymentValueWasTaken() {
+    store(
+        "{'provider':'google','providerName':'Google','clientId':'deployment-client',"
+            + "'enableSelfSignup':false,'maxActiveSessionsPerUser':4000}");
+    beforeNextWrite =
+        () ->
+            store(
+                "{'provider':'google','providerName':'Google','clientId':'deployment-client',"
+                    + "'enableSelfSignup':true,'maxActiveSessionsPerUser':4000}");
+
+    service.adopt(AUTHENTICATION_CONFIGURATION, List.of("/maxActiveSessionsPerUser"));
+
+    assertEquals(1000, stored().get("maxActiveSessionsPerUser").asInt());
+    assertTrue(stored().get("enableSelfSignup").asBoolean());
+    assertEquals(1, written.size());
+  }
+
+  @Test
+  void reportsAFailedWriteInsteadOfTheAdoptedFields() {
+    store(
+        "{'provider':'google','providerName':'Google','clientId':'deployment-client',"
+            + "'enableSelfSignup':true,'maxActiveSessionsPerUser':4000}");
+    writesFail = true;
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> service.adopt(AUTHENTICATION_CONFIGURATION, List.of("/maxActiveSessionsPerUser")));
+
+    assertEquals(4000, stored().get("maxActiveSessionsPerUser").asInt());
+    assertTrue(refreshed.isEmpty());
+  }
+
+  /** Like the repository: writes only over the JSON that was read, and throws what failed. */
+  private Object compareAndSet(Settings settings, String expectedJson) {
+    beforeNextWrite.run();
+    beforeNextWrite = () -> {};
+    if (writesFail) {
+      throw new IllegalStateException("database unavailable");
+    }
+    String type = settings.getConfigType().value();
+    if (!JsonUtils.readTree(rows.get(type)).equals(JsonUtils.readTree(expectedJson))) {
+      throw new PreconditionFailedException(type + " changed since it was read");
+    }
+    written.add(settings);
+    rows.put(type, JsonUtils.pojoToJson(settings.getConfigValue()));
+    return null;
   }
 
   private void installAuthorizer(String deploymentValue) {

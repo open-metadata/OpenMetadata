@@ -637,7 +637,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
               setting.getConfigType().toString(), expectedJson, updatedJson);
       if (updated == 0) {
         throw new PreconditionFailedException(
-            "Setting changed while the JSON Patch was being applied");
+            setting.getConfigType().value()
+                + " changed since it was read; read it again and retry");
       }
       settingUpdated(setting.getConfigType());
     } catch (BadRequestException | PreconditionFailedException ex) {
@@ -649,6 +650,19 @@ public class SystemRepository implements DeploymentSettingPreparer {
           "FAILED_TO_UPDATE_SLACK_OR_EMAIL",
           ex.getMessage());
     }
+  }
+
+  /**
+   * Replaces a setting only while it still holds {@code expectedJson}, the stored JSON the caller
+   * read: a write made in between fails with a 412 instead of being overwritten. Write failures are
+   * thrown too, so a caller never reports a value that was not stored.
+   */
+  public void replaceSettingIfCurrent(Settings setting, String expectedJson) {
+    Settings stored =
+        CollectionDAO.SettingsRowMapper.getSettings(setting.getConfigType(), expectedJson);
+    preserveEmailSettings(setting, stored);
+    OpenMetadataBaseUrlValidator.validate(setting);
+    updateSettingIfCurrent(setting, expectedJson);
   }
 
   private String prepareSettingForUpdate(Settings setting) {

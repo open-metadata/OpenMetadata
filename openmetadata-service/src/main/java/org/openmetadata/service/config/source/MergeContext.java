@@ -90,10 +90,14 @@ final class MergeContext {
   }
 
   /** Whether the stored value was changed, through the UI or an API, since it was last applied. */
+  /**
+   * An empty value saved in the UI is a change like any other. A field that is absent is not: forms
+   * leave out fields they do not show, which says nothing about the admin's intent.
+   */
   boolean storedChangedSinceLastApplied(MergeUnit unit) {
-    JsonNode storedValue = storedValue(unit);
-    return !SettingValues.isBlank(storedValue)
-        && !SettingValues.same(storedValue, lastAppliedValue(unit));
+    boolean present =
+        unit.pointers().stream().anyMatch(pointer -> JsonPointers.isPresent(stored, pointer));
+    return present && !SettingValues.same(storedValue(unit), lastAppliedValue(unit));
   }
 
   boolean isDeliberate(MergeUnit unit) {

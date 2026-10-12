@@ -80,10 +80,10 @@ public final class SettingsMerge {
    * never combined with the new provider.
    */
   private void mergeAcrossProviderChange(MergeContext context, MergeUnit unit) {
-    if (!context.deploymentChanged(unit)) {
-      reportDriftAcrossProviders(context, unit);
-    } else if (context.providerChange() == ProviderChange.BY_DEPLOYMENT) {
+    if (context.providerChange() == ProviderChange.BY_DEPLOYMENT) {
       applyProviderSwitch(context, unit);
+    } else if (!context.deploymentChanged(unit)) {
+      reportDriftAcrossProviders(context, unit);
     } else if (context.isInLastApplied(unit)) {
       context.record(IGNORED_FOR_IDENTITY, unit);
     } else {
@@ -105,10 +105,15 @@ public final class SettingsMerge {
     }
   }
 
+  /**
+   * Every provider field moves with the switch, including those the deployment did not change: a
+   * claim the UI set for the old provider would not match the tokens of the new one.
+   */
   private void applyProviderSwitch(MergeContext context, MergeUnit unit) {
     if (keepsSecretOverBlank(context, unit)) {
       context.record(KEPT_OVER_BLANK, unit);
-    } else if (context.applyFromDeployment(unit)) {
+    } else if (!same(context.storedValue(unit), context.deploymentValue(unit))
+        && context.applyFromDeployment(unit)) {
       context.record(APPLIED, unit);
       context.report().markIdentityProviderReplaced();
     }

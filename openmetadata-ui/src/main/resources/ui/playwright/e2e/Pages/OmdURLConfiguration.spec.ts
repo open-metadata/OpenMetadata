@@ -120,10 +120,25 @@ test.describe('OM URL configuration source', () => {
         ],
       },
     ]);
+    // The stored URL changes to the deployment's once it is adopted, so the page must reload it.
+    let servedUrl = URL_SETTING.config_value.openMetadataUrl;
+    await page.route(
+      '**/api/v1/system/settings/openMetadataBaseUrlConfiguration',
+      (route) =>
+        route.fulfill({
+          json: {
+            ...URL_SETTING,
+            config_value: { openMetadataUrl: servedUrl },
+          },
+        })
+    );
 
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.OM_URL_CONFIG);
 
+    await expect(page.getByTestId('open-metadata-url')).toHaveText(
+      'https://metadata.example.com'
+    );
     const overriddenAlert = page.getByTestId(
       'settings-source-overridden-alert'
     );
@@ -144,6 +159,7 @@ test.describe('OM URL configuration source', () => {
           .url()
           .endsWith('/api/v1/system/settings/openMetadataBaseUrlConfiguration')
     );
+    servedUrl = 'https://deployment.example.com';
     await page
       .getByRole('dialog')
       .getByRole('button', { name: 'Use deployment value' })
@@ -159,7 +175,7 @@ test.describe('OM URL configuration source', () => {
         },
       ]);
     await expect(page.getByTestId('open-metadata-url')).toHaveText(
-      'https://metadata.example.com'
+      'https://deployment.example.com'
     );
     await expect(overriddenAlert).not.toBeVisible();
   });

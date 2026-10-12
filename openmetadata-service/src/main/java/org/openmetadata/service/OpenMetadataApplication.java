@@ -374,6 +374,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // reports and reclaim orphaned Running ones so they don't hang forever.
     startupTimer.time("audit report recovery", AuditPackGenerator::recoverInterruptedReports);
 
+    // Validate native migrations before anything writes settings: seeding and reconciling them
+    // use columns a pending migration adds, and must not run against a schema it has not reached.
+    startupTimer.time("migration validation", () -> validateMigrations(jdbi, catalogConfig));
+
     // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
     startupTimer.time(
         "settings cache initialization", () -> SettingsCache.initialize(catalogConfig));
@@ -420,9 +424,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                     new PlatformResourceBundleLocator("jakarta.validation.ValidationMessages")))
             .buildValidatorFactory()
             .getValidator());
-
-    // Validate native migrations
-    startupTimer.time("migration validation", () -> validateMigrations(jdbi, catalogConfig));
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
