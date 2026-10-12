@@ -114,7 +114,7 @@ const LineageSearchSelect = () => {
                   {getEntityName(node)}
                 </Typography>
                 <ChevronRight
-                  className="tw:text-quaternary tw:text-xs tw:shrink-0"
+                  className="tw:text-quaternary tw:shrink-0"
                   size={14}
                 />
               </div>

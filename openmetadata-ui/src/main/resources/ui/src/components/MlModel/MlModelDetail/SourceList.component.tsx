@@ -52,12 +52,12 @@ const SourceList = ({ feature }: { feature: MlFeature }) => {
           )}>
           {isActive ? (
             <ChevronDown
-              className="tw:text-xs tw:text-brand-secondary tw:cursor-pointer tw:shrink-0"
+              className="tw:text-brand-secondary tw:cursor-pointer tw:shrink-0"
               size={14}
             />
           ) : (
             <ChevronRight
-              className="tw:text-xs tw:text-brand-secondary tw:cursor-pointer tw:shrink-0"
+              className="tw:text-brand-secondary tw:cursor-pointer tw:shrink-0"
               size={14}
             />
           )}

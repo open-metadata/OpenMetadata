@@ -348,7 +348,7 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <DeleteIcon className="tw:mr-1 tw:font-medium tw:text-md ant-icon tw:size-3.5 tw:shrink-0" />
+          <DeleteIcon className="tw:mr-1 ant-icon tw:size-3.5 tw:shrink-0" />
 
           {t('label.deleted')}
         </span>

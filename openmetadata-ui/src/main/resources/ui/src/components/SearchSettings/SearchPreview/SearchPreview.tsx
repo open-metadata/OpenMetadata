@@ -246,9 +246,7 @@ const SearchPreview = ({
         className="search-box"
         data-testid="searchbar"
         placeholder={t('message.search-for-data-assets-placeholder')}
-        suffix={
-          <IconSearchV1 className="tw:text-md tw:font-bold tw:mr-2 tw:size-3.5 tw:shrink-0" />
-        }
+        suffix={<IconSearchV1 className="tw:mr-2 tw:size-3.5 tw:shrink-0" />}
         type="text"
         value={searchValue}
         onChange={(e) => handleSearch(e.target.value)}

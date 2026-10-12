@@ -125,7 +125,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               <Button
                 className="delete-search-field"
                 data-testid="delete-search-field"
-                icon={<Delete className="tw:text-md tw:size-3.5 tw:shrink-0" />}
+                icon={<Delete className="tw:size-3.5 tw:shrink-0" />}
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeleteSearchField(field.fieldName);
@@ -140,7 +140,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               <span
                 className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
                 data-testid="field-weight">
-                <FilterIcon className="tw:text-md tw:size-3.5 tw:shrink-0" />
+                <FilterIcon className="tw:size-3.5 tw:shrink-0" />
                 {fieldWeight < 10 ? `0${fieldWeight}` : fieldWeight}
               </span>
             </div>
