@@ -385,7 +385,7 @@ const CustomizeAppModeSidebarPage = () => {
                     aria-label={t('label.cancel')}
                     color="secondary"
                     data-testid="cancel-button"
-                    iconLeading={<XClose className="tw:size-3.5 tw:shrink-0" />}
+                    iconLeading={<XClose className="tw:shrink-0" size={14} />}
                     isDisabled={isSaving}
                     onPress={handleCancel}
                   />

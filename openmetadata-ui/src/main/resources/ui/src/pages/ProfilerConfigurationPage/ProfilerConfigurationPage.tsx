@@ -294,7 +294,7 @@ const ProfilerConfigurationPage = () => {
                                 <Button
                                   data-testid={`remove-filter-${name}`}
                                   icon={
-                                    <XClose className="tw:size-3.5 tw:shrink-0" />
+                                    <XClose className="tw:shrink-0" size={14} />
                                   }
                                   size="small"
                                   onClick={() => remove(name)}

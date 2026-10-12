@@ -146,7 +146,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             optionLabelProp="value"
             placeholder={t('label.select-tag')}
             suffixIcon={
-              <ChevronDown className="text-grey-muted tw:size-3.5 tw:shrink-0" />
+              <ChevronDown className="text-grey-muted tw:shrink-0" size={14} />
             }
             value={termBoostData.value || undefined}
             onChange={handleTagChange}

@@ -179,7 +179,7 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
                   defaultExpandAll
                   showIcon
                   draggable={{
-                    icon: <Drag className="tw:size-4 tw:shrink-0" />,
+                    icon: <Drag className="tw:shrink-0" size={16} />,
                   }}
                   itemHeight={48}
                   switcherIcon={switcherIcon}

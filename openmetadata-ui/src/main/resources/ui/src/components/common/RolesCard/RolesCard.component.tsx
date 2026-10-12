@@ -129,7 +129,7 @@ const RolesCard = ({
                   <Button
                     className="text-sm mr-1"
                     data-testid="cancel-roles"
-                    icon={<XClose className="tw:size-3.5 tw:shrink-0" />}
+                    icon={<XClose className="tw:shrink-0" size={14} />}
                     size="small"
                     type="primary"
                     onMouseDown={() => setIsRolesEdit(false)}
@@ -137,7 +137,7 @@ const RolesCard = ({
                   <Button
                     className="text-sm"
                     data-testid="save-roles"
-                    icon={<Check className="tw:size-3.5 tw:shrink-0" />}
+                    icon={<Check className="tw:shrink-0" size={14} />}
                     size="small"
                     type="primary"
                     onClick={handleRolesChange}

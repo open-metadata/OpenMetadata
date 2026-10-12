@@ -122,7 +122,7 @@ function ObservabilityFormTriggerItem({
                       {!isViewMode && (
                         <Button
                           data-testid={`remove-trigger-${name}`}
-                          icon={<XClose className="tw:size-3.5 tw:shrink-0" />}
+                          icon={<XClose className="tw:shrink-0" size={14} />}
                           onClick={() => remove(name)}
                         />
                       )}

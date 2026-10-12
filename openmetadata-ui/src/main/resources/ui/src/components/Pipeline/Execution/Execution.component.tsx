@@ -220,7 +220,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                         bordered={false}
                         className="executions-date-picker"
                         clearIcon={
-                          <XCircle className="tw:size-3.5 tw:shrink-0" />
+                          <XCircle className="tw:shrink-0" size={14} />
                         }
                         data-testid="data-range-picker"
                         open={isClickedCalendar}
