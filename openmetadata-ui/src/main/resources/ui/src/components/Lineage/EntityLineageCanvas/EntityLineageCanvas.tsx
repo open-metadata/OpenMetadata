@@ -37,6 +37,7 @@ import {
 import { nodeTypes } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
+  onColumnEdgeRemove,
   onEdgeClick,
   saveLineageEdge,
 } from '../../../utils/Lineage/handlers/edgeMutations';
@@ -52,7 +53,10 @@ import {
 } from '../AddLineagePopover/AddLineagePopover.interface';
 import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
-import { getLineageEditColumnPair } from '../LineageMap/LineageMap.utils';
+import {
+  getDeleteKeyAction,
+  getLineageEditColumnPair,
+} from '../LineageMap/LineageMap.utils';
 import LineageNodeDeleteModal from '../LineageNodeDeleteModal/LineageNodeDeleteModal';
 import LineageSkeleton from '../LineageSkeleton.component';
 
@@ -104,6 +108,9 @@ const EntityLineageCanvas = ({
     dqHighlightedEdges,
     platformView,
     reactFlowInstance,
+    selectedEdge,
+    selectedNode,
+    openDeleteModal,
     setCanEditLineage,
     setIsCreatingEdge,
   } = useLineageStore();
@@ -149,6 +156,40 @@ const EntityLineageCanvas = ({
         : nodes,
     [canEdit, nodes, requestNodeDelete]
   );
+
+  // Delete / Backspace removes the selected node or edge, as on the platform map.
+  useEffect(() => {
+    const handleDeleteKey = (event: KeyboardEvent) => {
+      const deletableNode = selectedNode?.id
+        ? nodes.find(
+            (node) =>
+              node.data?.node?.id === selectedNode.id && !node.data?.isRootNode
+          )
+        : undefined;
+      const action = getDeleteKeyAction(event, {
+        canEdit,
+        hasSelectedNode: Boolean(deletableNode),
+        hasSelectedEdge: Boolean(selectedEdge?.data?.isEditable),
+      });
+      if (!action) {
+        return;
+      }
+      event.preventDefault();
+      if (action === 'node' && deletableNode) {
+        setNodePendingDelete(deletableNode);
+
+        return;
+      }
+      if (selectedEdge?.data?.isColumnLineage) {
+        onColumnEdgeRemove();
+      } else {
+        openDeleteModal();
+      }
+    };
+    window.addEventListener('keydown', handleDeleteKey);
+
+    return () => window.removeEventListener('keydown', handleDeleteKey);
+  }, [canEdit, nodes, openDeleteModal, selectedEdge, selectedNode]);
 
   const handleNodeClick = useCallback(
     (event: MouseEvent, node: Node) => {

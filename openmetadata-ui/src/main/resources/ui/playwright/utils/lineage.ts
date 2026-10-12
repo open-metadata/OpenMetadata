@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
-import { escapeRegExp, get, isEmpty } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import { LONG_ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
@@ -571,26 +571,22 @@ export const addLineageViaMenu = async (
 
   const toName = get(toEntity, 'entityResponseData.name') ?? '';
   const toFqn = get(toEntity, 'entityResponseData.fullyQualifiedName') ?? '';
-  // The list also searches on open; wait for the query that carries the name.
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      decodeURIComponent(response.url()).includes(toName)
-  );
   await popover
     .getByTestId('add-lineage-entity-input')
     .getByRole('combobox')
     .fill(toName);
-  await searchResponse;
+  // Asset options are keyed by FQN, which tells apart entities that share a
+  // name across services. The list also searches on open, so wait for the
+  // option itself rather than for a search response.
+  const assetOption = page.getByTestId(`option-${toFqn}`);
+  await expect(assetOption).toBeVisible();
 
   const lineageMutation = page.waitForResponse(
     (response) =>
       response.request().method() === 'PUT' &&
       new URL(response.url()).pathname.endsWith('/api/v1/lineage')
   );
-  // Asset options are keyed by FQN, which tells apart entities that share a
-  // name across services.
-  await page.getByTestId(`option-${toFqn}`).click();
+  await assetOption.click();
   if (columnFqn) {
     await popover
       .getByTestId('add-lineage-column-select')

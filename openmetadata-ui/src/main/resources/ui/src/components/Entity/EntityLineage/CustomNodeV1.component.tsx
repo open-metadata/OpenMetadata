@@ -23,7 +23,7 @@ import {
   type RefObject,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Handle, NodeProps, Position } from 'reactflow';
+import { Handle, NodeProps, Position, useReactFlow } from 'reactflow';
 import { ReactComponent as ZoomInIcon } from '../../../assets/svg/ic-zoom-in.svg';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
@@ -48,6 +48,14 @@ import {
 } from './EntityLineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 import NodeChildren from './NodeChildren/NodeChildren.component';
+
+// Scene nodes open through onSceneNodeSelect; classic nodes open the drawer,
+// except temp tables, which have no entity page.
+const canOpenNodeEntity = (
+  hasSceneSelect: boolean,
+  isSceneNode: boolean,
+  isTempTable: boolean
+) => hasSceneSelect || (!isSceneNode && !isTempTable);
 
 const NodeHandles = memo(
   ({
@@ -179,7 +187,9 @@ const SceneDrillButton = ({
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
 
-  const { onNodeCollapse, loadChildNodesHandler } = useLineageHandlers();
+  const { onNodeCollapse, loadChildNodesHandler, onNodeClick } =
+    useLineageHandlers();
+  const { getNode } = useReactFlow();
   const dataQualityLineage = useLineageStore((s) => s.dataQualityLineage);
 
   const {
@@ -327,9 +337,23 @@ const CustomNodeV1 = (props: NodeProps) => {
   const handleEntityClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
-      onSceneNodeSelect?.(props.id);
+      if (onSceneNodeSelect) {
+        onSceneNodeSelect(props.id);
+
+        return;
+      }
+      // Classic asset lineage: the name opens the same drawer as a node click.
+      const flowNode = getNode(props.id);
+      if (flowNode) {
+        onNodeClick(flowNode);
+      }
     },
-    [onSceneNodeSelect, props.id]
+    [getNode, onNodeClick, onSceneNodeSelect, props.id]
+  );
+  const canOpenEntity = canOpenNodeEntity(
+    Boolean(onSceneNodeSelect),
+    Boolean(sceneNode),
+    Boolean(node.isTempTable)
   );
 
   const nodeLabel = useMemo(() => {
@@ -353,13 +377,14 @@ const CustomNodeV1 = (props: NodeProps) => {
         toggleOnlyShowColumnsWithLineageFilterActive={
           toggleShowColumnsWithLineageOnly
         }
-        onEntityClick={onSceneNodeSelect ? handleEntityClick : undefined}
+        onEntityClick={canOpenEntity ? handleEntityClick : undefined}
       />
     );
   }, [
     node,
     onSceneNodeSelect,
     handleEntityClick,
+    canOpenEntity,
     columnsExpanded,
     showColumnsWithLineageOnly,
     toggleShowColumnsWithLineageOnly,

@@ -23,6 +23,7 @@ import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE } from '../../../constants/constants';
 import { entityData } from '../../../constants/Lineage.constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -193,15 +194,17 @@ const AddLineagePopover = ({
   const loadColumns = useCallback(
     async (picked: EntityHit, index: SearchIndex) => {
       try {
+        // Search by name, as the asset list does, and keep this asset's hit.
         const response = await searchQuery({
-          query: '',
+          query: picked.name ?? picked.displayName ?? '',
           searchIndex: index,
           pageNumber: 1,
-          pageSize: 1,
-          queryFilter: { query: { term: { id: picked.id } } },
+          pageSize: PAGE_SIZE,
           includeDeleted: false,
         });
-        const hit = response.hits.hits[0]?._source as unknown as EntityHit;
+        const hit = response.hits.hits
+          .map(({ _source }) => _source as unknown as EntityHit)
+          .find((source) => source.id === picked.id);
         setEntity((current) =>
           current?.id === picked.id && hit ? { ...current, ...hit } : current
         );
